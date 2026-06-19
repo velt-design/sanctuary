@@ -1,0 +1,152 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation "Portal navigation" [ref=e5]:
+        - link "Dashboard" [ref=e6] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e7]
+        - link "Projects" [ref=e10] [cursor=pointer]:
+          - /url: /projects
+          - img [ref=e12]
+        - link "Contacts" [ref=e16] [cursor=pointer]:
+          - /url: /contacts
+          - img [ref=e17]
+        - link "Schedule" [ref=e22] [cursor=pointer]:
+          - /url: /schedule
+          - img [ref=e23]
+        - link "Imports" [ref=e25] [cursor=pointer]:
+          - /url: /imports
+          - img [ref=e26]
+        - link "Pricebook" [ref=e28] [cursor=pointer]:
+          - /url: /pricebook
+          - img [ref=e29]
+        - link "Access" [ref=e31] [cursor=pointer]:
+          - /url: /admin/access
+          - img [ref=e32]
+      - button "User menu" [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+    - main [ref=e42]:
+      - generic [ref=e45]:
+        - complementary [ref=e46]:
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - heading "Visibility" [level=4] [ref=e50]
+              - generic [ref=e51]:
+                - generic [ref=e52]:
+                  - generic [ref=e53]: House
+                  - button "House visibility" [pressed] [ref=e54] [cursor=pointer]: Shown
+                - generic [ref=e55]:
+                  - generic [ref=e56]: Pergolas
+                  - button "Pergolas visibility" [pressed] [ref=e57] [cursor=pointer]: Shown
+                - generic [ref=e58]:
+                  - generic [ref=e59]: Decks
+                  - button "Decks visibility" [pressed] [ref=e60] [cursor=pointer]: Shown
+                - generic [ref=e61]:
+                  - generic [ref=e62]: Openings
+                  - button "Openings visibility" [pressed] [ref=e63] [cursor=pointer]: Shown
+            - generic "Workbench objects" [ref=e64]:
+              - generic [ref=e65]:
+                - heading "House Forms" [level=4] [ref=e66]
+                - generic [ref=e67]:
+                  - button "House 1 Composite (3 rectangles) · selected" [ref=e69] [cursor=pointer]:
+                    - generic [ref=e70]: House 1
+                    - generic [ref=e71]: Composite (3 rectangles) · selected
+                  - button "Add structure" [ref=e72] [cursor=pointer]:
+                    - generic [ref=e73]: +
+                    - generic [ref=e74]: Add structure
+              - generic [ref=e75]:
+                - heading "Pergolas" [level=4] [ref=e76]
+                - generic [ref=e77]:
+                  - generic [ref=e78]:
+                    - paragraph [ref=e79]: No pergolas
+                    - paragraph [ref=e80]: Drag and snap from the toolbar
+                  - button "Add pergola" [ref=e81] [cursor=pointer]:
+                    - generic [ref=e82]: +
+                    - generic [ref=e83]: Add pergola
+              - generic [ref=e84]:
+                - heading "Decks" [level=4] [ref=e85]
+                - generic [ref=e86]:
+                  - generic [ref=e87]:
+                    - paragraph [ref=e88]: No decks
+                    - paragraph [ref=e89]: Add from inspector
+                  - button "Add deck" [ref=e90] [cursor=pointer]:
+                    - generic [ref=e91]: +
+                    - generic [ref=e92]: Add deck
+              - generic [ref=e93]:
+                - heading "Openings" [level=4] [ref=e94]
+                - generic [ref=e95]:
+                  - generic [ref=e96]:
+                    - paragraph [ref=e97]: No openings
+                    - paragraph [ref=e98]: Add from inspector
+                  - button "Add opening" [ref=e99] [cursor=pointer]:
+                    - generic [ref=e100]: +
+                    - generic [ref=e101]: Add opening
+        - region "Drawing workbench" [ref=e104]:
+          - navigation "Drawing workbench primary navigation" [ref=e106]:
+            - generic [ref=e107]:
+              - generic [ref=e108]: Jess - Oratia
+              - generic [ref=e109]: Design Workbench
+            - tablist "Drawing workbench mode" [ref=e110]:
+              - tab "3D Review" [active] [selected] [ref=e111] [cursor=pointer]
+              - tab "Plan Editor" [ref=e112] [cursor=pointer]
+              - tab "Sheet Output" [ref=e113] [cursor=pointer]
+            - generic [ref=e114]:
+              - generic [ref=e115]:
+                - button "Save workbench draft" [ref=e116] [cursor=pointer]
+                - generic [ref=e117]: Unsaved changes
+              - link "Back to Project" [ref=e118] [cursor=pointer]:
+                - /url: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163
+              - button "More actions" [disabled] [ref=e119]:
+                - generic [ref=e120]: …
+          - region "3D geometry verification viewport" [ref=e294]:
+            - generic [ref=e296]:
+              - button "Workspace panel" [ref=e298] [cursor=pointer]
+              - button "Fit to scene" [ref=e301] [cursor=pointer]
+        - complementary [ref=e133]:
+          - region "Selected object inspector" [ref=e135]:
+            - generic [ref=e136]:
+              - generic [ref=e137]: SELECTED OBJECT
+              - generic [ref=e138]:
+                - heading "House 1" [level=3] [ref=e139]
+                - generic [ref=e140]: Invalid geometry
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - heading "Primary" [level=4] [ref=e144]
+                - generic [ref=e145]:
+                  - generic [ref=e146]:
+                    - generic [ref=e147]: Roof form
+                    - combobox "Roof form" [ref=e148]:
+                      - option "Flat"
+                      - option "Mono"
+                      - option "Hipped" [selected]
+                  - generic [ref=e149]:
+                    - generic [ref=e150]: Roof pitch (deg)
+                    - textbox "Roof pitch (deg)" [ref=e151]: "20"
+                    - generic [ref=e152]: Minimum is 5 deg for this roof.
+                  - generic [ref=e153]:
+                    - generic [ref=e154]: Roof material
+                    - combobox "Roof material" [ref=e155]:
+                      - option "Corrugated iron" [selected]
+                      - option "Trapezoidal 5 rib"
+                      - option "Eurotray 300"
+                      - option "Eurotray 500"
+                      - option "Shingles"
+                  - generic [ref=e156]:
+                    - generic [ref=e157]: Open hip ends as gables
+                    - generic [ref=e158]:
+                      - button "Close End 1" [ref=e159] [cursor=pointer]
+                      - button "Open End 2" [ref=e160] [cursor=pointer]
+                    - generic [ref=e161]: Open a hip end to convert that corner of the roof into a gable wall. Click again to close.
+                  - generic [ref=e162]:
+                    - paragraph [ref=e163]: This ridge orientation does not match the current house footprint. Choose the axis that follows the stronger roof span/topology.
+                    - generic [ref=e164]:
+                      - button "Copy roof diagnostics JSON to clipboard" [ref=e165] [cursor=pointer]: Copy diagnostics
+                      - button "Download this failing house as a JSON bug report" [ref=e166] [cursor=pointer]: Save bug report
+              - button "Remove this house form" [ref=e169] [cursor=pointer]
+  - generic [ref=e170]:
+    - img [ref=e172]
+    - button "Open Tanstack query devtools" [ref=e220] [cursor=pointer]:
+      - img [ref=e221]
+  - button "Open Next.js Dev Tools" [ref=e274] [cursor=pointer]:
+    - img [ref=e275]
+  - alert [ref=e278]

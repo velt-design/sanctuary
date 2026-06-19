@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-06-19T05:11:11.226Z",
+  "validationStatus": "invalid",
+  "validationCode": "invalid_ridge_axis",
+  "validationMessage": "This ridge orientation does not match the current house footprint. Choose the axis that follows the stronger roof span/topology.",
+  "failingStage": null,
+  "approximationReasons": [],
+  "stageDiagnostics": {
+    "footprintNormalizationStatus": "ok",
+    "eavePolygonConstructionStatus": "ok",
+    "roofIntentNormalizationStatus": "ok",
+    "roofTopologyClassificationStatus": "ok",
+    "roofPlaneGenerationStatus": "ok",
+    "roofQaValidationStatus": "ok",
+    "eavePolygonPointCount": 88,
+    "roofIntentForm": "hipped",
+    "roofIntentPitchDeg": 5,
+    "roofIntentRidgeAxis": "y",
+    "roofGeometry": "composition_stitched",
+    "roofTopologySolver": "composition_per_rectangle_stitched",
+    "roofFacetMergeMode": null,
+    "roofTopologySemanticQaStatus": null,
+    "roofTopologySemanticFailureReason": null,
+    "roofTopologyFailureReason": null,
+    "roofTopologyClosedFaceCount": null,
+    "roofTopologyExpectedFaceCount": null,
+    "roofTopologyFinalFaceCount": null,
+    "roofTopologySourceEdgeCount": null,
+    "roofTopologyDisconnectedSourceFaceCount": null,
+    "roofTopologyInternalEaveHeightSegmentCount": null,
+    "roofTopologyProjectionViolationCount": null,
+    "roofTopologyCoverageQaStatus": null,
+    "roofTopologyCoverageFailureReason": null,
+    "roofTopologyExactPartitionQaStatus": null,
+    "roofTopologyExactPartitionFailureReason": null,
+    "roofTopologyExactPartitionFaceCount": null,
+    "roofTopologyExactPartitionSemanticQaStatus": null,
+    "roofTopologyExactPartitionSemanticFailureReason": null,
+    "roofTopologyCoverageGapAreaMm2": null,
+    "roofTopologyCoverageOverlapAreaMm2": null,
+    "roofTopologyCoverageAreaDeltaMm2": null,
+    "roofTopologyOverlapAreaMm2": null,
+    "roofTopologyChordViolationCount": null,
+    "roofTopologyUnbackedBoundaryCount": null,
+    "roofTopologyDanglingFeatureCount": null,
+    "roofTopologyUnclassifiedFeatureCount": null,
+    "roofWavefrontFailureReason": null,
+    "roofQaStatus": "valid",
+    "roofQaFailureReason": null,
+    "roofQaRejectedFacetCount": 0,
+    "roofQaFacetAreaMm2": 463677464,
+    "roofQaEaveAreaMm2": 463677464,
+    "roofQaAreaDeltaMm2": 0,
+    "roofEaveOffsetRepairStatus": null,
+    "roofEaveOffsetRepairCode": null,
+    "roofRequestedEaveOverhangMm": null,
+    "roofEffectiveEaveOverhangMm": null,
+    "eaveOffsetConstructionMethod": null,
+    "eaveOffsetTopologyStatus": null,
+    "eaveOffsetTopologyFailureReason": null,
+    "eaveOffsetRequestedOverhangMm": null,
+    "eaveOffsetResolvedVertexCount": null,
+    "footprintCanonicalizationStatus": "canonicalized",
+    "footprintCanonicalizationPrecisionMm": 0.001,
+    "footprintCanonicalizationPointCountBefore": 12,
+    "footprintCanonicalizationPointCountAfter": 12,
+    "roofPlaneCountBeforeQa": 11,
+    "roofPlaneCountAfterQa": 11,
+    "roofMaterialVisualCount": 0,
+    "roofSolidCount": 0
+  },
+  "footprint": {
+    "attachmentSide": "rear",
+    "composition": {
+      "primitives": [
+        {
+          "kind": "axisAlignedRectangle",
+          "originXMm": -1.2531927495729178e-7,
+          "originYMm": -9219.380999731318,
+          "widthMm": 6000,
+          "depthMm": 16795.066093,
+          "roofIntent": {
+            "form": "hipped",
+            "pitchDeg": 5,
+            "ridgeAxis": "y",
+            "startCap": "open_gable",
+            "endCap": "hipped"
+          }
+        },
+        {
+          "kind": "axisAlignedRectangle",
+          "originXMm": 6000.000000316788,
+          "originYMm": -6470.786490754859,
+          "widthMm": 19365.688000000002,
+          "depthMm": 8367.979982427838,
+          "roofIntent": {
+            "form": "hipped",
+            "pitchDeg": 5,
+            "ridgeAxis": "y",
+            "startCap": "open_gable",
+            "endCap": "hipped"
+          }
+        },
+        {
+          "kind": "axisAlignedRectangle",
+          "originXMm": 25365.688,
+          "originYMm": -12516.668245327017,
+          "widthMm": 9362.201000316789,
+          "depthMm": 21453.862999999998,
+          "roofIntent": {
+            "form": "hipped",
+            "pitchDeg": 5,
+            "ridgeAxis": "x",
+            "startCap": "hipped",
+            "endCap": "hipped"
+          }
+        }
+      ],
+      "joins": [
+        {
+          "fromPrimitiveIndex": 0,
+          "fromEdge": "east",
+          "toPrimitiveIndex": 1,
+          "toEdge": "west"
+        },
+        {
+          "fromPrimitiveIndex": 1,
+          "fromEdge": "east",
+          "toPrimitiveIndex": 2,
+          "toEdge": "west"
+        }
+      ]
+    }
+  },
+  "roofIntent": {
+    "form": "hipped",
+    "material": "corrugated_iron",
+    "primaryPitchDeg": "20",
+    "primaryFallDirection": "negative_y",
+    "ridgeAxis": "y",
+    "openGableEndIds": [
+      "house-gable-end-y-1"
+    ]
+  },
+  "geometryKind": "rectilinear_joined_hipped",
+  "terminalEnds": [
+    {
+      "id": "house-gable-end-y-1",
+      "label": "End 1",
+      "isOpen": true
+    },
+    {
+      "id": "house-gable-end-y-11",
+      "label": "End 2",
+      "isOpen": false
+    }
+  ]
+}
