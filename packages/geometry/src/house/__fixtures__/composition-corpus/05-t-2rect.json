@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "name": "T-shape: trunk plus perpendicular crossbar",
+  "description": "Two-rectangle T: 12m x 6m trunk + 6m x 4m crossbar centered on the trunk's north edge. 8-edge perimeter, 2 reflex corners at the inside of the T.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": 0,
+        "widthMm": 12000,
+        "depthMm": 6000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 3000,
+        "originYMm": 6000,
+        "widthMm": 6000,
+        "depthMm": 4000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "north",
+        "toPrimitiveIndex": 1,
+        "toEdge": "south"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 25,
+    "ridgeAxis": "x",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 8,
+    "valleyCount": 2,
+    "areaDeltaMaxAbsMm2": 100,
+    "unifiedNotStitched": true
+  }
+}

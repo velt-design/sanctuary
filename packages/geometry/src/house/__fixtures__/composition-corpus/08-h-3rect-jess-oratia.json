@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "name": "Jess - Oratia H composite (live workbench capture, 3-rect dumbbell)",
+  "description": "Captured live from the workbench: tall left rect (6m x ~16.8m) + wide trunk (~19.4m x ~8.4m) + tall right rect (~9.4m x ~21.5m). Asymmetric H with float-precision primitive coords from drag-resize. Wavefront fails with roof_wavefront_unclosed_boundary (3 rejected facets) even after integer snap. The user's reference shape — must render unified after PR-SS-4.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": -1.2531927495729178e-7,
+        "originYMm": -9219.380999731318,
+        "widthMm": 6000,
+        "depthMm": 16795.066093,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 20,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 6000.000000316788,
+        "originYMm": -6470.786490754859,
+        "widthMm": 19365.688000000002,
+        "depthMm": 8367.979982427838,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 20,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 25365.688,
+        "originYMm": -12516.668245327017,
+        "widthMm": 9362.201000316789,
+        "depthMm": 21453.862999999998,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 20,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "east",
+        "toPrimitiveIndex": 1,
+        "toEdge": "west"
+      },
+      {
+        "fromPrimitiveIndex": 1,
+        "fromEdge": "east",
+        "toPrimitiveIndex": 2,
+        "toEdge": "west"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 20,
+    "ridgeAxis": "y",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 12,
+    "valleyCount": 4,
+    "areaDeltaMaxAbsMm2": 5000,
+    "unifiedNotStitched": true
+  },
+  "knownFailure": {
+    "closesIn": "PR-SS-4",
+    "reason": "User's actual reference shape. Wavefront fails roof_wavefront_unclosed_boundary on this asymmetric H. Snap helps simpler cases but not this topology. Straight-skeleton replacement is the fix."
+  }
+}

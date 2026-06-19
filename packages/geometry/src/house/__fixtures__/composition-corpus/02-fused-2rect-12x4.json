@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "name": "two rectangles fusing to a 12x4",
+  "description": "Two 6m x 4m rectangles snapped on their long edges — union is a single 12m x 4m rectangle. Currently goes through the fused-rectangle shortcut. After PR-SS-4, skeleton handles it as a trivial rectangle (4 facets).",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": 0,
+        "widthMm": 6000,
+        "depthMm": 4000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 6000,
+        "originYMm": 0,
+        "widthMm": 6000,
+        "depthMm": 4000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "east",
+        "toPrimitiveIndex": 1,
+        "toEdge": "west"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 25,
+    "ridgeAxis": "x",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 4,
+    "valleyCount": 0,
+    "areaDeltaMaxAbsMm2": 100,
+    "unifiedNotStitched": true
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "single rectangle hipped",
+  "description": "Smallest valid composition: one 8m x 5m rectangle, hipped, ridge along y, both ends hipped. Trivial case — must always work.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": 0,
+        "widthMm": 8000,
+        "depthMm": 5000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 20,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": []
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 20,
+    "ridgeAxis": "y",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 4,
+    "valleyCount": 0,
+    "areaDeltaMaxAbsMm2": 100,
+    "unifiedNotStitched": true
+  },
+  "knownFailure": {
+    "closesIn": "PR-SS-4",
+    "reason": "Single-rectangle currently routes through the stitched per-rectangle loop and stamps roofGeometry: composition_stitched. After PR-SS-4 the orchestrator uses one canonical skeleton path for every composition — single-rect becomes the trivial 4-facet case but its stamp is the canonical skeleton stamp, not the stitched fallback stamp."
+  }
+}

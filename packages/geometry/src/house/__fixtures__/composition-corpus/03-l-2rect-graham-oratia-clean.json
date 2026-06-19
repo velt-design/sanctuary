@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "name": "Graham-Oratia L (clean integer coords)",
+  "description": "Two-rectangle L: 12.5m x 8m main + 5.8m x 2.4m south extension. Clean integer coordinates. Wavefront handles this fine today. Must stay green forever.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": 0,
+        "widthMm": 12500,
+        "depthMm": 8000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": -2400,
+        "widthMm": 5814,
+        "depthMm": 2400,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "south",
+        "toPrimitiveIndex": 1,
+        "toEdge": "north"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 25,
+    "ridgeAxis": "x",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 6,
+    "valleyCount": 1,
+    "areaDeltaMaxAbsMm2": 100,
+    "unifiedNotStitched": true
+  }
+}

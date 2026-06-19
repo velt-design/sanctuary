@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "name": "H-shape: two tall side rects connected by a trunk (synthetic clean coords)",
+  "description": "Three-rectangle H: two 6m x 12m tall side rects connected by a 10m x 4m horizontal trunk. Clean integer dimensions, no float noise. Wavefront FAILS on this topology today regardless of cleanliness (verified in diagnostic test). The straight-skeleton must handle it.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": -6000,
+        "widthMm": 6000,
+        "depthMm": 12000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 6000,
+        "originYMm": -2000,
+        "widthMm": 10000,
+        "depthMm": 4000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 16000,
+        "originYMm": -6000,
+        "widthMm": 6000,
+        "depthMm": 12000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "east",
+        "toPrimitiveIndex": 1,
+        "toEdge": "west"
+      },
+      {
+        "fromPrimitiveIndex": 1,
+        "fromEdge": "east",
+        "toPrimitiveIndex": 2,
+        "toEdge": "west"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 25,
+    "ridgeAxis": "y",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 12,
+    "valleyCount": 4,
+    "areaDeltaMaxAbsMm2": 100,
+    "unifiedNotStitched": true
+  },
+  "knownFailure": {
+    "closesIn": "PR-SS-4",
+    "reason": "Wavefront solver fails with roof_wavefront_unclosed_boundary on 3-rect H topology regardless of input cleanliness. Falls back to stitched per-rectangle output. Verified failure in composeRoofFromComposition.diag.test.ts (now deleted). Straight-skeleton replacement in PR-SS-2/3/4 handles arbitrary orthogonal topologies including H."
+  }
+}

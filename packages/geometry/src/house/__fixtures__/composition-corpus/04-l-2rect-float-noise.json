@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "name": "2-rect L with float-precision noise (Jess - Oratia first capture)",
+  "description": "Captured live from the workbench earlier in the session. Originally hit roof_topology_fallback_features because float-precision noise in primitive coords (originXMm: -3178.891240000001) caused the wavefront's collinearity check to find spurious reflex vertices. The integer-mm snap added in commit 94967906 fixes this; the test guards against regression.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": -3656,
+        "widthMm": 7649.222,
+        "depthMm": 3656,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": -3178.891240000001,
+        "originYMm": 0,
+        "widthMm": 6375.732458007812,
+        "depthMm": 4809.349,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "y",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "north",
+        "toPrimitiveIndex": 1,
+        "toEdge": "south"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 25,
+    "ridgeAxis": "y",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 8,
+    "valleyCount": 2,
+    "areaDeltaMaxAbsMm2": 5000,
+    "unifiedNotStitched": true
+  }
+}

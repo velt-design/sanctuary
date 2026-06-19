@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "name": "U-shape: base plus two legs",
+  "description": "Three-rectangle U: 14m x 4m base + two 4m x 8m legs on each end. 8-edge perimeter, 2 reflex corners (one at each leg's inside).",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": 0,
+        "widthMm": 14000,
+        "depthMm": 4000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": 4000,
+        "widthMm": 4000,
+        "depthMm": 8000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 10000,
+        "originYMm": 4000,
+        "widthMm": 4000,
+        "depthMm": 8000,
+        "roofIntent": {
+          "form": "hipped",
+          "pitchDeg": 25,
+          "ridgeAxis": "x",
+          "startCap": "hipped",
+          "endCap": "hipped"
+        }
+      }
+    ],
+    "joins": [
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "north",
+        "toPrimitiveIndex": 1,
+        "toEdge": "south"
+      },
+      {
+        "fromPrimitiveIndex": 0,
+        "fromEdge": "north",
+        "toPrimitiveIndex": 2,
+        "toEdge": "south"
+      }
+    ]
+  },
+  "compositeRoofIntent": {
+    "form": "hipped",
+    "pitchDeg": 25,
+    "ridgeAxis": "x",
+    "startCap": "hipped",
+    "endCap": "hipped"
+  },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 8,
+    "valleyCount": 2,
+    "areaDeltaMaxAbsMm2": 100,
+    "unifiedNotStitched": true
+  }
+}
