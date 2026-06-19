@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { HouseFormModel } from "./objectFirstWorkbenchModel";
 import {
+  buildSingleRectangleCompositionFromCustomPolygonForm,
   buildSingleRectangleCompositionFromHouseForm,
+  deriveSeamIconCompositionForForm,
   syncSingleRectangleComposition,
 } from "./houseFormCompositionAdapter";
 
@@ -259,5 +261,191 @@ describe("syncSingleRectangleComposition (PR-COMP-PHASE3)", () => {
     });
     // Multi-rectangle composition survives the sync attempt unchanged.
     expect(synced).toBe(multiRect);
+  });
+});
+
+describe("buildSingleRectangleCompositionFromCustomPolygonForm (PR-WB-CUSTOM-POLY-COMPOSITION)", () => {
+  function customPolygonForm(input: {
+    polygon: Array<{ alongM: string; depthM: string }>;
+  }): HouseFormModel {
+    return {
+      id: "house-1",
+      label: "House 1",
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+      footprint: {
+        mode: "custom_polygon",
+        preset: "straight",
+        params: {
+          widthM: "6",
+          offsetXM: "0",
+          setbackM: "0",
+          bandDepthM: "4",
+          returnRunM: "0",
+          recessWidthM: "0",
+          recessDepthM: "0",
+          leftLegRunM: "0",
+          rightLegRunM: "0",
+          sideRunM: "0",
+        },
+        polygon: input.polygon,
+        attachmentSide: "rear",
+      },
+      roofIntent: {
+        form: "hipped",
+        material: "corrugated_iron",
+        primaryPitchDeg: "25",
+        primaryFallDirection: "positive_y",
+        ridgeAxis: "x",
+        openGableEndIds: [],
+      },
+      storeyMode: "single_storey",
+      attachmentStrategy: null,
+    };
+  }
+
+  it("builds a synthetic composition for a 4-vertex axis-aligned polygon (resize-converted form)", () => {
+    // House 1 from the user's actual workbench: a 6m wide form
+    // resized to ~16.8m deep, stored as a custom_polygon with the
+    // legacy frame's `-y = depth` convention.
+    const form = customPolygonForm({
+      polygon: [
+        { alongM: "0", depthM: "-7.575685093268681" },
+        { alongM: "6", depthM: "-7.575685093268681" },
+        { alongM: "6", depthM: "9.219380999731317" },
+        { alongM: "0", depthM: "9.219380999731317" },
+      ],
+    });
+    const composition = buildSingleRectangleCompositionFromCustomPolygonForm(form);
+    expect(composition).not.toBeNull();
+    expect(composition!.primitives).toHaveLength(1);
+    const rect = composition!.primitives[0]!;
+    if (rect.kind !== "axisAlignedRectangle") {
+      throw new Error("expected rectangle");
+    }
+    // Polygon spans form-local (x, y):
+    //   x = alongM * 1000 ∈ [0, 6000]
+    //   y = -depthM * 1000 ∈ [-9219.38, 7575.69]
+    // Composition rectangle should occupy the same form-local
+    // extent so the seam detector sees the form's edges where the
+    // walls actually are.
+    expect(rect.originXMm).toBe(0);
+    expect(rect.widthMm).toBe(6000);
+    expect(Math.round(rect.originYMm)).toBe(-9219);
+    expect(Math.round(rect.depthMm)).toBe(16795);
+  });
+
+  it("returns null for a non-axis-aligned polygon (truly free-form shape)", () => {
+    // A diamond-shaped polygon — vertices at the cardinal midpoints.
+    // Every edge is diagonal, none axis-aligned.
+    const form = customPolygonForm({
+      polygon: [
+        { alongM: "3", depthM: "0" },
+        { alongM: "6", depthM: "2" },
+        { alongM: "3", depthM: "4" },
+        { alongM: "0", depthM: "2" },
+      ],
+    });
+    expect(buildSingleRectangleCompositionFromCustomPolygonForm(form)).toBeNull();
+  });
+
+  it("returns null for a non-4-vertex polygon (e.g. an L-shape)", () => {
+    const form = customPolygonForm({
+      polygon: [
+        { alongM: "0", depthM: "0" },
+        { alongM: "6", depthM: "0" },
+        { alongM: "6", depthM: "2" },
+        { alongM: "3", depthM: "2" },
+        { alongM: "3", depthM: "4" },
+        { alongM: "0", depthM: "4" },
+      ],
+    });
+    expect(buildSingleRectangleCompositionFromCustomPolygonForm(form)).toBeNull();
+  });
+
+  it("returns null for preset mode forms (caller should use the standard builder)", () => {
+    const form = customPolygonForm({
+      polygon: [
+        { alongM: "0", depthM: "0" },
+        { alongM: "6", depthM: "0" },
+        { alongM: "6", depthM: "4" },
+        { alongM: "0", depthM: "4" },
+      ],
+    });
+    form.footprint.mode = "preset";
+    expect(buildSingleRectangleCompositionFromCustomPolygonForm(form)).toBeNull();
+  });
+
+  it("tolerates sub-millimetre floating-point noise on the axis-aligned check", () => {
+    // Drag-commit-encoded polygons sometimes have tiny float drift
+    // (1e-10 metres ~ 1e-7 mm). The axis-aligned check must accept
+    // this since the validator/normaliser preserve the same noise.
+    const form = customPolygonForm({
+      polygon: [
+        { alongM: "-1.2531927495729177e-10", depthM: "-7.575685093268681" },
+        { alongM: "5.999999999874681", depthM: "-7.575685093268681" },
+        { alongM: "5.999999999874681", depthM: "9.219380999731317" },
+        { alongM: "-1.2531927495729177e-10", depthM: "9.219380999731317" },
+      ],
+    });
+    const composition = buildSingleRectangleCompositionFromCustomPolygonForm(form);
+    expect(composition).not.toBeNull();
+  });
+});
+
+describe("deriveSeamIconCompositionForForm (PR-WB-CUSTOM-POLY-COMPOSITION)", () => {
+  function customPolygonForm(): HouseFormModel {
+    return {
+      id: "house-1",
+      label: "House 1",
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+      footprint: {
+        mode: "custom_polygon",
+        preset: "straight",
+        params: {
+          widthM: "6", offsetXM: "0", setbackM: "0", bandDepthM: "4",
+          returnRunM: "0", recessWidthM: "0", recessDepthM: "0",
+          leftLegRunM: "0", rightLegRunM: "0", sideRunM: "0",
+        },
+        polygon: [
+          { alongM: "0", depthM: "0" },
+          { alongM: "6", depthM: "0" },
+          { alongM: "6", depthM: "4" },
+          { alongM: "0", depthM: "4" },
+        ],
+        attachmentSide: "rear",
+      },
+      roofIntent: {
+        form: "hipped", material: "corrugated_iron",
+        primaryPitchDeg: "25", primaryFallDirection: "positive_y",
+        ridgeAxis: "x", openGableEndIds: [],
+      },
+      storeyMode: "single_storey",
+      attachmentStrategy: null,
+    };
+  }
+
+  it("returns the authored composition when present (composition wins over inference)", () => {
+    const form = straightPresetForm();
+    const composition = buildSingleRectangleCompositionFromHouseForm(form)!;
+    const formWithComposition: HouseFormModel = { ...form, composition };
+    const result = deriveSeamIconCompositionForForm(formWithComposition);
+    expect(result).toBe(composition);
+  });
+
+  it("synthesises a composition for a custom_polygon form that's an axis-aligned rectangle", () => {
+    const result = deriveSeamIconCompositionForForm(customPolygonForm());
+    expect(result).not.toBeNull();
+    expect(result!.primitives).toHaveLength(1);
+  });
+
+  it("returns null for a custom_polygon form whose polygon is genuinely free-form", () => {
+    const form = customPolygonForm();
+    form.footprint.polygon = [
+      { alongM: "3", depthM: "0" },
+      { alongM: "6", depthM: "2" },
+      { alongM: "3", depthM: "4" },
+      { alongM: "0", depthM: "2" },
+    ];
+    expect(deriveSeamIconCompositionForForm(form)).toBeNull();
   });
 });

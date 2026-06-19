@@ -16,6 +16,7 @@ import {
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseFormTransform';
+import { deriveSeamIconCompositionForForm } from '@/lib/drawings/state/houseFormCompositionAdapter';
 import {
   ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY,
   type EstimateDrawingDraft,
@@ -500,20 +501,32 @@ export default function DesignWorkbenchEstimateClient({
 
   // PR-COMP-PHASE4b.3 (2026-06-18): collect every house form that
   // carries a composition into a flat list for PlanViewport's
-  // seam-icon layer. Forms without composition (legacy free-form)
-  // are skipped — they can't be Joined and have no internal
-  // seams to Detach.
+  // seam-icon layer.
+  //
+  // PR-WB-CUSTOM-POLY-COMPOSITION (2026-06-19): also include
+  // custom_polygon forms whose polygon is a 4-vertex axis-aligned
+  // rectangle. The plan-view resize handles commit a custom polygon
+  // (because the polygon shape changed), switching the form's
+  // mode to custom_polygon and dropping composition. Without this
+  // synthesis, snapped-then-resized forms can't be Joined because
+  // the seam detector skips them. `deriveSeamIconCompositionForForm`
+  // handles both cases: authored composition first, custom_polygon
+  // rectangle inference second, null otherwise.
   const planViewportSeamIconForms = useMemo(
     () =>
       store.derived.houseForms
-        .filter((form) => form.composition)
-        .map((form) => ({
-          id: form.id,
-          worldOffsetXMm: form.transform.offsetXM * 1000,
-          worldOffsetYMm: form.transform.offsetYM * 1000,
-          rotationQuarterTurns: form.transform.rotationQuarterTurns,
-          composition: form.composition!,
-        })),
+        .map((form) => {
+          const composition = deriveSeamIconCompositionForForm(form);
+          if (!composition) return null;
+          return {
+            id: form.id,
+            worldOffsetXMm: form.transform.offsetXM * 1000,
+            worldOffsetYMm: form.transform.offsetYM * 1000,
+            rotationQuarterTurns: form.transform.rotationQuarterTurns,
+            composition,
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
     [store.derived.houseForms],
   );
   const debugFixtureExport = useMemo(
