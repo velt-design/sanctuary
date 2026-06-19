@@ -147,6 +147,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-06-12 | Design Workbench | Active | Live workbench code reads solved project geometry, plan layers, snap sources, and render diagnostics from `projectArtifact`; the breakaway guard forbids direct `solvedModel.*` alias reads. |
 | 2026-06-12 | Design Workbench | Active | `buildWorkbenchSolvedModel` builds project house geometry, then project pergola render artifacts, then passes the same pergola artifact list into project render-pipeline and viewer scene composition; package geometry owns pergola solving via a neutral boundary. |
 | 2026-06-19 | Workbench House Forms            | Active   | PR-COMP-UNIFIED-1: `composeRoofFromComposition` routes non-fused hipped composites (L, T, U, cross) to the existing `buildJoinedRectilinearHippedRoof` wavefront solver. Single coherent roof topology — one continuous ridge structure, valleys at reflex corners, hips at convex corners. `roofGeometry: "composition_unified"`, no `approximationReasons`. Falls back to stitched per-rectangle on `roofTopologyFailureReason` or zero-plane output. Mixed-intent / mono / flat composites still take the stitched path. |
+| 2026-06-19 | Workbench House Forms            | Active   | PR-COMP-UNIFIED-2: status pipeline (`objectWorkbenchStatusModel.buildRoofStatus`) was running a parallel legacy `buildHouseModel3DFromRawHouseInput` against the (wrong) preset footprint, then surfacing its failures as the rail status. After this PR, the status pipeline mirrors the rendering pipeline: substitutes the composition union polygon, swaps the roof via `swapRoofFromComposition`, runs `applyRoofQa` on the composition's planes, strips stale legacy `roofTopology*`/`roofWavefront*`/`roofEaveOffset*` stamps from the merged metadata. The rail status now reflects what the composition pipeline actually produces — verified end-to-end via HR1 diagnostic capture. |
 
 ## Entries
 
@@ -2497,3 +2498,37 @@ Behavioural impact: in-browser Plan Editor + 3D Review render correctly for all 
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/composition/composeRoofFromComposition.ts](../packages/geometry/src/house/composition/composeRoofFromComposition.ts), [packages/geometry/src/house/composition/composeRoofFromComposition.test.ts](../packages/geometry/src/house/composition/composeRoofFromComposition.test.ts), [packages/geometry/src/house/roofJoinedHipped.ts](../packages/geometry/src/house/roofJoinedHipped.ts), [docs/house-composition-vision.md](house-composition-vision.md).
+
+### 2026-06-19 - Workbench House Forms - Status Pipeline Mirrors Composition Render (PR-COMP-UNIFIED-2)
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: PR-COMP-UNIFIED-1 wired the unified-topology hipped solver into `composeRoofFromComposition`, but the workbench rail kept showing "Invalid geometry — `roof_wavefront_unclosed_boundary`" on joined composites. Investigating the HR1 diagnostic JSON (captured live via the designer-facing "Save bug report" button — see [[feedback-workbench-verification]]) traced the failure to a **parallel pipeline architectural issue**: `objectWorkbenchStatusModel.buildRoofStatus` was calling `buildHouseModel3DFromRawHouseInput` independently on the raw preset footprint (not the composition union) and surfacing the failure of THAT legacy solver as the rail status. The render pipeline's composition swap had no effect on what the rail showed.
+
+Three fixes land in one commit:
+
+1. **Substitute composition union for the status pipeline's footprint.** `deriveCompositionUnionPolygon3(houseForm.composition)` returns the union polygon for multi-rectangle composites (null for single-rectangle). The status pipeline now feeds that polygon to `buildHouseModel3DFromRawHouseInput` instead of the preset footprint, mirroring what the render pipeline does (PR-COMP-PHASE4a.3 added the same substitution there).
+
+2. **Apply the composition swap to the status pipeline's model.** `swapRoofFromComposition` was previously an internal helper inside `houseFormGeometryInput.ts`. Now exported. The status pipeline calls it on its `legacyPackageRoofModel` so the rail diagnostics are derived from the composition's planes, not the legacy solver's planes.
+
+3. **Re-run QA on composition planes + strip stale legacy stamps.** The original swap preserved the legacy model's `roofQaStatus` and `roofQaFailureReason`, which made sense for single-rectangle byte-equivalent cases but was wrong for multi-rectangle composites where the legacy was solving a different polygon. After the swap, the composition's planes are run through `applyRoofQa` (now exported from `@sp/geometry`) against the composition's union polygon. The merged metadata also explicitly strips legacy `roofTopology*` / `roofWavefront*` / `roofEaveOffset*` / `roofFacetMergeMode` / `roofQa*` / `roofGeometry` / `roofTopologySolver` / `approximationReasons` fields — they describe LEGACY solver behaviour and don't apply to the composition planes.
+
+Why it mattered: this was a class of bug I'd have shipped repeatedly without the captured-repro discipline. Math-test green showed the composition pipeline was healthy. The rail still said invalid. The cause was a DIFFERENT pipeline failing — invisible from inside the geometry package, only visible end-to-end via the HR1 diagnostic export. Verification artifact: HR1 capture before fix showed `roofTopologySolver: null` and `roofQaStatus: "invalid"` with `roof_wavefront_unclosed_boundary`; capture after fix shows `roofTopologySolver: "composition_per_rectangle_stitched"`, `roofQaStatus: "valid"`, `roofPlaneCountAfterQa: 11`, `roofQaAreaDeltaMm2: 0`. Plan Editor renders the composite's 11 roof planes correctly.
+
+Current guardrail:
+- **Status pipeline and render pipeline MUST stay in lockstep.** Both apply the composition swap, both substitute the union polygon. If a future PR adds a new geometry input step to one, it must add the same step to the other or extract a shared helper. The two-pipeline architecture is a latent risk — followup should consolidate into a single canonical model build that both consume.
+- **For multi-rectangle composites, do NOT preserve legacy model metadata after the swap** for any field that describes the LEGACY solver's behaviour. The legacy was given a different polygon and solved different planes; its QA / topology stamps don't apply to composition's output.
+- **The HR4 matrix loader now handles BOTH `polygonLocalM` (legacy free-form captures) and `composition` (PR-WB-COMPOSITION-ONLY captures).** Composition-shaped captures get reduced to their union polygon for matrix exercise. A composition-shaped capture failing the matrix means the legacy free-form pipeline fails on that union polygon — NOT that the composition pipeline fails (the composition pipeline is exercised through `composeRoofFromComposition.test.ts`). Followup: extend the matrix to exercise composition-shaped captures via `composeRoofFromComposition` directly so the right pipeline is asserted.
+
+Behavioural impact: every joined composite a designer creates now shows correct rail status — `roofQaStatus: "valid"` when composition succeeds (the common case), genuine failure stamps only when composition itself fails. The renderer shows the composition's planes (stitched per-rectangle for mixed-intent cases, unified-wavefront for matched-intent cases). The "Invalid geometry" badge no longer fires falsely on every joined composite.
+
+Followups not in this PR:
+- Wavefront topology failure on certain matched-intent composites (e.g. 3-rect L+L composite with floating-point primitive coords) — separate investigation, fall-back to stitched currently handles it but designers should see unified.
+- Consolidate `buildRoofStatus` and `buildHouseFormGeometryInputForForm` to use a single shared canonical model build, eliminating the parallel-pipeline class of bug entirely.
+- Extend HR4 matrix to exercise composition-shaped captures via `composeRoofFromComposition` (not just the legacy free-form path).
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [packages/geometry/src/house/roofQa.ts](../packages/geometry/src/house/roofQa.ts), [packages/geometry/src/house/__fixtures__/captured/joined-composite_pitch-mismatch_eave-self-overlap_2026-06-19.json](../packages/geometry/src/house/__fixtures__/captured/joined-composite_pitch-mismatch_eave-self-overlap_2026-06-19.json), [docs/workbench-captured-repro-workflow.md](workbench-captured-repro-workflow.md).

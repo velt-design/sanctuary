@@ -9,6 +9,8 @@ import type {
 } from '../contracts';
 import { buildHouseFootprintPolygon } from '../footprints';
 import { buildHouseModel3D } from '../houseModel';
+import { composeFootprintFromComposition } from './composition/composeFootprintFromComposition';
+import type { HouseComposition } from './composition/types';
 import { deriveHouseGableTerminalEndsFromFootprint } from './roofJoined';
 
 /**
@@ -367,7 +369,13 @@ type CapturedRoofFailureFixture = {
   validationCode: string | null;
   failingStage: { id: string; label: string; code: string } | null;
   footprint: {
-    polygonLocalM: Array<{ alongM: string; depthM: string }>;
+    // PR-HR1 originally exported the polygon as `polygonLocalM` (legacy
+    // free-form forms). PR-WB-COMPOSITION-ONLY (2026-06-19) switched
+    // forms to composition primitives; new captures carry `composition`
+    // instead. The loader handles both shapes; composition-shaped
+    // captures are reduced to their union polygon for matrix exercise.
+    polygonLocalM?: Array<{ alongM: string; depthM: string }>;
+    composition?: HouseComposition;
   };
   roofIntent: {
     form: string;
@@ -424,6 +432,27 @@ const CAPTURED_KNOWN_FAILURES: ReadonlySet<string> = new Set<string>([
   // that don't correspond to any source edge. Confirms PR-HR6's
   // diagnosis that narrow-return L is a single bug class.
   'captured:graham-oratia_l-narrow-south-return_v2-wider.json',
+  // Captured 2026-06-19 from live workbench (Jess — Oratia project).
+  // First COMPOSITION-shaped capture in the matrix. Composite of two
+  // hipped rectangles (7.65m × 3.66m east + 6.38m × 4.81m offset).
+  // This matrix exercises `buildHouseModel3D` on the union polygon
+  // (the legacy free-form path), which fails with
+  // `eave_offset_self_overlap` on this aspect ratio — same root cause
+  // as the Graham — Oratia fixtures above.
+  //
+  // Crucially, the COMPOSITION pipeline (`composeRoofFromComposition`)
+  // handles this composition just fine: stitched per-rectangle solve
+  // when intents differ, unified-wavefront when they match. The
+  // workbench rail status (after PR-COMP-UNIFIED-2) correctly shows
+  // `roofQaStatus: "valid"` for this composite because the status
+  // pipeline now runs composition's planes through QA — not the
+  // legacy union-polygon solver this matrix tests.
+  //
+  // Followup: extend the matrix to ALSO exercise composition-shaped
+  // captures via `composeRoofFromComposition` directly, not just
+  // through the legacy buildHouseModel3D path. Then this quarantine
+  // entry can flip to a composition-path assertion instead.
+  'captured:joined-composite_pitch-mismatch_eave-self-overlap_2026-06-19.json',
 ]);
 
 function metresStringToMm(value: string): number {
@@ -432,13 +461,24 @@ function metresStringToMm(value: string): number {
 }
 
 function buildPolygonFromCaptured(
-  polygonLocalM: CapturedRoofFailureFixture['footprint']['polygonLocalM'],
+  footprint: CapturedRoofFailureFixture['footprint'],
 ): Polygon3 {
-  return polygonLocalM.map((point) => ({
-    x: metresStringToMm(point.alongM),
-    y: metresStringToMm(point.depthM),
-    z: 0,
-  }));
+  if (footprint.composition) {
+    // PR-WB-COMPOSITION-ONLY: composition-shaped capture. Reduce to
+    // the union polygon so the matrix exercises the same orthogonal
+    // shape the workbench would render.
+    return composeFootprintFromComposition(footprint.composition);
+  }
+  if (footprint.polygonLocalM) {
+    return footprint.polygonLocalM.map((point) => ({
+      x: metresStringToMm(point.alongM),
+      y: metresStringToMm(point.depthM),
+      z: 0,
+    }));
+  }
+  throw new Error(
+    'Captured fixture footprint is missing both polygonLocalM and composition.',
+  );
 }
 
 function loadCapturedFixtures(): Array<{
@@ -485,7 +525,7 @@ describe('orthogonal roof coverage matrix (PR-HR4) — captured fixtures', () =>
     const key = `captured:${filename}`;
     const test = CAPTURED_KNOWN_FAILURES.has(key) ? it.fails : it;
     test(`captured fixture ${filename} re-solves to valid QA`, () => {
-      const footprint = buildPolygonFromCaptured(payload.footprint.polygonLocalM);
+      const footprint = buildPolygonFromCaptured(payload.footprint);
       exerciseMultiOpen({
         footprint,
         ridgeAxis: payload.roofIntent.ridgeAxis,

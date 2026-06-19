@@ -1,11 +1,14 @@
 import {
   applyHouseReferencePosition,
+  applyRoofQa,
   buildHouseModel3DFromRawHouseInput,
   buildHouseReferenceProjectionShape,
   buildHouseRoofModelPipeline,
+  composeFootprintFromComposition,
   composeRoofFromComposition,
   EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
   type GeometryTopProjectionShape,
+  type HouseComposition,
   type HouseRoofModelPipelineFailureStage,
   type HouseRoofStageDiagnostics,
   type HouseModel3D,
@@ -92,10 +95,10 @@ export type HouseFormGeometryInputResult =
  * to ALSO replace walls/eaves from the composite footprint. Not
  * in scope for Phase 3.
  */
-function swapRoofFromComposition(input: {
+export function swapRoofFromComposition(input: {
   houseForm: HouseFormModel;
   legacyModel: HouseModel3D;
-  composition: NonNullable<HouseFormModel["composition"]>;
+  composition: HouseComposition;
 }): HouseModel3D {
   // Match the eave height the legacy pipeline used so the
   // composition roof's eave aligns with the legacy walls. Default
@@ -108,25 +111,61 @@ function swapRoofFromComposition(input: {
     composition: input.composition,
     eaveHeightMm,
   });
+  // PR-COMP-UNIFIED-2 (2026-06-19): re-run package QA on the
+  // composition's planes against the composition's union polygon.
+  // Previously the swap preserved the legacy model's `roofQaStatus`
+  // and `roofQaFailureReason`, but those QA stamps were computed on
+  // the LEGACY roof planes — for multi-rectangle composites those
+  // planes differ from the composition planes (different topology
+  // solver) so legacy QA doesn't apply. Re-running QA on the
+  // composition planes gives the rail a correct verdict.
+  const unionPolygon = composeFootprintFromComposition(input.composition);
+  const eavePolygonForQa = unionPolygon.map((p) => ({ x: p.x, y: p.y, z: 0 }));
+  const composedWithQa = applyRoofQa({
+    roof: {
+      roofPlanes: composed.roofPlanes,
+      roofFeatures: composed.roofFeatures,
+      metadata: composed.metadata,
+    },
+    eavePolygon: eavePolygonForQa,
+  });
+  // PR-COMP-UNIFIED-2 (2026-06-19): strip legacy roof-pipeline
+  // stamps before merging. Fields like `roofTopologyFailureReason`,
+  // `roofWavefrontFailureReason`, `roofFacetMergeMode`, and the eave
+  // offset stage diagnostics all describe the LEGACY solver's
+  // behaviour on the (potentially wrong) polygon it was given.
+  // After the composition swap, the rendered planes come from a
+  // different solver — keeping those stamps would mislead the rail
+  // diagnostic into reporting failures the active planes don't have.
+  const legacyMetadata = input.legacyModel.metadata ?? {};
+  const carriedLegacyMetadata = Object.fromEntries(
+    Object.entries(legacyMetadata).filter(([key]) => {
+      if (key.startsWith("roofTopology")) return false;
+      if (key.startsWith("roofWavefront")) return false;
+      if (key.startsWith("roofEaveOffsetRepair")) return false;
+      if (key.startsWith("eaveOffset")) return false;
+      if (key === "roofFacetMergeMode") return false;
+      if (key === "roofGeometry") return false;
+      if (key === "roofTopologySolver") return false;
+      if (key === "roofQaStatus") return false;
+      if (key === "roofQaFailureReason") return false;
+      if (key === "roofQaFacetAreaMm2") return false;
+      if (key === "roofQaEaveAreaMm2") return false;
+      if (key === "roofQaAreaDeltaMm2") return false;
+      if (key === "roofQaRejectedFacetCount") return false;
+      if (key === "roofRejectedFacetCount") return false;
+      if (key === "approximationReasons") return false;
+      return true;
+    }),
+  );
   const mergedMetadata = {
-    ...(input.legacyModel.metadata ?? {}),
-    ...composed.metadata,
+    ...carriedLegacyMetadata,
+    ...composedWithQa.metadata,
   };
-  // Preserve the QA + diagnostic stamps the legacy pipeline put on
-  // `metadata` so downstream consumers (HR3 amber-tint, HR2
-  // validation panel, etc.) still see the right signals. The
-  // composition path's own metadata overrides only the topology
-  // solver name + composition-specific fields.
-  const legacyQaStatus = input.legacyModel.metadata?.roofQaStatus;
-  if (legacyQaStatus !== undefined) mergedMetadata.roofQaStatus = legacyQaStatus;
-  const legacyQaFailureReason = input.legacyModel.metadata?.roofQaFailureReason;
-  if (legacyQaFailureReason !== undefined) {
-    mergedMetadata.roofQaFailureReason = legacyQaFailureReason;
-  }
   return {
     ...input.legacyModel,
-    roofPlanes: composed.roofPlanes,
-    roofFeatures: composed.roofFeatures,
+    roofPlanes: composedWithQa.roofPlanes,
+    roofFeatures: composedWithQa.roofFeatures,
     metadata: mergedMetadata,
   };
 }

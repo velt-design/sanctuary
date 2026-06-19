@@ -12,6 +12,8 @@ import {
   type HouseRoofStageDiagnostics,
   type Polygon3,
 } from "@sp/geometry";
+import { swapRoofFromComposition } from "./houseFormGeometryInput";
+import { deriveCompositionUnionPolygon3 } from "./houseFormCompositionFootprint";
 import type {
   CalculatorHouseAttachmentStrategy,
   CalculatorHouseFootprintPolygonPoint,
@@ -462,13 +464,31 @@ function buildRoofStatus(input: {
     roofRidgeAxisExplicit: houseForm.roofIntentAuthored === true,
     preferredRidgeAxis,
   });
-  const packageRoofModel = rawGeometry
+  // PR-COMP-UNIFIED-2 (2026-06-19): mirror the rendering pipeline's
+  // composition handling. (1) For multi-rectangle composites,
+  // substitute the composition's union polygon for the preset-derived
+  // footprint so the legacy wall/eave builder sees the composite
+  // shape. (2) When a composition is present, swap the legacy roof
+  // for the composition-driven roof + re-run QA on those planes.
+  // Without these the rail's status came from a parallel legacy
+  // model that solved the wrong polygon and surfaced wavefront
+  // failures on the union it was never given.
+  const compositionUnionFootprint = deriveCompositionUnionPolygon3(houseForm.composition);
+  const footprintForPackageBuilder = compositionUnionFootprint ?? rawGeometry?.footprint;
+  const legacyPackageRoofModel = rawGeometry && footprintForPackageBuilder
     ? buildHouseModel3DFromRawHouseInput({
         rawHouse: rawGeometry.rawHouse,
-        footprint: rawGeometry.footprint,
+        footprint: footprintForPackageBuilder,
         pergolaAttachment: null,
       })
     : null;
+  const packageRoofModel = legacyPackageRoofModel && houseForm.composition
+    ? swapRoofFromComposition({
+        houseForm,
+        legacyModel: legacyPackageRoofModel,
+        composition: houseForm.composition,
+      })
+    : legacyPackageRoofModel;
   // PR-HR2 (2026-06-18): always summarize, even when there's no
   // package model — empty defaults mean consumers never have to
   // null-guard individual stage fields.
