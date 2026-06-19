@@ -30,6 +30,7 @@ import {
 } from '@sp/geometry';
 import { deriveHouseFormDisplayLabel } from '@/lib/drawings/state/houseFormDisplayLabel';
 import { rebasePartitionIntoOwnFrame } from '@/lib/drawings/state/houseFormCompositionDetach';
+import { deriveSeamIconCompositionForForm } from '@/lib/drawings/state/houseFormCompositionAdapter';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
@@ -647,10 +648,23 @@ export function useObjectWorkbenchActions({
           if (!formA || !formB) {
             return { ok: false, error: 'One or both house forms are no longer available.' };
           }
-          if (!formA.composition || !formB.composition) {
+          // PR-WB-CUSTOM-POLY-COMPOSITION (2026-06-19): use the same
+          // accessor the seam-icon layer uses so a custom_polygon
+          // form that's structurally a rectangle (post-resize) can
+          // still be Joined. The accessor returns the authored
+          // composition when present, otherwise synthesises one
+          // from a 4-vertex axis-aligned polygon, otherwise null
+          // (truly free-form polygon — can't model as a rectangle
+          // composition in v1). Without this, the chip would
+          // appear (the seam-icon path infers compositions) but
+          // clicking it would error because the action checked
+          // form.composition directly and saw null.
+          const compositionA = deriveSeamIconCompositionForForm(formA);
+          const compositionB = deriveSeamIconCompositionForForm(formB);
+          if (!compositionA || !compositionB) {
             return {
               ok: false,
-              error: 'Both house forms must have a composition before joining (legacy free-form forms cannot be joined).',
+              error: 'Cannot join: one of these forms is a freeform polygon that does not reduce to a rectangle. Recreate it as a rectangle first.',
             };
           }
           if (
@@ -662,10 +676,10 @@ export function useObjectWorkbenchActions({
             };
           }
           const joinResult = joinTwoHouseForms({
-            formA: formA.composition,
+            formA: compositionA,
             formAWorldOffsetXMm: formA.transform.offsetXM * 1000,
             formAWorldOffsetYMm: formA.transform.offsetYM * 1000,
-            formB: formB.composition,
+            formB: compositionB,
             formBWorldOffsetXMm: formB.transform.offsetXM * 1000,
             formBWorldOffsetYMm: formB.transform.offsetYM * 1000,
           });
