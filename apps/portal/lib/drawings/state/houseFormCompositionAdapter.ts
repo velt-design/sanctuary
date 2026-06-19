@@ -1,6 +1,8 @@
 import {
   deriveHouseGableTerminalEnds,
+  resolveHouseFootprintParams,
   type AxisAlignedRectangle,
+  type CompositionJoin,
   type HouseComposition,
   type HouseRoofPrimaryFallDirection,
   type HouseRoofRidgeAxis,
@@ -35,44 +37,317 @@ import type { HouseFormModel } from "./objectFirstWorkbenchModel";
 export function buildSingleRectangleCompositionFromHouseForm(
   houseForm: Pick<HouseFormModel, "footprint" | "roofIntent">,
 ): HouseComposition | null {
+  return buildPresetCompositionFromHouseForm(houseForm);
+}
+
+/**
+ * PR-WB-PRESETS-AS-COMPOSITIONS (2026-06-19): generalises the
+ * single-rectangle adapter to handle every preset shape. Each
+ * preset's polygon (from `@sp/geometry/footprints.ts:buildPresetLocalPoints`)
+ * is expressed here as a multi-rectangle composition: the
+ * primitives' union polygon matches the legacy preset polygon, and
+ * the primitives carry the form's roof intent so the composition-
+ * driven roof solver produces a stitched per-rectangle roof
+ * matching the preset's shape.
+ *
+ * Why this matters: before this PR, only straight-preset forms got
+ * an authored composition. L / U / recess / wrap presets stayed
+ * composition-less, fell back to the legacy polygon pipeline, and
+ * (when resized via drag) became custom_polygon forms with no
+ * composition — invisible to Join detection, labelled "Custom
+ * footprint" in the rail, badged read-only by the inspector. After
+ * this PR, every preset is composition-driven from creation; the
+ * Phase 4a.3 union-polygon substitution renders walls along the
+ * union of the constituent rectangles (which equals the legacy
+ * preset polygon by construction), and the roof comes from the
+ * composition path.
+ *
+ * Returns null for:
+ *   - non-preset modes (custom_polygon takes the
+ *     `buildSingleRectangleCompositionFromCustomPolygonForm` path
+ *     when the polygon is a rectangle, or stays composition-less
+ *     for genuinely free-form shapes)
+ *   - non-rear attachment sides (legacy frame math is verified for
+ *     `rear` only; front / left / right deferred)
+ *   - degenerate dimensions (zero-area rectangles)
+ *
+ * Preset-specific frame (form-local mm, attachmentSide 'rear',
+ * inverted from `houseFootprintSideLocalPointToWorld`):
+ *   - x axis: pergola-parallel; offsetXM shifts the form east
+ *   - y axis: negative = south (away from attachment line);
+ *             setbackM pushes the form south away from y=0
+ *
+ * Rectangle layouts derived from `buildPresetLocalPoints` (preset
+ * coords with depthM=positive=south, before y-negation):
+ *
+ *   straight: 1 rect (south band only)
+ *   l_left  : 2 rects (south band + west arm going north)
+ *   l_right : 2 rects (south band + east arm going north)
+ *   u_shape : 3 rects (south band + west arm + east arm)
+ *   recess_left  : 2 rects (full bottom + NE quadrant minus notch)
+ *   recess_right : 2 rects (full bottom + NW quadrant minus notch)
+ *   wrap_left  : 3 rects (south band + west arm + wrap-around top)
+ *   wrap_right : 3 rects (south band + east arm + wrap-around top)
+ *
+ * For wrap presets, the arm depth is the pergola fallback (3000mm)
+ * — matches `FALLBACK_PERGOLA_DEPTH_MM` in `houseFormRawGeometry.ts`
+ * so the legacy polygon and the composition union polygon agree.
+ */
+export function buildPresetCompositionFromHouseForm(
+  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent">,
+): HouseComposition | null {
   if (houseForm.footprint.mode !== "preset") return null;
-  if (houseForm.footprint.preset !== "straight") return null;
+  if (houseForm.footprint.attachmentSide !== "rear") return null;
 
-  const widthMm = metresStringToMm(houseForm.footprint.params.widthM);
-  const depthMm = metresStringToMm(houseForm.footprint.params.bandDepthM);
-  if (widthMm <= 0 || depthMm <= 0) return null;
+  const FALLBACK_PERGOLA_WIDTH_M = 6;
+  const FALLBACK_PERGOLA_DEPTH_M = 3;
+  const resolved = resolveHouseFootprintParams({
+    params: {
+      widthM: houseForm.footprint.params.widthM,
+      offsetXM: houseForm.footprint.params.offsetXM,
+      setbackM: houseForm.footprint.params.setbackM,
+      bandDepthM: houseForm.footprint.params.bandDepthM,
+      returnRunM: houseForm.footprint.params.returnRunM,
+      recessWidthM: houseForm.footprint.params.recessWidthM,
+      recessDepthM: houseForm.footprint.params.recessDepthM,
+      leftLegRunM: houseForm.footprint.params.leftLegRunM,
+      rightLegRunM: houseForm.footprint.params.rightLegRunM,
+      sideRunM: houseForm.footprint.params.sideRunM,
+    },
+    pergolaWidthM: FALLBACK_PERGOLA_WIDTH_M,
+    pergolaDepthM: FALLBACK_PERGOLA_DEPTH_M,
+  });
 
-  // PR-COMP-PHASE4b followup (2026-06-19): match the legacy preset
-  // polygon's form-local frame. For `attachmentSide: 'rear'` (the
-  // default), `houseFootprintSideLocalPointToWorld` in
-  // `@sp/geometry/footprints.ts` places the preset rectangle at
-  // world coordinates:
-  //   x ∈ [offsetXM,            offsetXM + widthM]
-  //   y ∈ [-(setbackM + depthM), -setbackM]
-  // i.e. the rectangle occupies the -Y half-plane (south of the
-  // pergola attachment axis). If we leave originYMm = 0 here, the
-  // composition rectangle sits at y ∈ [0, +depth] — opposite half-
-  // plane — and the composition-driven roof renders ~depth metres
-  // away from the legacy walls (visible as a roof translated south
-  // off the house body, and Join chips at the wrong screen position).
-  // Aligning origin to the legacy frame restores positional truth
-  // for both the roof swap (Phase 3.2 / 4a.3) and the seam-icon
-  // overlay (Phase 4b.3).
-  const offsetXMm = metresStringToMm(houseForm.footprint.params.offsetXM);
-  const setbackMm = metresStringToMm(houseForm.footprint.params.setbackM);
-  const rectangle: AxisAlignedRectangle = {
-    kind: "axisAlignedRectangle",
-    originXMm: offsetXMm,
-    originYMm: -(setbackMm + depthMm),
+  const widthMm = resolved.widthM * 1000;
+  const bandDepthMm = resolved.bandDepthM * 1000;
+  const offsetXMm = resolved.offsetXM * 1000;
+  const setbackMm = resolved.setbackM * 1000;
+  const returnRunMm = resolved.returnRunM * 1000;
+  const recessWidthMm = resolved.recessWidthM * 1000;
+  const recessDepthMm = resolved.recessDepthM * 1000;
+  const leftLegRunMm = resolved.leftLegRunM * 1000;
+  const rightLegRunMm = resolved.rightLegRunM * 1000;
+  const sideRunMm = resolved.sideRunM * 1000;
+  const armDepthMm = FALLBACK_PERGOLA_DEPTH_M * 1000;
+
+  if (widthMm <= 0 || bandDepthMm <= 0) return null;
+
+  // The roof intent every primitive carries. Per-primitive overrides
+  // are deferred (Phase 4 vision punts on that).
+  const sharedRoofIntent = deriveRectangleRoofIntent({
+    houseForm,
     widthMm,
-    depthMm,
-    roofIntent: deriveRectangleRoofIntent({
-      houseForm,
-      widthMm,
-      depthMm,
-    }),
-  };
-  return { primitives: [rectangle], joins: [] };
+    depthMm: bandDepthMm,
+  });
+
+  function rect(input: {
+    originXMm: number;
+    originYMm: number;
+    widthMm: number;
+    depthMm: number;
+  }): AxisAlignedRectangle {
+    return {
+      kind: "axisAlignedRectangle",
+      originXMm: input.originXMm,
+      originYMm: input.originYMm,
+      widthMm: input.widthMm,
+      depthMm: input.depthMm,
+      roofIntent: sharedRoofIntent,
+    };
+  }
+
+  const south = -(setbackMm + bandDepthMm);
+  const north = -setbackMm;
+
+  switch (houseForm.footprint.preset) {
+    case "straight": {
+      return {
+        primitives: [
+          rect({ originXMm: offsetXMm, originYMm: south, widthMm, depthMm: bandDepthMm }),
+        ],
+        joins: [],
+      };
+    }
+    case "l_left": {
+      if (returnRunMm <= 0) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: south,
+            widthMm: widthMm + bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: north,
+            widthMm: bandDepthMm,
+            depthMm: returnRunMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+        ],
+      };
+    }
+    case "l_right": {
+      if (returnRunMm <= 0) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm,
+            originYMm: south,
+            widthMm: widthMm + bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm + widthMm,
+            originYMm: north,
+            widthMm: bandDepthMm,
+            depthMm: returnRunMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+        ],
+      };
+    }
+    case "u_shape": {
+      if (leftLegRunMm <= 0 || rightLegRunMm <= 0) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: south,
+            widthMm: widthMm + 2 * bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: north,
+            widthMm: bandDepthMm,
+            depthMm: leftLegRunMm,
+          }),
+          rect({
+            originXMm: offsetXMm + widthMm,
+            originYMm: north,
+            widthMm: bandDepthMm,
+            depthMm: rightLegRunMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 2, toEdge: "south" },
+        ],
+      };
+    }
+    case "recess_left": {
+      if (recessWidthMm <= 0 || recessDepthMm <= 0) return null;
+      if (recessWidthMm >= widthMm) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm,
+            originYMm: -(setbackMm + bandDepthMm + recessDepthMm),
+            widthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm + recessWidthMm,
+            originYMm: -(setbackMm + recessDepthMm),
+            widthMm: widthMm - recessWidthMm,
+            depthMm: recessDepthMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+        ],
+      };
+    }
+    case "recess_right": {
+      if (recessWidthMm <= 0 || recessDepthMm <= 0) return null;
+      if (recessWidthMm >= widthMm) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm,
+            originYMm: -(setbackMm + bandDepthMm + recessDepthMm),
+            widthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm,
+            originYMm: -(setbackMm + recessDepthMm),
+            widthMm: widthMm - recessWidthMm,
+            depthMm: recessDepthMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+        ],
+      };
+    }
+    case "wrap_left": {
+      if (sideRunMm <= 0 || armDepthMm <= 0) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: south,
+            widthMm: widthMm + bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: north,
+            widthMm: bandDepthMm,
+            depthMm: armDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm - bandDepthMm,
+            originYMm: armDepthMm - setbackMm,
+            widthMm: sideRunMm + bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+          { fromPrimitiveIndex: 1, fromEdge: "north", toPrimitiveIndex: 2, toEdge: "south" },
+        ],
+      };
+    }
+    case "wrap_right": {
+      if (sideRunMm <= 0 || armDepthMm <= 0) return null;
+      return {
+        primitives: [
+          rect({
+            originXMm: offsetXMm,
+            originYMm: south,
+            widthMm: widthMm + bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm + widthMm,
+            originYMm: north,
+            widthMm: bandDepthMm,
+            depthMm: armDepthMm,
+          }),
+          rect({
+            originXMm: offsetXMm + widthMm - sideRunMm,
+            originYMm: armDepthMm - setbackMm,
+            widthMm: sideRunMm + bandDepthMm,
+            depthMm: bandDepthMm,
+          }),
+        ],
+        joins: [
+          { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+          { fromPrimitiveIndex: 1, fromEdge: "north", toPrimitiveIndex: 2, toEdge: "south" },
+        ],
+      };
+    }
+    default:
+      return null;
+  }
 }
 
 /**

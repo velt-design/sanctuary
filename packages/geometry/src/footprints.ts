@@ -146,6 +146,21 @@ export function resolveHouseFootprintFrame(input: {
   };
 }
 
+/**
+ * PR-WB-PRESETS-AS-COMPOSITIONS (2026-06-19): exported so the
+ * workbench's composition adapter can resolve param strings to
+ * the same clamped metre values the polygon builder uses. Keeps
+ * the composition's union polygon byte-equivalent to the legacy
+ * preset polygon when they share inputs.
+ */
+export function resolveHouseFootprintParams(input: {
+  params: HouseFootprintParams;
+  pergolaWidthM: number;
+  pergolaDepthM: number;
+}): ResolvedHouseFootprintParams {
+  return resolveParams(input);
+}
+
 function resolveParams(input: {
   params: HouseFootprintParams;
   pergolaWidthM: number;

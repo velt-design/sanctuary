@@ -88,19 +88,29 @@ describe("buildSingleRectangleCompositionFromHouseForm (PR-COMP-PHASE3)", () => 
     expect(buildSingleRectangleCompositionFromHouseForm(houseForm)).toBeNull();
   });
 
-  it("returns null for non-straight presets (L / U / etc. are Phase 4 territory)", () => {
+  it("now SYNTHESISES a multi-rectangle composition for non-straight presets (PR-WB-PRESETS-AS-COMPOSITIONS, was: returned null in Phase 3)", () => {
     const houseForm = straightPresetForm();
     houseForm.footprint.preset = "l_left";
-    expect(buildSingleRectangleCompositionFromHouseForm(houseForm)).toBeNull();
+    const composition = buildSingleRectangleCompositionFromHouseForm(houseForm);
+    expect(composition).not.toBeNull();
+    expect(composition!.primitives.length).toBeGreaterThan(1);
   });
 
-  it("returns null for non-positive width or depth", () => {
-    expect(
-      buildSingleRectangleCompositionFromHouseForm(straightPresetForm({ widthM: "0" })),
-    ).toBeNull();
-    expect(
-      buildSingleRectangleCompositionFromHouseForm(straightPresetForm({ bandDepthM: "0" })),
-    ).toBeNull();
+  it("clamps non-positive widthM / bandDepthM (resolveHouseFootprintParams enforces minimums)", () => {
+    // Phase 3 returned null for zero dimensions; now the upstream
+    // `resolveHouseFootprintParams` clamps widthM and bandDepthM to
+    // 0.5m minimum, so a zero-input composition still produces a
+    // valid (small) rectangle. Pinned as a regression so a future
+    // refactor that drops the clamping doesn't silently allow
+    // zero-area rectangles into the composition pipeline.
+    const composition = buildSingleRectangleCompositionFromHouseForm(
+      straightPresetForm({ widthM: "0", bandDepthM: "0" }),
+    );
+    expect(composition).not.toBeNull();
+    const rect = composition!.primitives[0]!;
+    if (rect.kind !== "axisAlignedRectangle") throw new Error("expected rect");
+    expect(rect.widthMm).toBeGreaterThanOrEqual(500);
+    expect(rect.depthMm).toBeGreaterThanOrEqual(500);
   });
 
   it("translates mono intent with the requested fall direction", () => {
@@ -447,5 +457,103 @@ describe("deriveSeamIconCompositionForForm (PR-WB-CUSTOM-POLY-COMPOSITION)", () 
       { alongM: "0", depthM: "2" },
     ];
     expect(deriveSeamIconCompositionForForm(form)).toBeNull();
+  });
+});
+
+describe("buildPresetCompositionFromHouseForm — non-straight presets (PR-WB-PRESETS-AS-COMPOSITIONS)", () => {
+  // We compare the composition's union polygon (via
+  // `composeFootprintFromComposition`) against the legacy preset
+  // polygon (via `buildHouseFootprintPolygon`) to guarantee byte
+  // parity. The legacy polygon is in world mm (post-frame transform
+  // with offsetXM=0, setbackM=0). The composition union polygon is
+  // in form-local mm. With those offsets at zero, both coordinate
+  // systems coincide, so the vertex sets must match modulo
+  // ordering and cleanup.
+
+  async function loadGeometry() {
+    return await import("@sp/geometry");
+  }
+
+  function presetForm(overrides: {
+    preset: HouseFormModel["footprint"]["preset"];
+    params?: Partial<HouseFormModel["footprint"]["params"]>;
+  }): HouseFormModel {
+    return {
+      id: "house-1",
+      label: "House 1",
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+      footprint: {
+        mode: "preset",
+        preset: overrides.preset,
+        params: {
+          widthM: overrides.params?.widthM ?? "6",
+          offsetXM: overrides.params?.offsetXM ?? "0",
+          setbackM: overrides.params?.setbackM ?? "0",
+          bandDepthM: overrides.params?.bandDepthM ?? "4",
+          returnRunM: overrides.params?.returnRunM ?? "3",
+          recessWidthM: overrides.params?.recessWidthM ?? "2",
+          recessDepthM: overrides.params?.recessDepthM ?? "1.5",
+          leftLegRunM: overrides.params?.leftLegRunM ?? "2.5",
+          rightLegRunM: overrides.params?.rightLegRunM ?? "2.5",
+          sideRunM: overrides.params?.sideRunM ?? "2",
+        },
+        polygon: [],
+        attachmentSide: "rear",
+      },
+      roofIntent: {
+        form: "hipped",
+        material: "corrugated_iron",
+        primaryPitchDeg: "25",
+        primaryFallDirection: "positive_y",
+        ridgeAxis: "x",
+        openGableEndIds: [],
+      },
+      storeyMode: "single_storey",
+      attachmentStrategy: null,
+    };
+  }
+
+  /** Sorted (x, y) pairs from a polygon for set-equality comparison. */
+  function pointsSorted(polygon: ReadonlyArray<{ x: number; y: number }>): Array<[number, number]> {
+    return polygon
+      .map((p) => [Math.round(p.x), Math.round(p.y)] as [number, number])
+      .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!);
+  }
+
+  describe.each([
+    "l_left",
+    "l_right",
+    "u_shape",
+    "recess_left",
+    "recess_right",
+    "wrap_left",
+    "wrap_right",
+  ] as const)("%s preset", (preset) => {
+    it("produces a structurally valid composition", async () => {
+      const { validateHouseComposition } = await loadGeometry();
+      const form = presetForm({ preset });
+      const composition = buildSingleRectangleCompositionFromHouseForm(form);
+      expect(composition).not.toBeNull();
+      const validation = validateHouseComposition(composition!);
+      expect(validation).toEqual({ ok: true });
+    });
+
+    it("composition union polygon matches the legacy preset polygon (vertex set)", async () => {
+      const { composeFootprintFromComposition, buildHouseFootprintPolygon } = await loadGeometry();
+      const form = presetForm({ preset });
+      const composition = buildSingleRectangleCompositionFromHouseForm(form);
+      expect(composition).not.toBeNull();
+      const unionPolygon = composeFootprintFromComposition(composition!);
+      const legacyPolygon = buildHouseFootprintPolygon({
+        pergolaWidthMm: 6000,
+        pergolaDepthMm: 3000,
+        preset,
+        params: form.footprint.params,
+        attachmentSide: form.footprint.attachmentSide,
+      });
+      // Vertex sets equal (modulo ordering + collinear cleanup).
+      // Both polygons should have the same corners.
+      expect(pointsSorted(unionPolygon)).toEqual(pointsSorted(legacyPolygon));
+    });
   });
 });
