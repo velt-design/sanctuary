@@ -206,9 +206,10 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
     });
   });
 
-  describe("L-shape stitched solve (Graham–Oratia)", () => {
-    it("produces two hipped roofs for an L composition, stamps the approximation flag", () => {
+  describe("L-shape unified solve (Graham–Oratia)", () => {
+    it("produces one unified hipped roof with a facet per outer edge for an L composition", () => {
       // Main 12500 × 8000 at (0, 0); extension 5814 × 2400 at (0, -2400).
+      // Union polygon has 6 outer edges → 6 facets in the unified topology.
       const main = rect({ x: 0, y: 0, w: 12500, d: 8000 });
       const extension = rect({ x: 0, y: -2400, w: 5814, d: 2400 });
       const composition: HouseComposition = {
@@ -226,18 +227,83 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
         composition,
         eaveHeightMm: 2400,
       });
-      // 4 planes per rectangle × 2 = 8 planes total
-      expect(result.roofPlanes).toHaveLength(8);
+      expect(result.roofPlanes).toHaveLength(6);
       expect(result.metadata.roofTopologySolver).toBe(
-        "composition_per_rectangle_stitched",
+        "composition_joined_wavefront",
       );
-      expect(result.metadata.approximationReasons).toBe(
-        "composition_stitched_render",
-      );
+      expect(result.metadata.roofGeometry).toBe("composition_unified");
+      expect(result.metadata.approximationReasons).toBeUndefined();
       expect(result.metadata.compositionPrimitiveCount).toBe(2);
-      // All plane ids are unique (suffixing protects against id collisions).
+      // Reflex corner at the L's inside angle produces a valley.
+      const valleys = result.roofFeatures.filter((f) => f.kind === "valley");
+      expect(valleys.length).toBeGreaterThanOrEqual(1);
+      // All plane ids are unique.
       const ids = result.roofPlanes.map((p) => p.id);
       expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("produces a unified hipped roof for a T composition", () => {
+      // Trunk 12000 × 6000 at (0, 0). Crossbar 6000 × 4000 centered on the
+      // trunk's north edge → 8-edge perimeter (T-shape).
+      const trunk = rect({ x: 0, y: 0, w: 12000, d: 6000 });
+      const crossbar = rect({ x: 3000, y: 6000, w: 6000, d: 4000 });
+      const composition: HouseComposition = {
+        primitives: [trunk, crossbar],
+        joins: [
+          {
+            fromPrimitiveIndex: 0,
+            fromEdge: "north",
+            toPrimitiveIndex: 1,
+            toEdge: "south",
+          },
+        ],
+      };
+      const result = composeRoofFromComposition({
+        composition,
+        eaveHeightMm: 2400,
+      });
+      expect(result.metadata.roofTopologySolver).toBe(
+        "composition_joined_wavefront",
+      );
+      expect(result.roofPlanes).toHaveLength(8);
+      // Two reflex corners at the T → at least 2 valleys.
+      const valleys = result.roofFeatures.filter((f) => f.kind === "valley");
+      expect(valleys.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("produces a unified hipped roof for a U composition", () => {
+      // U shape: two legs 4000 × 8000 with a 6000 × 4000 base spanning them.
+      const leftLeg = rect({ x: 0, y: 4000, w: 4000, d: 8000 });
+      const base = rect({ x: 0, y: 0, w: 14000, d: 4000 });
+      const rightLeg = rect({ x: 10000, y: 4000, w: 4000, d: 8000 });
+      const composition: HouseComposition = {
+        primitives: [base, leftLeg, rightLeg],
+        joins: [
+          {
+            fromPrimitiveIndex: 0,
+            fromEdge: "north",
+            toPrimitiveIndex: 1,
+            toEdge: "south",
+          },
+          {
+            fromPrimitiveIndex: 0,
+            fromEdge: "north",
+            toPrimitiveIndex: 2,
+            toEdge: "south",
+          },
+        ],
+      };
+      const result = composeRoofFromComposition({
+        composition,
+        eaveHeightMm: 2400,
+      });
+      expect(result.metadata.roofTopologySolver).toBe(
+        "composition_joined_wavefront",
+      );
+      // U has 8 outer edges → 8 facets.
+      expect(result.roofPlanes).toHaveLength(8);
+      const valleys = result.roofFeatures.filter((f) => f.kind === "valley");
+      expect(valleys.length).toBeGreaterThanOrEqual(2);
     });
 
     it("supports mixed roof types per rectangle (main hipped + extension skillion)", () => {

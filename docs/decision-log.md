@@ -146,6 +146,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-06-12 | Design Workbench | Active | `DrawingWorkbench` callers pass `projectArtifact` and `WorkbenchViewportHost` is the only place to unpack it; no loose project geometry/status prop arrays or reintroduced `WorkbenchSolvedModel` aliases. |
 | 2026-06-12 | Design Workbench | Active | Live workbench code reads solved project geometry, plan layers, snap sources, and render diagnostics from `projectArtifact`; the breakaway guard forbids direct `solvedModel.*` alias reads. |
 | 2026-06-12 | Design Workbench | Active | `buildWorkbenchSolvedModel` builds project house geometry, then project pergola render artifacts, then passes the same pergola artifact list into project render-pipeline and viewer scene composition; package geometry owns pergola solving via a neutral boundary. |
+| 2026-06-19 | Workbench House Forms            | Active   | PR-COMP-UNIFIED-1: `composeRoofFromComposition` routes non-fused hipped composites (L, T, U, cross) to the existing `buildJoinedRectilinearHippedRoof` wavefront solver. Single coherent roof topology — one continuous ridge structure, valleys at reflex corners, hips at convex corners. `roofGeometry: "composition_unified"`, no `approximationReasons`. Falls back to stitched per-rectangle on `roofTopologyFailureReason` or zero-plane output. Mixed-intent / mono / flat composites still take the stitched path. |
 
 ## Entries
 
@@ -2467,3 +2468,32 @@ Behavioural impact: designers placing two rectangles next to each other now see 
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/composition/compositionSeams.ts](../packages/geometry/src/house/composition/compositionSeams.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSeamIconLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSeamIconLayer.tsx), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts).
+
+### 2026-06-19 - Workbench House Forms - Unified-Topology Hipped Composite Roof (PR-COMP-UNIFIED-1)
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: Closes the gap PR-COMP1 explicitly deferred. `composeRoofFromComposition` previously had two strategies — fused-rectangle shortcut (good) and per-rectangle stitched solve (placeholder for non-fused composites that stamped `approximationReasons: 'composition_stitched_render'`). An L composite rendered as two independent hipped roofs meeting at eave height; a T rendered as three; etc. No unified ridge, no valleys at reflex corners. Designers saw "Invalid geometry" / "approximate" badges on every composite they joined.
+
+The fix is one of those rare cases where the math we needed was already in the codebase. `buildJoinedRectilinearHippedRoof` (an inward-moving wavefront solver in `packages/geometry/src/house/roofJoinedHipped.ts`, used by the legacy custom-polygon path) takes an arbitrary orthogonal polygon and produces a single coherent hipped roof — one continuous ridge, valleys at reflex corners, hips at convex corners. It even supports Dutch-hip open gables via `stationaryEdgeIndexes`. It just was never wired into the composition orchestrator.
+
+This PR adds a third strategy slotted between the fused-rectangle shortcut and the stitched fallback: when every primitive has an identical hipped intent and the composition has 2+ rectangles, route `composeFootprintFromComposition(composition)` to the wavefront solver. Stamp `roofGeometry: "composition_unified"` and `roofTopologySolver: "composition_joined_wavefront"`. If the wavefront reports `roofTopologyFailureReason` or returns zero planes, fall back to the existing stitched path — the safety net is preserved.
+
+Test coverage: L (Graham–Oratia: 6 facets, 1+ valley), T (8 facets, 2+ valleys), U (8 facets, 2+ valleys) all pass via the unified path. The Graham–Oratia L test previously expected 8 stitched planes; updated to 6 unified planes. Mixed-intent and mono/flat composites continue to take the stitched path unchanged.
+
+Why it mattered: Composition was the input model designers landed on; the rendering hadn't caught up. After this PR, every L/T/U/cross composite a designer joins via the 4b chip UX renders as one architecturally coherent roof — the visual matches the data model. The amber-tint diagnostic stops firing on every composite. The composition vision finally feels complete end-to-end: place rectangles → snap → join → one coherent house with one coherent roof.
+
+The scouting result that drove the implementation: the original plan was to write a straight-skeleton from scratch (~250 LOC of finicky geometry math). Read-only Explore agent surfaced `buildJoinedRectilinearHippedRoof` — already battle-tested through the legacy free-form pipeline. ~80 LOC of wiring + 3 new tests beat a ~250 LOC greenfield implementation. The lesson: scout for prior art before writing geometry from scratch, especially in a codebase with a homegrown geometry package.
+
+Current guardrail:
+- The wavefront has known failure modes on certain aspect ratios (legacy free-form bug class). Composition input may dodge them (axis-aligned designer-authored rectangles, not inferred decomposition) but the topology-failure fallback to stitched preserves the safety net. If the fallback fires in production, capture the composition shape via the existing HR1 "Save bug report" button and quarantine in the HR4 matrix.
+- Open-gable / Dutch-hip on composite terminal ends is NOT yet wired. The rail's `openGableEndIds` translates to per-rectangle caps on single rectangles; for composites, the `stationaryEdgeIndexes` derivation from composite-perimeter terminal ends is PR-COMP-UNIFIED-2. Until then, composite Dutch-hip toggles are a no-op on the wavefront path.
+- Mixed-intent composites (e.g. main hipped + extension skillion) intentionally take the stitched path — the wavefront only handles uniform pitch. The vision doc names this as a v1 limit; revisit if a real customer need surfaces.
+
+Behavioural impact: in-browser Plan Editor + 3D Review render correctly for all composition shapes; geometry tests 12 of 12 green in the composition lane; portal drawings lane 253 of 253 green. The 4 pre-existing legacy `custom polygon` / `recessed footprint` / `DXF asset` test failures on `main` are unrelated to this change (they exercise the free-form polygon path, which still calls `buildJoinedRectilinearHippedRoof` directly without going through composition).
+
+Promoted to: None
+
+Related docs/tests: [packages/geometry/src/house/composition/composeRoofFromComposition.ts](../packages/geometry/src/house/composition/composeRoofFromComposition.ts), [packages/geometry/src/house/composition/composeRoofFromComposition.test.ts](../packages/geometry/src/house/composition/composeRoofFromComposition.test.ts), [packages/geometry/src/house/roofJoinedHipped.ts](../packages/geometry/src/house/roofJoinedHipped.ts), [docs/house-composition-vision.md](house-composition-vision.md).

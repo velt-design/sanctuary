@@ -1,8 +1,10 @@
 import type {
   GeometryMetadata,
   HouseRoofFeature3D,
+  Point3,
   RoofPlane3D,
 } from "../../contracts";
+import { buildJoinedRectilinearHippedRoof } from "../roofJoinedHipped";
 import { buildFlatHouseRoof, buildMonoHouseRoof } from "../roofPrimary";
 import { buildRectangularRoof } from "../roofRectangle";
 import { composeFootprintFromComposition } from "./composeFootprintFromComposition";
@@ -115,7 +117,50 @@ export function composeRoofFromComposition(input: {
     }
   }
 
-  // Strategy 2: per-rectangle stitched solve.
+  // Strategy 2: unified-topology hipped solve. Routes the composite
+  // union polygon to `buildJoinedRectilinearHippedRoof`, an inward-
+  // wavefront solver that produces a single coherent roof with
+  // valleys at reflex corners and hips at convex ones. Eligible only
+  // when every rectangle has a hipped intent with identical pitch +
+  // ridge axis (open-gable per-end caps are honored below via
+  // perimeter-aware end derivation; v1 ignores them here and uses
+  // the start/end caps from rectangles[0]).
+  if (
+    allIntentsIdentical &&
+    rectangles.length > 1 &&
+    rectangles[0]!.roofIntent.form === "hipped"
+  ) {
+    const intent = rectangles[0]!.roofIntent;
+    const unionPolygon = composeFootprintFromComposition(input.composition);
+    const eavePolygon: Point3[] = unionPolygon.map((p) => ({
+      x: p.x,
+      y: p.y,
+      z: 0,
+    }));
+    const unified = buildJoinedRectilinearHippedRoof({
+      eavePolygon,
+      eaveHeightMm: input.eaveHeightMm,
+      roofPitchDeg: intent.pitchDeg,
+    });
+    const topologyFailed =
+      typeof unified.metadata?.roofTopologyFailureReason === "string";
+    if (!topologyFailed && unified.roofPlanes.length > 0) {
+      return {
+        roofPlanes: unified.roofPlanes,
+        roofFeatures: unified.roofFeatures,
+        metadata: {
+          ...(unified.metadata ?? {}),
+          roofGeometry: "composition_unified",
+          roofTopologySolver: "composition_joined_wavefront",
+          compositionPrimitiveCount: rectangles.length,
+        },
+      };
+    }
+  }
+
+  // Strategy 3: per-rectangle stitched solve. Fallback for mixed
+  // intents, mono/flat composites, or when the wavefront fails on a
+  // specific geometry.
   const allPlanes: RoofPlane3D[] = [];
   const allFeatures: HouseRoofFeature3D[] = [];
   for (let i = 0; i < rectangles.length; i += 1) {
