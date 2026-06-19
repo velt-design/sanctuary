@@ -86,6 +86,31 @@ export function applyHouseFormFootprintEdit(input: {
             polygon: normalizeHouseFootprintPolygon(input.edit.polygon),
           },
         };
+      case 'preset_resize': {
+        // PR-WB-RESIZE-KEEPS-PRESET (2026-06-19): atomic update of
+        // widthM / bandDepthM / offsetXM / setbackM for a
+        // preset+straight form whose axis-aligned resize was
+        // converted by tryConvertResizeToPresetParams. Mode stays
+        // 'preset', polygon is cleared (preset polygon is derived
+        // from params); composition is re-synced by the normaliser
+        // on persist.
+        const nextParams = {
+          ...normalizeHouseFootprintParams(footprint.params),
+          widthM: input.edit.widthM,
+          bandDepthM: input.edit.bandDepthM,
+          offsetXM: input.edit.offsetXM,
+          setbackM: input.edit.setbackM,
+        };
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            mode: 'preset' as const,
+            polygon: [],
+            params: nextParams,
+          },
+        };
+      }
       case 'position':
         return {
           ...houseForm,

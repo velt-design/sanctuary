@@ -131,6 +131,19 @@ export type EstimateDrawingFootprintEdit =
       polygon: CalculatorHouseFootprintPolygonPoint[];
     }
   | {
+      // PR-WB-RESIZE-KEEPS-PRESET (2026-06-19): atomic multi-param
+      // update used by the edge-drag commit handler when an
+      // axis-aligned resize of a preset+straight form can be
+      // expressed as updated widthM / bandDepthM / offsetXM /
+      // setbackM instead of a freeform custom polygon. Keeps the
+      // form's mode 'preset' so its composition stays authoritative.
+      type: 'preset_resize';
+      widthM: string;
+      bandDepthM: string;
+      offsetXM: string;
+      setbackM: string;
+    }
+  | {
       // House first-class spatial position write (stage 3.4 of the
       // first-class-spatial-entities migration). When set, the geometry
       // pipeline decodes the custom polygon against a unit frame and applies

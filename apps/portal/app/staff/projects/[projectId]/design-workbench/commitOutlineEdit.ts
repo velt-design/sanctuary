@@ -1,4 +1,5 @@
 import { buildSideLocalPolygonFromWorld } from '@sp/geometry';
+import { tryConvertResizeToPresetParams } from './tryConvertResizeToPresetParams';
 import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransform';
 import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/tools/EdgeDragTool';
 import type { ReversibleCommandInput } from '@/lib/drawings/commands/createReversibleCommand';
@@ -70,8 +71,36 @@ export function buildOutlineEditCommitHandler(
           y: -sin * dx + cos * dy,
         };
       });
-      // House forms now own their own transform. Encode the drag result
-      // against the selected form's local frame and update only that form.
+      // PR-WB-RESIZE-KEEPS-PRESET (2026-06-19): if the source form
+      // is preset+straight AND the resize produced a clean axis-
+      // aligned rectangle, recover (widthM, bandDepthM, offsetXM,
+      // setbackM) from the polygon's form-local bounding box and
+      // emit a preset_resize edit instead of a custom_polygon
+      // edit. The form stays mode: 'preset'; composition stays
+      // authoritative (re-synced by the normaliser); the seam-icon
+      // layer + Join + Detach all keep working without falling
+      // back to the custom_polygon-as-rectangle inference.
+      const presetParamsConversion = tryConvertResizeToPresetParams({
+        formLocalPolygonMm: localWorldPolygon,
+        sourceMode: houseForm.footprint.mode,
+        sourcePreset: houseForm.footprint.preset,
+        sourceAttachmentSide: houseForm.footprint.attachmentSide,
+        sourceRotationQuarterTurns: houseForm.transform.rotationQuarterTurns,
+      });
+      if (presetParamsConversion) {
+        void objectWorkbenchActions.commitHouseFormFootprintEdit({
+          houseFormId: houseForm.id,
+          edit: {
+            type: 'preset_resize',
+            ...presetParamsConversion,
+          },
+        });
+        return;
+      }
+      // Fallback: encode as a custom polygon. This path catches L /
+      // U / recess / wrap preset resizes (richer params not handled
+      // yet), rotated forms (transform-aware math TODO), non-rear
+      // attachment sides, and any genuinely-not-rectangle resize.
       const sideLocalPoints = buildSideLocalPolygonFromWorld({
         worldPolygonMm: localWorldPolygon,
         pergolaWidthMm: 1000,
