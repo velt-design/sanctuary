@@ -172,9 +172,15 @@ describe("buildSkeletonRoof", () => {
     // orchestrator) — it must NEVER emit a silently-wrong roof. Flip to
     // assertConsistentRoof when the solver closes the convergence gap.
     const result = buildSkeletonRoof({ polygon: ASYM_PLUS, eaveHeightMm: EAVE, roofPitchDeg: PITCH });
+    // The skeleton's completeness invariant catches the unresolved +
+    // centre at the source (unsupported_topology); even if that guard
+    // changed, the translator's area guard (facets_do_not_partition)
+    // would catch it. Either way: a typed error, never wrong geometry.
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("facets_do_not_partition");
+    expect(
+      ["unsupported_topology", "facets_do_not_partition"].includes(result.error.code),
+    ).toBe(true);
   });
 
   it("propagates the skeleton's typed error (symmetric-bar limitation)", () => {

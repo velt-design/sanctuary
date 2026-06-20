@@ -690,6 +690,23 @@ export function computeOrthogonalStraightSkeleton(
     if (failure) return { ok: false, error: failure };
   }
 
+  // Completeness invariant: a correct wavefront contracts to nothing —
+  // every vertex is consumed by an event (the last ridge edges retire
+  // their pairs). If alive vertices remain with the queue drained, a
+  // convergence was left unresolved (e.g. the +/H centre); the skeleton
+  // graph would be incomplete (dangling ridge ends, overlapping facets).
+  // Fail loudly with a typed error rather than returning a broken graph.
+  const remaining = vertices.filter((v) => v.alive).length;
+  if (remaining > 0) {
+    return {
+      ok: false,
+      error: {
+        code: "unsupported_topology",
+        reason: `incomplete_wavefront: ${remaining} vertices unconsumed (unresolved convergence)`,
+      },
+    };
+  }
+
   // Output: halve the 2x coordinates back to millimetres, rounding the
   // genuine half-mm nodes to the nearest integer (documented contract).
   const outNodes: SkeletonNode[] = nodes.map((node) => ({
