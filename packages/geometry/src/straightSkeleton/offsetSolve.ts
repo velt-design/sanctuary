@@ -247,7 +247,8 @@ export function computeOrthogonalStraightSkeletonOffset(
   type Ev =
     | { kind: "collapse"; time: number; eIndex: number }
     | { kind: "split"; time: number; bIndex: number; eIndex: number }
-    | { kind: "ridge"; time: number; aIndex: number };
+    | { kind: "ridge"; time: number; aIndex: number }
+    | { kind: "slab"; time: number; seedIndex: number };
 
   /** Time two adjacent parallel opposite-normal edges (a, a.next=b)
    * meet — i.e. a ridge between them closes. */
@@ -262,19 +263,44 @@ export function computeOrthogonalStraightSkeletonOffset(
     return t;
   }
 
-  /** Merge edge Q into its previous edge P when the two are collinear
-   * (same axis, sign and offset) — a straight (180°) wavefront vertex
-   * that should not persist. The shared skeleton node is already placed;
-   * we just rejoin the wavefront. */
-  function mergeIfCollinear(p: WEdge, q: WEdge, time: number): void {
-    if (!p.alive || !q.alive || p.index === q.index) return;
-    if (p.axis !== q.axis || p.sign !== q.sign) return;
-    if (edgeOffset(p, time) !== edgeOffset(q, time)) return;
-    const qn = wedges[q.nextIndex]!;
-    q.alive = false;
-    aliveCount -= 1;
-    p.nextIndex = qn.index;
-    qn.prevIndex = p.index;
+  /** Walk the loop containing `seed`; return its edges if they are ALL
+   * the same axis (a degenerate "slab" — a band between parallel eaves,
+   * possibly with straight-vertex junctions). Such a loop has no normal
+   * collapse/ridge event and must be retired as one ridge line. */
+  function loopIfAllOneAxis(seed: WEdge): WEdge[] | null {
+    const loop: WEdge[] = [];
+    let cur = seed;
+    for (let i = 0; i < wedges.length + 1; i += 1) {
+      if (!cur.alive || cur.axis !== seed.axis) return null;
+      loop.push(cur);
+      cur = wedges[cur.nextIndex]!;
+      if (cur.index === seed.index) return loop.length >= 3 ? loop : null;
+    }
+    return null;
+  }
+
+  /** Time a one-axis slab closes: its +normal and −normal sides coincide.
+   * Requires a single offset on each side (uniform band). */
+  function slabCollapseTime(loop: WEdge[]): number | null {
+    const refTime = Math.max(...loop.map((e) => e.birthTime));
+    let plus: number | null = null;
+    let minus: number | null = null;
+    for (const e of loop) {
+      const off = edgeOffset(e, refTime);
+      if (e.sign > 0) {
+        if (plus !== null && plus !== off) return null;
+        plus = off;
+      } else {
+        if (minus !== null && minus !== off) return null;
+        minus = off;
+      }
+    }
+    if (plus === null || minus === null) return null;
+    // plus side moves +1/unit, minus side −1/unit: meet at (minus−plus)/2.
+    const dt = (minus - plus) / 2;
+    const t = refTime + dt;
+    if (t < refTime) return null;
+    return t;
   }
 
   let safety = 0;
@@ -307,11 +333,19 @@ export function computeOrthogonalStraightSkeletonOffset(
       //  - ridge last: in a 3-edge loop (one perpendicular edge + a
       //    parallel pair) the perpendicular edge must collapse first,
       //    reducing to a 2-edge loop the finalizer handles cleanly.
-      const rank = (k: Ev["kind"]) => (k === "split" ? 0 : k === "collapse" ? 1 : 2);
+      const rank = (k: Ev["kind"]) =>
+        k === "split" ? 0 : k === "collapse" ? 1 : k === "ridge" ? 2 : 3;
       if (rank(ev.kind) < rank(best.kind)) best = ev;
     };
     for (const e of wedges) {
       if (!e.alive) continue;
+      // One-axis "slab" loop (a band of parallel eaves with straight-vertex
+      // junctions) — has no normal event; retire it as one ridge line.
+      const slabLoop = loopIfAllOneAxis(e);
+      if (slabLoop && Math.min(...slabLoop.map((w) => w.index)) === e.index) {
+        const st = slabCollapseTime(slabLoop);
+        if (st !== null) consider({ kind: "slab", time: st, seedIndex: e.index });
+      }
       const ct = collapseTime(e);
       if (ct !== null) consider({ kind: "collapse", time: ct, eIndex: e.index });
       const nb = wedges[e.nextIndex]!;
@@ -320,9 +354,16 @@ export function computeOrthogonalStraightSkeletonOffset(
       // pair's flanks are the same edge (p===q) — there the third
       // (perpendicular) edge collapses first.
       if (nb.alive && nb.index !== e.index && nb.nextIndex !== e.index && e.axis === nb.axis && e.sign !== nb.sign) {
-        const flankP = e.prevIndex;
-        const flankQ = nb.nextIndex;
-        if (flankP !== flankQ) {
+        const flankP = wedges[e.prevIndex]!;
+        const flankQ = wedges[nb.nextIndex]!;
+        // Both flanks must be perpendicular (a clean ridge). If a flank is
+        // collinear with its edge (a straight-vertex junction) the ridge
+        // is degenerate; let the slab path resolve that loop instead.
+        if (
+          flankP.index !== flankQ.index &&
+          flankP.axis !== e.axis &&
+          flankQ.axis !== nb.axis
+        ) {
           const rt = ridgeMeetTime(e, nb);
           if (rt !== null) consider({ kind: "ridge", time: rt, aIndex: e.index });
         }
@@ -357,7 +398,7 @@ export function computeOrthogonalStraightSkeletonOffset(
       p.nextIndex = nn.index;
       nn.prevIndex = p.index;
       nn.startNodeIndex = mergeNode;
-      if (!finalizeIfTwoLoop(p)) mergeIfCollinear(p, nn, event.time);
+      finalizeIfTwoLoop(p);
     } else if (event.kind === "ridge") {
       const a = wedges[event.aIndex]!;
       const b = wedges[a.nextIndex]!;
@@ -385,7 +426,51 @@ export function computeOrthogonalStraightSkeletonOffset(
       p.nextIndex = q.index;
       q.prevIndex = p.index;
       q.startNodeIndex = nodeB;
-      if (!finalizeIfTwoLoop(p)) mergeIfCollinear(p, q, event.time);
+      finalizeIfTwoLoop(p);
+    } else if (event.kind === "slab") {
+      // A one-axis slab: a band between parallel eaves (with straight-
+      // vertex junctions where stems met). It retires to a single ridge
+      // line; each loop vertex projects onto the ridge, junctions above
+      // the ridge connect down to it.
+      const seed = wedges[event.seedIndex]!;
+      const loop = loopIfAllOneAxis(seed);
+      if (!loop) {
+        return { ok: false, error: { code: "unsupported_topology", reason: `slab seed ${seed.index} not a one-axis loop` } };
+      }
+      const horizontal = seed.axis === "H";
+      // Ridge coordinate (the line the slab closes onto).
+      const plusEdge = loop.find((e) => e.sign > 0)!;
+      const ridgeCoord = edgeOffset(plusEdge, event.time);
+      // For each loop vertex (= each edge's start vertex), project its
+      // node onto the ridge and connect.
+      type RidgePoint = { along: number; nodeIndex: number; sourceNode: number };
+      const points: RidgePoint[] = [];
+      for (const e of loop) {
+        const src = nodes[e.startNodeIndex]!.position;
+        const along = horizontal ? src.x : src.y;
+        const ridgePos: IntegerPoint2D = horizontal
+          ? { x: src.x, y: ridgeCoord }
+          : { x: ridgeCoord, y: src.y };
+        let nodeIndex: number;
+        if (src.x === ridgePos.x && src.y === ridgePos.y) {
+          nodeIndex = e.startNodeIndex; // already on the ridge (a cap end)
+        } else {
+          nodeIndex = addNode(ridgePos, event.time, [e.polygonEdgeId]);
+          // junction above the ridge connects down to it
+          addSkeletonEdge(e.startNodeIndex, nodeIndex, e.polygonEdgeId, e.polygonEdgeId);
+        }
+        points.push({ along, nodeIndex, sourceNode: e.startNodeIndex });
+      }
+      points.sort((u, v) => u.along - v.along);
+      for (let i = 0; i + 1 < points.length; i += 1) {
+        const u = points[i]!;
+        const v = points[i + 1]!;
+        addSkeletonEdge(u.nodeIndex, v.nodeIndex, plusEdge.polygonEdgeId, plusEdge.polygonEdgeId);
+      }
+      for (const e of loop) {
+        e.alive = false;
+        aliveCount -= 1;
+      }
     } else {
       const b = wedges[event.bIndex]!;
       const a = wedges[b.prevIndex]!;

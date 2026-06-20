@@ -7,8 +7,8 @@ import type {
   RoofPlane3D,
 } from "../contracts";
 import { classifyVertex } from "../straightSkeleton/bisector";
-import { computeOrthogonalStraightSkeleton } from "../straightSkeleton/solve";
-import type { StraightSkeletonError } from "../straightSkeleton/solve";
+import { computeOrthogonalStraightSkeletonOffset as computeOrthogonalStraightSkeleton } from "../straightSkeleton/offsetSolve";
+import type { OffsetSkeletonError as StraightSkeletonError } from "../straightSkeleton/offsetSolve";
 import type { OrthogonalPolygon, StraightSkeleton } from "../straightSkeleton/types";
 import { line, point } from "./_internal";
 import { buildRoofPlane } from "./roofPlane";

@@ -164,26 +164,22 @@ describe("buildSkeletonRoof", () => {
     assertConsistentRoof(ASYM_U);
   });
 
-  it("guards against an unresolved skeleton (+ centre) instead of emitting bad geometry", () => {
-    // The 4-way central convergence of a plus / H is a known SS-2
-    // limitation: the solver leaves the centre unresolved, so the
-    // facets would overlap. The translator's area-conservation guard
-    // catches this and returns a typed error (graceful fallback for the
-    // orchestrator) — it must NEVER emit a silently-wrong roof. Flip to
-    // assertConsistentRoof when the solver closes the convergence gap.
-    const result = buildSkeletonRoof({ polygon: ASYM_PLUS, eaveHeightMm: EAVE, roofPitchDeg: PITCH });
-    // The skeleton's completeness invariant catches the unresolved +
-    // centre at the source (unsupported_topology); even if that guard
-    // changed, the translator's area guard (facets_do_not_partition)
-    // would catch it. Either way: a typed error, never wrong geometry.
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(
-      ["unsupported_topology", "facets_do_not_partition"].includes(result.error.code),
-    ).toBe(true);
+  it("plus (4-way central convergence) → 12 facets, 4 valleys, area conserved", () => {
+    // The equidistance/offset solver (PR-SS-2 part 3) resolves the 4-way
+    // centre exactly — the convergence case the kinematic solver never
+    // could. The roof partitions the footprint cleanly.
+    assertConsistentRoof(ASYM_PLUS);
   });
 
-  it("propagates the skeleton's typed error (symmetric-bar limitation)", () => {
+  it("symmetric L / T (perfect-symmetry canaries) → area conserved", () => {
+    const symmetricL: OrthogonalPolygon = [
+      { x: 0, y: 0 },
+      { x: 10000, y: 0 },
+      { x: 10000, y: 5000 },
+      { x: 5000, y: 5000 },
+      { x: 5000, y: 10000 },
+      { x: 0, y: 10000 },
+    ];
     const symmetricT: OrthogonalPolygon = [
       { x: 0, y: 0 },
       { x: 30000, y: 0 },
@@ -194,7 +190,33 @@ describe("buildSkeletonRoof", () => {
       { x: 10000, y: 10000 },
       { x: 0, y: 10000 },
     ];
-    const result = buildSkeletonRoof({ polygon: symmetricT, eaveHeightMm: EAVE, roofPitchDeg: PITCH });
-    expect(result.ok).toBe(false);
+    assertConsistentRoof(symmetricL);
+    assertConsistentRoof(symmetricT);
+  });
+
+  it("never emits silently-wrong geometry — unresolved shapes return a typed error", () => {
+    // A few complex junctions (e.g. an H whose crossbar meets the bars
+    // off-centre, or a many-vertex stepped plus) are not yet fully
+    // resolved. The guards (completeness invariant + area conservation)
+    // turn those into typed errors, never overlapping facets. This pins
+    // that contract; flip the specific shape to assertConsistentRoof when
+    // its junction case lands.
+    const syntheticH: OrthogonalPolygon = [
+      { x: 0, y: 0 }, { x: 6000, y: 0 }, { x: 6000, y: 4000 }, { x: 16000, y: 4000 },
+      { x: 16000, y: 0 }, { x: 22000, y: 0 }, { x: 22000, y: 16000 }, { x: 16000, y: 16000 },
+      { x: 16000, y: 12000 }, { x: 6000, y: 12000 }, { x: 6000, y: 16000 }, { x: 0, y: 16000 },
+    ];
+    const result = buildSkeletonRoof({ polygon: syntheticH, eaveHeightMm: EAVE, roofPitchDeg: PITCH });
+    if (!result.ok) {
+      expect(
+        ["unsupported_topology", "facets_do_not_partition", "face_not_closed"].includes(result.error.code),
+      ).toBe(true);
+    }
+    // If it does succeed, it must still conserve area (no silent overlap).
+    if (result.ok) {
+      const foot = Math.abs(footprintAreaMm2(syntheticH));
+      const sum = result.roofPlanes.reduce((s, p) => s + facetPlanAreaMm2(p.boundary), 0);
+      expect(Math.abs(sum - foot)).toBeLessThanOrEqual(Math.max(1, foot * 1e-6));
+    }
   });
 });
