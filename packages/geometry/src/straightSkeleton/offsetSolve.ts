@@ -246,7 +246,36 @@ export function computeOrthogonalStraightSkeletonOffset(
 
   type Ev =
     | { kind: "collapse"; time: number; eIndex: number }
-    | { kind: "split"; time: number; bIndex: number; eIndex: number };
+    | { kind: "split"; time: number; bIndex: number; eIndex: number }
+    | { kind: "ridge"; time: number; aIndex: number };
+
+  /** Time two adjacent parallel opposite-normal edges (a, a.next=b)
+   * meet — i.e. a ridge between them closes. */
+  function ridgeMeetTime(a: WEdge, b: WEdge): number | null {
+    if (a.axis !== b.axis || a.sign === b.sign) return null;
+    const refTime = Math.max(a.birthTime, b.birthTime);
+    const rel = a.sign - b.sign;
+    if (rel === 0) return null;
+    const dt = (edgeOffset(b, refTime) - edgeOffset(a, refTime)) / rel;
+    const t = refTime + dt;
+    if (t <= refTime) return null;
+    return t;
+  }
+
+  /** Merge edge Q into its previous edge P when the two are collinear
+   * (same axis, sign and offset) — a straight (180°) wavefront vertex
+   * that should not persist. The shared skeleton node is already placed;
+   * we just rejoin the wavefront. */
+  function mergeIfCollinear(p: WEdge, q: WEdge, time: number): void {
+    if (!p.alive || !q.alive || p.index === q.index) return;
+    if (p.axis !== q.axis || p.sign !== q.sign) return;
+    if (edgeOffset(p, time) !== edgeOffset(q, time)) return;
+    const qn = wedges[q.nextIndex]!;
+    q.alive = false;
+    aliveCount -= 1;
+    p.nextIndex = qn.index;
+    qn.prevIndex = p.index;
+  }
 
   let safety = 0;
   const maxIters = n * n * 16 + 128;
@@ -271,17 +300,33 @@ export function computeOrthogonalStraightSkeletonOffset(
         return;
       }
       if (ev.time > best.time) return;
-      // Tie-break: process SPLITs before COLLAPSEs at the same instant.
-      // A simultaneous collapse can extend the split's target eave into a
-      // transient parallel-ridge state whose extent is undefined; doing
-      // the split first cuts the eave while its extent is still valid.
-      const rank = (k: Ev["kind"]) => (k === "split" ? 0 : 1);
+      // Tie-break at equal time: SPLIT < COLLAPSE < RIDGE.
+      //  - split first: a simultaneous collapse can extend the split's
+      //    target eave into a parallel-ridge state whose extent is
+      //    undefined; cutting first keeps the extent valid.
+      //  - ridge last: in a 3-edge loop (one perpendicular edge + a
+      //    parallel pair) the perpendicular edge must collapse first,
+      //    reducing to a 2-edge loop the finalizer handles cleanly.
+      const rank = (k: Ev["kind"]) => (k === "split" ? 0 : k === "collapse" ? 1 : 2);
       if (rank(ev.kind) < rank(best.kind)) best = ev;
     };
     for (const e of wedges) {
       if (!e.alive) continue;
       const ct = collapseTime(e);
       if (ct !== null) consider({ kind: "collapse", time: ct, eIndex: e.index });
+      const nb = wedges[e.nextIndex]!;
+      // Ridge collapse: adjacent parallel opposite-normal pair. Exclude a
+      // 2-edge loop (finalized separately) and the 3-edge case where the
+      // pair's flanks are the same edge (p===q) — there the third
+      // (perpendicular) edge collapses first.
+      if (nb.alive && nb.index !== e.index && nb.nextIndex !== e.index && e.axis === nb.axis && e.sign !== nb.sign) {
+        const flankP = e.prevIndex;
+        const flankQ = nb.nextIndex;
+        if (flankP !== flankQ) {
+          const rt = ridgeMeetTime(e, nb);
+          if (rt !== null) consider({ kind: "ridge", time: rt, aIndex: e.index });
+        }
+      }
       const a = wedges[e.prevIndex]!;
       if (a.alive && isReflexVertex(a, e)) {
         for (const target of wedges) {
@@ -312,7 +357,35 @@ export function computeOrthogonalStraightSkeletonOffset(
       p.nextIndex = nn.index;
       nn.prevIndex = p.index;
       nn.startNodeIndex = mergeNode;
-      finalizeIfTwoLoop(p);
+      if (!finalizeIfTwoLoop(p)) mergeIfCollinear(p, nn, event.time);
+    } else if (event.kind === "ridge") {
+      const a = wedges[event.aIndex]!;
+      const b = wedges[a.nextIndex]!;
+      const p = wedges[a.prevIndex]!;
+      const q = wedges[b.nextIndex]!;
+      const mA = vertexAt(p, a, event.time);
+      const mB = vertexAt(b, q, event.time);
+      if (!mA || !mB) {
+        return { ok: false, error: { code: "unsupported_topology", reason: `ridge ${a.index}/${b.index}: degenerate flank at t=${event.time}` } };
+      }
+      const nodeA = addNode(mA, event.time, [a.polygonEdgeId]);
+      const nodeB = mA.x === mB.x && mA.y === mB.y ? nodeA : addNode(mB, event.time, [b.polygonEdgeId]);
+      // a and b retire to the ridge: their start vertices trace in, and
+      // a ridge skeleton edge spans the two flank nodes (if distinct).
+      addSkeletonEdge(a.startNodeIndex, nodeA, p.polygonEdgeId, a.polygonEdgeId);
+      addSkeletonEdge(b.startNodeIndex, nodeB, a.polygonEdgeId, b.polygonEdgeId);
+      if (nodeA !== nodeB) addSkeletonEdge(nodeA, nodeB, a.polygonEdgeId, b.polygonEdgeId);
+      // q's old start vertex (b ∩ q) also retires to the ridge — emit its
+      // trace (the second flank's valley/hip) before reassigning, else
+      // that eave's facet boundary is lost on asymmetric shapes.
+      addSkeletonEdge(q.startNodeIndex, nodeB, b.polygonEdgeId, q.polygonEdgeId);
+      a.alive = false;
+      b.alive = false;
+      aliveCount -= 2;
+      p.nextIndex = q.index;
+      q.prevIndex = p.index;
+      q.startNodeIndex = nodeB;
+      if (!finalizeIfTwoLoop(p)) mergeIfCollinear(p, q, event.time);
     } else {
       const b = wedges[event.bIndex]!;
       const a = wedges[b.prevIndex]!;
@@ -372,5 +445,28 @@ export function computeOrthogonalStraightSkeletonOffset(
     time: node.time / SCALE,
     sourceEdgeIds: node.sourceEdgeIds,
   }));
-  return { ok: true, skeleton: { nodes: outNodes, edges, polygonEdgeCount: n } };
+
+  // Dedupe coincident nodes: a convergence can be reached by separate
+  // events that each place a node at the same point. The roof translator
+  // keys adjacency by node index, so two indices at one point read as a
+  // gap. Collapse them to a single canonical index per position.
+  const canonical = new Map<string, number>();
+  const remap = outNodes.map((node, i) => {
+    const key = `${node.position.x},${node.position.y}`;
+    const existing = canonical.get(key);
+    if (existing === undefined) {
+      canonical.set(key, i);
+      return i;
+    }
+    return existing;
+  });
+  const dedupedEdges = edges
+    .map((e) => ({
+      ...e,
+      fromNodeIndex: remap[e.fromNodeIndex]!,
+      toNodeIndex: remap[e.toNodeIndex]!,
+    }))
+    .filter((e) => e.fromNodeIndex !== e.toNodeIndex);
+
+  return { ok: true, skeleton: { nodes: outNodes, edges: dedupedEdges, polygonEdgeCount: n } };
 }
