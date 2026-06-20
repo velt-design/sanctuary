@@ -505,8 +505,17 @@ export function computeOrthogonalStraightSkeleton(
     const q = vertices[reflex.nextIndex]!;
 
     const splitNodeIdx = addNode(rPos, event.time, [a.outgoingEdgeId, reflex.outgoingEdgeId]);
-    // Valley from the reflex vertex to the split point.
-    addSkeletonEdge(reflex.skeletonNodeIndex, splitNodeIdx, reflex.outgoingEdgeId, a.outgoingEdgeId);
+    // Valley from the reflex vertex to the split point. The valley
+    // separates the reflex vertex's OWN two eaves (its incoming edge
+    // `p.outgoingEdgeId` and its outgoing edge `reflex.outgoingEdgeId`)
+    // — not the hit edge. Correct left/right attribution is what lets
+    // the roof translator (PR-SS-3) collect each facet's boundary.
+    addSkeletonEdge(
+      reflex.skeletonNodeIndex,
+      splitNodeIdx,
+      p.outgoingEdgeId,
+      reflex.outgoingEdgeId,
+    );
     reflex.alive = false;
     activeVertexCount -= 1;
 
