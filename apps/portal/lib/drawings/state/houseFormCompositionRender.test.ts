@@ -107,8 +107,8 @@ function jessOratiaHouseForm(): HouseFormModel {
   };
 }
 
-describe("composition render → 3D scene (PR-SS-5)", () => {
-  it("renders the Jess-Oratia H roof in the 3D scene even when legacy roof solids are absent", () => {
+describe("composition render → 3D scene (PR-SS-5 / PR-SS-6)", () => {
+  it("builds thick roof solids for the Jess-Oratia H composite and renders them in 3D", () => {
     const result = buildHouseFormGeometryInputForForm(jessOratiaHouseForm());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -119,27 +119,27 @@ describe("composition render → 3D scene (PR-SS-5)", () => {
     // hipped roof (12 facets for this H).
     expect(model.roofPlanes.length).toBeGreaterThanOrEqual(12);
 
-    // The bug condition: the legacy build produced wall solids but NO
-    // roof solid (legacy QA failed on the H). If this ever stops being
-    // true the fix is no longer the thing under test — but the scene
-    // assertion below must still hold.
+    // PR-SS-6: the composition swap now rebuilds the roof's 3D artifacts
+    // from the skeleton planes, so the model carries real roof SOLIDS
+    // (one extruded solid per facet) alongside the wall solids — not the
+    // empty roof the legacy QA gate produced before.
     const surfaceSolids = model.solids?.surfaceSolids ?? [];
     const wallSolids = surfaceSolids.filter((s) => s.kind === "wall");
     const roofSolids = surfaceSolids.filter((s) => s.kind === "roof");
     expect(wallSolids.length).toBeGreaterThan(0);
-    expect(roofSolids.length).toBe(0);
+    expect(roofSolids.length).toBeGreaterThanOrEqual(12);
 
-    // The fix: the viewer scene contains roof surfaces (from the
-    // composition roof planes) so 3D shows the unified hipped roof.
+    // The viewer scene renders those roof solids (thick bodies), so the
+    // surface fallback is NOT needed here.
     const scene = buildHouseModelSceneObjects({ model });
-    const roofSurfaces = scene.filter(
-      (obj) => obj.type === "house_surface" && obj.kind === "roof",
+    const roofSolidObjects = scene.filter(
+      (obj) => obj.type === "house_surface_solid" && obj.kind === "roof",
     );
-    expect(roofSurfaces.length).toBeGreaterThanOrEqual(12);
+    expect(roofSolidObjects.length).toBeGreaterThanOrEqual(12);
 
-    // The roof rises above the eave (2400mm) — not a flat lid at wall
-    // height. Confirms real hipped geometry reached the scene.
-    const zs = roofSurfaces.flatMap((obj) =>
+    // The roof rises above the eave (2400mm) — real hipped geometry, not
+    // a flat lid at wall height.
+    const zs = roofSolidObjects.flatMap((obj) =>
       "boundary" in obj && Array.isArray(obj.boundary)
         ? obj.boundary.map((p: { z: number }) => p.z)
         : [],

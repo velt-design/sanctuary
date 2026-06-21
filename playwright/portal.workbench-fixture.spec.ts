@@ -360,7 +360,7 @@ test.describe('workbench fixture route', () => {
   // already correct; 3D was empty because the viewer rendered solids.
   // The viewer now emits roof planes as surfaces when no roof solid
   // exists. This drives the real workbench on the registered fixture.
-  test('renders the Jess-Oratia H composite roof in 3D (skeleton planes, no legacy solids)', async ({
+  test('renders the Jess-Oratia H composite roof in 3D (rebuilt skeleton roof solids)', async ({
     page,
   }, testInfo) => {
     await openWorkbenchFixture(page, 'jess-oratia-h');
@@ -378,16 +378,15 @@ test.describe('workbench fixture route', () => {
     expect(house.roofQaStatus).toBe('valid');
     expect(house.roofPlaneCount).toBeGreaterThanOrEqual(12);
 
-    // The bug condition: the legacy build produced ZERO roof solids
-    // (legacy QA failed on the H), so the solid-based scene roof count
-    // is also 0.
-    expect(house.roofSolidCount).toBe(0);
-    expect(house.sceneRoofBodyCount).toBe(0);
+    // PR-SS-6: the composition swap rebuilds the roof's 3D artifacts from
+    // the skeleton planes, so the model now carries real thick roof
+    // SOLIDS (one per facet) — the legacy build produced zero. This is
+    // the polished fix for the plan-good / 3D-bad report.
+    expect(house.roofSolidCount).toBeGreaterThanOrEqual(12);
+    expect(house.sceneRoofBodyCount).toBeGreaterThanOrEqual(12);
 
-    // The fix: roof SURFACES reach the rendered 3D scene despite the
-    // absent solids — the viewer falls back to the composition roof
-    // planes. This is what was missing before (plan-good / 3D-bad).
-    expect(house.sceneRoofSurfaceCount).toBeGreaterThanOrEqual(12);
+    // With real roof solids the viewer's surface fallback is not needed.
+    expect(house.sceneRoofSurfaceCount).toBe(0);
 
     // 3D viewport mounts a non-empty scene (was "3D Preview Error").
     await switchWorkbenchMode(page, '3D Review');

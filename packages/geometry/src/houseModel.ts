@@ -291,6 +291,153 @@ import { buildOrthogonalCellUnionEaveOffset } from "./house/orthogonalEaveOffset
 // supported on this footprint?" before showing the editor. Removed with
 // the rest of the appendage feature.
 
+/**
+ * PR-SS-6 (2026-06-21): the canonical "roof planes -> 3D roof artifacts"
+ * derivation — perimeter edges, gutter / fascia / soffit geometry,
+ * flashings, roof-material visuals, eave snap targets, and the extruded
+ * envelope solids (walls + roof + decks + eave trim). Extracted verbatim
+ * from `buildHouseModel3D` so the composition-roof swap
+ * (`swapRoofFromComposition`) can rebuild the SAME artifacts from
+ * skeleton roof planes instead of re-implementing the sequence (which
+ * would drift from this one over time).
+ *
+ * `roofPlanesForSolids`, `roofFlashings`, and `roofMaterialVisuals` are
+ * gated on `roof.metadata.roofQaStatus`: a roof that failed QA still
+ * contributes perimeter / eave geometry but no solid bodies, flashings,
+ * or material visuals — matching the original inline behaviour.
+ *
+ * Eave overhang: the caller decides. `buildHouseModel3D` passes the
+ * overhang-offset eave polygon; the composition swap passes the union
+ * footprint as both `footprint` and `eavePolygon` because the
+ * orthogonal straight skeleton builds eave nodes at the polygon corners
+ * (no overhang yet — a separate followup).
+ */
+export function buildHouseRoofEnvelopeArtifacts(input: {
+  footprint: Polygon3;
+  eavePolygon: Polygon3;
+  roofForm: HouseRoofForm;
+  roof: {
+    roofPlanes: RoofPlane3D[];
+    roofFeatures: HouseRoofFeature3D[];
+    metadata: GeometryMetadata;
+  };
+  eaveHeightMm: number;
+  wallSegments: HouseWallSegment3D[];
+  decks: HouseDeck3D[];
+  roofMaterial: HouseRoofMaterial;
+  attachmentTarget: HouseAttachmentTarget3D;
+  joinSourceEdgeId: string | null;
+  soffitDepthMm: number;
+  fasciaHeightMm: number;
+  gutterWidthMm: number;
+  gutterDepthMm: number;
+  gutterProjectionMm: number;
+  eaveOverhangMm: number;
+}): {
+  perimeterEdges: HouseRoofPerimeterEdge[];
+  solids: NonNullable<HouseModel3D["solids"]>;
+  eave: HouseModel3D["eave"];
+  roofFlashings: HouseModel3D["roofFlashings"];
+  roofMaterialVisuals: HouseModel3D["roofMaterialVisuals"];
+  roofEaves: HouseModel3D["roofEaves"];
+} {
+  const { roof } = input;
+  const perimeterEdges = buildHouseRoofPerimeterEdges({
+    footprint: input.footprint,
+    eavePolygon: input.eavePolygon,
+    roofForm: input.roofForm,
+    roofPlanes: roof.roofPlanes,
+    eaveHeightMm: input.eaveHeightMm,
+    joinSourceEdgeId: input.joinSourceEdgeId,
+  });
+  const gutterLines = buildPolygonGutterLines({ perimeterEdges });
+  const gutterBoundaries = buildPolygonGutterBoundaries({
+    perimeterEdges,
+    gutterWidthMm: input.gutterWidthMm,
+    gutterProjectionMm: input.gutterProjectionMm,
+  });
+  const fasciaPolygons = buildPolygonFasciaPolygons({
+    perimeterEdges,
+    fasciaHeightMm: input.fasciaHeightMm,
+  });
+  const soffitPolygons = buildPolygonSoffitPolygons({
+    perimeterEdges,
+    roofForm: input.roofForm,
+    roofPlanes: roof.roofPlanes,
+  });
+  const roofPlanesForSolids =
+    roof.metadata.roofQaStatus === "valid" ? roof.roofPlanes : [];
+  const roofFlashings =
+    roof.metadata.roofQaStatus === "valid"
+      ? [
+          ...buildHouseRoofFeatureFlashings({
+            roofPlanes: roof.roofPlanes,
+            roofFeatures: roof.roofFeatures,
+          }),
+          ...buildPerimeterFlashings({
+            perimeterEdges: perimeterEdges,
+            roofPlanes: roof.roofPlanes,
+            attachmentTarget: input.attachmentTarget,
+          }),
+        ]
+      : [];
+  const roofMaterialVisuals =
+    roof.metadata.roofQaStatus === "valid"
+      ? buildHouseRoofMaterialVisuals({
+          roofPlanes: roof.roofPlanes,
+          material: input.roofMaterial,
+        })
+      : [];
+  const roofEaves = perimeterEdges
+    .filter(
+      (edge) =>
+        edge.edgeKind === "drain_eave" ||
+        edge.edgeKind === "weather_flashed_edge" ||
+        edge.edgeKind === "house_apron_edge",
+    )
+    .map((edge) => ({
+      id: `roof-eave-${edge.sourceEdgeId}`,
+      edgeKind: edge.edgeKind,
+      eaveLine: { start: edge.eaveStart, end: edge.eaveEnd },
+      sourceEdgeId: edge.sourceEdgeId,
+      sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
+    }));
+  const solids = buildHouseEnvelopeSolids({
+    wallSegments: input.wallSegments,
+    roofPlanes: roofPlanesForSolids,
+    roofForm: input.roofForm,
+    decks: input.decks,
+    perimeterEdges: perimeterEdges,
+    soffitPolygons,
+    fasciaPolygons,
+    gutterLines,
+    gutterBoundaries,
+    gutterWidthMm: input.gutterWidthMm,
+    gutterDepthMm: input.gutterDepthMm,
+  });
+  const eave = {
+    soffitDepthMm: input.soffitDepthMm,
+    fasciaHeightMm: input.fasciaHeightMm,
+    gutterWidthMm: input.gutterWidthMm,
+    gutterDepthMm: input.gutterDepthMm,
+    gutterProjectionMm: input.gutterProjectionMm,
+    eaveOverhangMm: input.eaveOverhangMm,
+    gutterLines: gutterLines.map((candidate) => candidate.line),
+    gutterBoundaries: gutterBoundaries.map((candidate) => candidate.boundary),
+    fasciaPolygons: fasciaPolygons.map((candidate) => candidate.boundary),
+    soffitPolygons: soffitPolygons.map((candidate) => candidate.boundary),
+    metadata: roof.metadata,
+  };
+  return {
+    perimeterEdges,
+    solids,
+    eave,
+    roofFlashings,
+    roofMaterialVisuals,
+    roofEaves,
+  };
+}
+
 export function buildHouseModel3D(input: {
   /**
    * Source house form id. Stamped onto the returned `HouseModel3D.houseId`
@@ -575,57 +722,12 @@ export function buildHouseModel3D(input: {
     eaveHeightMm,
     fasciaHeightMm,
   });
-  // PR-T8 (2026-05-29): previously the perimeter-edge set was
-  // `[...perimeterEdges, ...buildAppendagePerimeterEdges(...)]`. With
-  // appendages gone, no roof plane carries `roofGeometry: 'appendage_band'`
-  // metadata, so the appendage builder always returned []. Inlined as
-  // just `perimeterEdges`.
-  const perimeterEdges = buildHouseRoofPerimeterEdges({
-    footprint: effectiveRoofFootprint,
-    eavePolygon: effectiveEavePolygon,
-    roofForm,
-    roofPlanes: roof.roofPlanes,
-    eaveHeightMm,
-    joinSourceEdgeId: attachmentTarget.sourceEdgeId ?? null,
-  });
-  const gutterLines = buildPolygonGutterLines({ perimeterEdges });
-  const gutterBoundaries = buildPolygonGutterBoundaries({
-    perimeterEdges,
-    gutterWidthMm,
-    gutterProjectionMm,
-  });
-  const fasciaPolygons = buildPolygonFasciaPolygons({
-    perimeterEdges,
-    fasciaHeightMm,
-  });
-  const soffitPolygons = buildPolygonSoffitPolygons({
-    perimeterEdges,
-    roofForm,
-    roofPlanes: roof.roofPlanes,
-  });
-  const roofPlanesForSolids =
-    roof.metadata.roofQaStatus === "valid" ? roof.roofPlanes : [];
-  const roofFlashings =
-    roof.metadata.roofQaStatus === "valid"
-      ? [
-          ...buildHouseRoofFeatureFlashings({
-            roofPlanes: roof.roofPlanes,
-            roofFeatures: roof.roofFeatures,
-          }),
-          ...buildPerimeterFlashings({
-            perimeterEdges: perimeterEdges,
-            roofPlanes: roof.roofPlanes,
-            attachmentTarget,
-          }),
-        ]
-      : [];
-  const roofMaterialVisuals =
-    roof.metadata.roofQaStatus === "valid"
-      ? buildHouseRoofMaterialVisuals({
-          roofPlanes: roof.roofPlanes,
-          material: roofMaterial,
-        })
-      : [];
+  // PR-SS-6 (2026-06-21): the roof 3D artifacts (perimeter edges,
+  // gutter / fascia / soffit, flashings, material visuals, eave snap
+  // targets, and the extruded envelope solids) are derived below via
+  // `buildHouseRoofEnvelopeArtifacts` once `decks` exist (the solids
+  // builder consumes them). The same helper rebuilds these artifacts
+  // for composition-roof swaps, so there is one implementation.
   const decks = buildHouseDecks({
     decks:
       (model.decks ?? []).flatMap((deck) => {
@@ -746,20 +848,25 @@ export function buildHouseModel3D(input: {
   // consumers re-filter on `edgeKind` when they truly need drains only
   // (gutter rendering, flashing rules). Pergola snap is the primary
   // attachment usage and it needs the full perimeter.
-  const roofEaves = perimeterEdges
-    .filter(
-      (edge) =>
-        edge.edgeKind === "drain_eave" ||
-        edge.edgeKind === "weather_flashed_edge" ||
-        edge.edgeKind === "house_apron_edge",
-    )
-    .map((edge) => ({
-      id: `roof-eave-${edge.sourceEdgeId}`,
-      edgeKind: edge.edgeKind,
-      eaveLine: { start: edge.eaveStart, end: edge.eaveEnd },
-      sourceEdgeId: edge.sourceEdgeId,
-      sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
-    }));
+  const { solids, eave, roofFlashings, roofMaterialVisuals, roofEaves } =
+    buildHouseRoofEnvelopeArtifacts({
+      footprint: effectiveRoofFootprint,
+      eavePolygon: effectiveEavePolygon,
+      roofForm,
+      roof,
+      eaveHeightMm,
+      wallSegments: displayWallSegments,
+      decks,
+      roofMaterial,
+      attachmentTarget,
+      joinSourceEdgeId: attachmentTarget.sourceEdgeId ?? null,
+      soffitDepthMm,
+      fasciaHeightMm,
+      gutterWidthMm,
+      gutterDepthMm,
+      gutterProjectionMm,
+      eaveOverhangMm,
+    });
 
   return {
     houseId: input.houseId,
@@ -772,33 +879,9 @@ export function buildHouseModel3D(input: {
     roofMaterialVisuals,
     decks,
     openings,
-    solids: buildHouseEnvelopeSolids({
-      wallSegments: displayWallSegments,
-      roofPlanes: roofPlanesForSolids,
-      roofForm,
-      decks,
-      perimeterEdges: perimeterEdges,
-      soffitPolygons,
-      fasciaPolygons,
-      gutterLines,
-      gutterBoundaries,
-      gutterWidthMm,
-      gutterDepthMm,
-    }),
+    solids,
     roofEaves,
-    eave: {
-      soffitDepthMm,
-      fasciaHeightMm,
-      gutterWidthMm,
-      gutterDepthMm,
-      gutterProjectionMm,
-      eaveOverhangMm,
-      gutterLines: gutterLines.map((candidate) => candidate.line),
-      gutterBoundaries: gutterBoundaries.map((candidate) => candidate.boundary),
-      fasciaPolygons: fasciaPolygons.map((candidate) => candidate.boundary),
-      soffitPolygons: soffitPolygons.map((candidate) => candidate.boundary),
-      metadata: roof.metadata,
-    },
+    eave,
     attachmentTarget,
     // Workbench's configured ridge axis. Surfaced at the top level
     // (not in `metadata`) so it does NOT participate in the canonical

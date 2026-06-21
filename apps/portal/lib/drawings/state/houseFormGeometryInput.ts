@@ -3,9 +3,17 @@ import {
   applyRoofQa,
   buildHouseModel3DFromRawHouseInput,
   buildHouseReferenceProjectionShape,
+  buildHouseRoofEnvelopeArtifacts,
   buildHouseRoofModelPipeline,
   composeFootprintFromComposition,
   composeRoofFromComposition,
+  DEFAULT_EAVE_OVERHANG_MM,
+  DEFAULT_FASCIA_HEIGHT_MM,
+  DEFAULT_GUTTER_DEPTH_MM,
+  DEFAULT_GUTTER_PROJECTION_MM,
+  DEFAULT_GUTTER_WIDTH_MM,
+  DEFAULT_HOUSE_ROOF_MATERIAL,
+  DEFAULT_SOFFIT_DEPTH_MM,
   EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
   type GeometryTopProjectionShape,
   type HouseComposition,
@@ -173,10 +181,53 @@ export function swapRoofFromComposition(input: {
     ...carriedLegacyMetadata,
     ...composedWithQa.metadata,
   };
+  // PR-SS-6 (2026-06-21): rebuild the roof's 3D artifacts (extruded
+  // solids, eave trim, flashings, material visuals, eave snap targets)
+  // from the composition roof planes. Without this, the legacy build's
+  // roof artifacts carry through unchanged — and for composites the
+  // legacy solver fails QA, so it built ZERO roof solids, leaving the 3D
+  // viewport with walls but no roof ("plan-good / 3D-bad"). This uses the
+  // SAME geometry helper `buildHouseModel3D` uses, so there is one
+  // derivation rather than a drifting parallel pipeline. The orthogonal
+  // straight skeleton builds eave nodes at the footprint corners (no
+  // overhang yet), so the legacy union footprint serves as both the
+  // footprint and the eave polygon.
+  const legacyEave = input.legacyModel.eave;
+  const roofArtifacts = buildHouseRoofEnvelopeArtifacts({
+    footprint: input.legacyModel.footprint,
+    eavePolygon: input.legacyModel.footprint,
+    roofForm: compositeRoofIntent.form,
+    roof: {
+      roofPlanes: composedWithQa.roofPlanes,
+      roofFeatures: composedWithQa.roofFeatures ?? [],
+      metadata: composedWithQa.metadata,
+    },
+    eaveHeightMm,
+    wallSegments: input.legacyModel.wallSegments,
+    decks: input.legacyModel.decks ?? [],
+    roofMaterial: input.legacyModel.roofMaterial ?? DEFAULT_HOUSE_ROOF_MATERIAL,
+    attachmentTarget: input.legacyModel.attachmentTarget ?? {
+      kind: "none",
+      strategy: "none",
+    },
+    joinSourceEdgeId: input.legacyModel.attachmentTarget?.sourceEdgeId ?? null,
+    soffitDepthMm: legacyEave.soffitDepthMm ?? DEFAULT_SOFFIT_DEPTH_MM,
+    fasciaHeightMm: legacyEave.fasciaHeightMm ?? DEFAULT_FASCIA_HEIGHT_MM,
+    gutterWidthMm: legacyEave.gutterWidthMm ?? DEFAULT_GUTTER_WIDTH_MM,
+    gutterDepthMm: legacyEave.gutterDepthMm ?? DEFAULT_GUTTER_DEPTH_MM,
+    gutterProjectionMm:
+      legacyEave.gutterProjectionMm ?? DEFAULT_GUTTER_PROJECTION_MM,
+    eaveOverhangMm: legacyEave.eaveOverhangMm ?? DEFAULT_EAVE_OVERHANG_MM,
+  });
   return {
     ...input.legacyModel,
     roofPlanes: composedWithQa.roofPlanes,
     roofFeatures: composedWithQa.roofFeatures,
+    roofFlashings: roofArtifacts.roofFlashings,
+    roofMaterialVisuals: roofArtifacts.roofMaterialVisuals,
+    solids: roofArtifacts.solids,
+    eave: roofArtifacts.eave,
+    roofEaves: roofArtifacts.roofEaves,
     metadata: mergedMetadata,
   };
 }

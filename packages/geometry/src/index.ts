@@ -59,7 +59,19 @@ export { buildAssemblyQuantityTakeoff } from "./takeoff";
 // Multi-form workbench rendering (PR8): portal callers build per-form
 // freestanding geometry by composing these directly, bypassing the
 // per-pergola normalize/solve pipeline.
-export { buildHouseModel3DFromRawHouseInput } from "./houseModel";
+export {
+  buildHouseModel3DFromRawHouseInput,
+  buildHouseRoofEnvelopeArtifacts,
+} from "./houseModel";
+export {
+  DEFAULT_HOUSE_ROOF_MATERIAL,
+  DEFAULT_SOFFIT_DEPTH_MM,
+  DEFAULT_FASCIA_HEIGHT_MM,
+  DEFAULT_GUTTER_WIDTH_MM,
+  DEFAULT_GUTTER_DEPTH_MM,
+  DEFAULT_GUTTER_PROJECTION_MM,
+  DEFAULT_EAVE_OVERHANG_MM,
+} from "./house/constants";
 export { buildHouseModel3DGeometryConfigInputFromRawHouseInput } from "./houseModelRawInputAdapter";
 export type {
   HouseModel3DGeometryConfigInput,
