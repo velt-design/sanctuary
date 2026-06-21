@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Point2 } from '@sp/geometry';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { MoveToolPreview } from '../../tools/MoveTool';
@@ -21,7 +22,7 @@ type PlanMovePreviewLayerProps = {
   coordinateAdapter: PlanCoordinateAdapter;
 };
 
-export function PlanMovePreviewLayer({
+export const PlanMovePreviewLayer = memo(function PlanMovePreviewLayer({
   preview,
   sourcePolygonMm,
   coordinateAdapter,
@@ -49,4 +50,4 @@ export function PlanMovePreviewLayer({
       />
     </g>
   );
-}
+});

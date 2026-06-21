@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { MouseEvent } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { PlanSeamIconTarget } from '../../interactions/seams/seamIconTargets';
@@ -26,7 +27,7 @@ import lineweightStyles from '../planLineweights.module.css';
  * on coordinates) but is INTERACTIVE — pointer-events: auto on
  * the icons themselves.
  */
-export function PlanSeamIconLayer(props: {
+export const PlanSeamIconLayer = memo(function PlanSeamIconLayer(props: {
   targets: ReadonlyArray<PlanSeamIconTarget>;
   coordinateAdapter: PlanCoordinateAdapter;
   onJoin?: (input: { formAId: string; formBId: string }) => void;
@@ -102,4 +103,4 @@ export function PlanSeamIconLayer(props: {
       })}
     </g>
   );
-}
+});

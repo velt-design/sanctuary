@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { EdgeDragHover } from '../../tools/EdgeDragTool';
 import type { Point2 } from '../polygonEdgeMath';
@@ -27,7 +28,7 @@ type PlanHitTestDebugLayerProps = {
   coordinateAdapter: PlanCoordinateAdapter;
 };
 
-export function PlanHitTestDebugLayer({
+export const PlanHitTestDebugLayer = memo(function PlanHitTestDebugLayer({
   enabled,
   activeOutlinePolygon,
   cursorWorldMm,
@@ -107,4 +108,4 @@ export function PlanHitTestDebugLayer({
       )}
     </g>
   );
-}
+});

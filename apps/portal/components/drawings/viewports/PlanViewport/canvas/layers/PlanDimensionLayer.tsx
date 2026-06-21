@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { PlanCoordinateAdapter, PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import { resolvePlanDimensionGeometry, type PlanDimension } from '../planDimension';
 import styles from '../planLineweights.module.css';
@@ -33,7 +34,7 @@ function arrowPoints(tip: PlanSvgPoint, towards: PlanSvgPoint): string | null {
   ].join(' ');
 }
 
-export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionRenderProps) {
+export const PlanDimensionLayer = memo(function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionRenderProps) {
   return (
     <g className={styles.dimensionLayer} data-plan-layer="dimensions">
       {dimensions.map((dimension) => {
@@ -100,4 +101,4 @@ export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionR
       })}
     </g>
   );
-}
+});

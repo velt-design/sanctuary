@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
@@ -12,7 +13,7 @@ function localHoverClassName(item: PlanRenderItem): string {
     : lineweightStyles.localHoverHalo;
 }
 
-export function PlanLocalHoverLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanLocalHoverLayer = memo(function PlanLocalHoverLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="localHover" pointerEvents="none">
       {items.map((item) => (
@@ -27,4 +28,4 @@ export function PlanLocalHoverLayer({ items }: { items: PlanRenderItem[] }) {
       ))}
     </g>
   );
-}
+});

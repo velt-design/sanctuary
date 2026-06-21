@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { EdgeDragPreview } from '../../tools/EdgeDragTool';
 import lineweightStyles from '../planLineweights.module.css';
@@ -7,7 +8,7 @@ type PlanEdgeDragPreviewLayerProps = {
   coordinateAdapter: PlanCoordinateAdapter;
 };
 
-export function PlanEdgeDragPreviewLayer({ preview, coordinateAdapter }: PlanEdgeDragPreviewLayerProps) {
+export const PlanEdgeDragPreviewLayer = memo(function PlanEdgeDragPreviewLayer({ preview, coordinateAdapter }: PlanEdgeDragPreviewLayerProps) {
   if (!preview) return <g data-plan-layer="edgeDragPreview" />;
   const svgPoints = preview.previewPolygon.map((point) => coordinateAdapter.projectionToSvg(point));
   const pointsAttr = svgPoints.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
@@ -22,4 +23,4 @@ export function PlanEdgeDragPreviewLayer({ preview, coordinateAdapter }: PlanEdg
       />
     </g>
   );
-}
+});

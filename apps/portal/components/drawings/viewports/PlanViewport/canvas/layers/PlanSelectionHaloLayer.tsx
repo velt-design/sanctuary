@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
-export function PlanSelectionHaloLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanSelectionHaloLayer = memo(function PlanSelectionHaloLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="selectionHalo" pointerEvents="none">
       {items.map(({ shape, points }) => (
@@ -16,4 +17,4 @@ export function PlanSelectionHaloLayer({ items }: { items: PlanRenderItem[] }) {
       ))}
     </g>
   );
-}
+});

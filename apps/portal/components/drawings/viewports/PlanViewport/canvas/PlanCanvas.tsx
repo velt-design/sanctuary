@@ -95,10 +95,6 @@ type PlanCanvasProps = {
 const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 const EMPTY_HOVER_HALO_ITEMS: PlanRenderItem[] = [];
 
-function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
-  return `translate(${transform.panX} ${transform.panY}) scale(${transform.zoom})`;
-}
-
 export function PlanCanvas({
   layout,
   coordinateAdapter,
@@ -129,6 +125,7 @@ export function PlanCanvas({
   const dispatcher = useToolDispatcher();
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
+  const { getLiveTransform } = panZoom;
   const projectPergolaFallbackIds = useMemo(
     () =>
       Array.from(
@@ -201,11 +198,14 @@ export function PlanCanvas({
         event.clientX,
         event.clientY,
         coordinateAdapter,
-        // Pass the live pan/zoom transform so the cursor coord lands in the
-        // same coord system as the rendered polygon `points`. Without this,
-        // any non-identity pan or zoom causes the cursor's world coord to
-        // drift away from the visible polygon edges (intermittent hover bug).
-        transform,
+        // Pass the LIVE pan/zoom transform (not the committed React prop) so
+        // the cursor coord lands in the same coord system as the rendered
+        // polygon `points`. Pan/zoom now apply imperatively and commit to
+        // React only on gesture end, so the prop lags during/just after a
+        // gesture — reading the live ref keeps hit-testing exact. Without
+        // this, any non-identity pan or zoom drifts the cursor's world coord
+        // away from the visible polygon edges (intermittent hover bug).
+        getLiveTransform(),
       );
       // The decision tree (skip-on-null, scale to mm, capture-on-down) lives
       // in the pure `buildPointerDispatchAction` helper so it can be tested
@@ -231,7 +231,7 @@ export function PlanCanvas({
       if (action.kind === 'move') dispatcher.dispatchPointerMove(action.payload);
       if (action.kind === 'up') dispatcher.dispatchPointerUp(action.payload);
     },
-    [coordinateAdapter, dispatcher, transform],
+    [coordinateAdapter, dispatcher, getLiveTransform],
   );
 
   const handleEmptyPointerDown = useCallback(
@@ -247,6 +247,24 @@ export function PlanCanvas({
     onTransformChange(IDENTITY_TRANSFORM);
   }, [onTransformChange]);
 
+  // PR-WB-PERF-1 (2026-06-22): these diagnostic / health blobs are read by
+  // tests and external tooling via `data-*` attrs, but serialising them on
+  // every render put `JSON.stringify` on the interaction hot path. Memoise so
+  // they only recompute when the underlying data changes — not on pan/zoom/
+  // hover re-renders.
+  const houseRenderDiagnosticsJson = useMemo(
+    () => JSON.stringify(diagnostics.houses),
+    [diagnostics.houses],
+  );
+  const houseProjectionHealthJson = useMemo(
+    () => JSON.stringify(projectHouseProjectionHealth),
+    [projectHouseProjectionHealth],
+  );
+  const pergolaRenderHealthJson = useMemo(
+    () => JSON.stringify(projectPergolaRenderHealth),
+    [projectPergolaRenderHealth],
+  );
+
   const handlePointerMove = useCallback(
     (event: ReactPointerEvent<SVGSVGElement>) => {
       dispatchPlanPointer('move', event, null);
@@ -258,12 +276,12 @@ export function PlanCanvas({
           event.clientX,
           event.clientY,
           coordinateAdapter,
-          transform,
+          getLiveTransform(),
         );
         setCursorWorldMm(point ? { x: point.x * 1000, y: point.y * 1000 } : null);
       }
     },
-    [coordinateAdapter, debugEnabled, dispatchPlanPointer, panZoom, transform],
+    [coordinateAdapter, debugEnabled, dispatchPlanPointer, panZoom, getLiveTransform],
   );
 
   const handlePointerUp = useCallback(
@@ -327,10 +345,10 @@ export function PlanCanvas({
         data-plan-hit-target-count={allHitTargetItems.length}
         data-plan-visible-reference-fallback-count={diagnostics.visibleReferenceFallbackIds.length}
         data-plan-visible-reference-fallback-ids={diagnostics.visibleReferenceFallbackIds.join(',')}
-        data-plan-house-render-diagnostics={JSON.stringify(diagnostics.houses)}
-        data-plan-house-projection-health={JSON.stringify(projectHouseProjectionHealth)}
+        data-plan-house-render-diagnostics={houseRenderDiagnosticsJson}
+        data-plan-house-projection-health={houseProjectionHealthJson}
         data-plan-house-projection-health-count={projectHouseProjectionHealth.length}
-        data-plan-pergola-render-health={JSON.stringify(projectPergolaRenderHealth)}
+        data-plan-pergola-render-health={pergolaRenderHealthJson}
         data-plan-pergola-render-health-count={projectPergolaRenderHealth.length}
         data-plan-pergola-fallback-count={projectPergolaFallbackIds.length}
         data-plan-pergola-fallback-ids={projectPergolaFallbackIds.join(',')}
@@ -348,7 +366,7 @@ export function PlanCanvas({
         onPointerCancel={handlePointerCancel}
         onContextMenu={panZoom.onContextMenu}
       >
-        <g transform={transformAttr(transform)} data-plan-transform="true">
+        <g ref={panZoom.groupRef} data-plan-transform="true">
           <PlanCommittedBodyLayer items={committedBodies} />
           <PlanContextLineLayer items={contextLines} />
           <PlanDiagnosticFallbackLayer items={diagnosticFallbackItems} />

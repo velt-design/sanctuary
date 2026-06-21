@@ -6,6 +6,7 @@ import {
   planShapeIsPergolaDiagnosticFallback,
   planShapeIsVisibleHouseReferenceFallback,
 } from '@/lib/drawings/views/plan/planShapeOwnership';
+import { memo } from 'react';
 import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
@@ -16,7 +17,7 @@ function fallbackClassName(item: PlanRenderItem): string {
   return lineweightStyles.diagnosticFallbackHouse;
 }
 
-export function PlanDiagnosticFallbackLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanDiagnosticFallbackLayer = memo(function PlanDiagnosticFallbackLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="diagnosticFallbacks" pointerEvents="none">
       {items.filter((item) => planShapeIsDiagnosticFallback(item.shape)).map((item) => (
@@ -40,4 +41,4 @@ export function PlanDiagnosticFallbackLayer({ items }: { items: PlanRenderItem[]
       ))}
     </g>
   );
-}
+});

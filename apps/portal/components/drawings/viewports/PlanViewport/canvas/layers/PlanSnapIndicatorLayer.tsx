@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Point2 } from '@sp/geometry';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { EdgeDragPreview } from '../../tools/EdgeDragTool';
@@ -73,7 +74,7 @@ function renderSnapVisual(input: {
  * sibling to `PlanEdgeDragPreviewLayer` so preview polygon and snap
  * source-line render with separate visual roles.
  */
-export function PlanSnapIndicatorLayer({
+export const PlanSnapIndicatorLayer = memo(function PlanSnapIndicatorLayer({
   preview,
   coordinateAdapter,
 }: {
@@ -97,7 +98,7 @@ export function PlanSnapIndicatorLayer({
     coordinateAdapter,
     layerName: 'snapIndicator',
   });
-}
+});
 
 function translatedEdgeMidpoint(
   sourcePolygonMm: ReadonlyArray<Point2>,
@@ -125,7 +126,7 @@ function translatedEdgeMidpoint(
  * target lines. The secondary visual reuses `renderSnapVisual` for
  * consistency. See `resolveMoveSnap.ts` for the geometry.
  */
-export function PlanMoveSnapIndicatorLayer({
+export const PlanMoveSnapIndicatorLayer = memo(function PlanMoveSnapIndicatorLayer({
   preview,
   sourcePolygonMm,
   coordinateAdapter,
@@ -173,4 +174,4 @@ export function PlanMoveSnapIndicatorLayer({
       ) : null}
     </g>
   );
-}
+});

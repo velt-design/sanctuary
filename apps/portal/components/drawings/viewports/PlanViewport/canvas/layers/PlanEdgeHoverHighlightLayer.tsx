@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { EdgeDragHover } from '../../tools/EdgeDragTool';
 import lineweightStyles from '../planLineweights.module.css';
@@ -7,7 +8,7 @@ type PlanEdgeHoverHighlightLayerProps = {
   coordinateAdapter: PlanCoordinateAdapter;
 };
 
-export function PlanEdgeHoverHighlightLayer({ hover, coordinateAdapter }: PlanEdgeHoverHighlightLayerProps) {
+export const PlanEdgeHoverHighlightLayer = memo(function PlanEdgeHoverHighlightLayer({ hover, coordinateAdapter }: PlanEdgeHoverHighlightLayerProps) {
   if (!hover) return <g data-plan-layer="edgeHoverHighlight" />;
   const start = coordinateAdapter.projectionToSvg(hover.edgeStart);
   const end = coordinateAdapter.projectionToSvg(hover.edgeEnd);
@@ -33,4 +34,4 @@ export function PlanEdgeHoverHighlightLayer({ hover, coordinateAdapter }: PlanEd
       />
     </g>
   );
-}
+});

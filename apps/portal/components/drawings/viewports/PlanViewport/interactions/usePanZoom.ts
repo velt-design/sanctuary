@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import {
   applyAnchoredModelSpaceZoom,
   clampModelSpaceZoom,
@@ -16,11 +16,34 @@ export type UsePanZoomInput = {
 
 export type UsePanZoomOutput = {
   wheelRef: (node: SVGSVGElement | null) => void;
+  /**
+   * Ref for the transformed `<g>`. usePanZoom writes its `transform`
+   * attribute IMPERATIVELY on every pan/zoom frame (no React re-render) and
+   * syncs it from the committed transform via a layout effect. The `<g>`
+   * must NOT also set `transform` through JSX or React would clobber the
+   * imperative value on unrelated re-renders.
+   */
+  groupRef: RefObject<SVGGElement | null>;
+  /**
+   * The LIVE transform (updated imperatively each frame). Pointer->world
+   * mapping must read this — not the committed React prop — so a click
+   * immediately after a wheel-zoom (before the debounced commit) still maps
+   * the cursor to the correct world coordinate.
+   */
+  getLiveTransform: () => DrawingWorkbenchViewportTransform;
   onPointerDown: (event: React.PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (event: React.PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (event: React.PointerEvent<SVGSVGElement>) => void;
   onContextMenu: (event: React.MouseEvent<SVGSVGElement>) => void;
 };
+
+function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
+  return `translate(${transform.panX} ${transform.panY}) scale(${transform.zoom})`;
+}
+
+// A fast wheel burst commits to React/store ONCE, this long after the last
+// tick — so a 30-tick zoom is one re-render, not thirty.
+const WHEEL_COMMIT_DEBOUNCE_MS = 120;
 
 type PlanPanSession = {
   pointerId: number;
@@ -77,39 +100,83 @@ export function resolvePannedTransform(input: {
 
 export function usePanZoom({ transform, onTransformChange }: UsePanZoomInput): UsePanZoomOutput {
   const sessionRef = useRef<PlanPanSession | null>(null);
-  const transformRef = useRef(transform);
-  transformRef.current = transform;
+  // The LIVE transform — updated imperatively on every pan/zoom frame with NO
+  // React re-render. The committed prop syncs into it via the layout effect.
+  const liveTransformRef = useRef(transform);
+  const groupRef = useRef<SVGGElement | null>(null);
   const onTransformChangeRef = useRef(onTransformChange);
   onTransformChangeRef.current = onTransformChange;
   const wheelCleanupRef = useRef<(() => void) | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const wheelCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const wheelRef = useCallback((node: SVGSVGElement | null) => {
-    if (wheelCleanupRef.current) {
-      wheelCleanupRef.current();
-      wheelCleanupRef.current = null;
-    }
-    svgRef.current = node;
-    if (!node) return;
-    const handler = (event: WheelEvent) => {
-      const svg = svgRef.current;
-      if (!svg) return;
-      const anchor = clientPointToSvg(svg, event.clientX, event.clientY);
-      if (!anchor) return;
-      const next = resolveWheelZoomedTransform({
-        transform: transformRef.current,
-        deltaMode: event.deltaMode,
-        deltaX: event.deltaX,
-        deltaY: event.deltaY,
-        anchor,
-      });
-      if (!next) return;
-      event.preventDefault();
-      onTransformChangeRef.current(next);
-    };
-    node.addEventListener('wheel', handler, { passive: false });
-    wheelCleanupRef.current = () => node.removeEventListener('wheel', handler);
+  // Write a transform to the rendered group imperatively — the per-frame hot
+  // path. No setState, so no React reconciliation of the SVG subtree.
+  const applyLiveTransform = useCallback(
+    (next: DrawingWorkbenchViewportTransform) => {
+      liveTransformRef.current = next;
+      groupRef.current?.setAttribute('transform', transformAttr(next));
+    },
+    [],
+  );
+
+  // Sync the committed transform (prop) -> live ref + rendered group. Runs
+  // only when the committed value actually changes (gesture commit, fit-view,
+  // programmatic) — so it never fights mid-gesture imperative writes — and
+  // before paint, so there is no flash on mount or commit.
+  useLayoutEffect(() => {
+    applyLiveTransform(transform);
+  }, [transform, applyLiveTransform]);
+
+  // Drop any pending wheel-commit on unmount.
+  useEffect(
+    () => () => {
+      if (wheelCommitTimerRef.current) clearTimeout(wheelCommitTimerRef.current);
+    },
+    [],
+  );
+
+  const getLiveTransform = useCallback(() => liveTransformRef.current, []);
+
+  const commitLiveTransform = useCallback(() => {
+    onTransformChangeRef.current(liveTransformRef.current);
   }, []);
+
+  const wheelRef = useCallback(
+    (node: SVGSVGElement | null) => {
+      if (wheelCleanupRef.current) {
+        wheelCleanupRef.current();
+        wheelCleanupRef.current = null;
+      }
+      svgRef.current = node;
+      if (!node) return;
+      const handler = (event: WheelEvent) => {
+        const svg = svgRef.current;
+        if (!svg) return;
+        const anchor = clientPointToSvg(svg, event.clientX, event.clientY);
+        if (!anchor) return;
+        const next = resolveWheelZoomedTransform({
+          transform: liveTransformRef.current,
+          deltaMode: event.deltaMode,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          anchor,
+        });
+        if (!next) return;
+        event.preventDefault();
+        // Zoom instantly (imperative), debounce the React/store commit.
+        applyLiveTransform(next);
+        if (wheelCommitTimerRef.current) clearTimeout(wheelCommitTimerRef.current);
+        wheelCommitTimerRef.current = setTimeout(
+          commitLiveTransform,
+          WHEEL_COMMIT_DEBOUNCE_MS,
+        );
+      };
+      node.addEventListener('wheel', handler, { passive: false });
+      wheelCleanupRef.current = () => node.removeEventListener('wheel', handler);
+    },
+    [applyLiveTransform, commitLiveTransform],
+  );
 
   const onPointerDown = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     if (event.button !== 2) return;
@@ -128,40 +195,56 @@ export function usePanZoom({ transform, onTransformChange }: UsePanZoomInput): U
       pointerId: event.pointerId,
       startSvgX: start.x,
       startSvgY: start.y,
-      startPanX: transformRef.current.panX,
-      startPanY: transformRef.current.panY,
+      startPanX: liveTransformRef.current.panX,
+      startPanY: liveTransformRef.current.panY,
     };
   }, []);
 
-  const onPointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
-    const session = sessionRef.current;
-    if (!session || session.pointerId !== event.pointerId) return;
-    const svg = svgRef.current ?? event.currentTarget;
-    const current = clientPointToSvg(svg, event.clientX, event.clientY);
-    if (!current) return;
-    onTransformChangeRef.current({
-      ...transformRef.current,
-      panX: session.startPanX + current.x - session.startSvgX,
-      panY: session.startPanY + current.y - session.startSvgY,
-    });
-  }, []);
+  const onPointerMove = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      const session = sessionRef.current;
+      if (!session || session.pointerId !== event.pointerId) return;
+      const svg = svgRef.current ?? event.currentTarget;
+      const current = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!current) return;
+      // Pan imperatively; the single React/store commit happens on pointer-up.
+      applyLiveTransform({
+        ...liveTransformRef.current,
+        panX: session.startPanX + current.x - session.startSvgX,
+        panY: session.startPanY + current.y - session.startSvgY,
+      });
+    },
+    [applyLiveTransform],
+  );
 
-  const onPointerUp = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
-    const session = sessionRef.current;
-    if (!session || session.pointerId !== event.pointerId) return;
-    sessionRef.current = null;
-    if (typeof event.currentTarget.releasePointerCapture === 'function') {
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        // ignore release errors after pointer is gone
+  const onPointerUp = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      const session = sessionRef.current;
+      if (!session || session.pointerId !== event.pointerId) return;
+      sessionRef.current = null;
+      if (typeof event.currentTarget.releasePointerCapture === 'function') {
+        try {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        } catch {
+          // ignore release errors after pointer is gone
+        }
       }
-    }
-  }, []);
+      commitLiveTransform();
+    },
+    [commitLiveTransform],
+  );
 
   const onContextMenu = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
     event.preventDefault();
   }, []);
 
-  return { wheelRef, onPointerDown, onPointerMove, onPointerUp, onContextMenu };
+  return {
+    wheelRef,
+    groupRef,
+    getLiveTransform,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onContextMenu,
+  };
 }

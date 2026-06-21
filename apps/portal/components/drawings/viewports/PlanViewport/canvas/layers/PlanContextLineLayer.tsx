@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
-export function PlanContextLineLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanContextLineLayer = memo(function PlanContextLineLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="contextLines" pointerEvents="none">
       {items.map(({ shape, points }) => (
@@ -25,4 +26,4 @@ export function PlanContextLineLayer({ items }: { items: PlanRenderItem[] }) {
       ))}
     </g>
   );
-}
+});

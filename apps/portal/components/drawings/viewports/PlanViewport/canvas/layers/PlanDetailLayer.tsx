@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
-export function PlanDetailLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanDetailLayer = memo(function PlanDetailLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="detailLines" pointerEvents="none">
       {items.map(({ shape, points }) => (
@@ -16,4 +17,4 @@ export function PlanDetailLayer({ items }: { items: PlanRenderItem[] }) {
       ))}
     </g>
   );
-}
+});

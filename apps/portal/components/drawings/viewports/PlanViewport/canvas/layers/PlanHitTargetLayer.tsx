@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import { topProjectionShapeClassifier } from '@/components/drawings/viewports/selection/selectionRouter';
@@ -14,7 +15,7 @@ export type PlanHitTargetLayerProps = {
   onShapeLeave: (shapeId: string) => void;
 };
 
-export function PlanHitTargetLayer({
+export const PlanHitTargetLayer = memo(function PlanHitTargetLayer({
   items,
   onShapePointerDown,
   onShapeEnter,
@@ -53,4 +54,4 @@ export function PlanHitTargetLayer({
       ))}
     </g>
   );
-}
+});

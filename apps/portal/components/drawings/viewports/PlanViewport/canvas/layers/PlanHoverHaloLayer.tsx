@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
@@ -11,7 +12,7 @@ import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
  * Empty `items` produces no DOM: when there's no external hover, the layer
  * is effectively absent.
  */
-export function PlanHoverHaloLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanHoverHaloLayer = memo(function PlanHoverHaloLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="hoverHalo" pointerEvents="none">
       {items.map(({ shape, points }) => (
@@ -26,4 +27,4 @@ export function PlanHoverHaloLayer({ items }: { items: PlanRenderItem[] }) {
       ))}
     </g>
   );
-}
+});

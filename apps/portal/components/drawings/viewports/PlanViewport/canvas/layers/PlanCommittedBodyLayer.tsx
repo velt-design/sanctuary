@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { planCommittedBodyTokenClass } from '../shapeStyle';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 import { planShapeIsVisibleHouseReferenceFallback } from '@/lib/drawings/views/plan/planShapeOwnership';
 
-export function PlanCommittedBodyLayer({ items }: { items: PlanRenderItem[] }) {
+export const PlanCommittedBodyLayer = memo(function PlanCommittedBodyLayer({ items }: { items: PlanRenderItem[] }) {
   return (
     <g data-plan-layer="committedBodies" pointerEvents="none">
       {items.map(({ shape, points }) => (
@@ -21,4 +22,4 @@ export function PlanCommittedBodyLayer({ items }: { items: PlanRenderItem[] }) {
       ))}
     </g>
   );
-}
+});
