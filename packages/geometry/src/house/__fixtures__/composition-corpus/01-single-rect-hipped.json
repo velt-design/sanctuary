@@ -35,9 +35,5 @@
     "valleyCount": 0,
     "areaDeltaMaxAbsMm2": 100,
     "unifiedNotStitched": true
-  },
-  "knownFailure": {
-    "closesIn": "PR-SS-4",
-    "reason": "Single-rectangle currently routes through the stitched per-rectangle loop and stamps roofGeometry: composition_stitched. After PR-SS-4 the orchestrator uses one canonical skeleton path for every composition — single-rect becomes the trivial 4-facet case but its stamp is the canonical skeleton stamp, not the stitched fallback stamp."
   }
 }

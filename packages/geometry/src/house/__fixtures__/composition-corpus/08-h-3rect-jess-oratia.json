@@ -76,9 +76,5 @@
     "valleyCount": 4,
     "areaDeltaMaxAbsMm2": 5000,
     "unifiedNotStitched": true
-  },
-  "knownFailure": {
-    "closesIn": "PR-SS-4",
-    "reason": "User's actual reference shape. Wavefront fails roof_wavefront_unclosed_boundary on this asymmetric H. Snap helps simpler cases but not this topology. Straight-skeleton replacement is the fix."
   }
 }

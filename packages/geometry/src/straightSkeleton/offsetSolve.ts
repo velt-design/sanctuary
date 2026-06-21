@@ -315,27 +315,13 @@ export function computeOrthogonalStraightSkeletonOffset(
     // Rebuild the event set from the current wavefront (small N; robust —
     // no stale-event bookkeeping). Earliest wins; ties: collapse before
     // split, then lowest index — deterministic, correctness-independent.
-    let best: Ev | null = null;
+    const candidates: Ev[] = [];
     const consider = (ev: Ev): void => {
       if (!Number.isInteger(ev.time)) {
         fail(`time_not_integral_in_2x: ${ev.kind} t=${ev.time}`);
         return;
       }
-      if (best === null || ev.time < best.time) {
-        best = ev;
-        return;
-      }
-      if (ev.time > best.time) return;
-      // Tie-break at equal time: SPLIT < COLLAPSE < RIDGE.
-      //  - split first: a simultaneous collapse can extend the split's
-      //    target eave into a parallel-ridge state whose extent is
-      //    undefined; cutting first keeps the extent valid.
-      //  - ridge last: in a 3-edge loop (one perpendicular edge + a
-      //    parallel pair) the perpendicular edge must collapse first,
-      //    reducing to a 2-edge loop the finalizer handles cleanly.
-      const rank = (k: Ev["kind"]) =>
-        k === "split" ? 0 : k === "collapse" ? 1 : k === "ridge" ? 2 : 3;
-      if (rank(ev.kind) < rank(best.kind)) best = ev;
+      candidates.push(ev);
     };
     for (const e of wedges) {
       if (!e.alive) continue;
@@ -378,8 +364,25 @@ export function computeOrthogonalStraightSkeletonOffset(
       }
     }
     if (failure) return { ok: false, error: failure };
-    if (best === null) break;
-    const event: Ev = best;
+    if (candidates.length === 0) break;
+    // Earliest event wins. Tie-break at equal time: SPLIT < COLLAPSE <
+    // RIDGE < SLAB.
+    //  - split first: a simultaneous collapse can extend the split's
+    //    target eave into a parallel-ridge state whose extent is
+    //    undefined; cutting first keeps the extent valid.
+    //  - ridge before slab: a clean parallel pair resolves before the
+    //    degenerate one-axis slab loop is retired.
+    const rank = (k: Ev["kind"]) =>
+      k === "split" ? 0 : k === "collapse" ? 1 : k === "ridge" ? 2 : 3;
+    let event: Ev = candidates[0]!;
+    for (const ev of candidates) {
+      if (
+        ev.time < event.time ||
+        (ev.time === event.time && rank(ev.kind) < rank(event.kind))
+      ) {
+        event = ev;
+      }
+    }
 
     if (event.kind === "collapse") {
       const e = wedges[event.eIndex]!;

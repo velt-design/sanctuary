@@ -7,6 +7,7 @@ import type {
 import { buildJoinedRectilinearHippedRoof } from "../roofJoinedHipped";
 import { buildFlatHouseRoof, buildMonoHouseRoof } from "../roofPrimary";
 import { buildRectangularRoof } from "../roofRectangle";
+import { buildSkeletonRoof } from "../roofSkeleton";
 import { composeFootprintFromComposition } from "./composeFootprintFromComposition";
 import { detectFusedRectangle } from "./fusedRectangleDetector";
 import {
@@ -109,6 +110,27 @@ export function composeRoofFromComposition(input: {
     intentsEqual(r.roofIntent, rectangles[0]!.roofIntent),
   );
 
+  // Single hipped rectangle: route through the rectangular builder so
+  // the designer's ridge-axis choice is honoured, and stamp a unified
+  // (non-stitched) result. (PR-SS-4: closes the 01 single-rect fixture
+  // — it previously fell through to the per-rectangle stitched path.)
+  if (rectangles.length === 1 && rectangles[0]!.roofIntent.form === "hipped") {
+    const result = solveSingleRectangle({
+      rectangle: rectangles[0]!,
+      eaveHeightMm: input.eaveHeightMm,
+      idSuffix: "rect1",
+    });
+    return {
+      roofPlanes: result.roofPlanes,
+      roofFeatures: result.roofFeatures,
+      metadata: {
+        roofGeometry: "composition_unified",
+        roofTopologySolver: "composition_single_rectangle",
+        compositionPrimitiveCount: 1,
+      },
+    };
+  }
+
   // Strategy 1: fused-rectangle shortcut.
   if (allIntentsIdentical && rectangles.length > 1) {
     const unionPolygon = composeFootprintFromComposition(input.composition);
@@ -154,9 +176,37 @@ export function composeRoofFromComposition(input: {
     rectangles.length > 1 &&
     rectangles[0]!.roofIntent.form === "hipped"
   ) {
-    compositionUnifiedAttempted = true;
     const intent = rectangles[0]!.roofIntent;
     const unionPolygon = composeFootprintFromComposition(input.composition);
+
+    // Strategy 2a (PR-SS-4): orthogonal straight-skeleton solver. The
+    // from-scratch equidistance engine produces a single coherent hipped
+    // roof — exact ridges/valleys, area-conserving — for L/T/U/H/plus and
+    // symmetric shapes. It self-guards (returns !ok with a typed error on
+    // any shape it cannot yet fully resolve, e.g. some crossbar/stepped
+    // junctions), so we fall through to the wavefront fallback below
+    // rather than ever emitting overlapping facets.
+    const skeletonRoof = buildSkeletonRoof({
+      polygon: unionPolygon.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+      eaveHeightMm: input.eaveHeightMm,
+      roofPitchDeg: intent.pitchDeg,
+    });
+    if (skeletonRoof.ok) {
+      return {
+        roofPlanes: skeletonRoof.roofPlanes,
+        roofFeatures: skeletonRoof.roofFeatures,
+        metadata: {
+          ...skeletonRoof.metadata,
+          roofGeometry: "composition_unified",
+          roofTopologySolver: "orthogonal_straight_skeleton",
+          compositionPrimitiveCount: rectangles.length,
+        },
+      };
+    }
+
+    // Strategy 2b: unified wavefront fallback (the legacy inward-wavefront
+    // solver) for shapes the skeleton cannot yet resolve.
+    compositionUnifiedAttempted = true;
     // PR-COMP-UNIFIED-3 (2026-06-19): integer-snap the union polygon
     // before passing to the wavefront. Composition primitives carry
     // float-precision noise from drag-resize operations

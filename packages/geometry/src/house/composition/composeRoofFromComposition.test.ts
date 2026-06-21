@@ -44,8 +44,10 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
       });
       // Hipped rectangle = 2 trapezoidal main slopes + 2 hip triangles = 4 planes
       expect(result.roofPlanes).toHaveLength(4);
+      // PR-SS-4: single hipped rectangles route through the rectangular
+      // builder (ridge-axis honoured), not the per-rectangle stitched path.
       expect(result.metadata.roofTopologySolver).toBe(
-        "composition_per_rectangle_stitched",
+        "composition_single_rectangle",
       );
     });
 
@@ -229,7 +231,7 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
       });
       expect(result.roofPlanes).toHaveLength(6);
       expect(result.metadata.roofTopologySolver).toBe(
-        "composition_joined_wavefront",
+        "orthogonal_straight_skeleton",
       );
       expect(result.metadata.roofGeometry).toBe("composition_unified");
       expect(result.metadata.approximationReasons).toBeUndefined();
@@ -263,7 +265,7 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
         eaveHeightMm: 2400,
       });
       expect(result.metadata.roofTopologySolver).toBe(
-        "composition_joined_wavefront",
+        "orthogonal_straight_skeleton",
       );
       expect(result.roofPlanes).toHaveLength(8);
       // Two reflex corners at the T → at least 2 valleys.
@@ -298,7 +300,7 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
         eaveHeightMm: 2400,
       });
       expect(result.metadata.roofTopologySolver).toBe(
-        "composition_joined_wavefront",
+        "orthogonal_straight_skeleton",
       );
       // U has 8 outer edges → 8 facets.
       expect(result.roofPlanes).toHaveLength(8);
