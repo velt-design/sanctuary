@@ -136,6 +136,7 @@ describe("PlanViewport", () => {
               roofMaterialBodyIds: [],
               sceneBodyCount: 0,
               sceneRoofBodyCount: 0,
+              sceneRoofSurfaceCount: 0,
               sceneRoofMaterialBodyCount: 0,
               canRenderCommittedBody: false,
               visibleReferenceFallbackIds: ["house_reference:house-form-2"],

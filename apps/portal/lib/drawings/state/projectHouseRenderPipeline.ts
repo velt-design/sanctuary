@@ -76,6 +76,7 @@ function emptyHouseHealth(input: {
     roofMaterialBodyIds: [],
     sceneBodyCount: 0,
     sceneRoofBodyCount: 0,
+    sceneRoofSurfaceCount: 0,
     sceneRoofMaterialBodyCount: 0,
     canRenderCommittedBody: false,
     visibleReferenceFallbackIds: [],
@@ -156,6 +157,9 @@ function buildHealthForEntry(input: {
   const sceneRoofBodyCount =
     entry.model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof")
       .length ?? 0;
+  const sceneRoofSurfaceCount = sceneObjects.filter(
+    (object) => object.type === "house_surface" && object.kind === "roof",
+  ).length;
   const sceneRoofMaterialBodyCount = roofMaterialSceneObjects.length;
   const inputDiagnostics = entry.geometryInputDiagnostics;
   const failureStage = houseProjectionFailureStage({
@@ -205,6 +209,7 @@ function buildHealthForEntry(input: {
     roofIntentResolutionSource: inputDiagnostics.roofIntentResolutionSource,
     roofIntentRepairCode: inputDiagnostics.roofIntentRepairCode,
     sceneRoofBodyCount,
+    sceneRoofSurfaceCount,
     ...pickHouseRoofStageDiagnostics(inputDiagnostics),
   };
 }

@@ -821,6 +821,44 @@ export function buildHouseModelSceneObjects(input: {
       });
       if (object) objects.push(object);
     }
+
+    // PR-SS-5 (2026-06-21): roof-plane fallback inside the with-solids
+    // path. Composition roofs are swapped into the model AFTER the
+    // legacy build (`swapRoofFromComposition`), which only updates
+    // `roofPlanes` — the roof *solids* were gated on the legacy build's
+    // `roofQaStatus` (houseModel.ts:606) and are absent whenever the
+    // legacy solver failed (e.g. multi-rect H/T/U composites the
+    // skeleton solver now handles). Walls still produce solids, so
+    // `hasSolids` is true and this branch runs — but with no roof solid
+    // the 3D scene would show solid walls under an empty sky. Emit the
+    // valid composition roof planes as flat surfaces so the unified
+    // hipped roof renders. (Polished roof solids — thickness, fascia,
+    // gutter — from the composition planes are a followup; that needs
+    // the eave/overhang derivation reconciled with the legacy walls.)
+    const hasRoofSolids = (model.solids?.surfaceSolids ?? []).some(
+      (solid) => solid.kind === "roof",
+    );
+    if (!hasRoofSolids) {
+      for (const roofPlane of model.roofPlanes) {
+        const roofPlaneMetadata = skipRoofSolids
+          ? {
+              ...roofPlane.metadata,
+              houseRoofRenderRole: "diagnostic",
+              roofRenderSkipReason: "roof_qa_invalid",
+              roofQaStatus: "invalid",
+            }
+          : roofPlane.metadata;
+        const object = buildHouseSurfaceObject({
+          id: roofPlane.id,
+          sourceId: roofPlane.id,
+          kind: "roof",
+          boundary: roofPlane.boundary,
+          plane: roofPlane.plane,
+          metadata: roofPlaneMetadata,
+        });
+        if (object) objects.push(object);
+      }
+    }
   } else {
     // No-solids fallback path. Open-gable walls render as their pentagonal
     // boundary face here (flat surface, no thickness) — better than missing

@@ -352,4 +352,58 @@ test.describe('workbench fixture route', () => {
     await switchWorkbenchMode(page, '3D Review');
     await expect3DViewportEvidence(page);
   });
+
+  // PR-SS-5 (2026-06-21): live verification for the "plan-good /
+  // 3D-bad" fix. The Jess-Oratia H composite fails the legacy roof
+  // solver, so `buildHouseModel3D` builds NO roof solids; the
+  // composition swap installs the valid skeleton roof PLANES. Plan was
+  // already correct; 3D was empty because the viewer rendered solids.
+  // The viewer now emits roof planes as surfaces when no roof solid
+  // exists. This drives the real workbench on the registered fixture.
+  test('renders the Jess-Oratia H composite roof in 3D (skeleton planes, no legacy solids)', async ({
+    page,
+  }, testInfo) => {
+    await openWorkbenchFixture(page, 'jess-oratia-h');
+
+    // HR1-style diagnostic from the real render pipeline.
+    await switchWorkbenchMode(page, 'Plan Editor');
+    await expect(page.locator('[data-plan-viewport="true"]')).toBeVisible();
+    const health = await readPlanHouseProjectionHealth(page);
+    expect(health.length).toBeGreaterThan(0);
+    const house = health[0]!;
+
+    // The composition route produced a unified skeleton roof.
+    expect(house.roofGeometry).toBe('composition_unified');
+    expect(house.roofTopologySolver).toBe('orthogonal_straight_skeleton');
+    expect(house.roofQaStatus).toBe('valid');
+    expect(house.roofPlaneCount).toBeGreaterThanOrEqual(12);
+
+    // The bug condition: the legacy build produced ZERO roof solids
+    // (legacy QA failed on the H), so the solid-based scene roof count
+    // is also 0.
+    expect(house.roofSolidCount).toBe(0);
+    expect(house.sceneRoofBodyCount).toBe(0);
+
+    // The fix: roof SURFACES reach the rendered 3D scene despite the
+    // absent solids — the viewer falls back to the composition roof
+    // planes. This is what was missing before (plan-good / 3D-bad).
+    expect(house.sceneRoofSurfaceCount).toBeGreaterThanOrEqual(12);
+
+    // 3D viewport mounts a non-empty scene (was "3D Preview Error").
+    await switchWorkbenchMode(page, '3D Review');
+    await expect3DViewportEvidence(page);
+    const previewSource = await read3DProjectPreviewSource(page);
+    expect(previewSource).not.toBe('');
+    expect(previewSource.toLowerCase()).not.toContain('error');
+
+    // Visual record of the live 3D roof.
+    const shell = page
+      .locator('[data-testid="geometry-3d-canvas-shell"]')
+      .first();
+    await page.waitForTimeout(1500);
+    await testInfo.attach('jess-oratia-h-3d', {
+      body: await shell.screenshot(),
+      contentType: 'image/png',
+    });
+  });
 });

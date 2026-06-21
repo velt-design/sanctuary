@@ -87,6 +87,7 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofMaterialBodyIds: string[];
   sceneBodyCount: number;
   sceneRoofBodyCount: number;
+  sceneRoofSurfaceCount: number;
   sceneRoofMaterialBodyCount: number;
   canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];

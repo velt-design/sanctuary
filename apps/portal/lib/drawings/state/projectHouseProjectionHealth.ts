@@ -17,6 +17,12 @@ export type ProjectHouseProjectionHealth = {
   roofMaterialBodyIds: string[];
   sceneBodyCount: number;
   sceneRoofBodyCount: number;
+  // PR-SS-5 (2026-06-21): roof house_surface objects in the rendered
+  // 3D scene. Distinct from `sceneRoofBodyCount`, which counts roof
+  // SOLIDS — skeleton composites (legacy QA failed → no roof solids)
+  // render the roof as planes/surfaces, so the solid count is 0 even
+  // though the roof IS in the scene. This counts those surfaces.
+  sceneRoofSurfaceCount: number;
   sceneRoofMaterialBodyCount: number;
   canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];
