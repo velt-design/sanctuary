@@ -73,6 +73,9 @@ export type UsePlanRenderModelInput = {
 const EMPTY_HOUSE_REFERENCE_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
 const EMPTY_PROJECT_PERGOLA_PLAN_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
 const EMPTY_PROJECT_CONTEXT_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
+// Stable empty array so the halo memos return a referentially-stable value
+// when there's no selection/hover (memoized layers then skip re-rendering).
+const EMPTY_RENDER_ITEMS: PlanRenderItem[] = [];
 
 function projectionShapeIdentity(shape: GeometryTopProjectionShape): string {
   return shape.sourceObjectId
@@ -206,7 +209,11 @@ export function usePlanRenderModel({
   // refreshes the layout from the new project's shapes.
   const cachedLayoutProjectionRef = useRef<GeometryTopProjectionViewModel | null>(null);
 
-  return useMemo(() => {
+  // PR-WB-PERF-2 (2026-06-22): the HEAVY projection memo — re-projects every
+  // polygon + rebuilds the render graph. Its deps are geometry/visibility
+  // ONLY. Selection + hover (high-frequency, cursor-driven) are split into
+  // cheap filter memos below so hovering no longer rebuilds this.
+  const base = useMemo(() => {
     if (!projection) return null;
     const allShapes = mergeProjectionShapesWithProjectContext({
       projectionShapes: mergeProjectionShapesWithProjectPergolas({
@@ -261,7 +268,30 @@ export function usePlanRenderModel({
     const contextLines = renderGraph.contextLines as PlanRenderItem[];
     const detailLines = renderGraph.detailLines as PlanRenderItem[];
     const hitTargetItems = renderGraph.hitTargets as PlanRenderItem[];
-    const matchedItems = hitTargetItems.filter(({ shape }) =>
+    return {
+      layout,
+      adapter,
+      committedBodies,
+      diagnosticFallbackItems,
+      contextLines,
+      detailLines,
+      hitTargetItems,
+      diagnostics: renderGraph.diagnostics,
+    };
+  }, [
+    houseReferenceShapes,
+    projectContextShapes,
+    projectPergolaPlanShapes,
+    projection,
+    visibility,
+  ]);
+
+  // Selection halo: a cheap filter over the (stable) hit-target items.
+  // Recomputes only when the active selection changes — NOT on every
+  // hover or geometry-stable re-render.
+  const selectionHaloItems = useMemo<PlanRenderItem[]>(() => {
+    if (!base) return EMPTY_RENDER_ITEMS;
+    const matchedItems = base.hitTargetItems.filter(({ shape }) =>
       activeObjectMatchesPlanShape(activeObjectRef, shape),
     );
     const activeFamily = (activeObjectRef?.family ?? null) as ActiveObjectFamily | null;
@@ -276,44 +306,31 @@ export function usePlanRenderModel({
           activeFamily,
         )
       : null;
-    const selectionHaloItems: PlanRenderItem[] = primary
+    return primary
       ? [{ shape: primary.shape, points: primary.points, layer: primary.layer }]
       : matchedItems;
-    // Hover halo: same matching rule as selection, but driven by the
-    // external hover ref. Skip when the hovered object IS the active
-    // object (the selection halo already covers it; double-painting just
-    // muddies the visual). Skip when hover ref is the same family/objectId
-    // as the active object so we don't compete with selection styling.
+  }, [base, activeObjectRef]);
+
+  // Hover halo: same cheap filter, driven by the external hover ref. Skip
+  // when the hovered object IS the active selection (the selection halo
+  // already covers it; double-painting just muddies the visual). Splitting
+  // this out is the core Tier-2 win: hovering no longer re-projects geometry.
+  const hoverHaloItems = useMemo<PlanRenderItem[]>(() => {
+    if (!base) return EMPTY_RENDER_ITEMS;
     const hoverIsActive =
       hoveredObjectRef &&
       activeObjectRef &&
       hoveredObjectRef.family === activeObjectRef.family &&
       hoveredObjectRef.objectId === activeObjectRef.objectId;
-    const hoverHaloItems: PlanRenderItem[] =
-      hoveredObjectRef && !hoverIsActive
-        ? hitTargetItems.filter(({ shape }) =>
-            activeObjectMatchesPlanShape(hoveredObjectRef, shape),
-          )
-        : [];
-    return {
-      layout,
-      adapter,
-      committedBodies,
-      diagnosticFallbackItems,
-      contextLines,
-      detailLines,
-      hitTargetItems,
-      selectionHaloItems,
-      hoverHaloItems,
-      diagnostics: renderGraph.diagnostics,
-    };
-  }, [
-    activeObjectRef,
-    houseReferenceShapes,
-    hoveredObjectRef,
-    projectContextShapes,
-    projectPergolaPlanShapes,
-    projection,
-    visibility,
-  ]);
+    return hoveredObjectRef && !hoverIsActive
+      ? base.hitTargetItems.filter(({ shape }) =>
+          activeObjectMatchesPlanShape(hoveredObjectRef, shape),
+        )
+      : EMPTY_RENDER_ITEMS;
+  }, [base, hoveredObjectRef, activeObjectRef]);
+
+  return useMemo(
+    () => (base ? { ...base, selectionHaloItems, hoverHaloItems } : null),
+    [base, selectionHaloItems, hoverHaloItems],
+  );
 }
