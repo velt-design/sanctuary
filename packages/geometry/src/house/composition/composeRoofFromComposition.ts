@@ -2,12 +2,15 @@ import type {
   GeometryMetadata,
   HouseRoofFeature3D,
   Point3,
+  Polygon3,
   RoofPlane3D,
 } from "../../contracts";
 import { buildJoinedRectilinearHippedRoof } from "../roofJoinedHipped";
 import { buildFlatHouseRoof, buildMonoHouseRoof } from "../roofPrimary";
 import { buildRectangularRoof } from "../roofRectangle";
 import { buildSkeletonRoof } from "../roofSkeleton";
+import { offsetFootprintPolygon } from "../footprintMath";
+import { roofPolygonIsSimple } from "../roof2D";
 import { composeFootprintFromComposition } from "./composeFootprintFromComposition";
 import { detectFusedRectangle } from "./fusedRectangleDetector";
 import {
@@ -65,6 +68,17 @@ export type ComposeRoofResult = {
   roofPlanes: RoofPlane3D[];
   roofFeatures: HouseRoofFeature3D[];
   metadata: GeometryMetadata;
+  /**
+   * PR-SS-8 (2026-06-21): the polygon the roof EAVES actually sit on.
+   * For the unified skeleton path with an eave overhang this is the
+   * union footprint offset OUTWARD by `eaveOverhangMm` (so the roof
+   * overhangs the walls); otherwise it is the bare union footprint.
+   * Downstream (the composition swap) uses it as the QA eave polygon
+   * and as the eave polygon for soffit / fascia / gutter derivation.
+   * Absent for non-skeleton strategies (caller falls back to the
+   * union footprint).
+   */
+  eavePolygon?: Polygon3;
 };
 
 export function composeRoofFromComposition(input: {
@@ -86,6 +100,15 @@ export function composeRoofFromComposition(input: {
    * their behaviour without modification.
    */
   compositeRoofIntent?: RectangleRoofIntent;
+  /**
+   * PR-SS-8 (2026-06-21): eave overhang (mm) for the unified skeleton
+   * roof. When > 0 the skeleton runs on the union footprint offset
+   * OUTWARD by this amount, so the roof eaves overhang the walls and a
+   * soffit fills the gap (matching the legacy hipped path). Defaults to
+   * 0 (eaves flush with the footprint) so existing callers / tests are
+   * unaffected.
+   */
+  eaveOverhangMm?: number;
 }): ComposeRoofResult {
   if (input.composition.primitives.length === 0) {
     throw new Error("composeRoofFromComposition: empty composition");
@@ -194,6 +217,32 @@ export function composeRoofFromComposition(input: {
     const intent = rectangles[0]!.roofIntent;
     const unionPolygon = composeFootprintFromComposition(input.composition);
 
+    // PR-SS-8 (2026-06-21): apply the eave overhang. The roof eaves
+    // should overhang the walls, so the skeleton runs on the union
+    // offset OUTWARD by `eaveOverhangMm` — the roof eaves then sit at
+    // footprint+overhang and a soffit fills the gap to the wall.
+    // `offsetFootprintPolygon` preserves vertex count + correspondence
+    // for orthogonal footprints. If the offset fails or self-intersects
+    // (e.g. a notch narrower than 2× overhang), fall back to the flush
+    // union so the roof still solves (no overhang, prior behaviour).
+    const overhangMm = input.eaveOverhangMm ?? 0;
+    const unionEavePolygon: Polygon3 = unionPolygon.map((p) => ({
+      x: p.x,
+      y: p.y,
+      z: 0,
+    }));
+    let skeletonEavePolygon = unionEavePolygon;
+    if (overhangMm > 0) {
+      const offset = offsetFootprintPolygon(unionEavePolygon, overhangMm);
+      if (
+        offset &&
+        offset.length === unionEavePolygon.length &&
+        roofPolygonIsSimple(offset)
+      ) {
+        skeletonEavePolygon = offset;
+      }
+    }
+
     // Strategy 2a (PR-SS-4): orthogonal straight-skeleton solver. The
     // from-scratch equidistance engine produces a single coherent hipped
     // roof — exact ridges/valleys, area-conserving — for L/T/U/H/plus and
@@ -202,7 +251,7 @@ export function composeRoofFromComposition(input: {
     // junctions), so we fall through to the wavefront fallback below
     // rather than ever emitting overlapping facets.
     const skeletonRoof = buildSkeletonRoof({
-      polygon: unionPolygon.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+      polygon: skeletonEavePolygon.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
       eaveHeightMm: input.eaveHeightMm,
       roofPitchDeg: intent.pitchDeg,
     });
@@ -210,6 +259,11 @@ export function composeRoofFromComposition(input: {
       return {
         roofPlanes: skeletonRoof.roofPlanes,
         roofFeatures: skeletonRoof.roofFeatures,
+        eavePolygon: skeletonEavePolygon.map((p) => ({
+          x: Math.round(p.x),
+          y: Math.round(p.y),
+          z: 0,
+        })),
         metadata: {
           ...skeletonRoof.metadata,
           roofGeometry: "composition_unified",

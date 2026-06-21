@@ -125,10 +125,17 @@ export function swapRoofFromComposition(input: {
   // Join, primitives keep their pre-join intents) and falls to
   // stitched at the wrong pitch.
   const compositeRoofIntent = deriveCompositeRoofIntent(input.houseForm);
+  // PR-SS-8 (2026-06-21): resolve the eave overhang from the legacy
+  // model's eave config and pass it to the composition solver so the
+  // unified skeleton roof overhangs the walls (a soffit then fills the
+  // gap). The legacy model already resolved this value with defaults.
+  const legacyEave = input.legacyModel.eave;
+  const eaveOverhangMm = legacyEave.eaveOverhangMm ?? DEFAULT_EAVE_OVERHANG_MM;
   const composed = composeRoofFromComposition({
     composition: input.composition,
     eaveHeightMm,
     compositeRoofIntent,
+    eaveOverhangMm,
   });
   // PR-COMP-UNIFIED-2 (2026-06-19): re-run package QA on the
   // composition's planes against the composition's union polygon.
@@ -139,14 +146,21 @@ export function swapRoofFromComposition(input: {
   // solver) so legacy QA doesn't apply. Re-running QA on the
   // composition planes gives the rail a correct verdict.
   const unionPolygon = composeFootprintFromComposition(input.composition);
-  const eavePolygonForQa = unionPolygon.map((p) => ({ x: p.x, y: p.y, z: 0 }));
+  const footprintPolygon = unionPolygon.map((p) => ({ x: p.x, y: p.y, z: 0 }));
+  // PR-SS-8 (2026-06-21): the roof EAVES sit on the overhang-offset
+  // polygon the skeleton actually solved (`composed.eavePolygon`), not
+  // the bare footprint — QA must validate facet containment against
+  // that, and the soffit/fascia must be derived between the wall
+  // footprint and this eave line. Non-skeleton strategies don't return
+  // an eave polygon; fall back to the flush footprint (no overhang).
+  const roofEavePolygon = composed.eavePolygon ?? footprintPolygon;
   const composedWithQa = applyRoofQa({
     roof: {
       roofPlanes: composed.roofPlanes,
       roofFeatures: composed.roofFeatures,
       metadata: composed.metadata,
     },
-    eavePolygon: eavePolygonForQa,
+    eavePolygon: roofEavePolygon,
   });
   // PR-COMP-UNIFIED-2 (2026-06-19): strip legacy roof-pipeline
   // stamps before merging. Fields like `roofTopologyFailureReason`,
@@ -188,14 +202,15 @@ export function swapRoofFromComposition(input: {
   // legacy solver fails QA, so it built ZERO roof solids, leaving the 3D
   // viewport with walls but no roof ("plan-good / 3D-bad"). This uses the
   // SAME geometry helper `buildHouseModel3D` uses, so there is one
-  // derivation rather than a drifting parallel pipeline. The orthogonal
-  // straight skeleton builds eave nodes at the footprint corners (no
-  // overhang yet), so the legacy union footprint serves as both the
-  // footprint and the eave polygon.
-  const legacyEave = input.legacyModel.eave;
+  // derivation rather than a drifting parallel pipeline. The wall line
+  // is the union footprint; the roof eaves sit on `roofEavePolygon`
+  // (footprint + overhang) — the soffit/fascia/gutter fill the gap
+  // between them. Both come from `composeFootprintFromComposition`, so
+  // their vertices correspond edge-for-edge (required by the perimeter
+  // builder).
   const roofArtifacts = buildHouseRoofEnvelopeArtifacts({
-    footprint: input.legacyModel.footprint,
-    eavePolygon: input.legacyModel.footprint,
+    footprint: footprintPolygon,
+    eavePolygon: roofEavePolygon,
     roofForm: compositeRoofIntent.form,
     roof: {
       roofPlanes: composedWithQa.roofPlanes,

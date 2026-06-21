@@ -147,4 +147,26 @@ describe("composition render → 3D scene (PR-SS-5 / PR-SS-6)", () => {
     const maxZ = Math.max(...zs);
     expect(maxZ).toBeGreaterThan(2400);
   });
+
+  it("gives the composite roof an eave overhang with a soffit (PR-SS-8)", () => {
+    const result = buildHouseFormGeometryInputForForm(jessOratiaHouseForm());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const model = result.model;
+
+    // The skeleton runs on the overhang-offset union, so the roof eaves
+    // project past the wall footprint — and a soffit fills the gap. Before
+    // PR-SS-8 the roof was flush (soffit count 0, eave invisible in 3D).
+    expect((model.eave.soffitPolygons ?? []).length).toBeGreaterThan(0);
+    const soffitSolids = (model.solids?.surfaceSolids ?? []).filter(
+      (s) => s.kind === "soffit",
+    );
+    expect(soffitSolids.length).toBeGreaterThan(0);
+
+    // Roof X-extent exceeds the footprint X-extent by the overhang.
+    const fpX = model.footprint.map((p) => p.x);
+    const roofX = model.roofPlanes.flatMap((pl) => pl.boundary.map((p) => p.x));
+    expect(Math.max(...roofX)).toBeGreaterThan(Math.max(...fpX));
+    expect(Math.min(...roofX)).toBeLessThan(Math.min(...fpX));
+  });
 });
