@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - paragraph [ref=e5]: Sanctuary Portal
+        - heading "Staff Login" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Use your Sanctuary Pergolas staff email to sign in.
+      - generic [ref=e8]:
+        - paragraph [ref=e127]: Invalid email or password.
+        - generic [ref=e9]:
+          - generic [ref=e10]:
+            - generic [ref=e11]: Email
+            - textbox "Email" [ref=e12]: test@sanctuarypergolas.co.nz
+          - generic [ref=e13]:
+            - generic [ref=e14]: Password
+            - textbox "Password" [ref=e15]: TempPass123
+          - button "Sign in" [ref=e17] [cursor=pointer]
+  - generic [ref=e28]:
+    - img [ref=e30]
+    - button "Open Tanstack query devtools" [ref=e78] [cursor=pointer]:
+      - img [ref=e79]
+  - button "Open Next.js Dev Tools" [ref=e23] [cursor=pointer]:
+    - img [ref=e24]
+  - alert [ref=e27]

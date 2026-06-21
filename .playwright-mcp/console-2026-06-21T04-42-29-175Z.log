@@ -1,0 +1,102 @@
+[    1121ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    1162ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    1207ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3001/favicon.ico:0
+[   24975ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://iytanftukulcnavossmd.supabase.co/auth/v1/token?grant_type=password:0
+[   82477ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[   82749ms] [LOG] [Fast Refresh] done in 376ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[   84586ms] [ERROR] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[   90136ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_0_3oiee._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench:0
+[  102593ms] [WARNING] THREE.THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  125039ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  125044ms] [LOG] [Fast Refresh] done in 105ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  848007ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  852514ms] [LOG] [Fast Refresh] done in 353ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  863553ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  868930ms] [LOG] [Fast Refresh] done in 1176ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  869611ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  869654ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  870153ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  870194ms] [LOG] [Fast Refresh] done in 146ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  870743ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  870789ms] [LOG] [Fast Refresh] done in 146ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  871278ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  871316ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  991828ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  996304ms] [LOG] [Fast Refresh] done in 4486ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  996780ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  996818ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1000918ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1005432ms] [LOG] [Fast Refresh] done in 370ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1236393ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1241938ms] [LOG] [Fast Refresh] done in 1474ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1242167ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1242196ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1242716ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1242751ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1243265ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1243293ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1243841ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1243903ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1244390ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1244433ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1244924ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1244989ms] [LOG] [Fast Refresh] done in 170ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1245487ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1245536ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1246029ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1246085ms] [LOG] [Fast Refresh] done in 161ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1246589ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1246637ms] [LOG] [Fast Refresh] done in 149ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1269756ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1274743ms] [LOG] [Fast Refresh] done in 1054ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1275279ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1275317ms] [LOG] [Fast Refresh] done in 138ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1275792ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1275849ms] [LOG] [Fast Refresh] done in 162ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1276324ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1276358ms] [LOG] [Fast Refresh] done in 136ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1276847ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1276925ms] [LOG] [Fast Refresh] done in 180ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1471625ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1472561ms] [LOG] [Fast Refresh] done in 278ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1472804ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1473292ms] [LOG] [Fast Refresh] done in 591ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1473867ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1473921ms] [LOG] [Fast Refresh] done in 158ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1474419ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1474452ms] [LOG] [Fast Refresh] done in 133ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1475183ms] [ERROR] %o
+
+%s ReferenceError: best is not defined
+    at computeOrthogonalStraightSkeletonOffset (http://localhost:3001/_next/static/chunks/packages_geometry_src_021juo3._.js?id=%255Bproject%255D%252Fpackages%252Fgeometry%252Fsrc%252FstraightSkeleton%252FoffsetSolve.ts+%255Bapp-client%255D+%2528ecmascript%2529:332:9)
+    at buildSkeletonRoof (http://localhost:3001/_next/static/chunks/packages_geometry_src_house_06i7807._.js?id=%255Bproject%255D%252Fpackages%252Fgeometry%252Fsrc%252Fhouse%252FroofSkeleton.ts+%255Bapp-client%255D+%2528ecmascript%2529:17:237)
+    at composeRoofFromComposition (http://localhost:3001/_next/static/chunks/packages_geometry_src_house_06i7807._.js?id=%255Bproject%255D%252Fpackages%252Fgeometry%252Fsrc%252Fhouse%252Fcomposition%252FcomposeRoofFromComposition.ts+%255Bapp-client%255D+%2528ecmascript%2529:110:207)
+    at swapRoofFromComposition (http://localhost:3001/_next/static/chunks/apps_portal_lib_0r27x~s._.js:3805:237)
+    at buildHouseFormGeometryInputForForm (http://localhost:3001/_next/static/chunks/apps_portal_lib_0r27x~s._.js:3996:43)
+    at buildHouseFormGeometryInput (http://localhost:3001/_next/static/chunks/apps_portal_lib_0r27x~s._.js:4075:12)
+    at buildProjectHouseGeometryRegistry (http://localhost:3001/_next/static/chunks/apps_portal_lib_0r27x~s._.js:4104:234)
+    at buildWorkbenchSolvedModel (http://localhost:3001/_next/static/chunks/apps_portal_lib_0r27x~s._.js:5847:251)
+    at buildDrawingWorkbenchStore (http://localhost:3001/_next/static/chunks/apps_portal_lib_0r27x~s._.js:7376:224)
+    at DesignWorkbenchEstimateClient.useMemo[store] (http://localhost:3001/_next/static/chunks/apps_portal_app_staff_projects_%5BprojectId%5D_design-workbench_03a16h3._.js:3866:262)
+    at updateMemo (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:5413:21)
+    at Object.useMemo (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15465:24)
+    at http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:1742:36
+    at DesignWorkbenchEstimateClient (http://localhost:3001/_next/static/chunks/apps_portal_app_staff_projects_%5BprojectId%5D_design-workbench_03a16h3._.js:3865:192)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15037:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:4620:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6081:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6691:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9555:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9449:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9433:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:186)
+    at performSyncWorkOnRoot (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10263:9)
+    at flushSyncWorkAcrossRoots_impl (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10179:316)
+    at processRootScheduleInMicrotask (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10200:106)
+    at http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10274:158 The above error occurred in the <DesignWorkbenchEstimateClient> component. It was handled by the <ErrorBoundaryHandler> error boundary. @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:1998
+[ 1475190ms] [ERROR] [portal] {event: portal.global_error, message: best is not defined, digest: null, pathname: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench} @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[ 1475191ms] [ERROR] [portal] {event: portal.global_error, message: best is not defined, digest: null, pathname: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench} @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[ 1481696ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1490213ms] [LOG] [Fast Refresh] done in 515ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 1494263ms] [WARNING] THREE.THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431

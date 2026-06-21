@@ -1,0 +1,332 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic "Portal navigation" [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - link "Dashboard" [ref=e8] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e9]
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /dashboard
+              - generic [ref=e14]: Dashboard
+          - generic [ref=e16]:
+            - link "Projects" [ref=e17] [cursor=pointer]:
+              - /url: /projects
+              - img [ref=e18]
+            - generic [ref=e22]:
+              - link "Projects" [ref=e23] [cursor=pointer]:
+                - /url: /projects
+                - generic [ref=e24]: Projects
+              - button "Expand Projects" [ref=e25] [cursor=pointer]:
+                - img [ref=e26]
+          - generic [ref=e29]:
+            - link "Contacts" [ref=e30] [cursor=pointer]:
+              - /url: /contacts
+              - img [ref=e31]
+            - generic [ref=e36]:
+              - link "Contacts" [ref=e37] [cursor=pointer]:
+                - /url: /contacts
+                - generic [ref=e38]: Contacts
+              - button "Expand Contacts" [ref=e39] [cursor=pointer]:
+                - img [ref=e40]
+          - generic [ref=e43]:
+            - link "Schedule" [ref=e44] [cursor=pointer]:
+              - /url: /schedule
+              - img [ref=e45]
+            - generic [ref=e47]:
+              - link "Schedule" [ref=e48] [cursor=pointer]:
+                - /url: /schedule
+                - generic [ref=e49]: Schedule
+              - button "Expand Schedule" [ref=e50] [cursor=pointer]:
+                - img [ref=e51]
+          - generic [ref=e54]:
+            - link "Imports" [ref=e55] [cursor=pointer]:
+              - /url: /imports
+              - img [ref=e56]
+            - link "Imports" [ref=e59] [cursor=pointer]:
+              - /url: /imports
+              - generic [ref=e60]: Imports
+          - generic [ref=e62]:
+            - link "Pricebook" [ref=e63] [cursor=pointer]:
+              - /url: /pricebook
+              - img [ref=e64]
+            - generic [ref=e66]:
+              - link "Pricebook" [ref=e67] [cursor=pointer]:
+                - /url: /pricebook
+                - generic [ref=e68]: Pricebook
+              - button "Expand Pricebook" [ref=e69] [cursor=pointer]:
+                - img [ref=e70]
+          - generic [ref=e73]:
+            - link "Access" [ref=e74] [cursor=pointer]:
+              - /url: /admin/access
+              - img [ref=e75]
+            - link "Access" [ref=e79] [cursor=pointer]:
+              - /url: /admin/access
+              - generic [ref=e80]: Access
+        - button "User menu" [ref=e82] [cursor=pointer]:
+          - img [ref=e83]
+    - main [ref=e88]:
+      - heading "Dashboard" [level=1] [ref=e92]
+      - generic [ref=e93]:
+        - region "Pipeline counts" [ref=e94]:
+          - generic [ref=e95]:
+            - heading "Pipeline" [level=2] [ref=e96]
+            - generic [ref=e97]: Counts by stage
+          - generic [ref=e100]:
+            - link "New 24" [ref=e101] [cursor=pointer]:
+              - /url: /staff/projects?status=new
+              - generic [ref=e102]: New
+              - generic [ref=e103]: "24"
+            - link "Contacted 498" [ref=e104] [cursor=pointer]:
+              - /url: /staff/projects?status=contacted
+              - generic [ref=e105]: Contacted
+              - generic [ref=e106]: "498"
+            - link "Site Visit 7" [ref=e107] [cursor=pointer]:
+              - /url: /staff/projects?status=site_visit
+              - generic [ref=e108]: Site Visit
+              - generic [ref=e109]: "7"
+            - link "Quoting 14" [ref=e110] [cursor=pointer]:
+              - /url: /staff/projects?status=quoting
+              - generic [ref=e111]: Quoting
+              - generic [ref=e112]: "14"
+            - link "Sent 69" [ref=e113] [cursor=pointer]:
+              - /url: /staff/projects?status=sent
+              - generic [ref=e114]: Sent
+              - generic [ref=e115]: "69"
+            - link "Deposit 6" [ref=e116] [cursor=pointer]:
+              - /url: /staff/projects?status=deposit
+              - generic [ref=e117]: Deposit
+              - generic [ref=e118]: "6"
+            - link "Scheduled 9" [ref=e119] [cursor=pointer]:
+              - /url: /staff/projects?status=scheduled
+              - generic [ref=e120]: Scheduled
+              - generic [ref=e121]: "9"
+            - link "Completed 17" [ref=e122] [cursor=pointer]:
+              - /url: /staff/projects?status=completed
+              - generic [ref=e123]: Completed
+              - generic [ref=e124]: "17"
+            - link "Paid 22" [ref=e125] [cursor=pointer]:
+              - /url: /staff/projects?status=paid
+              - generic [ref=e126]: Paid
+              - generic [ref=e127]: "22"
+        - generic [ref=e128]:
+          - link "Actions due 55" [ref=e129] [cursor=pointer]:
+            - /url: /staff/projects?nextActionDue=true
+            - generic [ref=e130]: Actions due
+            - generic [ref=e131]: "55"
+          - link "New leads 24" [ref=e132] [cursor=pointer]:
+            - /url: /staff/projects?status=NEW
+            - generic [ref=e133]: New leads
+            - generic [ref=e134]: "24"
+          - link "Quotes to send 14" [ref=e135] [cursor=pointer]:
+            - /url: /staff/projects?status=QUOTING
+            - generic [ref=e136]: Quotes to send
+            - generic [ref=e137]: "14"
+          - link "Installs this week 0" [ref=e138] [cursor=pointer]:
+            - /url: /staff/schedule?view=board
+            - generic [ref=e139]: Installs this week
+            - generic [ref=e140]: "0"
+        - generic [ref=e141]:
+          - region "Recent Activity" [ref=e142]:
+            - generic [ref=e144]:
+              - heading "Recent Activity" [level=2] [ref=e145]
+              - generic [ref=e146]: Latest project notes.
+            - list [ref=e148]:
+              - listitem [ref=e149]:
+                - link "Project note 19 Jun, 2:08 pm Doreen Hunkin Site visit arranged for 08:30am - 26/06 Added by Ellen" [ref=e150] [cursor=pointer]:
+                  - /url: /staff/projects/proj_a005305f-55ea-44d6-ab0d-6818b8bca8bf
+                  - generic [ref=e151]:
+                    - generic [ref=e152]: Project note
+                    - generic [ref=e153]: 19 Jun, 2:08 pm
+                  - generic [ref=e154]: Doreen Hunkin
+                  - generic [ref=e155]: Site visit arranged for 08:30am - 26/06
+                  - generic [ref=e156]: Added by Ellen
+              - listitem [ref=e157]:
+                - link "Project note 19 Jun, 12:11 pm Brendon Urlich - Remuera Site visit completed 12.06.2026 Added by Ellen" [ref=e158] [cursor=pointer]:
+                  - /url: /staff/projects/proj_8187624e-d9a0-4ebc-8e45-b26455fca5aa
+                  - generic [ref=e159]:
+                    - generic [ref=e160]: Project note
+                    - generic [ref=e161]: 19 Jun, 12:11 pm
+                  - generic [ref=e162]: Brendon Urlich - Remuera
+                  - generic [ref=e163]: Site visit completed 12.06.2026
+                  - generic [ref=e164]: Added by Ellen
+              - listitem [ref=e165]:
+                - link "Project note 19 Jun, 10:43 am Malcom Humphries - Maison Apartment Block, Takapuna Enquiry forwarded to Jordan who will respond Added by Ellen" [ref=e166] [cursor=pointer]:
+                  - /url: /staff/projects/proj_e05438b4-8192-4e99-a9fb-371bb96b678b
+                  - generic [ref=e167]:
+                    - generic [ref=e168]: Project note
+                    - generic [ref=e169]: 19 Jun, 10:43 am
+                  - generic [ref=e170]: Malcom Humphries - Maison Apartment Block, Takapuna
+                  - generic [ref=e171]: Enquiry forwarded to Jordan who will respond
+                  - generic [ref=e172]: Added by Ellen
+              - listitem [ref=e173]:
+                - link "Project note 19 Jun, 10:19 am Nigel - Mulan Laneway 17.06 \"I’ll not be back into Auckland until the 11th July. I’ll catch up with Alastair in the next week and we can sit down and discuss. Time frame wise on installation is not likely for another few months, once we have the Tapas restaurant completed and CCC for the building\" Added by Ellen" [ref=e174] [cursor=pointer]:
+                  - /url: /staff/projects/proj_814bd1c2-9328-426a-96f7-d607470078a5
+                  - generic [ref=e175]:
+                    - generic [ref=e176]: Project note
+                    - generic [ref=e177]: 19 Jun, 10:19 am
+                  - generic [ref=e178]: Nigel - Mulan Laneway
+                  - generic [ref=e179]: 17.06 "I’ll not be back into Auckland until the 11th July. I’ll catch up with Alastair in the next week and we can sit down and discuss. Time frame wise on installation is not likely for another few months, once we have the Tapas restaurant completed and CCC for the building"
+                  - generic [ref=e180]: Added by Ellen
+              - listitem [ref=e181]:
+                - link "Project note 19 Jun, 9:05 am Karen Chenery - Devonport Deposit received as per Steves email 18.06 Added by Ellen" [ref=e182] [cursor=pointer]:
+                  - /url: /staff/projects/proj_c167eabc-22d9-4b4e-87fd-18b447d19a61
+                  - generic [ref=e183]:
+                    - generic [ref=e184]: Project note
+                    - generic [ref=e185]: 19 Jun, 9:05 am
+                  - generic [ref=e186]: Karen Chenery - Devonport
+                  - generic [ref=e187]: Deposit received as per Steves email 18.06
+                  - generic [ref=e188]: Added by Ellen
+              - listitem [ref=e189]:
+                - link "Project note 19 Jun, 8:34 am Dorothy Andersen - Warkworth 17.06.2026 - BB still working through quote. Site visit was completed Added by Ellen" [ref=e190] [cursor=pointer]:
+                  - /url: /staff/projects/proj_c35335d3-8209-4f19-91d3-9a28bd8eb4cf
+                  - generic [ref=e191]:
+                    - generic [ref=e192]: Project note
+                    - generic [ref=e193]: 19 Jun, 8:34 am
+                  - generic [ref=e194]: Dorothy Andersen - Warkworth
+                  - generic [ref=e195]: 17.06.2026 - BB still working through quote. Site visit was completed
+                  - generic [ref=e196]: Added by Ellen
+              - listitem [ref=e197]:
+                - link "Project note 19 Jun, 8:28 am Aaron Hall - Kohimarama 17.06.2026 - BB still working on package/quote Added by Ellen" [ref=e198] [cursor=pointer]:
+                  - /url: /staff/projects/proj_d390d345-c16e-4f88-8349-cd8f3220f1a4
+                  - generic [ref=e199]:
+                    - generic [ref=e200]: Project note
+                    - generic [ref=e201]: 19 Jun, 8:28 am
+                  - generic [ref=e202]: Aaron Hall - Kohimarama
+                  - generic [ref=e203]: 17.06.2026 - BB still working on package/quote
+                  - generic [ref=e204]: Added by Ellen
+              - listitem [ref=e205]:
+                - link "Project note 19 Jun, 8:27 am Catherine Overwater - Papamoa Site visit completed - BB confirmed. BB to follow up with client 17.06.2026 Added by Ellen" [ref=e206] [cursor=pointer]:
+                  - /url: /staff/projects/proj_965efa89-ce37-44c1-92b0-6d24101594a0
+                  - generic [ref=e207]:
+                    - generic [ref=e208]: Project note
+                    - generic [ref=e209]: 19 Jun, 8:27 am
+                  - generic [ref=e210]: Catherine Overwater - Papamoa
+                  - generic [ref=e211]: Site visit completed - BB confirmed. BB to follow up with client 17.06.2026
+                  - generic [ref=e212]: Added by Ellen
+              - listitem [ref=e213]:
+                - link "Project note 16 Jun, 3:57 pm Slabbert Orewa Follow up quote email sent 16.06.2026 Added by Ellen" [ref=e214] [cursor=pointer]:
+                  - /url: /staff/projects/proj_9474e55b-4ca4-4df5-b033-01d426e94850
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: Project note
+                    - generic [ref=e217]: 16 Jun, 3:57 pm
+                  - generic [ref=e218]: Slabbert Orewa
+                  - generic [ref=e219]: Follow up quote email sent 16.06.2026
+                  - generic [ref=e220]: Added by Ellen
+              - listitem [ref=e221]:
+                - link "Project note 16 Jun, 3:54 pm Slabbert Orewa Quote 0055 - sent to client via email 02.04.2026 Added by Ellen" [ref=e222] [cursor=pointer]:
+                  - /url: /staff/projects/proj_9474e55b-4ca4-4df5-b033-01d426e94850
+                  - generic [ref=e223]:
+                    - generic [ref=e224]: Project note
+                    - generic [ref=e225]: 16 Jun, 3:54 pm
+                  - generic [ref=e226]: Slabbert Orewa
+                  - generic [ref=e227]: Quote 0055 - sent to client via email 02.04.2026
+                  - generic [ref=e228]: Added by Ellen
+              - listitem [ref=e229]:
+                - link "Project note 16 Jun, 2:33 pm Milton De Silva - Bayview Bruce is liaising directly with Milton. Milton dropped off plans and photos on 16.06 - which were saved to folder and sent to Bruce. Added by Ellen" [ref=e230] [cursor=pointer]:
+                  - /url: /staff/projects/proj_859d163d-2d79-41b5-8a0b-296b69568451
+                  - generic [ref=e231]:
+                    - generic [ref=e232]: Project note
+                    - generic [ref=e233]: 16 Jun, 2:33 pm
+                  - generic [ref=e234]: Milton De Silva - Bayview
+                  - generic [ref=e235]: Bruce is liaising directly with Milton. Milton dropped off plans and photos on 16.06 - which were saved to folder and sent to Bruce.
+                  - generic [ref=e236]: Added by Ellen
+              - listitem [ref=e237]:
+                - link "Project note 16 Jun, 1:46 pm Garrisons Pub Syliva Park Follow up quote email sent 16.06.2026 Added by Ellen" [ref=e238] [cursor=pointer]:
+                  - /url: /staff/projects/proj_9ee1f6c8-8f9f-4cbc-a897-d42b7589d127
+                  - generic [ref=e239]:
+                    - generic [ref=e240]: Project note
+                    - generic [ref=e241]: 16 Jun, 1:46 pm
+                  - generic [ref=e242]: Garrisons Pub Syliva Park
+                  - generic [ref=e243]: Follow up quote email sent 16.06.2026
+                  - generic [ref=e244]: Added by Ellen
+              - listitem [ref=e245]:
+                - link "Project note 16 Jun, 1:46 pm Garrisons Pub Syliva Park Quote sent via xero 02.06.2026 Added by Ellen" [ref=e246] [cursor=pointer]:
+                  - /url: /staff/projects/proj_9ee1f6c8-8f9f-4cbc-a897-d42b7589d127
+                  - generic [ref=e247]:
+                    - generic [ref=e248]: Project note
+                    - generic [ref=e249]: 16 Jun, 1:46 pm
+                  - generic [ref=e250]: Garrisons Pub Syliva Park
+                  - generic [ref=e251]: Quote sent via xero 02.06.2026
+                  - generic [ref=e252]: Added by Ellen
+              - listitem [ref=e253]:
+                - link "Project note 16 Jun, 1:33 pm Justin Evatt - 5 Domain Lane, Mangere Bridge quote sent through xero on 29.05 under Jon Baulcomb (client) Added by Ellen" [ref=e254] [cursor=pointer]:
+                  - /url: /staff/projects/proj_bcdb9515-4ae0-46bb-81e4-4974eff8f3a1
+                  - generic [ref=e255]:
+                    - generic [ref=e256]: Project note
+                    - generic [ref=e257]: 16 Jun, 1:33 pm
+                  - generic [ref=e258]: Justin Evatt - 5 Domain Lane, Mangere Bridge
+                  - generic [ref=e259]: quote sent through xero on 29.05 under Jon Baulcomb (client)
+                  - generic [ref=e260]: Added by Ellen
+              - listitem [ref=e261]:
+                - link "Project note 16 Jun, 1:25 pm Sarah Elmes - Mount Eden 2x pergolas, downstairs area and upstairs area. The top deck will be rebuilt as rotting timber but dimensions will remain the same as what is current so Site visit still wanted. Plans provided. SV arranged for 25th June 09:15am Added by Ellen" [ref=e262] [cursor=pointer]:
+                  - /url: /staff/projects/proj_10e4c0eb-515f-4dc5-b0b4-fcad75c6a3ff
+                  - generic [ref=e263]:
+                    - generic [ref=e264]: Project note
+                    - generic [ref=e265]: 16 Jun, 1:25 pm
+                  - generic [ref=e266]: Sarah Elmes - Mount Eden
+                  - generic [ref=e267]: 2x pergolas, downstairs area and upstairs area. The top deck will be rebuilt as rotting timber but dimensions will remain the same as what is current so Site visit still wanted. Plans provided. SV arranged for 25th June 09:15am
+                  - generic [ref=e268]: Added by Ellen
+              - listitem [ref=e269]:
+                - link "Project note 16 Jun, 12:27 pm Kirsti Young Joe contacted Ryan @ GGL re concrete piling question Added by Ellen" [ref=e270] [cursor=pointer]:
+                  - /url: /staff/projects/proj_b1fca158-d4db-4867-b220-c05ef3612ed1
+                  - generic [ref=e271]:
+                    - generic [ref=e272]: Project note
+                    - generic [ref=e273]: 16 Jun, 12:27 pm
+                  - generic [ref=e274]: Kirsti Young
+                  - generic [ref=e275]: Joe contacted Ryan @ GGL re concrete piling question
+                  - generic [ref=e276]: Added by Ellen
+              - listitem [ref=e277]:
+                - 'link "Project note 16 Jun, 12:26 pm Kirsti Young Clients: Kirsti Young: 0275109012 & Ryan Young : 021903286 GGL Landscaping: Sacha Gardner 0212732867 Ryan : 0212814785 Added by Ellen" [ref=e278] [cursor=pointer]':
+                  - /url: /staff/projects/proj_b1fca158-d4db-4867-b220-c05ef3612ed1
+                  - generic [ref=e279]:
+                    - generic [ref=e280]: Project note
+                    - generic [ref=e281]: 16 Jun, 12:26 pm
+                  - generic [ref=e282]: Kirsti Young
+                  - generic [ref=e283]: "Clients: Kirsti Young: 0275109012 & Ryan Young : 021903286 GGL Landscaping: Sacha Gardner 0212732867 Ryan : 0212814785"
+                  - generic [ref=e284]: Added by Ellen
+              - listitem [ref=e285]:
+                - link "Project note 16 Jun, 11:43 am Sandie Hunt - Hobsonville point Quote sent through xero 12.06.2026 Added by Ellen" [ref=e286] [cursor=pointer]:
+                  - /url: /staff/projects/proj_d2c4deac-4c33-4e6c-9114-f59c0c939231
+                  - generic [ref=e287]:
+                    - generic [ref=e288]: Project note
+                    - generic [ref=e289]: 16 Jun, 11:43 am
+                  - generic [ref=e290]: Sandie Hunt - Hobsonville point
+                  - generic [ref=e291]: Quote sent through xero 12.06.2026
+                  - generic [ref=e292]: Added by Ellen
+              - listitem [ref=e293]:
+                - link "Project note 16 Jun, 8:13 am Daniel - Titirangi Deposit received as per Steves email 16.06. Darcy to start 16.06 Added by Ellen" [ref=e294] [cursor=pointer]:
+                  - /url: /staff/projects/proj_31e690be-abc0-40de-9fcb-01c031de3110
+                  - generic [ref=e295]:
+                    - generic [ref=e296]: Project note
+                    - generic [ref=e297]: 16 Jun, 8:13 am
+                  - generic [ref=e298]: Daniel - Titirangi
+                  - generic [ref=e299]: Deposit received as per Steves email 16.06. Darcy to start 16.06
+                  - generic [ref=e300]: Added by Ellen
+              - listitem [ref=e301]:
+                - link "Project note 16 Jun, 8:12 am Mark Bycroft - Omaha Deposit received as per Steves email 16.06 Added by Ellen" [ref=e302] [cursor=pointer]:
+                  - /url: /staff/projects/proj_4693815a-17fb-473f-8b72-04bf4702e5f3
+                  - generic [ref=e303]:
+                    - generic [ref=e304]: Project note
+                    - generic [ref=e305]: 16 Jun, 8:12 am
+                  - generic [ref=e306]: Mark Bycroft - Omaha
+                  - generic [ref=e307]: Deposit received as per Steves email 16.06
+                  - generic [ref=e308]: Added by Ellen
+          - region "Tasks" [ref=e309]:
+            - generic [ref=e311]:
+              - heading "Tasks" [level=2] [ref=e312]
+              - generic [ref=e313]: Personal reminders.
+            - generic [ref=e314]:
+              - generic [ref=e315]:
+                - textbox "New dashboard task" [ref=e316]:
+                  - /placeholder: Add a task...
+                - button "Add" [disabled] [ref=e317]
+              - generic [ref=e318]: No personal tasks yet.
+  - generic [ref=e319]:
+    - img [ref=e321]
+    - button "Open Tanstack query devtools" [ref=e369] [cursor=pointer]:
+      - img [ref=e370]
+  - button "Open Next.js Dev Tools" [ref=e423] [cursor=pointer]:
+    - img [ref=e424]
+  - alert [ref=e427]

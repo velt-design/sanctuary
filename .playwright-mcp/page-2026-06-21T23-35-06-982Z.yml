@@ -1,0 +1,165 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation "Portal navigation" [ref=e5]:
+        - link "Dashboard" [ref=e6] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e7]
+        - link "Projects" [ref=e10] [cursor=pointer]:
+          - /url: /projects
+          - img [ref=e12]
+        - link "Contacts" [ref=e16] [cursor=pointer]:
+          - /url: /contacts
+          - img [ref=e17]
+        - link "Schedule" [ref=e22] [cursor=pointer]:
+          - /url: /schedule
+          - img [ref=e23]
+        - link "Imports" [ref=e25] [cursor=pointer]:
+          - /url: /imports
+          - img [ref=e26]
+        - link "Pricebook" [ref=e28] [cursor=pointer]:
+          - /url: /pricebook
+          - img [ref=e29]
+        - link "Access" [ref=e31] [cursor=pointer]:
+          - /url: /admin/access
+          - img [ref=e32]
+      - button "User menu" [ref=e36] [cursor=pointer]:
+        - img [ref=e37]
+    - main [ref=e161]:
+      - generic [ref=e164]:
+        - complementary [ref=e165]:
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - heading "Visibility" [level=4] [ref=e169]
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - generic [ref=e172]: House
+                  - button "House visibility" [pressed] [ref=e173] [cursor=pointer]: Shown
+                - generic [ref=e174]:
+                  - generic [ref=e175]: Pergolas
+                  - button "Pergolas visibility" [pressed] [ref=e176] [cursor=pointer]: Shown
+                - generic [ref=e177]:
+                  - generic [ref=e178]: Decks
+                  - button "Decks visibility" [pressed] [ref=e179] [cursor=pointer]: Shown
+                - generic [ref=e180]:
+                  - generic [ref=e181]: Openings
+                  - button "Openings visibility" [pressed] [ref=e182] [cursor=pointer]: Shown
+            - generic "Workbench objects" [ref=e183]:
+              - generic [ref=e184]:
+                - heading "House Forms" [level=4] [ref=e185]
+                - generic [ref=e186]:
+                  - button "House 1 Composite (3 rectangles) · selected" [ref=e188] [cursor=pointer]:
+                    - generic [ref=e189]: House 1
+                    - generic [ref=e190]: Composite (3 rectangles) · selected
+                  - button "Add structure" [ref=e191] [cursor=pointer]:
+                    - generic [ref=e192]: +
+                    - generic [ref=e193]: Add structure
+              - generic [ref=e194]:
+                - heading "Pergolas" [level=4] [ref=e195]
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - paragraph [ref=e198]: No pergolas
+                    - paragraph [ref=e199]: Drag and snap from the toolbar
+                  - button "Add pergola" [ref=e200] [cursor=pointer]:
+                    - generic [ref=e201]: +
+                    - generic [ref=e202]: Add pergola
+              - generic [ref=e203]:
+                - heading "Decks" [level=4] [ref=e204]
+                - generic [ref=e205]:
+                  - generic [ref=e206]:
+                    - paragraph [ref=e207]: No decks
+                    - paragraph [ref=e208]: Add from inspector
+                  - button "Add deck" [ref=e209] [cursor=pointer]:
+                    - generic [ref=e210]: +
+                    - generic [ref=e211]: Add deck
+              - generic [ref=e212]:
+                - heading "Openings" [level=4] [ref=e213]
+                - generic [ref=e214]:
+                  - generic [ref=e215]:
+                    - paragraph [ref=e216]: No openings
+                    - paragraph [ref=e217]: Add from inspector
+                  - button "Add opening" [ref=e218] [cursor=pointer]:
+                    - generic [ref=e219]: +
+                    - generic [ref=e220]: Add opening
+        - region "Drawing workbench" [ref=e223]:
+          - navigation "Drawing workbench primary navigation" [ref=e225]:
+            - generic [ref=e226]:
+              - generic [ref=e227]: Jess - Oratia
+              - generic [ref=e228]: Design Workbench
+            - tablist "Drawing workbench mode" [ref=e229]:
+              - tab "3D Review" [ref=e230] [cursor=pointer]
+              - tab "Plan Editor" [active] [selected] [ref=e231] [cursor=pointer]
+              - tab "Sheet Output" [ref=e232] [cursor=pointer]
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - button "Save workbench draft" [ref=e235] [cursor=pointer]
+                - generic [ref=e236]: Unsaved changes
+              - link "Back to Project" [ref=e237] [cursor=pointer]:
+                - /url: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163
+              - button "More actions" [disabled] [ref=e238]:
+                - generic [ref=e239]: …
+          - generic [ref=e242]:
+            - toolbar "Plan canvas controls" [ref=e243]:
+              - button "Fit view" [ref=e244] [cursor=pointer]
+            - img "Plan editor" [ref=e245]:
+              - generic [ref=e246]:
+                - generic:
+                  - generic:
+                    - generic: "9362"
+                  - generic:
+                    - generic: "9362"
+                  - generic:
+                    - generic: "16795"
+                  - generic:
+                    - generic: "21454"
+                - generic [ref=e252]:
+                  - generic "Detach this section" [ref=e253] [cursor=pointer]:
+                    - generic: –
+                  - generic "Detach this section" [ref=e255] [cursor=pointer]:
+                    - generic: –
+        - complementary [ref=e257]:
+          - region "Selected object inspector" [ref=e259]:
+            - generic [ref=e260]:
+              - generic [ref=e261]: SELECTED OBJECT
+              - generic [ref=e262]:
+                - heading "House 1" [level=3] [ref=e263]
+                - generic [ref=e264]: Invalid geometry
+            - generic [ref=e266]:
+              - generic [ref=e267]:
+                - heading "Primary" [level=4] [ref=e268]
+                - generic [ref=e269]:
+                  - generic [ref=e270]:
+                    - generic [ref=e271]: Roof form
+                    - combobox "Roof form" [ref=e272]:
+                      - option "Flat"
+                      - option "Mono"
+                      - option "Hipped" [selected]
+                  - generic [ref=e273]:
+                    - generic [ref=e274]: Roof pitch (deg)
+                    - textbox "Roof pitch (deg)" [ref=e275]: "30"
+                    - generic [ref=e276]: Minimum is 5 deg for this roof.
+                  - generic [ref=e277]:
+                    - generic [ref=e278]: Roof material
+                    - combobox "Roof material" [ref=e279]:
+                      - option "Corrugated iron" [selected]
+                      - option "Trapezoidal 5 rib"
+                      - option "Eurotray 300"
+                      - option "Eurotray 500"
+                      - option "Shingles"
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: Open hip ends as gables
+                    - button "Open End 1" [ref=e283] [cursor=pointer]
+                    - generic [ref=e284]: Open a hip end to convert that corner of the roof into a gable wall. Click again to close.
+                  - generic [ref=e285]:
+                    - paragraph [ref=e286]: This ridge orientation does not match the current house footprint. Choose the axis that follows the stronger roof span/topology.
+                    - generic [ref=e287]:
+                      - button "Copy roof diagnostics JSON to clipboard" [ref=e288] [cursor=pointer]: Copy diagnostics
+                      - button "Download this failing house as a JSON bug report" [ref=e289] [cursor=pointer]: Save bug report
+              - button "Remove this house form" [ref=e292] [cursor=pointer]
+  - generic [ref=e52]:
+    - img [ref=e54]
+    - button "Open Tanstack query devtools" [ref=e102] [cursor=pointer]:
+      - img [ref=e103]
+  - button "Open Next.js Dev Tools" [ref=e156] [cursor=pointer]:
+    - img [ref=e157]
+  - alert [ref=e160]
