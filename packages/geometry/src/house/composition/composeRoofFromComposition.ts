@@ -109,6 +109,21 @@ export function composeRoofFromComposition(input: {
   const allIntentsIdentical = rectangles.every((r) =>
     intentsEqual(r.roofIntent, rectangles[0]!.roofIntent),
   );
+  // PR-SS-7 (2026-06-21): the unified straight-skeleton solver only
+  // needs the union polygon + one pitch — per-primitive cap / ridge-axis
+  // / pitch differences are irrelevant to it. Those per-primitive
+  // intents are a v1 authoring artifact (and drift after joins:
+  // drag-resize leaves e.g. rect2.ridgeAxis 'x', rect0 startCap
+  // 'open_gable'), so gating the unified solve on byte-identical intents
+  // forced multi-rect hipped composites into the per-rectangle STITCHED
+  // fallback, which overlaps/voids at the joins and fails roof QA with
+  // `outside_eave_or_spans_void`. Gate the unified solve on "every
+  // rectangle is hipped" instead so the composite always renders as one
+  // coherent roof. (With a composite intent override the rectangles are
+  // already uniform, so this only changes the no-override / drifted-
+  // intent path — turning a broken stitched roof into a valid unified
+  // one.)
+  const allHipped = rectangles.every((r) => r.roofIntent.form === "hipped");
 
   // Single hipped rectangle: route through the rectangular builder so
   // the designer's ridge-axis choice is honoured, and stamp a unified
@@ -172,7 +187,7 @@ export function composeRoofFromComposition(input: {
   let compositionUnifiedAttempted = false;
   let compositionUnifiedFailureReason: string | null = null;
   if (
-    allIntentsIdentical &&
+    allHipped &&
     rectangles.length > 1 &&
     rectangles[0]!.roofIntent.form === "hipped"
   ) {

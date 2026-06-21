@@ -5,6 +5,8 @@ import type {
   RectangleRoofIntent,
 } from "./types";
 import { composeRoofFromComposition } from "./composeRoofFromComposition";
+import { composeFootprintFromComposition } from "./composeFootprintFromComposition";
+import { applyRoofQa } from "../roofQa";
 
 const HIPPED_X: RectangleRoofIntent = {
   form: "hipped",
@@ -155,7 +157,7 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
       expect(result.metadata.approximationReasons).toBeUndefined();
     });
 
-    it("falls back to stitched solve when intents differ even if union is a rectangle", () => {
+    it("unifies all-hipped composites into one skeleton roof even when per-primitive intents differ (PR-SS-7)", () => {
       const left = rect({
         x: 0,
         y: 0,
@@ -197,14 +199,16 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
         composition,
         eaveHeightMm: 2400,
       });
-      // Two independent hipped roofs = 8 planes
-      expect(result.roofPlanes).toHaveLength(8);
+      // PR-SS-7: per-primitive intent differences (here: pitch 25 vs 30)
+      // are a v1 authoring artifact and must not force the broken
+      // per-rectangle stitched fallback. All rectangles are hipped, so
+      // the union (a 12m x 4m rectangle) resolves to ONE coherent
+      // skeleton roof — 4 facets — at the first rectangle's pitch.
       expect(result.metadata.roofTopologySolver).toBe(
-        "composition_per_rectangle_stitched",
+        "orthogonal_straight_skeleton",
       );
-      expect(result.metadata.approximationReasons).toBe(
-        "composition_stitched_render",
-      );
+      expect(result.metadata.roofGeometry).toBe("composition_unified");
+      expect(result.roofPlanes).toHaveLength(4);
     });
   });
 
@@ -360,5 +364,68 @@ describe("composeRoofFromComposition (PR-COMP1)", () => {
         eaveHeightMm: 2400,
       }),
     ).toThrow(/unsupported primitive kind/);
+  });
+
+  // PR-SS-7 (2026-06-21): regression for the live Jess-Oratia H. Captured
+  // from the workbench (proj_cf4afb59) via Save bug report. The 3-rect
+  // dumbbell carries DRIFTED per-primitive intents from drag-resize +
+  // joins (rect2.ridgeAxis 'x', rect0/1 startCap 'open_gable', pitch 5).
+  // Before PR-SS-7 the differing intents skipped the unified skeleton and
+  // fell to the per-rectangle stitched solve, which overlaps at the joins
+  // and fails roof QA with `outside_eave_or_spans_void`. The composite is
+  // all-hipped, so it must resolve to ONE coherent skeleton roof even
+  // without a composite-intent override.
+  describe("Jess-Oratia H — drifted per-primitive intents (PR-SS-7)", () => {
+    const composition: HouseComposition = {
+      primitives: [
+        rect({
+          x: 0,
+          y: -9219,
+          w: 6000,
+          d: 16795,
+          intent: { form: "hipped", pitchDeg: 5, ridgeAxis: "y", startCap: "open_gable", endCap: "hipped" },
+        }),
+        rect({
+          x: 6000,
+          y: -6471,
+          w: 19366,
+          d: 8368,
+          intent: { form: "hipped", pitchDeg: 5, ridgeAxis: "y", startCap: "open_gable", endCap: "hipped" },
+        }),
+        rect({
+          x: 25366,
+          y: -12517,
+          w: 9362,
+          d: 21454,
+          intent: { form: "hipped", pitchDeg: 5, ridgeAxis: "x", startCap: "hipped", endCap: "hipped" },
+        }),
+      ],
+      joins: [
+        { fromPrimitiveIndex: 0, fromEdge: "east", toPrimitiveIndex: 1, toEdge: "west" },
+        { fromPrimitiveIndex: 1, fromEdge: "east", toPrimitiveIndex: 2, toEdge: "west" },
+      ],
+    };
+
+    it("resolves to a unified skeleton roof WITHOUT a composite-intent override", () => {
+      const result = composeRoofFromComposition({ composition, eaveHeightMm: 2400 });
+      expect(result.metadata.roofTopologySolver).toBe("orthogonal_straight_skeleton");
+      expect(result.metadata.roofGeometry).toBe("composition_unified");
+      expect(result.roofPlanes.length).toBeGreaterThanOrEqual(12);
+    });
+
+    it("passes roof QA against the union polygon (no outside_eave_or_spans_void)", () => {
+      const result = composeRoofFromComposition({ composition, eaveHeightMm: 2400 });
+      const union = composeFootprintFromComposition(composition);
+      const qa = applyRoofQa({
+        roof: {
+          roofPlanes: result.roofPlanes,
+          roofFeatures: result.roofFeatures,
+          metadata: result.metadata,
+        },
+        eavePolygon: union.map((p) => ({ x: p.x, y: p.y, z: 0 })),
+      });
+      expect(qa.metadata.roofQaStatus).toBe("valid");
+      expect(qa.metadata.roofQaFailureReason ?? null).toBeNull();
+    });
   });
 });
