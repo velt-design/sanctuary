@@ -43,7 +43,26 @@ export function composeFootprintFromComposition(
         `composeFootprintFromComposition: unsupported primitive kind ${primitive.kind}`,
       );
     }
-    rectangles.push(primitive);
+    // Integer-mm snap. Drag-resize in the workbench leaves sub-mm float
+    // noise on primitive coords (e.g. originXMm: -3178.891240000001);
+    // rectangles meant to share an edge then differ by a fraction of a
+    // mm, and the cell grid below opens a thin sliver between them — the
+    // union traces as TWO loops and the build throws, crashing the whole
+    // workbench. Snapping corners to the nearest mm makes adjacent
+    // rectangles share exact edges (1mm is far below house precision).
+    // Mirrors the snap PR-COMP-UNIFIED-3 added downstream in
+    // composeRoofFromComposition; this is the upstream union builder.
+    const x0 = Math.round(primitive.originXMm);
+    const y0 = Math.round(primitive.originYMm);
+    const x1 = Math.round(primitive.originXMm + primitive.widthMm);
+    const y1 = Math.round(primitive.originYMm + primitive.depthMm);
+    rectangles.push({
+      ...primitive,
+      originXMm: x0,
+      originYMm: y0,
+      widthMm: x1 - x0,
+      depthMm: y1 - y0,
+    });
   }
 
   const xs = uniqueSorted(
@@ -118,12 +137,25 @@ export function composeFootprintFromComposition(
   }
 
   const loops = traceBoundaryLoops(edges);
-  if (loops.length !== 1) {
-    throw new Error(
-      `composeFootprintFromComposition: expected 1 boundary loop, got ${loops.length}`,
-    );
+  if (loops.length === 0) {
+    throw new Error("composeFootprintFromComposition: no boundary loop");
   }
-  return cleanPolygon(loops[0]!);
+  // After the integer snap above, a connected composition yields exactly
+  // one loop. If more remain the composition is genuinely disconnected
+  // (rectangles not actually joined) or encloses a hole — degrade to the
+  // largest-area loop (the main mass / outer boundary) rather than
+  // throwing and taking the whole workbench down. Holes are unsupported
+  // for roofs, so the outer boundary is the right choice regardless.
+  let outer = loops[0]!;
+  let outerArea = Math.abs(signedAreaXY(outer));
+  for (const loop of loops.slice(1)) {
+    const area = Math.abs(signedAreaXY(loop));
+    if (area > outerArea) {
+      outer = loop;
+      outerArea = area;
+    }
+  }
+  return cleanPolygon(outer);
 }
 
 // --- Local helpers (mirror the orthogonalEaveOffset style; kept
@@ -161,6 +193,16 @@ function anyRectangleContainsPoint(
     if (x > x0 && x < x1 && y > y0 && y < y1) return true;
   }
   return false;
+}
+
+function signedAreaXY(polygon: Polygon3): number {
+  let area2 = 0;
+  for (let i = 0; i < polygon.length; i += 1) {
+    const a = polygon[i]!;
+    const b = polygon[(i + 1) % polygon.length]!;
+    area2 += a.x * b.y - b.x * a.y;
+  }
+  return area2 / 2;
 }
 
 function pointsEqual(a: Point3, b: Point3): boolean {

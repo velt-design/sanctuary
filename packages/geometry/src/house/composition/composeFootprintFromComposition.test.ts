@@ -137,6 +137,53 @@ describe("composeFootprintFromComposition (PR-COMP1)", () => {
     ]);
   });
 
+  it("integer-snaps float-noisy adjacency so a shared edge does not open a sliver (workbench crash repro)", () => {
+    // Drag-resize leaves sub-mm noise: the left rectangle ends a hair
+    // SHORT of the right one's start, so the raw cell grid opens a thin
+    // gap between them → the union traced as 2 loops and threw, crashing
+    // the whole workbench (composeFootprintFromComposition: expected 1
+    // boundary loop, got 2). After integer-mm snap they share the edge.
+    const left = rect({ x: 0, y: 0, w: 5999.9999996, d: 4000 });
+    const right = rect({ x: 6000, y: 0, w: 6000, d: 4000 });
+    const polygon = composeFootprintFromComposition({
+      primitives: [left, right],
+      joins: [],
+    });
+    // One fused 12000 × 4000 rectangle, not a crash.
+    expect(polygon).toHaveLength(4);
+    const coords = polygon.map((p) => [p.x, p.y]);
+    expect(coords).toEqual(
+      expect.arrayContaining([
+        [0, 0],
+        [12000, 0],
+        [12000, 4000],
+        [0, 4000],
+      ]),
+    );
+  });
+
+  it("degrades to the largest mass instead of crashing when rectangles are genuinely disconnected", () => {
+    // A real gap (not float noise): the union is two separate polygons.
+    // Rather than throw and take the workbench down, return the largest
+    // loop (the main mass). Holes/disconnected pieces are unsupported.
+    const small = rect({ x: 0, y: 0, w: 4000, d: 4000 });
+    const large = rect({ x: 10000, y: 0, w: 10000, d: 6000 });
+    const polygon = composeFootprintFromComposition({
+      primitives: [small, large],
+      joins: [],
+    });
+    expect(polygon).toHaveLength(4);
+    const coords = polygon.map((p) => [p.x, p.y]);
+    expect(coords).toEqual(
+      expect.arrayContaining([
+        [10000, 0],
+        [20000, 0],
+        [20000, 6000],
+        [10000, 6000],
+      ]),
+    );
+  });
+
   it("throws when the composition is empty", () => {
     expect(() =>
       composeFootprintFromComposition({ primitives: [], joins: [] }),
