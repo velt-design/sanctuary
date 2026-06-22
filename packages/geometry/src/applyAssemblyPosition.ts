@@ -15,7 +15,6 @@ import type {
   HouseReferenceGeometry,
   HouseRoofEave3D,
   HouseRoofFeature3D,
-  HouseRoofMaterialVisual3D,
   HouseSurfaceSolid3D,
   HouseWallSegment3D,
   Line3,
@@ -174,17 +173,6 @@ function transformHouseRoofFeature(
   return { ...feature, line: ctx.transformLine(feature.line) };
 }
 
-function transformHouseRoofMaterialVisual(
-  visual: HouseRoofMaterialVisual3D,
-  ctx: TransformContext,
-): HouseRoofMaterialVisual3D {
-  return {
-    ...visual,
-    lines: visual.lines.map(ctx.transformLine),
-    plane: ctx.transformPlane(visual.plane),
-  };
-}
-
 function transformHouseRoofEave(
   eave: HouseRoofEave3D,
   ctx: TransformContext,
@@ -283,9 +271,6 @@ function transformHouseModel(model: HouseModel3D, ctx: TransformContext): HouseM
     roofFlashings: model.roofFlashings
       ? model.roofFlashings.map((f) => transformRoofFlashing(f, ctx))
       : model.roofFlashings,
-    roofMaterialVisuals: model.roofMaterialVisuals
-      ? model.roofMaterialVisuals.map((v) => transformHouseRoofMaterialVisual(v, ctx))
-      : model.roofMaterialVisuals,
     decks: model.decks ? model.decks.map((d) => transformHouseDeck(d, ctx)) : model.decks,
     // `openings` carry no 3D coords (just dimensions + wall references), no transform needed.
     solids: model.solids ? transformHouseEnvelopeSolids(model.solids, ctx) : model.solids,

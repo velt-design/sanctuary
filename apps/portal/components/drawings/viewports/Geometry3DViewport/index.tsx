@@ -10,7 +10,6 @@ import type {
   RenderMesh3D,
   ViewerSceneHouseLineObject,
   ViewerSceneHouseLinearSolidObject,
-  ViewerSceneHouseRoofMaterialObject,
   ViewerSceneHouseSurfaceObject,
   ViewerSceneHouseSurfaceSolidObject,
   ViewerSceneMemberPrismObject,
@@ -168,7 +167,6 @@ const LAYER_COLORS: Record<string, string> = {
   gutters: "#437da8",
   roof_cladding: "#d9c77b",
   roof_flashings: "#d8d2bd",
-  house_roof_materials: "#f0f2f3",
   project_pergola_fallbacks: "#9b6a24",
   roof_planes: "#d4b35a",
   attachment_edge: "#bb4b4b",
@@ -214,8 +212,6 @@ function collectScenePoints(scene: ViewerSceneModel): Point3[] {
         return object.wings.flatMap((wing) =>
           wing.boundary.filter(isFinitePoint),
         );
-      if (object.type === "house_roof_material")
-        return object.lines.flatMap((line) => linePoints(line)).filter(isFinitePoint);
       if (object.type === "reference_line") {
         return linePoints(object.line).filter(isFinitePoint);
       }

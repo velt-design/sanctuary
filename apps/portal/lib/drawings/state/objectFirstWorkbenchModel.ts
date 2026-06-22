@@ -9,7 +9,6 @@ import {
   type LegacyFootprintInput,
 } from "./houseFormCompositionAdapter";
 import {
-  DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
   normalizeHouseFootprintMode,
@@ -22,7 +21,6 @@ import {
   type CalculatorHouseFootprintParams,
   type CalculatorHouseFootprintPolygonPoint,
   type CalculatorHouseFootprintPreset,
-  type CalculatorHouseRoofMaterial,
   type CalculatorHouseStoreyMode,
 } from "@/lib/types/calculator";
 export type WorkbenchObjectFamily =
@@ -223,7 +221,6 @@ export type HouseFormFootprintModel = {
 
 export type HouseFormRoofIntentModel = {
   form: HouseRoofForm;
-  material: CalculatorHouseRoofMaterial;
   primaryPitchDeg: string;
   primaryFallDirection: HouseRoofPrimaryFallDirection;
   ridgeAxis: HouseRoofRidgeAxis;
@@ -799,17 +796,6 @@ function isCalculatorHouseAttachmentStrategy(
   );
 }
 
-function isCalculatorHouseRoofMaterial(
-  value: unknown,
-): value is CalculatorHouseRoofMaterial {
-  return (
-    value === "corrugated_iron" ||
-    value === "trapezoidal_5_rib" ||
-    value === "eurotray_300" ||
-    value === "eurotray_500" ||
-    value === "shingles"
-  );
-}
 
 // PR-T9 (2026-05-29): `isDeckKind` and `isDeckElevationMode` removed
 // with the deck inspector cull.
@@ -1029,9 +1015,6 @@ function normalizeHouseFormRoofIntent(
     ];
     return {
       form: "hipped",
-      material: isCalculatorHouseRoofMaterial(value?.material)
-        ? value.material
-        : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
       primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? "5",
       primaryFallDirection: isHouseRoofPrimaryFallDirection(
         value?.primaryFallDirection,
@@ -1048,9 +1031,6 @@ function normalizeHouseFormRoofIntent(
 
   return {
     form: rawForm,
-    material: isCalculatorHouseRoofMaterial(value?.material)
-      ? value.material
-      : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
     primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? "5",
     primaryFallDirection: isHouseRoofPrimaryFallDirection(
       value?.primaryFallDirection,

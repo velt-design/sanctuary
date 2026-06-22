@@ -5,7 +5,6 @@ import type {
   HouseAttachmentStrategy,
   HouseFootprintPreset,
   HouseRoofForm,
-  HouseRoofMaterial,
   Line3,
   Point3,
   Polygon3,
@@ -80,7 +79,6 @@ import {
   expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofFeatureFlashings,
-  expectHouseRoofMaterialVisuals,
 } from "./houseModelTestSupport";
 
 describe("house model deck geometry", () => {

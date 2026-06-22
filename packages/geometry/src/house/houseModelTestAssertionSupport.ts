@@ -1,7 +1,6 @@
 // Shared house-model test helpers split by responsibility.
 import { expect } from "vitest";
 import type {
-  HouseRoofMaterial,
   Line3,
   Point3,
   Polygon3,
@@ -720,84 +719,5 @@ export function expectHouseRoofFeatureFlashings(
       .sort((a, b) => a - b);
 
     expect(wingPlaneIndexes, flashing.id).toEqual(adjacentPlaneIndexes);
-  }
-}
-
-export function expectHouseRoofMaterialVisuals(
-  model: HouseModel,
-  material: HouseRoofMaterial,
-): void {
-  const visuals = model.roofMaterialVisuals ?? [];
-
-  expect(model.roofMaterial).toBe(material);
-  expect(visuals.length).toBeGreaterThan(0);
-  expect(visuals.every((visual) => visual.material === material)).toBe(true);
-
-  for (const visual of visuals) {
-    const roofPlane = model.roofPlanes.find(
-      (candidate) => candidate.id === visual.roofPlaneId,
-    );
-    expect(roofPlane, visual.id).toBeDefined();
-    if (!roofPlane) continue;
-
-    const roofNormal = normalizeVector3(roofPlane.plane.normal);
-    const topNormal =
-      roofNormal.z >= 0
-        ? roofNormal
-        : { x: -roofNormal.x, y: -roofNormal.y, z: -roofNormal.z };
-    const topPlaneConstant = dotPoint3(topNormal, roofPlane.plane.origin);
-    const fallAxis = normalizeVector3(roofPlane.fallVector);
-
-    expect(visual.surfaceOffsetMm).toBe(2);
-    expect(visual.lines.length, visual.id).toBeGreaterThan(0);
-    expect(visual.metadata).toMatchObject({
-      source: "house_model",
-      sourceRoofPlaneId: roofPlane.id,
-      material,
-      lineCount: visual.lines.length,
-    });
-
-    for (const materialLine of visual.lines) {
-      for (const candidate of [materialLine.start, materialLine.end]) {
-        expect(
-          dotPoint3(topNormal, candidate) - topPlaneConstant,
-          `${visual.id} ${roofPointKey(candidate)}`,
-        ).toBeCloseTo(2, 3);
-      }
-
-      const projectedStart = {
-        x: materialLine.start.x - topNormal.x * 2,
-        y: materialLine.start.y - topNormal.y * 2,
-        z: materialLine.start.z - topNormal.z * 2,
-      };
-      const projectedEnd = {
-        x: materialLine.end.x - topNormal.x * 2,
-        y: materialLine.end.y - topNormal.y * 2,
-        z: materialLine.end.z - topNormal.z * 2,
-      };
-      expect(
-        segmentInsidePolygon2D(
-          projectedStart,
-          projectedEnd,
-          roofPlane.boundary,
-        ),
-        `${visual.id} clipped`,
-      ).toBe(true);
-
-      const lineDirection = normalizeVector3(
-        subtractPoint3(materialLine.end, materialLine.start),
-      );
-      if (material === "shingles") {
-        expect(
-          Math.abs(dotPoint3(lineDirection, fallAxis)),
-          visual.id,
-        ).toBeLessThan(0.01);
-      } else {
-        expect(
-          Math.abs(dotPoint3(lineDirection, fallAxis)),
-          visual.id,
-        ).toBeGreaterThan(0.99);
-      }
-    }
   }
 }

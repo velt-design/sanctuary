@@ -5,7 +5,6 @@ import type {
   HouseAttachmentStrategy,
   HouseFootprintPreset,
   HouseRoofForm,
-  HouseRoofMaterial,
   Line3,
   Point3,
   Polygon3,
@@ -81,7 +80,6 @@ import {
   expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofFeatureFlashings,
-  expectHouseRoofMaterialVisuals,
 } from "./houseModelTestSupport";
 
 describe("house model roof preset coverage", () => {
@@ -754,7 +752,6 @@ describe("house model roof preset coverage", () => {
             Math.abs(candidate.y - 5400) <= 1,
         ),
     );
-    const roofMaterialVisual = model.roofMaterialVisuals?.[0];
     const soffitSolids =
       model.solids?.surfaceSolids.filter((solid) => solid.kind === "soffit") ??
       [];
@@ -906,17 +903,5 @@ describe("house model roof preset coverage", () => {
       ),
     ).toBe(0);
     expect(countRenderMeshVerticalFaces(roofSolid?.renderMesh)).toBe(2);
-    expect(roofMaterialVisual?.lines.length ?? 0).toBeGreaterThan(0);
-    expect(
-      roofMaterialVisual?.lines.every(
-        (candidate) =>
-          Number.isFinite(candidate.start.x) &&
-          Number.isFinite(candidate.start.y) &&
-          Number.isFinite(candidate.start.z) &&
-          Number.isFinite(candidate.end.x) &&
-          Number.isFinite(candidate.end.y) &&
-          Number.isFinite(candidate.end.z),
-      ),
-    ).toBe(true);
   });
 });

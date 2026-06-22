@@ -30,7 +30,6 @@ import type {
 
 const hippedRoofIntent: HouseFormRoofIntentModel = {
   form: "hipped",
-  material: "corrugated_iron",
   primaryPitchDeg: "20",
   primaryFallDirection: "positive_y",
   ridgeAxis: "y",

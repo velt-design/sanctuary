@@ -18,7 +18,6 @@ import type {
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
   HouseRoofForm,
-  HouseRoofMaterial,
   HouseStoreyMode,
   HouseWallConstruction,
   RawGableEaveGutterMode,
@@ -76,7 +75,6 @@ const DEFAULT_HOUSE_GUTTER_WIDTH_MM = 125;
 const DEFAULT_HOUSE_GUTTER_DEPTH_MM = 90;
 const DEFAULT_HOUSE_GUTTER_PROJECTION_MM = 125;
 const DEFAULT_HOUSE_EAVE_OVERHANG_MM = 450;
-const DEFAULT_HOUSE_ROOF_MATERIAL: HouseRoofMaterial = 'corrugated_iron';
 
 function resolveFamily(input: RawGeometryModuleInput): GeometryConfig['family'] | null {
   if (input.pergolaStyle === 'pitched') {
@@ -174,18 +172,6 @@ function resolveHouseOpenGableEndIds(
 
 // PR-T8 (2026-05-29): `resolveHouseRoofAppendageForm` removed with the
 // appendage feature cull.
-
-function resolveHouseRoofMaterial(value: HouseRoofMaterial | null | undefined): HouseRoofMaterial {
-  if (
-    value === 'trapezoidal_5_rib' ||
-    value === 'eurotray_300' ||
-    value === 'eurotray_500' ||
-    value === 'shingles'
-  ) {
-    return value;
-  }
-  return DEFAULT_HOUSE_ROOF_MATERIAL;
-}
 
 export function resolveHouseAttachmentStrategy(
   value: HouseAttachmentStrategy | null | undefined,
@@ -696,7 +682,6 @@ export function buildHouseModelConfig(input: {
     storeyMode: resolveHouseStoreyMode(input.rawHouseContext.storeyMode),
     wallConstruction: resolveHouseWallConstruction(input.rawHouseContext.wallConstruction),
     roofForm,
-    roofMaterial: resolveHouseRoofMaterial(input.rawHouseContext.roofMaterial),
     eaveHeightMm,
     wallHeightMm,
     roofPitchDeg,

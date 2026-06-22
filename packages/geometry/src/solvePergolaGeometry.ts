@@ -148,7 +148,6 @@ const EMPTY_RAW_HOUSE: RawHouseInput = {
   storeyMode: 'single_storey',
   wallConstruction: 'timber_frame',
   roofForm: 'hipped',
-  roofMaterial: 'corrugated_iron',
   roofPrimaryFallDirection: 'positive_y',
   roofRidgeAxis: 'x',
   openGableEndIds: [],

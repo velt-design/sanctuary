@@ -149,13 +149,6 @@ export type HouseDeckSupportClassification =
   | "threshold_attached"
   | "mixed_or_unclear";
 export type HouseOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
-export type HouseRoofMaterial =
-  | "corrugated_iron"
-  | "trapezoidal_5_rib"
-  | "eurotray_300"
-  | "eurotray_500"
-  | "shingles";
-export type HouseRoofMaterialProfileKind = "rib" | "seam" | "course";
 export type HouseAttachmentStrategy =
   | "soffit_brackets"
   | "fascia_under_gutter"
@@ -247,7 +240,6 @@ export type HouseModelConfig = {
   storeyMode?: HouseStoreyMode | null;
   wallConstruction?: HouseWallConstruction | null;
   roofForm?: HouseRoofForm | null;
-  roofMaterial?: HouseRoofMaterial | null;
   eaveHeightMm?: number | null;
   wallHeightMm?: number | null;
   roofPitchDeg?: number | null;
@@ -381,7 +373,6 @@ export type RawHouseInput = {
   storeyMode?: HouseStoreyMode | null;
   wallConstruction?: HouseWallConstruction | null;
   roofForm?: HouseRoofForm | null;
-  roofMaterial?: HouseRoofMaterial | null;
   roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
   roofRidgeAxis?: HouseRoofRidgeAxis | null;
   openGableEndIds?: string[] | null;
@@ -559,7 +550,6 @@ export type RawGeometryModuleInput = {
     storeyMode?: HouseStoreyMode | null;
     wallConstruction?: HouseWallConstruction | null;
     roofForm?: HouseRoofForm | null;
-    roofMaterial?: HouseRoofMaterial | null;
     roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
     roofRidgeAxis?: HouseRoofRidgeAxis | null;
     openGableEndIds?: string[] | null;
@@ -895,18 +885,6 @@ export type HouseRoofFeature3D = {
   metadata?: GeometryMetadata;
 };
 
-export type HouseRoofMaterialVisual3D = {
-  id: string;
-  roofPlaneId: string;
-  material: HouseRoofMaterial;
-  profileKind: HouseRoofMaterialProfileKind;
-  lines: Line3[];
-  plane: Plane3;
-  spacingMm: number;
-  surfaceOffsetMm: number;
-  metadata?: GeometryMetadata;
-};
-
 export type HouseSurfaceSolidKind = "wall" | "roof" | "soffit" | "fascia" | "deck";
 export type HouseLinearSolidKind = "gutter";
 
@@ -1033,8 +1011,6 @@ export type HouseModel3D = {
   roofPlanes: RoofPlane3D[];
   roofFeatures?: HouseRoofFeature3D[] | null;
   roofFlashings?: RoofFlashing3D[] | null;
-  roofMaterial?: HouseRoofMaterial | null;
-  roofMaterialVisuals?: HouseRoofMaterialVisual3D[] | null;
   decks?: HouseDeck3D[] | null;
   openings?: HouseOpening3D[] | null;
   solids?: HouseEnvelopeSolids3D | null;
@@ -1711,20 +1687,6 @@ export type ViewerSceneRoofFlashingObject = {
   metadata?: GeometryMetadata;
 };
 
-export type ViewerSceneHouseRoofMaterialObject = {
-  id: string;
-  type: "house_roof_material";
-  sourceId: string;
-  roofPlaneId: string;
-  material: HouseRoofMaterial;
-  profileKind: HouseRoofMaterialProfileKind;
-  lines: Line3[];
-  plane: Plane3;
-  spacingMm: number;
-  surfaceOffsetMm: number;
-  metadata?: GeometryMetadata;
-};
-
 export type ViewerSceneReferenceLineObject = {
   id: string;
   type: "reference_line";
@@ -1793,7 +1755,6 @@ export type ViewerSceneObject =
   | ViewerSceneRoofPlaneObject
   | ViewerSceneRoofCladdingPanelObject
   | ViewerSceneRoofFlashingObject
-  | ViewerSceneHouseRoofMaterialObject
   | ViewerSceneReferenceLineObject
   | ViewerSceneReferencePlaneObject
   | ViewerSceneHouseSurfaceObject

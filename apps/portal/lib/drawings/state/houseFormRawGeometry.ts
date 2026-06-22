@@ -52,7 +52,6 @@ export function buildRawHouseInputFromHouseForm(houseForm: HouseFormModel): RawH
     position: houseFormTransformToAssemblyPosition(reconciledHouseForm.transform),
     storeyMode: reconciledHouseForm.storeyMode,
     roofForm: reconciledHouseForm.roofIntent.form,
-    roofMaterial: reconciledHouseForm.roofIntent.material,
     roofPrimaryFallDirection: reconciledHouseForm.roofIntent.primaryFallDirection,
     roofRidgeAxis: reconciledHouseForm.roofIntent.ridgeAxis,
     openGableEndIds: reconciledHouseForm.roofIntent.openGableEndIds,

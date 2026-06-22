@@ -63,7 +63,6 @@ export type HouseRoofStageDiagnostics = {
   footprintCanonicalizationPointCountAfter: number | null;
   roofPlaneCountBeforeQa: number;
   roofPlaneCountAfterQa: number;
-  roofMaterialVisualCount: number;
   roofSolidCount: number;
 };
 
@@ -128,7 +127,6 @@ export const EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS: HouseRoofStageDiagnostics = {
   footprintCanonicalizationPointCountAfter: null,
   roofPlaneCountBeforeQa: 0,
   roofPlaneCountAfterQa: 0,
-  roofMaterialVisualCount: 0,
   roofSolidCount: 0,
 };
 
@@ -178,14 +176,13 @@ export function summarizeHouseModelRoofStageDiagnostics(
     numberMetadata(metadata, "roofPitchDeg") ??
     numberMetadata(firstRoofPlaneMetadata, "pitchDeg");
   const roofGeometry = stringMetadata(metadata, "roofGeometry");
-  const roofMaterialVisualCount = model.roofMaterialVisuals?.length ?? 0;
   const roofSolidCount =
     model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof")
       .length ?? 0;
   const hasMonoRoofBodyOutput =
     roofGeometry === "footprint_mono" &&
     roofPlaneCountBeforeQa > 0 &&
-    (roofMaterialVisualCount > 0 || roofSolidCount > 0);
+    roofSolidCount > 0;
   const eavePolygonConstructionStatus =
     eavePolygonPointCount > 0 || hasMonoRoofBodyOutput ? "ok" : "failed";
 
@@ -374,7 +371,6 @@ export function summarizeHouseModelRoofStageDiagnostics(
     ),
     roofPlaneCountBeforeQa,
     roofPlaneCountAfterQa,
-    roofMaterialVisualCount,
     roofSolidCount,
   };
 }
@@ -468,7 +464,6 @@ export function pickHouseRoofStageDiagnostics(
       diagnostics.footprintCanonicalizationPointCountAfter,
     roofPlaneCountBeforeQa: diagnostics.roofPlaneCountBeforeQa,
     roofPlaneCountAfterQa: diagnostics.roofPlaneCountAfterQa,
-    roofMaterialVisualCount: diagnostics.roofMaterialVisualCount,
     roofSolidCount: diagnostics.roofSolidCount,
   };
 }

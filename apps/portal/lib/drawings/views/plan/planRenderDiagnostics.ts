@@ -2,7 +2,6 @@ import type { GeometryTopProjectionShape } from '@sp/geometry';
 import {
   planHouseFormOwner,
   planShapeIsHouseRoofBody,
-  planShapeIsHouseRoofMaterialBody,
   planShapeIsVisibleHouseReferenceFallback,
 } from './planShapeOwnership';
 import type { ProjectionPlanGraphItem } from './planRenderGraph';
@@ -11,7 +10,6 @@ type PlanHouseRenderDiagnostics = {
   houseFormId: string;
   referenceIds: string[];
   roofBodyIds: string[];
-  roofMaterialBodyIds: string[];
   visibleReferenceFallbackIds: string[];
   hitTargetIds: string[];
 };
@@ -31,7 +29,6 @@ function ensureHouse(
     houseFormId,
     referenceIds: [],
     roofBodyIds: [],
-    roofMaterialBodyIds: [],
     visibleReferenceFallbackIds: [],
     hitTargetIds: [],
   };
@@ -62,9 +59,6 @@ function collectHouseShape(input: {
   }
   if (input.visibleCommittedBody && planShapeIsHouseRoofBody(input.shape)) {
     pushUnique(house.roofBodyIds, input.shape.id);
-  }
-  if (input.visibleCommittedBody && planShapeIsHouseRoofMaterialBody(input.shape)) {
-    pushUnique(house.roofMaterialBodyIds, input.shape.id);
   }
   if (input.hitTarget) {
     pushUnique(house.hitTargetIds, input.shape.id);
@@ -110,7 +104,6 @@ export function buildPlanRenderDiagnostics<TItem extends { shape: GeometryTopPro
     ...house,
     referenceIds: house.referenceIds.sort(),
     roofBodyIds: house.roofBodyIds.sort(),
-    roofMaterialBodyIds: house.roofMaterialBodyIds.sort(),
     visibleReferenceFallbackIds: house.visibleReferenceFallbackIds.sort(),
     hitTargetIds: house.hitTargetIds.sort(),
   })).sort((left, right) => left.houseFormId.localeCompare(right.houseFormId));

@@ -90,7 +90,6 @@ function makeMonoJoinScreenshotFixtureSource(): {
       snapshot,
       roof: {
         form: 'mono',
-        material: 'trapezoidal_5_rib',
         primaryPitchDeg: '20',
         primaryFallDirection: 'positive_y',
       },

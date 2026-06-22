@@ -103,7 +103,7 @@ function projectPergolaIdFromShape(shape: GeometryTopProjectionShape): string | 
 function countPergolaSceneBodies(artifact: ProjectPergolaSceneSource): number {
   return (
     artifact.viewerScene?.layers
-      .filter((layer) => layer.id !== 'house' && layer.id !== 'house_roof_materials')
+      .filter((layer) => layer.id !== 'house')
       .reduce((count, layer) => count + layer.objects.length, 0) ?? 0
   );
 }

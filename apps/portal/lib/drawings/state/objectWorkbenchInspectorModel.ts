@@ -249,7 +249,6 @@ function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoo
     ? deriveHouseFormRoofIntentForFootprint({ houseForm })
     : {
         form: 'mono',
-        material: 'corrugated_iron',
         primaryPitchDeg: '',
         primaryFallDirection: 'positive_y',
         ridgeAxis: 'x',

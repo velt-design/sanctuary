@@ -124,7 +124,6 @@ function statusToIntent(roof: ObjectWorkbenchRoofStatus): RoofFailureReproRoofIn
   // callers); the rail itself always passes the inspector model.
   return {
     form: roof.form,
-    material: 'corrugated_iron',
     primaryPitchDeg: '',
     primaryFallDirection: 'positive_y',
     ridgeAxis: 'x',

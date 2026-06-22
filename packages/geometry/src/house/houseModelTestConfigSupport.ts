@@ -5,7 +5,6 @@ import type {
   HouseAttachmentStrategy,
   HouseFootprintPreset,
   HouseRoofForm,
-  HouseRoofMaterial,
   Polygon3,
 } from "../contracts";
 import { buildHouseFootprintPolygon } from "../footprints";
@@ -70,7 +69,6 @@ export function makeConfig(
     eaveHeightMm?: number;
     wallHeightMm?: number;
     roofPitchDeg?: number;
-    roofMaterial?: HouseRoofMaterial;
     fasciaHeightMm?: number;
     gutterWidthMm?: number;
     gutterProjectionMm?: number;
@@ -183,7 +181,6 @@ export function makeConfig(
         storeyMode: "single_storey",
         wallConstruction: "timber_frame",
         roofForm: input.roofForm ?? "hipped",
-        roofMaterial: input.roofMaterial,
         eaveHeightMm,
         wallHeightMm,
         roofPitchDeg: input.roofPitchDeg ?? 25,

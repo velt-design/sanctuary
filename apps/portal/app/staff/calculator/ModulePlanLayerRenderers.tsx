@@ -144,7 +144,7 @@ function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
     if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') {
       return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseOpening}`;
     }
-    if (shape.kind === 'roof' || shape.kind === 'house_roof_material') return planHouseSurfaceClass('roof');
+    if (shape.kind === 'roof') return planHouseSurfaceClass('roof');
     if (shape.kind === 'soffit') return planHouseSurfaceClass('soffit');
     if (shape.kind === 'fascia') return planHouseSurfaceClass('fascia');
     if (shape.kind === 'attachment_zone') return planHouseSurfaceClass('attachment_zone');

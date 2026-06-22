@@ -1,4 +1,4 @@
-import type { HouseRoofMaterial, Vector3 } from '../contracts';
+import type { Vector3 } from '../contracts';
 
 export const WORLD_Z: Vector3 = { x: 0, y: 0, z: 1 };
 export const DEFAULT_EAVE_HEIGHT_MM = 2400;
@@ -18,8 +18,6 @@ export const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM = 150;
 export const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM = 1;
 export const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM =
   DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM / 2;
-export const DEFAULT_HOUSE_ROOF_MATERIAL: HouseRoofMaterial = 'corrugated_iron';
-export const DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM = 2;
 export const DEFAULT_DECK_SURFACE_THICKNESS_MM = 40;
 export const RIDGE_COLLAPSE_EPSILON_MM = 1;
 export const ROOF_JOIN_EPSILON_MM = 1e-3;

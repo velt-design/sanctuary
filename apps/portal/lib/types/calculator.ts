@@ -31,12 +31,6 @@ export type CalculatorHouseFootprintPolygonPoint = {
   depthM: string;
 };
 export type CalculatorHouseStoreyMode = 'single_storey' | 'double_storey' | 'custom';
-export type CalculatorHouseRoofMaterial =
-  | 'corrugated_iron'
-  | 'trapezoidal_5_rib'
-  | 'eurotray_300'
-  | 'eurotray_500'
-  | 'shingles';
 export type CalculatorHouseAttachmentStrategy =
   | 'soffit_brackets'
   | 'fascia_under_gutter'
@@ -61,7 +55,6 @@ export const DEFAULT_CALCULATOR_ATTACHMENT_SIDE: AttachmentSide = 'rear';
 export const DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS: CalculatorDrawingRotationQuarterTurns = 0;
 export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE: CalculatorHouseFootprintMode = 'preset';
 export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET: CalculatorHouseFootprintPreset = 'straight';
-export const DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL: CalculatorHouseRoofMaterial = 'corrugated_iron';
 
 export function makeDefaultHouseFootprintParams(): CalculatorHouseFootprintParams {
   return {
@@ -320,7 +313,6 @@ export type CalculatorModuleInputs = {
     rotationDeg: string;
   };
   houseStoreyMode?: CalculatorHouseStoreyMode;
-  houseRoofMaterial?: CalculatorHouseRoofMaterial;
   houseAttachmentStrategy?: CalculatorHouseAttachmentStrategy;
   houseEaveHeightM?: string;
   houseWallHeightM?: string;
@@ -521,7 +513,6 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         houseFootprintPreset: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
         houseFootprintParams: makeDefaultHouseFootprintParams(),
         houseFootprintPolygon: [],
-        houseRoofMaterial: DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
         postConnectionType: legacy.postConnectionType,
         ground: legacy.ground,
         lengthM: legacy.lengthM,

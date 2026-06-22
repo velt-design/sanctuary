@@ -261,26 +261,6 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
         },
       },
       {
-        id: 'top-projection-house-roof-material',
-        sourceObjectId: 'scene-house-roof-material',
-        sourceId: 'solved-house-roof-material',
-        sourceType: 'house_roof_material',
-        family: 'house',
-        kind: 'house_roof_material',
-        polygon: [
-          { x: -500, y: -2200 },
-          { x: 6500, y: -2200 },
-          { x: 6500, y: 0 },
-          { x: -500, y: 0 },
-        ],
-        zOrder: 12,
-        zMin: 2400,
-        zMax: 3100,
-        metadata: {
-          topProjectionRole: 'top_visible',
-        },
-      },
-      {
         id: 'top-projection-hidden-wall',
         sourceObjectId: 'scene-house-wall',
         sourceId: 'solved-house-wall',

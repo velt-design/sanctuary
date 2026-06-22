@@ -6,7 +6,6 @@ const DECORATIVE_HOUSE_HIT_TARGET_KINDS: ReadonlySet<string> = new Set([
   'soffit',
   'gutter',
   'roof_feature',
-  'house_roof_material',
 ]);
 
 export function planHouseFormOwner(shape: GeometryTopProjectionShape): string | null {
@@ -30,19 +29,7 @@ export function planShapeVisualOwner(shape: GeometryTopProjectionShape): string 
 }
 
 export function planShapeIsHouseRoofBody(shape: GeometryTopProjectionShape): boolean {
-  return (
-    shape.family === 'house' &&
-    (shape.kind === 'roof' ||
-      (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material'))
-  );
-}
-
-export function planShapeIsHouseRoofMaterialBody(shape: GeometryTopProjectionShape): boolean {
-  return (
-    shape.family === 'house' &&
-    shape.sourceType === 'house_roof_material' &&
-    shape.kind === 'house_roof_material'
-  );
+  return shape.family === 'house' && shape.kind === 'roof';
 }
 
 export function planShapeIsVisibleHouseReferenceFallback(shape: GeometryTopProjectionShape): boolean {

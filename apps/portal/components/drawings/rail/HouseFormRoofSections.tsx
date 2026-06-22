@@ -5,7 +5,6 @@ import {
   MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG,
   normalizeHouseRoofPitchInputForForm,
 } from '@sp/geometry';
-import type { CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { resolveHouseTerminalEndToggleRoofDraft } from '@/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft';
@@ -15,7 +14,6 @@ import {
   HOUSE_ROOF_FORM_OPTIONS,
   NumberField,
   ROOF_FALL_DIRECTION_OPTIONS,
-  ROOF_MATERIAL_OPTIONS,
   SelectField,
 } from './objectRailShared';
 import RoofValidationPanel from './RoofValidationPanel';
@@ -88,24 +86,6 @@ export function buildHouseFormRoofSections({
       );
     }
 
-    if (roofControls.material) {
-      fields.push(
-        <SelectField
-          key="roof-material"
-          label="Roof material"
-          value={roofDraft.material ?? 'corrugated_iron'}
-          options={ROOF_MATERIAL_OPTIONS}
-          disabled={disabled}
-          error={fieldErrors['roof-material']}
-          onCommit={(value) =>
-            runRoofCommit('roof-material', {
-              ...roofDraft,
-              material: value as CalculatorHouseRoofMaterial,
-            })
-          }
-        />,
-      );
-    }
   }
 
   if (canEditSelectedRoofForm && roofControls.primaryFallDirection) {

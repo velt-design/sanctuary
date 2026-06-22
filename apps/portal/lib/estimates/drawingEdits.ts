@@ -20,7 +20,6 @@ import {
 import type {
   CalculatorFlashingsState,
   CalculatorHouseAttachmentStrategy,
-  CalculatorHouseRoofMaterial,
   CalculatorInputs,
   CalculatorModuleInputs,
   CalculatorModuleOverrides,
@@ -245,7 +244,6 @@ export type EditableModuleFieldKey =
   | 'postConnectionType'
   | 'ground'
   | 'houseStoreyMode'
-  | 'houseRoofMaterial'
   | 'houseAttachmentStrategy'
   | 'houseEaveHeightM'
   | 'houseWallHeightM'
@@ -399,15 +397,6 @@ function isHouseStoreyMode(value: unknown): value is CalculatorHouseStoreyMode {
   return value === 'single_storey' || value === 'double_storey' || value === 'custom';
 }
 
-function isHouseRoofMaterial(value: unknown): value is CalculatorHouseRoofMaterial {
-  return (
-    value === 'corrugated_iron' ||
-    value === 'trapezoidal_5_rib' ||
-    value === 'eurotray_300' ||
-    value === 'eurotray_500' ||
-    value === 'shingles'
-  );
-}
 
 function isHouseAttachmentStrategy(value: unknown): value is CalculatorHouseAttachmentStrategy {
   return (
@@ -563,10 +552,6 @@ function setDraftModuleField(
     case 'houseStoreyMode':
       if (!isHouseStoreyMode(value)) return { ok: false, error: 'Choose a supported house storey mode.' };
       updated.houseStoreyMode = value;
-      break;
-    case 'houseRoofMaterial':
-      if (!isHouseRoofMaterial(value)) return { ok: false, error: 'Choose a supported house roof material.' };
-      updated.houseRoofMaterial = value;
       break;
     case 'houseAttachmentStrategy':
       if (value === 'auto' || String(value ?? '').trim() === '') {

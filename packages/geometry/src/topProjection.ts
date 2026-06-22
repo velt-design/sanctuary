@@ -362,8 +362,8 @@ function projectionRoleForObject(object: ViewerSceneObject): TopProjectionRole {
   // `house_line` features. They're tagged with `metadata.source: 'house_model'`
   // by the house-model builders so the same `roof_flashing` /
   // `roof_cladding_panel` types remain top-visible when emitted from a
-  // pergola assembly. `house_roof_material` and `house_surface_solid` are
-  // checked first so their explicit rules still apply.
+  // pergola assembly. `house_surface_solid` is checked first so its
+  // explicit rules still apply.
   if (object.type === 'house_surface_solid') {
     if (object.kind === 'roof' || object.kind === 'deck') return 'top_visible';
     return 'hidden_from_top';
@@ -377,7 +377,7 @@ function projectionRoleForObject(object: ViewerSceneObject): TopProjectionRole {
     if (object.kind === 'wall_segment' || object.kind === 'opening_outline' || object.kind === 'attachment_target') return 'context';
     return 'top_visible';
   }
-  if (object.type === 'house_roof_material' || object.type === 'house_linear_solid') return 'top_visible';
+  if (object.type === 'house_linear_solid') return 'top_visible';
   if (object.metadata?.source === 'house_model') return 'hidden_from_top';
   return 'top_visible';
 }
@@ -419,8 +419,6 @@ function objectPoints(object: ViewerSceneObject): Point3[] {
       return object.boundary;
     case 'roof_flashing':
       return object.wings.flatMap((wing) => wing.boundary);
-    case 'house_roof_material':
-      return object.lines.flatMap((line) => [line.start, line.end]);
     case 'reference_line':
     case 'house_line':
       return [object.line.start, object.line.end];
@@ -454,8 +452,6 @@ function kindForObject(object: ViewerSceneObject): string {
       return 'roof_cladding';
     case 'roof_flashing':
       return 'roof_flashing';
-    case 'house_roof_material':
-      return 'house_roof_material';
     case 'house_surface':
     case 'house_line':
     case 'house_surface_solid':
@@ -483,7 +479,7 @@ function baseZOrder(input: { family: GeometryTopProjectionFamily; sourceType: Vi
     // (see `planHitTargetFilter.ts`), so the deck stays clickable in the
     // overlap region even though the roof is drawn on top of it.
     if (input.kind === 'deck') return 28;
-    if (input.kind === 'roof' || input.kind === 'house_roof_material') return 30;
+    if (input.kind === 'roof') return 30;
     if (input.kind === 'gutter' || input.kind === 'roof_feature') return 36;
     if (input.kind === 'opening_marker' || input.kind === 'opening_outline') return 48;
     return 25;
@@ -511,10 +507,6 @@ function shapeProjectionForObject(object: ViewerSceneObject): ObjectProjection |
     }
     case 'roof_flashing': {
       const polygon = convexHull(toPolygon2(object.wings.flatMap((wing) => wing.boundary)));
-      return polygon ? { polygon, role } : null;
-    }
-    case 'house_roof_material': {
-      const polygon = convexHull(toPolygon2(object.lines.flatMap((line) => [line.start, line.end])));
       return polygon ? { polygon, role } : null;
     }
     case 'reference_line':
@@ -587,7 +579,6 @@ function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionS
 
 function shapeIsGenericHouseRoofProjection(shape: GeometryTopProjectionShape): boolean {
   if (shape.family !== 'house') return false;
-  if (shape.sourceType === 'house_roof_material') return true;
   return (
     shape.kind === 'roof' &&
     (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface')

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildHouseModelRoofMaterialSceneObjects,
   buildViewerSceneModel,
   solveAssembly3D,
   type GeometryConfig,
@@ -76,9 +75,6 @@ function pointsForViewerObject(object: ViewerSceneObject) {
   }
   if (object.type === "roof_flashing") {
     return object.wings.flatMap((wing) => wing.boundary);
-  }
-  if (object.type === "house_roof_material") {
-    return object.lines.flatMap((line) => [line.start, line.end]);
   }
   if (object.type === "reference_line" || object.type === "house_line") {
     return [object.line.start, object.line.end];
@@ -204,39 +200,6 @@ describe("buildViewerSceneModel", () => {
     ).toBe(allIds.length);
   });
 
-  it("emits roof material scene objects for additional house models", () => {
-    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
-    const config = addHouseModelContext(fixture.config, {
-      lengthMm: 6000,
-      eaveHeightMm: 2400,
-      strategy: "fascia_under_gutter",
-    });
-    const solveResult = solveAssembly3D(config);
-    if (!solveResult.ok) throw new Error(solveResult.error);
-
-    const hostHouseModel = solveResult.value.house.model;
-    if (!hostHouseModel) throw new Error("Expected host house model");
-    const secondHouseModel = { ...hostHouseModel, houseId: "second-house" };
-
-    const roofMaterialObjects = buildHouseModelRoofMaterialSceneObjects({
-      model: secondHouseModel,
-    });
-    expect(roofMaterialObjects.length).toBeGreaterThan(0);
-    expect(roofMaterialObjects.every((object) => object.id.startsWith("second-house:"))).toBe(true);
-    expect(
-      roofMaterialObjects.every((object) => object.metadata?.houseFormId === "second-house"),
-    ).toBe(true);
-
-    const scene = buildViewerSceneModel(solveResult.value, {
-      additionalHouseModels: [secondHouseModel],
-    });
-    const sceneRoofMaterialObjects =
-      scene.layers.find((layer) => layer.id === "house_roof_materials")?.objects ?? [];
-    expect(
-      sceneRoofMaterialObjects.some((object) => object.id.startsWith("second-house:")),
-    ).toBe(true);
-  });
-
   it("produces deterministic layer grouping for mono, gable, and box assemblies", () => {
     const fixtureIds = {
       mono_attached_soffit_away_standard: [
@@ -248,7 +211,6 @@ describe("buildViewerSceneModel", () => {
         "joiners",
         "gutters",
         "roof_cladding",
-        "house_roof_materials",
         "roof_flashings",
         "roof_planes",
         "attachment_edge",
@@ -262,7 +224,6 @@ describe("buildViewerSceneModel", () => {
         "joiners",
         "gutters",
         "roof_cladding",
-        "house_roof_materials",
         "roof_flashings",
         "roof_planes",
         "attachment_edge",
@@ -275,7 +236,6 @@ describe("buildViewerSceneModel", () => {
         "joiners",
         "gutters",
         "roof_cladding",
-        "house_roof_materials",
         "roof_flashings",
         "roof_planes",
         "attachment_edge",
@@ -1063,8 +1023,6 @@ describe("buildViewerSceneModel", () => {
         (object.type === "house_linear_solid" && object.kind === "gutter")
       );
     });
-    const roofMaterialObjects =
-      scene.layers.find((layer) => layer.id === "house_roof_materials")?.objects ?? [];
     const roofFlashingObjects =
       scene.layers.find((layer) => layer.id === "roof_flashings")?.objects ?? [];
     const soffitObjects = houseObjects.filter(
@@ -1141,13 +1099,12 @@ describe("buildViewerSceneModel", () => {
         );
       }),
     ).toBe(true);
-    expect(roofMaterialObjects.length).toBeGreaterThan(0);
     expect(scene.metadata).toMatchObject({
       houseRoofQaStatus: "valid",
       houseRoofSolidSkippedCount: 0,
     });
 
-    const points = [...houseObjects, ...roofMaterialObjects].flatMap(pointsForViewerObject);
+    const points = [...houseObjects].flatMap(pointsForViewerObject);
     expect(points.length).toBeGreaterThan(0);
     expect(points.every((point) => Number.isFinite(point.x))).toBe(true);
     expect(points.every((point) => Number.isFinite(point.y))).toBe(true);

@@ -331,21 +331,6 @@ export function objectSummary(
     ];
   }
 
-  if (object.type === "house_roof_material") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: "house roof material" },
-      { label: "Material", value: object.material.replace(/_/g, " ") },
-      { label: "Profile", value: object.profileKind },
-      { label: "Roof plane", value: object.roofPlaneId },
-      { label: "Lines", value: `${object.lines.length}` },
-      { label: "Spacing", value: `${Math.round(object.spacingMm)} mm` },
-      { label: "Surface offset", value: `${Math.round(object.surfaceOffsetMm)} mm` },
-      { label: "Plane origin", value: formatPoint(object.plane.origin) },
-      { label: "Plane normal", value: formatVector(object.plane.normal) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
 
   if (object.type === "reference_line") {
     return [

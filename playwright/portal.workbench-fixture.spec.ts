@@ -81,8 +81,8 @@ test.describe('workbench fixture route', () => {
     const pergolaOneReferenceFallbackIds = await readVisibleHouseReferenceFallbackIds(page);
     const pergolaOneDiagnostics = await readPlanHouseRenderDiagnostics(page);
     const pergolaOneProjectionHealth = await readPlanHouseProjectionHealth(page);
-    expect(pergolaOneHouseBodyIds.some((id) => id.includes('house_roof_material:house-main'))).toBe(true);
-    expect(pergolaOneHouseBodyIds.some((id) => id.includes('house_roof_material:house-form-2'))).toBe(true);
+    expect(pergolaOneHouseBodyIds.some((id) => id.includes('house-main'))).toBe(true);
+    expect(pergolaOneHouseBodyIds.some((id) => id.includes('house-form-2'))).toBe(true);
     expect(pergolaOneHouseBodyIds.every((id) => !id.startsWith('house_reference:'))).toBe(true);
     expect(pergolaOneReferenceFallbackIds).toEqual([]);
     expect(pergolaOneDiagnostics).toEqual(
@@ -101,12 +101,10 @@ test.describe('workbench fixture route', () => {
       expect.arrayContaining([
         expect.objectContaining({
           houseFormId: 'house-main',
-          roofMaterialBodyCount: expect.any(Number),
           visibleReferenceFallbackIds: [],
         }),
         expect.objectContaining({
           houseFormId: 'house-form-2',
-          roofMaterialBodyCount: expect.any(Number),
           visibleReferenceFallbackIds: [],
         }),
       ]),
@@ -171,11 +169,11 @@ test.describe('workbench fixture route', () => {
         .map((id, index) => (id.startsWith('project_pergola:') ? index : -1))
         .filter((index) => index >= 0),
     );
-    const firstHouseRoofMaterialIndex = paintOrderedBodyIds.findIndex((id) =>
-      id.startsWith('house_roof_material:'),
+    const firstHouseBodyIndex = paintOrderedBodyIds.findIndex((id) =>
+      id.startsWith('house_surface_solid:'),
     );
     expect(lastPergolaIndex).toBeGreaterThanOrEqual(0);
-    expect(firstHouseRoofMaterialIndex).toBeGreaterThan(lastPergolaIndex);
+    expect(firstHouseBodyIndex).toBeGreaterThan(lastPergolaIndex);
 
     await selectRailObject(page, 'house_forms', 'house-main');
     expect(await readVisibleHouseBodyIds(page)).toEqual(pergolaOneHouseBodyIds);
@@ -318,9 +316,7 @@ test.describe('workbench fixture route', () => {
       expect(entry.modelPresent, entry.houseFormId).toBe(true);
       expect(entry.roofPlaneCount, entry.houseFormId).toBeGreaterThan(0);
       expect(entry.roofBodyCount, entry.houseFormId).toBeGreaterThan(0);
-      expect(entry.roofMaterialBodyCount, entry.houseFormId).toBe(0);
       expect(entry.sceneBodyCount, entry.houseFormId).toBeGreaterThan(0);
-      expect(entry.sceneRoofMaterialBodyCount, entry.houseFormId).toBeGreaterThan(0);
       expect(entry.canRenderCommittedBody, entry.houseFormId).toBe(true);
       expect(entry.failureStage, entry.houseFormId).toBe('none');
       expect(entry.diagnosticCode, entry.houseFormId).toBe(null);

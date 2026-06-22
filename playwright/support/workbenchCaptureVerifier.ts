@@ -78,7 +78,6 @@ function houseHasInconsistentRenderHealth(health: UnknownRecord | null): boolean
   if (!health) return true;
 
   const roofBodyCount = asNumber(health.roofBodyCount) ?? 0;
-  const roofMaterialBodyCount = asNumber(health.roofMaterialBodyCount) ?? 0;
   const sceneBodyCount = asNumber(health.sceneBodyCount) ?? 0;
   const canRenderCommittedBody = health.canRenderCommittedBody === true;
   const visibleFallbackIds = asStringArray(health.visibleReferenceFallbackIds);
@@ -88,7 +87,7 @@ function houseHasInconsistentRenderHealth(health: UnknownRecord | null): boolean
     hasDiagnosticCode(health) ||
     !canRenderCommittedBody ||
     visibleFallbackIds.length > 0 ||
-    (roofBodyCount <= 0 && roofMaterialBodyCount <= 0) ||
+    roofBodyCount <= 0 ||
     sceneBodyCount <= 0
   );
 }
@@ -114,7 +113,6 @@ function explainHouseFailure(
     `healthStage=${asString(health?.failureStage) ?? 'missing_health'}`,
     `diagnosticCode=${asString(health?.diagnosticCode) ?? asString(input?.diagnosticCode) ?? asString(input?.roofPipelineDiagnosticCode) ?? 'none'}`,
     `roofBodies=${asNumber(health?.roofBodyCount) ?? 0}`,
-    `roofMaterialBodies=${asNumber(health?.roofMaterialBodyCount) ?? 0}`,
     `sceneBodies=${asNumber(health?.sceneBodyCount) ?? 0}`,
     `canRenderCommittedBody=${health?.canRenderCommittedBody === true}`,
     `fallbacks=${asStringArray(health?.visibleReferenceFallbackIds).length}`,

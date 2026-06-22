@@ -48,7 +48,6 @@ function buildPayload({
         failureStage: failingHouseId === houseFormId ? 'missing_plan_body' : 'none',
         diagnosticCode: failingHouseId === houseFormId ? 'missing_plan_body' : null,
         roofBodyCount: failingHouseId === houseFormId ? 0 : 1,
-        roofMaterialBodyCount: failingHouseId === houseFormId ? 0 : 1,
         sceneBodyCount: failingHouseId === houseFormId ? 0 : 4,
         canRenderCommittedBody: failingHouseId !== houseFormId,
         visibleReferenceFallbackIds: failingHouseId === houseFormId ? [`house_reference:${houseFormId}`] : [],

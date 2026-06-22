@@ -25,7 +25,6 @@ describe('planCommittedBodyTokenClass', () => {
       { kind: 'opening_marker', expected: /bodyHouseOpening/ },
       { kind: 'opening_outline', expected: /bodyHouseOpening/ },
       { kind: 'roof', expected: /bodyHouseRoof/ },
-      { kind: 'house_roof_material', expected: /bodyHouseRoof/ },
       { kind: 'soffit', expected: /bodyHouseSoffit/ },
       { kind: 'fascia', expected: /bodyHouseFascia/ },
       { kind: 'attachment_zone', expected: /bodyHouseAttachmentZone/ },

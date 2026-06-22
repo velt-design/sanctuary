@@ -225,7 +225,6 @@ function buildObjectFirstDraftFromFixtureModule(module: FixtureModuleInput): Obj
       ...house.roofIntent,
       form: 'hipped',
       primaryPitchDeg: module.houseRoofPitchDeg ?? module.roofPitchDeg ?? house.roofIntent.primaryPitchDeg,
-      material: 'corrugated_iron',
     } satisfies HouseFormRoofIntentModel,
     attachmentStrategy: module.houseAttachmentStrategy ?? null,
     fasciaHeightMm: module.houseFasciaHeightMm ?? house.fasciaHeightMm,

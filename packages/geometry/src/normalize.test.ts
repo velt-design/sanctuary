@@ -426,7 +426,6 @@ describe('normalizeGeometryConfig', () => {
       storeyMode: 'single_storey',
       wallConstruction: 'timber_frame',
       roofForm: 'hipped',
-      roofMaterial: 'corrugated_iron',
       eaveHeightMm: 2400,
       wallHeightMm: 2400,
       roofPitchDeg: 25,

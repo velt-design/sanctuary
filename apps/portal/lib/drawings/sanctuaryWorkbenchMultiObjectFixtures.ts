@@ -69,7 +69,6 @@ function makeMultiHouseUTwoPergolaFixtureSource(): {
     snapshot,
     roof: {
       form: 'hipped',
-      material: 'corrugated_iron',
       primaryPitchDeg: '20',
     },
   });

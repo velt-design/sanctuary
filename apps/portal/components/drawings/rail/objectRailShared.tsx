@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HOUSE_ROOF_FORM_ORDER } from '@sp/geometry';
-import type { CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type {
   DeckObjectModel,
   HouseFormModel,
@@ -41,14 +40,6 @@ export const HOUSE_ROOF_FORM_OPTIONS: Array<SelectOption & { value: HouseFormRoo
     label: labelForRoofForm(value),
     value,
   }));
-
-export const ROOF_MATERIAL_OPTIONS: Array<SelectOption & { value: CalculatorHouseRoofMaterial }> = [
-  { label: 'Corrugated iron', value: 'corrugated_iron' },
-  { label: 'Trapezoidal 5 rib', value: 'trapezoidal_5_rib' },
-  { label: 'Eurotray 300', value: 'eurotray_300' },
-  { label: 'Eurotray 500', value: 'eurotray_500' },
-  { label: 'Shingles', value: 'shingles' },
-];
 
 export const ROOF_FALL_DIRECTION_OPTIONS: Array<SelectOption & { value: HouseFormRoofIntentModel['primaryFallDirection'] }> = [
   { label: 'Fall +Y', value: 'positive_y' },

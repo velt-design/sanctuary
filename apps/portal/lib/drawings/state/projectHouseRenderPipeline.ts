@@ -1,5 +1,4 @@
 import {
-  buildHouseModelRoofMaterialSceneObjects,
   buildHouseModelSceneObjects,
   buildHouseModelTopProjectionShapes,
   EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
@@ -10,7 +9,6 @@ import {
 import {
   planHouseFormOwner,
   planShapeIsHouseRoofBody,
-  planShapeIsHouseRoofMaterialBody,
 } from "@/lib/drawings/views/plan/planShapeOwnership";
 import type { WorkbenchProjectModel } from "./objectFirstWorkbenchModel";
 import {
@@ -70,14 +68,11 @@ function emptyHouseHealth(input: {
     wallCount: 0,
     roofPlaneCount: 0,
     roofBodyCount: 0,
-    roofMaterialBodyCount: 0,
     planBodyIds: [],
     roofBodyIds: [],
-    roofMaterialBodyIds: [],
     sceneBodyCount: 0,
     sceneRoofBodyCount: 0,
     sceneRoofSurfaceCount: 0,
-    sceneRoofMaterialBodyCount: 0,
     canRenderCommittedBody: false,
     visibleReferenceFallbackIds: [],
     failureStage,
@@ -106,7 +101,6 @@ function houseProjectionFailureStage(
     | "roofPlaneCount"
     | "sceneBodyCount"
     | "roofBodyCount"
-    | "roofMaterialBodyCount"
   >,
 ): ProjectHouseProjectionFailureStage {
   if (!health.geometryInputPresent || !health.rawHouseInputPresent)
@@ -116,7 +110,7 @@ function houseProjectionFailureStage(
   if (health.wallCount <= 0) return "missing_3d_body";
   if (health.roofPlaneCount <= 0) return "missing_roof_model";
   if (health.sceneBodyCount <= 0) return "missing_3d_body";
-  if (health.roofBodyCount <= 0 && health.roofMaterialBodyCount <= 0)
+  if (health.roofBodyCount <= 0)
     return "missing_plan_body";
   return "none";
 }
@@ -128,31 +122,23 @@ function buildHealthForEntry(input: {
   const { entry } = input;
   const planBodyIds: string[] = [];
   const roofBodyIds: string[] = [];
-  const roofMaterialBodyIds: string[] = [];
 
   for (const shape of input.planShapes) {
     if (planHouseFormOwner(shape) !== entry.houseFormId) continue;
     if (!planShapeIsHouseRoofBody(shape)) continue;
     planBodyIds.push(shape.id);
     roofBodyIds.push(shape.id);
-    if (planShapeIsHouseRoofMaterialBody(shape)) {
-      roofMaterialBodyIds.push(shape.id);
-    }
   }
 
   const sceneObjects = buildHouseModelSceneObjects({
     model: entry.model,
     attachmentTarget: null,
   });
-  const roofMaterialSceneObjects = buildHouseModelRoofMaterialSceneObjects({
-    model: entry.model,
-  });
   const referencePresent = Boolean(entry.referenceShape);
   const modelPresent = Boolean(entry.model);
   const wallCount = entry.model.wallSegments.length;
   const roofPlaneCount = entry.model.roofPlanes.length;
   const roofBodyCount = roofBodyIds.length;
-  const roofMaterialBodyCount = roofMaterialBodyIds.length;
   const sceneBodyCount = sceneObjects.length;
   const sceneRoofBodyCount =
     entry.model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof")
@@ -160,7 +146,6 @@ function buildHealthForEntry(input: {
   const sceneRoofSurfaceCount = sceneObjects.filter(
     (object) => object.type === "house_surface" && object.kind === "roof",
   ).length;
-  const sceneRoofMaterialBodyCount = roofMaterialSceneObjects.length;
   const inputDiagnostics = entry.geometryInputDiagnostics;
   const failureStage = houseProjectionFailureStage({
     geometryInputPresent: true,
@@ -171,12 +156,9 @@ function buildHealthForEntry(input: {
     roofPlaneCount,
     sceneBodyCount,
     roofBodyCount,
-    roofMaterialBodyCount,
   });
   const visibleReferenceFallbackIds =
-    roofBodyCount > 0 || roofMaterialBodyCount > 0
-      ? []
-      : [entry.referenceShape.id];
+    roofBodyCount > 0 ? [] : [entry.referenceShape.id];
 
   return {
     houseFormId: entry.houseFormId,
@@ -188,13 +170,10 @@ function buildHealthForEntry(input: {
     wallCount,
     roofPlaneCount,
     roofBodyCount,
-    roofMaterialBodyCount,
     planBodyIds: planBodyIds.sort(),
     roofBodyIds: roofBodyIds.sort(),
-    roofMaterialBodyIds: roofMaterialBodyIds.sort(),
     sceneBodyCount,
-    sceneRoofMaterialBodyCount,
-    canRenderCommittedBody: roofBodyCount > 0 || roofMaterialBodyCount > 0,
+    canRenderCommittedBody: roofBodyCount > 0,
     visibleReferenceFallbackIds: visibleReferenceFallbackIds.sort(),
     failureStage,
     diagnosticCode:

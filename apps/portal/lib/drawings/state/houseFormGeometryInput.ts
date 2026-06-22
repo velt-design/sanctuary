@@ -12,7 +12,6 @@ import {
   DEFAULT_GUTTER_DEPTH_MM,
   DEFAULT_GUTTER_PROJECTION_MM,
   DEFAULT_GUTTER_WIDTH_MM,
-  DEFAULT_HOUSE_ROOF_MATERIAL,
   DEFAULT_SOFFIT_DEPTH_MM,
   EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
   type GeometryTopProjectionShape,
@@ -220,7 +219,6 @@ export function swapRoofFromComposition(input: {
     eaveHeightMm,
     wallSegments: input.legacyModel.wallSegments,
     decks: input.legacyModel.decks ?? [],
-    roofMaterial: input.legacyModel.roofMaterial ?? DEFAULT_HOUSE_ROOF_MATERIAL,
     attachmentTarget: input.legacyModel.attachmentTarget ?? {
       kind: "none",
       strategy: "none",
@@ -239,7 +237,6 @@ export function swapRoofFromComposition(input: {
     roofPlanes: composedWithQa.roofPlanes,
     roofFeatures: composedWithQa.roofFeatures,
     roofFlashings: roofArtifacts.roofFlashings,
-    roofMaterialVisuals: roofArtifacts.roofMaterialVisuals,
     solids: roofArtifacts.solids,
     eave: roofArtifacts.eave,
     roofEaves: roofArtifacts.roofEaves,

@@ -11,10 +11,8 @@ export type ProjectHouseProjectionHealth = {
   wallCount: number;
   roofPlaneCount: number;
   roofBodyCount: number;
-  roofMaterialBodyCount: number;
   planBodyIds: string[];
   roofBodyIds: string[];
-  roofMaterialBodyIds: string[];
   sceneBodyCount: number;
   sceneRoofBodyCount: number;
   // PR-SS-5 (2026-06-21): roof house_surface objects in the rendered
@@ -23,7 +21,6 @@ export type ProjectHouseProjectionHealth = {
   // render the roof as planes/surfaces, so the solid count is 0 even
   // though the roof IS in the scene. This counts those surfaces.
   sceneRoofSurfaceCount: number;
-  sceneRoofMaterialBodyCount: number;
   canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];
   failureStage: ProjectHouseProjectionFailureStage;

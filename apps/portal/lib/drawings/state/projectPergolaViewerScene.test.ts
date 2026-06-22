@@ -81,20 +81,6 @@ function fakeHouseModel(houseId: string): HouseModel3D {
     roofPlanes: [],
     roofFeatures: [],
     roofFlashings: [],
-    roofMaterial: 'corrugated_iron',
-    roofMaterialVisuals: [
-      {
-        id: 'roof-material-1',
-        roofPlaneId: 'roof-plane-1',
-        material: 'corrugated_iron',
-        profileKind: 'rib',
-        lines: [ROOF_LINE],
-        plane: ROOF_PLANE,
-        spacingMm: 762,
-        surfaceOffsetMm: 3,
-        metadata: {},
-      },
-    ],
     decks: [],
     openings: [],
     eave: {
@@ -140,7 +126,6 @@ describe('buildProjectPergolaViewerSceneFromPergolaArtifacts', () => {
       layers: [
         fakeLayer('house', 'basis-house'),
         fakeLayer('posts', 'basis-post'),
-        fakeLayer('house_roof_materials', 'basis-house-roof-material'),
       ],
     };
 
@@ -153,7 +138,6 @@ describe('buildProjectPergolaViewerSceneFromPergolaArtifacts', () => {
             layers: [
               fakeLayer('house', 'pergola-artifact-house'),
               fakeLayer('posts', 'pergola-artifact-post'),
-              fakeLayer('house_roof_materials', 'pergola-artifact-house-roof-material'),
             ],
           },
         },
@@ -169,9 +153,6 @@ describe('buildProjectPergolaViewerSceneFromPergolaArtifacts', () => {
     expect(layerObjectIds(scene, 'house')).toEqual([
       'house-form-2:wall-1',
       'house-form-2:wall-1-edge',
-    ]);
-    expect(layerObjectIds(scene, 'house_roof_materials')).toEqual([
-      'house-form-2:roof-material-1',
     ]);
     expect(layerObjectIds(scene, 'posts')).toEqual([
       'project_pergola:pergola-1:pergola-artifact-post',

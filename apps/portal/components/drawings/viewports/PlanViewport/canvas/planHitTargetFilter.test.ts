@@ -26,8 +26,8 @@ function makeItem(family: string, kind: string, id = `${family}-${kind}`): PlanR
 }
 
 describe('planHitTargetFilter', () => {
-  it('drops decorative house kinds (roof, fascia, soffit, gutter, roof_feature, house_roof_material)', () => {
-    for (const kind of ['roof', 'fascia', 'soffit', 'gutter', 'roof_feature', 'house_roof_material']) {
+  it('drops decorative house kinds (roof, fascia, soffit, gutter, roof_feature)', () => {
+    for (const kind of ['roof', 'fascia', 'soffit', 'gutter', 'roof_feature']) {
       expect(isPlanHitTarget(makeItem('house', kind))).toBe(false);
     }
   });

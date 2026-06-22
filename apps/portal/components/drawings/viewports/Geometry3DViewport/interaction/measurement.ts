@@ -66,8 +66,6 @@ export function pointsForObject(object: ViewerSceneObject): Point3[] {
     return object.wings.flatMap((wing) =>
       wing.boundary.filter(isFinitePoint),
     );
-  if (object.type === "house_roof_material")
-    return object.lines.flatMap((line) => linePoints(line)).filter(isFinitePoint);
   if (object.type === "reference_line")
     return linePoints(object.line).filter(isFinitePoint);
   if (object.type === "house_line")

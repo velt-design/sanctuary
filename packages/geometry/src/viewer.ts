@@ -12,7 +12,6 @@ import type {
   ViewerSceneLayer,
   ViewerSceneHouseLineObject,
   ViewerSceneHouseLinearSolidObject,
-  ViewerSceneHouseRoofMaterialObject,
   ViewerSceneHouseSurfaceObject,
   ViewerSceneHouseSurfaceSolidObject,
   ViewerSceneMemberPrismObject,
@@ -171,11 +170,6 @@ function maxAssemblyHeight(assembly: Assembly3D): number {
       for (const point of wing.boundary) {
         zValues.push(point.z);
       }
-    }
-  }
-  for (const visual of assembly.house.model?.roofMaterialVisuals ?? []) {
-    for (const line of visual.lines) {
-      zValues.push(line.start.z, line.end.z);
     }
   }
   if (assembly.attachmentEdge) {
@@ -337,53 +331,6 @@ function buildRoofFlashingObject(
     thicknessMm: flashing.thicknessMm,
     metadata: sortMetadata(flashing.metadata),
   };
-}
-
-function buildHouseRoofMaterialObject(
-  visual: NonNullable<NonNullable<Assembly3D["house"]["model"]>["roofMaterialVisuals"]>[number],
-): ViewerSceneHouseRoofMaterialObject | null {
-  const lines = visual.lines.filter(isRenderableHouseLine);
-  if (lines.length === 0 || !isFinitePlane(visual.plane)) return null;
-  return {
-    id: visual.id,
-    type: "house_roof_material",
-    sourceId: visual.id,
-    roofPlaneId: visual.roofPlaneId,
-    material: visual.material,
-    profileKind: visual.profileKind,
-    lines,
-    plane: visual.plane,
-    spacingMm: visual.spacingMm,
-    surfaceOffsetMm: visual.surfaceOffsetMm,
-    metadata: sortMetadata({
-      ...visual.metadata,
-      lineCount: lines.length,
-    }),
-  };
-}
-
-export function buildHouseModelRoofMaterialSceneObjects(input: {
-  model: HouseModel3D | null;
-}): ViewerSceneHouseRoofMaterialObject[] {
-  const model = input.model;
-  if (!model) return [];
-
-  const prefix = `${model.houseId}:`;
-  return (model.roofMaterialVisuals ?? [])
-    .map(buildHouseRoofMaterialObject)
-    .filter((object): object is ViewerSceneHouseRoofMaterialObject => object !== null)
-    .map((object) => ({
-      ...object,
-      id: object.id.startsWith(prefix) ? object.id : `${prefix}${object.id}`,
-      sourceId: object.sourceId,
-      metadata: {
-        ...(object.metadata ?? {}),
-        houseFormId:
-          typeof object.metadata?.houseFormId === "string"
-            ? object.metadata.houseFormId
-            : model.houseId,
-      },
-    }));
 }
 
 function buildReferenceLineObject(
@@ -1109,9 +1056,6 @@ function buildLayers(
   const roofFlashingObjects = roofFlashingsForScene(assembly).map(
     buildRoofFlashingObject,
   );
-  const houseRoofMaterialObjects = (assembly.house.model?.roofMaterialVisuals ?? [])
-    .map(buildHouseRoofMaterialObject)
-    .filter((object): object is ViewerSceneHouseRoofMaterialObject => object !== null);
   const roofPlaneObjects = assembly.roofPlanes.map(buildRoofPlaneObject);
   const attachmentObjects = assembly.attachmentEdge
     ? [
@@ -1177,11 +1121,6 @@ function buildLayers(
         attachmentTarget: null,
       }),
     );
-    houseRoofMaterialObjects.push(
-      ...buildHouseModelRoofMaterialSceneObjects({
-        model: additionalModel,
-      }),
-    );
   }
 
   const layers: ViewerSceneLayer[] = [
@@ -1239,16 +1178,6 @@ function buildLayers(
       visibleByDefault: true,
       objects: sortObjects(roofCladdingObjects),
     },
-    ...(houseRoofMaterialObjects.length > 0
-      ? [
-          {
-            id: "house_roof_materials",
-            label: "House Roof Materials",
-            visibleByDefault: true,
-            objects: sortObjects(houseRoofMaterialObjects),
-          },
-        ]
-      : []),
     ...(roofFlashingObjects.length > 0
       ? [
           {

@@ -53,7 +53,6 @@ function houseBodyStyle(shape: GeometryTopProjectionShape): CanvasShapeStyle {
     case 'opening_outline':
       return { ...STROKE.visible, fill: FILL.houseOpening };
     case 'roof':
-    case 'house_roof_material':
       return isTransparentRoof(shape)
         ? { fill: null, stroke: null, widthPx: 0 }
         : { ...STROKE.visible, fill: FILL.houseRoof };

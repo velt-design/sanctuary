@@ -55,7 +55,7 @@ describe("buildHouseRoofModelPipeline", () => {
       }),
     );
     expect(result.diagnostics.roofPlaneCountAfterQa).toBeGreaterThan(0);
-    expect(result.diagnostics.roofMaterialVisualCount).toBeGreaterThan(0);
+    expect(result.diagnostics.roofSolidCount).toBeGreaterThan(0);
   });
 
   it("does not classify healthy mono roof body output as an eave construction failure", () => {
@@ -85,10 +85,7 @@ describe("buildHouseRoofModelPipeline", () => {
       }),
     );
     expect(result.diagnostics.roofPlaneCountAfterQa).toBeGreaterThan(0);
-    expect(
-      result.diagnostics.roofMaterialVisualCount +
-        result.diagnostics.roofSolidCount,
-    ).toBeGreaterThan(0);
+    expect(result.diagnostics.roofSolidCount).toBeGreaterThan(0);
   });
 
   it("classifies missing models without inventing downstream roof stages", () => {

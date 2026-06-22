@@ -89,9 +89,6 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     ) {
       return 'committedBodies';
     }
-    if (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material') {
-      return 'committedBodies';
-    }
     if (shape.sourceType === 'house_line' || shape.sourceType === 'reference_line') return 'contextLines';
     if (
       (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&

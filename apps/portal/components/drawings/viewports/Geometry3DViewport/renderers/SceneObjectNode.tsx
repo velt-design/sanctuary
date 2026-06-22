@@ -11,7 +11,6 @@ import {
 } from "../geometry/scenePointHelpers";
 import { HouseLineObject } from "./HouseLineObject";
 import { HouseLinearSolidObject } from "./HouseLinearSolidObject";
-import { HouseRoofMaterialObject } from "./HouseRoofMaterialObject";
 import { HouseSurfaceObject } from "./HouseSurfaceObject";
 import { HouseSurfaceSolidObject } from "./HouseSurfaceSolidObject";
 import { MemberObject } from "./MemberObject";
@@ -103,18 +102,6 @@ export function SceneObjectNode({
   if (object.type === "roof_flashing") {
     return (
       <RoofFlashingObject
-        object={object}
-        color={color}
-        onSelect={onSelect}
-        onFocus={onFocus}
-        clippingPlanes={clippingPlanes}
-      />
-    );
-  }
-  if (object.type === "house_roof_material") {
-    if (!object.lines.some(isRenderableLine)) return null;
-    return (
-      <HouseRoofMaterialObject
         object={object}
         color={color}
         onSelect={onSelect}

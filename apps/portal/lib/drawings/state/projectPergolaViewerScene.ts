@@ -6,17 +6,14 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from '@sp/geometry';
-import {
-  buildHouseModelRoofMaterialSceneObjects,
-  buildHouseModelSceneObjects,
-} from '@sp/geometry';
+import { buildHouseModelSceneObjects } from '@sp/geometry';
 
 type ProjectPergolaViewerSceneSource = {
   pergolaId?: string | null;
   viewerScene: ViewerSceneModel | null;
 };
 
-const HOUSE_LAYER_IDS = new Set(['house', 'house_roof_materials']);
+const HOUSE_LAYER_IDS = new Set(['house']);
 
 type ProjectHouseViewerSceneSource = {
   houseFormId: string;
@@ -159,18 +156,12 @@ function buildProjectHouseSceneLayerById(
   projectHouseGeometries: ReadonlyArray<ProjectHouseViewerSceneSource>,
 ): Map<string, ViewerSceneLayer> {
   const houseObjects: ViewerSceneObject[] = [];
-  const houseRoofMaterialObjects: ViewerSceneObject[] = [];
 
   for (const entry of projectHouseGeometries) {
     houseObjects.push(
       ...buildHouseModelSceneObjects({
         model: entry.model,
         attachmentTarget: null,
-      }),
-    );
-    houseRoofMaterialObjects.push(
-      ...buildHouseModelRoofMaterialSceneObjects({
-        model: entry.model,
       }),
     );
   }
@@ -182,14 +173,6 @@ function buildProjectHouseSceneLayerById(
       label: 'House',
       visibleByDefault: true,
       objects: sortSceneObjects(houseObjects),
-    });
-  }
-  if (houseRoofMaterialObjects.length > 0) {
-    layerById.set('house_roof_materials', {
-      id: 'house_roof_materials',
-      label: 'House Roof Materials',
-      visibleByDefault: true,
-      objects: sortSceneObjects(houseRoofMaterialObjects),
     });
   }
   return layerById;

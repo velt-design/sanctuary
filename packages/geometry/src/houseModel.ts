@@ -11,11 +11,8 @@ import type {
   HouseRoofFeature3D,
   HouseRoofFeatureKind,
   HouseRoofForm,
-  HouseRoofMaterial,
-  HouseRoofMaterialProfileKind,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
-  HouseRoofMaterialVisual3D,
   HouseWallSegment3D,
   Line3,
   Plane3,
@@ -56,8 +53,6 @@ import {
   DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM,
   DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM,
   DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM,
-  DEFAULT_HOUSE_ROOF_MATERIAL,
-  DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM,
   DEFAULT_ROOF_PITCH_DEG,
   DEFAULT_ROOF_SOLID_THICKNESS_MM,
   DEFAULT_SOFFIT_DEPTH_MM,
@@ -251,10 +246,6 @@ import {
   buildPerimeterFlashings,
 } from "./house/roofFlashings";
 import {
-  buildHouseRoofMaterialVisualForPlane,
-  buildHouseRoofMaterialVisuals,
-} from "./house/roofMaterial";
-import {
   buildHouseDecks,
   resolveDeckHostWallSegment,
   resolveHouseDeckBoundary,
@@ -301,10 +292,10 @@ import { buildOrthogonalCellUnionEaveOffset } from "./house/orthogonalEaveOffset
  * skeleton roof planes instead of re-implementing the sequence (which
  * would drift from this one over time).
  *
- * `roofPlanesForSolids`, `roofFlashings`, and `roofMaterialVisuals` are
+ * `roofPlanesForSolids` and `roofFlashings` are
  * gated on `roof.metadata.roofQaStatus`: a roof that failed QA still
- * contributes perimeter / eave geometry but no solid bodies, flashings,
- * or material visuals — matching the original inline behaviour.
+ * contributes perimeter / eave geometry but no solid bodies or flashings
+ * — matching the original inline behaviour.
  *
  * Eave overhang: the caller decides. `buildHouseModel3D` passes the
  * overhang-offset eave polygon; the composition swap passes the union
@@ -324,7 +315,6 @@ export function buildHouseRoofEnvelopeArtifacts(input: {
   eaveHeightMm: number;
   wallSegments: HouseWallSegment3D[];
   decks: HouseDeck3D[];
-  roofMaterial: HouseRoofMaterial;
   attachmentTarget: HouseAttachmentTarget3D;
   joinSourceEdgeId: string | null;
   soffitDepthMm: number;
@@ -338,7 +328,6 @@ export function buildHouseRoofEnvelopeArtifacts(input: {
   solids: NonNullable<HouseModel3D["solids"]>;
   eave: HouseModel3D["eave"];
   roofFlashings: HouseModel3D["roofFlashings"];
-  roofMaterialVisuals: HouseModel3D["roofMaterialVisuals"];
   roofEaves: HouseModel3D["roofEaves"];
 } {
   const { roof } = input;
@@ -380,13 +369,6 @@ export function buildHouseRoofEnvelopeArtifacts(input: {
             attachmentTarget: input.attachmentTarget,
           }),
         ]
-      : [];
-  const roofMaterialVisuals =
-    roof.metadata.roofQaStatus === "valid"
-      ? buildHouseRoofMaterialVisuals({
-          roofPlanes: roof.roofPlanes,
-          material: input.roofMaterial,
-        })
       : [];
   const roofEaves = perimeterEdges
     .filter(
@@ -433,7 +415,6 @@ export function buildHouseRoofEnvelopeArtifacts(input: {
     solids,
     eave,
     roofFlashings,
-    roofMaterialVisuals,
     roofEaves,
   };
 }
@@ -514,7 +495,6 @@ export function buildHouseModel3D(input: {
     model.eave?.eaveOverhangMm,
     DEFAULT_EAVE_OVERHANG_MM,
   );
-  const roofMaterial = model.roofMaterial ?? DEFAULT_HOUSE_ROOF_MATERIAL;
   const roofPrimaryFallDirection =
     model.roofPrimaryFallDirection ?? "positive_y";
   const roofRidgeAxis = model.roofRidgeAxis ?? "x";
@@ -848,7 +828,7 @@ export function buildHouseModel3D(input: {
   // consumers re-filter on `edgeKind` when they truly need drains only
   // (gutter rendering, flashing rules). Pergola snap is the primary
   // attachment usage and it needs the full perimeter.
-  const { solids, eave, roofFlashings, roofMaterialVisuals, roofEaves } =
+  const { solids, eave, roofFlashings, roofEaves } =
     buildHouseRoofEnvelopeArtifacts({
       footprint: effectiveRoofFootprint,
       eavePolygon: effectiveEavePolygon,
@@ -857,7 +837,6 @@ export function buildHouseModel3D(input: {
       eaveHeightMm,
       wallSegments: displayWallSegments,
       decks,
-      roofMaterial,
       attachmentTarget,
       joinSourceEdgeId: attachmentTarget.sourceEdgeId ?? null,
       soffitDepthMm,
@@ -875,8 +854,6 @@ export function buildHouseModel3D(input: {
     roofPlanes: roof.roofPlanes,
     roofFeatures: displayRoofFeatures,
     roofFlashings,
-    roofMaterial,
-    roofMaterialVisuals,
     decks,
     openings,
     solids,
@@ -898,7 +875,6 @@ export function buildHouseModel3D(input: {
     roofRidgeAxis,
     metadata: {
       roofForm,
-      roofMaterial,
       openGableEndIds: [...openTerminalEndIds].join(","),
       storeyMode: model.storeyMode ?? "single_storey",
       wallConstruction: model.wallConstruction ?? "timber_frame",

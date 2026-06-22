@@ -6,7 +6,6 @@ import {
 import {
   planHouseFormOwner,
   planShapeIsHouseRoofBody,
-  planShapeIsHouseRoofMaterialBody,
 } from './planShapeOwnership';
 import type { ProjectionPlanGraphItem } from './planRenderGraph';
 
@@ -17,20 +16,6 @@ function houseFootprintHasMatchingRoof(input: {
 }): boolean {
   const owner = planHouseFormOwner(input.footprint);
   return owner ? input.roofOwners.has(owner) : input.hasUnownedRoof;
-}
-
-function houseRoofSolidHasMatchingRoofMaterial(input: {
-  shape: GeometryTopProjectionShape;
-  roofMaterialOwners: ReadonlySet<string>;
-  hasUnownedRoofMaterial: boolean;
-}): boolean {
-  if (input.shape.family !== 'house') return false;
-  if (input.shape.kind !== 'roof') return false;
-  if (input.shape.sourceType !== 'house_surface_solid' && input.shape.sourceType !== 'house_surface') {
-    return false;
-  }
-  const owner = planHouseFormOwner(input.shape);
-  return owner ? input.roofMaterialOwners.has(owner) : input.hasUnownedRoofMaterial;
 }
 
 function visualStackRank(shape: GeometryTopProjectionShape): number {
@@ -67,19 +52,13 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
   suppressedCommittedBodies: Array<ProjectionPlanGraphItem<TItem>>;
 } {
   const houseRoofOwners = new Set<string>();
-  const houseRoofMaterialOwners = new Set<string>();
   let hasUnownedHouseRoofCommittedBody = false;
-  let hasUnownedHouseRoofMaterialBody = false;
 
   for (const { shape } of input.committedBodies) {
     if (!planShapeIsHouseRoofBody(shape)) continue;
     const owner = planHouseFormOwner(shape);
     if (owner) houseRoofOwners.add(owner);
     else hasUnownedHouseRoofCommittedBody = true;
-    if (planShapeIsHouseRoofMaterialBody(shape)) {
-      if (owner) houseRoofMaterialOwners.add(owner);
-      else hasUnownedHouseRoofMaterialBody = true;
-    }
   }
 
   const projectionOnlyAllowed = (shape: GeometryTopProjectionShape): boolean =>
@@ -102,15 +81,6 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
   const committedBodies = input.committedBodies
     .filter(({ shape }) => {
       if (!projectionOnlyAllowed(shape)) return false;
-      if (
-        houseRoofSolidHasMatchingRoofMaterial({
-          shape,
-          roofMaterialOwners: houseRoofMaterialOwners,
-          hasUnownedRoofMaterial: hasUnownedHouseRoofMaterialBody,
-        })
-      ) {
-        return false;
-      }
       return !(
         shape.family === 'house' &&
         shape.kind === 'footprint' &&

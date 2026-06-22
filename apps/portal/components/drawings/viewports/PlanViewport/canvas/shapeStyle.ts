@@ -6,7 +6,7 @@ function houseCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string
   if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') {
     return lineweightStyles.bodyHouseOpening;
   }
-  if (shape.kind === 'roof' || shape.kind === 'house_roof_material') {
+  if (shape.kind === 'roof') {
     if (shape.metadata?.planProjectionSource === 'house_terminal_end') {
       return lineweightStyles.bodyTransparent;
     }

@@ -30,7 +30,6 @@ export type {
 export { validateGeometrySolve } from "./validate";
 export type { ValidateGeometrySolveInput } from "./validate";
 export {
-  buildHouseModelRoofMaterialSceneObjects,
   buildHouseModelSceneObjects,
   buildViewerSceneModel,
 } from "./viewer";
@@ -64,7 +63,6 @@ export {
   buildHouseRoofEnvelopeArtifacts,
 } from "./houseModel";
 export {
-  DEFAULT_HOUSE_ROOF_MATERIAL,
   DEFAULT_SOFFIT_DEPTH_MM,
   DEFAULT_FASCIA_HEIGHT_MM,
   DEFAULT_GUTTER_WIDTH_MM,

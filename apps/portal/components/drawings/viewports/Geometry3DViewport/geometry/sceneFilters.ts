@@ -69,15 +69,6 @@ export function sceneForDisplayMode(
           };
         }
 
-        if (layer.id === "house_roof_materials") {
-          return houseVisibility.house
-            ? layer
-            : {
-                ...layer,
-                objects: [],
-              };
-        }
-
         return houseVisibility.pergolas
           ? layer
           : {

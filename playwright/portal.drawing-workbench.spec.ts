@@ -84,10 +84,6 @@ async function maybeApplyMovedHouse3DContext(page: Page): Promise<boolean> {
 
   await page.getByLabel('Roof length (m)').first().fill('5').catch(() => undefined);
   await page.getByLabel('Roof span (m)').first().fill('5').catch(() => undefined);
-  const roofMaterial = page.getByLabel('Roof material').first();
-  if (await roofMaterial.isVisible().catch(() => false)) {
-    await roofMaterial.selectOption('acrylic').catch(() => undefined);
-  }
   await page.getByLabel('Roof pitch (deg)').first().fill('20').catch(() => undefined);
 
   const houseConnection = page.getByLabel('House connection').first();

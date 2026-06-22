@@ -581,7 +581,6 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
     roofIntent: {
       ...previewRoof,
       form,
-      material: existingRoof.material,
       primaryPitchDeg: normalizeHouseRoofPitchInputForForm({
         roofForm: form,
         value: existingRoof.primaryPitchDeg,

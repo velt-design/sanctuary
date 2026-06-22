@@ -45,7 +45,6 @@ export async function readVisibleHouseBodyIds(page: Page): Promise<string[]> {
   return ids.filter(
     (id) =>
       id.startsWith('house_plan_roof:') ||
-      id.startsWith('house_roof_material:') ||
       id.startsWith('house_surface_solid:'),
   );
 }
@@ -62,7 +61,6 @@ export async function readPlanHouseRenderDiagnostics(page: Page): Promise<Array<
   houseFormId: string;
   referenceIds: string[];
   roofBodyIds: string[];
-  roofMaterialBodyIds: string[];
   visibleReferenceFallbackIds: string[];
   hitTargetIds: string[];
 }>> {
@@ -81,14 +79,11 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   wallCount: number;
   roofPlaneCount: number;
   roofBodyCount: number;
-  roofMaterialBodyCount: number;
   planBodyIds: string[];
   roofBodyIds: string[];
-  roofMaterialBodyIds: string[];
   sceneBodyCount: number;
   sceneRoofBodyCount: number;
   sceneRoofSurfaceCount: number;
-  sceneRoofMaterialBodyCount: number;
   canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];
   failureStage: string;
@@ -149,7 +144,6 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   footprintCanonicalizationPointCountAfter: number | null;
   roofPlaneCountBeforeQa: number;
   roofPlaneCountAfterQa: number;
-  roofMaterialVisualCount: number;
   roofSolidCount: number;
 }>> {
   const raw = await page.locator('[data-plan-viewport="true"]').getAttribute('data-plan-house-projection-health');

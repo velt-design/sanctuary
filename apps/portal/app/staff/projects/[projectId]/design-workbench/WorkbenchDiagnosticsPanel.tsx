@@ -90,7 +90,7 @@ export default function WorkbenchDiagnosticsPanel({
     : roofControlNotUsedLabel;
   const houseProjectionHealthLabel = diagnostics.projectHouseProjectionHealth
     .map((health) =>
-      `${health.houseFormId}: model ${health.modelPresent ? 'yes' : 'no'}, roof ${health.roofBodyCount}, material ${health.roofMaterialBodyCount}, fallback ${health.visibleReferenceFallbackIds.length}`,
+      `${health.houseFormId}: model ${health.modelPresent ? 'yes' : 'no'}, roof ${health.roofBodyCount}, fallback ${health.visibleReferenceFallbackIds.length}`,
     )
     .join(' | ') || 'none';
   const pergolaRenderHealthLabel = diagnostics.projectPergolaRenderHealth

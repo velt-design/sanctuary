@@ -5,7 +5,6 @@ import { resolveHouseTerminalEndToggleRoofDraft } from './resolveHouseTerminalEn
 function makeRoof(overrides: Partial<HouseFormRoofIntentModel> = {}): HouseFormRoofIntentModel {
   return {
     form: 'hipped',
-    material: 'corrugated_iron',
     primaryPitchDeg: '15',
     primaryFallDirection: 'positive_y',
     ridgeAxis: 'x',
@@ -46,7 +45,6 @@ describe('resolveHouseTerminalEndToggleRoofDraft', () => {
         form: 'hipped',
         ridgeAxis: 'y',
         primaryPitchDeg: '22',
-        material: 'trapezoidal_5_rib',
         openGableEndIds: [],
       });
       const next = resolveHouseTerminalEndToggleRoofDraft({
