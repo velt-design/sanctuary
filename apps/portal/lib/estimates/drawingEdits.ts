@@ -890,7 +890,13 @@ export function deriveEstimateDrawingEditableFields(input: {
   sectionModel?: ModuleSectionModel | null;
 }): EstimateDrawingField[] {
   if (!input.draft) return [];
-  const module = input.draft.inputs.modules[input.moduleIndex];
+  // Object-first / composition drafts are created with `inputs: {}` (no
+  // legacy calculator `modules` array), so `inputs.modules` is undefined at
+  // runtime despite the type. Guard it — these drafts have no legacy
+  // per-module editable fields (their fields come from the workbench path),
+  // so returning [] here is correct rather than throwing and crashing the
+  // whole project page.
+  const module = input.draft.inputs?.modules?.[input.moduleIndex];
   if (!module) return [];
 
   const fields: EstimateDrawingField[] = [
