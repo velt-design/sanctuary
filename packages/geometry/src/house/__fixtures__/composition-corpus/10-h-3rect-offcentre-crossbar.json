@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "name": "H-shape: off-centre crossbar, asymmetric legs (live Jess-Oratia capture)",
+  "description": "Captured live from proj_cf4afb59 via Save bug report. Two tall legs of DIFFERENT heights joined by a crossbar that attaches to the MIDDLE of each leg (off-centre on both axes). This is the convergence case the straight skeleton missed: the two crossbar armpit valleys meet at a point on the boundary of each other's eave, so neither split fired and one valley overshot, breaking facet closure. Closed by PR-SS-9 (the vertex-vertex convergence event). ridgeAxis 'x' as captured.",
+  "composition": {
+    "primitives": [
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": 0,
+        "originYMm": -12629.944735956582,
+        "widthMm": 7821.000000000001,
+        "depthMm": 12629.944735956582,
+        "roofIntent": { "form": "hipped", "pitchDeg": 30, "ridgeAxis": "x", "startCap": "hipped", "endCap": "hipped" }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": -17165.000000439486,
+        "originYMm": -12179.90993,
+        "widthMm": 8010.000000000001,
+        "depthMm": 12629.90993,
+        "roofIntent": { "form": "hipped", "pitchDeg": 30, "ridgeAxis": "x", "startCap": "hipped", "endCap": "hipped" }
+      },
+      {
+        "kind": "axisAlignedRectangle",
+        "originXMm": -9155.000000439486,
+        "originYMm": -8043.914094,
+        "widthMm": 9154.700325000002,
+        "depthMm": 5025,
+        "roofIntent": { "form": "hipped", "pitchDeg": 30, "ridgeAxis": "x", "startCap": "hipped", "endCap": "hipped" }
+      }
+    ],
+    "joins": [
+      { "fromPrimitiveIndex": 1, "fromEdge": "east", "toPrimitiveIndex": 2, "toEdge": "west" },
+      { "fromPrimitiveIndex": 0, "fromEdge": "west", "toPrimitiveIndex": 2, "toEdge": "east" }
+    ]
+  },
+  "compositeRoofIntent": { "form": "hipped", "pitchDeg": 30, "ridgeAxis": "x", "startCap": "hipped", "endCap": "hipped" },
+  "eaveHeightMm": 2400,
+  "expected": {
+    "qaStatus": "valid",
+    "facetCount": 12,
+    "valleyCount": 4,
+    "areaDeltaMaxAbsMm2": 5000,
+    "unifiedNotStitched": true
+  }
+}

@@ -225,6 +225,56 @@ export function computeOrthogonalStraightSkeletonOffset(
     return t;
   }
 
+  /**
+   * PR-SS-9 (2026-06-22): time two reflex vertices (each between its prev
+   * and itself) reach the SAME point. This is the convergence the split /
+   * ridge events miss on an OFF-CENTRE crossbar H: the two armpit valleys
+   * meet at a point that sits on the BOUNDARY of each other's eave (not the
+   * strict interior `splitTime` requires), so neither split fires and one
+   * valley overshoots. Detecting the coincidence directly terminates both
+   * valleys cleanly. Returns null unless the meeting is in the strict
+   * future, integral (2x space), and the positions actually coincide.
+   */
+  function reflexCoincideTime(b1: WEdge, b2: WEdge): number | null {
+    const a1 = wedges[b1.prevIndex]!;
+    const a2 = wedges[b2.prevIndex]!;
+    if (!a1.alive || !a2.alive) return null;
+    const v1 = a1.axis === "V" ? a1 : b1;
+    const h1 = a1.axis === "H" ? a1 : b1;
+    const v2 = a2.axis === "V" ? a2 : b2;
+    const h2 = a2.axis === "H" ? a2 : b2;
+    // Each moving coord is e.coord + e.sign·(t − e.birthTime). Solve for the
+    // t where x's match and y's match; one axis may be always-equal (the two
+    // reflexes share a collinear edge), so fall back to the other axis.
+    const solve = (e1: WEdge, e2: WEdge): number | null => {
+      const slope = e1.sign - e2.sign;
+      if (slope === 0) return null;
+      const base =
+        e1.coord - e1.sign * e1.birthTime - (e2.coord - e2.sign * e2.birthTime);
+      return -base / slope;
+    };
+    const t = solve(v1, v2) ?? solve(h1, h2);
+    if (t === null || !Number.isInteger(t)) return null;
+    const refTime = Math.max(a1.birthTime, b1.birthTime, a2.birthTime, b2.birthTime);
+    if (t <= refTime) return null;
+    const p1 = vertexAt(a1, b1, t);
+    const p2 = vertexAt(a2, b2, t);
+    if (!p1 || !p2 || p1.x !== p2.x || p1.y !== p2.y) return null;
+    return t;
+  }
+
+  /** True if y is reached by walking forward from x without returning to x —
+   * i.e. x and y are on the same wavefront loop. */
+  function sameLoop(x: WEdge, y: WEdge): boolean {
+    let cur = wedges[x.nextIndex]!;
+    for (let i = 0; i < wedges.length + 1; i += 1) {
+      if (cur.index === y.index) return true;
+      if (cur.index === x.index) return false;
+      cur = wedges[cur.nextIndex]!;
+    }
+    return false;
+  }
+
   let aliveCount = n;
 
   /** If `survivor`'s loop is now exactly two parallel edges, that loop is
@@ -248,7 +298,8 @@ export function computeOrthogonalStraightSkeletonOffset(
     | { kind: "collapse"; time: number; eIndex: number }
     | { kind: "split"; time: number; bIndex: number; eIndex: number }
     | { kind: "ridge"; time: number; aIndex: number }
-    | { kind: "slab"; time: number; seedIndex: number };
+    | { kind: "slab"; time: number; seedIndex: number }
+    | { kind: "converge"; time: number; b1Index: number; b2Index: number };
 
   /** Time two adjacent parallel opposite-normal edges (a, a.next=b)
    * meet — i.e. a ridge between them closes. */
@@ -361,6 +412,19 @@ export function computeOrthogonalStraightSkeletonOffset(
           const st = splitTime(a, e, target);
           if (st !== null) consider({ kind: "split", time: st, bIndex: e.index, eIndex: target.index });
         }
+        // PR-SS-9: convergence — this reflex meeting ANOTHER reflex at a
+        // shared point (the off-centre crossbar armpits). Only pairs on the
+        // same loop, non-adjacent, with b2.index > e.index (dedupe).
+        for (const b2 of wedges) {
+          if (!b2.alive || b2.index <= e.index) continue;
+          if (b2.index === a.index || e.index === b2.prevIndex) continue;
+          const a2 = wedges[b2.prevIndex]!;
+          if (!a2.alive || a2.index === e.index || !isReflexVertex(a2, b2)) continue;
+          const ct = reflexCoincideTime(e, b2);
+          if (ct !== null && sameLoop(e, b2)) {
+            consider({ kind: "converge", time: ct, b1Index: e.index, b2Index: b2.index });
+          }
+        }
       }
     }
     if (failure) return { ok: false, error: failure };
@@ -372,8 +436,10 @@ export function computeOrthogonalStraightSkeletonOffset(
     //    undefined; cutting first keeps the extent valid.
     //  - ridge before slab: a clean parallel pair resolves before the
     //    degenerate one-axis slab loop is retired.
+    // converge before split: a true vertex–vertex meeting must resolve
+    // before a (possibly-overshooting) split fires at the same instant.
     const rank = (k: Ev["kind"]) =>
-      k === "split" ? 0 : k === "collapse" ? 1 : k === "ridge" ? 2 : 3;
+      k === "converge" ? 0 : k === "split" ? 1 : k === "collapse" ? 2 : k === "ridge" ? 3 : 4;
     let event: Ev = candidates[0]!;
     for (const ev of candidates) {
       if (
@@ -474,6 +540,33 @@ export function computeOrthogonalStraightSkeletonOffset(
         e.alive = false;
         aliveCount -= 1;
       }
+    } else if (event.kind === "converge") {
+      // PR-SS-9: two reflex armpit valleys meet at one point P. Terminate
+      // both valleys at P and re-link the wavefront into two loops:
+      //   Loop A: a1 → b2   (the crossbar + far side)
+      //   Loop B: a2 → b1   (the leg pinched off between the armpits)
+      // No edge retires — the two new loops resolve via their own later
+      // events (the pinched leg collapses to its ridge; the crossbar ridges).
+      const b1 = wedges[event.b1Index]!;
+      const b2 = wedges[event.b2Index]!;
+      const a1 = wedges[b1.prevIndex]!;
+      const a2 = wedges[b2.prevIndex]!;
+      const P = vertexAt(a1, b1, event.time);
+      const P2 = vertexAt(a2, b2, event.time);
+      if (!P || !P2 || P.x !== P2.x || P.y !== P2.y) {
+        return { ok: false, error: { code: "unsupported_topology", reason: `converge ${b1.index}/${b2.index}: not coincident at t=${event.time}` } };
+      }
+      const pNode = addNode(P, event.time, [b1.polygonEdgeId, b2.polygonEdgeId]);
+      addSkeletonEdge(b1.startNodeIndex, pNode, a1.polygonEdgeId, b1.polygonEdgeId);
+      addSkeletonEdge(b2.startNodeIndex, pNode, a2.polygonEdgeId, b2.polygonEdgeId);
+      a1.nextIndex = b2.index;
+      b2.prevIndex = a1.index;
+      a2.nextIndex = b1.index;
+      b1.prevIndex = a2.index;
+      b1.startNodeIndex = pNode;
+      b2.startNodeIndex = pNode;
+      finalizeIfTwoLoop(a1);
+      finalizeIfTwoLoop(a2);
     } else {
       const b = wedges[event.bIndex]!;
       const a = wedges[b.prevIndex]!;

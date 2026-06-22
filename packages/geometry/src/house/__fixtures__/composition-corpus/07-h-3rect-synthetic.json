@@ -76,9 +76,5 @@
     "valleyCount": 4,
     "areaDeltaMaxAbsMm2": 100,
     "unifiedNotStitched": true
-  },
-  "knownFailure": {
-    "closesIn": "PR-SS-4",
-    "reason": "Wavefront solver fails with roof_wavefront_unclosed_boundary on 3-rect H topology regardless of input cleanliness. Falls back to stitched per-rectangle output. Verified failure in composeRoofFromComposition.diag.test.ts (now deleted). Straight-skeleton replacement in PR-SS-2/3/4 handles arbitrary orthogonal topologies including H."
   }
 }
