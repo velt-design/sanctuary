@@ -24,10 +24,99 @@ import { resolveWheelZoomedTransform } from '../interactions/usePanZoom';
 import { useToolDispatcher } from '../tools/ToolDispatcher';
 import { useHoveredShape } from '../interactions/useHoveredShape';
 import { buildPointerDispatchAction } from './pointerDispatch';
+import { resolvePlanDimensionGeometry, type PlanDimension } from './planDimension';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 const WHEEL_COMMIT_DEBOUNCE_MS = 120;
 const LOCAL_HOVER_STYLE: CanvasShapeStyle = { stroke: '#7b8288', widthPx: 1, fill: null, dash: [5, 3] };
+
+// Dimension styling mirrors `.dimensionLine/.dimensionArrow/.dimensionLabel`
+// in planLineweights.module.css. Drawn in DEVICE space (constant on-screen
+// size at any zoom — the CAD convention), not the camera-scaled body space.
+const DIM_STROKE = '#2a3a55';
+const DIM_LABEL_FILL = '#14172e';
+const DIM_LABEL_HALO = 'rgba(255, 255, 255, 0.95)';
+const DIM_LINE_WIDTH_PX = 0.5;
+const DIM_ARROW_LENGTH_PX = 6;
+const DIM_ARROW_HALF_WIDTH_PX = 2.5;
+const DIM_LABEL_OFFSET_PX = 4;
+const DIM_LABEL_FONT_PX = 11;
+const DIM_LABEL_HALO_WIDTH_PX = 3;
+
+type DevicePoint = { x: number; y: number };
+
+function drawDimensionArrow(ctx: CanvasRenderingContext2D, tip: DevicePoint, towards: DevicePoint, dpr: number): void {
+  const dx = towards.x - tip.x;
+  const dy = towards.y - tip.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return;
+  const ux = dx / len;
+  const uy = dy / len;
+  const baseX = tip.x + ux * DIM_ARROW_LENGTH_PX * dpr;
+  const baseY = tip.y + uy * DIM_ARROW_LENGTH_PX * dpr;
+  const perpX = -uy * DIM_ARROW_HALF_WIDTH_PX * dpr;
+  const perpY = ux * DIM_ARROW_HALF_WIDTH_PX * dpr;
+  ctx.beginPath();
+  ctx.moveTo(tip.x, tip.y);
+  ctx.lineTo(baseX + perpX, baseY + perpY);
+  ctx.lineTo(baseX - perpX, baseY - perpY);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * Draw dimension lines, arrows and labels in DEVICE space so they stay a
+ * constant on-screen size. `(a, d, e, f)` are the active camera's affine terms
+ * (device = a·local + e, d·local + f); each dimension's local geometry is
+ * projected through them. Mirrors `PlanDimensionLayer` (the SVG path).
+ */
+function drawDimensions(
+  ctx: CanvasRenderingContext2D,
+  dimensions: ReadonlyArray<PlanDimension>,
+  adapter: PlanCoordinateAdapter,
+  a: number,
+  d: number,
+  e: number,
+  f: number,
+  dpr: number,
+): void {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setLineDash([]);
+  const project = (p: { x: number; y: number }): DevicePoint => ({ x: a * p.x + e, y: d * p.y + f });
+  for (const dimension of dimensions) {
+    const g = resolvePlanDimensionGeometry(dimension, adapter);
+    if (!g) continue;
+    ctx.strokeStyle = DIM_STROKE;
+    ctx.lineWidth = DIM_LINE_WIDTH_PX * dpr;
+    ctx.beginPath();
+    for (const seg of [g.extensionStart, g.extensionEnd, g.dimLine]) {
+      const from = project(seg.from);
+      const to = project(seg.to);
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+    }
+    ctx.stroke();
+    const dimFrom = project(g.dimLine.from);
+    const dimTo = project(g.dimLine.to);
+    ctx.fillStyle = DIM_STROKE;
+    drawDimensionArrow(ctx, dimFrom, dimTo, dpr);
+    drawDimensionArrow(ctx, dimTo, dimFrom, dpr);
+    const anchor = project(g.labelAnchor);
+    ctx.save();
+    ctx.translate(anchor.x, anchor.y);
+    ctx.rotate((g.labelRotationDeg * Math.PI) / 180);
+    ctx.font = `500 ${DIM_LABEL_FONT_PX * dpr}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = DIM_LABEL_HALO_WIDTH_PX * dpr;
+    ctx.strokeStyle = DIM_LABEL_HALO;
+    ctx.strokeText(g.label, 0, -DIM_LABEL_OFFSET_PX * dpr);
+    ctx.fillStyle = DIM_LABEL_FILL;
+    ctx.fillText(g.label, 0, -DIM_LABEL_OFFSET_PX * dpr);
+    ctx.restore();
+  }
+}
 
 /**
  * PR-WB-CANVAS step ② (2026-06-22): Canvas 2D Plan renderer with interaction.
@@ -48,6 +137,7 @@ export type PlanCanvas2DProps = {
   hitTargetItems: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
   hoverHaloItems?: PlanRenderItem[];
+  dimensions?: ReadonlyArray<PlanDimension>;
   onHoverShape?: (shape: GeometryTopProjectionShape | null) => void;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
@@ -84,6 +174,7 @@ export function PlanCanvas2D({
   hitTargetItems,
   selectionHaloItems,
   hoverHaloItems = [],
+  dimensions = [],
   onHoverShape,
   transform,
   onTransformChange,
@@ -96,8 +187,8 @@ export function PlanCanvas2D({
   const panRef = useRef<{ pointerId: number; startClientX: number; startClientY: number; startPanX: number; startPanY: number } | null>(null);
   const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const dataRef = useRef({ layout, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, hoveredShapeId: hoveredShape?.shapeId ?? null });
-  dataRef.current = { layout, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, hoveredShapeId: hoveredShape?.shapeId ?? null };
+  const dataRef = useRef({ layout, coordinateAdapter, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, hoveredShapeId: hoveredShape?.shapeId ?? null });
+  dataRef.current = { layout, coordinateAdapter, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, hoveredShapeId: hoveredShape?.shapeId ?? null };
 
   const strokePoly = useCallback(
     (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], style: CanvasShapeStyle, scale: number, close: boolean) => {
@@ -141,9 +232,14 @@ export function PlanCanvas2D({
     const data = dataRef.current;
     const { minX, minY, scaleFit, offsetX, offsetY } = fit(data.layout, cssW, cssH);
     const scale = scaleFit * t.zoom;
+    // Camera affine: device = a·local + e (x), d·local + f (y).
+    const a = dpr * scale;
+    const d = dpr * scale;
+    const e = dpr * (offsetX + scaleFit * (t.panX - minX));
+    const f = dpr * (offsetY + scaleFit * (t.panY - minY));
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (offsetX + scaleFit * (t.panX - minX)), dpr * (offsetY + scaleFit * (t.panY - minY)));
+    ctx.setTransform(a, 0, 0, d, e, f);
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
@@ -157,12 +253,14 @@ export function PlanCanvas2D({
     }
     for (const item of data.selectionHaloItems) strokePoly(ctx, item.points, CANVAS_SELECTION_HALO, scale, true);
     for (const item of data.hoverHaloItems) strokePoly(ctx, item.points, CANVAS_HOVER_HALO, scale, true);
+    // Dimensions last, in device space (constant on-screen size).
+    if (data.dimensions.length) drawDimensions(ctx, data.dimensions, data.coordinateAdapter, a, d, e, f, dpr);
   }, [strokePoly]);
 
   useLayoutEffect(() => {
     liveTransformRef.current = transform;
     draw();
-  }, [transform, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, hoveredShape, layout, draw]);
+  }, [transform, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, hoveredShape, layout, draw]);
 
   useEffect(() => {
     const parent = canvasRef.current?.parentElement;
@@ -309,6 +407,7 @@ export function PlanCanvas2D({
         data-plan-screen-axis={screenAxisLabel}
         data-plan-committed-body-count={committedBodies.length}
         data-plan-hit-target-count={hitTargetCount}
+        data-plan-dimension-count={dimensions.length}
         data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}
         data-plan-active-tool-id={dispatcher.activeTool.id}

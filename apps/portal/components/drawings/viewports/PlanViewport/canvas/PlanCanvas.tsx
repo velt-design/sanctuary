@@ -329,6 +329,7 @@ export function PlanCanvas({
         hitTargetItems={allHitTargetItems}
         selectionHaloItems={selectionHaloItems}
         hoverHaloItems={hoverHaloItems}
+        dimensions={dimensions}
         onHoverShape={onHoverShape}
         transform={transform}
         onTransformChange={onTransformChange}
