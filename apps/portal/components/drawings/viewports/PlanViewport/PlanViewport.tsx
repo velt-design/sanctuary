@@ -429,7 +429,7 @@ export default function PlanViewport({
         // for apply, negative for invert (the MoveTool's `createMoveCommand`
         // builds the inverse request internally).
         invertMove: (request) => onCommitMoveRef.current?.(request),
-        // Live preview during drag: PlanMovePreviewLayer reads this state
+        // Live preview during drag: the plan canvas reads this state
         // and renders the active object's polygon translated by the
         // current delta. Without this wiring the user sees no visual
         // feedback until pointer-up commits the move.

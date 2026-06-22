@@ -1114,7 +1114,7 @@ Current guardrail: superseded by the explicit Plan hit-target layer and project 
 
 - In [planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), `buildProjectionPlanRenderGraph` puts canonical `house_reference + footprint` shapes in `hitTargets`, not normal visible bodies. `house_reference` promotes to a visible committed fallback only when the same house form has no roof body.
 - In [planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), visible committed bodies are filtered and semantically sorted before they reach React. Project-level house roof bodies come from the package eave-perimeter projection, and project pergola bodies paint below house roof bodies.
-- In [PlanCommittedBodyLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx), the layer is now a presenter only; it renders the already-filtered/sorted items from the render model.
+- In `PlanCommittedBodyLayer.tsx`, the layer is now a presenter only; it renders the already-filtered/sorted items from the render model.
 - In [ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx)'s `TopProjectionLayerRenderer` (Sheet view), the same render-time suppression applies. Sheet has no hit-target layer for the house so a render-only filter is sufficient.
 - The non-active project-context overlay path (`buildProjectContextOverlayShapes` in workbenchSolvedModel.ts) is unaffected -- it filters `house_reference` out of the context overlay separately.
 
@@ -1122,7 +1122,7 @@ Keep visible and hit-target concerns separate: interaction references belong in 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx), [apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts), [apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx`, [apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts), [apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).
 
 ### 2026-05-13 - Pergola Snap Targets - Every Attachable Perimeter Edge
 
@@ -1211,7 +1211,7 @@ Current guardrail: corner snap lives in [`resolveMoveSnap`](../apps/portal/compo
 
 When a secondary is found, the resolver solves the 2x2 system `[primary_normal; secondary_normal] . delta = [primary_snapDeltaMm; secondary_snapDeltaMm]` for the 2-vector `delta`. After applying `delta`, both edges sit exactly on their target lines; their shared corner sits on the intersection of the two target lines (computed and returned as `cornerVertex`). Existing single-line callers see `secondary: undefined` and unchanged behaviour.
 
-The visual indicator layer ([PlanMoveSnapIndicatorLayer in PlanSnapIndicatorLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx)) renders both snap lines + a marker at `cornerVertex` when secondary is present; the primary-only render path is unchanged.
+The visual indicator layer (`PlanMoveSnapIndicatorLayer in PlanSnapIndicatorLayer.tsx`) renders both snap lines + a marker at `cornerVertex` when secondary is present; the primary-only render path is unchanged.
 
 Future agents:
 
@@ -1221,7 +1221,7 @@ Future agents:
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts) ("corner snap (two non-parallel targets in tolerance)" describe block), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx) (`PlanMoveSnapIndicatorLayer` renders secondary + corner marker), [apps/portal/lib/drawings/interactions/deckInteractionContract.ts](../apps/portal/lib/drawings/interactions/deckInteractionContract.ts) (`corner_dual_edge` deck attachment precedent), `apps/portal/lib/drawings/interactions/deckReleaseSettlementController.ts` (dual-edge commit precedent: searches for `secondaryHostEdgeId` to see the settlement flow).
+Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts) ("corner snap (two non-parallel targets in tolerance)" describe block), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx` (`PlanMoveSnapIndicatorLayer` renders secondary + corner marker), [apps/portal/lib/drawings/interactions/deckInteractionContract.ts](../apps/portal/lib/drawings/interactions/deckInteractionContract.ts) (`corner_dual_edge` deck attachment precedent), `apps/portal/lib/drawings/interactions/deckReleaseSettlementController.ts` (dual-edge commit precedent: searches for `secondaryHostEdgeId` to see the settlement flow).
 
 ### 2026-05-14 - House Roof Topology - Session C: HouseRoofForm 'gable' Retirement
 
@@ -1464,7 +1464,7 @@ Current guardrail: selecting a pergola must resolve the matching solved entry by
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/pergolaSelectionState.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/pergolaSelectionState.ts), [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx), [apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts).
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/pergolaSelectionState.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/pergolaSelectionState.ts), `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, [apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts).
 
 ### 2026-05-30 - Workbench Geometry - Production-Aligned QA Fixture Routes
 
@@ -1544,7 +1544,7 @@ Current guardrail: `WorkbenchSolvedModel.projectHouseProjectionHealth` is the pr
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts](../apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts), [apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts](../apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts), [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts](../apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts), [apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts](../apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts), `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-05-31 - Workbench House Forms - Selected Status Is Nullable
 
@@ -1624,7 +1624,7 @@ Current guardrail: Plan render graph exposes `diagnosticFallbacks` separately fr
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx), [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx`, [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).
 
 ### 2026-06-01 - Workbench Rendering - House Render Health By Form
 
@@ -2471,7 +2471,7 @@ Behavioural impact: designers placing two rectangles next to each other now see 
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/house/composition/compositionSeams.ts](../packages/geometry/src/house/composition/compositionSeams.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSeamIconLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSeamIconLayer.tsx), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts).
+Related docs/tests: [packages/geometry/src/house/composition/compositionSeams.ts](../packages/geometry/src/house/composition/compositionSeams.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSeamIconLayer.tsx`, [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts).
 
 ### 2026-06-19 - Workbench House Forms - Unified-Topology Hipped Composite Roof (PR-COMP-UNIFIED-1)
 

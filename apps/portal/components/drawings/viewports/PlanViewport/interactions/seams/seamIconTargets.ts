@@ -10,7 +10,7 @@ import {
 /**
  * PR-COMP-PHASE4b.3 (2026-06-18): pure helper that takes the
  * project's house forms (with composition + world transforms) and
- * returns the seam-icon targets PlanSeamIconLayer renders.
+ * returns the seam-icon targets the plan canvas renders.
  *
  * Two kinds of icon:
  *   - 'detach' — one per internal join of a composite form. Click

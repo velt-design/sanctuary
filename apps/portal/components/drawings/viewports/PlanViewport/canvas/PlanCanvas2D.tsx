@@ -134,7 +134,7 @@ function drawDimensionArrow(ctx: CanvasRenderingContext2D, tip: DevicePoint, tow
  * Draw dimension lines, arrows and labels in DEVICE space so they stay a
  * constant on-screen size. `(a, d, e, f)` are the active camera's affine terms
  * (device = a·local + e, d·local + f); each dimension's local geometry is
- * projected through them. Mirrors `PlanDimensionLayer` (the SVG path).
+ * projected through them. Geometry comes from `resolvePlanDimensionGeometry`.
  */
 function drawDimensions(
   ctx: CanvasRenderingContext2D,
@@ -185,13 +185,14 @@ function drawDimensions(
 }
 
 /**
- * PR-WB-CANVAS step ② (2026-06-22): Canvas 2D Plan renderer with interaction.
- * Step ① proved render + camera; this adds GEOMETRIC hit-testing so click-
- * select / drag / hover work without per-shape DOM. Pointer events map to
- * world coords via the inverse camera, hit-test by point-in-polygon over the
- * (renderer-agnostic) hit-target items, and dispatch through the SAME tool
- * dispatcher + `buildPointerDispatchAction` the SVG path uses. Flag-gated.
- * Still NOT on canvas: dimensions/text, drag/snap previews (steps ③–④).
+ * PR-WB-CANVAS (2026-06-22): the Canvas 2D Plan renderer — now the only Plan
+ * renderer (the SVG-DOM path was retired in Tier 3 step 6). Bodies + halos draw
+ * in camera-scaled space (constant-px strokes); dimensions, snap markers and
+ * seam icons draw in device space (constant on-screen size). Interaction is
+ * geometric: pointer events map to world coords via the inverse camera,
+ * hit-test by point-in-polygon over the (renderer-agnostic) hit-target items,
+ * and dispatch through the shared tool dispatcher + `buildPointerDispatchAction`.
+ * Pan/zoom apply imperatively and commit to React state only on gesture end.
  */
 export type PlanCanvas2DProps = {
   layout: PlanLayout;
