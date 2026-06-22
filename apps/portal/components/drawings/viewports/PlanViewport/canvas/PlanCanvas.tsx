@@ -14,6 +14,7 @@ import { buildPointerDispatchAction } from './pointerDispatch';
 import { useHoveredShape } from '../interactions/useHoveredShape';
 import { usePanZoom } from '../interactions/usePanZoom';
 import { useToolDispatcher } from '../tools/ToolDispatcher';
+import { PlanCanvas2D } from './PlanCanvas2D';
 import { PlanCommittedBodyLayer } from './layers/PlanCommittedBodyLayer';
 import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
 import { PlanDiagnosticFallbackLayer } from './layers/PlanDiagnosticFallbackLayer';
@@ -184,9 +185,14 @@ export function PlanCanvas({
   // pointer move; production has zero cost (the early return below skips both
   // the state update and the layer render).
   const [debugEnabled, setDebugEnabled] = useState(false);
+  // PR-WB-CANVAS (Tier 3): opt into the canvas renderer with `?planRenderer=
+  // canvas`. SVG stays the default until canvas parity is proven.
+  const [useCanvasRenderer, setUseCanvasRenderer] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setDebugEnabled(new URLSearchParams(window.location.search).get('debug') === 'hit-test');
+    const params = new URLSearchParams(window.location.search);
+    setDebugEnabled(params.get('debug') === 'hit-test');
+    setUseCanvasRenderer(params.get('planRenderer') === 'canvas');
   }, []);
   const [cursorWorldMm, setCursorWorldMm] = useState<Point2 | null>(null);
 
@@ -310,6 +316,23 @@ export function PlanCanvas({
     },
     [dispatcher, panZoom],
   );
+
+  if (useCanvasRenderer) {
+    return (
+      <PlanCanvas2D
+        layout={layout}
+        committedBodies={committedBodies}
+        diagnosticFallbackItems={diagnosticFallbackItems}
+        contextLines={contextLines}
+        detailLines={detailLines}
+        selectionHaloItems={selectionHaloItems}
+        hoverHaloItems={hoverHaloItems}
+        transform={transform}
+        onTransformChange={onTransformChange}
+        screenAxisLabel={screenAxisLabel}
+      />
+    );
+  }
 
   return (
     <div className={styles.canvasShell}>
