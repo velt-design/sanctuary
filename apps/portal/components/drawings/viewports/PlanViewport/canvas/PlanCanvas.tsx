@@ -321,12 +321,15 @@ export function PlanCanvas({
     return (
       <PlanCanvas2D
         layout={layout}
+        coordinateAdapter={coordinateAdapter}
         committedBodies={committedBodies}
         diagnosticFallbackItems={diagnosticFallbackItems}
         contextLines={contextLines}
         detailLines={detailLines}
+        hitTargetItems={allHitTargetItems}
         selectionHaloItems={selectionHaloItems}
         hoverHaloItems={hoverHaloItems}
+        onHoverShape={onHoverShape}
         transform={transform}
         onTransformChange={onTransformChange}
         screenAxisLabel={screenAxisLabel}
