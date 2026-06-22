@@ -68,6 +68,22 @@ function buildSyntheticSvgPoint(): SyntheticSvgPoint {
   return point;
 }
 
+/**
+ * JSDOM lacks `ResizeObserver`, which the Canvas 2D plan renderer
+ * (`PlanCanvas2D`) constructs in an effect to redraw on container resize.
+ * Without it, mounting the canvas renderer in a test throws
+ * `ReferenceError: ResizeObserver is not defined`. A no-op stub is enough:
+ * tests drive redraws synchronously via prop changes, not resize events.
+ */
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver = ResizeObserverStub;
+}
+
 if (typeof SVGSVGElement !== 'undefined') {
   if (typeof SVGSVGElement.prototype.getScreenCTM !== 'function') {
     Object.defineProperty(SVGSVGElement.prototype, 'getScreenCTM', {
