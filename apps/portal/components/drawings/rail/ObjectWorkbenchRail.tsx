@@ -6,42 +6,47 @@ import {
   familyVisibilityFor,
   subtitleForObjectTreeRow,
 } from '@/lib/drawings/state/objectTreeRowSubtitles';
-import type { WorkbenchObjectFamily } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { DrawingWorkbenchRailModel } from '@/lib/drawings/state/drawingWorkbenchRailModel';
+import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { resolveCommitResult } from './objectRailShared';
 import { ObjectTreeSection } from './objectTree/ObjectTreeSection';
-import type { ObjectWorkbenchRailProps } from './objectWorkbenchRailTypes';
+import type { CommitResult } from './objectWorkbenchRailTypes';
 import styles from './WorkbenchRail.module.css';
 
 /*
- * PR-W3d (2026-05-25) — CAD-style left rail: VISIBILITY + flat OBJECTS TREE.
+ * Left rail for workbench visibility and object navigation.
  *
- * Removed:
- *  - Object Navigator tab strip (forced one-family-at-a-time view)
- *  - Selected Object summary section (duplicated info — selection signal
- *    lives in the tree row highlight; trust pill lives in the right
- *    inspector header)
- *  - Diagnostics tab (debug content, future access via top bar `…` menu)
- *
- * What stays:
- *  - Visibility toggles (House / Pergolas / Decks / Openings)
- *  - Four `<ObjectTreeSection>` blocks always rendered simultaneously, one
- *    per family. Order matches the mockup.
- *
- * Row content + subtitle derivation lives in `objectTreeRowSubtitles.ts`
- * (PR-W3d.1); row/section primitives live in `objectTree/` (PR-W3d.2).
- * This file is now pure composition + visibility section.
+ * The rail always renders every object family. It owns the visibility
+ * toggles, object tree composition, and family-level add affordances;
+ * editing and diagnostics live in the right inspector.
  */
 
-// Family render order matches the mockup: House Forms → Pergolas → Decks →
-// Openings. Distinct from the rail model's internal `FAMILY_ORDER` so the
-// outliner reads top-down by spatial-entity importance regardless of how
-// the data layer orders families.
+// Render order is intentionally product-facing: house forms first, then
+// pergolas, decks, and openings. The data layer may use a different order.
 const TREE_FAMILY_ORDER: ReadonlyArray<{ family: WorkbenchObjectFamily; label: string }> = [
   { family: 'house_forms', label: 'House Forms' },
   { family: 'pergolas', label: 'Pergolas' },
   { family: 'decks', label: 'Decks' },
   { family: 'openings', label: 'Openings' },
 ];
+
+type ObjectWorkbenchRailInspectorContext = {
+  onAddHouseForm?: () => Promise<CommitResult> | CommitResult;
+  onAddPergola?: () => Promise<CommitResult> | CommitResult;
+  onAddDeck?: () => Promise<CommitResult> | CommitResult;
+  onAddOpening?: () => Promise<CommitResult> | CommitResult;
+};
+
+type ObjectWorkbenchRailProps = {
+  model: DrawingWorkbenchRailModel;
+  disabled?: boolean;
+  activeObjectRef: WorkbenchObjectRef;
+  visibility: DrawingWorkbenchVisibilityState;
+  onSelectObjectRef?: (ref: WorkbenchObjectRef) => void;
+  onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
+  inspectorContext: ObjectWorkbenchRailInspectorContext;
+};
 
 export default function ObjectWorkbenchRail({
   model,
@@ -87,7 +92,6 @@ export default function ObjectWorkbenchRail({
     }));
   }, [onAddOpening]);
 
-  // Pre-compose the per-family row data so the JSX stays declarative.
   const familyRows = useMemo(() => {
     return TREE_FAMILY_ORDER.map(({ family }) => {
       const entries = model.objectLists[family];
@@ -143,10 +147,6 @@ export default function ObjectWorkbenchRail({
       <div className={styles.rail} data-object-tree="true" aria-label="Workbench objects">
         {TREE_FAMILY_ORDER.map(({ family, label }, index) => {
           const { rows } = familyRows[index]!;
-          // PR-T6 (2026-05-26): per-family add affordance. All four
-          // families render the "+ Add X" pill for visual consistency
-          // with the mockup. Pergolas now add freestanding object-first
-          // drafts; drag/snap forms relationships later.
           const addConfig = (() => {
             switch (family) {
               case 'house_forms':

@@ -21,7 +21,7 @@ import { normalizeNonZeroVector } from "./buildGeometries";
  * in `buildGeometries.ts`.
  */
 
-export type DeckMaterialKey = "timber_decking" | "composite" | "concrete";
+type DeckMaterialKey = "timber_decking" | "composite" | "concrete";
 
 function metadataStringValue(
   metadata: ViewerSceneHouseSurfaceSolidObject["metadata"] | undefined,

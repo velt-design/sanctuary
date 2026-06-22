@@ -44,7 +44,7 @@ function compareCommittedBodyItems<TItem extends { shape: GeometryTopProjectionS
 export function buildPlanCommittedBodyVisualStack<TItem extends { shape: GeometryTopProjectionShape }>(input: {
   committedBodies: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
   hitTargets: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
-  projectionOnlyModelSpace?: boolean;
+  projectionOnlyPlan?: boolean;
   topProjectionShapeAllowedInProjectionOnlyModel: (shape: GeometryTopProjectionShape) => boolean;
 }): {
   committedBodies: Array<ProjectionPlanGraphItem<TItem>>;
@@ -62,7 +62,7 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
   }
 
   const projectionOnlyAllowed = (shape: GeometryTopProjectionShape): boolean =>
-    !input.projectionOnlyModelSpace || input.topProjectionShapeAllowedInProjectionOnlyModel(shape);
+    !input.projectionOnlyPlan || input.topProjectionShapeAllowedInProjectionOnlyModel(shape);
 
   const houseReferenceFallbacks = input.hitTargets
     .filter(({ shape }) => {

@@ -20,7 +20,7 @@ function shape(input: Partial<GeometryTopProjectionShape> & Pick<GeometryTopProj
 }
 
 describe('planRenderGraph', () => {
-  it('keeps projection-only model-space bodies to committed top-visible owners and wall context lines', () => {
+  it('keeps projection-only plan bodies to committed top-visible owners and wall context lines', () => {
     const roof = shape({
       id: 'roof-main',
       family: 'house',
@@ -66,7 +66,7 @@ describe('planRenderGraph', () => {
         { shape: wallLine, marker: 'wall' },
         { shape: referenceBody, marker: 'reference' },
       ],
-      { projectionOnlyModelSpace: true },
+      { projectionOnlyPlan: true },
     );
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['deck', 'roof']);

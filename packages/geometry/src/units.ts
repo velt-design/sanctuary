@@ -1,4 +1,4 @@
-export function roundMillimetres(value: number): number {
+function roundMillimetres(value: number): number {
   return Math.round(value);
 }
 

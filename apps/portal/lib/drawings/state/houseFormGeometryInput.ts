@@ -74,7 +74,7 @@ type HouseFormGeometryInputFailure = {
   diagnostics: HouseFormGeometryInputDiagnostics;
 };
 
-export type HouseFormGeometryInputResult =
+type HouseFormGeometryInputResult =
   | HouseFormGeometryInputSuccess
   | HouseFormGeometryInputFailure;
 

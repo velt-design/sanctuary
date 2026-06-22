@@ -56,7 +56,7 @@ export type Line2 = {
 
 export type Polygon2 = Point2[];
 
-export type AssemblyMemberProfileAnchors = {
+type AssemblyMemberProfileAnchors = {
   undersideZ: number;
   topsideZ: number;
   backFaceY: number;
@@ -88,7 +88,7 @@ export type DatumFrame3 = {
 /**
  * Supported V1 Sanctuary families only.
  */
-export type PergolaFamily = "mono" | "gable" | "box" | "hip" | "hip_corner";
+type PergolaFamily = "mono" | "gable" | "box" | "hip" | "hip_corner";
 
 /**
  * Pergola world-space position. When set, downstream consumers should prefer this
@@ -109,17 +109,17 @@ export type AssemblyPosition = {
 export type RoofMaterial = "acrylic" | "insulated" | "timber" | "louvre";
 export type ConnectionType = "fascia" | "soffit" | "wall" | "freestanding";
 export type AttachmentSide = "left" | "right" | "rear" | "front";
-export type PostMode = "standard" | "custom";
+type PostMode = "standard" | "custom";
 export type FootingType = "slab" | "pier" | "pile";
 export type RoofFallDirection = "positiveY" | "negativeY" | "dual";
 export type GutterAssemblyMode = "integrated" | "separate" | "none";
-export type SupportConditionType =
+type SupportConditionType =
   | "house_connection"
   | "post_connection"
   | "ground"
   | "bracing"
   | "custom";
-export type AssemblyMemberRole =
+type AssemblyMemberRole =
   | "post"
   | "beam"
   | "ledger"
@@ -128,10 +128,10 @@ export type AssemblyMemberRole =
   | "gutter"
   | "brace"
   | "joiner";
-export type ProfileShape = "rectangular" | "c-channel" | "custom";
-export type RoofCladdingMaterial = "acrylic";
-export type HouseStoreyMode = "single_storey" | "double_storey" | "custom";
-export type HouseWallConstruction = "timber_frame";
+type ProfileShape = "rectangular" | "c-channel" | "custom";
+type RoofCladdingMaterial = "acrylic";
+type HouseStoreyMode = "single_storey" | "double_storey" | "custom";
+type HouseWallConstruction = "timber_frame";
 export type HouseRoofForm = "flat" | "mono" | "hipped";
 export type HouseRoofPrimaryFallDirection = "positive_x" | "negative_x" | "positive_y" | "negative_y";
 export type HouseRoofRidgeAxis = "x" | "y";
@@ -141,21 +141,21 @@ export type HouseRoofFeatureKind = "ridge" | "hip" | "valley" | "gable_end_frame
 // PR-T9 (2026-05-29): `HouseDeckKind` and `HouseDeckElevationMode` removed
 // with the deck inspector cull. No costing or geometry consumer branched
 // on either type.
-export type HouseDeckShape = "preset" | "custom";
-export type HouseDeckPresetType = "rect_attached" | "rect_detached";
-export type HouseDeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
-export type HouseDeckSupportClassification =
+type HouseDeckShape = "preset" | "custom";
+type HouseDeckPresetType = "rect_attached" | "rect_detached";
+type HouseDeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
+type HouseDeckSupportClassification =
   | "ground_supported"
   | "threshold_attached"
   | "mixed_or_unclear";
-export type HouseOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
+type HouseOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
 export type HouseAttachmentStrategy =
   | "soffit_brackets"
   | "fascia_under_gutter"
   | "facade_ledger"
   | "post_supported_tieback"
   | "none";
-export type HouseAttachmentTargetKind =
+type HouseAttachmentTargetKind =
   | "line"
   | "plane"
   | "zone"
@@ -202,7 +202,7 @@ export type RawRoofMaterial =
   | "mixed"
   | "insulated"
   | "louvre";
-export type RawHouseConnectionType =
+type RawHouseConnectionType =
   | "soffit"
   | "fascia"
   | "facade"
@@ -220,13 +220,13 @@ export type RawGableEndFramesMode = "none" | "outer_end_only" | "both_ends";
 export type RawGableEaveGutterMode = "house" | "our";
 export type RawBoxGutterMode = "house" | "our" | "none";
 
-export type GeometryMetadataValue = string | number | boolean | null;
+type GeometryMetadataValue = string | number | boolean | null;
 export type GeometryMetadata = Record<string, GeometryMetadataValue>;
 export type GableEndFramesMode = RawGableEndFramesMode;
 export type GableEaveGutterMode = RawGableEaveGutterMode;
 export type BoxGutterMode = RawBoxGutterMode;
 
-export type HouseEaveConfig = {
+type HouseEaveConfig = {
   soffitDepthMm?: number | null;
   fasciaHeightMm?: number | null;
   gutterWidthMm?: number | null;
@@ -319,13 +319,13 @@ export type AssemblyMemberProfile = {
   anchors?: AssemblyMemberProfileAnchors | null;
 };
 
-export type AssemblyMemberEndCutPlane = {
+type AssemblyMemberEndCutPlane = {
   normal: Vector3;
   offsetMm: number;
   keepSide: "negative" | "positive";
 };
 
-export type AssemblyMemberEndCut = {
+type AssemblyMemberEndCut = {
   end: "start" | "end";
   plane: AssemblyMemberEndCutPlane;
   preClipExtensionMm: number;
@@ -823,7 +823,7 @@ export type RoofCladdingPanel3D = {
   metadata?: GeometryMetadata;
 };
 
-export type RoofFlashingWing3D = {
+type RoofFlashingWing3D = {
   id: string;
   boundary: Polygon3;
   plane: Plane3;
@@ -886,7 +886,7 @@ export type HouseRoofFeature3D = {
 };
 
 export type HouseSurfaceSolidKind = "wall" | "roof" | "soffit" | "fascia" | "deck";
-export type HouseLinearSolidKind = "gutter";
+type HouseLinearSolidKind = "gutter";
 
 export type RenderMesh3D = {
   vertices: Point3[];
@@ -1059,29 +1059,29 @@ export type HouseReferenceGeometry = {
   position?: AssemblyPosition | null;
 };
 
-export type AssemblySupportCondition = {
+type AssemblySupportCondition = {
   type: SupportConditionType;
   memberId: string;
   metadata?: GeometryMetadata;
 };
 
-export type QuantityHook = {
+type QuantityHook = {
   key: string;
   quantity: number;
   unit: string;
 };
 
-export type GeometryQuantityTakeoffDiagnostic = {
+type GeometryQuantityTakeoffDiagnostic = {
   code: string;
   message: string;
 };
 
-export type GeometryQuantityTakeoffDimensionSet = {
+type GeometryQuantityTakeoffDimensionSet = {
   length: number;
   projection: number;
 };
 
-export type GeometryQuantityTakeoffMemberItem = {
+type GeometryQuantityTakeoffMemberItem = {
   id: string;
   role: AssemblyMemberRole;
   lengthMm: number;
@@ -1091,7 +1091,7 @@ export type GeometryQuantityTakeoffMemberItem = {
   metadata?: GeometryMetadata;
 };
 
-export type GeometryQuantityTakeoffRoofPlane = {
+type GeometryQuantityTakeoffRoofPlane = {
   id: string;
   label?: string;
   areaMm2: number;
@@ -1123,14 +1123,14 @@ export type GeometryQuantityTakeoffRoofPlane = {
   metadata?: GeometryMetadata;
 };
 
-export type GeometryQuantityTakeoffRoofPlanes = {
+type GeometryQuantityTakeoffRoofPlanes = {
   count: number;
   totalAreaMm2: number;
   totalAreaM2: number;
   items: GeometryQuantityTakeoffRoofPlane[];
 };
 
-export type GeometryQuantityTakeoffMemberBucket = {
+type GeometryQuantityTakeoffMemberBucket = {
   role: AssemblyMemberRole;
   count: number;
   totalLengthMm: number;
@@ -1142,7 +1142,7 @@ export type GeometryQuantityTakeoffMemberBucket = {
   items: GeometryQuantityTakeoffMemberItem[];
 };
 
-export type GeometryQuantityTakeoffMembers = {
+type GeometryQuantityTakeoffMembers = {
   totalCount: number;
   totalLengthMm: number;
   totalLengthM: number;
@@ -1150,7 +1150,7 @@ export type GeometryQuantityTakeoffMembers = {
   byRole: Record<AssemblyMemberRole, GeometryQuantityTakeoffMemberBucket>;
 };
 
-export type GeometryQuantityTakeoffBeams = {
+type GeometryQuantityTakeoffBeams = {
   ledgerLengthMm: number | null;
   ledgerLengthM: number | null;
   supportBeamLengthMm: number | null;
@@ -1167,7 +1167,7 @@ export type GeometryQuantityTakeoffBeams = {
   tieBeamItems: GeometryQuantityTakeoffMemberItem[];
 };
 
-export type GeometryQuantityTakeoffGutters = {
+type GeometryQuantityTakeoffGutters = {
   ourGutterLengthMm: number | null;
   ourGutterLengthM: number | null;
   houseGutterLengthMm: number | null;
@@ -1179,14 +1179,14 @@ export type GeometryQuantityTakeoffGutters = {
   houseItems: GeometryQuantityTakeoffMemberItem[];
 };
 
-export type GeometryQuantityTakeoffRoofCladdingMaterial = {
+type GeometryQuantityTakeoffRoofCladdingMaterial = {
   material: RoofCladdingMaterial;
   panelCount: number;
   areaMm2: number;
   areaM2: number;
 };
 
-export type GeometryQuantityTakeoffRoofCladdingPanel = {
+type GeometryQuantityTakeoffRoofCladdingPanel = {
   id: string;
   material: RoofCladdingMaterial;
   areaMm2: number;
@@ -1200,7 +1200,7 @@ export type GeometryQuantityTakeoffRoofCladdingPanel = {
   metadata?: GeometryMetadata;
 };
 
-export type GeometryQuantityTakeoffRoofCladding = {
+type GeometryQuantityTakeoffRoofCladding = {
   panelCount: number;
   totalAreaMm2: number;
   totalAreaM2: number;
@@ -1216,7 +1216,7 @@ export type GeometryQuantityTakeoffRoofCladding = {
   byMaterial: GeometryQuantityTakeoffRoofCladdingMaterial[];
 };
 
-export type GeometryQuantityTakeoffRafters = {
+type GeometryQuantityTakeoffRafters = {
   count: number;
   totalLengthMm: number;
   totalLengthM: number;
@@ -1231,7 +1231,7 @@ export type GeometryQuantityTakeoffRafters = {
   items: GeometryQuantityTakeoffMemberItem[];
 };
 
-export type GeometryQuantityTakeoffJoiners = {
+type GeometryQuantityTakeoffJoiners = {
   count: number;
   totalLengthMm: number;
   totalLengthM: number;
@@ -1240,7 +1240,7 @@ export type GeometryQuantityTakeoffJoiners = {
   items: GeometryQuantityTakeoffMemberItem[];
 };
 
-export type GeometryQuantityTakeoffFlashingItem = {
+type GeometryQuantityTakeoffFlashingItem = {
   id: string;
   lengthMm: number;
   lengthM: number;
@@ -1252,7 +1252,7 @@ export type GeometryQuantityTakeoffFlashingItem = {
   metadata?: GeometryMetadata;
 };
 
-export type GeometryQuantityTakeoffFlashingGirthBucket = {
+type GeometryQuantityTakeoffFlashingGirthBucket = {
   girthMm: number | null;
   count: number;
   totalLengthMm: number;
@@ -1262,7 +1262,7 @@ export type GeometryQuantityTakeoffFlashingGirthBucket = {
   items: GeometryQuantityTakeoffFlashingItem[];
 };
 
-export type GeometryQuantityTakeoffFlashings = {
+type GeometryQuantityTakeoffFlashings = {
   count: number;
   totalLengthMm: number;
   totalLengthM: number;
@@ -1367,7 +1367,7 @@ export type GeometryPlanSurface2D = {
   metadata?: GeometryMetadata;
 };
 
-export type GeometryPlanHouseSurfaceKind =
+type GeometryPlanHouseSurfaceKind =
   | "footprint"
   | "roof"
   | "soffit"
@@ -1375,7 +1375,7 @@ export type GeometryPlanHouseSurfaceKind =
   | "deck"
   | "attachment_zone";
 
-export type GeometryPlanHouseLineKind =
+type GeometryPlanHouseLineKind =
   | "wall_segment"
   | "roof_feature"
   | "gutter"
@@ -1395,7 +1395,7 @@ export type GeometryPlanHouseLine2D = {
   metadata?: GeometryMetadata;
 };
 
-export type GeometryPlanRafterSpacingAnchor = {
+type GeometryPlanRafterSpacingAnchor = {
   line: Line2;
   positionsMm: number[];
 };
@@ -1461,7 +1461,7 @@ export type GeometryPlanViewModel = {
 
 export type GeometryTopProjectionFamily = "pergola" | "house" | "reference";
 
-export type GeometryTopProjectionSourceType =
+type GeometryTopProjectionSourceType =
   | ViewerSceneObject["type"]
   | "house_reference"
   | "pergola_reference";
@@ -1604,7 +1604,7 @@ export type GeometryValidationInvariant = {
   message: string;
 };
 
-export type GeometryFixtureComparison = {
+type GeometryFixtureComparison = {
   fixtureId: string;
   status: "match" | "drift";
   message: string;
@@ -1617,16 +1617,16 @@ export type GeometryValidationReport = {
   fixtureComparisons: GeometryFixtureComparison[];
 };
 
-export type ViewerSceneMemberRenderMode =
+type ViewerSceneMemberRenderMode =
   | "prism"
   | "outline_extrusion"
   | "line_fallback";
-export type ViewerSceneReferenceLineKind =
+type ViewerSceneReferenceLineKind =
   | "attachment_edge"
   | "fascia"
   | "roof_edge";
-export type ViewerSceneReferencePlaneKind = "house_wall";
-export type ViewerSceneHouseSurfaceKind =
+type ViewerSceneReferencePlaneKind = "house_wall";
+type ViewerSceneHouseSurfaceKind =
   | "wall"
   | "roof"
   | "soffit"
@@ -1635,7 +1635,7 @@ export type ViewerSceneHouseSurfaceKind =
   | "opening_marker"
   | "attachment_zone"
   | "attachment_plane";
-export type ViewerSceneHouseLineKind =
+type ViewerSceneHouseLineKind =
   | "gutter"
   | "wall_segment"
   | "roof_outline"

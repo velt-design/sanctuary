@@ -7,24 +7,12 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type {
   Point3,
-  RenderMesh3D,
-  ViewerSceneHouseLineObject,
-  ViewerSceneHouseLinearSolidObject,
-  ViewerSceneHouseSurfaceObject,
-  ViewerSceneHouseSurfaceSolidObject,
-  ViewerSceneMemberPrismObject,
   ViewerSceneModel,
   ViewerSceneObject,
-  ViewerSceneReferenceLineObject,
-  ViewerSceneReferencePlaneObject,
-  ViewerSceneRoofCladdingPanelObject,
-  ViewerSceneRoofFlashingObject,
-  ViewerSceneRoofPlaneObject,
 } from "@sp/geometry";
 import type {
-  GeometryPreviewMode,
   GeometryPreviewState,
-} from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
+} from "@/lib/drawings/state/workbenchSolvedModel";
 import type { DrawingWorkbenchVisibilityState } from "@/lib/drawings/state/drawingWorkbenchUiState";
 import type { ObjectWorkbenchDisplayFamily } from "@/lib/drawings/state/objectWorkbenchViewportTypes";
 import type { ProjectHouseProjectionHealth } from "@/lib/drawings/state/projectHouseProjectionHealth";
@@ -33,61 +21,28 @@ import styles from "./Geometry3DViewport.module.css";
 import type { SceneBounds } from "./geometry/sceneBoundsTypes";
 import { sceneForDisplayMode } from "./geometry/sceneFilters";
 import {
-  buildClosedLineGeometry,
-  buildLineGeometry,
-  emptyGeometry,
-  vectorFromPoint,
-} from "./geometry/lineBuilders";
-import {
-  buildClippedBoxGeometry,
-  buildClippedProfileExtrusionGeometry,
   buildLinearSolidPlacement,
-  buildPolygonGeometry,
-  buildPolygonSlabGeometry,
-  buildProfileExtrusionGeometry,
-  buildRectangularCapGeometry,
-  buildRenderMeshGeometry,
   isRenderableSlab,
-  numericMetadataValue,
-  offsetPolygon,
 } from "./geometry/buildGeometries";
-export {
-  buildClippedBoxGeometry,
-  buildClippedProfileExtrusionGeometry,
-  buildPolygonSlabGeometry,
-  buildRenderMeshGeometry,
-} from "./geometry/buildGeometries";
-import {
-  buildDeckGrooveLines,
-  resolveDeckMaterial,
-  resolveDeckPalette,
-  type DeckMaterialKey,
-} from "./geometry/deckVisual";
 import { ArrowOverlay } from "./overlays/ArrowOverlay";
 import { MeasurementProbeOverlay } from "./overlays/MeasurementProbeOverlay";
 import { SectionCutHint } from "./overlays/SectionCutHint";
 import { SceneObjectNode } from "./renderers/SceneObjectNode";
 import {
-  MIN_RENDERABLE_POLYGON_AREA_MM2,
   allSceneBoundsFinite,
   boundingSize,
   centroid,
   isFinitePoint,
   isRenderableLine,
   isRenderablePolygon,
-  isRenderableRenderMesh,
   linePoints,
-  midpoint,
-  polygonArea3D,
   renderMeshPoints,
-  uniquePointCount,
 } from "./geometry/scenePointHelpers";
 import {
   buildPresetCameraState,
   cameraStatesEqual,
   clampCameraStateToScene,
   defaultCameraStateForScene,
-  directionForPreset,
   directionFromCameraState,
   fitDistanceForSize,
   formatCameraFocusMode,
@@ -95,7 +50,6 @@ import {
   formatPoint,
   formatVector,
   offsetPoint,
-  pointDistance,
   pointToVector,
   pointsRoughlyEqual,
   positionFromDirection,
@@ -110,7 +64,6 @@ export type { Geometry3DViewportState } from "./interaction/cameraState";
 import {
   buildDatumOriginAnchor,
   buildMeasurementAnchor,
-  defaultAnchorTypeForObject,
   focusPointForObject,
   formatAnchorType,
   formatDistanceMm,
@@ -118,32 +71,19 @@ import {
   measurementDistance,
   measurementPlanDistance,
   pointsForObject,
-  resolveAnchorPoint,
   supportsEndpointAnchors,
   type MeasurementAnchor,
-  type MeasurementAnchorType,
   type MeasurementState,
 } from "./interaction/measurement";
 import {
   collectHouseOpeningViewportDiagnostics,
   collectHouseRoofViewportDiagnostics,
-  formatDiagnosticToken,
-  formatMetadata,
-  houseRoofQaSummary,
-  metadataNumber,
-  metadataText,
   objectSummary,
   previewModeLabel,
-  rectContains,
   rectDiagnostics,
-  sceneMetadataNumber,
-  sceneMetadataString,
-  type HouseOpeningViewportDiagnostics,
-  type HouseRoofViewportDiagnostics,
   type ViewportRectDiagnostics,
 } from "./interaction/diagnostics";
 
-const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
 const ORBIT_ZOOM_SPEED = 2.85;
 
 type SectionCutState = {
@@ -352,12 +292,11 @@ export default function Geometry3DViewport({
   const handleObjectHoverEnter = useCallback((id: string) => {
     onHoveredObjectChangeRef.current?.(id);
   }, []);
-  const handleObjectHoverLeave = useCallback((id: string) => {
+  const handleObjectHoverLeave = useCallback((_id: string) => {
     // Only clear if the leaving object is the one currently hovered. This
     // matches `useHoveredShape`'s convention -- guards against stale leaves
     // arriving after the pointer has already moved to a sibling.
     onHoveredObjectChangeRef.current?.(null);
-    void id;
   }, []);
 
   const [sectionCut, setSectionCut] = useState<SectionCutState>({

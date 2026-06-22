@@ -4,7 +4,7 @@ import type { SolveAssembly3DResult } from './solve.types';
 import { canonicalizeAssembly3D, diffCanonicalAssembly } from './validation/canonical';
 import { runGeometryInvariants } from './validation/invariants';
 
-export type ValidateGeometrySolveInput = {
+type ValidateGeometrySolveInput = {
   config: GeometryConfig;
   solveResult: SolveAssembly3DResult;
   fixtureId?: string | null;

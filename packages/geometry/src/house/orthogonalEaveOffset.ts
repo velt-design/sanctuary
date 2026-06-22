@@ -3,7 +3,7 @@ import { point, pointInPolygon2D, signedAreaXY } from './_internal';
 import { isOrthogonalFootprint, offsetFootprintPolygon } from './footprintMath';
 import { point2FromPoint3, roofPolygonIsSimple } from './roof2D';
 
-export type OrthogonalEaveOffsetResult = {
+type OrthogonalEaveOffsetResult = {
   polygon: Polygon3 | null;
   metadata: GeometryMetadata;
 };

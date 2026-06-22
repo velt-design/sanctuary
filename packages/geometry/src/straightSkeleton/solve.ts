@@ -68,11 +68,11 @@ import { validateOrthogonalPolygon } from "./validate";
  * block the composition corpus; closing it is tracked for a follow-up.
  */
 
-export type StraightSkeletonError =
+type StraightSkeletonError =
   | { code: "invalid_polygon"; cause: OrthogonalPolygonValidationError }
   | { code: "unsupported_topology"; reason: string };
 
-export type StraightSkeletonResult =
+type StraightSkeletonResult =
   | { ok: true; skeleton: StraightSkeleton }
   | { ok: false; error: StraightSkeletonError };
 

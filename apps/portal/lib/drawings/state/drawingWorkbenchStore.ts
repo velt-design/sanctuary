@@ -1,6 +1,5 @@
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
-import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import {
   normalizeDrawingWorkbenchUiState,
@@ -63,7 +62,6 @@ export type DrawingWorkbenchStore = {
     activeTrustGate: WorkbenchTrustGateModel;
     exportReadiness: WorkbenchTrustGateModel;
     reviewReadiness: WorkbenchTrustGateModel;
-    activePlanViewModel: PlanViewModel | null;
     activeDrawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null;
     activeViewportGeometry: WorkbenchViewportGeometry | null;
     projectSheetLabel: string;
@@ -106,14 +104,10 @@ function objectFirstDraftFromEstimateDraft(
 }
 
 function statusFromViewportGeometry(input: {
-  activeView: DrawingWorkbenchUiState['activeView'];
   viewportGeometry: WorkbenchViewportGeometry | null;
 }): WorkbenchViewsStatus {
   const artifact = input.viewportGeometry?.artifact ?? null;
   if (!artifact) return 'empty';
-  if (input.activeView === 'section') {
-    return artifact.section ? 'ready' : 'empty';
-  }
   return artifact.plan && artifact.topProjection ? 'ready' : 'empty';
 }
 
@@ -181,19 +175,19 @@ export function buildDrawingWorkbenchStore(input: {
   });
 
   const activeHouseForm =
-    ui.activeObjectFamily === 'house_forms'
+    ui.activeObjectRef.family === 'house_forms'
       ? houseForms.find((houseForm) => houseForm.id === ui.activeObjectRef.objectId) ?? null
       : null;
   const activeObjectFirstDeck =
-    ui.activeObjectFamily === 'decks'
+    ui.activeObjectRef.family === 'decks'
       ? objectFirstDecks.find((deck) => deck.id === ui.activeObjectRef.objectId) ?? null
       : null;
   const activeObjectFirstOpening =
-    ui.activeObjectFamily === 'openings'
+    ui.activeObjectRef.family === 'openings'
       ? objectFirstOpenings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
       : null;
   const activeObjectFirstPergola =
-    ui.activeObjectFamily === 'pergolas'
+    ui.activeObjectRef.family === 'pergolas'
       ? objectFirstPergolas.find((pergola) => pergola.id === ui.activeObjectRef.objectId) ?? null
       : ui.activePergolaId
         ? objectFirstPergolas.find((pergola) => pergola.id === ui.activePergolaId) ?? null
@@ -262,8 +256,6 @@ export function buildDrawingWorkbenchStore(input: {
     status: objectWorkbenchStatus,
   });
   const railModel = buildDrawingWorkbenchRailModel({
-    activeRailTab: ui.activeRailTab,
-    activeObjectFamily: ui.activeObjectFamily,
     activeObjectRef: ui.activeObjectRef,
     houseForms,
     decks: objectFirstDecks,
@@ -290,7 +282,6 @@ export function buildDrawingWorkbenchStore(input: {
       activeTrustGate,
       exportReadiness: activeTrustGate,
       reviewReadiness: activeTrustGate,
-      activePlanViewModel: null,
       activeDrawingSurfaceGeometry,
       activeViewportGeometry: solvedModel.projectArtifact.viewportGeometry,
       projectSheetLabel: 'Workbench project',
@@ -322,7 +313,6 @@ export function buildDrawingWorkbenchStore(input: {
       activePergolaAttachmentResolution,
       unresolvedPergolaAttachmentCount,
       status: statusFromViewportGeometry({
-        activeView: ui.activeView,
         viewportGeometry: solvedModel.projectArtifact.viewportGeometry,
       }),
     },

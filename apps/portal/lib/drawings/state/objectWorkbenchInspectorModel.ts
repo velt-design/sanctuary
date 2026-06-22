@@ -102,11 +102,6 @@ export type ObjectWorkbenchPergolaPatch = Partial<
   attachment?: PergolaAttachment | null;
 };
 
-// Note: legacy re-exports (`ObjectWorkbenchMigrationWarning`,
-// `ObjectWorkbenchPergolaAttachmentStrategy`, `ObjectWorkbenchPergolaConnectionKind`,
-// `ObjectWorkbenchRoofProvenance`) were removed in the Step 9 cleanup pass —
-// import them directly from `./objectWorkbenchStatusModel` if needed.
-
 export type ObjectWorkbenchRoofInspectorModel = {
   intent: HouseFormRoofIntentModel;
   controls: ReturnType<typeof getHouseRoofFormBehavior>['controls'];
@@ -190,7 +185,7 @@ export type ObjectWorkbenchPergolaInspectorModel = PergolaObjectModel & {
   };
 };
 
-export type ObjectWorkbenchDiagnosticsModel = {
+type ObjectWorkbenchDiagnosticsModel = {
   houseCount: number;
   pergolaCount: number;
   deckCount: number;

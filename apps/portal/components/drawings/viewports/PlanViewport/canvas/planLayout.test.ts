@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionViewModel } from '@sp/geometry';
-import { buildTopProjectionPlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import {
   planBoundsFromPolygon,
-  planBoundsToSvgRect,
   resolvePlanLayout,
 } from './planLayout';
 
@@ -79,72 +77,6 @@ describe('resolvePlanLayout', () => {
 
     expect(layout.baseX).toBe(6 - 100);
     expect(layout.baseY).toBe(6 - 50);
-  });
-});
-
-describe('planBoundsToSvgRect', () => {
-  it('converts projection-space bounds to an SVG rect through the coordinate adapter', () => {
-    const projection = makeProjection();
-    const layout = resolvePlanLayout(projection);
-    const adapter = buildTopProjectionPlanCoordinateAdapter({
-      projection,
-      baseX: layout.baseX,
-      baseY: layout.baseY,
-      scale: layout.scale,
-    });
-
-    const rect = planBoundsToSvgRect({
-      bounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 },
-      adapter,
-    });
-
-    expect(rect.x).toBeCloseTo(layout.baseX, 6);
-    expect(rect.y).toBeCloseTo(layout.baseY, 6);
-    expect(rect.width).toBeCloseTo(100, 6);
-    expect(rect.height).toBeCloseTo(100, 6);
-  });
-
-  it('mirrors x when projection screen axis is world_x_left', () => {
-    const projection = makeProjection({
-      screenAxis: { x: 'world_x_left', y: 'world_y_down' },
-    });
-    const layout = resolvePlanLayout(projection);
-    const adapter = buildTopProjectionPlanCoordinateAdapter({
-      projection,
-      baseX: layout.baseX,
-      baseY: layout.baseY,
-      scale: layout.scale,
-    });
-
-    const left = planBoundsToSvgRect({
-      bounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 },
-      adapter,
-    });
-    const right = planBoundsToSvgRect({
-      bounds: { minX: 4000, minY: 0, maxX: 5000, maxY: 1000 },
-      adapter,
-    });
-
-    expect(left.x).toBeGreaterThan(right.x);
-  });
-
-  it('clamps zero-area bounds to a 0.1 floor so the rect stays renderable', () => {
-    const projection = makeProjection();
-    const layout = resolvePlanLayout(projection);
-    const adapter = buildTopProjectionPlanCoordinateAdapter({
-      projection,
-      baseX: layout.baseX,
-      baseY: layout.baseY,
-      scale: layout.scale,
-    });
-
-    const rect = planBoundsToSvgRect({
-      bounds: { minX: 100, minY: 100, maxX: 100, maxY: 100 },
-      adapter,
-    });
-
-    expect(rect.width).toBeGreaterThanOrEqual(0.1);
-    expect(rect.height).toBeGreaterThanOrEqual(0.1);
   });
 });
 

@@ -161,24 +161,6 @@ export function buildHouseFormRoofSections({
     }
   }
 
-  // PR-T8 (2026-05-29): appendage band controls removed alongside the
-  // appendage feature cull. Future shape edits will live on the gumball,
-  // not in inspector number fields.
-
-  // PR-T7 (2026-05-29): Review Basis SummarySection removed. It surfaced
-  // solver diagnostics (roof geometry kind, form basis, mono fall basis,
-  // ridge basis, appendage support, appendage supported edges) — useful
-  // for debugging the solver but not for editing the house. The same
-  // data is still derivable from `roofContext.approximationReasons` and
-  // `roofProvenance` if a future surface ever needs it (e.g. a "why
-  // approximate?" overlay on the trust chip). Deleting only the
-  // rendering; the data path is intact.
-
-  // PR-HR2 (2026-06-18): structured failure / approximate panel
-  // replaces the single-line `<p>` that only surfaced the message
-  // string. The new panel exposes the failing stage label, the raw
-  // diagnostic code, approximation reasons, and a "Copy diagnostics"
-  // button that puts the full stage-diagnostics JSON on the clipboard.
   if (
     roofContext.validationStatus === 'invalid' ||
     roofContext.validationStatus === 'approximate'

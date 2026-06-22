@@ -14,7 +14,7 @@ import type {
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { deriveHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 
-export type HouseFormRoofIntentCommitDraftResult =
+type HouseFormRoofIntentCommitDraftResult =
   | { ok: true; draft: EstimateDrawingDraft }
   | { ok: false; error: string };
 

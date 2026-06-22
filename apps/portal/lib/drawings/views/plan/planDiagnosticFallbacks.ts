@@ -1,14 +1,6 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
-import {
-  planHouseFormOwner,
-  planShapeIsPergolaDiagnosticFallback,
-  planShapeIsVisibleHouseReferenceFallback,
-} from './planShapeOwnership';
+import { planHouseFormOwner } from './planShapeOwnership';
 import type { ProjectionPlanGraphItem } from './planRenderGraph';
-
-export function planShapeIsDiagnosticFallback(shape: GeometryTopProjectionShape): boolean {
-  return planShapeIsVisibleHouseReferenceFallback(shape) || planShapeIsPergolaDiagnosticFallback(shape);
-}
 
 function planDiagnosticFallbackOwner(shape: GeometryTopProjectionShape): string {
   if (shape.family === 'house') return `house:${planHouseFormOwner(shape) ?? 'unowned'}`;
@@ -16,11 +8,6 @@ function planDiagnosticFallbackOwner(shape: GeometryTopProjectionShape): string 
     return `pergola:${shape.metadata?.pergolaId ?? shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
   }
   return `${shape.family}:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
-}
-
-export function planDiagnosticFallbackReason(shape: GeometryTopProjectionShape): string | null {
-  const reason = shape.metadata?.fallbackReason;
-  return typeof reason === 'string' && reason.length > 0 ? reason : null;
 }
 
 function diagnosticFallbackRank(shape: GeometryTopProjectionShape): number {

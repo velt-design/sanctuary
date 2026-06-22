@@ -1,5 +1,4 @@
 import type { GeometryTopProjectionViewModel, Point2 } from '@sp/geometry';
-import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 
 const PLAN_SVG_PADDING = 6;
 const PLAN_SVG_UNITS_PER_METRE = 100;
@@ -88,45 +87,12 @@ export function resolvePlanLayout(projection: GeometryTopProjectionViewModel): P
   };
 }
 
-export type PlanBoundsMm = {
+type PlanBoundsMm = {
   minX: number;
   minY: number;
   maxX: number;
   maxY: number;
 };
-
-export type PlanSvgRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-export function planBoundsToSvgRect(input: {
-  bounds: PlanBoundsMm;
-  adapter: PlanCoordinateAdapter;
-}): PlanSvgRect {
-  const { bounds, adapter } = input;
-  const corners: Point2[] = [
-    { x: bounds.minX, y: bounds.minY },
-    { x: bounds.maxX, y: bounds.minY },
-    { x: bounds.maxX, y: bounds.maxY },
-    { x: bounds.minX, y: bounds.maxY },
-  ];
-  const projected = corners.map((corner) => adapter.projectionToSvg(corner));
-  const xs = projected.map((point) => point.x);
-  const ys = projected.map((point) => point.y);
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
-  const maxX = Math.max(...xs);
-  const maxY = Math.max(...ys);
-  return {
-    x: minX,
-    y: minY,
-    width: Math.max(0.1, maxX - minX),
-    height: Math.max(0.1, maxY - minY),
-  };
-}
 
 export function planBoundsFromPolygon(points: Point2[]): PlanBoundsMm | null {
   if (!points.length) return null;

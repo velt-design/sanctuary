@@ -1,6 +1,5 @@
 import type {
   Assembly3D,
-  AssemblyMemberEndCut,
   AssemblyMember3D,
   AssemblyMemberProfile,
   DatumFrame3,
@@ -35,6 +34,9 @@ import type {
 } from "./solve.types";
 
 type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
+type AssemblyMemberEndCut = NonNullable<
+  Assembly3D["members"][number]["endCuts"]
+>[number];
 
 function ok(value: Assembly3D): SolveAssembly3DResult {
   return { ok: true, value };

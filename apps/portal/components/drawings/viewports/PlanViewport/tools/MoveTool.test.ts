@@ -4,12 +4,13 @@ import { createCommandBus } from '@/lib/drawings/commands/commandBus';
 import {
   createMoveCommand,
   createMoveTool,
-  moveTargetFromShape,
   type MoveRequest,
-  type MoveTargetFamily,
+  type MoveTarget,
   type MoveToolPreview,
 } from './MoveTool';
 import type { ToolPointerEvent } from './Tool';
+
+type MoveTargetFamily = MoveTarget['family'];
 
 function deckShape(id: string): GeometryTopProjectionShape {
   return {
@@ -56,6 +57,36 @@ function pergolaShape(id: string): GeometryTopProjectionShape {
   };
 }
 
+function houseFootprintShape(id: string): GeometryTopProjectionShape {
+  return {
+    id: `house_reference:${id}`,
+    sourceObjectId: id,
+    sourceId: id,
+    sourceType: 'house_reference',
+    family: 'house',
+    kind: 'footprint',
+    polygon: [],
+    zOrder: 0,
+    zMin: 0,
+    zMax: 0,
+  };
+}
+
+function referenceShape(): GeometryTopProjectionShape {
+  return {
+    id: 'ref',
+    sourceObjectId: 'ref',
+    sourceId: 'ref',
+    sourceType: 'reference_line',
+    family: 'reference',
+    kind: 'roof_outline',
+    polygon: [],
+    zOrder: 0,
+    zMin: null,
+    zMax: null,
+  };
+}
+
 function event(input: Partial<ToolPointerEvent> & Pick<ToolPointerEvent, 'point'>): ToolPointerEvent {
   return {
     shape: input.shape ?? null,
@@ -64,65 +95,6 @@ function event(input: Partial<ToolPointerEvent> & Pick<ToolPointerEvent, 'point'
     pointerId: input.pointerId ?? 1,
   };
 }
-
-describe('moveTargetFromShape', () => {
-  it('classifies a deck shape as deck family', () => {
-    expect(moveTargetFromShape(deckShape('deck-1'))).toEqual({ family: 'deck', targetId: 'deck-1' });
-  });
-
-  it('classifies an opening_marker as opening family', () => {
-    expect(moveTargetFromShape(openingShape('opening-2'))).toEqual({
-      family: 'opening',
-      targetId: 'opening-2',
-    });
-  });
-
-  it('classifies a pergola roof_plane as pergola family', () => {
-    expect(moveTargetFromShape(pergolaShape('pergola-A'))).toEqual({
-      family: 'pergola',
-      targetId: 'pergola-A',
-    });
-  });
-
-  it('classifies a house footprint as house_form family (PR11)', () => {
-    // PR8c-iii emits `house_reference` shapes with `family: 'house',
-    // kind: 'footprint'` for every form. PR11 makes the footprint a
-    // movable target so the user can drag-to-reposition any house form.
-    // The classifier doesn't decide which form is active -- that's the
-    // host's `canMoveTarget` predicate.
-    expect(
-      moveTargetFromShape({
-        id: 'house_reference:house-form-2',
-        sourceObjectId: 'house-form-2',
-        sourceId: 'house-form-2',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
-        polygon: [],
-        zOrder: 0,
-        zMin: 0,
-        zMax: 0,
-      }),
-    ).toEqual({ family: 'house_form', targetId: 'house-form-2' });
-  });
-
-  it('returns null for unhandled families (e.g. reference)', () => {
-    expect(
-      moveTargetFromShape({
-        id: 'ref',
-        sourceObjectId: 'ref',
-        sourceId: 'ref',
-        sourceType: 'reference_line',
-        family: 'reference',
-        kind: 'roof_outline',
-        polygon: [],
-        zOrder: 0,
-        zMin: null,
-        zMax: null,
-      }),
-    ).toBeNull();
-  });
-});
 
 describe('createMoveCommand', () => {
   it('applies the request and inverts the delta on undo', () => {
@@ -243,6 +215,16 @@ describe('createMoveTool', () => {
     expect(bus.snapshot().canUndo).toBe(true);
   });
 
+  it('accepts house form footprint targets when configured', () => {
+    const { tool, bus, commits } = setup(['house_form']);
+    tool.onPointerDown?.(event({ shape: houseFootprintShape('house-form-2'), point: { x: 0, y: 0 } }));
+    tool.onPointerUp?.(event({ point: { x: 100, y: 0 } }));
+    expect(commits).toEqual([
+      { target: { family: 'house_form', targetId: 'house-form-2' }, delta: { x: 100, y: 0 }, snap: null },
+    ]);
+    expect(bus.snapshot()).toMatchObject({ canUndo: true, lastApplied: 'Move house_form house-form-2' });
+  });
+
   it('falls through to onPointerDownFallthrough when the click misses any movable shape', () => {
     // Tool chain (EdgeDrag -> Move -> Select): MoveTool must hand off the
     // click to the next tool when there's no shape under the cursor or
@@ -262,9 +244,12 @@ describe('createMoveTool', () => {
     tool.onPointerDown?.(event({ shape: null, point: { x: 100, y: 200 } }));
     // Wrong family (pergola, when only deck is accepted) -> fallthrough fires.
     tool.onPointerDown?.(event({ shape: pergolaShape('pergola-fall'), point: { x: 50, y: 50 } }));
-    expect(fallthroughs).toHaveLength(2);
+    // Unhandled reference shapes also fall through rather than creating a move target.
+    tool.onPointerDown?.(event({ shape: referenceShape(), point: { x: 25, y: 25 } }));
+    expect(fallthroughs).toHaveLength(3);
     expect(fallthroughs[0]?.point).toEqual({ x: 100, y: 200 });
     expect(fallthroughs[1]?.point).toEqual({ x: 50, y: 50 });
+    expect(fallthroughs[2]?.point).toEqual({ x: 25, y: 25 });
   });
 
   it('falls through when canMoveTarget returns false for the click target (different object selected)', () => {

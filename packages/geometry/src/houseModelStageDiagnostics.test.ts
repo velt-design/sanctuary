@@ -28,7 +28,6 @@ function makeRawHouse(overrides: Partial<RawHouseInput> = {}): RawHouseInput {
     roofPitchDeg: "20",
     roofForm: "hipped",
     roofRidgeAxis: "x",
-    roofMaterial: "corrugated_iron",
     ...overrides,
   };
 }

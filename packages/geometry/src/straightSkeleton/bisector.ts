@@ -25,9 +25,9 @@ import type { IntegerPoint2D, OrthogonalPolygon } from "./types";
  * (p.x + t, p.y + t) — still integer.
  */
 
-export type VertexClass = "convex" | "reflex";
+type VertexClass = "convex" | "reflex";
 
-export type VertexMotion = {
+type VertexMotion = {
   /** Vertex classification — convex (90°) or reflex (270°). */
   classification: VertexClass;
   /**

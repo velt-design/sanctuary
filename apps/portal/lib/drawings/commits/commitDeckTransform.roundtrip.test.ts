@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSideLocalPolygonFromWorld,
   houseFootprintSideLocalToWorldPolygon,
+  type Point2,
   resolveHouseFootprintFrame,
 } from '@sp/geometry';
 import { buildDeckTransformPatch } from './commitDeckTransform';
@@ -33,8 +34,6 @@ import { buildDeckTransformPatch } from './commitDeckTransform';
  * outside this simulation (timing, wrong source, etc). If round-trip
  * accumulates drift here, we have a math bug to fix.
  */
-
-type Point2 = { x: number; y: number };
 
 // Simulate the geometry pipeline's deck decode: take a `buildDeckTransformPatch`
 // output + house world position and produce the world boundary that the

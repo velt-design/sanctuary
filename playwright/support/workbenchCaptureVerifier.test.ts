@@ -38,7 +38,7 @@ function buildPayload({
       activeObjectRef: null,
       activePergolaId: null,
       activeModuleIndex: 0,
-      viewportMode: 'model',
+      viewportMode: 'plan',
     },
     renderDiagnostics: {
       projectPreviewSource: 'project_pipeline',

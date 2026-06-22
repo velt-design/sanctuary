@@ -15,7 +15,7 @@ import {
 } from './_internal';
 import { roofFeatureHeightAtXY, roofHeightAtXY } from './roofPlane';
 
-export function buildWallTopProfile(input: {
+function buildWallTopProfile(input: {
   start: Point3;
   end: Point3;
   roofPlanes: RoofPlane3D[];

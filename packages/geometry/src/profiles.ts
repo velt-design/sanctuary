@@ -1,6 +1,8 @@
-import type { AssemblyMemberProfile, AssemblyMemberProfileAnchors, Point2 } from './contracts';
+import type { AssemblyMemberProfile, Point2 } from './contracts';
 import { GENERATED_PROFILE_ASSETS } from './generated/profileAssets';
 import { parseFiniteNumber } from './units';
+
+type AssemblyMemberProfileAnchors = NonNullable<AssemblyMemberProfile['anchors']>;
 
 function defaultProfileAnchors(widthMm: number, depthMm: number): AssemblyMemberProfileAnchors {
   return {

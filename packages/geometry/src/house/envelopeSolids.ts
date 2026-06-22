@@ -5,9 +5,8 @@ import type {
   HouseRoofForm,
   HouseWallSegment3D,
   RoofPlane3D,
-  Vector3,
 } from '../contracts';
-import { dotProduct, lineLength, normalizeVector, subtractPoints } from '../math3d';
+import { lineLength, normalizeVector, subtractPoints } from '../math3d';
 import {
   DEFAULT_DECK_SURFACE_THICKNESS_MM,
   DEFAULT_FASCIA_SOLID_THICKNESS_MM,
@@ -23,7 +22,6 @@ import {
   point,
   type HouseRoofPerimeterEdge,
   type HouseRoofPerimeterEdgeKind,
-  type HouseRoofPerimeterFlashingRole,
   type HouseRoofPerimeterLine,
   type HouseRoofPerimeterPolygon,
 } from './_internal';
@@ -40,31 +38,6 @@ import {
 } from './roofSolids';
 import { houseWallIsOpenGableFrame } from './roofFrames';
 import { sourceEdgeIndexFromId } from './attachment';
-
-function monoPerimeterProjection(edge: HouseRoofPerimeterEdge, fallAxisXY: Vector3): number {
-  const midpointX = (edge.roofStart.x + edge.roofEnd.x) / 2;
-  const midpointY = (edge.roofStart.y + edge.roofEnd.y) / 2;
-  return midpointX * fallAxisXY.x + midpointY * fallAxisXY.y;
-}
-
-function monoPerimeterAlignment(edge: HouseRoofPerimeterEdge, axisXY: Vector3): number {
-  const edgeVector = normalizeVector({
-    x: edge.roofEnd.x - edge.roofStart.x,
-    y: edge.roofEnd.y - edge.roofStart.y,
-    z: 0,
-  });
-  return Math.abs(dotProduct(edgeVector, axisXY));
-}
-
-function monoWeatherFlashingRole(
-  edge: HouseRoofPerimeterEdge,
-  fallAxisXY: Vector3,
-): HouseRoofPerimeterFlashingRole {
-  const acrossAxisXY = normalizeVector({ x: -fallAxisXY.y, y: fallAxisXY.x, z: 0 });
-  return monoPerimeterAlignment(edge, acrossAxisXY) >= monoPerimeterAlignment(edge, fallAxisXY)
-    ? 'high_side'
-    : 'rake';
-}
 
 export function buildHouseEnvelopeSolids(input: {
   wallSegments: HouseWallSegment3D[];

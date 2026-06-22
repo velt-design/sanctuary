@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import type { WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import styles from './DrawingWorkbench.module.css';
 
@@ -11,27 +10,24 @@ type PrimaryNavItem = {
   id: PrimaryNavId;
   label: string;
   viewportMode: DrawingWorkbenchViewportMode;
-  view: WorkbenchViewTab | null;
 };
 
 // Order matches the CAD-style header mockup (3D Review → Plan Editor → Sheet
 // Output): review on the left, editor in the middle, output on the right.
 const PRIMARY_NAV_ITEMS: PrimaryNavItem[] = [
-  { id: 'geometry3d', label: '3D Review', viewportMode: 'geometry3d', view: null },
-  { id: 'plan', label: 'Plan Editor', viewportMode: 'plan', view: 'plan' },
-  { id: 'sheet', label: 'Sheet Output', viewportMode: 'sheet', view: 'plan' },
+  { id: 'geometry3d', label: '3D Review', viewportMode: 'geometry3d' },
+  { id: 'plan', label: 'Plan Editor', viewportMode: 'plan' },
+  { id: 'sheet', label: 'Sheet Output', viewportMode: 'sheet' },
 ];
 
 function activeNavId(viewportMode: DrawingWorkbenchViewportMode): PrimaryNavId | null {
   if (viewportMode === 'sheet') return 'sheet';
-  if (viewportMode === 'model' || viewportMode === 'plan') return 'plan';
+  if (viewportMode === 'plan') return 'plan';
   if (viewportMode === 'geometry3d') return 'geometry3d';
   return null;
 }
 
 type WorkbenchChromeProps = {
-  view: WorkbenchViewTab;
-  onViewChange: (view: WorkbenchViewTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   backHref?: string;
@@ -45,15 +41,12 @@ type WorkbenchChromeProps = {
 };
 
 export default function WorkbenchChrome({
-  view,
-  onViewChange,
   viewportMode,
   onViewportModeChange,
   backHref,
   projectLabel,
   draftSaveAction,
 }: WorkbenchChromeProps) {
-  void view;
   const active = activeNavId(viewportMode);
   const trimmedProjectLabel = projectLabel?.trim() ?? '';
 
@@ -82,7 +75,6 @@ export default function WorkbenchChrome({
                 data-workbench-nav-id={item.id}
                 className={`${styles.toggleButton} ${isActive ? styles.toggleButtonActive : ''}`}
                 onClick={() => {
-                  if (item.view) onViewChange(item.view);
                   onViewportModeChange(item.viewportMode);
                 }}
               >

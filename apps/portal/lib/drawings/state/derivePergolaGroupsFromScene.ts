@@ -16,7 +16,7 @@ import type { PergolaObjectModel } from './objectFirstWorkbenchModel';
  * relationship is treated as undirected — A snapped to B and B snapped to A
  * are equivalent, since spatial adjacency is mutual.
  */
-export type PergolaGroup = {
+type PergolaGroup = {
   /**
    * Stable id for the logical pergola: the lexicographically smallest member
    * id in the connected component. Deterministic across runs given the same

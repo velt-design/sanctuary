@@ -86,7 +86,6 @@ describe('objectFirstWorkbenchDraft authored envelope', () => {
       openings: [],
       pergolas: [],
       ui: {
-        activeObjectFamily: 'decks',
         activeObjectRef: { family: 'decks', objectId: 'deck-1' },
       },
     } as unknown as Partial<ObjectFirstWorkbenchDraftVNext>);

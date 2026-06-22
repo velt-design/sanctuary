@@ -1,82 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AttachmentSide,
-  GeometryConfig,
-  HouseAttachmentStrategy,
-  HouseFootprintPreset,
-  HouseRoofForm,
-  Line3,
-  Point3,
-  Polygon3,
-  RawHouseInput,
-  RenderMesh3D,
-} from "../contracts";
+import type { Polygon3 } from "../contracts";
 import { deriveHouseGableTerminalEnds } from "../houseRoofCapabilities";
-import { buildHouseFootprintPolygon } from "../footprints";
-import {
-  buildHouseModel3D,
-  buildHouseModel3DFromRawHouseInput,
-  buildHouseReferenceGeometry,
-} from "../houseModel";
+import { buildHouseModel3D } from "../houseModel";
 import {
   makeFootprint,
   makePresetFootprint,
-  HOUSE_FOOTPRINT_PRESETS,
-  HOUSE_ROOF_FORMS,
-  ATTACHMENT_SIDES,
-  pointOnSegment2D,
-  pointInPolygon2D,
-  pointInOrOnPolygon2D,
-  segmentInsidePolygon2D,
-  roofPointKey,
-  roofSegmentKey,
-  roofPointKeyXY,
-  roofSegmentKeyXY,
-  rebuildRoofPerimeterPolygon,
-  eavePolygonFromModel,
-  polygonAreaXY,
-  signedPolygonAreaXY,
-  reflexEaveVertices,
   expectRoofFacetsCoverEaveOnce,
   expectRoofQaValid,
   expectRoofFacetsInsideEave,
-  roofBoundarySegmentCounts,
-  roofBoundarySegments,
   expectJoinedRoofFeaturesBackedByFinalFacets,
   expectRoofBoundaryEavePointsAtEaveHeight,
   expectValleysStartAtReentrantCorners,
   expectNoInternalEaveHeightRoofSeams,
   makeConfig,
   allTerminalEndIdsForHippedConfig,
-  makePlacedFootprint,
-  makeFrontFootprint,
-  makeLeftFootprint,
-  makeRightFootprint,
   makeAttachmentEdge,
-  expectPoint3CloseTo,
-  pointDistanceSquared3,
-  vectorLength3,
-  normalizeVector3,
-  dotPoint3,
-  countRenderMeshVerticalFaces,
-  pointDistanceToSegment2D,
-  sourceEdgeLineFromModel,
-  polygonIsHorizontal,
-  countRenderMeshFacesAlignedToNormal,
-  expectUnorderedSegment3CloseTo,
-  lineLength3,
-  crossPoint3,
-  subtractPoint3,
-  distanceToLine3D,
-  expectPolygon3CloseTo,
-  expectPolygon3CloseToIgnoringRotation,
-  expectSolidBoundariesExact,
-  expectVerticalPrismRenderMesh,
-  expectMiteredRenderMeshesAroundCorners,
-  polygonOutwardVectorXY,
-  expectHouseGutterBoundariesUseProjection,
-  expectHouseGutterSolidsMiteredAroundCorners,
-  expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofFeatureFlashings,
 } from "./houseModelTestSupport";
@@ -94,6 +32,7 @@ describe("house model joined roof topology", () => {
       { x: -1000, y: 5000, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint,
         attachmentSide: "front",
@@ -138,7 +77,7 @@ describe("house model joined roof topology", () => {
     expect(model?.roofFeatures?.map((feature) => feature.kind)).toEqual(
       expect.arrayContaining(["ridge", "hip", "valley"]),
     );
-    expectRoofFacetsInsideEave(model!, 2500);
+    expectRoofFacetsInsideEave(model!);
     expectRoofBoundaryEavePointsAtEaveHeight(model!, 2500);
     expectNoInternalEaveHeightRoofSeams(model!, 2500);
     expectRoofFacetsCoverEaveOnce(model!);
@@ -153,6 +92,7 @@ describe("house model joined roof topology", () => {
 
   it("omits house roof feature flashings when roof QA rejects the roof geometry", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: [
           { x: 0, y: 0, z: 0 },
@@ -181,6 +121,7 @@ describe("house model joined roof topology", () => {
       { x: -400, y: 0, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint,
         attachmentSide: "left",
@@ -209,7 +150,7 @@ describe("house model joined roof topology", () => {
       start: { x: -400, y: 0, z: 2500 },
       end: { x: -400, y: 2000, z: 2500 },
     });
-    expectRoofFacetsInsideEave(model!, 2500);
+    expectRoofFacetsInsideEave(model!);
     expectRoofBoundaryEavePointsAtEaveHeight(model!, 2500);
     expectNoInternalEaveHeightRoofSeams(model!, 2500);
     expectRoofFacetsCoverEaveOnce(model!);
@@ -226,6 +167,7 @@ describe("house model joined roof topology", () => {
       { x: 0, y: 0, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: lFootprint,
         roofForm: "hipped",
@@ -266,6 +208,7 @@ describe("house model joined roof topology", () => {
       ridgeAxis: "x",
     });
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: uFootprint,
         roofForm: "hipped",
@@ -309,6 +252,7 @@ describe("house model joined roof topology", () => {
       ridgeAxis: "y",
     });
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: uFootprint,
         roofForm: "hipped",
@@ -351,6 +295,7 @@ describe("house model joined roof topology", () => {
       { x: -1800, y: 2400, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: uFootprint,
         roofForm: "hipped",
@@ -413,6 +358,7 @@ describe("house model joined roof topology", () => {
       { x: -1800, y: 2400, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: uFootprint,
         roofForm: "hipped",
@@ -464,6 +410,7 @@ describe("house model joined roof topology", () => {
         ridgeAxis: "x",
       });
       const model = buildHouseModel3D({
+        houseId: 'test-house',
         config: makeConfig({
           footprint,
           roofForm: "hipped",
@@ -535,6 +482,7 @@ describe("house model joined roof topology", () => {
   it("builds roof-aligned gable end walls with a ridge apex on the selected axis", () => {
     const footprint = makeFootprint();
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint,
         roofForm: "hipped",
@@ -574,6 +522,7 @@ describe("house model joined roof topology", () => {
       { x: 0, y: 0, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: nonOrthogonal,
         roofForm: "hipped",

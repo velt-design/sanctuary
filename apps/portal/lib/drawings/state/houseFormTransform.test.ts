@@ -5,11 +5,10 @@ import {
 } from './houseFormTransform';
 
 describe('houseFormTransformToAssemblyPosition', () => {
-  it('maps the primary-form origin transform to the geometry zero position', () => {
-    // Primary form sits at world origin (offsetXM=0, offsetYM=0, no rotation),
-    // which is what `buildSharedHouse` writes in PR7. PR8b feeds this through
-    // `buildHouseReferenceGeometry`; the resulting AssemblyPosition must be a
-    // zero placement so the existing single-house geometry stays byte-identical.
+  it('maps the origin form transform to the geometry zero position', () => {
+    // A house form at world origin (offsetXM=0, offsetYM=0, no rotation)
+    // becomes a zero AssemblyPosition so existing single-house geometry stays
+    // byte-identical.
     expect(
       houseFormTransformToAssemblyPosition({
         offsetXM: 0,
@@ -20,9 +19,9 @@ describe('houseFormTransformToAssemblyPosition', () => {
   });
 
   it('converts metres to millimetres on both axes (matches the geometry mm-everywhere contract)', () => {
-    // 10m east is the default offset `addHouseFormToObjectFirstDraft` applies
-    // to cloned forms so they don't sit on top of the source in plan view.
-    // PR8b should place an additional form 10000mm east, not 10mm.
+    // 10m east is the default offset used for cloned forms so they do not sit
+    // on top of the source in plan view. Geometry must receive 10000mm, not
+    // 10mm.
     expect(
       houseFormTransformToAssemblyPosition({
         offsetXM: 10,
@@ -33,18 +32,18 @@ describe('houseFormTransformToAssemblyPosition', () => {
   });
 
   it('expands each quarter turn into 90 degrees of +Z rotation', () => {
-    // All four quarter turns map to canonical angles -- never wraps, never
-    // negates. AssemblyPosition is fully general degrees but PR8 only ever
-    // feeds these discrete values.
+    // All four quarter turns map to canonical angles: never wraps, never
+    // negates. AssemblyPosition is fully general degrees, while house-form
+    // transforms intentionally expose discrete quarter turns.
     expect(houseFormTransformToAssemblyPosition({ offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 1 }).rotationDeg).toBe(90);
     expect(houseFormTransformToAssemblyPosition({ offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 2 }).rotationDeg).toBe(180);
     expect(houseFormTransformToAssemblyPosition({ offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 3 }).rotationDeg).toBe(270);
   });
 
   it('combines offset and rotation in a single call (no order-of-operations surprises)', () => {
-    // Rotation and translation are independent -- AssemblyPosition consumers
+    // Rotation and translation are independent: AssemblyPosition consumers
     // apply rotation around the form's own origin, then translate the result.
-    // Verifying both fields land at once locks in the contract for PR8b.
+    // Verifying both fields land at once locks in the transform boundary.
     expect(
       houseFormTransformToAssemblyPosition({
         offsetXM: 2.5,

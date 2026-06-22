@@ -7,7 +7,7 @@ import type {
   PergolaObjectModel,
 } from './objectFirstWorkbenchModel';
 
-export type ObjectFirstOpeningHostResolutionCode =
+type ObjectFirstOpeningHostResolutionCode =
   | 'missing_assembly'
   | 'missing_envelope'
   | 'missing_host_wall';
@@ -19,7 +19,7 @@ export type ObjectFirstOpeningHostResolution = {
   wall: DerivedWallModel | null;
 };
 
-export type ObjectFirstPergolaAttachmentResolutionCode =
+type ObjectFirstPergolaAttachmentResolutionCode =
   | 'missing_assembly'
   | 'missing_envelope'
   | 'missing_attachment_edge'

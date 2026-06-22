@@ -1,6 +1,6 @@
 import type { Point2 } from './contracts';
 
-export type GeneratedProfileAsset = {
+type GeneratedProfileAsset = {
   widthMm: number;
   depthMm: number;
   sectionOutline: Point2[];
@@ -108,7 +108,6 @@ function evaluateBsplinePoint(controlPoints: Point2[], knots: number[], degree: 
     return controlPoints[0]!;
   }
 
-  const domainStart = knots[degree]!;
   const domainEnd = knots[knots.length - degree - 1]!;
   if (parameter >= domainEnd) {
     return controlPoints[controlPoints.length - 1]!;

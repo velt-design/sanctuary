@@ -2,29 +2,22 @@
 
 import type { ObjectTreeFamilyEmptyState } from '@/lib/drawings/state/objectTreeRowSubtitles';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import { ObjectTreeRow, type ObjectTreeRowProps } from './ObjectTreeRow';
+import { ObjectTreeRow } from './ObjectTreeRow';
 import railStyles from '../WorkbenchRail.module.css';
 import sectionStyles from './ObjectTreeSection.module.css';
 
 /*
- * PR-W3d.2 (2026-05-25) — one family heading + always-visible row list +
- * optional inline add affordance + standardised empty-state copy.
+ * Presentational tree section for one object family.
  *
- * Renders inside the flat OBJECTS TREE that replaces the Object Navigator
- * tab strip in PR-W3d.3. Every family section renders simultaneously — the
- * user never has to switch tabs to see another family's objects. Selection
- * happens via row click, not section click.
- *
- * Pure presentational. The parent (`ObjectWorkbenchRail` in PR-W3d.3)
- * computes per-row props from `model.objectLists[family]` + the subtitle
- * helpers and supplies them via the `rows` prop.
+ * Every family renders at once. The rail host supplies row data and add
+ * actions; selection happens through row clicks rather than section state.
  */
 
-type ObjectTreeRowData = Omit<ObjectTreeRowProps, 'onSelect' | 'family'> & {
+type ObjectTreeRowData = Omit<Parameters<typeof ObjectTreeRow>[0], 'onSelect' | 'family'> & {
   /** Per-row family inferred from section context, exposed for tests/data hooks. */
 };
 
-export type ObjectTreeSectionProps = {
+type ObjectTreeSectionProps = {
   family: WorkbenchObjectFamily;
   /** Section header label (e.g. "House Forms", "Pergolas"). */
   label: string;
@@ -33,8 +26,7 @@ export type ObjectTreeSectionProps = {
   onSelect: (ref: WorkbenchObjectRef) => void;
   /**
    * Optional add affordance. When provided, renders an inline "+ <addLabel>"
-   * button at the bottom of the section. Pergolas don't get this (their
-   * creation is snap-driven from the toolbar) so the prop is omitted.
+   * button at the bottom of the section.
    */
   onAdd?: () => void;
   addLabel?: string;

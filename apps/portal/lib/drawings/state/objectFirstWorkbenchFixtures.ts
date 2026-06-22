@@ -7,25 +7,10 @@ import type {
   PergolaObjectModel,
 } from './objectFirstWorkbenchModel';
 
-export type ObjectFirstWorkbenchFixtureId = 'separate_forms' | 'touching_merged_forms' | 'stale_hosts';
+type ObjectFirstWorkbenchFixtureId = 'separate_forms' | 'touching_merged_forms' | 'stale_hosts';
 
 function point(alongM: string, depthM: string) {
   return { alongM, depthM };
-}
-
-function makeFootprintParams() {
-  return {
-    widthM: '6',
-    offsetXM: '0',
-    setbackM: '0',
-    bandDepthM: '4',
-    returnRunM: '0',
-    recessWidthM: '0',
-    recessDepthM: '0',
-    leftLegRunM: '0',
-    rightLegRunM: '0',
-    sideRunM: '0',
-  };
 }
 
 function makeHouseForm(input: {

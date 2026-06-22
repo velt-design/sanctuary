@@ -18,7 +18,7 @@ Strip the deck right-rail inspector of unused and derived fields so it exposes o
 
 ### Which north-star invariant or principle does this serve?
 
-`docs/design-workbench-architecture.md` "Direction: Free-Floating Objects With Snap-Derived Connections" — the snap engine is the source of truth for placement; inspector dropdowns that duplicate snap state mislead users (recon confirmed `deck.hostEdgeId` is written by `buildDeckCommitPatch` during drag release, not by the dropdown). Also the standing "Dead/derived UI fields → REMOVE not hide" rule from PR-T7 ([`docs/decision-log.md` 2026-05-29 House Inspector cleanup](decision-log.md)).
+`docs/design-workbench-architecture.md` "Direction: Free-Floating Objects With Snap-Derived Connections" — the snap engine is the source of truth for placement; inspector dropdowns that duplicate snap state mislead users. At PR-T9 time, recon traced `deck.hostEdgeId` through the now-retired `buildDeckCommitPatch` path; the live Plan tool path now commits deck geometry through `buildDeckTransformPatch`. Also the standing "Dead/derived UI fields → REMOVE not hide" rule from PR-T7 ([`docs/decision-log.md` 2026-05-29 House Inspector cleanup](decision-log.md)).
 
 ### What alternatives were considered, and why rejected?
 
@@ -79,7 +79,7 @@ Persisted-draft compatibility: `label` / `kind` / `elevationMode` on legacy stor
 | [objectWorkbenchInspectorModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts) | Drop dropped fields from `ObjectWorkbenchDeckInspectorModel`. | ~-8 |
 | Left-rail deck list (SanctuaryWorkbenchRail.tsx or wherever the list renders) | Replace `deck.label ?? deck.id` with `\`Deck ${index + 1}\``. Audit: is the label shown anywhere else (PDFs, quote output)? If yes, keep auto-name path consistent. | ~+3 |
 | Test fixtures (`objectFirstWorkbenchFixtures.ts`, `houseFirstWorkbenchFixtures.ts`, ~6 inline test fixtures) | Drop dropped fields from every fixture. | ~-30 |
-| Tests touching the dropped surface (estimate: ~5 files — `DeckInspectorSections.test.tsx`, `deckCommitAdapter.test.ts`, `buildRawGeometryModuleInput.test.ts`, etc.) | Drop assertions + fixture entries. Remove the dropped controls from `not.toContain` checks where they exist. | ~-50 |
+| Tests touching the dropped surface (estimate: ~5 files — `DeckInspectorSections.test.tsx`, retired deck commit adapter tests, `buildRawGeometryModuleInput.test.ts`, etc.) | Drop assertions + fixture entries. Remove the dropped controls from `not.toContain` checks where they exist. | ~-50 |
 | [docs/decision-log.md](decision-log.md) | Append PR-T9 entry mirroring PR-T8 — what was removed, the elevation-mode behaviour change (clamp gone), the snap-authority guardrail for `hostEdgeId`. | +30 |
 | [docs/design-workbench-legacy-cull.md](design-workbench-legacy-cull.md) | Mark deck inspector cull complete. | +3 |
 
@@ -105,7 +105,7 @@ Persisted-draft compatibility: `label` / `kind` / `elevationMode` on legacy stor
 - **HARD GATE: marketing email path 6/6** (`npm --prefix apps/marketing run build` clean, marketing email test green).
 - Manual verification via the Playwright snapshot loop:
   - `mono-standard` fixture with one preset deck attached → renders identically to pre-PR snapshot (no visual regression).
-  - Inspector right rail for that deck shows ONLY: Shape, dimension fields (width/depth/center offset), Level offset, Surface material, Redraw outline, Reset position, Remove deck. No `Deck name`, no `Deck kind`, no `Host edge`, no `Elevation mode`, no duplicated `Add deck` / `Custom outline` buttons.
+  - Inspector right rail for that deck shows ONLY: Shape, dimension fields (width/depth/center offset), Level offset, Surface material, Reset position, Remove deck. No `Deck name`, no `Deck kind`, no `Host edge`, no `Elevation mode`, no duplicated `Add deck` / `Custom outline` buttons. The later Canvas Plan cleanup also retired the stale Redraw outline action.
   - Drag a preset deck near a different house edge → `hostEdgeId` updates automatically (snap-derived path works without the inspector dropdown).
 
 ## 7. What I'd push back on

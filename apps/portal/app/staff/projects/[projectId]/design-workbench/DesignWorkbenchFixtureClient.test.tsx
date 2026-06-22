@@ -28,12 +28,10 @@ function clickObjectButton(container: HTMLElement, family: string, id: string) {
   });
 }
 
-function committedHouseShapeIds(container: HTMLElement): string[] {
-  return Array.from(
-    container.querySelectorAll<SVGPolygonElement>(
-      '[data-plan-layer="committedBodies"] [data-plan-shape-family="house"][data-plan-shape-id]',
-    ),
-  ).map((shape) => shape.getAttribute('data-plan-shape-id') ?? '');
+function planHitTargetCount(container: HTMLElement): number {
+  const canvas = container.querySelector('[data-plan-viewport="true"]');
+  if (!(canvas instanceof HTMLElement)) return 0;
+  return Number(canvas.dataset.planHitTargetCount ?? 0);
 }
 
 describe('DesignWorkbenchFixtureClient', () => {
@@ -106,25 +104,25 @@ describe('DesignWorkbenchFixtureClient', () => {
       await Promise.resolve();
     });
 
-    const initialHouseShapes = committedHouseShapeIds(rendered.container).sort();
-    expect(initialHouseShapes.length).toBeGreaterThan(0);
+    const initialHitTargetCount = planHitTargetCount(rendered.container);
+    expect(initialHitTargetCount).toBeGreaterThan(0);
 
     clickObjectButton(rendered.container, 'pergolas', 'pergola-1');
     await act(async () => {
       await Promise.resolve();
     });
-    const pergolaOneHouseShapes = committedHouseShapeIds(rendered.container).sort();
+    const pergolaOneHitTargetCount = planHitTargetCount(rendered.container);
     expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-1"]')).not.toBeNull();
 
     clickObjectButton(rendered.container, 'pergolas', 'pergola-2');
     await act(async () => {
       await Promise.resolve();
     });
-    const pergolaTwoHouseShapes = committedHouseShapeIds(rendered.container).sort();
+    const pergolaTwoHitTargetCount = planHitTargetCount(rendered.container);
 
     expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-2"]')).not.toBeNull();
-    expect(pergolaTwoHouseShapes).toEqual(pergolaOneHouseShapes);
-    expect(pergolaTwoHouseShapes).toEqual(initialHouseShapes);
+    expect(pergolaTwoHitTargetCount).toBe(pergolaOneHitTargetCount);
+    expect(pergolaTwoHitTargetCount).toBe(initialHitTargetCount);
 
     rendered.unmount();
   });

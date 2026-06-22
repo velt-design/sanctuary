@@ -1,7 +1,6 @@
 'use client';
 
-import type { WorkbenchViewStatus, WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
-import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
+import type { WorkbenchViewStatus } from '@/lib/drawings/workbenchViewTypes';
 import type {
   DrawingWorkbenchViewportMode,
   DrawingWorkbenchViewportTransform,
@@ -17,20 +16,15 @@ import {
 } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
-  ObjectWorkbenchDeckPatch,
   ObjectWorkbenchDisplayFamily,
-  ObjectWorkbenchOpeningPatch,
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
-import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
-import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
-import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import type { PlanSeamIconForm } from '@/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets';
+import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/tools/EdgeDragTool';
 import PlanViewport, {
-  type EdgeDragCommit,
   type HouseTerminalEndToggleRequest,
   type MoveRequest,
 } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
@@ -39,7 +33,6 @@ import styles from './DrawingWorkbench.module.css';
 
 type WorkbenchViewportHostProps = {
   sheetLabel: string;
-  view: WorkbenchViewTab;
   viewportMode: DrawingWorkbenchViewportMode;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
@@ -47,55 +40,17 @@ type WorkbenchViewportHostProps = {
   projectArtifact?: WorkbenchSolvedProjectArtifact | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
-  planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
-  pergolaTargetId?: string | null;
-  enableProjectionOnlyModelInteractions?: boolean;
-  modelViewportKey?: string;
   modelViewportTransform: DrawingWorkbenchViewportTransform;
-  modelViewportAutoFitOnReady?: boolean;
   geometryViewportKey?: string;
   geometryViewportState?: Geometry3DViewportState | null;
-  drawOutlineRequestId?: number;
-  drawOutlineMode?: 'footprint' | 'deck' | null;
-  drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[];
-  onDrawOutlineRequestConsumed?: (requestId: number) => void;
   onModelViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   onGeometryViewportStateChange?: (state: Geometry3DViewportState) => void;
   meta: EstimateDrawingSheetMeta;
-  editableFields?: EstimateDrawingField[];
-  modelEditableFields?: EstimateDrawingField[];
-  showDebugOverlays?: boolean;
-  onCommitField?: (
-    field: EstimateDrawingField,
-    nextValue: string,
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitModelField?: (
-    field: EstimateDrawingField,
-    nextValue: string,
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitFootprintEdit?: (
-    edit: EstimateDrawingFootprintEdit,
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitCustomPolygon?: (
-    polygon: CalculatorHouseFootprintPolygonPoint[],
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
   onToggleHouseTerminalEnd?: (request: HouseTerminalEndToggleRequest) => void;
-  onCommitHouseFormFootprintDimension?: (
-    edit: EstimateDrawingFootprintEdit,
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitDeckDimension?: (
-    deckId: string,
-    patch: ObjectWorkbenchDeckPatch,
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitOpeningDimension?: (
-    openingId: string,
-    patch: ObjectWorkbenchOpeningPatch,
-  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
   onCommitMove?: (request: MoveRequest) => void;
   /**
@@ -120,7 +75,6 @@ type WorkbenchViewportHostProps = {
 
 export default function WorkbenchViewportHost({
   sheetLabel,
-  view,
   viewportMode,
   objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
@@ -128,37 +82,17 @@ export default function WorkbenchViewportHost({
   projectArtifact,
   viewportGeometry,
   drawingSurfaceGeometry,
-  planViewModel,
   activeObjectRef,
-  pergolaTargetId,
-  enableProjectionOnlyModelInteractions,
-  modelViewportKey,
   modelViewportTransform,
-  modelViewportAutoFitOnReady = true,
   geometryViewportKey,
   geometryViewportState,
-  drawOutlineRequestId,
-  drawOutlineMode,
-  drawOutlineSeedPolygon,
-  onDrawOutlineRequestConsumed,
   onModelViewportTransformChange,
   onGeometryViewportStateChange,
   meta,
-  editableFields,
-  modelEditableFields,
-  showDebugOverlays,
-  onCommitField,
-  onCommitModelField,
-  onCommitFootprintEdit,
-  onCommitCustomPolygon,
   onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
   onToggleHouseTerminalEnd,
-  onCommitHouseFormFootprintDimension,
-  onCommitDeckDimension,
-  onCommitOpeningDimension,
-  onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
   onCommitMove,
   hoveredObjectRef,
@@ -174,8 +108,6 @@ export default function WorkbenchViewportHost({
   const housePlanReferenceShapes = projectArtifact?.planLayers.houseCommittedShapes ?? [];
   const houseProjectionHealth =
     projectArtifact?.diagnostics.projectHouseProjectionHealth ?? [];
-  const pergolaRenderHealth =
-    projectArtifact?.diagnostics.projectPergolaRenderHealth ?? [];
   const houseSnapSources = projectArtifact?.snapSources.house ?? [];
   const activePergolaSourceId =
     activeObjectRef?.family === 'pergolas'
@@ -194,7 +126,6 @@ export default function WorkbenchViewportHost({
     projectArtifact?.drawingSurfaceGeometry ??
     buildWorkbenchDrawingSurfaceGeometry({
       viewportGeometry: viewportGeometry ?? null,
-      planViewModel: planViewModel ?? null,
     });
   const projectDrawingSurfaceGeometry = projectArtifact?.drawingSurfaceGeometry ?? null;
   const routedPlanDrawingSurfaceGeometry =
@@ -207,8 +138,6 @@ export default function WorkbenchViewportHost({
     projectPergolaPlanShapes: committedPergolaPlanShapes,
     projectPergolaSnapShapes,
     houseCommittedShapes: housePlanReferenceShapes,
-    projectHouseProjectionHealth: houseProjectionHealth,
-    projectPergolaRenderHealth: pergolaRenderHealth,
     projectHouseSnapSources: houseSnapSources,
   };
   const designViewportProjectProps = {
@@ -220,17 +149,11 @@ export default function WorkbenchViewportHost({
       {viewportMode === 'sheet' ? (
         <SheetViewport
           sheetLabel={sheetLabel}
-          view={view}
           status={status}
           drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
-          planViewModel={planViewModel}
           meta={meta}
-          editableFields={editableFields}
-          showDebugOverlays={showDebugOverlays}
-          onCommitField={onCommitField}
-          onCommitFootprintEdit={onCommitFootprintEdit}
         />
-      ) : viewportMode === 'plan' || viewportMode === 'model' ? (
+      ) : viewportMode === 'plan' ? (
         <PlanViewport
           artifact={routedPlanDrawingSurfaceGeometry?.artifact ?? null}
           projectionOverride={artifactPlanProjection ?? null}

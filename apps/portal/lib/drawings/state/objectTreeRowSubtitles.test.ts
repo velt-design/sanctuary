@@ -4,8 +4,6 @@ import type { DrawingWorkbenchVisibilityState } from './drawingWorkbenchUiState'
 import {
   emptyStateForFamily,
   familyVisibilityFor,
-  primaryDescriptorFromMeta,
-  stateHintForRow,
   subtitleForObjectTreeRow,
 } from './objectTreeRowSubtitles';
 
@@ -29,75 +27,6 @@ const VISIBLE_VISIBILITY: DrawingWorkbenchVisibilityState = {
   openings: true,
 };
 
-describe('primaryDescriptorFromMeta', () => {
-  it('returns the first pipe-delimited segment trimmed', () => {
-    expect(primaryDescriptorFromMeta('Mono | Rear edge')).toBe('Mono');
-    expect(primaryDescriptorFromMeta('Footprint ready | mono roof | 0 warnings')).toBe(
-      'Footprint ready',
-    );
-    expect(primaryDescriptorFromMeta('Attached | Preset rectangle')).toBe('Attached');
-    expect(primaryDescriptorFromMeta('hinged door | Rear wall')).toBe('hinged door');
-  });
-
-  it('returns the original string when there is no pipe', () => {
-    expect(primaryDescriptorFromMeta('Freestanding')).toBe('Freestanding');
-  });
-
-  it('returns empty string for null or empty meta', () => {
-    expect(primaryDescriptorFromMeta(null)).toBe('');
-    expect(primaryDescriptorFromMeta('')).toBe('');
-  });
-});
-
-describe('stateHintForRow', () => {
-  it('returns "selected" when the row is the active selection (highest priority)', () => {
-    expect(
-      stateHintForRow({
-        entry: makeEntry({ trustStatus: 'approximate', trustLabel: 'Approximate' }),
-        selected: true,
-        familyVisible: false,
-      }),
-    ).toBe('selected');
-  });
-
-  it('returns "hidden in viewport" when family is hidden and row is not selected', () => {
-    expect(
-      stateHintForRow({
-        entry: makeEntry(),
-        selected: false,
-        familyVisible: false,
-      }),
-    ).toBe('hidden in viewport');
-  });
-
-  it('returns the lowercase trust label when trust is not geometry_ready and row is visible/unselected', () => {
-    expect(
-      stateHintForRow({
-        entry: makeEntry({ trustStatus: 'approximate', trustLabel: 'Approximate' }),
-        selected: false,
-        familyVisible: true,
-      }),
-    ).toBe('approximate');
-    expect(
-      stateHintForRow({
-        entry: makeEntry({ trustStatus: 'invalid_geometry', trustLabel: 'Invalid' }),
-        selected: false,
-        familyVisible: true,
-      }),
-    ).toBe('invalid');
-  });
-
-  it('returns empty string when row is visible, unselected, and trust is geometry_ready', () => {
-    expect(
-      stateHintForRow({
-        entry: makeEntry(),
-        selected: false,
-        familyVisible: true,
-      }),
-    ).toBe('');
-  });
-});
-
 describe('subtitleForObjectTreeRow', () => {
   it('joins descriptor and hint with " · " when both present', () => {
     expect(
@@ -119,6 +48,16 @@ describe('subtitleForObjectTreeRow', () => {
     ).toBe('Mono');
   });
 
+  it('uses the whole meta string when there is no pipe delimiter', () => {
+    expect(
+      subtitleForObjectTreeRow({
+        entry: makeEntry({ meta: 'Freestanding' }),
+        selected: false,
+        familyVisible: true,
+      }),
+    ).toBe('Freestanding');
+  });
+
   it('renders just the hint when descriptor is empty', () => {
     expect(
       subtitleForObjectTreeRow({
@@ -137,6 +76,23 @@ describe('subtitleForObjectTreeRow', () => {
         familyVisible: true,
       }),
     ).toBe('');
+  });
+
+  it('uses the lowercase trust label when trust is not geometry_ready and row is visible/unselected', () => {
+    expect(
+      subtitleForObjectTreeRow({
+        entry: makeEntry({ trustStatus: 'approximate', trustLabel: 'Approximate' }),
+        selected: false,
+        familyVisible: true,
+      }),
+    ).toBe('Mono · approximate');
+    expect(
+      subtitleForObjectTreeRow({
+        entry: makeEntry({ trustStatus: 'invalid_geometry', trustLabel: 'Invalid' }),
+        selected: false,
+        familyVisible: true,
+      }),
+    ).toBe('Mono · invalid');
   });
 
   it('composes a neutral house footprint state with visibility hints', () => {

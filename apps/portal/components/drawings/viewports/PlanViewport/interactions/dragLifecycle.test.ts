@@ -3,7 +3,6 @@ import {
   beginDrag,
   cancelDrag,
   commitDrag,
-  dragDistance,
   exceedsDragThreshold,
   updateDrag,
 } from './dragLifecycle';
@@ -79,12 +78,6 @@ describe('commitDrag and cancelDrag', () => {
 });
 
 describe('drag thresholds', () => {
-  it('dragDistance is the Euclidean magnitude of the delta', () => {
-    const session = beginDrag({ pointerId: 1, point: { x: 0, y: 0 }, context: null });
-    expect(dragDistance(session)).toBe(0);
-    expect(dragDistance(updateDrag(session, { x: 3, y: 4 }))).toBe(5);
-  });
-
   it('exceedsDragThreshold compares distance against threshold', () => {
     const session = beginDrag({ pointerId: 1, point: { x: 0, y: 0 }, context: null });
     expect(exceedsDragThreshold(updateDrag(session, { x: 3, y: 4 }), 4.99)).toBe(true);

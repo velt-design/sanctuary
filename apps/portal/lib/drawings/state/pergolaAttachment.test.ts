@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   connectionTypeFromAttachment,
-  freestandingPergolaAttachment,
   pergolaAttachmentFromStoredConnectionFields,
   pergolaAttachmentFromSnap,
 } from './pergolaAttachment';
+
+const FREESTANDING_ATTACHMENT = {
+  spatialKind: 'freestanding',
+  host: null,
+  method: 'none',
+} as const;
 
 describe('pergolaAttachmentFromSnap', () => {
   // Step 8 of the first-class spatial-entities migration. The snap engine
@@ -80,15 +85,6 @@ describe('pergolaAttachmentFromSnap', () => {
   });
 });
 
-describe('freestandingPergolaAttachment', () => {
-  it('builds a freestanding attachment with no host and method=none', () => {
-    const attachment = freestandingPergolaAttachment();
-    expect(attachment.spatialKind).toBe('freestanding');
-    expect(attachment.host).toBeNull();
-    expect(attachment.method).toBe('none');
-  });
-});
-
 describe('connectionTypeFromAttachment — legacy enum projection', () => {
   // The cost engine reads `ConnectionType` (`'fascia' | 'soffit' | 'wall' |
   // 'freestanding'`); the snap-derived attachment is the new source of truth.
@@ -97,7 +93,7 @@ describe('connectionTypeFromAttachment — legacy enum projection', () => {
   // pricing semantics.
 
   it('maps freestanding → freestanding', () => {
-    expect(connectionTypeFromAttachment(freestandingPergolaAttachment())).toBe('freestanding');
+    expect(connectionTypeFromAttachment(FREESTANDING_ATTACHMENT)).toBe('freestanding');
   });
 
   it('maps wall → wall', () => {
@@ -177,9 +173,9 @@ describe('pergolaAttachmentFromStoredConnectionFields — lazy migration', () =>
 
   it('treats null/undefined connectionKind as freestanding (safe default)', () => {
     expect(pergolaAttachmentFromStoredConnectionFields({ connectionKind: null })).toEqual(
-      freestandingPergolaAttachment(),
+      FREESTANDING_ATTACHMENT,
     );
-    expect(pergolaAttachmentFromStoredConnectionFields({})).toEqual(freestandingPergolaAttachment());
+    expect(pergolaAttachmentFromStoredConnectionFields({})).toEqual(FREESTANDING_ATTACHMENT);
   });
 
   it('maps connectionKind=wall to spatialKind=wall + method=facade_ledger with null host', () => {

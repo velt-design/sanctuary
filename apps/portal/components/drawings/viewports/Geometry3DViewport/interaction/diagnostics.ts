@@ -3,7 +3,7 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from "@sp/geometry";
-import type { GeometryPreviewMode } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
+import type { GeometryPreviewMode } from "@/lib/drawings/state/workbenchSolvedModel";
 import { isRenderableSlab } from "../geometry/buildGeometries";
 import { formatPoint, formatVector } from "./cameraState";
 
@@ -23,7 +23,7 @@ export type ViewportRectDiagnostics = {
   canvasContained: boolean;
 };
 
-export type HouseRoofViewportDiagnostics = {
+type HouseRoofViewportDiagnostics = {
   qaStatus: string;
   qaFailureReason: string;
   topologySolver: string;
@@ -42,7 +42,7 @@ export type HouseRoofViewportDiagnostics = {
   skippedSolidCount: number;
 };
 
-export type HouseOpeningViewportDiagnostics = {
+type HouseOpeningViewportDiagnostics = {
   totalCount: number;
   validCount: number;
   hostEdgeResolvedCount: number;
@@ -52,7 +52,7 @@ export type HouseOpeningViewportDiagnostics = {
   unresolvedValidCount: number;
 };
 
-export function rectContains(outer: DOMRect, inner: DOMRect): boolean {
+function rectContains(outer: DOMRect, inner: DOMRect): boolean {
   const tolerancePx = 1;
   return (
     inner.left >= outer.left - tolerancePx &&
@@ -77,12 +77,12 @@ export function rectDiagnostics(
   };
 }
 
-export function sceneMetadataString(scene: ViewerSceneModel, key: string): string | null {
+function sceneMetadataString(scene: ViewerSceneModel, key: string): string | null {
   const value = scene.metadata?.[key];
   return typeof value === "string" ? value : null;
 }
 
-export function sceneMetadataNumber(scene: ViewerSceneModel, key: string): number | null {
+function sceneMetadataNumber(scene: ViewerSceneModel, key: string): number | null {
   const value = scene.metadata?.[key];
   return typeof value === "number" ? value : null;
 }
@@ -187,14 +187,14 @@ export function collectHouseOpeningViewportDiagnostics(
   };
 }
 
-export function formatMetadata(metadata: ViewerSceneObject["metadata"]): string {
+function formatMetadata(metadata: ViewerSceneObject["metadata"]): string {
   if (!metadata) return "None";
   return Object.entries(metadata)
     .map(([key, value]) => `${key}: ${String(value)}`)
     .join(", ");
 }
 
-export function metadataText(
+function metadataText(
   metadata: ViewerSceneObject["metadata"],
   key: string,
 ): string | null {
@@ -202,7 +202,7 @@ export function metadataText(
   return typeof value === "string" ? value : null;
 }
 
-export function metadataNumber(
+function metadataNumber(
   metadata: ViewerSceneObject["metadata"],
   key: string,
 ): number | null {
@@ -210,11 +210,11 @@ export function metadataNumber(
   return typeof value === "number" ? value : null;
 }
 
-export function formatDiagnosticToken(value: string): string {
+function formatDiagnosticToken(value: string): string {
   return value.replace(/_/g, " ");
 }
 
-export function houseRoofQaSummary(
+function houseRoofQaSummary(
   metadata: ViewerSceneObject["metadata"],
 ): Array<{ label: string; value: string }> {
   const qaStatus = metadataText(metadata, "roofQaStatus");

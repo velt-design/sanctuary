@@ -3,7 +3,6 @@ import type {
   DeckFloatingPresetRect,
   DeckShape,
   DeckPresetRect,
-  HouseFormFootprintModel,
   WorkbenchAttachmentSide,
 } from './objectFirstWorkbenchModel';
 
@@ -73,10 +72,6 @@ function parseFiniteDeckMetres(value: string | null | undefined): number | null 
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
 function normalizeHostEdgeId(value: string | null | undefined): AttachmentSide {
   if (value === 'front' || value === 'left' || value === 'right') return value;
   return 'rear';
@@ -125,7 +120,7 @@ function normalizeDeckCornerVertexId(deck: DeckGeometryDraft): string | null {
   return deck.cornerVertexId ?? null;
 }
 
-export function parseDeckLocalPolygon(
+function parseDeckLocalPolygon(
   polygon: HouseFootprintLocalPoint[] | null | undefined,
 ): LocalPolygonPoint[] {
   return (polygon ?? [])
@@ -528,7 +523,6 @@ export function sanitizeDeckPresetRect(input: {
     attached: input.attached,
   });
   const fallback = input.fallbackPresetRect ?? defaults;
-  const hostEdgeLengthM = Math.max(0, frame.end - frame.start);
 
   const widthM = (() => {
     const parsed = parseFiniteDeckMetres(input.presetRect?.widthM ?? null);
@@ -572,7 +566,7 @@ export function sanitizeDeckPresetRect(input: {
   };
 }
 
-export function sanitizeDeckFloatingPresetRect(
+function sanitizeDeckFloatingPresetRect(
   value: Partial<DeckFloatingPresetRect> | null | undefined,
   fallbackValue?: DeckFloatingPresetRect | null | undefined,
 ): DeckFloatingPresetRect | null {

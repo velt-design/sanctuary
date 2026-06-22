@@ -13,7 +13,7 @@ import {
   buildProjectionPlanRenderGraph,
   topProjectionShapeVisible,
 } from '@/lib/drawings/views/plan/planRenderGraph';
-import type { PlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
+import type { buildPlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
 import { resolvePlanLayout, type PlanLayout } from './planLayout';
 import { pickPrimaryEditCandidate, type ActiveObjectFamily } from './planDimension';
 import type { PlanRenderItem } from './planRenderItem';
@@ -24,7 +24,9 @@ type RawPlanItem = {
   points: PlanSvgPoint[];
 };
 
-export type PlanRenderModel = {
+type PlanRenderDiagnostics = ReturnType<typeof buildPlanRenderDiagnostics>;
+
+type PlanRenderModel = {
   layout: PlanLayout;
   adapter: PlanCoordinateAdapter;
   committedBodies: PlanRenderItem[];
@@ -45,7 +47,7 @@ export type PlanRenderModel = {
   diagnostics: PlanRenderDiagnostics;
 };
 
-export type UsePlanRenderModelInput = {
+type UsePlanRenderModelInput = {
   projection: GeometryTopProjectionViewModel | null;
   visibility: DrawingWorkbenchVisibilityState;
   activeObjectRef: WorkbenchObjectRef | null | undefined;

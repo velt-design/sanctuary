@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type {
   GeometryTopProjectionShape,
   HouseModel3D,
-  Line3,
   Plane3,
   ViewerSceneLayer,
   ViewerSceneModel,
@@ -15,18 +14,6 @@ const WALL_PLANE: Plane3 = {
   xAxis: { x: 1, y: 0, z: 0 },
   yAxis: { x: 0, y: 0, z: 1 },
   normal: { x: 0, y: -1, z: 0 },
-};
-
-const ROOF_PLANE: Plane3 = {
-  origin: { x: 0, y: 0, z: 2400 },
-  xAxis: { x: 1, y: 0, z: 0 },
-  yAxis: { x: 0, y: 1, z: 0 },
-  normal: { x: 0, y: 0, z: 1 },
-};
-
-const ROOF_LINE: Line3 = {
-  start: { x: 0, y: 0, z: 2400 },
-  end: { x: 1200, y: 0, z: 2400 },
 };
 
 function fakeReferenceObject(id: string): ViewerSceneObject {

@@ -3,9 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { emptyStateForFamily } from '@/lib/drawings/state/objectTreeRowSubtitles';
 import { ObjectTreeRow } from './ObjectTreeRow';
-import { ObjectTreeSection, type ObjectTreeSectionProps } from './ObjectTreeSection';
+import { ObjectTreeSection } from './ObjectTreeSection';
 
 const NOOP_SELECT = (_ref: WorkbenchObjectRef) => {};
+type ObjectTreeSectionProps = Parameters<typeof ObjectTreeSection>[0];
 
 function rowProps(overrides: Partial<Parameters<typeof ObjectTreeRow>[0]> = {}) {
   return {

@@ -1,7 +1,6 @@
 // Shared house-model test helpers split by responsibility.
 import { expect } from "vitest";
 import type {
-  Line3,
   Point3,
   Polygon3,
   RenderMesh3D,
@@ -23,7 +22,6 @@ import {
   roofPointKey,
   roofSegmentKey,
   segmentInsidePolygon2D,
-  subtractPoint3,
 } from "./houseModelTestGeometrySupport";
 
 export function expectRoofFacetsCoverEaveOnce(model: HouseModel): void {
@@ -56,10 +54,7 @@ export function expectRoofQaValid(model: HouseModel): void {
   ).toBeLessThanOrEqual(100);
 }
 
-export function expectRoofFacetsInsideEave(
-  model: HouseModel,
-  eaveHeightMm: number,
-): void {
+export function expectRoofFacetsInsideEave(model: HouseModel): void {
   const eavePolygon = eavePolygonFromModel(model);
   expect(eavePolygon.length).toBeGreaterThan(3);
   for (const roofPlane of model.roofPlanes) {
@@ -199,7 +194,7 @@ export function expectPoint3CloseTo(
   expect(actual?.z).toBeCloseTo(expected.z, 6);
 }
 
-export function expectUnorderedSegment3CloseTo(
+function expectUnorderedSegment3CloseTo(
   firstStart: Point3,
   firstEnd: Point3,
   secondStart: Point3,
@@ -231,7 +226,7 @@ export function expectPolygon3CloseTo(
   }
 }
 
-export function expectPolygon3CloseToIgnoringRotation(
+function expectPolygon3CloseToIgnoringRotation(
   actual: Polygon3 | undefined,
   expected: Polygon3,
 ): void {
@@ -280,7 +275,7 @@ export function expectPolygon3CloseToIgnoringRotation(
   }
 }
 
-export function expectSolidBoundariesExact(
+function expectSolidBoundariesExact(
   sourceBoundaries: Polygon3[],
   solidBoundaries: Polygon3[],
 ): void {
@@ -308,7 +303,7 @@ export function expectVerticalPrismRenderMesh(
   }
 }
 
-export function expectMiteredRenderMeshesAroundCorners(
+function expectMiteredRenderMeshesAroundCorners(
   renderMeshes: Array<RenderMesh3D | undefined>,
   bottomZ: number,
   topZ: number,
@@ -328,7 +323,7 @@ export function expectMiteredRenderMeshesAroundCorners(
   }
 }
 
-export function expectHouseGutterBoundariesUseProjection(model: HouseModel): void {
+function expectHouseGutterBoundariesUseProjection(model: HouseModel): void {
   const gutterBoundaries = model.eave.gutterBoundaries ?? [];
   const gutterLines = model.eave.gutterLines ?? [];
   const gutterSolids =

@@ -8,27 +8,27 @@ import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
 const ACTIVE_REQUEST_STATUSES = new Set<DesignRequestStatus>(['OPEN', 'IN_PROGRESS', 'BLOCKED']);
 
-export type WorkbenchEstimateSelectionSource = 'query' | 'active_draft' | 'most_recent';
-export type WorkbenchRequestSelectionSource = 'query' | 'active';
+type WorkbenchEstimateSelectionSource = 'query' | 'active_draft' | 'most_recent';
+type WorkbenchRequestSelectionSource = 'query' | 'active';
 
-export type WorkbenchEstimateWarning = {
+type WorkbenchEstimateWarning = {
   reason: 'estimate_not_found';
   providedEstimateId: string;
 };
 
-export type WorkbenchRequestWarning = {
+type WorkbenchRequestWarning = {
   reason: 'request_not_found' | 'estimate_request_mismatch';
   providedRequestId: string;
   requestEstimateId?: string | null;
 };
 
-export type DesignWorkbenchRouteProjectSummary = {
+type DesignWorkbenchRouteProjectSummary = {
   id: string;
   name: string;
   siteAddress: string | null;
 };
 
-export type DesignWorkbenchRouteEstimateSummary = {
+type DesignWorkbenchRouteEstimateSummary = {
   id: string;
   versionLabel: string;
   status: EstimateStatus;
@@ -37,7 +37,7 @@ export type DesignWorkbenchRouteEstimateSummary = {
   selectionSource: WorkbenchEstimateSelectionSource;
 };
 
-export type DesignWorkbenchRouteRequestSummary = {
+type DesignWorkbenchRouteRequestSummary = {
   id: string;
   requestVersion: number;
   status: DesignRequestStatus;
@@ -48,7 +48,7 @@ export type DesignWorkbenchRouteRequestSummary = {
   selectionSource: WorkbenchRequestSelectionSource;
 };
 
-export type DesignWorkbenchRouteContext =
+type DesignWorkbenchRouteContext =
   | { kind: 'project_unavailable' }
   | {
       kind: 'no_estimate';

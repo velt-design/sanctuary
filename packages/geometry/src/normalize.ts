@@ -18,8 +18,6 @@ import type {
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
   HouseRoofForm,
-  HouseStoreyMode,
-  HouseWallConstruction,
   RawGableEaveGutterMode,
   RawGableEndFramesMode,
   RawBoxGutterMode,
@@ -46,7 +44,7 @@ import {
 
 export type NormalizeGeometryConfigErrorCode = 'unsupported_family' | 'unsupported_variant' | 'missing_required_input' | 'invalid_numeric_input';
 
-export type NormalizeGeometryConfigResult =
+type NormalizeGeometryConfigResult =
   | {
       ok: true;
       value: GeometryConfig;
@@ -56,6 +54,9 @@ export type NormalizeGeometryConfigResult =
       code: NormalizeGeometryConfigErrorCode;
       error: string;
     };
+
+type HouseStoreyMode = NonNullable<HouseModelConfig['storeyMode']>;
+type HouseWallConstruction = NonNullable<HouseModelConfig['wallConstruction']>;
 
 function ok(value: GeometryConfig): NormalizeGeometryConfigResult {
   return { ok: true, value };
@@ -481,12 +482,11 @@ export function buildHouseModelConfig(input: {
   houseUndersideMm: number | null;
   referenceUndersideMm: number | null;
 }): HouseModelConfig | null {
-  // Pre-PR8b, freestanding contexts skipped HouseModelConfig synthesis because
-  // no consumer rendered the house separately from a pergola attachment. Multi-
-  // form rendering needs freestanding houses to surface walls/roof/decks too;
-  // `HouseModelConfig` is purely house data (footprint, roof, eave) so it has
-  // no pergola dependency. The footprint check stays -- genuinely-missing house
-  // data still bails.
+  // Freestanding house forms still need a HouseModelConfig so project-level
+  // scenes can render their walls, roof, and decks independently of pergola
+  // attachment. `HouseModelConfig` is purely house data (footprint, roof,
+  // eave), so it has no pergola dependency. The footprint check stays:
+  // genuinely missing house data still bails.
   if (!input.footprint) {
     return null;
   }
@@ -801,9 +801,9 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       // boundary); pergola-anchored real coords when not (legacy path).
       houseFootprint = customFootprint.polygon;
     } else {
-      // Preset polygons remain pergola-coupled until the user edits a wall
-      // (which converts to `custom_polygon` mode and triggers migration via
-      // `commitSharedHouseFootprintEdit`).
+      // Preset polygons remain pergola-coupled until the selected house form
+      // is edited through the workbench footprint action path, which converts
+      // the form into object-first geometry at the portal boundary.
       houseFootprint = buildHouseFootprintPolygon({
         pergolaWidthMm: length.value,
         pergolaDepthMm: projection.value,

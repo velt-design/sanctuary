@@ -1,21 +1,21 @@
-export type PlanPoint = { x: number; y: number };
+import type { Point2 } from '@sp/geometry';
 
 export type DragSession<TContext> = {
   status: 'active';
   pointerId: number;
-  startPoint: PlanPoint;
-  currentPoint: PlanPoint;
-  delta: PlanPoint;
+  startPoint: Point2;
+  currentPoint: Point2;
+  delta: Point2;
   context: TContext;
 };
 
-export type DragOutcome<TContext> =
+type DragOutcome<TContext> =
   | { status: 'committed'; session: DragSession<TContext> }
   | { status: 'cancelled'; session: DragSession<TContext> };
 
 export function beginDrag<TContext>(input: {
   pointerId: number;
-  point: PlanPoint;
+  point: Point2;
   context: TContext;
 }): DragSession<TContext> {
   return {
@@ -30,7 +30,7 @@ export function beginDrag<TContext>(input: {
 
 export function updateDrag<TContext>(
   session: DragSession<TContext>,
-  point: PlanPoint,
+  point: Point2,
 ): DragSession<TContext> {
   return {
     ...session,
@@ -47,7 +47,7 @@ export function cancelDrag<TContext>(session: DragSession<TContext>): DragOutcom
   return { status: 'cancelled', session };
 }
 
-export function dragDistance<TContext>(session: DragSession<TContext>): number {
+function dragDistance<TContext>(session: DragSession<TContext>): number {
   return Math.hypot(session.delta.x, session.delta.y);
 }
 

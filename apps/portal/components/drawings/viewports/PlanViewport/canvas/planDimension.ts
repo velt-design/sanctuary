@@ -1,7 +1,7 @@
 import type { PlanCoordinateAdapter, PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import { planBoundsFromPolygon } from './planLayout';
 
-export type PlanDimensionPoint = {
+type PlanDimensionPoint = {
   x: number;
   y: number;
 };
@@ -14,7 +14,7 @@ export type PlanDimension = {
   label?: string;
 };
 
-export type PlanDimensionGeometry = {
+type PlanDimensionGeometry = {
   extensionStart: { from: PlanSvgPoint; to: PlanSvgPoint };
   extensionEnd: { from: PlanSvgPoint; to: PlanSvgPoint };
   dimLine: { from: PlanSvgPoint; to: PlanSvgPoint };
@@ -24,7 +24,7 @@ export type PlanDimensionGeometry = {
   label: string;
 };
 
-export const DEFAULT_DIMENSION_OFFSET_MM = 200;
+const DEFAULT_DIMENSION_OFFSET_MM = 200;
 
 function unitNormal(dx: number, dy: number): { nx: number; ny: number } | null {
   const length = Math.hypot(dx, dy);
@@ -40,11 +40,11 @@ function angleDegBetweenSvgPoints(from: PlanSvgPoint, to: PlanSvgPoint): number 
   return degrees;
 }
 
-export function formatDimensionLengthMm(lengthMm: number): string {
+function formatDimensionLengthMm(lengthMm: number): string {
   return `${Math.round(lengthMm)}`;
 }
 
-export type PlanSelectionDimensionSource = {
+type PlanSelectionDimensionSource = {
   id: string;
   polygon: ReadonlyArray<PlanDimensionPoint>;
   family?: string;
@@ -238,23 +238,14 @@ function consecutivePairs(values: ReadonlyArray<number>): Array<[number, number]
   return pairs;
 }
 
-export function extractAxisSlices(
-  polygon: ReadonlyArray<PlanDimensionPoint>,
-  toleranceMm = 0,
-): { xSlices: Array<[number, number]>; ySlices: Array<[number, number]> } {
-  const xs = uniqueSortedCoords(polygon.map((point) => point.x), toleranceMm);
-  const ys = uniqueSortedCoords(polygon.map((point) => point.y), toleranceMm);
-  return { xSlices: consecutivePairs(xs), ySlices: consecutivePairs(ys) };
-}
-
-export type SidedAxisSlices = {
+type SidedAxisSlices = {
   top: Array<[number, number]>;
   bottom: Array<[number, number]>;
   left: Array<[number, number]>;
   right: Array<[number, number]>;
 };
 
-export function extractSidedAxisSlices(
+function extractSidedAxisSlices(
   polygon: ReadonlyArray<PlanDimensionPoint>,
   bounds: { minX: number; minY: number; maxX: number; maxY: number },
   toleranceMm = 0,

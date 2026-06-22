@@ -67,8 +67,6 @@ export function buildFixtureSelectionActions(
     selectPergolaWorkbenchMode: () => setUi(/* state-only */),
     selectRailTab: (tab) => setUi(/* state-only */),
     selectObjectRef: (ref) => setUi((current) => ({ ...current, activeObjectRef: ref })),
-    startDrawOutlineEditor: ok,
-    startDeckOutlineEditor: ok,
     selectDeckObject: () => setUi(/* state-only */),
     selectOpeningObject: () => setUi(/* state-only */),
     selectObjectWorkbenchTarget: () => setUi(/* state-only */),
@@ -83,18 +81,11 @@ export function buildFixtureWorkbenchActions(): ObjectWorkbenchActions {
     addSharedHouseForm: ok,
     addSharedHouseOpening: ok,
     commitHouseFormTransformDelta: ok,
-    commitDrawingField: ok,
-    commitDeckDimension: ok,
-    commitGeometryIntent: ok,
     commitHouseFormFootprintDimension: ok,
-    commitOpeningDimension: ok,
     commitSharedPergolaAttachment: ok,
     commitSharedPergolaEdgeDragResult: ok,
-    commitSharedDeckCustomPolygon: ok,
     commitSharedHouseDeckPatch: ok,
-    commitSharedHouseFootprintEdit: ok,
     commitSharedHouseOpeningPatch: ok,
-    commitSharedHouseRoofDraft: ok,
     removeSharedHouseDeck: ok,
     removeSharedHouseForm: ok,
     removeSharedHouseOpening: ok,
@@ -183,7 +174,7 @@ Total: ~115 LOC, all in fixture/dev surfaces.
 
 - `npx tsc -p apps/portal/tsconfig.json --noEmit --incremental false` — clean.
 - `npx vitest run apps/marketing/lib/enquiryBudgets.test.ts apps/marketing/emails/templates/customerEstimateEmail.test.tsx` — 6/6 (HARD GATE).
-- `npx vitest run apps/portal/components/drawings/rail apps/portal/components/drawings/inspector apps/portal/components/drawings/workbench` — same baseline as before (54/54, minus the 2 pre-existing `ModelSpaceViewport` failures).
+- `npx vitest run apps/portal/components/drawings/rail apps/portal/components/drawings/inspector apps/portal/components/drawings/workbench` — focused workbench chrome/rail/inspector coverage should pass; the old `ModelSpaceViewport` failure baseline is retired with the PlanViewport / solved-artifact breakaway.
 - `npx playwright test playwright/portal.workbench-snapshot.spec.ts --project=portal-fixture --reporter=line` — all snapshot tests pass.
 - Manual: I read `tmp/workbench-mono-plan-selected.png` and confirm the right column shows PRIMARY / CONNECTIONS / MEMBER SIZES sections with field rows visible. No "No selection" empty state.
 - The real workbench at `/staff/projects/[id]/design-workbench` renders byte-identically — no diff from this PR (it doesn't import the stubs).

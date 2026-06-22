@@ -89,7 +89,7 @@ function isAttachmentSide(value: string | null | undefined): value is Attachment
   return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
 }
 
-export function resolveDeckHostWallSegment(input: {
+function resolveDeckHostWallSegment(input: {
   deck: HouseDeckConfig;
   footprint: Polygon3;
   wallSegments: HouseWallSegment3D[];
@@ -118,7 +118,7 @@ export function resolveDeckHostWallSegment(input: {
     .sort((left, right) => lineLength(right.line) - lineLength(left.line))[0] ?? null;
 }
 
-export function resolvePresetDeckBoundary(input: {
+function resolvePresetDeckBoundary(input: {
   deck: HouseDeckConfig;
   footprint: Polygon3;
   wallSegments: HouseWallSegment3D[];

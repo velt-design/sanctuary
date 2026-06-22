@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ModelSpacePanSession } from '@/lib/drawings/interactions/modelSpaceNavigationController';
-import { resolvePannedTransform, resolveWheelZoomedTransform } from './usePanZoom';
+import { resolveWheelZoomedTransform } from './usePanZoom';
 
 const IDENTITY = { zoom: 1, panX: 0, panY: 0 };
 
@@ -74,40 +73,5 @@ describe('resolveWheelZoomedTransform', () => {
     });
     expect(next).not.toBeNull();
     expect(next!.zoom).toBeLessThanOrEqual(4);
-  });
-});
-
-describe('resolvePannedTransform', () => {
-  function session(start: Partial<ModelSpacePanSession> = {}): ModelSpacePanSession {
-    return {
-      pointerId: 1,
-      startClientX: 100,
-      startClientY: 100,
-      startPanX: 0,
-      startPanY: 0,
-      ...start,
-    };
-  }
-
-  it('translates pan by the client delta from the session start', () => {
-    const next = resolvePannedTransform({
-      transform: IDENTITY,
-      session: session(),
-      clientX: 150,
-      clientY: 130,
-    });
-    expect(next).toEqual({ zoom: 1, panX: 50, panY: 30 });
-  });
-
-  it('preserves the existing zoom value', () => {
-    const next = resolvePannedTransform({
-      transform: { zoom: 2.5, panX: 10, panY: 20 },
-      session: session({ startPanX: 10, startPanY: 20 }),
-      clientX: 110,
-      clientY: 110,
-    });
-    expect(next.zoom).toBe(2.5);
-    expect(next.panX).toBe(20);
-    expect(next.panY).toBe(30);
   });
 });

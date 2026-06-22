@@ -38,7 +38,7 @@ import type { HouseFormTransformModel } from './objectFirstWorkbenchModel';
  * came from `detachHouseFormAtSeam` operating on a structurally
  * valid composition, but this function is defensive).
  */
-export type RebasedPartitionResult = {
+type RebasedPartitionResult = {
   composition: HouseComposition;
   transformOverride: HouseFormTransformModel;
   /** widthM / bandDepthM as metre-formatted strings (matches the workbench string-vocabulary). */

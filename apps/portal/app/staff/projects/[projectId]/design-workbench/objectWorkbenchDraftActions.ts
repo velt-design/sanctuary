@@ -1,7 +1,5 @@
 import {
   composeFootprintFromComposition,
-  getHouseRoofFormBehavior,
-  normalizeHouseRoofPitchInputForForm,
 } from '@sp/geometry';
 import {
   updateEstimateDrawingObjectFirstWorkbenchDraft,
@@ -18,9 +16,7 @@ import type {
   DerivedWallModel,
   HouseAssemblyModel,
   HouseFormModel,
-  HouseFormRoofIntentModel,
   ObjectFirstDeckDraft,
-  ObjectFirstHouseFormDraft,
   ObjectFirstOpeningDraft,
   ObjectFirstPergolaDraft,
   ObjectFirstPergolaPosition,
@@ -28,7 +24,6 @@ import type {
   PergolaAttachment,
   WorkbenchAttachmentSide,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import { deriveHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
@@ -40,40 +35,12 @@ import type {
   ObjectWorkbenchPergolaInspectorModel,
   ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
-import { buildHouseFormRoofIntentCommitDraft } from './houseFormRoofDraftActions';
 
 type AttachmentSide = WorkbenchAttachmentSide;
 
-export type ObjectWorkbenchDeckDraft = ObjectFirstDeckDraft;
-export type ObjectWorkbenchOpeningDraft = ObjectFirstOpeningDraft;
-export type ObjectWorkbenchPergolaDraft = ObjectFirstPergolaDraft;
-
-export type ObjectWorkbenchObjectPatchCommit =
-  | {
-      target: { family: 'decks'; objectId: string };
-      patch: ObjectWorkbenchDeckPatch;
-    }
-  | {
-      target: { family: 'openings'; objectId: string };
-      patch: ObjectWorkbenchOpeningPatch;
-    }
-  | {
-      target: { family: 'pergolas'; objectId: string };
-      patch: ObjectWorkbenchPergolaPatch;
-    };
-
-export type ObjectWorkbenchDraftBuildResult =
-  | { ok: true; draft: EstimateDrawingDraft }
-  | { ok: false; error: string };
-
-export type ObjectWorkbenchDeckMutationInput = {
-  currentDecks: ObjectWorkbenchDeckDraft[];
-  housePolygon: CalculatorHouseFootprintPolygonPoint[];
-};
-
-export type ObjectWorkbenchOpeningMutationInput = {
-  currentOpenings: ObjectWorkbenchOpeningDraft[];
-};
+type ObjectWorkbenchDeckDraft = ObjectFirstDeckDraft;
+type ObjectWorkbenchOpeningDraft = ObjectFirstOpeningDraft;
+type ObjectWorkbenchPergolaDraft = ObjectFirstPergolaDraft;
 
 type OpeningHostWallOption = {
   wallId: string;
@@ -272,7 +239,7 @@ export function resolvePreferredNewObjectWorkbenchOpeningHostWall(input: {
 }
 
 
-export function upsertObjectWorkbenchPergolaDrafts(
+function upsertObjectWorkbenchPergolaDrafts(
   currentPergolas: ObjectWorkbenchPergolaDraft[],
   pergolaId: string,
   patch: Partial<ObjectWorkbenchPergolaDraft>,
@@ -526,77 +493,6 @@ export function resolveDeckReferencePolygon(
         footprintParams: null,
       })
     : [];
-}
-
-export function buildObjectWorkbenchRoofCommitDraft(input: {
-  draft: EstimateDrawingDraft;
-  objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
-  roof: HouseFormRoofIntentModel;
-}): EstimateDrawingDraft {
-  const firstHouseFormId = input.objectFirstDraft.houseAssembly?.houseForms[0]?.id ?? null;
-  if (!firstHouseFormId) {
-    return updateEstimateDrawingObjectFirstWorkbenchDraft({
-      draft: input.draft,
-      objectFirst: input.objectFirstDraft,
-    });
-  }
-  const result = buildHouseFormRoofIntentCommitDraft({
-    draft: input.draft,
-    objectFirstDraft: input.objectFirstDraft,
-    houseFormId: firstHouseFormId,
-    roof: input.roof,
-  });
-  return result.ok ? result.draft : input.draft;
-}
-
-export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
-  previewHouseForm: ObjectFirstHouseFormDraft;
-  existingHouseForm: ObjectFirstHouseFormDraft | null;
-  terminalEndIds: ReadonlySet<string>;
-}): ObjectFirstHouseFormDraft {
-  const { previewHouseForm, existingHouseForm, terminalEndIds } = input;
-  const mergedBase = existingHouseForm
-    ? { ...previewHouseForm, transform: existingHouseForm.transform }
-    : previewHouseForm;
-  if (!existingHouseForm?.roofIntentAuthored) {
-    return {
-      ...mergedBase,
-      roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: mergedBase }),
-    };
-  }
-
-  const existingRoof = existingHouseForm.roofIntent;
-  const previewRoof = previewHouseForm.roofIntent;
-  const form = existingRoof.form;
-  const behavior = getHouseRoofFormBehavior(form);
-  // Milestone 13 session C: openGableEndIds applies to `'hipped'` only.
-  const openGableEndIds =
-    form === 'hipped'
-      ? existingRoof.openGableEndIds.filter((id) => terminalEndIds.has(id))
-      : [];
-
-  const nextHouseForm: ObjectFirstHouseFormDraft = {
-    ...mergedBase,
-    roofIntentAuthored: true,
-    roofIntent: {
-      ...previewRoof,
-      form,
-      primaryPitchDeg: normalizeHouseRoofPitchInputForForm({
-        roofForm: form,
-        value: existingRoof.primaryPitchDeg,
-        fallbackValue: previewRoof.primaryPitchDeg,
-      }),
-      primaryFallDirection: behavior.controls.primaryFallDirection
-        ? existingRoof.primaryFallDirection
-        : 'negative_y',
-      ridgeAxis: behavior.controls.ridgeAxis ? previewRoof.ridgeAxis : 'x',
-      openGableEndIds,
-    },
-  };
-  return {
-    ...nextHouseForm,
-    roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: nextHouseForm }),
-  };
 }
 
 export function buildNewObjectWorkbenchDeckDraft(input: {

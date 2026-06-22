@@ -28,9 +28,9 @@ import type { ObjectWorkbenchRoofInspectorModel } from './state/objectWorkbenchI
  * mediated and includes whole-project state for multi-house repro.
  * This one is single-house, designer-mediated, and geometry-only.
  */
-export const ROOF_FAILURE_REPRO_SCHEMA_VERSION = 1 as const;
+const ROOF_FAILURE_REPRO_SCHEMA_VERSION = 1 as const;
 
-export type RoofFailureReproFootprint = {
+type RoofFailureReproFootprint = {
   /**
    * PR-WB-COMPOSITION-ONLY (2026-06-19): composition + top-level
    * attachmentSide replace the retired `footprint.{mode,preset,polygon}`.
@@ -41,13 +41,13 @@ export type RoofFailureReproFootprint = {
   composition: unknown;
 };
 
-export type RoofFailureReproRoofIntent = Omit<
+type RoofFailureReproRoofIntent = Omit<
   HouseFormRoofIntentModel,
   // Deliberate: not omitting any field. Listed for clarity.
   never
 >;
 
-export type RoofFailureRepro = {
+type RoofFailureRepro = {
   schemaVersion: typeof ROOF_FAILURE_REPRO_SCHEMA_VERSION;
   capturedAt: string;
   validationStatus: 'invalid' | 'approximate';
@@ -135,7 +135,7 @@ function statusToIntent(roof: ObjectWorkbenchRoofStatus): RoofFailureReproRoofIn
  * Build a filename that's readable in a downloads folder. No PII —
  * just the stage, code, and a short timestamp.
  */
-export function buildRoofFailureReproFilename(payload: RoofFailureRepro): string {
+function buildRoofFailureReproFilename(payload: RoofFailureRepro): string {
   const stamp = payload.capturedAt.replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
   const stagePart = payload.failingStage?.id ?? payload.validationStatus;
   const codePart = payload.validationCode

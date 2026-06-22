@@ -157,7 +157,7 @@ export function findCompositionJoinSeamMidpoint(
  * The two edges are guaranteed to be opposite-direction per
  * `validateHouseComposition` rules (north↔south or east↔west).
  */
-export type SharedSeam = {
+type SharedSeam = {
   midpointWorldMm: Point2;
   lengthMm: number;
   formAPrimitiveIndex: number;
@@ -273,7 +273,7 @@ function translateRectangle(
  *     overlapping rectangles. Snap got too aggressive; designer
  *     needs to move one of the forms before joining.
  */
-export type JoinHouseFormsError =
+type JoinHouseFormsError =
   | { code: "no_shared_seam" }
   | {
       code: "merged_primitives_overlap";
@@ -281,7 +281,7 @@ export type JoinHouseFormsError =
       formBIndex: number;
     };
 
-export type JoinHouseFormsResult =
+type JoinHouseFormsResult =
   | { ok: true; merged: HouseComposition }
   | { ok: false; error: JoinHouseFormsError };
 

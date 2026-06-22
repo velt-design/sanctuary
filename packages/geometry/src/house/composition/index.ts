@@ -14,33 +14,16 @@
  */
 export type {
   AxisAlignedRectangle,
-  CompositionEdge,
-  CompositionJoin,
-  CompositionPrimitive,
-  CompositionValidationError,
-  CompositionValidationResult,
   HouseComposition,
   RectangleRoofIntent,
 } from "./types";
 export { isAxisAlignedRectangle } from "./types";
 export { validateHouseComposition } from "./validateHouseComposition";
 export { composeFootprintFromComposition } from "./composeFootprintFromComposition";
-export { detectFusedRectangle } from "./fusedRectangleDetector";
-export type { FusedRectangleDetection } from "./fusedRectangleDetector";
 export { composeRoofFromComposition } from "./composeRoofFromComposition";
-export type { ComposeRoofResult } from "./composeRoofFromComposition";
 export { detachHouseFormAtSeam } from "./detachHouseFormAtSeam";
-export type {
-  DetachHouseFormError,
-  DetachHouseFormResult,
-} from "./detachHouseFormAtSeam";
 export {
   detectSharedSeamBetweenForms,
   findCompositionJoinSeamMidpoint,
   joinTwoHouseForms,
-} from "./compositionSeams";
-export type {
-  JoinHouseFormsError,
-  JoinHouseFormsResult,
-  SharedSeam,
 } from "./compositionSeams";

@@ -2,7 +2,6 @@ import type {
   Assembly3D,
   AssemblyMember3D,
   AssemblyMemberProfile,
-  ConnectionType,
   DatumFrame3,
   GeometryConfig,
   Line3,
@@ -88,7 +87,7 @@ function equalSpacingPositions(lengthMm: number, count: number): number[] {
   return Array.from({ length: count }, (_, index) => Math.round(spacingMm * index));
 }
 
-function requireProfile(profile: AssemblyMemberProfile | null, label: string): AssemblyMemberProfile | null {
+function requireProfile(profile: AssemblyMemberProfile | null): AssemblyMemberProfile | null {
   if (profile && profile.widthMm > 0 && profile.depthMm > 0) {
     return profile;
   }
@@ -142,28 +141,28 @@ function resolveMonoStructuralInput(config: GeometryConfig): MonoStructuralInput
 
   const referenceBeamProfile =
     config.connection.type === 'freestanding'
-      ? requireProfile(config.structural.profiles.supportBeam, 'house-side beam')
-      : requireProfile(config.structural.profiles.ledger, 'ledger');
+      ? requireProfile(config.structural.profiles.supportBeam)
+      : requireProfile(config.structural.profiles.ledger);
   if (!referenceBeamProfile) {
     return fail('insufficient_input', 'Mono solver requires the reference-edge beam profile.');
   }
 
-  const supportBeamProfile = requireProfile(config.structural.profiles.supportBeam, 'support beam');
+  const supportBeamProfile = requireProfile(config.structural.profiles.supportBeam);
   if (!supportBeamProfile) {
     return fail('insufficient_input', 'Mono solver requires the support beam profile.');
   }
 
-  const gutterProfile = requireProfile(config.structural.profiles.gutter, 'gutter');
+  const gutterProfile = requireProfile(config.structural.profiles.gutter);
   if (!gutterProfile) {
     return fail('insufficient_input', 'Mono solver requires the gutter profile.');
   }
 
-  const rafterProfile = requireProfile(config.structural.profiles.rafter, 'rafter');
+  const rafterProfile = requireProfile(config.structural.profiles.rafter);
   if (!rafterProfile) {
     return fail('insufficient_input', 'Mono solver requires the rafter profile.');
   }
 
-  const postProfile = requireProfile(config.structural.profiles.post, 'post');
+  const postProfile = requireProfile(config.structural.profiles.post);
   if (!postProfile) {
     return fail('insufficient_input', 'Mono solver requires the post profile.');
   }

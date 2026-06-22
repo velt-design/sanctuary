@@ -118,7 +118,6 @@ export function buildWorkbenchSolvedProjectArtifact(input: {
   });
   const drawingSurfaceGeometry = buildWorkbenchDrawingSurfaceGeometry({
     viewportGeometry: input.projectViewportGeometry,
-    planViewModel: null,
   });
 
   return {

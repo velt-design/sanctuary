@@ -15,7 +15,7 @@ import type {
   ViewerSceneObject,
 } from './contracts';
 import { buildHouseRoofPlanProjectionShapes } from './housePlanProjection';
-import { deriveHouseGableTerminalEndsFromFootprint } from './houseModel';
+import { deriveHouseGableTerminalEndsFromFootprint } from './house/roofJoined';
 import {
   buildHouseModelSceneObjects,
   buildViewerSceneModel,
@@ -32,7 +32,7 @@ type ObjectProjection = {
   role: TopProjectionRole;
 };
 
-export type BuildTopProjectionViewModelFromSceneOptions = {
+type BuildTopProjectionViewModelFromSceneOptions = {
   referenceShapes?: GeometryTopProjectionShape[];
   /**
    * Milestone 13: when supplied, hip-end facets that match a terminal
@@ -47,25 +47,25 @@ export type BuildTopProjectionViewModelFromSceneOptions = {
   terminalEndAssembly?: Assembly3D;
 };
 
-export type TopProjectionParityIssueCode =
+type TopProjectionParityIssueCode =
   | 'screen_axis_mismatch'
   | 'missing_top_visible_shape'
   | 'extra_top_visible_shape'
   | 'hidden_shape_in_extents'
   | 'hidden_shape_rendered';
 
-export type TopProjectionParityIssue = {
+type TopProjectionParityIssue = {
   code: TopProjectionParityIssueCode;
   message: string;
   shapeId?: string;
   sourceObjectId?: string;
 };
 
-export type BuildTopProjectionParityReportOptions = {
+type BuildTopProjectionParityReportOptions = {
   renderedShapeIds?: string[];
 };
 
-export type TopProjectionParityReport = {
+type TopProjectionParityReport = {
   status: 'pass' | 'fail';
   screenAxis: string;
   topVisibleShapeCount: number;
@@ -475,8 +475,8 @@ function baseZOrder(input: { family: GeometryTopProjectionFamily; sourceType: Vi
     // Deck sits BELOW the roof (and gutter/roof_feature) so an opaque roof
     // fill visually "wraps" over the deck where they overlap in plan view.
     // Hit-testing is unaffected — decks are real selection targets and
-    // decorative roof kinds are filtered out of the plan hit-target layer
-    // (see `planHitTargetFilter.ts`), so the deck stays clickable in the
+    // decorative roof kinds are filtered out by the Plan hit-target ownership
+    // rule, so the deck stays clickable in the
     // overlap region even though the roof is drawn on top of it.
     if (input.kind === 'deck') return 28;
     if (input.kind === 'roof') return 30;
@@ -585,7 +585,7 @@ function shapeIsGenericHouseRoofProjection(shape: GeometryTopProjectionShape): b
   );
 }
 
-export function buildHouseModelPlanProjectionShapes(input: {
+function buildHouseModelPlanProjectionShapes(input: {
   model: HouseModel3D | null;
 }): GeometryTopProjectionShape[] {
   const model = input.model;
@@ -622,7 +622,7 @@ export function buildHouseModelPlanProjectionShapes(input: {
  * apart. When omitted, the legacy singleton ids (`'house-footprint'` /
  * `'pergola-outline'`) are emitted for back-compat.
  */
-export type ReferenceShapeIdentifiers = {
+type ReferenceShapeIdentifiers = {
   /** Stable id for THIS pergola assembly's outline reference shape. */
   pergolaSourceId?: string | null;
   /** Stable id for THIS house assembly's footprint reference shape. */
@@ -705,8 +705,6 @@ function buildReferenceShapes(
  * stationary-edge mechanism in session B). Nothing to enrich. The
  * user re-closes from the inspector's open-end toggle list.
  */
-const TERMINAL_END_MATCH_TOLERANCE_MM = 1;
-
 function enrichHouseRoofShapesWithTerminalEnds(
   shapes: GeometryTopProjectionShape[],
   assembly: Assembly3D,
@@ -1185,13 +1183,11 @@ export type ProjectPergolaEntry = {
 
 /**
  * Build a single `house_reference` shape from a standalone
- * `HouseReferenceGeometry`. Used by multi-form workbench rendering
- * (PR8c-iii): the portal builds per-form geometry via
- * the portal house-form reference geometry builder (which composes
- * `buildHouseModel3DFromRawHouseInput` + `applyHouseReferencePosition`)
- * and converts the result into a project-level reference shape so
- * `PlanViewport`'s projection-context overlay can render every form
- * at its world transform.
+ * `HouseReferenceGeometry`. The portal builds object-owned house-form
+ * geometry via its house-form geometry input boundary, places it with
+ * `applyHouseReferencePosition`, then converts the result into a
+ * project-level reference shape so Plan can render every form at its
+ * world transform.
  *
  * Mirrors the `house_reference` emission inside `buildReferenceShapes`
  * but takes a `HouseReferenceGeometry` directly instead of pulling it

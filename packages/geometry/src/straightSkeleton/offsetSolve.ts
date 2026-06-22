@@ -44,7 +44,7 @@ export type OffsetSkeletonError =
   | { code: "invalid_polygon"; cause: OrthogonalPolygonValidationError }
   | { code: "unsupported_topology"; reason: string };
 
-export type OffsetSkeletonResult =
+type OffsetSkeletonResult =
   | { ok: true; skeleton: StraightSkeleton }
   | { ok: false; error: OffsetSkeletonError };
 
@@ -571,7 +571,6 @@ export function computeOrthogonalStraightSkeletonOffset(
       const b = wedges[event.bIndex]!;
       const a = wedges[b.prevIndex]!;
       const e = wedges[event.eIndex]!;
-      const ep = wedges[e.prevIndex]!;
       const en = wedges[e.nextIndex]!;
       const hit = vertexAt(a, b, event.time);
       if (!hit) {
@@ -603,7 +602,6 @@ export function computeOrthogonalStraightSkeletonOffset(
       e.nextIndex = b.index;
       b.prevIndex = e.index;
       b.startNodeIndex = splitNode;
-      void ep;
       // a's loop now goes a → e2 → en.
       a.nextIndex = e2.index;
       en.prevIndex = e2.index;

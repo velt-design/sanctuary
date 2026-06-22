@@ -3,7 +3,3 @@ export type Command = {
   apply: () => void;
   invert: () => Command;
 };
-
-export function inverseCommand(command: Command): Command {
-  return command.invert();
-}

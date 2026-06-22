@@ -1,17 +1,13 @@
 .shell {
   display: grid;
   /*
-   * PR-W3b (2026-05-23) — CAD-style 3-column layout:
-   *   left  = configurator (visibility + object tree, soon to be VISIBILITY + OBJECTS TREE only)
-   *   centre = workspace (canvas + chrome)
-   *   right  = inspector (selected-object inputs, populated by PR-W3c)
+   * CAD-style 3-column workbench layout:
+   *   left   = visibility + object tree
+   *   centre = workspace canvas + chrome
+   *   right  = selected-object inspector
    *
-   * The right column is reserved here so PR-W3c can mount the moved-from-rail
-   * sections without a forklift. Initially renders an empty placeholder.
-   *
-   * PR-T2 (2026-05-26): column widths reference the density-flippable
-   * `--portal-rail-width-*` and `--portal-inspector-width-*` tokens so
-   * compact-density mode (PR-T3) can shrink them without touching this rule.
+   * Column widths reference density-flippable rail and inspector tokens so
+   * compact-density mode can shrink them without changing this grid rule.
    */
   grid-template-columns:
     minmax(var(--portal-rail-width-min), var(--portal-rail-width-max))

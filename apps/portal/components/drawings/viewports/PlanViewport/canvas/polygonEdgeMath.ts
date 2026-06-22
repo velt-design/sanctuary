@@ -1,6 +1,6 @@
-export type Point2 = { x: number; y: number };
+import type { Point2 } from '@sp/geometry';
 
-export type ClosestEdgeResult = {
+type ClosestEdgeResult = {
   edgeIndex: number;
   distanceMm: number;
   closestPoint: Point2;

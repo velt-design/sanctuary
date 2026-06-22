@@ -16,7 +16,7 @@
 
 1. **Viewport filtering goes through `lib/drawings/views/plan/planRenderGraph.ts`** — not new render conditionals inside SVG components. Filter is a layer-pass decision at the render-graph boundary.
 2. **Gumball commits go through existing `lib/drawings/commits/` modules + the Command bus** — typed input ("+750mm") and drag-release both end at the same `commit*Transform()`. Undo/redo + snap come for free.
-3. **Gumball state machine lives as a controller in `lib/drawings/interactions/`** — same pattern as `objectInteractionEngine`, `planFieldResizeController`, `footprintEditController`. Component is a thin renderer; state machine is testable in isolation.
+3. **Gumball state machine lives as a controller in `lib/drawings/interactions/`** — same pattern as `objectInteractionEngine`. Component is a thin renderer; state machine is testable in isolation.
 
 ---
 
@@ -119,7 +119,7 @@ OBJECTS
 
 5. **Remove the standalone "Selected Object" summary section.** The summary currently sits below the family list (rail line ~167-190); it duplicates information now carried by the row highlight in the tree + the header pill in the right inspector. Delete it.
 
-6. **Add-affordance policy**: inline `+` button at the end of each family section. Disabled when the family can't add via this surface (e.g. openings add via inspector — see mockup's "Add from inspector" hint). Single source of truth: `objectWorkbenchActions.addSharedHouse{Form,Deck,Opening}` already exists; pergolas don't add via rail today (snap-derived creation only).
+6. **Add-affordance policy**: inline `+` button at the end of each family section. Disabled when the family can't add via this surface. Single source of truth: `objectWorkbenchActions.addSharedHouse{Form,Deck,Opening}` and `addSharedPergola`.
 
 7. **Empty-family copy**: standardised "No <family>" + faint helper hint underneath. Match the mockup's "No openings — Add from inspector" style.
 
@@ -129,8 +129,8 @@ OBJECTS
 - [ObjectWorkbenchRail.tsx](apps/portal/components/drawings/rail/ObjectWorkbenchRail.tsx) — major rewrite: delete Object Navigator tab strip, delete Selected Object summary section, replace family-list-for-active-tab with flat tree of all four families. Currently ~150 LOC; after this PR likely ~200 LOC (more tree rows, but no tab strip).
 - New `<ObjectTreeSection>` component per family — encapsulates header + row list + add affordance. Small (~80 LOC). Lives under `apps/portal/components/drawings/rail/`.
 - New `<ObjectTreeRow>` component — single row with icon · label · subtitle. Small (~50 LOC).
-- [WorkbenchInspectorHost.tsx](apps/portal/app/staff/projects/[projectId]/design-workbench/WorkbenchInspectorHost.tsx) — `activeRailTab` derives from `ui.activeObjectFamily` (the family of the currently selected object) rather than the now-deleted rail tab. Small wiring update.
-- [drawingWorkbenchUiState.ts](apps/portal/lib/drawings/state/drawingWorkbenchUiState.ts) — `activeRailTab` may no longer be needed; verify and remove if redundant. If kept (for diagnostics or back-compat), document its narrowed purpose.
+- [WorkbenchInspectorHost.tsx](apps/portal/app/staff/projects/[projectId]/design-workbench/WorkbenchInspectorHost.tsx) — inspector family derives from `ui.activeObjectRef.family` rather than the now-deleted rail tab. Small wiring update.
+- [drawingWorkbenchUiState.ts](apps/portal/lib/drawings/state/drawingWorkbenchUiState.ts) — `activeRailTab` is retired from live UI state and stripped as opaque legacy input. Current selection resolves from `activeObjectRef`, not the old rail-tab vocabulary.
 - ObjectWorkbenchRail.test.tsx — strip tab-strip assertions; add tree-shape assertions (every family heading present, object rows visible, selected row highlighted).
 - New `objectTreeRowSubtitles.ts` helper (or extension of existing inspector model) — pure functions that map per-family objects to subtitle strings. Testable in isolation.
 
@@ -230,7 +230,7 @@ Added 2026-05-26. After PR-W3d shipped the rail and PR-Bug1–4 closed correctne
 **Files**:
 - `apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas.tsx` — relocate toolbar, render pills
 - `PlanCanvas.module.css` — toolbar layout + pill styling
-- Hook into `usePanZoom` for the zoom buttons (already exists)
+- Hook into the PlanViewport pan/zoom transform helpers for the zoom buttons.
 
 **HARD GATE**: N/A · purely presentation · no Phase 2 deps · no consolidation.
 
@@ -276,7 +276,7 @@ Guardrails #2 and #3 territory.
 - State: `idle | hovered | dragging | typing | committing | cancelled`
 - Events: `selectObject(ref)`, `hoverAxis(axis)`, `startAxisDrag(axis, startPoint)`, `dragMove(currentPoint)`, `endDrag()`, `startTypedInput(axis)`, `typeValue(string)`, `commitTypedInput()`, `cancel()`
 - Output: `GumballViewModel { activeAxis, dragDelta, typedInput, anchor, ... }`
-- Pattern reference: `planFieldResizeController.ts`, `footprintEditController.ts`
+- Pattern reference: `objectInteractionEngine.ts`
 
 **Files**:
 - `gumballToolController.ts` (new)

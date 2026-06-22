@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import {
-  dispatchSelectionTarget,
   selectShape,
   type ShapeSelectionCallbacks,
 } from './selectShape';
@@ -106,48 +105,6 @@ describe('selectShape', () => {
     expect(() => {
       selectShape(shape({ family: 'house', kind: 'deck', sourceObjectId: 'deck-1' }), {});
     }).not.toThrow();
-  });
-});
-
-describe('dispatchSelectionTarget', () => {
-  it('routes the none kind to onClearWorkbenchSelection', () => {
-    const callbacks = spies();
-    dispatchSelectionTarget({ kind: 'none' }, callbacks);
-    expect(callbacks.onClearWorkbenchSelection).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not invoke any callback for the unhandled kind', () => {
-    const callbacks = spies();
-    dispatchSelectionTarget({ kind: 'unhandled', objectId: 'mystery-1' }, callbacks);
-    expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
-    expect(callbacks.onSelectPergolaTarget).not.toHaveBeenCalled();
-    expect(callbacks.onClearWorkbenchSelection).not.toHaveBeenCalled();
-    expect(callbacks.onToggleHouseTerminalEnd).not.toHaveBeenCalled();
-  });
-
-  it('routes house_terminal_end_toggle to onToggleHouseTerminalEnd with the resolved endId and isOpen', () => {
-    const callbacks = spies();
-    dispatchSelectionTarget(
-      {
-        kind: 'house_terminal_end_toggle',
-        houseFormId: 'house-form-2',
-        endId: 'house-gable-end-x-2',
-        isOpen: true,
-      },
-      callbacks,
-    );
-    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledTimes(1);
-    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith({
-      houseFormId: 'house-form-2',
-      endId: 'house-gable-end-x-2',
-      currentlyOpen: true,
-    });
-    // The toggle action does NOT clear the selection or fire any of the
-    // selection-style callbacks -- mutating selection on every click on a
-    // hip end would be jarring (the user is editing the roof, not
-    // navigating).
-    expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
-    expect(callbacks.onClearWorkbenchSelection).not.toHaveBeenCalled();
   });
 });
 

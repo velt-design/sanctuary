@@ -8,24 +8,24 @@ Keep this file for historical context and Gate 0 row citations only. Do not use 
 
 ---
 
-Phase 1 shipped as PR-A through PR-G3c. The originally-planned PR-H ("final cleanup sweep") + PR-I ("ModelSpaceViewport fixture rot") turned out to be **superseded by Phase 2 work**: investigation in 2026-05-22 revealed that PR-H's deletion targets (`HouseFirst*` types, `legacyObjectFirstCompatibilityAdapter`, `hostHouseFormId`, `houseFootprintSideLocalToWorldPolygon`) are still load-bearing because Phase 1 PRs deliberately preserved them while migrating upstream consumers. Deleting them requires the consumer-side migration that IS Phase 2 (see § "Stream 2A" in the Phase 2 plan). PR-I is deferred until after the consumer-side migration stabilises the test fixtures.
+Phase 1 shipped as PR-A through PR-G3c. The originally-planned PR-H ("final cleanup sweep") + PR-I ("ModelSpaceViewport fixture rot") were later superseded by Phase 2 and the solved-artifact breakaway. As of the 2026-06 workbench cleanup lane, targeted searches show the `HouseFirst*` runtime/test carrier, `legacyObjectFirstCompatibilityAdapter`, `houseFirstWorkbenchAdapter`, `state/compat` namespace, and `LEGACY_PRIMARY_HOUSE_FORM_ID` are no longer present in `apps/portal` or `packages`; remaining references are historical docs plus comments describing what replaced `hostHouseFormId`. Keep using this file for Gate 0 row citations, but do not treat the old PR-H/PR-I sequence as live work.
 
 **What Phase 1 actually delivered (final retrospective):**
 - Object-first project model is the dominant runtime shape (`WorkbenchProjectModel`)
 - Snap-derived pergola + deck attachments (`PergolaAttachment`, `DeckAttachment`)
 - `attachment_side` retired from cost engine (replaced by `attachment_length_mm`)
-- Scene composition lifted to project level (additional house forms built once per project)
+- Scene composition lifted to project level (host-excluded house forms built once per project)
 - Plan references now use one canonical `house_reference:<formId>` per house form, including `house-main`
 - Follow-up PR3: `WorkbenchSolvedModel.projectHouseGeometries` is now the project house registry feeding canonical references, host-excluded scene composition, shared host-house selection, and PlanViewport snap targets for every valid house form. Follow-up PR1 of the multi-object goal moved host house ids through raw/normalized geometry and deleted the portal scene-retag bridge. Follow-up PR2 added runtime-only object-first pergola solve sources so orphan pergolas no longer require fake persisted `inputs.modules[]` rows. Follow-up PR3 enabled rail Add Pergola to create freestanding object-first pergolas through that runtime path. Follow-up PR4 made non-active pergola context outlines selectable in plan through the same pergola-id routing. Follow-up PR5 made Plan Editor aggregate full solved plan bodies for every valid pergola id and let transient object-first mono pergolas build native edit state from solved in-memory config. Follow-up PR6 made 3D Review aggregate valid pergola scene bodies by `pergolaId` while keeping 3D read/select-only. Follow-up PR7 routes eligible workbench pergolas through the package-level `solveProject` boundary grouped by host house form; the per-pergola `RawGeometryModuleInput.houseContext` field is still the Phase 2 deletion target.
 - Project-level decks/openings pre-pass (no per-pergola redundancy)
 - `buildHouseModelConfig` decoupled from pergola context
 - Email-quote path completely unchanged throughout
 
-**What Phase 1 left for Phase 2:**
-- Bridge deletion (`HouseFirst*` types, `legacyObjectFirstCompatibilityAdapter`)
-- Per-object solve loop (the `workbenchSolvedModel` per-module loop still exists)
-- Cost engine input migration (cost engine still consumes `CostInputsV1` via `costingPayload.ts`)
-- Snapshot persistence migration (canonical shape lock-in)
+**What remains after the later Phase 2 / solved-artifact cleanup:**
+- Low-level per-pergola compatibility in the solve boundary, especially `RawGeometryModuleInput.houseContext`.
+- Cost engine input migration for remaining V1/product paths outside the protected marketing enquiry flow.
+- Snapshot/commercial persistence decisions once solved geometry becomes the commercial source of truth.
+- Historical docs and comments that still mention retired `houseFirst` surfaces; update them when touched, but do not chase historical decision-log entries.
 
 The rest of this doc is **the working history** of Phase 1 — kept for reference until archived to the decision log.
 
@@ -103,15 +103,15 @@ These are the patterns I shipped or extended that were not in the original audit
 | **N1** | `apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts` — `ObjectFirstDeckDraft.hostHouseFormId` | Routing field I added in PR9 so decks could attach to non-primary forms. Bandaid: deck still stores side-local coords against the host polygon. | **DELETE** once decks store world-coord polygons + snap reference. The snap reference's `host.objectId` replaces it. |
 | **N2** | `apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts` — `LEGACY_PRIMARY_HOUSE_FORM_ID` constant + every consumer | The primary-vs-additional distinction. Currently special-cased in `buildSharedHouse`, `buildAdditionalHouseFormFromDraft`, the per-form deck filter, `commitHouseFormTransformDelta`, and the rail "Add structure" wiring. | **DELETE** — primary becomes "just another form" per north star decision 1. Calculator-snapshot import converts to N forms with no priority. |
 | **N3** | `apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.tsx` — old primary-skip guard in `onCommitMove` for `house_form` family (PR11) | Guard that prevented dragging the primary form. Removed in the primary-transform PR; raw geometry now consumes `HouseFormModel.transform` first. | **DONE / WATCH** — keep deleting any remaining primary-vs-added movement assumptions as N2 collapses |
-| **N4** | `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` — freestanding house-form reference geometry | Former workaround for `buildHouseModel3DFromRawHouseInput` requiring a `pergolaContext` even for freestanding houses. The synthetic pergola context is gone, but the helper still uses fallback preset dimensions until house footprints are fully object-owned. | **DELETE/SIMPLIFY** with row 9 — once `buildHouseModel3DFromRawHouseInput` takes object-owned footprint geometry directly |
-| **N5** | `apps/portal/lib/drawings/state/houseFirstWorkbenchModel.ts` — entire `houseFirst*` draft type family (`HouseFirstDeckDraft`, `HouseFirstOpeningDraft`, `HouseFirstRoofDraft`, `HouseFirstPergolaDraft`, `HouseFirstWorkbenchDraftCarrier`) | Legacy persisted shape. The action layer writes to `objectFirst`; a compat bridge converts to `houseFirst` for the read path. Two shapes for the same data. | **DELETE** — read path reads `objectFirst` directly; bridge retires; compat adapters in `state/compat/` and `legacyObjectFirstCompatibilityAdapter` go with it |
-| **N6** | `apps/portal/lib/drawings/state/compat/objectWorkbenchCompatibilityModel.ts` and `legacyObjectFirstCompatibilityAdapter.ts` | The bridge between objectFirst and houseFirst draft shapes. | **DELETE** with N5 |
-| **N7** | `apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts` — `buildSharedHouse` synthesising the primary from `CalculatorModuleInputs[]` | The entry point that creates the legacy primary form from pergola module data. | **CONVERT** — extract a one-shot adapter `buildObjectModelFromLegacySnapshot(snapshot) → ObjectFirstWorkbenchDraftVNext` used only at snapshot import. The synthesis-on-every-read goes away. |
+| **N4** | Retired `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` freestanding house-form reference wrapper | Former workaround for `buildHouseModel3DFromRawHouseInput` requiring a `pergolaContext` even for freestanding houses. The synthetic pergola context was removed first; the remaining wrapper later became unreachable after live callers moved to `houseFormGeometryInput.ts`. | **DONE** — unused wrapper deleted; live house-form reference/model generation is owned by `houseFormGeometryInput.ts` |
+| **N5** | Retired `apps/portal/lib/drawings/state/houseFirstWorkbenchModel.ts` `houseFirst*` draft type family | Legacy persisted/test carrier shape. Later cleanup removed the runtime/test carrier; `rg "HouseFirst\|houseFirst" apps/portal packages` now returns no code hits outside the estimate-draft deletion shim. | **DONE** — object-first is the live workbench shape |
+| **N6** | Retired `apps/portal/lib/drawings/state/compat/objectWorkbenchCompatibilityModel.ts` and `legacyObjectFirstCompatibilityAdapter.ts` | Bridge between objectFirst and houseFirst draft shapes. | **DONE** — bridge and compat namespace deleted |
+| **N7** | Retired `apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts` synthesis path | Former entry point that synthesized primary house/pergola state from calculator modules. | **DONE / REPLACED** — live initial-state and solve boundaries are object-first/project-artifact based; remaining low-level compatibility is tracked under row 9 |
 | **N8** | `packages/geometry/src/normalize.ts` — `buildHouseModelConfig` freestanding short-circuit lifted in PR8b | The fact this short-circuit needed lifting was a signal; the underlying coupling (config carries pergola dims) remains. | **DELETE** the config field altogether once the geometry pipeline iterates per object |
 | **N9** | `packages/geometry/src/viewer.ts` — `buildLayers` reads `assembly.house.model` from a single pergola | Each pergola module's scene only contains its own house. PR8d added "compose additional forms in" as a workaround at the portal layer. | **CONVERT** — scene builder iterates all project objects, not just per-pergola. Removes the per-pergola scene duplication of house objects. |
 | **N10** | `apps/portal/lib/drawings/state/workbenchSolvedModel.ts` — `composeAdditionalHouseFormsIntoScene` (PR8d) | Portal-layer workaround that injects additional forms into each pergola scene. | **DELETE** with N9 |
 | **N11** | `apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildHouseSnapTargets.ts` — single-house assumption | Snap targets are built from one house. Additional forms not visible to snap engine. | **CONVERT** — iterate all project objects (houses + pergolas + decks), emit snap targets per object |
-| **N12** | `apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx` — imports from `houseFirstWorkbenchModel` (`HouseFirstDeckDraft`, `WorkbenchHouseSelection`, `WorkbenchMode`) | Import-guard violation flagged 2026-05-21. The 8 stale-fixture failures sit on top of this. | **CONVERT** to object-first equivalents; allows the 8 fixture tests to migrate at the same time |
+| **N12** | Retired `apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx` import-guard violation | Former 2026-05-21 issue: `ModelSpaceViewport` imported `houseFirstWorkbenchModel`, with stale fixture failures layered on top. The viewport/test and old rail import guard are now gone; live coverage is `PlanViewport`, plan render graph tests, and `apps/portal/lib/workbenchBreakawayImportGuards.test.ts`. | **DONE / SUPERSEDED** — do not recreate `ModelSpaceViewport` or the old rail guard to close historical notes |
 | **N13** | `apps/portal/lib/estimates/drawingEdits.ts` — `EstimateDrawingDraft.houseFirst` slot | Legacy persisted slot on the estimate draft. The new write path goes through `objectFirst` and deletes this on write (`updateEstimateDrawingObjectFirstWorkbenchDraft`). | **DELETE** the field from the type and clean up readers; the deletion-on-write logic is no longer needed |
 
 This list is **not exhaustive**. As each PR lands, new candidates will surface; add them here before shipping the PR that exposes them.
@@ -176,7 +176,7 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 
 **Risk:** the rail's behavior should look identical to the user. Verify with the PR10 rail test that the button still produces a new form 10 m east.
 
-**Acceptance:** rail test passes. Multi-form integration test in `houseFirstWorkbenchAdapter.test.ts` passes. Visual smoke test (load mono-standard, see one house; click "Add structure", see two houses, drag either one).
+**Historical acceptance:** rail test passed, multi-form integration coverage passed, and visual smoke showed one house, then two houses after "Add structure", with either form draggable. The old `houseFirstWorkbenchAdapter.test.ts` file no longer exists.
 
 ### PR-D — Decks store world-coord polygons + snap reference
 
@@ -261,12 +261,12 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 **Phase 2 dependencies:** None. Cost engine doesn't call `buildHouseModel3DFromRawHouseInput`; this is purely a workbench-internal pipeline refactor.
 
 **Touches:**
-- `packages/geometry/src/houseModel.ts:826-991` — deleted omnibus `HouseModel3DPergolaContext` type. Introduced focused `HouseModel3DPergolaAttachment` containing only the genuine pergola-relationship fields (`connectionType`, `attachmentSide`, `attachmentEdge`, `datum`, `pergolaLengthMm`, `pergolaProjectionMm`). `buildHouseModel3DFromRawHouseInput` now takes per-field params for house-intrinsic data (`footprint`, `housePosition`, `soffitDepthMm`, the three underside heights) and a single nullable `pergolaAttachment` for the relationship data. `null` => freestanding; the function internally substitutes a stub datum + `connectionType: 'freestanding'` + `attachmentSide: 'rear'`.
-- `packages/geometry/src/index.ts:44` — export renamed from `HouseModel3DPergolaContext` to `HouseModel3DPergolaAttachment`.
-- `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` — synthetic pergolaContext stub block deleted. Function now calls `buildHouseModel3DFromRawHouseInput({ rawHouse, footprint, pergolaAttachment: null })`.
+- `packages/geometry/src/houseModelRawInputAdapter.ts` — deleted the old omnibus `HouseModel3DPergolaContext` concept and keeps the focused `HouseModel3DPergolaAttachment` as a private adapter-local type containing only the genuine pergola-relationship fields (`connectionType`, `attachmentSide`, `attachmentEdge`, `datum`, `pergolaLengthMm`, `pergolaProjectionMm`). `buildHouseModel3DFromRawHouseInput` takes per-field params for house-intrinsic data (`footprint`, `housePosition`, `soffitDepthMm`, the three underside heights) and a single nullable `pergolaAttachment` for the relationship data. `null` => freestanding; the function internally substitutes a stub datum + `connectionType: 'freestanding'` + `attachmentSide: 'rear'`.
+- `packages/geometry/src/index.ts` — no longer exports a pergola-context helper type for this path; callers go through the exported raw-house/model boundary instead of depending on relationship internals.
+- `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` — synthetic pergolaContext stub block deleted in the original PR, then the now-unused wrapper was retired entirely once live callers used `houseFormGeometryInput.ts`.
 - `packages/geometry/src/houseModel.test.ts:3071-3142` — both attached + freestanding tests updated to new call shape.
 
-**What changes:** additional house forms (multi-form scenes — sleepouts, granny flats) no longer fabricate stub `pergolaLengthMm`, `pergolaProjectionMm`, `datum`, and zero-valued underside heights. The freestanding case is now first-class: pass `pergolaAttachment: null`. The attached case keeps the same fields it always needed, but in a clearly-named sub-object so its purpose is obvious at call sites.
+**What changes:** object-owned house forms (multi-form scenes — sleepouts, granny flats) no longer fabricate stub `pergolaLengthMm`, `pergolaProjectionMm`, `datum`, and zero-valued underside heights. The freestanding case is now first-class: pass `pergolaAttachment: null`. The attached case keeps the same fields it always needed, but in a clearly-named sub-object so its purpose is obvious at call sites.
 
 **Acceptance:**
 - Typecheck clean ✅
@@ -275,22 +275,22 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 - Email-quote tests: 6/6 ✅
 - `composeAdditionalHouseFormsIntoScene` (audit row N10) untouched — deferred to PR-G3 where the per-pergola scene loop becomes per-project.
 
-### PR-G3a — Scene lifting: project-level additional house models ✅ SHIPPED 2026-05-22
+### PR-G3a — Scene lifting: project-level host-excluded house models ✅ SHIPPED 2026-05-22
 
-**Closes:** N9 (viewer's scene builder now iterates project-level additional house models, not just the active pergola's host). N10 (portal-layer `composeAdditionalHouseFormsIntoScene` workaround deleted; geometry build moved to a single project-level pass).
+**Closes:** N9 (viewer's scene builder now iterates project-level host-excluded house models, not just the active pergola's host). N10 (portal-layer `composeAdditionalHouseFormsIntoScene` workaround deleted; geometry build moved to a single project-level pass).
 
 **Phase 2 dependencies:** None. Cost engine doesn't read solved scenes; this is a pure workbench-internal scene-composition fix. Verified via scope investigation: `apps/marketing/app/api/enquiry/route.ts:5` imports only `calculateCostV1` from `@sp/costing`, and `packages/costing/src/engine/calculate.ts:549` iterates `inputs.modules[]` without touching `WorkbenchSolvedModule`.
 
 **Touches:**
-- `packages/geometry/src/viewer.ts` — `buildLayers(assembly, additionalHouseModels)` and `buildViewerSceneModel(assembly, options?)` now accept an optional `additionalHouseModels: ReadonlyArray<HouseModel3D>`. Iterated inside `buildLayers`; each renders with `attachmentTarget: null` (additional forms aren't pergola-attached). Second arg is optional → all 30+ existing geometry-package test call sites stay valid.
-- `packages/geometry/src/index.ts` — new `BuildViewerSceneModelOptions` type export.
+- `packages/geometry/src/viewer.ts` — `buildLayers(assembly, hostExcludedProjectHouseModels)` and `buildViewerSceneModel(assembly, options?)` now accept an optional `hostExcludedProjectHouseModels: ReadonlyArray<HouseModel3D>`. Iterated inside `buildLayers`; each renders with `attachmentTarget: null` because host-excluded project house forms are not pergola-attached. Second arg is optional → all 30+ existing geometry-package test call sites stay valid.
+- `packages/geometry/src/viewer.ts` — scene builder options live with the viewer implementation; the package barrel exports the builder functions.
 - `apps/portal/lib/drawings/state/workbenchSolvedModel.ts` —
   - Deleted `composeAdditionalHouseFormsIntoScene` (O(M×F) per-module workaround, ~26 lines).
   - New `buildProjectNonHostHouseModels(projectModel)` runs ONCE at the top of `buildWorkbenchSolvedModel` and returns the list of non-host `HouseModel3D`s.
-  - `buildSolvedModule` accepts `projectHouseModels`; `buildViewerSceneFromSolvedGeometry` threads it to `buildViewerSceneModel` via the geometry package's `additionalHouseModels` option.
+  - `buildSolvedModule` accepts `projectHouseModels`; `buildViewerSceneFromSolvedGeometry` threads it to `buildViewerSceneModel` via the geometry package's `hostExcludedProjectHouseModels` option.
   - Dropped unused imports (`buildHouseModelSceneObjects`, `ViewerSceneObject`); added `HouseModel3D` import.
 
-**What changes:** Multi-form scenes (sleepouts, granny flats alongside a pergola) used to rebuild additional-form geometry **once per pergola module** (O(M×F) work). Now built once per project, shared across all modules. Same visual output, identical fixture-test results — the viewer's `house` layer still includes the additional forms, just composed inside the scene builder instead of patched in afterwards.
+**What changes:** Multi-form scenes (sleepouts, granny flats alongside a pergola) used to rebuild host-excluded house-form geometry **once per pergola module** (O(M×F) work). Now built once per project, shared across all modules. Same visual output, identical fixture-test results — the viewer's `house` layer still includes those project house forms, just composed inside the scene builder instead of patched in afterwards.
 
 **What temporarily breaks:** Nothing observed. Scope investigation found no tests asserting per-module duplicate house geometry; all 468 workbench tests + 352 geometry tests pass unchanged.
 
@@ -361,16 +361,16 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 
 **Acceptance:** `grep -r "houseFirst\|LEGACY_PRIMARY" apps/portal packages` returns empty. All tests pass. Marketing-site enquiry email still works.
 
-### PR-I — Fix the `ModelSpaceViewport` failures (now unblocked)
+### PR-I — Historical `ModelSpaceViewport` cleanup (superseded)
 
-**Closes:** N12, the 8 stale-fixture failures from the 2026-05-21 decision log entry.
+**Closes:** N12, via the later PlanViewport / solved-artifact breakaway rather than a direct fixture migration.
 **Phase 2 dependencies:** None.
-**Touches:** `ModelSpaceViewport.tsx` (now imports object-first types only after PR-H), the `as unknown as Parameters<typeof buildPlanViewModel>[0]` casts in `ModelSpaceViewport.test.tsx`.
-**What changes:** legacy imports gone, `objectWorkbenchOverlayInput` migrated.
+**Touches:** historical only. `ModelSpaceViewport.tsx`, the old rail import guard, and the portal `objectWorkbenchOverlayInput` fixture path are retired.
+**What changed:** live Plan editing moved to `PlanViewport`; the executable runtime boundary is `apps/portal/lib/workbenchBreakawayImportGuards.test.ts`. Do not restore the deleted viewport or old import guard to satisfy this historical PR description.
 
-**Risk:** small. This was deferred because the underlying types were in flux.
+**Risk:** none for new work. Treat this as archive context, not a next-task item.
 
-**Acceptance:** 8 viewport tests green. 0 import-guard failures. Test signal fully clean for the first time since PR8b.
+**Acceptance:** targeted searches show `ModelSpaceViewport` and `objectWorkbenchOverlayInput` are absent from live code; remaining references are historical docs/decision-log context.
 
 ---
 

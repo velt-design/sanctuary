@@ -6,7 +6,7 @@ import type {
   Polygon3,
 } from './contracts';
 import { offsetFootprintPolygon } from './house/footprintMath';
-import { deriveHouseGableTerminalEndsFromFootprint } from './houseModel';
+import { deriveHouseGableTerminalEndsFromFootprint } from './house/roofJoined';
 
 const EPSILON_MM = 1e-6;
 

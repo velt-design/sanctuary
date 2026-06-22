@@ -52,7 +52,7 @@ export function isRenderableLine(line: { start: Point3; end: Point3 }): boolean 
   return Math.sqrt(dx * dx + dy * dy + dz * dz) > 0.001;
 }
 
-export function polygonArea3D(points: Point3[]): number {
+function polygonArea3D(points: Point3[]): number {
   if (points.length < 3) return 0;
   const origin = points[0]!;
   let area = 0;
@@ -77,7 +77,7 @@ export function polygonArea3D(points: Point3[]): number {
   return area;
 }
 
-export function uniquePointCount(points: Point3[]): number {
+function uniquePointCount(points: Point3[]): number {
   return new Set(
     points.map((point) => `${point.x.toFixed(6)},${point.y.toFixed(6)},${point.z.toFixed(6)}`),
   ).size;

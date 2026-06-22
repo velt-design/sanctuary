@@ -21,6 +21,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| 2026-06-23 | Design Workbench                 | Active   | The live workbench sheet view is plan-only; retired `activeView` state is stripped as opaque legacy input, and future Section output must be a solved-artifact surface rather than a revived workbench view tab.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 2026-06-23 | Design Workbench                 | Active   | The live workbench viewport modes are `geometry3d`, `plan`, and `sheet`; retired `model` state is stripped as opaque legacy input and must not be reintroduced as a render branch or navigation tab.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 2026-05-01 | Supabase Schema                  | Promoted | Schema-affecting work needs a table/RPC ownership map before future behavior changes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 2026-05-01 | Agent Routing                    | Promoted | Non-trivial changes need a path ownership and doc-trigger map before editing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-05-01 | Automation/Email/Audit           | Promoted | Automation, email outbox, audit, tasks, and follow-ups need a canonical side-effect doc.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -65,7 +67,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-06-18 | Workbench House Forms            | Active   | PR-COMP1: house composition geometry primitives ship in `@sp/geometry`. `HouseComposition` = N axis-aligned rectangles + explicit joins + per-rectangle roof intent. `composeRoofFromComposition` routes fused-rectangle compositions (with matching intents) to a single `buildRectangularRoof` call; falls back to per-rectangle stitched solve with `approximationReasons: 'composition_stitched_render'` for non-fused / mixed-intent. True unified-topology (Hip-and-Valley L) deferred to COMP2.                                                                                                                                                                                                                |
 | 2026-06-18 | Workbench House Forms            | Active   | PR-COMP-PHASE2: optional `composition?: HouseComposition` field added to `HouseFormModel` + `ObjectFirstHouseFormDraft`. Workbench-draft normalisation preserves valid compositions; silently drops invalid / empty (defensive). New `deriveHouseFormFootprintPolygon()` helper lets downstream consumers ignore the composition-vs-polygon distinction. No geometry routing yet — Phase 3 wires it alongside the rectangle-tool UX. Zero designer-facing change today.                                                                                                                                                                                                                                              |
 | 2026-06-18 | Workbench House Forms            | Active   | PR-COMP-PHASE3.2: `buildHouseFormGeometryInputForForm` now routes the roof through `composeRoofFromComposition` when the house form has a `composition`. Single-rectangle compositions (the only kind Phase 3 ships) produce byte-equivalent roof planes to the legacy path because both bottom out in `buildRectangularRoof` on the same dimensions; the swap stamps `roofTopologySolver: "composition_*"` so observability shows which forms travel the composition route. Walls/eaves/openings unchanged in Phase 3 — Phase 4 swaps those for multi-rectangle composites.                                                                                                                                        |
-| 2026-06-18 | Workbench House Forms            | Active   | PR-COMP-PHASE3.3: `Draw outline` retired as a house-form authoring affordance. The rail's footprint-mode picker now offers only `Preset`; the `Continue outline` button and `startDrawOutlineEditor` action are removed. Legacy forms persisted with `mode: 'custom_polygon'` still render their stored polygon read-only via the legacy pipeline and show a read-only badge in the rail explaining why preset-specific controls are hidden. Deck outline drawing (`startDeckOutlineEditor`) is untouched — the underlying `drawOutline*` viewport machinery still serves the deck path.                                                                                                                                            |
+| 2026-06-18 | Workbench House Forms            | Active   | PR-COMP-PHASE3.3: `Draw outline` retired as a house-form authoring affordance. The rail's footprint-mode picker now offers only `Preset`; the `Continue outline` button and `startDrawOutlineEditor` action are removed. Legacy forms persisted with `mode: 'custom_polygon'` still render their stored polygon read-only via the legacy pipeline and show a read-only badge in the rail explaining why preset-specific controls are hidden. Follow-up cleanup also retired the inspector-only deck redraw trigger after Canvas Plan stopped consuming `drawOutline*` requests; preset deck creation and stored custom deck outlines remain supported.                                                                                                                                            |
 | 2026-06-18 | Workbench Snap                   | Active   | PR-COMP-PHASE3.4: house-to-house snap. `buildProjectHouseSnapTargets` accepts an `excludeHouseFormId` and now emits snap targets when `activeFamily === 'house_forms'` — walls + roof eaves of every form OTHER than the one being dragged. Self-snap is prevented by the exclusion filter; PlanViewport supplies the dragged form's id when active. No new resolver / preview chrome needed — the existing `MoveTool` + `resolveMoveSnap` + `PlanMoveSnapIndicatorLayer` infra picks up the new targets transparently.                                                                                                                                                                                                                |
 | 2026-06-18 | Workbench House Forms            | Active   | PR-COMP-PHASE4a: multi-rectangle composite geometry pipeline + pure `detachHouseFormAtSeam`. Multi-rectangle composites now render walls/eaves/openings from the composition's union polygon (substituted into the legacy builder via the new `deriveCompositionUnionPolygon3` helper) and the roof from `composeRoofFromComposition` (the Phase 3.2 swap unchanged). Single-rectangle composites preserve Phase 3.2's byte-equivalence — the helper returns null on `primitives.length <= 1` so the legacy preset path runs. `detachHouseFormAtSeam(composition, joinIndex)` ships as a pure geometry primitive that 4b's seam-icon UX will call; no UX in 4a (orphaned-UI avoidance — nothing currently authors multi-rectangle composites). |
 | 2026-06-18 | Workbench House Forms            | Active   | PR-COMP-PHASE4b: Join / Detach seam-icon UX. Three sub-commits: (4b.1) `joinTwoHouseForms` + `findCompositionJoinSeamMidpoint` + `detectSharedSeamBetweenForms` pure geometry primitives in `@sp/geometry`; (4b.2) workbench actions `joinHouseForms` + `detachHouseFormAtSeam` wired in `useObjectWorkbenchActions`; (4b.3) PlanSeamIconLayer renders chip icons at world-space seam midpoints (Detach on every internal composite seam, Join on every pair of edge-adjacent forms within snap tolerance). Click dispatches the matching action via the existing draft-transaction pipeline. Single-axis-rotation forms only (cross-rotation pairs skipped); chip click `stopPropagation` prevents underlying form-select. |
@@ -118,8 +120,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-04 | Plan Rendering                   | Active   | Geometry-ready Model Space Top renders through `Geometry3DViewport lockedViewPreset="top"` on the same R3F scene as Perspective; the SVG `ProjectionTopViewport` stack is retired.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 2026-05-04 | Design Workbench Architecture    | Active   | Workbench has two render surfaces: a read-only 3D viewport (`Geometry3DViewport`) and a 2D `PlanViewport` (the editor). Plan replaces "Model Space" in the mode switch (`Sheet \| Plan \| 3D`); all editing, tools, and gizmos live in PlanViewport.                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 2026-05-04 | Design Workbench Architecture    | Active   | Nine foundational contracts govern the read/edit split (single-source intent, three-phase drag, plan-projection math, typed selection, isolated tool state machines, snap-as-a-service, gizmos+overlays Plan-only, mm everywhere, 3D is read-only).                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| 2026-05-21 | Design Workbench Testing         | Active   | 8 ModelSpaceViewport tests are stale-fixture failures, not regressions — needs `objectWorkbenchOverlayInput` migration before they go green again.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 2026-05-21 | Design Workbench Testing         | Active   | 2 import-guard failures are real architectural drift — ModelSpaceViewport still imports houseFirstWorkbenchModel + does not route through Geometry3DViewport as the guards expect.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2026-05-21 | Design Workbench Testing         | Superseded | Historical ModelSpaceViewport fixture rot; the retired viewport/test no longer exists, and Plan render coverage now lives in `PlanViewport` plus the plan render graph.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 2026-05-21 | Design Workbench Testing         | Superseded | Historical ModelSpaceViewport import-guard drift; the retired rail guard no longer exists, and the live boundary is `apps/portal/lib/workbenchBreakawayImportGuards.test.ts`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-05-01 | Quotes/Invoices/Job Packs        | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 2026-05-01 | Docs                             | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-05-01 | Docs                             | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -296,7 +298,7 @@ Current guardrail: house-form status, rail rows, inspector state, selection over
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`.
+Related docs/tests: `apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`.
 
 ### 2026-05-31 - Plan Rendering - Project Visual Stack Ownership
 
@@ -312,7 +314,7 @@ Current guardrail: Plan SVG paint order is owned by the Plan view model. The ren
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
+Related docs/tests: `apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
 
 ### 2026-05-31 - Plan Rendering - Invisible Hit Targets
 
@@ -328,7 +330,7 @@ Current guardrail: Plan hit targets are event-only. They may carry pointer handl
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanHitTargetLayer.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanLocalHoverLayer.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
+Related docs/tests: `apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas2D.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/canvas/usePlanRenderModel.test.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
 
 ### 2026-05-31 - Plan Rendering - Reference Fallback Provenance
 
@@ -344,7 +346,7 @@ Current guardrail: Plan render diagnostics report per-house reference ids, roof/
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/views/plan/planRenderDiagnostics.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
+Related docs/tests: `apps/portal/lib/drawings/views/plan/planRenderDiagnostics.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
 
 ### 2026-05-30 - Plan Rendering - House Form Plan Body Identity
 
@@ -360,7 +362,7 @@ Current guardrail: resolve house-form plan bodies through the canonical `house_r
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`.
+Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`.
 
 ### 2026-05-30 - Plan Rendering - Project Projection Source
 
@@ -376,7 +378,7 @@ Current guardrail: object-workbench Plan surfaces must render from `WorkbenchSol
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `packages/geometry/src/topProjection.test.ts`.
+Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, `packages/geometry/src/topProjection.test.ts`.
 
 ### 2026-05-30 - Workbench Rendering - Stable Project View Basis
 
@@ -392,7 +394,7 @@ Current guardrail: Plan and 3D should use a stable project basis derived from th
 
 Promoted to: None
 
-Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `docs/design-workbench-architecture.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/workbench/DrawingWorkbench.test.tsx`, `apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx`.
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `docs/design-workbench-architecture.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/selection/selectionRouter.test.ts`, `apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts`.
 
 ### 2026-05-29 - 3D Rendering - Project-Wide Pergola Scene Bodies
 
@@ -408,7 +410,7 @@ Current guardrail: 3D Review must consume a project-wide solved preview for vali
 
 Promoted to: None
 
-Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/selection/selectionRouter.test.ts`, `apps/portal/components/drawings/workbench/DrawingWorkbench.test.tsx`.
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/selection/selectionRouter.test.ts`, `apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts`.
 
 ### 2026-05-30 - Workbench Geometry - Project Solve Boundary
 
@@ -424,7 +426,7 @@ Current guardrail: new workbench geometry solve work should extend the project s
 
 Promoted to: None
 
-Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `docs/design-workbench-architecture.md`, `apps/portal/lib/drawings/state/workbenchProjectSolveSources.test.ts`, `packages/geometry/src/solveProject.test.ts`.
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `docs/design-workbench-architecture.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `packages/geometry/src/solveProject.test.ts`.
 
 ### 2026-05-29 - Plan Rendering - Project-Wide Pergola Bodies
 
@@ -440,7 +442,7 @@ Current guardrail: Plan rendering must aggregate valid pergola plan bodies by `p
 
 Promoted to: None
 
-Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`.
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`.
 
 ### 2026-05-03 - Design Workbench Geometry - Single Solved Geometry Spine
 
@@ -472,7 +474,7 @@ Current guardrail: split the workbench by contracts first. Plan coordinate trans
 
 Promoted to: `docs/design-workbench-architecture.md`.
 
-Related docs/tests: `apps/portal/lib/drawings/views/plan/planCoordinateAdapter.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: `apps/portal/lib/drawings/views/plan/planCoordinateAdapter.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`.
 
 ### 2026-05-01 - Deck Interaction - Projection To Object Commit Frame
 
@@ -488,7 +490,7 @@ Current guardrail: projection-backed deck releases must map the rendered preview
 
 Promoted to: `docs/design-workbench-architecture.md`.
 
-Related docs/tests: `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: historical retired deck interaction adapter coverage and retired ModelSpace viewport coverage; current Plan-path coverage lives in [apps/portal/lib/drawings/commits/commitDeckTransform.roundtrip.test.ts](../apps/portal/lib/drawings/commits/commitDeckTransform.roundtrip.test.ts), [apps/portal/lib/drawings/commits/commitDeckTransform.ts](../apps/portal/lib/drawings/commits/commitDeckTransform.ts), and [apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts).
 
 ### 2026-05-03 - Deck Interaction - No Commit-Start Bounds For Projection Releases
 
@@ -504,7 +506,7 @@ Current guardrail: projection-backed releases must map through matched render/ob
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/interactions/deckCommitAdapter.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: historical retired deck commit adapter coverage and retired ModelSpace viewport coverage; current Plan commit coverage lives in [apps/portal/lib/drawings/commits/commitDeckTransform.roundtrip.test.ts](../apps/portal/lib/drawings/commits/commitDeckTransform.roundtrip.test.ts), [apps/portal/lib/drawings/commits/commitDeckTransform.ts](../apps/portal/lib/drawings/commits/commitDeckTransform.ts), and [apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts).
 
 ### 2026-05-04 - Plan Rendering - Unified Scene Graph Top Viewport
 
@@ -520,7 +522,7 @@ Current guardrail: geometry-ready Model Space Plan renders through `Geometry3DVi
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/components/drawings/viewports/Geometry3DViewport.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx`, `apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts`.
+Related docs/tests: `apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx`, retired Model Space viewport history, `apps/portal/lib/workbenchBreakawayImportGuards.test.ts`.
 
 ### 2026-05-04 - Deck Interaction - Projection Drag Anchor And Commit Offset Parity
 
@@ -536,7 +538,7 @@ Current guardrail: projection-backed drag sessions must use one normalized start
 
 Promoted to: None
 
-Related docs/tests: `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `apps/portal/lib/drawings/interactions/deckCommitAdapter.test.ts`, `apps/portal/lib/drawings/interactions/deckReleaseSettlementController.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: historical retired deck interaction/commit adapter coverage, retired ModelSpace viewport coverage, and retired deck release settlement coverage; current Plan tool-chain coverage lives in [apps/portal/components/drawings/viewports/PlanViewport/tools/MoveTool.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/MoveTool.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts), and [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts).
 
 ### 2026-05-01 - Deck Interaction - Projection-Native Drag Session
 
@@ -552,7 +554,7 @@ Current guardrail: geometry-ready deck drag sessions use committed top-projectio
 
 Promoted to: `docs/design-workbench-architecture.md`.
 
-Related docs/tests: `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`, `apps/portal/app/staff/calculator/ModuleViewsCard.tsx`.
+Related docs/tests: retired deck interaction adapter coverage, retired ModelSpace viewport coverage, and `apps/portal/app/staff/calculator/ModuleViewsCard.tsx`.
 
 ### 2026-05-01 - Deck Interaction - Floating Release Legality
 
@@ -568,7 +570,7 @@ Current guardrail: a floating release persists the released projected preview as
 
 Promoted to: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
-Related docs/tests: `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: historical retired deck interaction adapter coverage and retired ModelSpace viewport coverage; current Plan viewport coverage lives in [apps/portal/lib/drawings/commits/commitDeckTransform.roundtrip.test.ts](../apps/portal/lib/drawings/commits/commitDeckTransform.roundtrip.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/EdgeDragTool.test.ts), and [apps/portal/components/drawings/viewports/PlanViewport/tools/MoveTool.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/MoveTool.test.ts).
 
 ### 2026-05-01 - Plan Detail - Scene-Backed Wall Edges
 
@@ -584,7 +586,7 @@ Current guardrail: solved house wall segments emit `house_line:wall_segment` sce
 
 Promoted to: `docs/design-workbench-architecture.md`.
 
-Related docs/tests: `packages/geometry/src/viewer.test.ts`, `packages/geometry/src/topProjection.test.ts`, `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts`.
+Related docs/tests: `packages/geometry/src/viewer.test.ts`, `packages/geometry/src/topProjection.test.ts`, `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`.
 
 ### 2026-05-01 - Plan Rendering - Model Space Hard Projection Cut
 
@@ -600,7 +602,7 @@ Current guardrail: geometry-ready Model Space must take the `top_projection_only
 
 Promoted to: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
-Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
+Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
 ### 2026-05-01 - Plan Rendering - Overlay Source Ownership
 
@@ -616,7 +618,7 @@ Current guardrail: projection-backed selection outlines and hit targets must bin
 
 Promoted to: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
-Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
+Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
 ### 2026-05-01 - Plan Rendering - Layer Ownership And Drag Round Trip
 
@@ -632,7 +634,7 @@ Current guardrail: geometry-ready normal visuals must flow through the plan rend
 
 Promoted to: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
-Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`, `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
+Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, retired ModelSpace/deck interaction adapter coverage, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
 ### 2026-05-01 - Deck Interaction - Projection-Native Snap And Commit
 
@@ -648,7 +650,7 @@ Current guardrail: geometry-ready deck drag uses committed top-projection frames
 
 Promoted to: `docs/design-workbench-architecture.md`.
 
-Related docs/tests: `apps/portal/lib/drawings/views/plan/objectWorkbenchPlanOverlay.ts`, `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `docs/design-workbench-architecture.md`.
+Related docs/tests: `apps/portal/lib/drawings/views/plan/objectWorkbenchPlanOverlay.ts`, retired deck interaction adapter coverage, `docs/design-workbench-architecture.md`.
 
 ### 2026-05-01 - Agent Routing - Change Routing Map
 
@@ -808,7 +810,7 @@ Current guardrail: geometry-ready plan rendering must use top projection as the 
 
 Promoted to: `docs/costing-and-geometry.md`, `docs/design-workbench-architecture.md`, `docs/decision-log.md`.
 
-Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/workbench/DrawingWorkbench.test.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`.
 
 ### 2026-05-01 - Plan Rendering - Projection-Native Interaction Axes
 
@@ -824,7 +826,7 @@ Current guardrail: geometry-ready normal plans render top-visible bodies only; c
 
 Promoted to: `docs/costing-and-geometry.md`, `docs/design-workbench-architecture.md`, `docs/decision-log.md`.
 
-Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`.
 
 ### 2026-05-01 - Docs - Agent Playbook
 
@@ -889,15 +891,15 @@ Current guardrail: the workbench has two render surfaces, both derived from the 
 - **`Geometry3DViewport`** (read-only): the R3F scene graph. Camera presets, selection highlights for visual reference. **No drag handlers, no gizmos, no commit paths.** Selecting an object in 3D writes into shared selection state -- that is the only output 3D produces.
 - **`PlanViewport`** (the editor): a 2D SVG/Canvas surface that consumes the same artifact (typically `topProjection` for committed polygon plan, plus the scene graph for snap targets and dimensions). **All editing lives here:** tools, gizmos, drag, snap, dimension overlays, hit targets.
 
-The viewport mode switch becomes `Sheet | Plan | 3D`. The `'model'` mode and `ModelSpaceViewport.tsx` remain in the type union and codebase only until their non-3D responsibilities migrate into `PlanViewport`. Once `PlanViewport` is functional, the `'model'` mode is removed.
+The viewport mode switch becomes `Sheet | Plan | 3D`. The old `'model'` mode and Model Space viewport survived only until their non-3D responsibilities migrated into `PlanViewport`; they are now retired and must not be recreated.
 
 `DesignViewport.tsx` is the host that mounts the right surface for the active mode. It owns the typed selection seam (`selectionRouter.ts`) shared between 3D and Plan, but does not own editing chrome itself.
 
-New workbench interaction code lives under `apps/portal/components/drawings/viewports/PlanViewport/{canvas,tools,interactions,gizmos,overlays}/` and `apps/portal/lib/drawings/commands/` -- never inside `ModelSpaceViewport`, never inside `Geometry3DViewport`, never inside `DesignViewport`.
+New workbench interaction code lives under `apps/portal/components/drawings/viewports/PlanViewport/{canvas,tools,interactions,gizmos,overlays}/` and `apps/portal/lib/drawings/commands/` -- never inside a revived Model Space viewport, never inside `Geometry3DViewport`, never inside `DesignViewport`.
 
 Promoted to: None
 
-Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/DesignViewport.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/workbench/ViewportModeSwitch.tsx`.
+Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/DesignViewport.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/workbench/WorkbenchChrome.tsx`.
 
 ### 2026-05-04 - Design Workbench Architecture - Nine Contracts For The Read Edit Split
 
@@ -923,7 +925,7 @@ Current guardrail: every interactive feature added to PlanViewport (and the read
 
 Promoted to: None
 
-Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/viewports/Geometry3DViewport.tsx`, `apps/portal/components/drawings/viewports/selection/selectionRouter.ts`, `apps/portal/lib/drawings/commands/`.
+Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx`, `apps/portal/components/drawings/viewports/selection/selectionRouter.ts`, `apps/portal/lib/drawings/commands/`.
 
 ### 2026-05-06 - Decomposition / Refactor Hygiene - Copy Verbatim When Extracting
 
@@ -994,7 +996,7 @@ Current guardrail: the migration is multi-session work, organised around a UNIFI
 
 - `type RidgeEndCap = 'hipped' | 'open_gable'` -- binary; no speculative third state.
 - Remove `'gable'` from `HouseRoofForm` type union immediately in session C (not deferred). Robust normalize-migration MUST run before any type-narrowing read; load-time migration coverage is non-negotiable.
-- Plan-view click target = first-class top-projection shape (`kind: 'house_terminal_end'`) with stable id; reuses existing PlanHitTargetLayer + hover halo + selection halo infrastructure.
+- Plan-view click target = first-class top-projection shape (`kind: 'house_terminal_end'`) with stable id; reuses the current PlanCanvas2D hit-test path plus hover halo + selection halo infrastructure.
 
 Sequence:
 
@@ -1048,7 +1050,7 @@ Why it mattered: each issue masked the others. Bumping `DEFAULT_WALL_SOLID_THICK
 Current guardrail: four rules apply when touching 3D wall rendering:
 
 1. **Walls consume `renderMesh` first.** The 3D viewport's wall-rendering path in [Geometry3DViewport.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx) (around the wall-object useMemo) must call `buildRenderMeshGeometry(object.renderMesh) ?? buildPolygonSlabGeometry(...)`, in that order. Never reach for `boundary` before `renderMesh`.
-2. **Miter footprints are inward-only.** Use `buildMiteredOffsetStripFootprints(footprint, 0, -DEFAULT_WALL_SOLID_THICKNESS_MM)` in [envelopeSolids.ts](../packages/geometry/src/house/envelopeSolids.ts), not the centered `buildMiteredStripFootprints(footprint, half)` variant. The footprint edge is the outer face of the wall; the interior extrudes inward toward the house centroid. Adjacent walls meet cleanly at corners only under this convention.
+2. **Miter footprints are inward-only.** Use `buildMiteredOffsetStripFootprints(footprint, 0, -DEFAULT_WALL_SOLID_THICKNESS_MM)` in [envelopeSolids.ts](../packages/geometry/src/house/envelopeSolids.ts), not a centered strip variant. The footprint edge is the outer face of the wall; the interior extrudes inward toward the house centroid. Adjacent walls meet cleanly at corners only under this convention.
 3. **Non-flat-top walls extrude polygonally.** When `wallBoundaryHasFlatTop(boundary)` is false (gable walls -- triangular or pentagonal top), the wall builder must call `buildPolygonalWallRenderMesh(boundary, planeNormal, thicknessMm)` in [roofSolids.ts](../packages/geometry/src/house/roofSolids.ts). This extrudes the closed polygonal boundary perpendicular to its plane via `+/- half-thickness`, fan-triangulates both faces, and bridges the sides with quads. Flat-top walls keep using `buildVerticalPrismRenderMesh` on the miter footprint.
 4. **Open-gable boundary reshape is gated by `wallBoundaryHasFlatTop`.** In [houseModel.ts](../packages/geometry/src/houseModel.ts), when an `open_gable_frame` wall is migrated from hipped topology, its boundary arrives flat-top (4 vertices) and must be reshaped to insert the apex at `ridgeZ`. Native gable walls already have 5-vertex apex boundaries and MUST NOT be reshaped -- gating on `wallBoundaryHasFlatTop(segment.boundary)` is what distinguishes the two cases. Inserting an apex into an already-apex boundary degrades the wall.
 
@@ -1106,7 +1108,7 @@ Status: Active
 
 Decision or mistake: on Sheet (and projection-only Plan), houses with a `house_surface_solid + roof` committed body ALSO rendered a `house_reference + footprint` committed body. Both are top_visible polygons in the same active module's top-projection. Visually they produced overlapping strokes -- the roof outline (with eave overhangs) plus a concentric inner footprint outline (the wall outer face). On hipped roofs this looked like doubled house edges; on roofs with zero overhang the polygons could coincide entirely and stroke twice.
 
-A first fix (commit `77a3a133`) suppressed `house_reference + footprint` at the render-graph level inside `buildProjectionPlanRenderGraph` whenever a roof body existed. That removed the visible double-stroke but ALSO removed the house's clickable polygon: the Plan canvas's hit-target layer derives from the same `committedBodies` array via `filterPlanHitTargets(committedBodies)`. After the fix, users could no longer click the house polygon on the Plan canvas to select the house -- they had to use the rail. The graph-level filter conflated "visible stroke" with "hit target."
+A first fix (commit `77a3a133`) suppressed `house_reference + footprint` at the render-graph level inside `buildProjectionPlanRenderGraph` whenever a roof body existed. That removed the visible double-stroke but ALSO removed the house's clickable polygon: at the time, the Plan canvas's hit-target layer was derived from the same `committedBodies` array. After the fix, users could no longer click the house polygon on the Plan canvas to select the house -- they had to use the rail. The graph-level filter conflated "visible stroke" with "hit target."
 
 Why it mattered: the same array (`committedBodies`) serves two distinct concerns -- visible rendering AND hit-testing -- and they have different requirements. Removing the canonical reference footprint from the graph removes BOTH, even when only one was the goal. The hit-target chain has no alternative anchor for house selection on the canvas. Future agents who push more responsibilities through `committedBodies` (selection, drag, dimensions) will hit the same trap if they suppress at the graph level.
 
@@ -1114,7 +1116,7 @@ Current guardrail: superseded by the explicit Plan hit-target layer and project 
 
 - In [planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), `buildProjectionPlanRenderGraph` puts canonical `house_reference + footprint` shapes in `hitTargets`, not normal visible bodies. `house_reference` promotes to a visible committed fallback only when the same house form has no roof body.
 - In [planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), visible committed bodies are filtered and semantically sorted before they reach React. Project-level house roof bodies come from the package eave-perimeter projection, and project pergola bodies paint below house roof bodies.
-- In `PlanCommittedBodyLayer.tsx`, the layer is now a presenter only; it renders the already-filtered/sorted items from the render model.
+- In the Plan canvas committed-body render path, React/canvas rendering is presenter-only; it renders the already-filtered/sorted items from the render model.
 - In [ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx)'s `TopProjectionLayerRenderer` (Sheet view), the same render-time suppression applies. Sheet has no hit-target layer for the house so a render-only filter is sufficient.
 - The non-active project-context overlay path (`buildProjectContextOverlayShapes` in workbenchSolvedModel.ts) is unaffected -- it filters `house_reference` out of the context overlay separately.
 
@@ -1122,7 +1124,7 @@ Keep visible and hit-target concerns separate: interaction references belong in 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx`, [apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts), [apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), [apps/portal/lib/drawings/views/plan/planShapeOwnership.ts](../apps/portal/lib/drawings/views/plan/planShapeOwnership.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas2D.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas2D.tsx), [apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).
 
 ### 2026-05-13 - Pergola Snap Targets - Every Attachable Perimeter Edge
 
@@ -1176,7 +1178,7 @@ Area: House Roof Topology
 
 Status: Active
 
-Decision or mistake: clicking the synthetic gable triangle on the Plan canvas to re-close an opened end did nothing -- even after the EdgeDragTool early-fallthrough (`cae8cb13`) and all the diagnostic instrumentation passed every hop. The entire chain (PlanHitTargetLayer → EdgeDragTool fallthrough → SelectTool → callback) was firing correctly. The callback received `endId: 'house-gable-end-x-1'` and `currentlyOpen: true`, but `currentRoof.openGableEndIds` came back as `[]` -- empty. So the toggle's logic (`currentlyOpen ? filter(id !== endId) : [...currentOpenIds, endId]`) produced `[].filter(...) === []`, committed an empty list, and the user saw no change. The root cause was state inconsistency: the workbench had `roofIntent.form === 'gable'` with empty `openGableEndIds`, but the geometry normalize layer at `packages/geometry/src/normalize.ts:691-720` carries a milestone-13 compat migration that treats `roofForm: 'gable'` as "hipped + every terminal end open" regardless of the explicit `openGableEndIds`. So the GEOMETRY topology renders every end open while the WORKBENCH state has `openGableEndIds: []`. Any toggle from this implicit state is a no-op because there's nothing in the explicit set to remove, and the migration re-opens every end on the next solve.
+Decision or mistake: clicking the synthetic gable triangle on the Plan canvas to re-close an opened end did nothing -- even after the EdgeDragTool early-fallthrough (`cae8cb13`) and all the diagnostic instrumentation passed every hop. The entire chain (Plan hit-test layer → EdgeDragTool fallthrough → SelectTool → callback) was firing correctly. The callback received `endId: 'house-gable-end-x-1'` and `currentlyOpen: true`, but `currentRoof.openGableEndIds` came back as `[]` -- empty. So the toggle's logic (`currentlyOpen ? filter(id !== endId) : [...currentOpenIds, endId]`) produced `[].filter(...) === []`, committed an empty list, and the user saw no change. The root cause was state inconsistency: the workbench had `roofIntent.form === 'gable'` with empty `openGableEndIds`, but the geometry normalize layer at `packages/geometry/src/normalize.ts:691-720` carries a milestone-13 compat migration that treats `roofForm: 'gable'` as "hipped + every terminal end open" regardless of the explicit `openGableEndIds`. So the GEOMETRY topology renders every end open while the WORKBENCH state has `openGableEndIds: []`. Any toggle from this implicit state is a no-op because there's nothing in the explicit set to remove, and the migration re-opens every end on the next solve.
 
 Why it mattered: this is the second-order failure mode after the EdgeDragTool fix. Two rounds of theory-based fixes ran before instrumentation pinpointed it. The lesson, repeated from `2026-05-08 Debugging Hygiene`: a wired-up pipeline that silently fails almost always means state is split across two consumers that LOOK like they should agree but don't. The migration was correctly documented in `normalize.ts` but never ported back into the workbench draft -- so the rail's "Open"/"Close" buttons on a gable form also look like they don't work (clicking them commits `[]` and the migration re-opens everything anyway). The Plan toggle inherited the same bug.
 
@@ -1185,7 +1187,7 @@ Current guardrail: any UI toggle that operates on a single terminal end's open s
 Future agents:
 
 - ~~The rail's open-end toggle at [HouseFormRoofSections.tsx:188-195](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx) currently still uses inline logic that has the same bug for gable-form roofs. Migrating it to use the shared helper is the obvious next step; do it the next time the rail is touched.~~ **DONE 2026-05-14:** the rail's toggle now routes through `resolveHouseTerminalEndToggleRoofDraft`. Both the Plan canvas and the rail share the helper; the gable-migration bug is fixed on both surfaces.
-- ~~The deeper fix is to migrate `form: 'gable'` -> `form: 'hipped' + openGableEndIds: <all terminals>` at the workbench draft normalization boundary so every consumer reads coherent state.~~ **DONE 2026-05-14 (Slices 2 + 2B):** the migration runs at TWO boundaries: (1) `normalizeHouseFormRoofIntent` (workbench draft normalize) migrates when an explicit footprint polygon is present; (2) `migrateGableToHippedForGeometryInput` in `apps/portal/lib/drawings/geometry/buildRawGeometryModuleInput.ts` is the catch-all -- it runs against the always-resolved polygon (`houseForm.footprint.polygon || resolveFootprintPolygon(module)`) so every geometry input is `'hipped' + openGableEndIds: <list>`, never `'gable'`. The `openGableEndIds` auto-derivation in `packages/geometry/src/normalize.ts:691-720` is RETIRED (replaced with a one-line pass-through of `resolveHouseOpenGableEndIds`). The form-name narrowing at `normalize.ts:506` (`rawRoofForm === 'gable' ? 'hipped' : rawRoofForm`) STAYS as a defensive safety net for direct geometry callers that bypass `buildRawGeometryModuleInput`. Inspector `terminalEnds[].isOpen` keeps the `intent.form === 'gable' ? true : ...` fallback for the rare workbench-state-only-sees-gable case. **Milestone 13 session C** (dropping `'gable'` from the `HouseRoofForm` type union, retiring `buildRectangularGableRoof` and the gable-specific builder in `roofPrimary.ts`) is now unblocked.
+- ~~The deeper fix is to migrate `form: 'gable'` -> `form: 'hipped' + openGableEndIds: <all terminals>` at the workbench draft normalization boundary so every consumer reads coherent state.~~ **DONE 2026-05-14 (Slices 2 + 2B):** the migration runs at the workbench draft and geometry-input boundaries so every geometry input is `'hipped' + openGableEndIds: <list>`, never `'gable'`. The `openGableEndIds` auto-derivation in `packages/geometry/src/normalize.ts:691-720` is RETIRED (replaced with a one-line pass-through of `resolveHouseOpenGableEndIds`). The form-name narrowing at `normalize.ts:506` (`rawRoofForm === 'gable' ? 'hipped' : rawRoofForm`) STAYS as a defensive safety net for direct geometry callers that bypass the workbench geometry-input boundary. Inspector `terminalEnds[].isOpen` keeps the `intent.form === 'gable' ? true : ...` fallback for the rare workbench-state-only-sees-gable case. **Milestone 13 session C** (dropping `'gable'` from the `HouseRoofForm` type union, retiring `buildRectangularGableRoof` and the gable-specific builder in `roofPrimary.ts`) is now unblocked.
 - When adding new consumers that read `roofIntent.openGableEndIds` for behavior (snap targets, rail badges, etc.), if the user expects the result to match the rendered topology, those consumers must either run the migration themselves or assume the helper has already ported the state.
 
 Promoted to: None
@@ -1200,7 +1202,7 @@ Status: Active
 
 Decision or mistake: the snap engine was single-line for years -- each MoveTool/EdgeDragTool drag resolved at most one `EdgeSnapResult` and applied one perpendicular correction along the snapped edge's normal. Users couldn't snap a pergola or deck to a HOUSE CORNER cleanly: dragging toward a corner attracted to one wall, but the orthogonal axis stayed free, so the user had to drag along the snapped wall to align the second edge by eye. CAD users have a baked-in expectation of corner snapping; without it the workbench's feel was off in attachment workflows.
 
-Why it mattered: the constraint was a RESOLUTION choice, not a structural limit. `SnapLineTarget` already carries direction (bounded segment endpoints); the engine just never asked "is there a non-parallel partner in tolerance?" The deck system already proved the persistence side: deck shapes store `primaryHostEdgeId + secondaryHostEdgeId + cornerVertexId` (`deckInteractionContract.ts`), and `deckCommitAdapter.ts` resolves both reference frames before committing. The piece that was missing was the SNAP RESOLVER stage -- detecting the pair, computing the intersection, and producing a 2D delta that lands the moving polygon's corner there in one shot.
+Why it mattered: the constraint was a RESOLUTION choice, not a structural limit. `SnapLineTarget` already carries direction (bounded segment endpoints); the engine just never asked "is there a non-parallel partner in tolerance?" The deck system already proved the persistence side: deck shapes store `primaryHostEdgeId + secondaryHostEdgeId + cornerVertexId` (`deckInteractionContract.ts`), and that dual-edge storage remains the precedent after the old deck commit test adapter was retired. The piece that was missing was the SNAP RESOLVER stage -- detecting the pair, computing the intersection, and producing a 2D delta that lands the moving polygon's corner there in one shot.
 
 Current guardrail: corner snap lives in [`resolveMoveSnap`](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts) only. EdgeDragTool's motion is 1D (perpendicular to the dragged edge) -- a second axis doesn't exist, so corner snap doesn't apply.
 
@@ -1211,7 +1213,7 @@ Current guardrail: corner snap lives in [`resolveMoveSnap`](../apps/portal/compo
 
 When a secondary is found, the resolver solves the 2x2 system `[primary_normal; secondary_normal] . delta = [primary_snapDeltaMm; secondary_snapDeltaMm]` for the 2-vector `delta`. After applying `delta`, both edges sit exactly on their target lines; their shared corner sits on the intersection of the two target lines (computed and returned as `cornerVertex`). Existing single-line callers see `secondary: undefined` and unchanged behaviour.
 
-The visual indicator layer (`PlanMoveSnapIndicatorLayer in PlanSnapIndicatorLayer.tsx`) renders both snap lines + a marker at `cornerVertex` when secondary is present; the primary-only render path is unchanged.
+The Plan preview renderer can show both snap lines + a marker at `cornerVertex` when secondary is present; the primary-only render path is unchanged.
 
 Future agents:
 
@@ -1221,7 +1223,7 @@ Future agents:
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts) ("corner snap (two non-parallel targets in tolerance)" describe block), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx` (`PlanMoveSnapIndicatorLayer` renders secondary + corner marker), [apps/portal/lib/drawings/interactions/deckInteractionContract.ts](../apps/portal/lib/drawings/interactions/deckInteractionContract.ts) (`corner_dual_edge` deck attachment precedent), `apps/portal/lib/drawings/interactions/deckReleaseSettlementController.ts` (dual-edge commit precedent: searches for `secondaryHostEdgeId` to see the settlement flow).
+Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts) ("corner snap (two non-parallel targets in tolerance)" describe block), [apps/portal/components/drawings/viewports/PlanViewport/tools/MoveTool.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/MoveTool.ts) (`MoveToolPreview.snap` carries live snap feedback), and [apps/portal/lib/drawings/interactions/deckInteractionContract.ts](../apps/portal/lib/drawings/interactions/deckInteractionContract.ts) (`corner_dual_edge` deck attachment precedent). The old deck commit adapter test helper was retired after the live Plan path moved to `buildDeckTransformPatch`.
 
 ### 2026-05-14 - House Roof Topology - Session C: HouseRoofForm 'gable' Retirement
 
@@ -1238,7 +1240,7 @@ Current guardrail: legacy gable storage continues to round-trip safely. Two narr
 1. `resolveHouseRoofForm` in [packages/geometry/src/normalize.ts](../packages/geometry/src/normalize.ts): geometry-side input safety net. Accepts the wider `HouseRoofForm | 'gable'` input type and returns the narrowed `HouseRoofForm`.
 2. `normalizeHouseFormRoofIntent` in [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts): workbench draft normalize. Detects legacy `'gable'` via string comparison (cast through `unknown`), maps to `'hipped'`, and when an explicit polygon is available seeds `openGableEndIds` with the all-terminals-open set so the rendered topology matches what gable-form houses produced before.
 
-Internal builders kept and re-wired: `buildGabledHouseRoof` (and its delegate `buildBentSpineJoinedGableRoofX`) is back in the dispatcher's joined path -- the wavefront-based `buildJoinedRectilinearHippedRoof` does not produce the closure metadata + `bent_spine_joined_gable` geometry kind that downstream consumers (rail, plan view, terminal-closure walls) expect for the legacy gable topology on U / wrap footprints. `buildHippedHouseRoof` now detects "every active-axis terminal end is open" and routes through `buildGabledHouseRoof`; partial-open joined cases still go through the wavefront with stationary edges. `buildRectangularGableRoof`, `buildJoinedRectilinearGableRoof`, and `buildLegacyJoinedRectilinearGableRoof` typecheck (their internal `metadata.roofForm` was changed from `'gable'` to `'hipped'`) but have no production callers; they can be deleted in a follow-up.
+Internal builders kept and re-wired: `buildGabledHouseRoof` (and its delegate `buildBentSpineJoinedGableRoofX`) is back in the dispatcher's joined path -- the wavefront-based `buildJoinedRectilinearHippedRoof` does not produce the closure metadata + `bent_spine_joined_gable` geometry kind that downstream consumers (rail, plan view, terminal-closure walls) expect for the all-terminal-open topology on U / wrap footprints. `buildHippedHouseRoof` now detects "every active-axis terminal end is open" and routes through `buildGabledHouseRoof`; partial-open joined cases still go through the wavefront with stationary edges. As of the workbench dead-code cleanup lane, consumer searches show the rectangular/joined gable delegates and the legacy joined fallback are still load-bearing under that route. Do not delete them without first replacing the all-terminal-open fallback and verifying joined, rectangular, and legacy-storage cases.
 
 Capability + validation surface changes:
 
@@ -1253,7 +1255,7 @@ Known regression: legacy gable-form houses stored in PRESET MODE (no explicit po
 
 Future agents:
 
-- The dead-code gable builders (`buildRectangularGableRoof`, `buildGabledHouseRoof`, `buildJoinedRectilinearGableRoof`, `buildLegacyJoinedRectilinearGableRoof`, related terminal helpers) can be deleted in a follow-up cleanup once their test coverage is verified to exist elsewhere.
+- The gable-named builders are not a deletion target by name alone. They are compatibility implementation details for `'hipped' + all terminal ends open`; future cleanup should first prove an equivalent unified rectangle/joined path replaces that behavior.
 - The cast `value?.form as unknown as 'hipped'` in `normalizeHouseFormRoofIntent` is the safety net for legacy storage. If a future schema validator runs BEFORE this normalize, the cast becomes redundant.
 
 Promoted to: None
@@ -1289,27 +1291,27 @@ Related docs/tests: [packages/geometry/src/house/roofJoinedFacets.ts](../package
 
 Area: Design Workbench Testing
 
-Status: Active
+Status: Superseded
 
-Decision or mistake: 8 tests in `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx` fail on `main` with `data-plan-render-status="invalid_geometry"`. These are NOT a regression in shipped code — the neighbouring 30 `PlanViewport` / `Geometry3DViewport` tests pass against the same render pipeline, and `typecheck` is clean. The failures are localised stale-fixture rot from the milestone-13 `objectWorkbenchOverlayInput` contract change. Two of the test bodies have explicit `TODO(milestone-13): migrate to the new objectWorkbenchOverlayInput shape` comments left next to `as unknown as Parameters<typeof buildPlanViewModel>[0]` casts (the May 11 "build error" commit silenced the type errors but didn't finish the fixture migration). Tests 727 (resize handles) and 794 (house-first overlays) drive resize-handle / hit-target rendering for the primary dimension-editing path; tests 957 / 992 / 1028 / 1156 / 1220 are interaction tests that need those hit targets to exist before they can dispatch events; test 2435 is a separate draw-outline state-machine assertion (unrelated to geometry).
+Decision or mistake: 8 stale model-space viewport fixtures failed on `main` with `data-plan-render-status="invalid_geometry"`. These were NOT a regression in shipped code: neighbouring `PlanViewport` / `Geometry3DViewport` tests passed against the same render pipeline, and `typecheck` was clean. The failures were localised fixture rot from the milestone-13 `objectWorkbenchOverlayInput` contract change and casted test inputs around the old plan-view builder.
 
 Why it mattered: this is the kind of failure that compounds across PRs if the surface gets touched. A future agent making any HouseModel / plan-render change will see these same 8 fail and may assume their change caused them, or worse, may add their own `as unknown` cast to keep things green. The contract-change debt has to be paid down with a real migration.
 
-Fix path (Phase A — geometry/render, ~half day): trace why `buildAssemblyModel({ planModel })` no longer surfaces `planModel` into the resulting `DrawingAssemblyModel`; replace the two `as unknown as ...` casts (lines ~444, ~777) with properly-shaped `objectWorkbenchOverlayInput` objects matching the type at [buildPlanViewModel.ts:79](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts#L79). Phase B (~1-2h): the draw-outline test at line 2435 is a separate state-machine bug — either the preceding `dispatchPointer` calls no longer correspond to the gesture they intend, or the state machine changed its precedence and the test encodes obsolete behaviour. Phase C (~30m): once green, remove the `as unknown` casts and the `TODO(milestone-13)` comments so the type system catches the next fixture drift before the tests do.
+Fix path is retired with the ModelSpace/plan-view cleanup: the old `PlanViewModel` pass-through contract is removed, and plan overlay behavior is covered through `PlanViewport`, plan render graph, and interaction tests. If a similar fixture drift appears, build a focused overlay-input fixture instead of restoring the old builder function or adding broad `as unknown` casts.
 
-Current guardrail: do NOT add more `as unknown as Parameters<typeof buildPlanViewModel>[0]` casts. If a future change makes these tests easier to migrate (e.g. a focused harness for the new overlay-input shape), take the migration in that PR instead of deferring again. Multi-form work (PR8+ in the multi-house-form sequence) verifies against the PR6/PR7 integration tests in `houseFirstWorkbenchAdapter.test.ts` and the passing `PlanViewport` / `Geometry3DViewport` suites; do not block on these 8 unless touching the same surface.
+Current guardrail: do NOT restore `buildPlanViewModel` as a compatibility builder or add more broad fixture casts. Use focused overlay-input fixtures plus the `PlanViewport` / `Geometry3DViewport` suites for plan render coverage.
 
 Promoted to: None
 
-Related docs/tests: apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx (failing tests, casted fixtures, TODO comments), [apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts) (`PlanViewModelSource` union, `invalid_geometry` fallback at line 132), commit `d1fff14` ("build error", 2026-05-11) introduced the casts.
+Related docs/tests: `apps/portal/components/drawings/viewports/PlanViewport`, [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts).
 
 ### 2026-05-21 - Design Workbench Testing - ModelSpaceViewport Architectural Drift
 
 Area: Design Workbench Testing
 
-Status: Active
+Status: Superseded
 
-Decision or mistake: 2 import-guard failures in `apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts` are real architectural violations, not stale paths. They were previously masked by ENOENT errors against the stale `Geometry3DViewport.tsx` path (file moved to `Geometry3DViewport/index.tsx` during decomposition); fixing the path in the guard test unmasked them. The two real violations:
+Decision or mistake: 2 import-guard failures in `apps/portal/lib/workbenchBreakawayImportGuards.test.ts` are real architectural violations, not stale paths. They were previously masked by ENOENT errors against the stale `Geometry3DViewport.tsx` path (file moved to `Geometry3DViewport/index.tsx` during decomposition); fixing the path in the guard test unmasked them. The two real violations:
 
 1. **ModelSpaceViewport.tsx imports `houseFirstWorkbenchModel`** -- uses `HouseFirstDeckDraft`, `HouseFirstOpeningDraft`, `WorkbenchHouseSelection`, `WorkbenchMode` types directly. The guard treats this as a layering violation because `houseFirstWorkbenchModel` is the legacy state-compatibility model that boundary files (viewports/workbench) should not consume directly.
 
@@ -1317,13 +1319,13 @@ Decision or mistake: 2 import-guard failures in `apps/portal/components/drawings
 
 Why it mattered: same compound-cost argument as the ModelSpaceViewport stale-fixture entry above -- failures accumulate across PRs, mask real issues, and erode test-signal trust. The PR8 multi-form sequence shipped 6 PRs with these failures red, masking the genuine question of "is multi-form work breaking anything?"
 
-Fix path: migrate `ModelSpaceViewport.tsx` off `houseFirstWorkbenchModel` -- either (a) move the legacy types to a neutral module both files import from, or (b) replace the imports with object-first equivalents (`ObjectFirstDeckDraft`, `ObjectFirstOpeningDraft`, etc.). For the Geometry3DViewport routing, audit whether the 2026-05-04 architecture is still the intent -- if yes, complete the migration; if not, retire the guard. Approx 1 day for the full fix.
+Fix path is retired with the ModelSpace/rail-guard cleanup. Do not recreate `ModelSpaceViewport.tsx`, `houseFirstWorkbenchModel` imports, or the old rail import guard to satisfy historical notes.
 
-Current guardrail: do not add new `from '@/lib/drawings/state/houseFirstWorkbenchModel'` imports in viewport, workbench, or rail files (the existing ones in `ModelSpaceViewport.tsx` are grandfathered until the cleanup). Multi-form work continues on the object-first model -- HouseFormModel, ObjectFirstHouseFormDraft -- which is the canonical project-level shape.
+Current guardrail: live workbench roots must stay on object-first state and the solved-artifact boundary. `apps/portal/lib/workbenchBreakawayImportGuards.test.ts` is the executable boundary; do not add new house-first, raw-module, module-index, legacy plan/section, or costing imports to workbench roots.
 
-Promoted to: None
+Promoted to: `docs/design-workbench-architecture.md` and `apps/portal/lib/workbenchBreakawayImportGuards.test.ts`.
 
-Related docs/tests: apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx (the legacy imports at lines 25-30), apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts (the 2 failing assertions at lines 270-272 and 408-413), 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'" (the canonical architecture the guard enforces).
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/components/drawings/viewports/PlanViewport](../apps/portal/components/drawings/viewports/PlanViewport).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T7 House Form Inspector Cull
 
@@ -1339,7 +1341,7 @@ Current guardrail: a house-form inspector control must either write a persisted 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/rail/HouseFormInspector.tsx](../apps/portal/components/drawings/rail/HouseFormInspector.tsx), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), apps/portal/components/drawings/rail/SanctuaryWorkbenchRail.tsx, [docs/house-inspector-cull-plan.md](house-inspector-cull-plan.md) (the PR-T7 plan).
+Related docs/tests: [apps/portal/components/drawings/rail/HouseFormInspector.tsx](../apps/portal/components/drawings/rail/HouseFormInspector.tsx), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [apps/portal/components/drawings/rail/ObjectWorkbenchRail.tsx](../apps/portal/components/drawings/rail/ObjectWorkbenchRail.tsx), [docs/house-inspector-cull-plan.md](house-inspector-cull-plan.md) (the PR-T7 plan).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T8 Appendage Feature Cull
 
@@ -1355,20 +1357,20 @@ Current guardrail: shape edits to the house roof (pitch tweaks at one corner, ma
 
 What was deleted (production source returns zero hits for `[Aa]ppendage` outside tombstone comments + tests):
 
-- `packages/geometry/src/house/roofAppendages.ts` -- deleted entirely. The single load-bearing function (`buildSharedHouseRoof`) was lifted into `packages/geometry/src/house/sharedHouseRoof.ts`.
+- The retired roof-appendages module was deleted entirely. The single load-bearing function (`buildSharedHouseRoof`) was lifted into `packages/geometry/src/house/sharedHouseRoof.ts`.
 - Geometry types: `HouseRoofAppendageForm`, `HouseRoofAppendageSupport`, `HouseRoofAppendageHostRun`, `HouseRoofAppendageSupportAnalysis`, plus the `roofAppendage` field on `RawHouseInput` and friends.
 - Geometry helpers: `deriveHouseRoofAppendageSupport`, `deriveHouseRoofAppendageSupportedHostEdges`, `deriveHouseRoofAppendageSupportFromFootprint`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`, `buildHouseRoofAppendageBand`, `buildMonoAppendagePerimeterEdges`, `buildAppendagePerimeterEdges`, `resolveHouseRoofAppendageForm`, `formatAttachmentSideList`.
 - Capability flags: `HouseRoofCapabilities.appendageSupported`, `HouseRoofCapabilities.appendageFootprintRequirement`, `HouseRoofControls.appendage`.
 - Validation: `'invalid_appendage_topology'` and `'invalid_appendage_host_edge'` validation codes; `blockedBy: 'appendage'`.
 - Portal state: `HouseRoofAppendageForm`, `HouseRoofModel.appendage`, `HouseRoofModel.appendageSupportedHostEdges`, `HouseRoofModel.appendageSupportReason`, `HouseRoofProvenance.appendage`, `HouseFirstRoofDraft.appendage`, plus `isHouseRoofAppendageForm`, `normalizeAppendageForm`, `hasExplicitRoofAppendage`, `roofFormAcceptsAppendage`.
 - UI: appendage controls in `HouseFormRoofSections.tsx`, appendage rows in `WorkbenchDiagnosticsPanel.tsx`, appendage inspector model fields in `objectWorkbenchInspectorModel.ts` and `objectWorkbenchStatusModel.ts`.
-- Tests: 4 dedicated `houseModel.test.ts` blocks, 1 `houseFirstWorkbenchAdapter.test.ts` block (re-skipped, asserts no longer derivable), 1 `drawingWorkbenchStore.test.ts` block (removed), the appendage gate suite in `houseRoofFormAdapter.test.ts`, the appendage invalid-diagnostics test in `DesignWorkbenchEstimateClient.test.tsx`, plus appendage entries scrubbed from every fixture (`objectFirstWorkbenchFixtures.ts`, `houseFirstWorkbenchFixtures.ts`, multiple test fixtures inline).
+- Tests: 4 dedicated `houseModel.test.ts` blocks, retired house-first/store appendage tests, the retired appendage gate suite, the retired appendage invalid-diagnostics test, plus appendage entries scrubbed from every fixture (`objectFirstWorkbenchFixtures.ts`, historical house-first fixtures, multiple test fixtures inline).
 
 Legacy storage: any persisted draft still carrying an `appendage` block is silently dropped at the workbench draft normalize boundary (`normalizeHouseFormRoofIntent`); no migration path is needed because the only consumers were the inspector + the deleted geometry path.
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/house/sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts), apps/portal/lib/drawings/state/houseRoofFormAdapter.ts, [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [docs/appendage-removal-plan.md](appendage-removal-plan.md) (the PR-T8 plan).
+Related docs/tests: [packages/geometry/src/house/sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts), [packages/geometry/src/houseRoofValidation.test.ts](../packages/geometry/src/houseRoofValidation.test.ts), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [docs/appendage-removal-plan.md](appendage-removal-plan.md) (the PR-T8 plan).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T9 Deck Inspector Cull
 
@@ -1382,7 +1384,7 @@ Why it mattered: deck right rail was the same shape as the pre-T7 house rail —
 
 Current guardrail:
 
-- `hostEdgeId` is snap-derived only — written by `buildDeckCommitPatch` in `deckCommitAdapter.ts` during drag release. If a future inspector control re-exposes manual edge selection, treat it as a smell that the snap-target picker is missing a UI affordance, not that the dropdown should come back.
+- `hostEdgeId` is snap-derived only. The PR-T9 implementation wrote it through the now-retired `buildDeckCommitPatch`/`deckCommitAdapter` path; the live Plan tool path commits deck geometry through `buildDeckTransformPatch`. If a future inspector control re-exposes manual edge selection, treat it as a smell that the snap-target picker is missing a UI affordance, not that the dropdown should come back.
 - Deck names auto-derive from list index (`Deck ${index + 1}`). If a future use case needs persistent identity (e.g. PDF callouts), reintroduce as a derived field, not a manual one.
 - `elevationMode` is gone — negative `levelOffsetMm` is no longer clamped to ground. A user can now sink a deck below ground level by typing a negative offset. If this bites, the boolean `sitsOnGround` comes back as a one-line addition.
 - Costing recon (`rg 'kind|elevationMode' packages/costing/src`) confirmed zero hits before deletion. Re-run before similar culls.
@@ -1400,7 +1402,7 @@ Legacy storage: persisted drafts still carrying `label` / `kind` / `elevationMod
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/rail/DeckInspectorSections.tsx](../apps/portal/components/drawings/rail/DeckInspectorSections.tsx), apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts, [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [docs/deck-inspector-cull-plan.md](deck-inspector-cull-plan.md) (the PR-T9 plan).
+Related docs/tests: [apps/portal/components/drawings/rail/DeckInspectorSections.tsx](../apps/portal/components/drawings/rail/DeckInspectorSections.tsx), [apps/portal/lib/drawings/state/objectWorkbenchDeckGeometry.ts](../apps/portal/lib/drawings/state/objectWorkbenchDeckGeometry.ts), [apps/portal/lib/drawings/state/objectWorkbenchDeckGeometry.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchDeckGeometry.test.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [docs/deck-inspector-cull-plan.md](deck-inspector-cull-plan.md) (the PR-T9 plan).
 
 ### 2026-05-29 - Workbench Geometry - Multi-House PR3 Project House Geometry Registry
 
@@ -1432,7 +1434,7 @@ Current guardrail: do not create persisted calculator modules just to make objec
 
 Promoted to: None
 
-Related docs/tests: apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts, [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts.
+Related docs/tests: [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts).
 
 ### 2026-05-29 - Workbench Geometry - Multi-Object PR3 Freestanding Add Pergola
 
@@ -1448,7 +1450,7 @@ Current guardrail: new pergolas are born freestanding with solver-valid defaults
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchDraftActions.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchDraftActions.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.test.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchEstimateClient.test.tsx), apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx.
+Related docs/tests: [apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts), [apps/portal/components/drawings/rail/objectTree/objectTree.test.tsx](../apps/portal/components/drawings/rail/objectTree/objectTree.test.tsx).
 
 ### 2026-05-29 - Workbench Geometry - Multi-Object PR4 Plan Pergola Selection
 
@@ -1464,7 +1466,7 @@ Current guardrail: selecting a pergola must resolve the matching solved entry by
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/pergolaSelectionState.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/pergolaSelectionState.ts), `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, [apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts).
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/pergolaSelectionState.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/pergolaSelectionState.ts), `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, [apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts).
 
 ### 2026-05-30 - Workbench Geometry - Production-Aligned QA Fixture Routes
 
@@ -1496,7 +1498,7 @@ Current guardrail: when `objectFirst.houseAssembly` exists, its `houseForms[]` a
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts), apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts, apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts.
+Related docs/tests: [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchFixtures.test.ts).
 
 ### 2026-05-31 - Workbench House Forms - Derived Roof Axis And Preset Seeds
 
@@ -1524,7 +1526,7 @@ Decision or mistake: house roof form, material, pitch, and open-end edits must w
 
 Why it mattered: the shared-house roof draft path kept the original single-house assumption alive. When multiple house forms were visible, roof/open-end interactions could silently mutate the first form and make the selected form's Plan/3D roof body look disconnected from the inspector.
 
-Current guardrail: normal roof writes go through `commitHouseFormRoofIntent({ houseFormId, roof })`; `commitSharedHouseRoofDraft` is a legacy wrapper only. New terminal-end or roof-control routes must preserve owner metadata from geometry through selection routing to the draft commit, and must not use array index 0 as a fallback.
+Current guardrail: normal roof writes go through `commitHouseFormRoofIntent({ houseFormId, roof })`; the old `commitSharedHouseRoofDraft` legacy wrapper is retired. New terminal-end or roof-control routes must preserve owner metadata from geometry through selection routing to the draft commit, and must not use array index 0 as a fallback.
 
 Promoted to: None
 
@@ -1544,7 +1546,7 @@ Current guardrail: `WorkbenchSolvedModel.projectHouseProjectionHealth` is the pr
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts](../apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts), [apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts](../apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts), `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts](../apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts), `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.canvas.test.tsx`, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts). The old selected-house overlay input helper was retired after `projectPlanProjection` became the live body source.
 
 ### 2026-05-31 - Workbench House Forms - Selected Status Is Nullable
 
@@ -1560,7 +1562,7 @@ Current guardrail: call sites that need a selected house must use `selectedHouse
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts), apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts, apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts.
+Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts), [apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts](../apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts).
 
 ### 2026-05-31 - Workbench Actions - Object-Owned House Context
 
@@ -1576,7 +1578,7 @@ Current guardrail: selected house actions resolve by selected `houseFormId`; dec
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/useObjectWorkbenchActions.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/commitOutlineEdit.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/commitOutlineEdit.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.test.ts).
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/useObjectWorkbenchActions.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/commitOutlineEdit.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/commitOutlineEdit.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchDraft.test.ts).
 
 ### 2026-06-01 - Workbench Rendering - Project Object Render Health
 
@@ -1592,7 +1594,7 @@ Current guardrail: project rendering flows through `buildProjectObjectRenderPipe
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts, [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts), [apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts](../apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Rendering - Pergola Diagnostic Fallbacks
 
@@ -1608,7 +1610,7 @@ Current guardrail: unresolved pergola references flow through `projectPergolaFal
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Rendering - First-Class Diagnostic Fallbacks
 
@@ -1624,7 +1626,7 @@ Current guardrail: Plan render graph exposes `diagnosticFallbacks` separately fr
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx`, [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).
 
 ### 2026-06-01 - Workbench Rendering - House Render Health By Form
 
@@ -1640,7 +1642,7 @@ Current guardrail: `projectHouseRenderPipeline` emits pre-classified house Plan 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts, apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts.
+Related docs/tests: [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts](../apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Rendering - House Fixture Health Ownership
 
@@ -1656,7 +1658,7 @@ Current guardrail: add new house/pergola repros in focused fixture modules, asse
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts), [apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts](../apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Rendering - Project 3D Preview Ownership
 
@@ -1688,7 +1690,7 @@ Current guardrail: use `buildHouseFormGeometryInput({ projectModel, houseFormId 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts.
+Related docs/tests: [apps/portal/lib/drawings/state/houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts), [apps/portal/lib/drawings/state/houseFormRawGeometry.ts](../apps/portal/lib/drawings/state/houseFormRawGeometry.ts), [apps/portal/lib/drawings/exportRoofFailureRepro.ts](../apps/portal/lib/drawings/exportRoofFailureRepro.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts).
 
 ### 2026-06-02 - Geometry Tests - Stage-Owned House Model Coverage
 
@@ -1720,7 +1722,7 @@ Current guardrail: bake captured live failures through `sanctuaryWorkbenchCaptur
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts.
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/exportRoofFailureRepro.ts](../apps/portal/lib/drawings/exportRoofFailureRepro.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts).
 
 ### 2026-06-02 - Workbench Geometry - Roof Stage Diagnostics Must Be Render-Critical
 
@@ -1736,7 +1738,7 @@ Current guardrail: package roof-stage diagnostics may classify eave construction
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts.
+Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [playwright/support/workbenchCapturedRepro.test.ts](../playwright/support/workbenchCapturedRepro.test.ts).
 
 ### 2026-06-02 - Workbench Debugging - Multi-House Capture Verifier
 
@@ -1864,7 +1866,7 @@ Current guardrail: custom hipped eave repair is package-owned and render-only. T
 
 Promoted to: None
 
-Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/eaveOffsetRepair.ts](../packages/geometry/src/house/eaveOffsetRepair.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts, apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/eaveOffsetRepair.ts](../packages/geometry/src/house/eaveOffsetRepair.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-11 - Workbench House Forms - Topology-Aware Eave Offset Boundary
 
@@ -1896,7 +1898,7 @@ Current guardrail: numeric stabilization belongs at the `@sp/geometry` house sol
 
 Promoted to: None
 
-Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/footprintMath.ts](../packages/geometry/src/house/footprintMath.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts, apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/footprintMath.ts](../packages/geometry/src/house/footprintMath.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts](../apps/portal/lib/drawings/state/projectContextOverlayShapes.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-03 - Workbench House Forms - Custom Hipped Eave Graph Topology
 
@@ -1912,7 +1914,7 @@ Current guardrail: fully hipped non-rectangular orthogonal house footprints rout
 
 Promoted to: None
 
-Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPrimary.ts](../packages/geometry/src/house/roofPrimary.ts), [packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts](../packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts.
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPrimary.ts](../packages/geometry/src/house/roofPrimary.ts), [packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts](../packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts).
 
 ### 2026-06-03 - Workbench House Forms - Semantic Hipped Topology QA
 
@@ -1944,7 +1946,7 @@ Current guardrail: `objectWorkbenchStatusModel` derives roof validation from `bu
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts, [apps/portal/lib/drawings/state/houseFormRawGeometry.ts](../apps/portal/lib/drawings/state/houseFormRawGeometry.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts), [apps/portal/lib/drawings/state/houseFormRawGeometry.ts](../apps/portal/lib/drawings/state/houseFormRawGeometry.ts).
 
 ### 2026-06-03 - Workbench House Forms - Single-Pergola 3D Uses Project Houses
 
@@ -1960,7 +1962,7 @@ Current guardrail: superseded by the 2026-06-11 breakaway. Live workbench runtim
 
 Promoted to: None
 
-Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx), apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx.
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx), [apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts).
 
 ### 2026-06-03 - Workbench House Forms - Coverage Solver Quarantine
 
@@ -2381,16 +2383,16 @@ Decision or mistake: Phase 3.3 of the [composition migration](house-composition-
 
 Legacy forms persisted with `mode: 'custom_polygon'` are NOT migrated — they continue to render their stored polygon read-only via the legacy pipeline. The rail shows a small read-only badge explaining the form was authored before composition and that preset controls are unavailable on it; designers wanting to change shape recreate the form as a new rectangle.
 
-Deck outline drawing (`startDeckOutlineEditor` + the `drawOutline*` viewport machinery) is deliberately untouched. Decks still use the freeform outline tool — only the house-form path through it was retired.
+Follow-up cleanup retired the inspector-only deck redraw trigger (`startDeckOutlineEditor`) after Canvas Plan stopped consuming `drawOutline*` requests. Stored custom deck outlines still render, and preset deck creation remains the live authoring path.
 
 Why it mattered: closes the authoring loop the composition migration opens. Composition is the source-of-truth shape for new forms (rectangle primitive + roof intent); leaving the freeform polygon tool active would create two divergent authoring paths and tempt designers back to a model the geometry router can't fully consume. Removing it cleanly signals the direction — and removes ~50 LOC of orphaned plumbing (the `runStartOutline` / `canStartDrawOutline` prop chain through the inspector hierarchy, the `startDrawOutlineEditor` action, the `Continue outline` button condition). Legacy custom-polygon forms keep rendering because the read path was always separate from the edit path.
 
 Current guardrail:
 - The footprint-mode picker for house forms must NOT regain a freeform option. New shape primitives ship as additional values on the `RectangleRoofIntent` / composition primitive type, not by reviving `custom_polygon` as an authoring target.
 - Legacy `mode: 'custom_polygon'` forms must remain visible (read-only render). The defensive fallback in the inspector — show a "legacy form" badge and skip the preset picker — must stay so designers understand why preset controls are absent on those forms.
-- The deck outline tool is unrelated to this retirement. Do NOT remove `drawOutlineMode` / `drawOutlineRequestId` / `drawOutlineSeedPolygon` props from `WorkbenchViewportHost` / `DrawingWorkbench` / `DesignWorkbenchEstimateClient` — they still serve `startDeckOutlineEditor`.
+- Do not revive the old inspector-only deck redraw trigger. If custom deck outline editing comes back, rebuild it against the current Canvas Plan interaction model instead of reintroducing `drawOutlineMode` / `drawOutlineRequestId` / `drawOutlineSeedPolygon` shell props.
 
-Behavioural impact: designers can no longer enter freeform polygon authoring for house forms (the rail's mode picker no longer exposes the option). Existing forms persisted as `custom_polygon` continue to render their shape unchanged and surface a read-only badge instead of a `Continue outline` button. No change to deck authoring. 197 state-lane tests green (was 185 pre-PR; +12 from suites that ran but had been unaffected); portal typecheck clean; eslint clean.
+Behavioural impact: designers can no longer enter freeform polygon authoring for house forms (the rail's mode picker no longer exposes the option). Existing forms persisted as `custom_polygon` continue to render their shape unchanged and surface a read-only badge instead of a `Continue outline` button. Later cleanup removed the stale deck redraw button/action wiring; stored custom deck outlines remain visible and preset decks remain addable. 197 state-lane tests green (was 185 pre-PR; +12 from suites that ran but had been unaffected); portal typecheck clean; eslint clean.
 
 Promoted to: None
 
@@ -2455,7 +2457,7 @@ Decision or mistake: Second half of Phase 4. Three sub-commits land the visible 
 
 - **4b.1** — Pure geometry primitives in `@sp/geometry/house/composition/compositionSeams.ts`: `findCompositionJoinSeamMidpoint(composition, joinIndex)` for Detach icon position; `detectSharedSeamBetweenForms({...})` for Join icon visibility / position; `joinTwoHouseForms({...})` for the merge (translates form B into A's frame, validates the seam, builds the merged composition with renumbered joins). Closed typed errors (`no_shared_seam` / `merged_primitives_overlap`).
 - **4b.2** — Workbench actions in `useObjectWorkbenchActions`: `joinHouseForms({ formAId, formBId })` keeps form A's id/transform/metadata, replaces its composition with the merge, removes form B; `detachHouseFormAtSeam({ houseFormId, joinIndex })` replaces the original form's composition with partition 0, creates new house forms (cloning metadata) for partitions 1..N-1. Both actions surface typed geometry errors as designer-readable messages.
-- **4b.3** — PlanViewport overlay: new `interactions/seams/seamIconTargets.ts` (pure: takes per-form composition + world transform, emits Detach + Join target list) + `canvas/layers/PlanSeamIconLayer.tsx` (renders circular chips with + glyph for Join, − for Detach; click dispatches the matching action; `stopPropagation` prevents underlying form-select; tooltip via `<title>`). New PlanViewport prop `projectHouseFormCompositions` threaded from DesignWorkbenchEstimateClient through DrawingWorkbench → WorkbenchViewportHost.
+- **4b.3** — PlanViewport overlay: `interactions/seams/seamIconTargets.ts` emits Detach + Join target lists from per-form composition and world transform; the Plan canvas renders circular chips with + glyph for Join and - for Detach. Click dispatches the matching action; `stopPropagation` prevents underlying form-select; tooltip via `<title>`. PlanViewport receives `projectHouseFormCompositions` from DesignWorkbenchEstimateClient through DrawingWorkbench → WorkbenchViewportHost.
 
 Why it mattered: closes the entire composition vision end-to-end. Phase 1 shipped geometry primitives; 2 shipped data field; 3.1/3.2 wired single-rectangle composites through the pipeline; 3.3/3.4 retired Draw outline + added house-to-house snap; 4a shipped multi-rectangle pipeline + pure detach primitive; 4b is what designers actually see and use. After 4b, the workflow is: place a rectangle → drag near another rectangle → snap aligns them → click the Join chip → one composite house form. To unwind: click any seam's Detach chip → the composite splits at that seam. No multi-select, no modal dialogs, no separate "compose" mode — the affordance lives in the geometry.
 
@@ -2471,7 +2473,7 @@ Behavioural impact: designers placing two rectangles next to each other now see 
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/house/composition/compositionSeams.ts](../packages/geometry/src/house/composition/compositionSeams.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts), `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSeamIconLayer.tsx`, [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts).
+Related docs/tests: [packages/geometry/src/house/composition/compositionSeams.ts](../packages/geometry/src/house/composition/compositionSeams.ts), [packages/geometry/src/house/composition/compositionSeams.test.ts](../packages/geometry/src/house/composition/compositionSeams.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts).
 
 ### 2026-06-19 - Workbench House Forms - Unified-Topology Hipped Composite Roof (PR-COMP-UNIFIED-1)
 
@@ -2579,3 +2581,25 @@ Current guardrail:
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/roofSkeleton.ts](../packages/geometry/src/house/roofSkeleton.ts), [packages/geometry/src/house/roofSkeleton.test.ts](../packages/geometry/src/house/roofSkeleton.test.ts), [packages/geometry/src/straightSkeleton/solve.ts](../packages/geometry/src/straightSkeleton/solve.ts), [docs/house-composition-vision.md](house-composition-vision.md).
+
+### 2026-06-23 - Design Workbench - Retired Model Viewport Mode
+
+Date: 2026-06-23
+Area: Design Workbench
+Status: Active
+Decision or mistake: The old `model` viewport mode was removed from the live `DrawingWorkbenchViewportMode` union and runtime branches. Stale `viewportMode: "model"` UI state is now stripped as opaque legacy input instead of driving a view selection.
+Why it mattered: The workbench already presents 3D Review, Plan Editor, and Sheet Output. Keeping a hidden Model Space mode preserved an obsolete render branch and an unreachable footprint-edit callback path.
+Current guardrail: Do not add `model` back as a workbench tab, route, or rendering branch. Plan editing belongs in PlanViewport; 3D remains read/select-focused.
+Promoted to: None
+Related docs/tests: `apps/portal/lib/drawings/state/drawingWorkbenchUiState.test.ts`; `npx tsc -p apps/portal/tsconfig.json --noEmit --incremental false --pretty false`
+
+### 2026-06-23 - Design Workbench - Retired Section View Tab
+
+Date: 2026-06-23
+Area: Design Workbench
+Status: Active
+Decision or mistake: The workbench-only `WorkbenchViewTab` was retired, and stale `activeView` UI state is now stripped as opaque legacy input.
+Why it mattered: The current workbench chrome exposes 3D Review, Plan Editor, and Sheet Output. Keeping a hidden Section tab in workbench state preserved a stale sheet/status branch that future work could mistake for a live surface.
+Current guardrail: Do not reintroduce `section` as a workbench view tab. Future Section output should be derived from `WorkbenchSolvedGeometryArtifact`, not from separate workbench view state or calculator-era section models.
+Promoted to: None
+Related docs/tests: `apps/portal/lib/drawings/workbenchViewTypes.ts`; `apps/portal/lib/drawings/state/drawingWorkbenchUiState.test.ts`; `docs/design-workbench-architecture.md`

@@ -275,8 +275,6 @@ export function buildPerimeterFlashings(input: {
   roofPlanes: RoofPlane3D[];
   attachmentTarget?: HouseAttachmentTarget3D | null;
 }): RoofFlashing3D[] {
-  const roofPlaneById = new Map(input.roofPlanes.map((roofPlane) => [roofPlane.id, roofPlane]));
-
   return input.perimeterEdges.flatMap((edge) => {
     if (!isPerimeterFlashingEdge(edge.edgeKind)) return [];
     return input.roofPlanes.flatMap((roofPlane) => {

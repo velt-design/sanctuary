@@ -3,7 +3,7 @@ import type { SnapLineTarget } from '../interactions/snap/snapEngine';
 import { polygonEdgeOutwardNormal } from '../canvas/polygonEdgeMath';
 import { resolveEdgeSnap, type EdgeSnapResult } from './resolveEdgeSnap';
 
-export type MoveSnapSecondary = {
+type MoveSnapSecondary = {
   /** Index in the source polygon of the edge that snapped second. */
   edgeIndex: number;
   /** Inner edge-snap result; same shape and meaning as the primary `edgeSnap`. */

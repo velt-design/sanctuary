@@ -91,7 +91,7 @@ export function fitDistanceForSize(size: number, fovDeg = 40): number {
   return Math.max((radius / Math.tan(fovRadians)) * 1.25, 1200);
 }
 
-export function directionForPreset(viewPreset: GeometryCameraPreset): THREE.Vector3 {
+function directionForPreset(viewPreset: GeometryCameraPreset): THREE.Vector3 {
   if (viewPreset === "front") return new THREE.Vector3(0, -1, 0.28).normalize();
   if (viewPreset === "right") return new THREE.Vector3(1, 0, 0.28).normalize();
   if (viewPreset === "top")

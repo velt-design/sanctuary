@@ -33,7 +33,7 @@ const OPENING_DERIVED_SUFFIX = /(?:-marker|-outline-\d+|-edge)$/;
 const PROJECT_PERGOLA_SCENE_PREFIX = /^project_pergola:([^:]+):/;
 const PERGOLA_SCENE_PREFIX = /^(pergola[-_][^:]+):/;
 
-export function stripOpeningDerivedSuffix(objectId: string): string {
+function stripOpeningDerivedSuffix(objectId: string): string {
   return objectId.replace(OPENING_DERIVED_SUFFIX, '');
 }
 

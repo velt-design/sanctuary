@@ -1,9 +1,6 @@
 import type {
   Assembly3D,
-  AssemblyMemberEndCut,
-  AssemblySupportCondition,
   GeometryMetadata,
-  GeometryMetadataValue,
   HouseAttachmentTarget3D,
   HouseEaveGeometry3D,
   HouseModel3D,
@@ -13,15 +10,20 @@ import type {
   Plane3,
   Point3,
   Polygon3,
-  QuantityHook,
   RoofFlashing3D,
   RoofPlane3D,
   Vector3,
 } from "../contracts";
 
 export type CanonicalAssembly3D = Assembly3D;
+type AssemblySupportCondition = Assembly3D["supportConditions"][number];
+type QuantityHook = Assembly3D["quantityHooks"][number];
+type AssemblyMemberEndCut = NonNullable<
+  Assembly3D["members"][number]["endCuts"]
+>[number];
+type GeometryMetadataValue = GeometryMetadata[string];
 
-export type CanonicalAssemblyDiffEntry = {
+type CanonicalAssemblyDiffEntry = {
   path: string;
   expected: unknown;
   actual: unknown;

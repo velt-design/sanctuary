@@ -1,34 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { HOUSE_ROOF_FORM_ORDER } from '@sp/geometry';
 import type {
   DeckObjectModel,
-  HouseFormModel,
   HouseFormRoofIntentModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchDeckInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { CommitResult } from './objectWorkbenchRailTypes';
 import styles from './WorkbenchRail.module.css';
 
-type RoofFieldSourceValue =
-  | 'object_first_draft'
-  | 'house_first_draft'
-  | 'legacy_estimate_snapshot'
-  | 'legacy_shared_value'
-  | 'legacy_pergola_inference'
-  | 'default_fallback'
-  | string;
+type SelectOption = { label: string; value: string };
 
-export type SelectOption = { label: string; value: string };
+// Composition-authored house forms have no preset/mode picker. They start as
+// a single rectangle and are edited in Plan through drag, Join, and Detach.
 
-// PR-WB-RETIRE-PRESET-DROPDOWN (2026-06-19): preset-shape and
-// mode dropdown options retired. Composition-authored forms have
-// no preset to pick from; the only entry point is Add structure
-// (single rectangle) + plan-view drag/Join/Detach for composing
-// further shapes.
-
-export const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
+const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Rear', value: 'rear' },
   { label: 'Front', value: 'front' },
   { label: 'Left', value: 'left' },
@@ -48,9 +35,6 @@ export const ROOF_FALL_DIRECTION_OPTIONS: Array<SelectOption & { value: HouseFor
   { label: 'Fall -X', value: 'negative_x' },
 ];
 
-// PR-T9 (2026-05-29): `DECK_KIND_OPTIONS` and `DECK_ELEVATION_OPTIONS`
-// removed with the deck inspector cull.
-
 export const DECK_SHAPE_OPTIONS: Array<SelectOption & { value: DeckObjectModel['shape'] }> = [
   { label: 'Rectangular preset', value: 'preset' },
   { label: 'Custom outline', value: 'custom' },
@@ -62,7 +46,7 @@ export const DECK_SURFACE_OPTIONS: Array<SelectOption & { value: DeckObjectModel
   { label: 'Concrete', value: 'concrete' },
 ];
 
-export function labelForRoofForm(value: HouseFormRoofIntentModel['form'] | null | undefined): string {
+function labelForRoofForm(value: HouseFormRoofIntentModel['form'] | null | undefined): string {
   switch (value) {
     case 'flat':
       return 'Flat';
@@ -74,85 +58,13 @@ export function labelForRoofForm(value: HouseFormRoofIntentModel['form'] | null 
   }
 }
 
-export function labelForRoofReviewStatus(
-  value: 'valid' | 'approximate' | 'invalid' | 'none' | null | undefined,
-): string {
-  switch (value) {
-    case 'invalid':
-      return 'Blocked';
-    case 'approximate':
-      return 'Approximate';
-    case 'valid':
-      return 'Ready';
-    default:
-      return 'None';
-  }
-}
-
-export function labelForRoofFieldSource(value: RoofFieldSourceValue | null | undefined): string {
-  switch (value) {
-    case 'object_first_draft':
-      return 'Explicit object draft';
-    case 'house_first_draft':
-      return 'Imported house draft';
-    case 'legacy_estimate_snapshot':
-      return 'Imported estimate snapshot';
-    case 'legacy_shared_value':
-      return 'Imported shared value';
-    case 'legacy_pergola_inference':
-      return 'Imported pergola inference';
-    case 'default_fallback':
-      return 'Default fallback';
-    default:
-      return 'Unknown';
-  }
-}
-
-export function labelForRoofApproximationReason(value: string): string {
-  switch (value) {
-    case 'inferred_form':
-      return 'Roof form inferred from imported pergola data';
-    case 'inferred_fall_direction':
-      return 'Mono fall direction inferred from imported pergola data';
-    case 'inferred_ridge_axis':
-      return 'Ridge axis inferred from imported pergola data';
-    case 'ambiguous_ridge_axis':
-      return 'Near-square rectangular footprint keeps a best-guess ridge axis';
-    default:
-      return value;
-  }
-}
-
-export function labelForRoofGeometryKind(value: string | null | undefined): string {
-  switch (value) {
-    case 'footprint_flat':
-      return 'Footprint flat';
-    case 'footprint_mono':
-      return 'Footprint mono';
-    case 'rectangular_gable':
-      return 'Rectangular gable';
-    case 'bent_spine_joined_gable':
-      return 'Bent-spine joined gable';
-    case 'rectangular_hipped':
-      return 'Rectangular hipped';
-    case 'rectilinear_joined_hipped':
-      return 'Rectilinear joined hipped';
-    default:
-      return 'None';
-  }
-}
-
-export function labelForAttachmentSide(value: string | null | undefined): string {
+function labelForAttachmentSide(value: string | null | undefined): string {
   return ATTACHMENT_SIDE_OPTIONS.find((option) => option.value === value)?.label ?? 'Rear';
 }
 
 export function labelForAttachmentSideList(values: Array<string> | null | undefined): string {
   if (!values?.length) return 'None';
   return values.map((value) => labelForAttachmentSide(value)).join(', ');
-}
-
-export function formatRotation(value: number | null | undefined): string {
-  return `${((value ?? 0) % 4) * 90} deg`;
 }
 
 export function resolveDeckValidationSummary(deck: ObjectWorkbenchDeckInspectorModel): string | null {
@@ -172,10 +84,10 @@ export function resolveDeckValidationSummary(deck: ObjectWorkbenchDeckInspectorM
     return 'Floating decks cannot stay threshold aligned. Use ground or stepped elevation instead.';
   }
   if (codes.has('self_intersecting_outline')) {
-    return 'This custom outline folds back through itself. Redraw the outline or switch back to a rectangular preset.';
+    return 'This custom outline folds back through itself. Switch back to a rectangular preset to keep editing.';
   }
   if (codes.has('unsupported_house_intersection')) {
-    return 'This deck outline crosses unsupported house geometry zones. Pull it back outside the house footprint or redraw it.';
+    return 'This deck outline crosses unsupported house geometry zones. Pull it back outside the house footprint or switch to a rectangular preset.';
   }
 
   return deck.validation.message ?? 'Deck geometry is blocked.';
@@ -214,31 +126,6 @@ export function resolveCommitResult(
   action: Promise<CommitResult> | CommitResult | undefined,
 ): Promise<CommitResult> {
   return Promise.resolve(action ?? { ok: false, error: 'Editing is not available right now.' });
-}
-
-export function SummarySection({
-  title,
-  items,
-  hint,
-}: {
-  title: string;
-  items: Array<{ label: string; value: string }>;
-  hint?: string;
-}) {
-  return (
-    <section className={styles.summary}>
-      <p className={styles.eyebrow}>{title}</p>
-      <div className={styles.summaryList}>
-        {items.map((item) => (
-          <div key={`${title}-${item.label}`} className={styles.summaryRow}>
-            <span className={styles.summaryLabel}>{item.label}</span>
-            <span className={styles.summaryValue}>{item.value}</span>
-          </div>
-        ))}
-      </div>
-      {hint ? <p className={styles.summaryHint}>{hint}</p> : null}
-    </section>
-  );
 }
 
 export function SelectField({

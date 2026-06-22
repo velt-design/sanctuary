@@ -5,7 +5,6 @@ import {
   isAxisAlignedRectangle,
   type HouseComposition,
   type HouseRoofRidgeAxis as GeoRidgeAxis,
-  type Polygon3,
 } from "@sp/geometry";
 import type {
   HouseFormModel,
@@ -35,7 +34,7 @@ import {
  *     stitched, so the per-form ridge axis is the dominant signal.
  */
 
-export type HouseFormRoofIntentForFootprintResolution =
+type HouseFormRoofIntentForFootprintResolution =
   HouseRoofIntentAuthorshipResolution & {
     roofIntent: HouseFormRoofIntentModel;
   };
@@ -130,16 +129,4 @@ function deriveRidgeAxisFromComposition(
     }
   }
   return fallback === "y" ? "y" : "x";
-}
-
-// Kept for compatibility — used by callers that received the
-// legacy polygon shape directly.
-export function legacyPolygonToGeometryPolygon(
-  polygon: ReadonlyArray<{ alongM: string; depthM: string }>,
-): Polygon3 {
-  return polygon.map((point) => ({
-    x: Number(point.alongM) * 1000,
-    y: Number(point.depthM) * 1000,
-    z: 0,
-  }));
 }

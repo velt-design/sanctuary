@@ -1,6 +1,6 @@
-import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type {
   ObjectFirstHouseFormDraft,
+  WorkbenchAttachmentSide,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { reconcileHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 import {
@@ -13,15 +13,36 @@ import {
   type HouseComposition,
 } from '@sp/geometry';
 
+export type WorkbenchHouseFootprintEdit =
+  | {
+      type: 'rotate';
+      delta: -1 | 1;
+    }
+  | {
+      type: 'attachment_side';
+      side: WorkbenchAttachmentSide;
+    }
+  | {
+      type: 'composition_resize';
+      originXMm: number;
+      originYMm: number;
+      widthMm: number;
+      depthMm: number;
+      transformDeltaXM: number;
+      transformDeltaYM: number;
+    }
+  | {
+      type: 'position';
+      position: {
+        originXMm: string;
+        originYMm: string;
+        rotationDeg: string;
+      } | null;
+    };
+
 /**
  * PR-WB-COMPOSITION-ONLY (2026-06-19): edit applier for the
- * surviving footprint edit types. The retired types ('mode',
- * 'preset', 'param', 'polygon', 'custom_polygon', 'preset_resize')
- * had no path that wrote into the composition; they all mutated
- * the legacy `footprint.{mode,preset,params,polygon}` sub-object,
- * which is now gone.
- *
- * Surviving types:
+ * surviving workbench footprint edit types:
  *   - 'rotate' — quarter-turn the form's transform
  *   - 'attachment_side' — change which pergola side it attaches to
  *   - 'position' — set the world-space position
@@ -31,7 +52,7 @@ import {
 export function applyHouseFormFootprintEdit(input: {
   houseForms: ObjectFirstHouseFormDraft[];
   houseFormId: string;
-  edit: EstimateDrawingFootprintEdit;
+  edit: WorkbenchHouseFootprintEdit;
 }): { ok: true; houseForms: ObjectFirstHouseFormDraft[] } | { ok: false; error: string } {
   let found = false;
   let errorMessage: string | null = null;
@@ -94,13 +115,6 @@ export function applyHouseFormFootprintEdit(input: {
             },
           };
         }
-        // Deprecated edit types (legacy estimate sheet UI). No-op.
-        case 'mode':
-        case 'preset':
-        case 'param':
-        case 'polygon':
-        case 'custom_polygon':
-          return houseForm;
         default: {
           const _exhaustive: never = input.edit;
           void _exhaustive;

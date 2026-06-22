@@ -93,7 +93,7 @@ export function pergolaAttachmentFromSnap(input: AttachmentSnapInput): PergolaAt
 }
 
 /** Build a freestanding attachment (no host). */
-export function freestandingPergolaAttachment(): PergolaAttachment {
+function freestandingPergolaAttachment(): PergolaAttachment {
   return {
     spatialKind: 'freestanding',
     host: null,

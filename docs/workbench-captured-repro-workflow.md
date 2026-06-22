@@ -77,7 +77,7 @@ Do not hide diagnostic fallbacks or change render styling unless the captured di
 Run the support and fixture lanes:
 
 ```bash
-npx vitest run apps/portal/lib/drawings/state apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts playwright/support
+npx vitest run apps/portal/lib/drawings/state apps/portal/lib/drawings/views/plan playwright/support
 npx playwright test playwright/portal.workbench-fixture.spec.ts --project=portal-fixture --reporter=line
 ```
 

@@ -3,7 +3,7 @@ import { point2FromPoint3, roofPolygonIsSimple } from './roof2D';
 import { offsetFootprintPolygon, isOrthogonalFootprint } from './footprintMath';
 import { signedAreaXY, type HouseRoofBuildResult } from './_internal';
 
-export type HouseRoofEaveOffsetRepairStatus = 'none' | 'repaired' | 'failed';
+type HouseRoofEaveOffsetRepairStatus = 'none' | 'repaired' | 'failed';
 
 const HOUSE_EAVE_OFFSET_SELF_OVERLAP_CODE = 'eave_offset_self_overlap';
 

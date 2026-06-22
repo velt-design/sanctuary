@@ -5,7 +5,6 @@ import { addHouseFormToObjectFirstDraft } from './state/objectFirstWorkbenchAdap
 import {
   EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT,
   normalizeObjectFirstWorkbenchDraftVNext,
-  type HouseFormFootprintModel,
   type HouseFormRoofIntentModel,
   type ObjectFirstHouseFormDraft,
   type ObjectFirstPergolaConnectionKind,
@@ -22,7 +21,7 @@ import {
 type FixtureRoofType = 'pitched' | 'low_gable' | 'gable' | 'hip' | 'hip_corner';
 type FixtureCostOutput = Record<string, unknown>;
 
-export type FixtureModuleInput = {
+type FixtureModuleInput = {
   pergolaId?: string;
   pergolaStyle?: 'pitched' | 'gable' | 'hip' | 'hip_corner' | 'box';
   roofMaterial?: WorkbenchPergolaRoofMaterial;
@@ -38,10 +37,6 @@ export type FixtureModuleInput = {
   houseConnectionType?: ObjectFirstPergolaConnectionKind | 'none';
   attachmentSide?: WorkbenchAttachmentSide;
   houseAttachmentStrategy?: ObjectFirstPergolaDraft['strategy'];
-  /** Retired post PR-WB-COMPOSITION-ONLY; kept as inert fields for backward-compat fixtures. */
-  houseFootprintMode?: string;
-  houseFootprintPreset?: string;
-  houseFootprintParams?: unknown;
   houseRoofPitchDeg?: string;
   houseFasciaHeightMm?: string;
   houseEaveOverhangMm?: string;
@@ -70,20 +65,6 @@ export function makeModule(overrides: Partial<FixtureModuleInput> = {}): Fixture
     houseConnectionType: 'soffit',
     attachmentSide: 'rear',
     houseAttachmentStrategy: 'soffit_brackets',
-    houseFootprintMode: 'preset',
-    houseFootprintPreset: 'straight',
-    houseFootprintParams: {
-      widthM: '6',
-      offsetXM: '0',
-      setbackM: '0',
-      bandDepthM: '4',
-      returnRunM: '0',
-      recessWidthM: '0',
-      recessDepthM: '0',
-      leftLegRunM: '0',
-      rightLegRunM: '0',
-      sideRunM: '0',
-    },
     houseRoofPitchDeg: '5',
     houseFasciaHeightMm: '180',
     houseEaveOverhangMm: '450',

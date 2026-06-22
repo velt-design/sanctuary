@@ -40,8 +40,7 @@ import {
  *    `buildClippedBoxGeometry`, `buildClippedProfileExtrusionGeometry`,
  *    `buildRenderMeshGeometry`, `buildLinearSolidPlacement`,
  *    `isRenderableSlab`) — consumed by the per-object renderers and
- *    re-exported through the viewport's public API for callers that
- *    need to materialise geometry outside the viewport tree.
+ *    helper code that materialises geometry outside the main viewport component.
  *
  * `POLYGON_TRIANGULATION_EPSILON_MM` and `CLIP_EPSILON_MM` are the two
  * load-bearing tolerances. Both are deliberately tight (1e-5 and 1e-6
@@ -118,7 +117,7 @@ export function normalizeNonZeroVector(vector: THREE.Vector3): THREE.Vector3 | n
   return vector.clone().normalize();
 }
 
-export function buildPlaneFrame(
+function buildPlaneFrame(
   plane: ViewerSceneRoofCladdingPanelObject["plane"],
 ): {
   origin: THREE.Vector3;

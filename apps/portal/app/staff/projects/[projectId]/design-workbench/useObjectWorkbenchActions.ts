@@ -9,6 +9,8 @@ import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbe
 import type {
   HouseFormModel,
   HouseFormRoofIntentModel,
+  ObjectFirstDeckDraft,
+  ObjectFirstOpeningDraft,
   ObjectFirstWorkbenchDraftVNext,
   PergolaAttachment,
   WorkbenchObjectRef,
@@ -36,12 +38,13 @@ import type {
   ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
-  updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
-  type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
-import { applyHouseFormFootprintEdit } from './houseFormFootprintDraftActions';
+import {
+  applyHouseFormFootprintEdit,
+  type WorkbenchHouseFootprintEdit,
+} from './houseFormFootprintDraftActions';
 import {
   buildHouseFormRoofIntentCommitDraft,
 } from './houseFormRoofDraftActions';
@@ -49,7 +52,6 @@ import {
   resolveObjectOwnedHouseActionContext,
   resolveSelectedHouseActionContext,
 } from './objectWorkbenchActionContext';
-import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import {
   applyObjectWorkbenchDeckPatch,
   applyObjectWorkbenchOpeningPatch,
@@ -69,24 +71,35 @@ import {
   resolveDeckReferencePolygon,
   resolvePreferredNewObjectWorkbenchOpeningHostWall,
   updateDraftObjectFirst,
-  type ObjectWorkbenchDeckMutationInput,
-  type ObjectWorkbenchDraftBuildResult,
-  type ObjectWorkbenchObjectPatchCommit,
-  type ObjectWorkbenchOpeningMutationInput,
 } from './objectWorkbenchDraftActions';
 
 type UseObjectWorkbenchActionsInput = {
   drawingDraft: EstimateDrawingDraft | null;
-  drawOutlineTarget: DrawOutlineTarget;
   persistDrawingDraftLocally: (nextDraft: EstimateDrawingDraft) => Promise<void>;
-  setDrawOutlineTarget: Dispatch<SetStateAction<DrawOutlineTarget>>;
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
-  startDeckOutlineEditor: (deckId: string) => CommitResult;
   store: ReturnType<typeof buildDrawingWorkbenchStore>;
   ui: DrawingWorkbenchUiState;
 };
 
-type DraftBuildResult = ObjectWorkbenchDraftBuildResult;
+type ObjectWorkbenchObjectPatchCommit =
+  | {
+      target: { family: 'decks'; objectId: string };
+      patch: ObjectWorkbenchDeckPatch;
+    }
+  | {
+      target: { family: 'openings'; objectId: string };
+      patch: ObjectWorkbenchOpeningPatch;
+    }
+  | {
+      target: { family: 'pergolas'; objectId: string };
+      patch: ObjectWorkbenchPergolaPatch;
+    };
+
+type DraftBuildResult =
+  | { ok: true; draft: EstimateDrawingDraft }
+  | { ok: false; error: string };
+
+type CommitResult = { ok: boolean; error?: string };
 
 type DraftTransaction = {
   buildNextDraft: (draft: EstimateDrawingDraft) => DraftBuildResult;
@@ -94,9 +107,14 @@ type DraftTransaction = {
   afterPersist?: () => CommitResult | void | Promise<CommitResult | void>;
 };
 
-type DeckMutationInput = ObjectWorkbenchDeckMutationInput;
+type DeckMutationInput = {
+  currentDecks: ObjectFirstDeckDraft[];
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
+};
 
-type OpeningMutationInput = ObjectWorkbenchOpeningMutationInput;
+type OpeningMutationInput = {
+  currentOpenings: ObjectFirstOpeningDraft[];
+};
 
 type DeckPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'decks' } }>;
 type OpeningPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'openings' } }>;
@@ -135,11 +153,8 @@ export type ObjectWorkbenchActions = ReturnType<typeof useObjectWorkbenchActions
 
 export function useObjectWorkbenchActions({
   drawingDraft,
-  drawOutlineTarget,
   persistDrawingDraftLocally,
-  setDrawOutlineTarget,
   setUi,
-  startDeckOutlineEditor,
   store,
   ui,
 }: UseObjectWorkbenchActionsInput) {
@@ -149,7 +164,7 @@ export function useObjectWorkbenchActions({
   });
   const selectedHouseForm = selectedHouseContext?.houseForm ?? null;
   const activeObjectWorkbenchOpening =
-    ui.activeObjectFamily === 'openings'
+    ui.activeObjectRef.family === 'openings'
       ? store.derived.objectWorkbench.openings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
       : null;
 
@@ -277,40 +292,11 @@ export function useObjectWorkbenchActions({
     ],
   );
 
-  const runGeometryIntentTransaction = useCallback(
-    async (_intent: unknown): Promise<CommitResult> => ({
-      ok: false,
-      error: 'Generic drawing-field edits are unavailable in the object-first workbench.',
-    }),
-    [],
-  );
-
-  const validateDeckPreview = useCallback(
-    (nextDraft: EstimateDrawingDraft, deckId: string): CommitResult => {
-      const previewStore = buildDrawingWorkbenchStore({
-        draft: nextDraft,
-        ui,
-      });
-      const nextDeck = previewStore.derived.objectWorkbench.decks.find(
-        (deck) => deck.id === deckId,
-      );
-      if (nextDeck?.validation.status === 'invalid') {
-        return {
-          ok: false,
-          error: nextDeck.validation.message ?? 'Unable to update the deck dimension.',
-        };
-      }
-      return { ok: true };
-    },
-    [ui],
-  );
-
   const selectObjectTarget = useCallback(
     (ref: WorkbenchObjectRef) => {
       setUi((current) => ({
         ...current,
         ...buildDrawingWorkbenchObjectSelectionState({
-          activeRailTab: ref.family,
           activeObjectRef: ref,
         }),
         selection:
@@ -332,11 +318,9 @@ export function useObjectWorkbenchActions({
         }
         return {
           ...current,
-          ...buildDrawingWorkbenchObjectSelectionState({
-            activeRailTab: current.activeRailTab,
-            activeObjectFamily: current.activeObjectFamily,
-            activeObjectRef: {
-              family,
+            ...buildDrawingWorkbenchObjectSelectionState({
+              activeObjectRef: {
+                family,
               objectId: null,
             },
           }),
@@ -345,17 +329,6 @@ export function useObjectWorkbenchActions({
       });
     },
     [setUi],
-  );
-
-  const resetDrawOutlineDeckTarget = useCallback(
-    (deckId: string) => {
-      setDrawOutlineTarget((current) =>
-        current.kind === 'deck' && current.deckId === deckId
-          ? { kind: 'footprint', deckId: null }
-          : current,
-      );
-    },
-    [setDrawOutlineTarget],
   );
 
   const commitDeckDraftMutation = useCallback(
@@ -421,44 +394,10 @@ export function useObjectWorkbenchActions({
     [runDraftTransaction, store],
   );
 
-  const commitSharedHouseFootprintEdit = useCallback(
-    async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> =>
-      runDraftTransaction({
-        buildNextDraft: (draft) => {
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const assembly = objectFirstDraft.houseAssembly;
-          const houseFormId = selectedHouseForm?.id ?? assembly?.houseForms[0]?.id ?? null;
-          if (!assembly || !houseFormId) {
-            return { ok: false, error: 'No house forms are available.' };
-          }
-          const result = applyHouseFormFootprintEdit({
-            houseForms: assembly.houseForms,
-            houseFormId,
-            edit,
-          });
-          if (!result.ok) return result;
-          return {
-            ok: true,
-            draft: updateDraftObjectFirst({
-              draft,
-              objectFirst: {
-                ...objectFirstDraft,
-                houseAssembly: {
-                  ...assembly,
-                  houseForms: result.houseForms,
-                },
-              },
-            }),
-          };
-        },
-      }),
-    [runDraftTransaction, selectedHouseForm?.id, store],
-  );
-
   const commitHouseFormFootprintEdit = useCallback(
     async (input: {
       houseFormId: string;
-      edit: EstimateDrawingFootprintEdit;
+      edit: WorkbenchHouseFootprintEdit;
     }): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
@@ -509,26 +448,6 @@ export function useObjectWorkbenchActions({
         },
       }),
     [runDraftTransaction, store],
-  );
-
-  const commitSharedHouseRoofDraft = useCallback(
-    async (roof: HouseFormRoofIntentModel): Promise<CommitResult> =>
-      runDraftTransaction({
-        buildNextDraft: (draft) => {
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const houseFormId = selectedHouseForm?.id ?? objectFirstDraft.houseAssembly?.houseForms[0]?.id ?? null;
-          if (!houseFormId) {
-            return { ok: false, error: 'No house forms are available.' };
-          }
-          return buildHouseFormRoofIntentCommitDraft({
-            draft,
-            objectFirstDraft,
-            houseFormId,
-            roof,
-          });
-        },
-      }),
-    [runDraftTransaction, selectedHouseForm?.id, store],
   );
 
   const commitSharedHouseDeckPatch = useCallback(
@@ -873,14 +792,11 @@ export function useObjectWorkbenchActions({
           return [...currentDecks, nextDeck];
         },
         afterPersist: () => {
-          if (mode === 'custom_outline') {
-            return startDeckOutlineEditor(deckId);
-          }
           selectObjectTarget({ family: 'decks', objectId: deckId });
         },
       });
     },
-    [commitDeckDraftMutation, selectObjectTarget, selectedHouseForm, startDeckOutlineEditor],
+    [commitDeckDraftMutation, selectObjectTarget, selectedHouseForm],
   );
 
   const removeSharedHouseDeck = useCallback(
@@ -889,23 +805,9 @@ export function useObjectWorkbenchActions({
         buildNextDecks: ({ currentDecks }) => currentDecks.filter((deck) => deck.id !== deckId),
         afterPersist: () => {
           clearSelectedObjectTarget('decks', deckId);
-          resetDrawOutlineDeckTarget(deckId);
         },
       }),
-    [clearSelectedObjectTarget, commitDeckDraftMutation, resetDrawOutlineDeckTarget],
-  );
-
-  const commitSharedDeckCustomPolygon = useCallback(
-    async (polygon: CalculatorHouseFootprintPolygonPoint[]): Promise<CommitResult> => {
-      if (drawOutlineTarget.kind !== 'deck') {
-        return { ok: false, error: 'No deck outline target is active.' };
-      }
-      return commitSharedHouseDeckPatch(drawOutlineTarget.deckId, {
-        shape: 'custom',
-        outline: polygon,
-      });
-    },
-    [commitSharedHouseDeckPatch, drawOutlineTarget],
+    [clearSelectedObjectTarget, commitDeckDraftMutation],
   );
 
   const commitSharedHouseOpeningPatch = useCallback(
@@ -980,7 +882,7 @@ export function useObjectWorkbenchActions({
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
           const activePergolaId =
-            ui.activeObjectFamily === 'pergolas' && ui.activeObjectRef.family === 'pergolas'
+            ui.activeObjectRef.family === 'pergolas'
               ? ui.activeObjectRef.objectId
               : null;
           newPergolaId = nextObjectWorkbenchPergolaId(currentPergolas);
@@ -1008,7 +910,6 @@ export function useObjectWorkbenchActions({
             ...current,
             activePergolaId: newPergolaId,
             ...buildDrawingWorkbenchObjectSelectionState({
-              activeRailTab: 'pergolas',
               activeObjectRef: { family: 'pergolas', objectId: newPergolaId },
             }),
             selection: { kind: 'none', targetId: null },
@@ -1020,27 +921,13 @@ export function useObjectWorkbenchActions({
       runDraftTransaction,
       setUi,
       store,
-      ui.activeObjectFamily,
       ui.activeObjectRef.family,
       ui.activeObjectRef.objectId,
     ],
   );
 
-  const commitDrawingField = useCallback(
-    async (_field: string, _nextValue: string): Promise<CommitResult> => ({
-      ok: false,
-      error: 'Calculator drawing fields are unavailable in the object-first workbench.',
-    }),
-    [],
-  );
-
-  const commitGeometryIntent = useCallback(
-    async (intent: unknown): Promise<CommitResult> => runGeometryIntentTransaction(intent),
-    [runGeometryIntentTransaction],
-  );
-
   const commitHouseFormFootprintDimension = useCallback(
-    async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> => {
+    async (edit: WorkbenchHouseFootprintEdit): Promise<CommitResult> => {
       const houseFormId =
         ui.activeObjectRef.family === 'house_forms' && ui.activeObjectRef.objectId
           ? ui.activeObjectRef.objectId
@@ -1055,26 +942,6 @@ export function useObjectWorkbenchActions({
       ui.activeObjectRef.family,
       ui.activeObjectRef.objectId,
     ],
-  );
-
-  const commitDeckDimension = useCallback(
-    async (deckId: string, patch: ObjectWorkbenchDeckPatch): Promise<CommitResult> =>
-      commitObjectWorkbenchPatch(
-        {
-          target: { family: 'decks', objectId: deckId },
-          patch,
-        },
-        {
-          validateDraft: (nextDraft) => validateDeckPreview(nextDraft, deckId),
-        },
-      ),
-    [commitObjectWorkbenchPatch, validateDeckPreview],
-  );
-
-  const commitOpeningDimension = useCallback(
-    async (openingId: string, patch: ObjectWorkbenchOpeningPatch): Promise<CommitResult> =>
-      commitSharedHouseOpeningPatch(openingId, patch),
-    [commitSharedHouseOpeningPatch],
   );
 
   /**
@@ -1115,9 +982,8 @@ export function useObjectWorkbenchActions({
    * later persist dropped the earlier fields.
    *
    * Pass `null` (or omit) to skip a field. The mirror step inside
-   * `commitObjectWorkbenchPatch` propagates the dimension fields to the
-   * legacy module inputs the solver reads, so callers don't need a
-   * separate `commitGeometryIntent` write.
+   * `commitObjectWorkbenchPatch` owns any temporary solver-field mirroring,
+   * so callers stay on the object-first patch path.
    */
   const commitSharedPergolaEdgeDragResult = useCallback(
     async (
@@ -1176,18 +1042,11 @@ export function useObjectWorkbenchActions({
     commitHouseFormFootprintEdit,
     commitHouseFormRoofIntent,
     commitHouseFormTransformDelta,
-    commitDrawingField,
-    commitDeckDimension,
-    commitGeometryIntent,
     commitHouseFormFootprintDimension,
-    commitOpeningDimension,
     commitSharedPergolaAttachment,
     commitSharedPergolaEdgeDragResult,
-    commitSharedDeckCustomPolygon,
     commitSharedHouseDeckPatch,
-    commitSharedHouseFootprintEdit,
     commitSharedHouseOpeningPatch,
-    commitSharedHouseRoofDraft,
     detachHouseFormAtSeam,
     joinHouseForms,
     removeSharedHouseDeck,

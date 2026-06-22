@@ -21,7 +21,7 @@ The workbench product is a single object-first geometry model that can serve mul
 WorkbenchProjectModel
   -> @sp/geometry project solve / portal solve adapter
   -> WorkbenchSolvedGeometryArtifact
-  -> Plan / 3D / Sheet / Section / Snap / Diagnostics
+  -> Plan / 3D / Sheet / future Section / Snap / Diagnostics
 ```
 
 Future commercial work is downstream only:
@@ -55,7 +55,7 @@ The post-breakaway workbench is object-first and intentionally strict:
 
 - `WorkbenchProjectModel` is the only live workbench design input.
 - House forms, pergolas, decks, and openings are object-owned entities with stable ids.
-- Plan, 3D, Sheet, Section, snap, diagnostics, and status are intended to read the same solved geometry artifact.
+- Plan, 3D, Sheet, snap, diagnostics, and status read the same solved geometry artifact. A future Section surface must join that artifact path instead of reviving a separate workbench view state.
 - Project pergola Plan/3D bodies are produced before project composition: `buildWorkbenchSolvedModel` builds object-first pergola render artifacts, then `buildProjectObjectRenderPipeline` and project scene composition consume that artifact list. Empty pergola artifact sets are valid only when the project has no pergolas.
 - Invalid geometry renders diagnostic/reference geometry only. It must not borrow another object's committed body. The PR-HR3 fail-soft amber-tint surfaces best-effort solver output for QA-invalid roofs so designers see what the solver attempted; this does not change the invalid classification.
 - Workbench repricing is unavailable until a downstream artifact/takeoff-to-commercial adapter exists.

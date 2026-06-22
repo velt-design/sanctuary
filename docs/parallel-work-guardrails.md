@@ -212,7 +212,7 @@ Parallel workbench lanes should stay narrow:
 
 - Solved geometry spine: make plan, 3D, section, sheet, snap/detail views, interactions, and status consume one solved artifact.
 - HouseAssembly to geometry: move geometry input away from compatibility `HouseModel` and toward object-first assembly data.
-- Plan from geometry: make Model Space plan a top-down view of solved geometry, with object IDs matching solved geometry IDs.
+- Plan from geometry: make the Plan Editor a top-down view of solved geometry, with object IDs matching solved geometry IDs.
 - Object-first interaction layer: route every movable object through one shared interaction engine keyed by object IDs and solved geometry, then commit object-first patches through family adapters instead of viewport-specific drag branches.
 - Accuracy and trust gate: make untrusted fallback, invalid, approximate, and unresolved states visible and enforceable.
 
@@ -222,11 +222,13 @@ Compatibility code must stay behind explicit compatibility boundaries.
 
 Allowed compatibility locations:
 
-- `apps/portal/lib/drawings/state/compat/`
-- explicitly named migration adapters
+- explicitly named migration adapters or import/export shims
 - tests that deliberately prove compatibility behavior
 
-Public object-workbench files should not import compatibility models directly unless the file itself is a boundary facade.
+The old `apps/portal/lib/drawings/state/compat/` namespace has been retired.
+Do not recreate a generic compatibility namespace to make a migration easier.
+Public object-workbench files should not import compatibility models directly
+unless the file itself is a named boundary facade.
 
 Names that must remain suspect:
 
@@ -238,26 +240,35 @@ Names that must remain suspect:
 - `buildHouseFirst...`
 
 These can exist only when the file is clearly acting as a temporary bridge.
+In live workbench roots, the expected answer is usually that these names do not
+appear at all; historical docs and calculator-specific CSS/class names are not
+workbench runtime permission.
 
 ### Workbench Shared Contracts
 
 Treat these contracts as shared lane boundaries:
 
-- `WorkbenchSolvedModel`
-- object-first geometry context
-- geometry-derived plan overlay
-- object hit-target model
-- shared interaction session contract
+- `WorkbenchSolvedProjectArtifact`
+- project object render pipeline
+- project Plan projection and render graph
+- project 3D scene composition
+- snap source and object hit-target model
+- shared interaction engine and commit adapters
 - object-first edit/commit patch model
 - workbench trust/status model
 
-`WorkbenchSolvedModel` must answer:
+`WorkbenchSolvedModel` is now the route/store orchestration wrapper around the
+project artifact. It may still carry compatibility fields while lower-level
+solve cleanup continues, but new consumers should read the bundled
+`WorkbenchSolvedProjectArtifact` boundary rather than loose per-view arrays.
+
+The project artifact must answer:
 
 - what object-first draft/project was solved
-- which module is active
-- whether geometry solved
-- which `Assembly3D` produced plan and 3D scene
-- what fallback or invalid condition applies
+- which object ids own Plan, 3D, Sheet, snap, and diagnostics output
+- whether each object solved, fell back, or is invalid/unresolved
+- which project Plan projection and 3D scene are canonical
+- what fallback, approximation, or diagnostic condition applies
 
 Geometry-derived plan overlays and hit targets must include object IDs, object family, geometry source IDs, selectable or editable affordances, and trust metadata. They must not own independent geometric truth.
 
@@ -274,30 +285,30 @@ Every workbench migration PR must answer:
 Required for any PR touching geometry, plan, or interactions:
 
 ```text
-npm run test:portal -- apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts
-npm run test:portal -- apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts
+npx vitest run apps/portal/lib/workbenchBreakawayImportGuards.test.ts
+npm run test:portal:workbench
 ```
 
 Required when touching plan overlays:
 
 ```text
-npm run test:portal -- apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts
-npm run test:portal -- apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx
+npm run test:portal -- apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts
+npm run test:portal -- apps/portal/components/drawings/viewports/PlanViewport
 ```
 
-Also run `houseFirstPlanOverlay.test.ts` when the change touches compatibility or legacy plan fallback behavior. `objectWorkbenchPlanOverlay` is covered through the plan view-model and viewport interaction tests until it has a dedicated test file.
+Also run compatibility/fallback tests when the change touches legacy plan fallback behavior. `objectWorkbenchPlanOverlay` is covered through viewport interaction tests until it has a dedicated test file.
 
 Required when touching geometry derivation:
 
 ```text
-npm run test:portal -- apps/portal/lib/drawings/geometry/buildWorkbenchGeometryPreview.test.ts
-npm run test:portal -- apps/portal/lib/drawings/geometry/buildRawGeometryModuleInput.test.ts
+npx vitest run apps/portal/lib/workbenchBreakawayImportGuards.test.ts
+npm run test:portal:workbench
 ```
 
 Required when touching viewport interaction behavior:
 
 ```text
-npm run test:portal -- apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx
+npm run test:portal -- apps/portal/components/drawings/viewports/PlanViewport
 ```
 
 Broader runs may be required before merging an integration branch.

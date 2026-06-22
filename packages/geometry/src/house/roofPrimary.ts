@@ -25,7 +25,6 @@ import {
   buildLegacyJoinedRectilinearGableRoof,
   deriveHouseGableTerminalEndsFromFootprint,
 } from './roofJoined';
-import { buildRectangleHippedRoof } from './roofRectangleHipped';
 import { buildRectangularRoof } from './roofRectangle';
 import { applyRoofQa } from './roofQa';
 
@@ -139,7 +138,7 @@ export function buildMonoHouseRoof(input: {
   });
 }
 
-export function buildRectangularGableRoof(input: {
+function buildRectangularGableRoof(input: {
   eavePolygon: Polygon3;
   eaveHeightMm: number;
   roofPitchDeg: number;
@@ -261,7 +260,7 @@ export function buildRectangularGableRoof(input: {
   });
 }
 
-export function buildGabledHouseRoof(input: {
+function buildGabledHouseRoof(input: {
   sourceFootprint: Polygon3;
   eavePolygon: Polygon3;
   eaveHeightMm: number;
@@ -345,7 +344,7 @@ export function buildGabledHouseRoof(input: {
   });
 }
 
-export function buildHippedHouseRoof(input: {
+function buildHippedHouseRoof(input: {
   sourceFootprint: Polygon3;
   eavePolygon: Polygon3;
   eaveHeightMm: number;

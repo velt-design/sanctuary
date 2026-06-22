@@ -5,7 +5,7 @@ UI components for the portal drawing workbench live here. Domain state, geometry
 ## Boundaries
 
 - `workbench`: top-level workbench shell, viewport mode switch, and high-level workbench composition.
-- `viewports`: Model Space, Sheet View, 3D viewport, draw-outline tools, and viewport interaction presentation.
+- `viewports`: Plan, Sheet View, 3D viewport, and viewport interaction presentation.
 - `rail`: `ObjectWorkbenchRail`, inspectors, and object editing controls.
 - `sheets`: sheet composition UI such as `SheetComposer`.
 - `renderers`: reusable drawing renderers when extracted from viewports.

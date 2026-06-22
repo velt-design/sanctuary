@@ -225,7 +225,7 @@ The drawing browser gate uses the hidden fixture workbench route:
 /staff/projects/fixture-roof/design-workbench?fixture=mono-standard
 ```
 
-Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The no-auth fixture gate also checks gable, box, mono-join, and screenshot-style hipped fixtures for nonblank Model Space Plan, 3D containment, finite diagnostics, top-projection parity, and the 3D Top screen-axis convention. Each parity-critical fixture now also exposes compact fixture-only browser diagnostics for the shadow `workbench_solved` commercial source, ready trust status, solved-geometry quantity takeoff source, no blocking readiness gates, and commercial parity counts. The authenticated browser suite can still open a project-backed drawing route when staff credentials and data are available.
+Fixture mode is read-only. It opens the standard Mono workbench fixture, enters the Plan Editor, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The no-auth fixture gate also checks gable, box, mono-join, and screenshot-style hipped fixtures for nonblank Plan Editor, 3D containment, finite diagnostics, top-projection parity, and the 3D Top screen-axis convention. Each parity-critical fixture now also exposes compact fixture-only browser diagnostics for the shadow `workbench_solved` commercial source, ready trust status, solved-geometry quantity takeoff source, no blocking readiness gates, and commercial parity counts. The authenticated browser suite can still open a project-backed drawing route when staff credentials and data are available.
 
 The parity-critical baked fixture list is owned by `apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts` through fixture-only QA metadata. Keep fixture names explicit, add representative saved estimate snapshots to the commercial parity harness or the fixture registry when a checked-in corpus exists, and treat commercial parity as shadow comparison signal only.
 
@@ -286,9 +286,9 @@ Design Workbench authenticated edit/save/reload:
 
 - Use a staff test account and a reversible draft estimate/design with safe fixture-like data.
 - Open `/staff/projects`, select the project, open the Designs tab, and open the drawing workbench.
-- Confirm Model Space Plan, Sheet View, and 3D View are nonblank, finite, and do not show legacy fallback or unavailable text.
+- Confirm Plan Editor, Sheet View, and 3D View are nonblank, finite, and do not show legacy fallback or unavailable text.
 - Make one reversible object-first edit such as a small roof pitch, attachment side, deck position, opening position, or house form parameter change.
-- Save the workbench, wait for the saved/clean state, reload the page, and confirm the edited value, Model Space Plan, Sheet View, and 3D View persist.
+- Save the workbench, wait for the saved/clean state, reload the page, and confirm the edited value, Plan Editor, Sheet View, and 3D View persist.
 - Restore the original value, save again, reload again, and confirm the project returns to its starting state.
 
 Pricing Source Rollout:

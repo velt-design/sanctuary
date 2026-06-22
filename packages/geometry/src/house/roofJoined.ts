@@ -2,14 +2,12 @@ import type {
   GeometryMetadata,
   HouseRoofFeature3D,
   HouseRoofRidgeAxis,
-  Line3,
-  Point3,
   Polygon3,
   RoofPlane3D,
 } from '../contracts';
 import { lineLength } from '../math3d';
 import { RIDGE_COLLAPSE_EPSILON_MM, ROOF_JOIN_EPSILON_MM } from './constants';
-import { closestPointOnLineSegment2D, findInteriorRoofNode, isOrthogonalFootprint, polygonLineInterval } from './footprintMath';
+import { isOrthogonalFootprint } from './footprintMath';
 import {
   boundingBox,
   line,
@@ -22,7 +20,6 @@ import {
   signedAreaXY,
   swapPointAxes,
   swapVectorAxes,
-  vertexFeatureKind,
   type BentSpineTerminalGableClosure,
   type HouseGableTerminalEnd,
   type JoinedRoofFacet,
@@ -196,7 +193,7 @@ export function buildLegacyJoinedRectilinearGableRoof(input: {
   };
 }
 
-export function buildBentSpineJoinedGableRoofX(input: {
+function buildBentSpineJoinedGableRoofX(input: {
   eavePolygon: Polygon3;
   eaveHeightMm: number;
   roofPitchDeg: number;
@@ -348,7 +345,7 @@ export function buildBentSpineJoinedGableRoofX(input: {
   };
 }
 
-export function reflectRoofBuildResultAcrossX(input: {
+function reflectRoofBuildResultAcrossX(input: {
   roofPlanes: RoofPlane3D[];
   roofFeatures: HouseRoofFeature3D[];
   terminalEnds: HouseGableTerminalEnd[];
@@ -391,7 +388,7 @@ export function reflectRoofBuildResultAcrossX(input: {
   };
 }
 
-export function swapRoofBuildResultAxes(input: {
+function swapRoofBuildResultAxes(input: {
   roofPlanes: RoofPlane3D[];
   roofFeatures: HouseRoofFeature3D[];
   terminalEnds: HouseGableTerminalEnd[];
@@ -564,102 +561,3 @@ export function buildJoinedRectilinearGableRoof(input: {
   return buildLegacyJoinedRectilinearGableRoof(input);
 }
 
-function buildComplexRidgeLine(input: {
-  eavePolygon: Polygon3;
-  node: Point3;
-  axis: 'x' | 'y';
-  z: number;
-  insetMm: number;
-}): Line3 | null {
-  const interval = polygonLineInterval({
-    polygon: input.eavePolygon,
-    axis: input.axis,
-    coordinate: input.axis === 'x' ? input.node.y : input.node.x,
-    through: input.axis === 'x' ? input.node.x : input.node.y,
-  });
-  if (!interval) return null;
-  const inset = Math.min(Math.max(50, input.insetMm / 2), Math.max(0, (interval.max - interval.min) / 3));
-  const start = interval.min + inset;
-  const end = interval.max - inset;
-  if (end - start <= RIDGE_COLLAPSE_EPSILON_MM) return null;
-  return input.axis === 'x'
-    ? line(point(start, input.node.y, input.z), point(end, input.node.y, input.z))
-    : line(point(input.node.x, start, input.z), point(input.node.x, end, input.z));
-}
-
-export function buildComplexFootprintRoof(input: {
-  eavePolygon: Polygon3;
-  eaveHeightMm: number;
-  roofPitchDeg: number;
-}): { roofPlanes: RoofPlane3D[]; roofFeatures: HouseRoofFeature3D[] } {
-  const box = boundingBox(input.eavePolygon);
-  const axis: 'x' | 'y' = box.maxX - box.minX >= box.maxY - box.minY ? 'x' : 'y';
-  const roofNode = findInteriorRoofNode(input.eavePolygon);
-  const pitchRisePerRun = Math.tan((input.roofPitchDeg * Math.PI) / 180);
-  const highZ = input.eaveHeightMm + Math.max(1, roofNode.clearanceMm) * pitchRisePerRun;
-  const node = point(roofNode.point.x, roofNode.point.y, highZ);
-  const ridgeLine = buildComplexRidgeLine({
-    eavePolygon: input.eavePolygon,
-    node,
-    axis,
-    z: highZ,
-    insetMm: roofNode.clearanceMm,
-  });
-  const highTargetForEdge = (edgeMidpoint: Point3) =>
-    ridgeLine ? closestPointOnLineSegment2D(edgeMidpoint, ridgeLine) : node;
-  const roofPlanes: RoofPlane3D[] = [];
-
-  for (let index = 0; index < input.eavePolygon.length; index += 1) {
-    const start = input.eavePolygon[index]!;
-    const end = input.eavePolygon[(index + 1) % input.eavePolygon.length]!;
-    const eaveStart = point(start.x, start.y, input.eaveHeightMm);
-    const eaveEnd = point(end.x, end.y, input.eaveHeightMm);
-    const edgeMid = point((start.x + end.x) / 2, (start.y + end.y) / 2, input.eaveHeightMm);
-    const highPoint = highTargetForEdge(edgeMid);
-    if (lineLength(line(eaveStart, eaveEnd)) <= 1e-6 || lineLength(line(edgeMid, highPoint)) <= 1e-6) continue;
-    roofPlanes.push(
-      buildRoofPlane({
-        id: `house-roof-edge-${index + 1}`,
-        boundary: [eaveStart, eaveEnd, highPoint],
-        highPoint,
-        lowPoint: edgeMid,
-        ridgeAxis: axis,
-        pitchDeg: input.roofPitchDeg,
-        metadata: {
-          sourceEdgeId: `footprint-edge-${index + 1}`,
-          footprintFollowing: true,
-        },
-      }),
-    );
-  }
-
-  const roofFeatures: HouseRoofFeature3D[] = [];
-  if (ridgeLine) {
-    roofFeatures.push({
-      id: 'house-roof-ridge-1',
-      kind: 'ridge',
-      line: ridgeLine,
-      metadata: { roofForm: 'hipped', footprintFollowing: true },
-    });
-  }
-
-  let hipCount = 0;
-  let valleyCount = 0;
-  for (let index = 0; index < input.eavePolygon.length; index += 1) {
-    const source = input.eavePolygon[index]!;
-    const start = point(source.x, source.y, input.eaveHeightMm);
-    const target = ridgeLine ? closestPointOnLineSegment2D(start, ridgeLine) : node;
-    if (lineLength(line(start, target)) <= 1e-6) continue;
-    const kind = vertexFeatureKind(input.eavePolygon, index);
-    if (kind === 'hip') hipCount += 1;
-    if (kind === 'valley') valleyCount += 1;
-    roofFeatures.push({
-      id: kind === 'hip' ? `house-roof-hip-${hipCount}` : `house-roof-valley-${valleyCount}`,
-      kind,
-      line: line(start, target),
-      metadata: { roofForm: 'hipped', footprintFollowing: true },
-    });
-  }
-
-  return { roofPlanes, roofFeatures };
-}

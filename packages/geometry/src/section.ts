@@ -31,10 +31,6 @@ function sortById<T extends { id: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => a.id.localeCompare(b.id));
 }
 
-function averageX(member: AssemblyMember3D): number {
-  return (member.centerline.start.x + member.centerline.end.x) / 2;
-}
-
 function averageY(member: AssemblyMember3D): number {
   return (member.centerline.start.y + member.centerline.end.y) / 2;
 }

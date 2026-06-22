@@ -1,10 +1,7 @@
 import type { GeometryTopProjectionViewModel, Point2 } from '@sp/geometry';
 import type { PlanPoint } from './objectWorkbenchPlanOverlay';
 
-export type PlanSvgPoint = {
-  x: number;
-  y: number;
-};
+export type PlanSvgPoint = Point2;
 
 export type PlanCoordinateAdapter = {
   coordinateSpace: 'top_projection_world_m' | 'object_outline_plan_m';

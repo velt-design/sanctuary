@@ -12,7 +12,7 @@ import {
   MONO_FREESTANDING_STANDARD_GOLDEN,
 } from './supportedGoldens';
 
-export type GeometryFixtureCase =
+type GeometryFixtureCase =
   | {
       id: string;
       kind: 'supported';

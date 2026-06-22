@@ -8,7 +8,6 @@ import type {
   ObjectFirstOpeningHostResolution,
   ObjectFirstPergolaAttachmentResolution,
 } from './objectFirstDerivedHosting';
-import type { DrawingWorkbenchRailTab } from './drawingWorkbenchUiState';
 import type {
   DeckObjectModel,
   HouseFormModel,
@@ -20,7 +19,7 @@ import type {
 import type { ObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
 import { deriveHouseFormDisplayLabel } from './houseFormDisplayLabel';
 
-export type DrawingWorkbenchRailObjectStatus = 'ready' | 'approximate' | 'blocked' | 'deferred';
+type DrawingWorkbenchRailObjectStatus = 'ready' | 'approximate' | 'blocked' | 'deferred';
 
 export type DrawingWorkbenchRailObjectEntry = {
   ref: WorkbenchObjectRef;
@@ -32,7 +31,7 @@ export type DrawingWorkbenchRailObjectEntry = {
   meta: string | null;
 };
 
-export type DrawingWorkbenchRailFamilySummary = {
+type DrawingWorkbenchRailFamilySummary = {
   family: WorkbenchObjectFamily;
   label: string;
   singularLabel: string;
@@ -43,7 +42,7 @@ export type DrawingWorkbenchRailFamilySummary = {
   emptyMessage: string;
 };
 
-export type DrawingWorkbenchRailInspectorContext = {
+type DrawingWorkbenchRailInspectorContext = {
   family: WorkbenchObjectFamily;
   familyLabel: string;
   singularLabel: string;
@@ -373,16 +372,7 @@ function buildFamilySummary(
   };
 }
 
-function resolveActiveFamily(
-  activeRailTab: DrawingWorkbenchRailTab,
-  activeObjectFamily: WorkbenchObjectFamily,
-): WorkbenchObjectFamily {
-  return activeRailTab === 'diagnostics' ? activeObjectFamily : activeRailTab;
-}
-
 export function buildDrawingWorkbenchRailModel(input: {
-  activeRailTab: DrawingWorkbenchRailTab;
-  activeObjectFamily: WorkbenchObjectFamily;
   activeObjectRef: WorkbenchObjectRef;
   houseForms: HouseFormModel[];
   decks: DeckObjectModel[];
@@ -413,7 +403,7 @@ export function buildDrawingWorkbenchRailModel(input: {
     }),
   };
   const familySummaries = FAMILY_ORDER.map((family) => buildFamilySummary(family, objectLists));
-  const selectedFamily = resolveActiveFamily(input.activeRailTab, input.activeObjectFamily);
+  const selectedFamily = input.activeObjectRef.family;
   const selectedDescriptor = FAMILY_DESCRIPTORS[selectedFamily];
   const selectedEntry =
     objectLists[selectedFamily].find((entry) => entry.ref.objectId === input.activeObjectRef.objectId) ?? null;

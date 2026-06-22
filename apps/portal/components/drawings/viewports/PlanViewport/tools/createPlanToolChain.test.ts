@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import { createCommandBus } from '@/lib/drawings/commands/commandBus';
 import { createReversibleCommand } from '@/lib/drawings/commands/createReversibleCommand';
-import { createEdgeDragTool, type EdgeDragOutline } from './EdgeDragTool';
+import { createEdgeDragTool } from './EdgeDragTool';
 import { createMoveTool, type MoveRequest } from './MoveTool';
 import { createSelectTool } from './SelectTool';
 import { createPlanToolChain } from './createPlanToolChain';
 import type { ToolPointerEvent } from './Tool';
+
+type EdgeDragToolConfig = Parameters<typeof createEdgeDragTool>[0];
+type EdgeDragOutline = NonNullable<ReturnType<EdgeDragToolConfig['getActiveOutline']>>;
 
 // Integration test for the Plan viewport's tool chain. This test bypasses
 // React (no JSDOM, no SVG) and wires the four tools directly the same way

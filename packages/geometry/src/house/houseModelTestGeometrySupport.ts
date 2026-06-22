@@ -16,7 +16,7 @@ export function pointOnSegment2D(
   return dot <= dx * dx + dy * dy + 1e-2;
 }
 
-export function pointInPolygon2D(
+function pointInPolygon2D(
   candidate: { x: number; y: number },
   polygon: Polygon3,
 ): boolean {
@@ -39,7 +39,7 @@ export function pointInPolygon2D(
   return inside;
 }
 
-export function pointInOrOnPolygon2D(
+function pointInOrOnPolygon2D(
   candidate: { x: number; y: number },
   polygon: Polygon3,
 ): boolean {
@@ -84,11 +84,11 @@ export function roofSegmentKey(
   return startKey <= endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
 }
 
-export function roofPointKeyXY(candidate: { x: number; y: number }): string {
+function roofPointKeyXY(candidate: { x: number; y: number }): string {
   return `${candidate.x.toFixed(3)},${candidate.y.toFixed(3)}`;
 }
 
-export function roofSegmentKeyXY(
+function roofSegmentKeyXY(
   start: { x: number; y: number },
   end: { x: number; y: number },
 ): string {
@@ -97,7 +97,7 @@ export function roofSegmentKeyXY(
   return startKey <= endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
 }
 
-export function rebuildRoofPerimeterPolygon(model: HouseModel): Polygon3 | null {
+function rebuildRoofPerimeterPolygon(model: HouseModel): Polygon3 | null {
   const directedSegments = model.roofPlanes.flatMap((roofPlane) =>
     roofPlane.boundary.map((start, index) => ({
       start,
@@ -173,7 +173,7 @@ export function polygonAreaXY(points: Array<{ x: number; y: number }>): number {
   return Math.abs(area) / 2;
 }
 
-export function signedPolygonAreaXY(points: Array<{ x: number; y: number }>): number {
+function signedPolygonAreaXY(points: Array<{ x: number; y: number }>): number {
   let area = 0;
   for (let index = 0; index < points.length; index += 1) {
     const current = points[index]!;
@@ -247,7 +247,7 @@ export function pointDistanceSquared3(first: Point3, second: Point3): number {
   );
 }
 
-export function vectorLength3(vector: Point3): number {
+function vectorLength3(vector: Point3): number {
   return Math.hypot(vector.x, vector.y, vector.z);
 }
 
@@ -363,7 +363,7 @@ export function lineLength3(line3: Line3): number {
   );
 }
 
-export function crossPoint3(first: Point3, second: Point3): Point3 {
+function crossPoint3(first: Point3, second: Point3): Point3 {
   return {
     x: first.y * second.z - first.z * second.y,
     y: first.z * second.x - first.x * second.z,
@@ -371,7 +371,7 @@ export function crossPoint3(first: Point3, second: Point3): Point3 {
   };
 }
 
-export function subtractPoint3(first: Point3, second: Point3): Point3 {
+function subtractPoint3(first: Point3, second: Point3): Point3 {
   return {
     x: first.x - second.x,
     y: first.y - second.y,
@@ -390,18 +390,3 @@ export function distanceToLine3D(candidate: Point3, source: Line3): number {
   );
 }
 
-export function polygonOutwardVectorXY(
-  polygon: Polygon3,
-  edgeIndex: number,
-): { x: number; y: number } {
-  const start = polygon[edgeIndex]!;
-  const end = polygon[(edgeIndex + 1) % polygon.length]!;
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.hypot(dx, dy);
-  if (length <= 1e-6) return { x: 0, y: 0 };
-  const area = signedPolygonAreaXY(polygon);
-  return area >= 0
-    ? { x: dy / length, y: -dx / length }
-    : { x: -dy / length, y: dx / length };
-}

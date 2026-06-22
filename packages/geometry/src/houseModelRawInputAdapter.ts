@@ -13,7 +13,7 @@ import {
   resolveHouseAttachmentStrategy,
 } from "./normalize";
 
-export type HouseModel3DPergolaAttachment = {
+type HouseModel3DPergolaAttachment = {
   connectionType: Exclude<ConnectionType, "freestanding">;
   attachmentSide: AttachmentSide;
   attachmentEdge: Line3 | null;
@@ -46,7 +46,7 @@ export type HouseModel3DRawHouseInput = {
   pergolaAttachment: HouseModel3DPergolaAttachment | null;
 };
 
-export type HouseModel3DGeometryConfigInput = {
+type HouseModel3DGeometryConfigInput = {
   houseId: string;
   config: GeometryConfig;
   attachmentEdge: Line3 | null;

@@ -1,7 +1,6 @@
 import type {
   Assembly3D,
   GeometryMetadata,
-  GeometryMetadataValue,
   HouseAttachmentTarget3D,
   HouseModel3D,
   Line3,
@@ -35,6 +34,7 @@ import {
 } from "./math3d";
 
 const MIN_VIEWER_HOUSE_SURFACE_AREA_MM2 = 1;
+type GeometryMetadataValue = GeometryMetadata[string];
 
 function isFinitePoint(point: Point3): boolean {
   return (
@@ -682,13 +682,11 @@ function buildHouseOpeningMarkerObjects(
  * envelope, eave, attachment-target). Returns an empty array when
  * `model` is null so callers can spread the result unconditionally.
  *
- * Used directly by `buildLayers` for the active assembly (legacy
- * single-house path), and by the portal multi-form solver (PR8d) to
- * compose additional-form house objects onto each pergola's viewer
- * scene. The `attachmentTarget` override exists because the legacy
- * path prefers `assembly.house.attachmentTarget` when set (pergola-
- * attached configurations write the target there post-solve); for
- * standalone freestanding forms it's always null.
+ * Used directly by `buildLayers` for package solve output, and by
+ * portal project-scene composition for object-owned house forms. The
+ * `attachmentTarget` override exists because assembly solves may write
+ * the resolved target on `assembly.house.attachmentTarget` post-solve;
+ * standalone freestanding forms pass null.
  */
 export function buildHouseModelSceneObjects(input: {
   model: HouseModel3D | null;
@@ -958,9 +956,9 @@ export function buildHouseModelSceneObjects(input: {
     // PR-Bug2 (2026-05-25): tag every house-derived scene object with the
     // source model's `houseId` so the top-projection classifier can resolve
     // clicks on multi-house scenes to the correct form. Without this tag,
-    // additional house forms' shapes carry no per-form discriminator and the
-    // portal-layer enrichment in `buildTopProjectionFromSolvedScene` falls
-    // back to the primary house id — so clicking House 2 selects House 1.
+    // non-host house-form shapes carry no per-form discriminator and the
+    // portal-layer enrichment in `buildTopProjectionFromSolvedScene` can fall
+    // back to another house id, so selecting one house highlights another.
     // Preserve any existing `houseFormId` (e.g. shapes a future helper sets
     // explicitly) so this only fills gaps.
     const existingHouseFormId =
@@ -1006,7 +1004,7 @@ function hiddenSupportBeamIdsForIntegratedSpGutters(
 
 function buildLayers(
   assembly: Assembly3D,
-  additionalHouseModels: ReadonlyArray<HouseModel3D> = [],
+  hostExcludedProjectHouseModels: ReadonlyArray<HouseModel3D> = [],
 ): ViewerSceneLayer[] {
   const houseObjects: ViewerSceneObject[] = [];
   const postObjects = assembly.members
@@ -1109,15 +1107,13 @@ function buildLayers(
     }
   }
 
-  // PR-G3a (2026-05-22): scene builder iterates project-level house forms
-  // beyond the active pergola's host. Closes audit row N9 (viewer reads
-  // only `assembly.house.model` for one pergola) + N10 (portal-layer
-  // `composeAdditionalHouseFormsIntoScene` workaround). Additional forms
-  // aren't pergola-attached, so `attachmentTarget: null`.
-  for (const additionalModel of additionalHouseModels) {
+  // Project-level workbench scenes include house forms beyond the current
+  // pergola host. These host-excluded models are not pergola-attached, so
+  // their attachment target stays null.
+  for (const projectHouseModel of hostExcludedProjectHouseModels) {
     houseObjects.push(
       ...buildHouseModelSceneObjects({
-        model: additionalModel,
+        model: projectHouseModel,
         attachmentTarget: null,
       }),
     );
@@ -1311,23 +1307,24 @@ function buildViewerSceneMetadata(
   });
 }
 
-export type BuildViewerSceneModelOptions = {
+type BuildViewerSceneModelOptions = {
   /**
-   * Additional house models to compose into the scene's house layer
-   * beyond the host house in `assembly.house.model`. Used by the workbench
-   * to render multi-form scenes where the active pergola's assembly only
-   * carries its host house — every other form attaches via this list.
-   * Each model is rendered with `attachmentTarget: null` (additional forms
-   * aren't pergola-attached).
+   * Project house models to compose into the scene's house layer beyond
+   * the current pergola host in `assembly.house.model`. Used by the
+   * workbench to render object-owned house forms without duplicating the
+   * active host. Each model renders with `attachmentTarget: null`.
    */
-  additionalHouseModels?: ReadonlyArray<HouseModel3D>;
+  hostExcludedProjectHouseModels?: ReadonlyArray<HouseModel3D>;
 };
 
 export function buildViewerSceneModel(
   assembly: Assembly3D,
   options?: BuildViewerSceneModelOptions,
 ): ViewerSceneModel {
-  const layers = buildLayers(assembly, options?.additionalHouseModels ?? []);
+  const layers = buildLayers(
+    assembly,
+    options?.hostExcludedProjectHouseModels ?? [],
+  );
   return {
     layers,
     metadata: buildViewerSceneMetadata(assembly, layers),

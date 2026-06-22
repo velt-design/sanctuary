@@ -201,6 +201,7 @@ describe('applyAssemblyPosition3D', () => {
         ...makeBaseAssembly().house,
         position: { origin: { x: 1000, y: 500 }, rotationDeg: 0 },
         model: {
+          houseId: 'house-main',
           footprint: [
             { x: 0, y: 0, z: 0 },
             { x: 6000, y: 0, z: 0 },
@@ -286,8 +287,8 @@ describe('applyHouseReferencePosition', () => {
   }
 
   it('translates the house footprint by the position origin (rotation 0)', () => {
-    // Multi-form workbench scenario: an additional house form at offset
-    // (10m east, 0m north). Footprint local coords run from (0,0) to
+    // Object-owned house form at offset (10m east, 0m north). Footprint
+    // local coords run from (0,0) to
     // (8000, -6000) mm; after translation they land at (10000, 0) to
     // (18000, -6000) mm in world space.
     const house = makeBaseHouseReference();

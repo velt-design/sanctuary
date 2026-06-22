@@ -5,11 +5,7 @@ import type {
 } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { renderIntoDocument } from '../../../../../../../test/reactHarness';
-import {
-  usePlanRenderModel,
-  type PlanRenderModel,
-  type UsePlanRenderModelInput,
-} from './usePlanRenderModel';
+import { usePlanRenderModel } from './usePlanRenderModel';
 
 /*
  * PR-WB-CANVAS step ⑤ (2026-06-22): renderer-agnostic render-model coverage.
@@ -30,6 +26,9 @@ const ALL_VISIBLE: DrawingWorkbenchVisibilityState = {
   decks: true,
   openings: true,
 };
+
+type UsePlanRenderModelInput = Parameters<typeof usePlanRenderModel>[0];
+type PlanRenderModel = NonNullable<ReturnType<typeof usePlanRenderModel>>;
 
 function makeShape(
   overrides: Partial<GeometryTopProjectionShape>,

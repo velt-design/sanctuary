@@ -29,7 +29,7 @@ import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbe
  * subtraction every commit re-introduces an extra house.position offset
  * (the deck drifts toward house.position on each move/resize).
  */
-export type BuildDeckTransformPatchInput = {
+type BuildDeckTransformPatchInput = {
   /** New world polygon in mm. Must have >= 3 points. */
   worldPolygonMm: ReadonlyArray<{ x: number; y: number }>;
   /**

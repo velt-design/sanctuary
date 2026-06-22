@@ -23,20 +23,6 @@ function makeScreenshotStyleUSnapshot(): Record<string, unknown> {
       houseConnectionType: 'fascia',
       attachmentSide: 'front',
       houseAttachmentStrategy: 'fascia_under_gutter',
-      houseFootprintMode: 'preset',
-      houseFootprintPreset: 'u_shape',
-      houseFootprintParams: {
-        widthM: '8',
-        offsetXM: '-1',
-        setbackM: '0.4',
-        bandDepthM: '1.8',
-        returnRunM: '2.4',
-        recessWidthM: '2.4',
-        recessDepthM: '1.2',
-        leftLegRunM: '5',
-        rightLegRunM: '5',
-        sideRunM: '2.4',
-      },
       houseRoofPitchDeg: '20',
       houseFasciaHeightMm: '300',
       houseEaveOverhangMm: '1000',
@@ -356,14 +342,6 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   ...MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES,
   ...CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES,
 ];
-
-export function listSanctuaryGeometryWorkbenchFixtures(): SanctuaryGeometryWorkbenchFixture[] {
-  return FIXTURES.slice();
-}
-
-export function listParityCriticalSanctuaryGeometryWorkbenchFixtures(): SanctuaryGeometryWorkbenchFixture[] {
-  return FIXTURES.filter((fixture) => fixture.qa.parityCritical);
-}
 
 export function getSanctuaryGeometryWorkbenchFixture(slug: string): SanctuaryGeometryWorkbenchFixture | null {
   return FIXTURES.find((fixture) => fixture.slug === slug) ?? null;

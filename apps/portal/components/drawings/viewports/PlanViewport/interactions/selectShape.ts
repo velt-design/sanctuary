@@ -22,7 +22,7 @@ export type ShapeSelectionCallbacks = {
   onToggleHouseTerminalEnd?: (request: HouseTerminalEndToggleRequest) => void;
 };
 
-export function dispatchSelectionTarget(
+function dispatchSelectionTarget(
   target: WorkbenchSelectionTarget,
   callbacks: ShapeSelectionCallbacks,
 ): void {

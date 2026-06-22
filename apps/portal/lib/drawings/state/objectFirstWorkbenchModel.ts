@@ -11,16 +11,10 @@ import {
 import {
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
-  normalizeHouseFootprintMode,
-  normalizeHouseFootprintParams,
   normalizeHouseFootprintPolygon,
-  normalizeHouseFootprintPreset,
   type CalculatorDrawingRotationQuarterTurns,
   type CalculatorHouseAttachmentStrategy,
-  type CalculatorHouseFootprintMode,
-  type CalculatorHouseFootprintParams,
   type CalculatorHouseFootprintPolygonPoint,
-  type CalculatorHouseFootprintPreset,
   type CalculatorHouseStoreyMode,
 } from "@/lib/types/calculator";
 export type WorkbenchObjectFamily =
@@ -47,7 +41,7 @@ export type WorkbenchPergolaPostConnectionType =
   | "deck_bracket"
   | "slab_anchors";
 export type WorkbenchPergolaGroundCondition = "easy" | "hard";
-export type WorkbenchPergolaOverrideProfiles = {
+type WorkbenchPergolaOverrideProfiles = {
   ledgerProfile?: string | null;
   rafterProfile?: string | null;
   postProfile?: string | null;
@@ -58,8 +52,8 @@ export type WorkbenchPergolaOverrideProfiles = {
   strutProfile?: string | null;
 };
 
-export type HouseRoofForm = "flat" | "mono" | "hipped";
-export type HouseRoofPrimaryFallDirection =
+type HouseRoofForm = "flat" | "mono" | "hipped";
+type HouseRoofPrimaryFallDirection =
   | "positive_x"
   | "negative_x"
   | "positive_y"
@@ -76,8 +70,8 @@ export type DeckAttachmentMode =
   | "floating"
   | "single_edge"
   | "corner_dual_edge";
-export type DeckPresetType = "rect_attached" | "rect_detached";
-export type DeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
+type DeckPresetType = "rect_attached" | "rect_detached";
+type DeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
 export type DeckPresetRect = {
   widthM: string;
   depthM: string;
@@ -90,35 +84,35 @@ export type DeckFloatingPresetRect = {
   widthM: string;
   depthM: string;
 };
-export type DeckSupportClassification =
+type DeckSupportClassification =
   | "ground_supported"
   | "threshold_attached"
   | "mixed_or_unclear";
-export type DeckSupportWarningCode =
+type DeckSupportWarningCode =
   | "insufficient_host_edge_contact"
   | "detached_too_close_to_house"
   | "threshold_alignment_offset"
   | "unsupported_house_intersection";
-export type DeckValidationCode =
+type DeckValidationCode =
   | "self_intersecting_outline"
   | "outline_inside_house"
   | "attached_missing_host_edge"
   | "overlapping_decks"
   | "detached_threshold_alignment"
   | "unsupported_house_intersection";
-export type WallOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
-export const WALL_OPENING_KINDS = [
+type WallOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
+const WALL_OPENING_KINDS = [
   "window",
   "hinged_door",
   "slider",
   "stacker",
 ] as const;
-export type SliderPanelCount = 2 | 3 | 4;
-export const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
-export type WallOpeningHostSide = NonNullable<
+type SliderPanelCount = 2 | 3 | 4;
+const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
+type WallOpeningHostSide = NonNullable<
   WorkbenchAttachmentSide
 >;
-export type WallOpeningValidationCode =
+type WallOpeningValidationCode =
   | "missing_host_wall"
   | "ambiguous_host_wall"
   | "invalid_width"
@@ -128,13 +122,13 @@ export type WallOpeningValidationCode =
   | "span_exceeds_wall"
   | "insufficient_corner_clearance"
   | "overlapping_openings";
-export type HouseAttachmentZoneKind =
+type HouseAttachmentZoneKind =
   | "wall"
   | "soffit"
   | "fascia"
   | "roof_edge";
 
-export function isWallOpeningKind(value: unknown): value is WallOpeningKind {
+function isWallOpeningKind(value: unknown): value is WallOpeningKind {
   return (
     typeof value === "string" &&
     WALL_OPENING_KINDS.includes(value as WallOpeningKind)
@@ -145,14 +139,14 @@ export function normalizeWallOpeningKind(value: unknown): WallOpeningKind {
   return isWallOpeningKind(value) ? value : "window";
 }
 
-export function isSliderPanelCount(value: unknown): value is SliderPanelCount {
+function isSliderPanelCount(value: unknown): value is SliderPanelCount {
   return (
     typeof value === "number" &&
     SLIDER_PANEL_COUNTS.includes(value as SliderPanelCount)
   );
 }
 
-export function normalizeSliderPanelCount(
+function normalizeSliderPanelCount(
   value: unknown,
 ): SliderPanelCount | null {
   if (isSliderPanelCount(value)) return value;
@@ -192,7 +186,7 @@ export type HouseFormTransformModel = {
  * persisted it yet. When absent, normalizers seed a stable object transform;
  * geometry solving should consume the house form's own object frame.
  */
-export type HouseFormPosition = {
+type HouseFormPosition = {
   originXMm: string;
   originYMm: string;
   rotationDeg: string;
@@ -323,7 +317,7 @@ export type DerivedWallModel = {
   polygon: CalculatorHouseFootprintPolygonPoint[];
 };
 
-export type DerivedWallGraphModel = {
+type DerivedWallGraphModel = {
   walls: DerivedWallModel[];
   mergeGroups: Array<{
     id: string;
@@ -332,7 +326,7 @@ export type DerivedWallGraphModel = {
   }>;
 };
 
-export type DerivedEnvelopeEdgeSemanticKind =
+type DerivedEnvelopeEdgeSemanticKind =
   | "wall_perimeter"
   | "roof_perimeter"
   | "ridge"
@@ -351,7 +345,7 @@ export type DerivedEnvelopeEdgeModel = {
   end: CalculatorHouseFootprintPolygonPoint;
 };
 
-export type DerivedRoofZoneModel = {
+type DerivedRoofZoneModel = {
   id: string;
   label: string;
   sourceFormIds: string[];
@@ -370,7 +364,7 @@ export type DerivedAttachmentZoneModel = {
   hostRoofZoneId: string | null;
 };
 
-export type DerivedBuildingEnvelopeModel = {
+type DerivedBuildingEnvelopeModel = {
   mergedFormIds: string[];
   footprint: CalculatorHouseFootprintPolygonPoint[];
   wallGraph: DerivedWallGraphModel;
@@ -388,7 +382,7 @@ export type DerivedBuildingEnvelopeModel = {
  *
  * Mirrors `HouseFormPosition` and `ObjectFirstPergolaPosition`.
  */
-export type DeckPosition = {
+type DeckPosition = {
   originXMm: string;
   originYMm: string;
   rotationDeg: string;
@@ -491,7 +485,7 @@ export type PergolaAttachmentMethod =
   | "none";
 
 /** Family of object the pergola is snapped to (future-proof for pergola arrays). */
-export type PergolaAttachmentHostFamily = "house_forms" | "pergolas";
+type PergolaAttachmentHostFamily = "house_forms" | "pergolas";
 
 /**
  * Resolved snap host. Derived from the snap engine's chosen target on the
@@ -574,14 +568,6 @@ export type ObjectFirstWorkbenchProjectModel = {
   warnings: string[];
 };
 
-// Canonical object-first vocabulary used by the active April workbench docs.
-// The existing `*Model` / `ObjectFirst*` exports remain as temporary compatibility aliases for this slice.
-export type HouseForm = HouseFormModel;
-export type DerivedBuildingEnvelope = DerivedBuildingEnvelopeModel;
-export type Deck = DeckObjectModel;
-export type Opening = OpeningObjectModel;
-export type Pergola = PergolaObjectModel;
-export type HouseAssembly = HouseAssemblyModel;
 export type WorkbenchProjectModel = ObjectFirstWorkbenchProjectModel;
 
 export type ObjectFirstHouseFormDraft = {
@@ -614,9 +600,9 @@ export type ObjectFirstHouseAssemblyDraft = {
   houseForms: ObjectFirstHouseFormDraft[];
 };
 
-export type DeckAttachmentSpatialKind = "wall" | "freestanding";
+type DeckAttachmentSpatialKind = "wall" | "freestanding";
 
-export type DeckAttachmentHost = {
+type DeckAttachmentHost = {
   objectFamily: "house_forms";
   objectId: string;
   edgeKind: "wall";
@@ -930,15 +916,6 @@ function normalizeHouseFormPosition(
   };
 }
 
-function normalizeHouseFormFootprint(
-  value: Partial<HouseFormFootprintModel> | null | undefined,
-): HouseFormFootprintModel {
-  return {
-    attachmentSide: normalizeAttachmentSide(value?.attachmentSide),
-    position: normalizeHouseFormPosition(value?.position ?? null),
-  };
-}
-
 function normalizeHouseFormRoofIntent(
   value: Partial<HouseFormRoofIntentModel> | null | undefined,
   /**
@@ -1101,7 +1078,7 @@ function normalizeHouseComposition(
   return value;
 }
 
-export function normalizeObjectFirstHouseFormDraft(
+function normalizeObjectFirstHouseFormDraft(
   value: Partial<ObjectFirstHouseFormDraft> | null | undefined,
 ): ObjectFirstHouseFormDraft | null {
   const id = normalizeStableId(value?.id);
@@ -1205,7 +1182,7 @@ export function normalizeObjectFirstHouseFormDraft(
   };
 }
 
-export function normalizeObjectFirstHouseAssemblyDraft(
+function normalizeObjectFirstHouseAssemblyDraft(
   value: Partial<ObjectFirstHouseAssemblyDraft> | null | undefined,
 ): ObjectFirstHouseAssemblyDraft | null {
   const id = normalizeStableId(value?.id);
@@ -1238,7 +1215,7 @@ function normalizeDeckPosition(
   };
 }
 
-export function normalizeObjectFirstDeckDraft(
+function normalizeObjectFirstDeckDraft(
   value: Partial<ObjectFirstDeckDraft> | null | undefined,
 ): ObjectFirstDeckDraft | null {
   const id = normalizeStableId(value?.id);
@@ -1331,7 +1308,7 @@ function normalizeDeckAttachment(
   return null;
 }
 
-export function normalizeObjectFirstOpeningDraft(
+function normalizeObjectFirstOpeningDraft(
   value: Partial<ObjectFirstOpeningDraft> | null | undefined,
 ): ObjectFirstOpeningDraft | null {
   const id = normalizeStableId(value?.id);
@@ -1551,7 +1528,7 @@ function normalizePergolaAttachmentHost(
  * the contradictory field rather than rejecting the whole attachment — the
  * legacy fields will fill the gap.
  */
-export function normalizePergolaAttachment(
+function normalizePergolaAttachment(
   value: Partial<PergolaAttachment> | null | undefined,
 ): PergolaAttachment | null {
   if (!value) return null;
@@ -1597,7 +1574,7 @@ export function normalizePergolaAttachment(
   return { host, spatialKind, method };
 }
 
-export function normalizeObjectFirstPergolaDraft(
+function normalizeObjectFirstPergolaDraft(
   value: Partial<ObjectFirstPergolaDraft> | null | undefined,
 ): ObjectFirstPergolaDraft | null {
   const id = normalizeStableId(value?.id);

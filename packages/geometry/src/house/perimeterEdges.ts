@@ -44,10 +44,6 @@ export function roofPlanePerimeterOverlapSegment(
   return null;
 }
 
-export function roofPlaneTouchesPerimeterEdge(roofPlane: RoofPlane3D, edge: HouseRoofPerimeterEdge): boolean {
-  return roofPlanePerimeterOverlapSegment(roofPlane, edge) !== null;
-}
-
 function edgeDrainProjection(edge: HouseRoofPerimeterEdge, roofPlane: RoofPlane3D): number {
   const outward = edgeOutwardVector(edge.perimeterPolygon, edge.index);
   const fallAxisXY = normalizeVector({
@@ -77,7 +73,7 @@ function roofPlaneOverlapIsLowDrainEdge(
   );
 }
 
-export function classifyHousePerimeterEdges(input: {
+function classifyHousePerimeterEdges(input: {
   edges: HouseRoofPerimeterEdge[];
   joinSourceEdgeId?: string | null;
   roofForm: HouseRoofForm;
@@ -111,10 +107,6 @@ export function classifyHousePerimeterEdges(input: {
               ? candidate
               : selected;
           }, null);
-    const maxDrainProjection = adjacentRoofPlanes.reduce(
-      (selected, candidate) => Math.max(selected, candidate.drainProjection),
-      Number.NEGATIVE_INFINITY,
-    );
     const minDrainProjection = adjacentRoofPlanes.reduce(
       (selected, candidate) => Math.min(selected, candidate.drainProjection),
       Number.POSITIVE_INFINITY,

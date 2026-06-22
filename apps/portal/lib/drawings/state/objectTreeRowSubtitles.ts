@@ -3,25 +3,14 @@ import type { DrawingWorkbenchVisibilityState } from './drawingWorkbenchUiState'
 import type { WorkbenchObjectFamily } from './objectFirstWorkbenchModel';
 
 /*
- * PR-W3d.1 (2026-05-25) — pure subtitle derivation for the flat OBJECTS TREE.
+ * Pure subtitle and empty-state helpers for the workbench object tree.
  *
- * The CAD-style left rail renders each object as a row with `label` on the
- * first line and a concise subtitle on the second. The subtitle combines a
- * family-specific descriptor (e.g. "Mono", "Footprint ready") with a
- * state hint (e.g. "selected", "hidden in viewport", "approximate").
- *
- * These are pure functions over the existing rail-model + UI-state shapes —
- * no new store fields, no React. The flat tree in PR-W3d.3 consumes them
- * via `<ObjectTreeRow>` (PR-W3d.2).
- *
- * Mockup reference: every row shows e.g. "Pergola 1 / Mono · acrylic · selected".
- * The "acrylic" enrichment (roof material) belongs on the object-first
- * pergola model and is deferred to a follow-up; this PR ships the descriptor
- * + state-hint composition using only data already present in
- * `DrawingWorkbenchRailObjectEntry.meta`.
+ * The left rail renders each object as a label plus a short subtitle. These
+ * helpers combine the rail entry's descriptor with selection, visibility, and
+ * trust hints without adding store fields or React state.
  */
 
-export type ObjectTreeRowSubtitleInput = {
+type ObjectTreeRowSubtitleInput = {
   entry: DrawingWorkbenchRailObjectEntry;
   /** True when this row is the workbench's active selection. */
   selected: boolean;
@@ -63,7 +52,7 @@ const FAMILY_EMPTY_STATES: Record<WorkbenchObjectFamily, ObjectTreeFamilyEmptySt
 /**
  * Standardised empty-state copy for a family section. Each family has its
  * own headline + optional helper hint so the empty rail still reads as
- * intentional (vs. a missing-data bug).
+ * intentional, not as missing data.
  */
 export function emptyStateForFamily(family: WorkbenchObjectFamily): ObjectTreeFamilyEmptyState {
   return FAMILY_EMPTY_STATES[family];
@@ -72,8 +61,7 @@ export function emptyStateForFamily(family: WorkbenchObjectFamily): ObjectTreeFa
 /**
  * Compose an object-tree row's subtitle from the existing rail entry plus
  * visibility and selection flags. Returns an empty string when neither a
- * descriptor nor a hint is available (caller renders the row without a
- * subtitle line).
+ * descriptor nor a hint is available.
  *
  * Format: `{descriptor} · {hint}` where either side may be omitted.
  */
@@ -87,32 +75,23 @@ export function subtitleForObjectTreeRow(input: ObjectTreeRowSubtitleInput): str
 }
 
 /**
- * Extract the primary descriptor from a rail-entry meta string. The rail
- * model builds meta as a pipe-delimited summary (e.g. "Mono | Rear edge",
- * "Footprint ready | mono roof | 0 warnings"). The CAD outliner only
- * needs the first segment for the always-visible subtitle; deeper details
- * surface in the right inspector when the row is selected.
+ * Extract the primary descriptor from a pipe-delimited rail-entry meta string.
+ * The right inspector owns deeper detail when the row is selected.
  */
-export function primaryDescriptorFromMeta(meta: string | null): string {
+function primaryDescriptorFromMeta(meta: string | null): string {
   if (!meta) return '';
   const trimmed = meta.split('|')[0]?.trim();
   return trimmed ?? '';
 }
 
 /**
- * State hint hierarchy (highest priority wins):
- *   1. `selected` → "selected"
- *   2. family hidden in viewport → "hidden in viewport"
- *   3. trust state is not geometry_ready → the trust label lowercased
- *   4. otherwise → empty string (no hint suffix)
- *
- * Encodes the user-facing prioritisation: selection is the most important
- * signal at-a-glance; visibility is next (it explains why the canvas looks
- * empty even though the navigator has rows); trust comes last so the user
- * notices broken/approximate objects without it being noisy on the happy
- * path.
+ * State hint hierarchy:
+ *   1. selected
+ *   2. hidden in viewport
+ *   3. non-ready trust label
+ *   4. empty string
  */
-export function stateHintForRow(input: ObjectTreeRowSubtitleInput): string {
+function stateHintForRow(input: ObjectTreeRowSubtitleInput): string {
   if (input.selected) return 'selected';
   if (!input.familyVisible) return 'hidden in viewport';
   if (input.entry.trustStatus !== 'geometry_ready') {
@@ -122,10 +101,8 @@ export function stateHintForRow(input: ObjectTreeRowSubtitleInput): string {
 }
 
 /**
- * Convenience: derive `familyVisible` from the workbench's family-level
- * visibility state. The rail model carries family ids; the visibility
- * state keys are `'house'` (singular) for house forms and the family id
- * otherwise — this helper hides that asymmetry from callers.
+ * The visibility state uses `house` for the `house_forms` family and the
+ * family id for the others.
  */
 export function familyVisibilityFor(
   family: WorkbenchObjectFamily,

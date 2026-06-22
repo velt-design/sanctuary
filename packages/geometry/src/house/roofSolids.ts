@@ -15,24 +15,24 @@ import {
 } from './_internal';
 import { type RoofSolidPlaneEquation } from './roofPlane';
 
-export type RoofSolidLine = {
+type RoofSolidLine = {
   point: Point3;
   direction: Vector3;
 };
 
-export type RoofSolidEdgeReference = {
+type RoofSolidEdgeReference = {
   roofPlaneIndex: number;
   edgeIndex: number;
   start: Point3;
   end: Point3;
 };
 
-export type RoofSolidAdjacency = {
+type RoofSolidAdjacency = {
   edgeMap: Map<string, RoofSolidEdgeReference[]>;
   invalidRoofPlaneIndexes: Set<number>;
 };
 
-export type RoofSolidBottomEdge = {
+type RoofSolidBottomEdge = {
   line: RoofSolidLine;
   perimeter: boolean;
   perimeterRole?: HouseRoofPerimeterEdgeKind | null;
@@ -152,11 +152,6 @@ export function boundaryZRange(boundary: Polygon3): { bottomZ: number; topZ: num
     : null;
 }
 
-export function buildMiteredStripFootprints(sourcePolygon: Polygon3, halfWidthMm: number): Polygon3[] | null {
-  if (!Number.isFinite(halfWidthMm) || halfWidthMm <= 0) return null;
-  return buildMiteredOffsetStripFootprints(sourcePolygon, halfWidthMm, -halfWidthMm);
-}
-
 export function buildMiteredOffsetStripFootprints(
   sourcePolygon: Polygon3,
   outerOffsetMm: number,
@@ -226,7 +221,7 @@ export function buildMiteredOffsetStripFootprints(
   return footprints;
 }
 
-export function roofSolidPointKey(candidate: Point3): string {
+function roofSolidPointKey(candidate: Point3): string {
   return [
     Math.round(candidate.x / ROOF_JOIN_EPSILON_MM),
     Math.round(candidate.y / ROOF_JOIN_EPSILON_MM),
@@ -314,7 +309,7 @@ function roofSolidVerticalCutPlane(start: Point3, end: Point3): RoofSolidPlaneEq
   };
 }
 
-export function buildRoofSolidBottomEdge(input: {
+function buildRoofSolidBottomEdge(input: {
   edgeReference: RoofSolidEdgeReference;
   edgeReferences: RoofSolidEdgeReference[];
   bottomPlanes: Array<RoofSolidPlaneEquation | null>;
@@ -776,7 +771,7 @@ export function polygonAveragePoint3D(points: Polygon3): Point3 {
   return point(total.x / divisor, total.y / divisor, total.z / divisor);
 }
 
-export function cleanPolygon3D(points: Polygon3): Polygon3 {
+function cleanPolygon3D(points: Polygon3): Polygon3 {
   const withoutDuplicates: Polygon3 = [];
   for (const candidate of points) {
     const previous = withoutDuplicates[withoutDuplicates.length - 1];

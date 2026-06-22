@@ -14,7 +14,7 @@ type PlanHouseRenderDiagnostics = {
   hitTargetIds: string[];
 };
 
-export type PlanRenderDiagnostics = {
+type PlanRenderDiagnostics = {
   houses: PlanHouseRenderDiagnostics[];
   visibleReferenceFallbackIds: string[];
 };

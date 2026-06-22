@@ -4,7 +4,7 @@ import {
 } from '../interactions/selectShape';
 import type { Tool, ToolPointerEvent } from './Tool';
 
-export type SelectToolConfig = ShapeSelectionCallbacks;
+type SelectToolConfig = ShapeSelectionCallbacks;
 
 export function createSelectTool(callbacks: SelectToolConfig): Tool {
   return {

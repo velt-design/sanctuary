@@ -127,7 +127,7 @@ export function buildOpeningInspectorSections({
       <span className={styles.inlineValue}>{activeOpening.trustLabel}</span>
     </div>,
     <p key="opening-selection-hint" className={styles.fieldHint}>
-      Selected openings show width and along-wall offset dimensions in Model Space plan. Drag the selected opening body there to reposition it along the resolved host wall. Height and base height stay editable in the rail for this slice.
+      Selected openings show width and along-wall offset dimensions in the Plan Editor. Drag the selected opening body there to reposition it along the resolved host wall. Height and base height stay editable in the rail for this slice.
     </p>,
     <TextField
       key="opening-label"

@@ -36,7 +36,7 @@ export type HouseRoofPerimeterEdgeKind =
   | 'weather_flashed_edge'
   | 'house_apron_edge';
 
-export type HouseRoofPerimeterFlashingRole =
+type HouseRoofPerimeterFlashingRole =
   | 'high_side'
   | 'rake'
   | 'house_apron';
@@ -277,17 +277,6 @@ export function pointInPolygon2D(candidate: { x: number; y: number }, polygon: P
     if (intersects) inside = !inside;
   }
   return inside;
-}
-
-export function distanceToSegment2D(candidate: { x: number; y: number }, start: Point3, end: Point3): number {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSq = dx * dx + dy * dy;
-  if (lengthSq <= 1e-6) return Math.hypot(candidate.x - start.x, candidate.y - start.y);
-  const ratio = clamp(((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq, 0, 1);
-  const x = start.x + dx * ratio;
-  const y = start.y + dy * ratio;
-  return Math.hypot(candidate.x - x, candidate.y - y);
 }
 
 export function polygonCentroid2D(polygon: Polygon3): { x: number; y: number } {

@@ -2,10 +2,6 @@ import type { DatumFrame3, Line3, Plane3, Point3, Polygon3, Vector3 } from './co
 
 export const GEOMETRY_EPSILON = 1e-6;
 
-export function addVectors(a: Vector3, b: Vector3): Vector3 {
-  return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
-}
-
 export function subtractPoints(a: Point3, b: Point3): Vector3 {
   return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
 }
@@ -42,22 +38,6 @@ export function lineDirection(line: Line3): Vector3 {
 
 export function lineLength(line: Line3): number {
   return magnitude(subtractPoints(line.end, line.start));
-}
-
-export function pointAlongLine(line: Line3, ratio: number): Point3 {
-  return {
-    x: line.start.x + (line.end.x - line.start.x) * ratio,
-    y: line.start.y + (line.end.y - line.start.y) * ratio,
-    z: line.start.z + (line.end.z - line.start.z) * ratio,
-  };
-}
-
-export function translatePolygon(polygon: Polygon3, delta: Vector3): Polygon3 {
-  return polygon.map((point) => ({
-    x: point.x + delta.x,
-    y: point.y + delta.y,
-    z: point.z + delta.z,
-  }));
 }
 
 export function planeFromOriginAxes(origin: Point3, xAxis: Vector3, yAxis: Vector3): Plane3 {

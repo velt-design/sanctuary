@@ -1,4 +1,41 @@
 // Shared house-model test helpers split by responsibility.
-export * from "./houseModelTestConfigSupport";
-export * from "./houseModelTestGeometrySupport";
-export * from "./houseModelTestAssertionSupport";
+export {
+  allTerminalEndIdsForHippedConfig,
+  ATTACHMENT_SIDES,
+  HOUSE_FOOTPRINT_PRESETS,
+  HOUSE_ROOF_FORMS,
+  makeAttachmentEdge,
+  makeConfig,
+  makeFootprint,
+  makeFrontFootprint,
+  makeLeftFootprint,
+  makePlacedFootprint,
+  makePresetFootprint,
+  makeRightFootprint,
+} from "./houseModelTestConfigSupport";
+export {
+  countRenderMeshFacesAlignedToNormal,
+  countRenderMeshVerticalFaces,
+  eavePolygonFromModel,
+  normalizeVector3,
+  pointDistanceToSegment2D,
+  polygonAreaXY,
+  polygonIsHorizontal,
+  sourceEdgeLineFromModel,
+} from "./houseModelTestGeometrySupport";
+export {
+  expectHouseGutterSolidsMiteredAroundCorners,
+  expectHouseRoofFeatureFlashings,
+  expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
+  expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
+  expectJoinedRoofFeaturesBackedByFinalFacets,
+  expectNoInternalEaveHeightRoofSeams,
+  expectPoint3CloseTo,
+  expectPolygon3CloseTo,
+  expectRoofBoundaryEavePointsAtEaveHeight,
+  expectRoofFacetsCoverEaveOnce,
+  expectRoofFacetsInsideEave,
+  expectRoofQaValid,
+  expectValleysStartAtReentrantCorners,
+  expectVerticalPrismRenderMesh,
+} from "./houseModelTestAssertionSupport";

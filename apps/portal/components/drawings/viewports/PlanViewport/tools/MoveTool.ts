@@ -6,7 +6,6 @@ import {
   exceedsDragThreshold,
   updateDrag,
   type DragSession,
-  type PlanPoint,
 } from '../interactions/dragLifecycle';
 import type { SnapLineTarget } from '../interactions/snap/snapEngine';
 import { topProjectionShapeClassifier } from '@/components/drawings/viewports/selection/selectionRouter';
@@ -15,7 +14,7 @@ import type { CommandBus } from '@/lib/drawings/commands/commandBus';
 import { resolveMoveSnap, type MoveSnapResult } from './resolveMoveSnap';
 import type { Tool, ToolPointerEvent } from './Tool';
 
-export type MoveTargetFamily = 'deck' | 'opening' | 'pergola' | 'house_form';
+type MoveTargetFamily = 'deck' | 'opening' | 'pergola' | 'house_form';
 
 export type MoveTarget = {
   family: MoveTargetFamily;
@@ -24,7 +23,7 @@ export type MoveTarget = {
 
 export type MoveRequest = {
   target: MoveTarget;
-  delta: PlanPoint;
+  delta: Point2;
   /**
    * Snap result when the drag ended on a snap. Surfaces the same
    * `EdgeSnapResult` shape `EdgeDragTool` produces, but for the moving
@@ -37,16 +36,16 @@ export type MoveRequest = {
 
 export type MoveToolPreview = {
   target: MoveTarget;
-  delta: PlanPoint;
+  delta: Point2;
   /**
-   * Live snap state during drag. PlanSnapIndicatorLayer renders the
-   * indicator on the snapped target line; consumers that don't render
-   * snap visuals can ignore. `null` when no snap is currently active.
+   * Live snap state during drag. The Plan preview renderer can use this
+   * to draw snap feedback; consumers that don't render snap visuals can
+   * ignore it. `null` when no snap is currently active.
    */
   snap: MoveSnapResult | null;
 };
 
-export type MoveToolConfig = {
+type MoveToolConfig = {
   /**
    * Single predicate that decides whether a click should start a move.
    * Returns true when the host wants this target to be moved (e.g. it's
@@ -96,16 +95,15 @@ export type MoveToolConfig = {
   onPointerDownFallthrough?: (event: ToolPointerEvent) => void;
 };
 
-export function moveTargetFromShape(shape: GeometryTopProjectionShape): MoveTarget | null {
+function moveTargetFromShape(shape: GeometryTopProjectionShape): MoveTarget | null {
   const target = topProjectionShapeClassifier(shape);
   if (target.kind === 'pergola') return { family: 'pergola', targetId: target.pergolaId };
   if (target.kind === 'workbench') {
     if (target.targetKind === 'deck') return { family: 'deck', targetId: target.targetId };
     if (target.targetKind === 'opening') return { family: 'opening', targetId: target.targetId };
-    // House footprints (the `house_reference` shapes PR8c-iii emits for
-    // each form) are movable: drag updates the form's object-first
-    // `transform.offsetXM/Y`. The host predicate (`canMoveTarget`) still
-    // gates active-object matching, not primary-vs-added behavior.
+    // Canonical `house_reference` shapes are movable: drag updates the
+    // object-owned form transform. The host predicate (`canMoveTarget`) gates
+    // active-object matching, not old primary/additional-house behavior.
     if (target.targetKind === 'footprint') return { family: 'house_form', targetId: target.targetId };
   }
   return null;
@@ -168,7 +166,7 @@ export function createMoveTool(config: MoveToolConfig): Tool {
    */
   const resolveSnapForSession = (
     current: DragSession<DragContext>,
-  ): { adjustedDelta: PlanPoint; snap: MoveSnapResult | null } => {
+  ): { adjustedDelta: Point2; snap: MoveSnapResult | null } => {
     const startPolygon = current.context.startPolygon;
     if (!startPolygon || startPolygon.length < 3) {
       return { adjustedDelta: { ...current.delta }, snap: null };
@@ -206,7 +204,7 @@ export function createMoveTool(config: MoveToolConfig): Tool {
     onPointerDown(event: ToolPointerEvent) {
       // Non-primary buttons (right-click for pan, middle-click) never start
       // a move and never fall through — they bubble naturally to the SVG
-      // root where `usePanZoom` handles them. Matches EdgeDragTool's pattern.
+      // root where PlanCanvas2D handles pan/zoom. Matches EdgeDragTool's pattern.
       if (event.button !== 0) return;
       if (!event.shape) {
         config.onPointerDownFallthrough?.(event);
@@ -263,3 +261,4 @@ export function createMoveTool(config: MoveToolConfig): Tool {
     },
   };
 }
+

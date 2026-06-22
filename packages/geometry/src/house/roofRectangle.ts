@@ -16,7 +16,7 @@ import { buildRoofPlane } from './roofPlane';
  *   `(open_gable, open_gable)` ≡ legacy gable roof
  *   any other combination = Dutch-hip / half-hip (the new feature)
  */
-export type RidgeEndCap = 'hipped' | 'open_gable';
+type RidgeEndCap = 'hipped' | 'open_gable';
 
 export type BuildRectangularRoofInput = {
   minX: number;
@@ -43,7 +43,7 @@ export type BuildRectangularRoofInput = {
   endCap: RidgeEndCap;
 };
 
-export type BuildRectangularRoofResult = {
+type BuildRectangularRoofResult = {
   roofPlanes: RoofPlane3D[];
   roofFeatures: HouseRoofFeature3D[];
 };

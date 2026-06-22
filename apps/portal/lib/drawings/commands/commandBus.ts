@@ -1,6 +1,6 @@
 import type { Command } from './command';
 
-export type CommandBusSnapshot = {
+type CommandBusSnapshot = {
   canUndo: boolean;
   canRedo: boolean;
   lastApplied: string | null;

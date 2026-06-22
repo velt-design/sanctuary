@@ -315,6 +315,7 @@ function exerciseTerminalEnd(input: {
   terminalEndId: string;
 }): void {
   const model = buildHouseModel3D({
+    houseId: 'test-house',
     config: buildPartialOpenConfig({
       footprint: input.footprint,
       ridgeAxis: input.ridgeAxis,

@@ -1,14 +1,14 @@
 import type { PlanPoint } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import type { ToolPointerEvent } from '../tools/Tool';
 
-export type PointerDispatchKind = 'down' | 'move' | 'up';
+type PointerDispatchKind = 'down' | 'move' | 'up';
 
-export type PointerDispatchInput = {
+type PointerDispatchInput = {
   kind: PointerDispatchKind;
   /**
-   * Cursor world coord (metres) resolved from `clientPointToPlanProjection`,
-   * or `null` when the SVG can't be measured. The helper NEVER invents a
-   * coord on null -- see `docs/maintainability-principles.md` footgun #5.
+   * Cursor world coord (metres), or `null` when the canvas can't be measured.
+   * Pointer resolution NEVER invents a coord on null -- see
+   * `docs/maintainability-principles.md` footgun #5.
    */
   point: PlanPoint | null;
   /** Hit-tested shape (down on hit-target) or null (down on empty / move / up). */
@@ -17,7 +17,7 @@ export type PointerDispatchInput = {
   pointerId: number;
 };
 
-export type PointerDispatchAction =
+type PointerDispatchAction =
   | { type: 'skip'; reason: 'null_point' }
   | {
       type: 'dispatch';
@@ -41,8 +41,8 @@ export type PointerDispatchAction =
  *   1. null point => skip (never invent (0, 0)). Status: defense-in-depth.
  *      A previous version fell back to `point: { x: 0, y: 0 }` for events
  *      without a shape, which would have poisoned MoveTool's session if
- *      `clientPointToPlanProjection` ever returned null. In practice the
- *      `pointerCancel` fix (separate handler, see footgun #5) was the
+ *      pointer resolution ever returned null. In practice the `pointerCancel`
+ *      fix (separate handler, see footgun #5) was the
  *      actual root cause of the deck-runaway bug; the null fallback wasn't
  *      observed firing. But the contract -- "ToolPointerEvent.point is
  *      always the true cursor world coord, never invented" -- is what the

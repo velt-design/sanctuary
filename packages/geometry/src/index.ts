@@ -1,63 +1,49 @@
 export * from "./contracts";
-export * from "./footprints";
-export * from "./houseRoofCapabilities";
+export {
+  buildCustomHouseFootprintPolygon,
+  buildHouseFootprintPresetSideLocalPoints,
+  buildSideLocalPolygonFromWorld,
+  houseFootprintSideLocalToWorldPolygon,
+  resolveHouseFootprintFrame,
+  resolveHouseFootprintParams,
+} from "./footprints";
+export {
+  HOUSE_ROOF_FORM_ORDER,
+  MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG,
+  deriveHouseGableTerminalEnds,
+  deriveHouseRoofCapabilities,
+  deriveHouseRoofGeometryKind,
+  getHouseRoofFormBehavior,
+  houseRoofFormUsesMinimumVisiblePitch,
+  isHouseRoofForm,
+  normalizeHouseRoofPitchInputForForm,
+  preferredMonoFallDirectionForAttachmentSide,
+  validateHouseRoofSelection,
+} from "./houseRoofCapabilities";
 export { normalizeGeometryConfig } from "./normalize";
-export type {
-  NormalizeGeometryConfigErrorCode,
-  NormalizeGeometryConfigResult,
-} from "./normalize";
 export { solveAssembly3D } from "./solve";
-export type {
-  SolveAssembly3DErrorCode,
-  SolveAssembly3DResult,
-} from "./solve.types";
 export { solveProject } from "./solveProject";
-export type {
-  SolveProjectInput,
-  SolveProjectPergolaErrorCode,
-  SolveProjectPergolaResult,
-  SolveProjectResult,
-} from "./solveProject";
 export { solvePergolaGeometry } from "./solvePergolaGeometry";
-export type {
-  PergolaGeometryFamily,
-  PergolaGeometryInput,
-  PergolaGeometrySolveErrorCode,
-  PergolaGeometrySolveFailure,
-  PergolaGeometrySolveResult,
-  PergolaGeometrySolveSuccess,
-} from "./solvePergolaGeometry";
+export type { PergolaGeometryInput } from "./solvePergolaGeometry";
 export { validateGeometrySolve } from "./validate";
-export type { ValidateGeometrySolveInput } from "./validate";
 export {
   buildHouseModelSceneObjects,
   buildViewerSceneModel,
 } from "./viewer";
-export type { BuildViewerSceneModelOptions } from "./viewer";
 export {
-  buildHouseModelPlanProjectionShapes,
   buildHouseModelTopProjectionShapes,
   buildHouseReferenceProjectionShape,
   buildProjectReferenceShapes,
   buildTopProjectionParityReport,
-  buildTopProjectionViewModel,
   buildTopProjectionViewModelFromScene,
 } from "./topProjection";
 export type {
-  BuildTopProjectionParityReportOptions,
-  BuildTopProjectionViewModelFromSceneOptions,
   ProjectPergolaEntry,
-  ReferenceShapeIdentifiers,
-  TopProjectionParityIssue,
-  TopProjectionParityIssueCode,
-  TopProjectionParityReport,
 } from "./topProjection";
-export { buildPlanViewModel } from "./plan";
-export { buildSectionViewModel } from "./section";
 export { buildAssemblyQuantityTakeoff } from "./takeoff";
-// Multi-form workbench rendering (PR8): portal callers build per-form
-// freestanding geometry by composing these directly, bypassing the
-// per-pergola normalize/solve pipeline.
+// House-form geometry boundary: portal callers build object-owned house
+// models and diagnostics from raw house inputs without reviving a
+// calculator/module-owned workbench state path.
 export {
   buildHouseModel3DFromRawHouseInput,
   buildHouseRoofEnvelopeArtifacts,
@@ -70,12 +56,6 @@ export {
   DEFAULT_GUTTER_PROJECTION_MM,
   DEFAULT_EAVE_OVERHANG_MM,
 } from "./house/constants";
-export { buildHouseModel3DGeometryConfigInputFromRawHouseInput } from "./houseModelRawInputAdapter";
-export type {
-  HouseModel3DGeometryConfigInput,
-  HouseModel3DPergolaAttachment,
-  HouseModel3DRawHouseInput,
-} from "./houseModelRawInputAdapter";
 export {
   EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
   firstHouseRoofStageDiagnosticCode,
@@ -84,21 +64,27 @@ export {
 } from "./houseRoofDiagnostics";
 export type {
   HouseRoofStageDiagnostics,
-  HouseRoofStageStatus,
 } from "./houseRoofDiagnostics";
-export {
-  buildHouseRoofModelPipeline,
-  houseRoofModelPipelineFailureStage,
-} from "./house/roofModelPipeline";
-export type {
-  HouseRoofModelPipelineDiagnostics,
-  HouseRoofModelPipelineFailureStage,
-  HouseRoofModelPipelineResult,
-} from "./house/roofModelPipeline";
+export { buildHouseRoofModelPipeline } from "./house/roofModelPipeline";
+export type { HouseRoofModelPipelineFailureStage } from "./house/roofModelPipeline";
 export { applyHouseReferencePosition } from "./applyAssemblyPosition";
-export { applyRoofQa, validateHouseRoofQa } from "./house/roofQa";
+export { applyRoofQa } from "./house/roofQa";
 
 // PR-COMP1 (2026-06-18): house composition geometry primitives.
 // Authored representation for new house forms (rectangles + joins +
 // per-rectangle roof intent). See docs/house-composition-vision.md.
-export * from "./house/composition";
+export {
+  composeFootprintFromComposition,
+  composeRoofFromComposition,
+  detachHouseFormAtSeam,
+  detectSharedSeamBetweenForms,
+  findCompositionJoinSeamMidpoint,
+  isAxisAlignedRectangle,
+  joinTwoHouseForms,
+  validateHouseComposition,
+} from "./house/composition";
+export type {
+  AxisAlignedRectangle,
+  HouseComposition,
+  RectangleRoofIntent,
+} from "./house/composition";

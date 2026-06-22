@@ -7,9 +7,9 @@ import type {
 } from './contracts';
 import { deriveHouseGableTerminalEndsFromFootprint as deriveHouseGableTerminalEnds } from './house/roofJoined';
 
-export type HouseRoofFootprintTopology = 'polygonal' | 'orthogonal' | 'rectangular';
-export type HouseRoofFootprintRequirement = 'any' | 'orthogonal' | 'rectangular';
-export type HouseRoofGeometryKind =
+type HouseRoofFootprintTopology = 'polygonal' | 'orthogonal' | 'rectangular';
+type HouseRoofFootprintRequirement = 'any' | 'orthogonal' | 'rectangular';
+type HouseRoofGeometryKind =
   | 'footprint_flat'
   | 'footprint_mono'
   | 'rectangular_gable'
@@ -19,14 +19,14 @@ export type HouseRoofGeometryKind =
 
 // PR-T8 (2026-05-29): `appendage` capability removed from the controls
 // shape with the appendage feature cull.
-export type HouseRoofControls = {
+type HouseRoofControls = {
   pitch: boolean;
   material: true;
   primaryFallDirection: boolean;
   ridgeAxis: boolean;
 };
 
-export type HouseRoofFormBehavior = {
+type HouseRoofFormBehavior = {
   controls: HouseRoofControls;
   selectedFormFootprintRequirement: HouseRoofFootprintRequirement;
 };
@@ -45,7 +45,7 @@ export type HouseRoofFormBehavior = {
 export const HOUSE_ROOF_FORM_ORDER: readonly HouseRoofForm[] = ['flat', 'mono', 'hipped'];
 export const MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG = 5;
 
-export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehavior> = {
+const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehavior> = {
   flat: {
     controls: {
       pitch: false,
@@ -137,7 +137,7 @@ export function normalizeHouseRoofPitchInputForForm(input: {
 
 // PR-T8 (2026-05-29): `appendageFootprintRequirement` /
 // `appendageSupported` removed from the capabilities shape.
-export type HouseRoofCapabilities = {
+type HouseRoofCapabilities = {
   roofForm: HouseRoofForm;
   footprintTopology: HouseRoofFootprintTopology;
   controls: HouseRoofControls;
@@ -148,7 +148,7 @@ export type HouseRoofCapabilities = {
 // PR-T8 (2026-05-29): `invalid_appendage_topology` and
 // `invalid_appendage_host_edge` codes removed alongside the appendage
 // feature. `blockedBy: 'appendage'` removed too.
-export type HouseRoofSelectionValidation = {
+type HouseRoofSelectionValidation = {
   status: 'valid' | 'invalid';
   blockedBy: 'selected_form' | 'orientation' | null;
   code:

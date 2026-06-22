@@ -151,7 +151,6 @@ export default function DesignWorkbenchFixtureClient({
         },
         clientState: {
           viewportMode: store.ui.viewportMode,
-          activeView: store.ui.activeView,
           activeObjectRef: store.ui.activeObjectRef,
           activePergolaId: store.ui.activePergolaId,
         },
@@ -179,7 +178,6 @@ export default function DesignWorkbenchFixtureClient({
       store.derived.solvedModel.projectArtifact.diagnostics.projectPergolaRenderHealth,
       store.ui.activeObjectRef,
       store.ui.activePergolaId,
-      store.ui.activeView,
       store.ui.viewportMode,
     ],
   );
@@ -188,37 +186,28 @@ export default function DesignWorkbenchFixtureClient({
       buildEstimateDrawingSheetMeta({
         sheetLabel: store.derived.projectSheetLabel,
         sheetInfoRows: [],
-        view: store.ui.activeView,
+        view: 'plan',
         versionLabel: fixture.estimate.versionLabel,
         estimateDate: fixture.estimate.createdAt,
         projectName,
         siteAddress: siteAddress ?? `${projectName} fixture preview`,
         clientName: 'Fixture preview',
       }),
-    [fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.projectSheetLabel, store.ui.activeView],
+    [fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.projectSheetLabel],
   );
-  const activeSelectionFamily =
-    store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
+  const activeSelectionFamily = store.ui.activeObjectRef.family;
   const objectWorkbenchDisplayFamily = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house_forms';
   const activePergolaSurfaceKey =
     store.ui.activePergolaId ??
     store.derived.activePergola?.id ??
     'none';
-  const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
+  const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:plan`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${activePergolaSurfaceKey}`;
-  const viewportPergolaId =
-    store.derived.objectWorkbench.activePergola?.id ??
-    store.derived.objectWorkbench.pergolas[0]?.id ??
-    null;
   const viewportActiveObjectRef = store.ui.activeObjectRef;
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
     geometryViewportStatesByKey[geometryViewportSurfaceKey] ?? null;
-  const shouldAutoFitModelViewport = !Object.prototype.hasOwnProperty.call(
-    modelViewportTransformsByKey,
-    modelViewportSurfaceKey,
-  );
   const handleModelViewportTransformChange = useCallback(
     (viewportTransform: DrawingWorkbenchViewportTransform) => {
       setModelViewportTransformsByKey((current) => {
@@ -291,7 +280,6 @@ export default function DesignWorkbenchFixtureClient({
                 ...current,
                 ...(ref.family === 'pergolas' ? { activePergolaId: ref.objectId } : {}),
                 ...buildDrawingWorkbenchObjectSelectionState({
-                  activeRailTab: ref.family,
                   activeObjectRef: ref,
                 }),
               }))
@@ -322,15 +310,7 @@ export default function DesignWorkbenchFixtureClient({
         <div className={styles.workspaceSurface}>
           <DrawingWorkbench
             sheetLabel={store.derived.projectSheetLabel}
-            view={store.ui.activeView}
-            onViewChange={(view) =>
-              setUi((current) => ({
-                ...current,
-                activeView: view,
-              }))
-            }
             viewportMode={store.ui.viewportMode}
-            availableViewportModes={['sheet', 'plan', 'model', 'geometry3d']}
             onViewportModeChange={(viewportMode) =>
               setUi((current) => ({
                 ...current,
@@ -338,7 +318,6 @@ export default function DesignWorkbenchFixtureClient({
               }))
             }
             status={store.derived.status}
-            trustGate={store.derived.activeTrustGate}
             projectArtifact={store.derived.solvedModel.projectArtifact}
             viewportGeometry={store.derived.activeViewportGeometry}
             objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
@@ -346,16 +325,11 @@ export default function DesignWorkbenchFixtureClient({
             activeObjectRef={viewportActiveObjectRef}
             hoveredObjectRef={hoveredObjectRef}
             onHoverObjectChange={setHoveredObjectRef}
-            pergolaTargetId={viewportPergolaId}
-            enableProjectionOnlyModelInteractions
             onSelectObjectWorkbenchTarget={fixtureSelectionActions.selectObjectWorkbenchTarget}
             onSelectPergolaTarget={fixtureSelectionActions.selectPergolaObject}
             onClearWorkbenchSelection={fixtureSelectionActions.clearActiveWorkbenchSelection}
             drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
-            planViewModel={store.derived.activePlanViewModel}
-            modelViewportKey={modelViewportSurfaceKey}
             modelViewportTransform={activeModelViewportTransform}
-            modelViewportAutoFitOnReady={shouldAutoFitModelViewport}
             geometryViewportKey={geometryViewportSurfaceKey}
             geometryViewportState={activeGeometryViewportState}
             onModelViewportTransformChange={handleModelViewportTransformChange}

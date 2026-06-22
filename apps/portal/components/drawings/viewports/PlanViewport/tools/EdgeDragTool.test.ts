@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
-import { createEdgeDragTool, type EdgeDragOutline } from './EdgeDragTool';
+import { createEdgeDragTool } from './EdgeDragTool';
+
+type EdgeDragToolConfig = Parameters<typeof createEdgeDragTool>[0];
+type EdgeDragOutline = NonNullable<ReturnType<EdgeDragToolConfig['getActiveOutline']>>;
 
 const RECT_OUTLINE: EdgeDragOutline = {
   id: 'house-footprint',

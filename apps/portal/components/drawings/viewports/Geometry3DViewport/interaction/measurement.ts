@@ -31,7 +31,7 @@ import { pointDistance } from "./cameraState";
  * `cameraState` (which owns the THREE.Vector3 conversion helpers).
  */
 
-export type MeasurementAnchorType =
+type MeasurementAnchorType =
   | "start"
   | "midpoint"
   | "end"
@@ -116,7 +116,7 @@ export function supportsEndpointAnchors(
   );
 }
 
-export function resolveAnchorPoint(
+function resolveAnchorPoint(
   object: ViewerSceneObject,
   anchorType: MeasurementAnchorType,
 ): Point3 {
@@ -141,7 +141,7 @@ export function resolveAnchorPoint(
   return centroid(pointsForObject(object));
 }
 
-export function defaultAnchorTypeForObject(
+function defaultAnchorTypeForObject(
   object: ViewerSceneObject,
 ): MeasurementAnchorType {
   if (

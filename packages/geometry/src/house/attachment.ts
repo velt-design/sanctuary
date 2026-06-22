@@ -120,7 +120,7 @@ function projectAttachmentEdgeToWallSegment(
   };
 }
 
-export function buildZoneBoundary(sourceLine: Line3 | null, bottomZ: number, topZ: number): Polygon3 | null {
+function buildZoneBoundary(sourceLine: Line3 | null, bottomZ: number, topZ: number): Polygon3 | null {
   if (!sourceLine) return null;
   return [
     point(sourceLine.start.x, sourceLine.start.y, bottomZ),

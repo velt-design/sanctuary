@@ -95,9 +95,7 @@ export function validateOrthogonalPolygon(
     const a = polygon[aIdx]!;
     const b = polygon[bIdx]!;
     const c = polygon[(bIdx + 1) % polygon.length]!;
-    const dx1 = b.x - a.x;
     const dy1 = b.y - a.y;
-    const dx2 = c.x - b.x;
     const dy2 = c.y - b.y;
     const edge1Horizontal = dy1 === 0;
     const edge2Horizontal = dy2 === 0;

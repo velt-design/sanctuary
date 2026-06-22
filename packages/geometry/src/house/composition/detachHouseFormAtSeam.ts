@@ -39,11 +39,11 @@ import type {
  *
  * The error union is closed; callers MUST exhaust both arms.
  */
-export type DetachHouseFormError =
+type DetachHouseFormError =
   | { code: "invalid_join_index"; joinIndex: number; joinsLength: number }
   | { code: "composition_disconnects_into_more_than_two"; partitionsCount: number };
 
-export type DetachHouseFormResult =
+type DetachHouseFormResult =
   | { ok: true; partitions: HouseComposition[] }
   | { ok: false; error: DetachHouseFormError };
 

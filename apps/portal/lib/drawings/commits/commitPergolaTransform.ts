@@ -1,3 +1,4 @@
+import type { Point2 } from '@sp/geometry';
 import type { ObjectFirstPergolaPosition } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 
 /**
@@ -20,14 +21,14 @@ import type { ObjectFirstPergolaPosition } from '@/lib/drawings/state/objectFirs
  * over a unit frame). Pergolas live outside the house model, so the
  * deck-style double-translate bug doesn't apply.
  */
-export type BuildPergolaTransformPositionInput = {
+type BuildPergolaTransformPositionInput = {
   /** Existing pergola.position (mm strings + rotation deg string), or null. */
   currentPosition: ObjectFirstPergolaPosition | null | undefined;
   /** Translation delta in WORLD mm. */
-  deltaMm: { x: number; y: number };
+  deltaMm: Point2;
 };
 
-export type PergolaTransformPosition = {
+type PergolaTransformPosition = {
   originXMm: number;
   originYMm: number;
   rotationDeg: number;

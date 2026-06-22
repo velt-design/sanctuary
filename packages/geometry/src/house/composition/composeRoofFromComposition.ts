@@ -64,7 +64,7 @@ import {
  * so downstream consumers (`applyRoofQa`, `buildHouseModel3D`
  * wiring in Phase 2) work without translation.
  */
-export type ComposeRoofResult = {
+type ComposeRoofResult = {
   roofPlanes: RoofPlane3D[];
   roofFeatures: HouseRoofFeature3D[];
   metadata: GeometryMetadata;

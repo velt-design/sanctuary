@@ -69,33 +69,20 @@ function buildObjectRefForFixtureViewportTarget(
 export function buildFixtureSelectionActions(
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>,
 ): ObjectWorkbenchSelectionActions {
-  // Local helpers — these mirror what the real hook does for the
-  // state-only actions, but without the draw-outline-target side effects
-  // (which would require additional setters the fixture doesn't own).
-  const noopVoid = () => {
-    /* fixture mode: pure no-op */
-  };
-
   return {
-    selectHouseFormsWorkbenchMode: noopVoid,
-    selectPergolaWorkbenchMode: noopVoid,
-    selectRailTab: noopVoid,
     selectObjectRef: (ref) =>
       setUi((current) => ({
         ...current,
         ...(ref.family === 'pergolas' ? { activePergolaId: ref.objectId } : {}),
         ...buildDrawingWorkbenchObjectSelectionState({
-          activeRailTab: ref.family,
           activeObjectRef: ref,
         }),
         selection: { kind: 'none', targetId: null },
       })),
-    startDeckOutlineEditor: () => ({ ok: true as const }),
     selectDeckObject: (deckId) =>
       setUi((current) => ({
         ...current,
         ...buildDrawingWorkbenchObjectSelectionState({
-          activeRailTab: 'decks',
           activeObjectRef: { family: 'decks', objectId: deckId },
         }),
         selection: { kind: 'none', targetId: null },
@@ -104,7 +91,6 @@ export function buildFixtureSelectionActions(
       setUi((current) => ({
         ...current,
         ...buildDrawingWorkbenchObjectSelectionState({
-          activeRailTab: 'openings',
           activeObjectRef: { family: 'openings', objectId: openingId },
         }),
         selection: { kind: 'none', targetId: null },
@@ -115,7 +101,6 @@ export function buildFixtureSelectionActions(
         return {
           ...current,
           ...buildDrawingWorkbenchObjectSelectionState({
-            activeRailTab: ref.family,
             activeObjectRef: ref,
           }),
           selection: {
@@ -134,15 +119,12 @@ export function buildFixtureSelectionActions(
       ),
     clearActiveWorkbenchSelection: () =>
       setUi((current) => {
-        const activeFamily =
-          current.activeRailTab === 'diagnostics' ? current.activeObjectFamily : current.activeRailTab;
+        const activeFamily = current.activeObjectRef.family;
         return {
           ...current,
-          ...buildDrawingWorkbenchObjectSelectionState({
-            activeRailTab: current.activeRailTab,
-            activeObjectFamily: activeFamily,
-            activeObjectRef: {
-              family: activeFamily,
+        ...buildDrawingWorkbenchObjectSelectionState({
+          activeObjectRef: {
+            family: activeFamily,
               objectId: null,
             },
           }),
@@ -165,19 +147,12 @@ export function buildFixtureWorkbenchActions(): ObjectWorkbenchActions {
     addSharedHouseOpening: ok,
     commitHouseFormFootprintEdit: ok,
     commitHouseFormTransformDelta: ok,
-    commitDrawingField: ok,
-    commitDeckDimension: ok,
-    commitGeometryIntent: ok,
     commitHouseFormFootprintDimension: ok,
     commitHouseFormRoofIntent: ok,
-    commitOpeningDimension: ok,
     commitSharedPergolaAttachment: ok,
     commitSharedPergolaEdgeDragResult: ok,
-    commitSharedDeckCustomPolygon: ok,
     commitSharedHouseDeckPatch: ok,
-    commitSharedHouseFootprintEdit: ok,
     commitSharedHouseOpeningPatch: ok,
-    commitSharedHouseRoofDraft: ok,
     detachHouseFormAtSeam: ok,
     joinHouseForms: ok,
     removeSharedHouseDeck: ok,

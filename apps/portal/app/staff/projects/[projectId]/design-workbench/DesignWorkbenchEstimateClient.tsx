@@ -8,11 +8,9 @@ import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
-  areDrawingWorkbenchObjectSelectionStatesEqual,
   areDrawingWorkbenchVisibilityStatesEqual,
   buildDrawingWorkbenchObjectSelectionState,
   createDrawingWorkbenchUiState,
-  pickDrawingWorkbenchObjectSelectionState,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseFormTransform';
@@ -32,7 +30,6 @@ import type { EstimateDetail } from '@/lib/estimates/types';
 import { buildPortalPageDebugExport, type PortalPageDebugExport } from '@/lib/debug/portalPageDebugExport';
 import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
 import { buildOutlineEditCommitHandler } from './commitOutlineEdit';
-import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
 import ObjectWorkbenchRailHost from './ObjectWorkbenchRailHost';
 import WorkbenchInspectorHost from './WorkbenchInspectorHost';
@@ -95,7 +92,6 @@ function buildInitialWorkbenchUiState(input: {
   return createDrawingWorkbenchUiState({
     viewportMode: 'geometry3d',
     ...buildDrawingWorkbenchObjectSelectionState({
-      activeRailTab: 'house_forms',
       activeObjectRef: {
         family: 'house_forms',
         objectId: defaultHouseFormId,
@@ -147,11 +143,6 @@ export default function DesignWorkbenchEstimateClient({
   const [geometryViewportStatesByKey, setGeometryViewportStatesByKey] = useState<
     Record<string, Geometry3DViewportState>
   >({});
-  const [drawOutlineRequestId, setDrawOutlineRequestId] = useState(0);
-  const [drawOutlineTarget, setDrawOutlineTarget] = useState<DrawOutlineTarget>({
-    kind: 'footprint',
-    deckId: null,
-  });
   const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>({
     status: 'idle',
     message: null,
@@ -195,8 +186,8 @@ export default function DesignWorkbenchEstimateClient({
   // PR-WB-VIEWPORT-PERSIST (2026-06-19): the previous version of
   // this effect reset viewport transforms (pan/zoom) on every
   // draft mutation, so every commit re-fitted the plan and made
-  // editing feel jumpy. Viewport state + drawOutline target +
-  // save-status reset only on estimate change now; the in-flight
+  // editing feel jumpy. Viewport state + save-status reset only on
+  // estimate change now; the in-flight
   // session keeps its viewport across edits.
   //
   // Selection reset stays on the existing dep (draft change) for
@@ -206,7 +197,6 @@ export default function DesignWorkbenchEstimateClient({
   useEffect(() => {
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
     setDraftSaveState({ status: 'idle', message: null });
     setLastSavedDraftSignature(null);
   }, [estimate.id]);
@@ -233,7 +223,6 @@ export default function DesignWorkbenchEstimateClient({
       ...current,
       activePergolaId: null,
       ...buildDrawingWorkbenchObjectSelectionState({
-        activeRailTab: 'house_forms',
         activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
       }),
     }));
@@ -279,7 +268,6 @@ export default function DesignWorkbenchEstimateClient({
         ...current,
         activePergolaId: null,
         ...buildDrawingWorkbenchObjectSelectionState({
-          activeRailTab: 'house_forms',
           activeObjectRef: { family: 'house_forms', objectId: fallbackHouseFormId },
         }),
       };
@@ -293,11 +281,10 @@ export default function DesignWorkbenchEstimateClient({
   }, [draftSaveState.status, hasUnsavedWorkbenchDraft]);
 
   useEffect(() => {
-    const storeSelection = pickDrawingWorkbenchObjectSelectionState(store.ui);
-    const uiSelection = pickDrawingWorkbenchObjectSelectionState(ui);
     if (
       store.ui.activePergolaId === ui.activePergolaId &&
-      areDrawingWorkbenchObjectSelectionStatesEqual(storeSelection, uiSelection) &&
+      store.ui.activeObjectRef.family === ui.activeObjectRef.family &&
+      store.ui.activeObjectRef.objectId === ui.activeObjectRef.objectId &&
       areDrawingWorkbenchVisibilityStatesEqual(store.ui.visibility, ui.visibility)
     ) {
       return;
@@ -305,7 +292,7 @@ export default function DesignWorkbenchEstimateClient({
     setUi((current) => ({
       ...current,
       activePergolaId: store.ui.activePergolaId,
-      ...storeSelection,
+      activeObjectRef: store.ui.activeObjectRef,
       visibility: store.ui.visibility,
     }));
   }, [
@@ -313,15 +300,6 @@ export default function DesignWorkbenchEstimateClient({
     ui,
   ]);
 
-  const activeDeck =
-    store.derived.objectWorkbench.decks.find((deck) => deck.id === drawOutlineTarget.deckId) ??
-    store.derived.objectWorkbench.activeDeck ??
-    null;
-  const drawOutlineMode = drawOutlineTarget.kind;
-  const drawOutlineSeedPolygon =
-    drawOutlineTarget.kind === 'deck'
-      ? (activeDeck?.outline ?? null)
-      : null;
   const isLocked = estimate.editability.isLocked;
   const meta = useMemo(
     () =>
@@ -330,7 +308,7 @@ export default function DesignWorkbenchEstimateClient({
         sheetTitleOverride: null,
         noteOverride: null,
         sheetInfoRows: [],
-        view: store.ui.activeView,
+        view: 'plan',
         versionLabel: estimate.versionLabel,
         estimateDate: estimate.createdAt,
         projectName,
@@ -342,31 +320,21 @@ export default function DesignWorkbenchEstimateClient({
       estimate.versionLabel,
       projectName,
       siteAddress,
-      store.ui.activeView,
     ],
   );
-  const activeSelectionFamily =
-    store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
+  const activeSelectionFamily = store.ui.activeObjectRef.family;
   const objectWorkbenchDisplayFamily = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house_forms';
   const activePergolaSurfaceKey =
     store.ui.activePergolaId ??
     store.derived.activePergola?.id ??
     'none';
-  const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
+  const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:plan`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${activePergolaSurfaceKey}`;
-  const viewportPergolaId =
-    store.derived.objectWorkbench.activePergola?.id ??
-    store.derived.objectWorkbench.pergolas[0]?.id ??
-    null;
   const viewportActiveObjectRef = store.ui.activeObjectRef;
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
     geometryViewportStatesByKey[geometryViewportSurfaceKey] ?? null;
-  const shouldAutoFitModelViewport = !Object.prototype.hasOwnProperty.call(
-    modelViewportTransformsByKey,
-    modelViewportSurfaceKey,
-  );
   const handleModelViewportTransformChange = useCallback(
     (viewportTransform: DrawingWorkbenchViewportTransform) => {
       setModelViewportTransformsByKey((current) => {
@@ -403,8 +371,6 @@ export default function DesignWorkbenchEstimateClient({
   );
   const objectSelectionActions = useObjectWorkbenchSelection({
     setUi,
-    setDrawOutlineTarget,
-    setDrawOutlineRequestId,
     availableObjectIdsByFamily: {
       house_forms: store.derived.railModel.objectLists.house_forms.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
       decks: store.derived.railModel.objectLists.decks.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
@@ -414,19 +380,12 @@ export default function DesignWorkbenchEstimateClient({
   });
   const objectWorkbenchActions = useObjectWorkbenchActions({
     drawingDraft: effectiveDrawingDraft,
-    drawOutlineTarget,
     persistDrawingDraftLocally,
-    setDrawOutlineTarget,
     setUi,
-    startDeckOutlineEditor: objectSelectionActions.startDeckOutlineEditor,
     store,
     ui,
   });
 
-  const workbenchFootprintCommit =
-    !isLocked && objectWorkbenchDisplayFamily === 'house_forms' && store.ui.viewportMode === 'model'
-      ? objectWorkbenchActions.commitHouseFormFootprintDimension
-      : undefined;
   const handleSaveWorkbenchDraft = useCallback(async () => {
     if (!effectiveDrawingDraft || isLocked || draftSaveState.status === 'saving') return;
     const estimatePayload = buildWorkbenchDraftEstimateUpdatePayload({
@@ -629,17 +588,9 @@ export default function DesignWorkbenchEstimateClient({
         <div className={styles.workspaceSurface}>
         <DrawingWorkbench
           sheetLabel={store.derived.projectSheetLabel}
-          view={store.ui.activeView}
-          onViewChange={(view) =>
-            setUi((current) => ({
-              ...current,
-              activeView: view,
-            }))
-          }
           viewportMode={store.ui.viewportMode}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={store.ui.visibility}
-          availableViewportModes={['sheet', 'model', 'geometry3d']}
           onViewportModeChange={(viewportMode) =>
             setUi((current) => ({
               ...current,
@@ -647,37 +598,21 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           status={store.derived.status}
-          trustGate={store.derived.activeTrustGate}
           projectArtifact={store.derived.solvedModel.projectArtifact}
           viewportGeometry={store.derived.activeViewportGeometry}
           drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
-          planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
           hoveredObjectRef={hoveredObjectRef}
           onHoverObjectChange={setHoveredObjectRef}
-          pergolaTargetId={viewportPergolaId}
-          enableProjectionOnlyModelInteractions
-          modelViewportKey={modelViewportSurfaceKey}
           modelViewportTransform={activeModelViewportTransform}
-          modelViewportAutoFitOnReady={shouldAutoFitModelViewport}
           geometryViewportKey={geometryViewportSurfaceKey}
           geometryViewportState={activeGeometryViewportState}
-          drawOutlineRequestId={drawOutlineRequestId}
-          drawOutlineMode={drawOutlineMode}
-          drawOutlineSeedPolygon={drawOutlineSeedPolygon ?? undefined}
-          onDrawOutlineRequestConsumed={(requestId) =>
-            setDrawOutlineRequestId((current) => (current === requestId ? 0 : current))
-          }
           onModelViewportTransformChange={handleModelViewportTransformChange}
           onGeometryViewportStateChange={handleGeometryViewportStateChange}
           meta={meta}
           backHref={backHref}
           projectLabel={projectName}
           draftSaveAction={draftSaveAction}
-          modelEditableFields={[]}
-          onCommitModelField={undefined}
-          onCommitFootprintEdit={workbenchFootprintCommit}
-          onCommitCustomPolygon={!isLocked ? objectWorkbenchActions.commitSharedDeckCustomPolygon : undefined}
           onSelectObjectWorkbenchTarget={!isLocked ? objectSelectionActions.selectObjectWorkbenchTarget : undefined}
           onSelectPergolaTarget={!isLocked ? objectSelectionActions.selectPergolaObject : undefined}
           onClearWorkbenchSelection={!isLocked ? objectSelectionActions.clearActiveWorkbenchSelection : undefined}
@@ -706,9 +641,6 @@ export default function DesignWorkbenchEstimateClient({
                 }
               : undefined
           }
-          onCommitHouseFormFootprintDimension={!isLocked ? objectWorkbenchActions.commitHouseFormFootprintDimension : undefined}
-          onCommitDeckDimension={!isLocked ? objectWorkbenchActions.commitDeckDimension : undefined}
-          onCommitOpeningDimension={!isLocked ? objectWorkbenchActions.commitOpeningDimension : undefined}
           onCommitOutlineEdit={outlineEditCommitHandler}
           onCommitMove={
             !isLocked

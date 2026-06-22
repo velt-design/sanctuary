@@ -3,7 +3,7 @@ import { RIDGE_COLLAPSE_EPSILON_MM } from './constants';
 import { line, point } from './_internal';
 import { buildRoofPlane } from './roofPlane';
 
-export function buildRectangleRoofFeatures(input: {
+function buildRectangleRoofFeatures(input: {
   minX: number;
   maxX: number;
   minY: number;

@@ -71,14 +71,6 @@ function deriveLegacyHouseGableTerminalEndsX(input: {
   }));
 }
 
-export function intersectTerminalRayWithFootprint(input: {
-  origin: Point3;
-  neighbor: Point3;
-  polygon: Polygon3;
-}): number | null {
-  return intersectTerminalRayWithFootprintDetail(input)?.edgeIndex ?? null;
-}
-
 function intersectTerminalRayWithFootprintDetail(input: {
   origin: Point3;
   neighbor: Point3;

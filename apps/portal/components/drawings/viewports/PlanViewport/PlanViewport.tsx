@@ -12,8 +12,6 @@ import {
   type ReversibleCommandInput,
 } from '@/lib/drawings/commands/createReversibleCommand';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
-import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
-import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
 import type {
   DrawingWorkbenchViewportTransform,
   DrawingWorkbenchVisibilityState,
@@ -44,15 +42,9 @@ import {
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
 import type { HouseTerminalEndToggleRequest } from './interactions/selectShape';
 
-export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
 export type { MoveRequest } from './tools/MoveTool';
-export type { ProjectHouseSnapSource } from './interactions/snap/buildProjectHouseSnapTargets';
-export type { PlanSeamIconForm } from './interactions/seams/seamIconTargets';
 export type { HouseTerminalEndToggleRequest } from './interactions/selectShape';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
-import lineweightStyles from './canvas/planLineweights.module.css';
-
-export type { PlanDimension } from './canvas/planDimension';
 
 const DEFAULT_VISIBILITY: DrawingWorkbenchVisibilityState = {
   house: true,
@@ -61,7 +53,7 @@ const DEFAULT_VISIBILITY: DrawingWorkbenchVisibilityState = {
   openings: true,
 };
 
-export type PlanViewportProps = {
+type PlanViewportProps = {
   artifact: WorkbenchSolvedGeometryArtifact | null;
   projectionOverride?: GeometryTopProjectionViewModel | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
@@ -92,10 +84,6 @@ export type PlanViewportProps = {
    * visual geometry.
    */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Solved-model diagnostics for each house form's project Plan projection. */
-  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
-  /** Solved-model diagnostics for project pergola render eligibility. */
-  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
   /** Project-level house models used as wall/eave snap sources. */
   projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   viewportTransform: DrawingWorkbenchViewportTransform;
@@ -181,8 +169,6 @@ export default function PlanViewport({
   projectPergolaPlanShapes,
   projectPergolaSnapShapes,
   houseCommittedShapes,
-  projectHouseProjectionHealth,
-  projectPergolaRenderHealth,
   projectHouseSnapSources,
   viewportTransform,
   onViewportTransformChange,
@@ -554,7 +540,6 @@ export default function PlanViewport({
       data-plan-viewport-host="true"
       data-plan-active-object-family={activeObjectRef?.family ?? ''}
       data-plan-active-object-id={activeObjectRef?.objectId ?? ''}
-      className={lineweightStyles.tokens}
       style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
       <ToolDispatcherProvider initialTool={activeTool}>
@@ -568,9 +553,6 @@ export default function PlanViewport({
           hitTargetItems={renderModel.hitTargetItems}
           selectionHaloItems={renderModel.selectionHaloItems}
           hoverHaloItems={renderModel.hoverHaloItems}
-          diagnostics={renderModel.diagnostics}
-          projectHouseProjectionHealth={projectHouseProjectionHealth}
-          projectPergolaRenderHealth={projectPergolaRenderHealth}
           onHoverShape={handleHoverShape}
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}
@@ -580,7 +562,6 @@ export default function PlanViewport({
           // outline's polygon (the same shape the selection halo wraps)
           // so the preview tracks what the user thinks they're moving.
           movePreviewSourcePolygon={activeOutlineForRender?.polygon ?? null}
-          activeOutlinePolygon={activeOutlineForRender?.polygon ?? null}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}

@@ -82,7 +82,7 @@ function validateRoofPlaneForQa(roofPlane: RoofPlane3D, eavePolygon: Polygon3): 
   return null;
 }
 
-export function validateHouseRoofQa(input: {
+function validateHouseRoofQa(input: {
   roofPlanes: RoofPlane3D[];
   eavePolygon: Polygon3;
   rejectedFacetCount?: number;

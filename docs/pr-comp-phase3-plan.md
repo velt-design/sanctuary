@@ -57,7 +57,7 @@ Existing free-form house forms loaded from legacy drafts keep `composition: unde
 
 ### Geometry router
 
-`buildHouseFormReferenceGeometry` (in [buildHouseFormReferenceGeometry.ts](../apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts)) currently calls `buildHouseFormGeometryInputForForm` → `buildHouseModel3DFromRawHouseInput`. Phase 3 adds a branch:
+`buildHouseFormGeometryInputForForm` (in [houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts)) currently calls `buildHouseModel3DFromRawHouseInput`. Phase 3 adds a branch:
 
 ```ts
 // Pseudocode:
@@ -108,8 +108,8 @@ The snap respects both edge-to-edge alignment AND corner-to-corner alignment.
 | `packages/geometry/src/house/buildHouseModel3DFromComposition.test.ts` (NEW) | Tests: single-rectangle composition produces the same `HouseModel3D` shape as the legacy path on identical input; multi-rectangle composition (fused) routes correctly; multi-rectangle stitched produces composite with correct wall/eave perimeter. | +180 |
 | `packages/geometry/src/house/houseModel.ts` (refactor) | Factor out a shared "walls + eaves + envelope" helper that both `buildHouseModel3DFromRawHouseInput` and `buildHouseModel3DFromComposition` call. Public API unchanged. | +50 / -40 |
 | `packages/geometry/src/index.ts` | Export the new entry point. | +3 |
-| `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` | Dispatch on `composition` presence. | +20 |
-| `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.test.ts` (extend) | Tests: composition-bearing form routes to new path; legacy form routes to existing path. | +60 |
+| `apps/portal/lib/drawings/state/houseFormGeometryInput.ts` | Dispatch on `composition` presence. | +20 |
+| `apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts` (extend) | Tests: composition-bearing form routes to new path; legacy form routes to existing path. | +60 |
 | `apps/portal/components/drawings/workbench/WorkbenchViewportHost.tsx` | Remove `drawOutlineRequestId` / `drawOutlineMode` / `drawOutlineSeedPolygon` props + related state propagation. | -25 |
 | `apps/portal/components/drawings/workbench/DrawingWorkbench.tsx` | Same removals. | -25 |
 | `apps/portal/components/drawings/rail/` (relevant inspector files) | Remove `Draw outline` button + menu entry + related field errors. | -40 |
@@ -130,7 +130,7 @@ The snap respects both edge-to-edge alignment AND corner-to-corner alignment.
 | Removing Draw outline breaks edits on existing legacy free-form house forms that designers were mid-edit on. | Low | Legacy forms with `composition: undefined` retain their persisted polygon and render correctly. They're no longer editable via Draw outline, but their geometry stays intact. If a designer NEEDS to edit a legacy form, they'd delete + recreate as composition. |
 | House-to-house snap performance — N^2 edge comparison as the number of house forms grows. | Low | Cap snap query at ~10 house forms before degrading to AABB-only. Current projects have 1-3 house forms; the cap is room-to-grow. |
 | Snap preview chrome conflicts visually with pergola snap preview when both are active. | Low | Family-aware snap preview: house-snap shows only when a house is dragged; pergola-snap shows only when a pergola is dragged. Mutually exclusive UI states. |
-| The geometry router branches in `buildHouseFormReferenceGeometry` but downstream consumers (`HouseFormGeometryInputResult.diagnostics`) expect the legacy diagnostics shape. | Med | The composition path produces the same `HouseFormGeometryInputResult` shape; diagnostics fields default to "ok" / `composition_path` for fields that don't apply to the new path. Add explicit test asserting diagnostics shape. |
+| The geometry router branches in `houseFormGeometryInput` but downstream consumers (`HouseFormGeometryInputResult.diagnostics`) expect the legacy diagnostics shape. | Med | The composition path produces the same `HouseFormGeometryInputResult` shape; diagnostics fields default to "ok" / `composition_path` for fields that don't apply to the new path. Add explicit test asserting diagnostics shape. |
 | `houseFormRoofIntentToRectangleRoofIntent` loses information (e.g., openGableEndIds → startCap/endCap mapping). | Med | The mapping is well-defined: per-end open_gable IDs translate to `startCap` / `endCap` choices using the same logic the legacy `buildHippedHouseRoof` already uses (`openGableEndIds.includes('start')` → `startCap: 'open_gable'`). Unit test asserts round-trip. |
 
 ## 6. Acceptance criteria

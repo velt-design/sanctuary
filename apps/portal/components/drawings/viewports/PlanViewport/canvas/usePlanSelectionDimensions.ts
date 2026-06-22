@@ -10,7 +10,7 @@ import type { PlanRenderItem } from './planRenderItem';
 
 const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 
-export type UsePlanSelectionDimensionsInput = {
+type UsePlanSelectionDimensionsInput = {
   selectionHaloItems: ReadonlyArray<PlanRenderItem> | undefined;
   activeFamily: ActiveObjectFamily | null | undefined;
   providedDimensions?: ReadonlyArray<PlanDimension>;

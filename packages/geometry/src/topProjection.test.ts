@@ -4,7 +4,6 @@ import {
   buildProjectReferenceShapes,
   buildTopProjectionParityReport,
   buildTopProjectionViewModelFromScene,
-  buildTopProjectionViewModel,
   buildViewerSceneModel,
   solveAssembly3D,
   type GeometryConfig,
@@ -13,10 +12,12 @@ import {
   type HouseAttachmentStrategy,
   type Point2,
   type Polygon3,
+  type Assembly3D,
   type RenderMesh3D,
   type ViewerSceneModel,
 } from "@sp/geometry";
 import { getGeometryFixtureCase } from "./fixtures";
+import { buildTopProjectionViewModel } from "./topProjection";
 
 function requireSupportedFixture(id: string) {
   const fixture = getGeometryFixtureCase(id);
@@ -373,13 +374,6 @@ describe("buildTopProjectionViewModel", () => {
           shape.metadata?.houseFormId === "house-form-2",
       ),
     ).toBe(true);
-    expect(
-      shapes.every(
-        (shape) =>
-          shape.sourceType !== "house_roof_material" &&
-          shape.metadata?.planProjectionSource !== "house_roof_material",
-      ),
-    ).toBe(true);
   });
 
   it("uses an eave-perimeter roof body for mono L footprints instead of a material convex hull chord", () => {
@@ -393,7 +387,7 @@ describe("buildTopProjectionViewModel", () => {
     expect(roofBody.metadata?.houseFormId).toBe("mono-l-house");
     expect(roofBody.polygon).toHaveLength(makeLFootprint().length);
     expect(polygonHasDiagonalEdge(roofBody.polygon)).toBe(false);
-    expect(shapes.some((shape) => shape.sourceType === "house_roof_material")).toBe(false);
+    expect(roofBody.metadata?.planProjectionSource).toBe("house_eave_perimeter");
   });
 
   it("emits hipped terminal-end hit targets independently of projected roof facets", () => {
@@ -860,7 +854,7 @@ describe("buildProjectReferenceShapes (step 5c)", () => {
   // 5b shipped. House dedupe across multiple pergolas keeps the canvas
   // from rendering the same house outline N times.
 
-  function makeAssembly(): ReturnType<typeof solveAssembly3D> extends { value: infer V } ? V : never {
+  function makeAssembly(): Assembly3D {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const solved = solveAssembly3D(addHouseModelContext(fixture.config));
     if (!solved.ok) throw new Error(solved.error);

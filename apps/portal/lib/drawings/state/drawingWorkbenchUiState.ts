@@ -1,31 +1,19 @@
-import type { WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
 
-export type DrawingWorkbenchViewportMode = 'sheet' | 'plan' | 'model' | 'geometry3d';
+export type DrawingWorkbenchViewportMode = 'sheet' | 'plan' | 'geometry3d';
 
-export type WorkbenchMode = 'house' | 'pergolas';
+export type DrawingWorkbenchGeometrySelectionKind =
+  | 'house'
+  | 'footprint'
+  | 'roof'
+  | 'deck'
+  | 'opening'
+  | 'attachment_zone';
 
-export type WorkbenchHouseSelection = {
-  kind: 'house' | 'footprint' | 'roof' | 'deck' | 'opening' | 'attachment_zone';
-  targetId: string | null;
-};
-
-export type DrawingWorkbenchGeometrySelectionKind = WorkbenchHouseSelection['kind'];
-
-export type DrawingWorkbenchSelectionState = {
+type DrawingWorkbenchSelectionState = {
   kind: 'none' | 'pergola' | 'geometry';
   targetId: string | null;
   targetKind?: DrawingWorkbenchGeometrySelectionKind;
-};
-
-export type DrawingWorkbenchHoverState = {
-  kind: 'none' | 'house_fill' | 'house_edge' | 'house_popover' | 'pergola' | 'pergola_popover';
-  targetId: string | null;
-};
-
-export type DrawingWorkbenchDragState = {
-  kind: 'none' | 'house_edge';
-  targetId: string | null;
 };
 
 export type DrawingWorkbenchViewportTransform = {
@@ -41,62 +29,45 @@ export type DrawingWorkbenchVisibilityState = {
   openings: boolean;
 };
 
-export type DrawingWorkbenchRailTab = WorkbenchObjectFamily | 'diagnostics';
-
 export type DrawingWorkbenchUiState = {
   activePergolaId: string | null;
-  activeRailTab: DrawingWorkbenchRailTab;
-  activeObjectFamily: WorkbenchObjectFamily;
   activeObjectRef: WorkbenchObjectRef;
-  activeView: WorkbenchViewTab;
   viewportMode: DrawingWorkbenchViewportMode;
   selection: DrawingWorkbenchSelectionState;
-  hover: DrawingWorkbenchHoverState;
-  drag: DrawingWorkbenchDragState;
   viewportTransform: DrawingWorkbenchViewportTransform;
   visibility: DrawingWorkbenchVisibilityState;
 };
 
-export type DrawingWorkbenchObjectSelectionState = Pick<
+type DrawingWorkbenchObjectSelectionState = Pick<
   DrawingWorkbenchUiState,
-  'activeRailTab' | 'activeObjectFamily' | 'activeObjectRef'
+  'activeObjectRef'
 >;
 
-export type DrawingWorkbenchRouteSelectionState = {
-  workbenchMode: WorkbenchMode;
-  activeHouseSelection: WorkbenchHouseSelection;
-  activePergolaId: string | null;
+type DrawingWorkbenchUiStateOverrides = Omit<
+  Partial<DrawingWorkbenchUiState>,
+  'viewportMode'
+> & {
+  viewportMode?: DrawingWorkbenchViewportMode | string | null | undefined;
+  [key: string]: unknown;
 };
 
-export type DrawingWorkbenchUiStateRouteSelectionOverrides = Partial<DrawingWorkbenchRouteSelectionState>;
-
-export type DrawingWorkbenchUiStateOverrides = Partial<DrawingWorkbenchUiState> &
-  DrawingWorkbenchUiStateRouteSelectionOverrides;
-
-export type DrawingWorkbenchObjectSelectionInput = {
-  activeRailTab: DrawingWorkbenchRailTab;
-  activeObjectFamily?: WorkbenchObjectFamily | null | undefined;
-  activeObjectRef?: WorkbenchObjectRef | null | undefined;
-  activePergolaId?: string | null | undefined;
-  bridgeHouseSelection?: WorkbenchHouseSelection | null | undefined;
+type DrawingWorkbenchRuntimeUiStateOverrides = Omit<
+  Partial<DrawingWorkbenchUiState>,
+  'viewportMode'
+> & {
+  viewportMode?: DrawingWorkbenchViewportMode | string | null | undefined;
 };
 
-export type DrawingWorkbenchBridgeTargetSelectionInput = {
-  target: WorkbenchHouseSelection;
-  defaultHouseFormId?: string | null | undefined;
+type DrawingWorkbenchObjectSelectionInput = {
+  activeObjectRef: WorkbenchObjectRef;
 };
 
 function buildDefaultDrawingWorkbenchUiState(): DrawingWorkbenchUiState {
   return {
     activePergolaId: null,
-    activeRailTab: 'house_forms',
-    activeObjectFamily: 'house_forms',
     activeObjectRef: { family: 'house_forms', objectId: null },
-    activeView: 'plan',
     viewportMode: 'sheet',
     selection: { kind: 'none', targetId: null },
-    hover: { kind: 'none', targetId: null },
-    drag: { kind: 'none', targetId: null },
     viewportTransform: { zoom: 1, panX: 0, panY: 0 },
     visibility: {
       house: true,
@@ -107,30 +78,28 @@ function buildDefaultDrawingWorkbenchUiState(): DrawingWorkbenchUiState {
   };
 }
 
-function splitUiStateOverrides(overrides: DrawingWorkbenchUiStateOverrides): {
-  uiOverrides: Partial<DrawingWorkbenchUiState>;
-  routeSelectionOverrides: DrawingWorkbenchUiStateRouteSelectionOverrides;
-} {
+function pickLiveDrawingWorkbenchUiOverrides(
+  overrides: DrawingWorkbenchUiStateOverrides,
+): DrawingWorkbenchRuntimeUiStateOverrides {
   const {
-    workbenchMode,
-    activeHouseSelection,
-    ...uiOverrides
+    activePergolaId,
+    activeObjectRef,
+    viewportMode,
+    selection,
+    viewportTransform,
+    visibility,
   } = overrides;
   return {
-    uiOverrides,
-    routeSelectionOverrides: {
-      workbenchMode,
-      activeHouseSelection,
-      activePergolaId: workbenchMode === 'pergolas' ? uiOverrides.activePergolaId : undefined,
-    },
+    ...(activePergolaId !== undefined ? { activePergolaId } : {}),
+    ...(activeObjectRef !== undefined ? { activeObjectRef } : {}),
+    ...(viewportMode !== undefined ? { viewportMode } : {}),
+    ...(selection !== undefined ? { selection } : {}),
+    ...(viewportTransform !== undefined ? { viewportTransform } : {}),
+    ...(visibility !== undefined ? { visibility } : {}),
   };
 }
 
-function normalizeWorkbenchMode(value: WorkbenchMode | null | undefined): WorkbenchMode {
-  return value === 'pergolas' ? 'pergolas' : 'house';
-}
-
-function normalizeActiveObjectFamily(value: WorkbenchObjectFamily | null | undefined): WorkbenchObjectFamily {
+function normalizeObjectFamily(value: WorkbenchObjectFamily | null | undefined): WorkbenchObjectFamily {
   switch (value) {
     case 'decks':
     case 'openings':
@@ -142,37 +111,16 @@ function normalizeActiveObjectFamily(value: WorkbenchObjectFamily | null | undef
   }
 }
 
-function normalizeActiveRailTab(
-  value: DrawingWorkbenchRailTab | null | undefined,
-  fallbackFamily: WorkbenchObjectFamily,
-  workbenchMode: WorkbenchMode,
-): DrawingWorkbenchRailTab {
+function normalizeViewportMode(
+  value: DrawingWorkbenchViewportMode | string | null | undefined,
+): DrawingWorkbenchViewportMode | null {
   switch (value) {
-    case 'diagnostics':
-    case 'decks':
-    case 'openings':
-    case 'pergolas':
-    case 'house_forms':
+    case 'sheet':
+    case 'plan':
+    case 'geometry3d':
       return value;
     default:
-      return workbenchMode === 'pergolas' ? 'pergolas' : fallbackFamily;
-  }
-}
-
-function normalizeActiveHouseSelection(value: WorkbenchHouseSelection | null | undefined): WorkbenchHouseSelection {
-  switch (value?.kind) {
-    case 'footprint':
-    case 'roof':
-    case 'deck':
-    case 'opening':
-    case 'attachment_zone':
-      return {
-        kind: value.kind,
-        targetId: value.targetId ?? null,
-      };
-    case 'house':
-    default:
-      return { kind: 'house', targetId: null };
+      return null;
   }
 }
 
@@ -181,25 +129,6 @@ function normalizeActivePergolaId(value: string | null | undefined, pergolaIds: 
   if (!pergolaIds.length) return value;
   if (value && pergolaIds.includes(value)) return value;
   return pergolaIds[0] ?? null;
-}
-
-function normalizeRouteSelection(
-  input: DrawingWorkbenchUiStateRouteSelectionOverrides,
-  options: { pergolaIds?: string[] } = {},
-): DrawingWorkbenchRouteSelectionState {
-  return {
-    workbenchMode: normalizeWorkbenchMode(input.workbenchMode),
-    activeHouseSelection: normalizeActiveHouseSelection(input.activeHouseSelection),
-    activePergolaId: normalizeActivePergolaId(input.activePergolaId, options.pergolaIds ?? []),
-  };
-}
-
-function deriveWorkbenchModeFromObjectSelection(
-  selection: Pick<DrawingWorkbenchObjectSelectionState, 'activeRailTab' | 'activeObjectFamily'>,
-): WorkbenchMode {
-  return selection.activeRailTab === 'pergolas' || selection.activeObjectFamily === 'pergolas'
-    ? 'pergolas'
-    : 'house';
 }
 
 function getObjectIdsForFamily(
@@ -233,7 +162,7 @@ function normalizeActiveObjectRef(
     pergolaIds?: string[];
   },
 ): WorkbenchObjectRef {
-  const family = normalizeActiveObjectFamily(value?.family ?? 'house_forms');
+  const family = normalizeObjectFamily(value?.family ?? 'house_forms');
   const objectId = value?.objectId ?? null;
   return {
     family,
@@ -257,187 +186,37 @@ function normalizeDrawingWorkbenchSelectionState(
   return { kind: 'none', targetId: null };
 }
 
-function buildSelectionStateFromRouteSelection(
-  routeSelection: DrawingWorkbenchRouteSelectionState,
-): DrawingWorkbenchSelectionState | null {
-  if (routeSelection.activeHouseSelection.kind === 'house') return null;
-  return {
-    kind: 'geometry',
-    targetId: routeSelection.activeHouseSelection.targetId,
-    targetKind: routeSelection.activeHouseSelection.kind,
-  };
-}
-
-function deriveObjectSelectionFromRouteSelection(
-  routeSelection: DrawingWorkbenchRouteSelectionState,
-): DrawingWorkbenchObjectSelectionState {
-  if (routeSelection.workbenchMode === 'pergolas') {
-    return {
-      activeRailTab: 'pergolas',
-      activeObjectFamily: 'pergolas',
-      activeObjectRef: {
-        family: 'pergolas',
-        objectId: routeSelection.activePergolaId,
-      },
-    };
-  }
-
-  if (routeSelection.activeHouseSelection.kind === 'deck') {
-    return {
-      activeRailTab: 'decks',
-      activeObjectFamily: 'decks',
-      activeObjectRef: {
-        family: 'decks',
-        objectId: routeSelection.activeHouseSelection.targetId,
-      },
-    };
-  }
-
-  if (routeSelection.activeHouseSelection.kind === 'opening') {
-    return {
-      activeRailTab: 'openings',
-      activeObjectFamily: 'openings',
-      activeObjectRef: {
-        family: 'openings',
-        objectId: routeSelection.activeHouseSelection.targetId,
-      },
-    };
-  }
-
-  return {
-    activeRailTab: 'house_forms',
-    activeObjectFamily: 'house_forms',
-    activeObjectRef: {
-      family: 'house_forms',
-      objectId: routeSelection.activeHouseSelection.targetId,
-    },
-  };
-}
-
-function hasRouteSelectionSignal(routeSelection: DrawingWorkbenchRouteSelectionState): boolean {
-  return (
-    routeSelection.workbenchMode === 'pergolas' ||
-    routeSelection.activePergolaId !== null ||
-    routeSelection.activeHouseSelection.kind !== 'house'
-  );
-}
-
 export function createDrawingWorkbenchUiState(
   overrides: DrawingWorkbenchUiStateOverrides = {},
 ): DrawingWorkbenchUiState {
-  const { uiOverrides, routeSelectionOverrides } = splitUiStateOverrides(overrides);
-  const routeSelection = normalizeRouteSelection(routeSelectionOverrides);
-  const hasExplicitObjectSelection =
-    uiOverrides.activeRailTab !== undefined ||
-    uiOverrides.activeObjectFamily !== undefined ||
-    uiOverrides.activeObjectRef !== undefined;
-  const bridgedObjectSelection =
-    !hasExplicitObjectSelection && hasRouteSelectionSignal(routeSelection)
-      ? deriveObjectSelectionFromRouteSelection(routeSelection)
-      : {};
-  const bridgedSelection =
-    uiOverrides.selection ?? buildSelectionStateFromRouteSelection(routeSelection) ?? undefined;
+  const uiOverrides = pickLiveDrawingWorkbenchUiOverrides(overrides);
+  const {
+    viewportMode: overrideViewportMode,
+    ...restUiOverrides
+  } = uiOverrides;
+  const normalizedViewportMode = normalizeViewportMode(overrideViewportMode);
+  const normalizedUiOverrides: Partial<DrawingWorkbenchUiState> = {
+    ...restUiOverrides,
+    ...(normalizedViewportMode ? { viewportMode: normalizedViewportMode } : {}),
+  };
 
   return {
     ...buildDefaultDrawingWorkbenchUiState(),
-    ...bridgedObjectSelection,
-    ...uiOverrides,
-    ...(bridgedSelection ? { selection: bridgedSelection } : {}),
+    ...normalizedUiOverrides,
   };
-}
-
-function normalizeObjectWorkbenchSelectionFamily(input: DrawingWorkbenchObjectSelectionInput): WorkbenchObjectFamily {
-  if (input.activeRailTab === 'diagnostics') {
-    return normalizeActiveObjectFamily(input.activeObjectFamily ?? input.activeObjectRef?.family ?? 'house_forms');
-  }
-  return normalizeActiveObjectFamily(input.activeRailTab);
 }
 
 export function buildDrawingWorkbenchObjectSelectionState(
   input: DrawingWorkbenchObjectSelectionInput,
 ): DrawingWorkbenchObjectSelectionState {
-  const activeRailTab =
-    input.activeRailTab === 'diagnostics'
-      ? 'diagnostics'
-      : normalizeActiveObjectFamily(input.activeRailTab);
-  const activeObjectFamily = normalizeObjectWorkbenchSelectionFamily(input);
-  const explicitObjectId =
-    input.activeObjectRef?.family === activeObjectFamily ? input.activeObjectRef.objectId ?? null : null;
-  const bridgeSelection = normalizeActiveHouseSelection(input.bridgeHouseSelection);
-  const bridgeObjectId =
-    activeObjectFamily === 'pergolas'
-      ? input.activePergolaId ?? null
-      : activeObjectFamily === 'decks' && bridgeSelection.kind === 'deck'
-        ? bridgeSelection.targetId ?? null
-        : activeObjectFamily === 'openings' && bridgeSelection.kind === 'opening'
-          ? bridgeSelection.targetId ?? null
-          : activeObjectFamily === 'house_forms' &&
-              bridgeSelection.kind !== 'house' &&
-              bridgeSelection.kind !== 'deck' &&
-              bridgeSelection.kind !== 'opening'
-            ? bridgeSelection.targetId ?? null
-            : null;
-  const objectId = explicitObjectId ?? bridgeObjectId;
+  const objectFamily = normalizeObjectFamily(input.activeObjectRef.family);
 
   return {
-    activeRailTab,
-    activeObjectFamily,
     activeObjectRef: {
-      family: activeObjectFamily,
-      objectId,
+      family: objectFamily,
+      objectId: input.activeObjectRef.objectId ?? null,
     },
   };
-}
-
-function deriveRailTabFromBridgeTarget(target: WorkbenchHouseSelection): Exclude<DrawingWorkbenchRailTab, 'diagnostics'> {
-  switch (target.kind) {
-    case 'deck':
-      return 'decks';
-    case 'opening':
-      return 'openings';
-    default:
-      return 'house_forms';
-  }
-}
-
-export function buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
-  target,
-  defaultHouseFormId,
-}: DrawingWorkbenchBridgeTargetSelectionInput): DrawingWorkbenchObjectSelectionState {
-  const activeRailTab = deriveRailTabFromBridgeTarget(target);
-  return buildDrawingWorkbenchObjectSelectionState({
-    activeRailTab,
-    activeObjectRef: {
-      family: activeRailTab,
-      objectId:
-        activeRailTab === 'decks' || activeRailTab === 'openings'
-          ? target.targetId ?? null
-          : target.targetId ?? defaultHouseFormId ?? null,
-    },
-    bridgeHouseSelection: target,
-  });
-}
-
-export function pickDrawingWorkbenchObjectSelectionState(
-  state: DrawingWorkbenchUiState,
-): DrawingWorkbenchObjectSelectionState {
-  return {
-    activeRailTab: state.activeRailTab,
-    activeObjectFamily: state.activeObjectFamily,
-    activeObjectRef: state.activeObjectRef,
-  };
-}
-
-export function areDrawingWorkbenchObjectSelectionStatesEqual(
-  first: DrawingWorkbenchObjectSelectionState,
-  second: DrawingWorkbenchObjectSelectionState,
-): boolean {
-  return (
-    first.activeRailTab === second.activeRailTab &&
-    first.activeObjectFamily === second.activeObjectFamily &&
-    first.activeObjectRef.family === second.activeObjectRef.family &&
-    first.activeObjectRef.objectId === second.activeObjectRef.objectId
-  );
 }
 
 export function areDrawingWorkbenchVisibilityStatesEqual(
@@ -452,62 +231,7 @@ export function areDrawingWorkbenchVisibilityStatesEqual(
   );
 }
 
-export function deriveDrawingWorkbenchRouteSelection(
-  state: DrawingWorkbenchUiState,
-): DrawingWorkbenchRouteSelectionState {
-  const workbenchMode = deriveWorkbenchModeFromObjectSelection(state);
-  const selection = normalizeDrawingWorkbenchSelectionState(state.selection);
-  const activeHouseSelection: WorkbenchHouseSelection =
-    state.activeObjectFamily === 'pergolas'
-      ? { kind: 'house', targetId: null }
-      : state.activeObjectFamily === 'decks'
-        ? state.activeObjectRef.family === 'decks' && state.activeObjectRef.objectId
-          ? { kind: 'deck', targetId: state.activeObjectRef.objectId }
-          : { kind: 'house', targetId: null }
-        : state.activeObjectFamily === 'openings'
-          ? state.activeObjectRef.family === 'openings' && state.activeObjectRef.objectId
-            ? { kind: 'opening', targetId: state.activeObjectRef.objectId }
-            : { kind: 'house', targetId: null }
-          : selection.kind === 'geometry' &&
-              selection.targetKind &&
-              selection.targetKind !== 'deck' &&
-              selection.targetKind !== 'opening'
-            ? { kind: selection.targetKind, targetId: selection.targetId }
-            : { kind: 'house', targetId: null };
-
-  return {
-    workbenchMode,
-    activeHouseSelection,
-    activePergolaId:
-      state.activeObjectFamily === 'pergolas' && state.activeObjectRef.family === 'pergolas'
-        ? state.activeObjectRef.objectId ?? state.activePergolaId
-        : null,
-  };
-}
-
-export function deriveDrawingWorkbenchRouteSelectionState(
-  input: DrawingWorkbenchObjectSelectionState & {
-    activeHouseSelection?: WorkbenchHouseSelection | null;
-    activePergolaId?: string | null;
-    selection?: DrawingWorkbenchSelectionState | null;
-  },
-): DrawingWorkbenchRouteSelectionState {
-  const { activeHouseSelection, activePergolaId, selection, ...objectSelection } = input;
-  const state = createDrawingWorkbenchUiState({
-    ...objectSelection,
-    selection:
-      selection ??
-      buildSelectionStateFromRouteSelection({
-        workbenchMode: deriveWorkbenchModeFromObjectSelection(input),
-        activeHouseSelection: normalizeActiveHouseSelection(activeHouseSelection),
-        activePergolaId: activePergolaId ?? null,
-      }) ??
-      undefined,
-  });
-  return deriveDrawingWorkbenchRouteSelection(state);
-}
-
-export function clampDrawingWorkbenchViewportTransform(
+function clampDrawingWorkbenchViewportTransform(
   transform: DrawingWorkbenchViewportTransform,
 ): DrawingWorkbenchViewportTransform {
   return {
@@ -517,7 +241,7 @@ export function clampDrawingWorkbenchViewportTransform(
   };
 }
 
-export function normalizeDrawingWorkbenchVisibilityState(
+function normalizeDrawingWorkbenchVisibilityState(
   visibility: Partial<DrawingWorkbenchVisibilityState> | null | undefined,
 ): DrawingWorkbenchVisibilityState {
   return {
@@ -537,65 +261,55 @@ export function normalizeDrawingWorkbenchUiState(
     openingIds?: string[];
   },
 ): DrawingWorkbenchUiState {
-  const { uiOverrides, routeSelectionOverrides } = splitUiStateOverrides(inputState);
+  const uiOverrides = pickLiveDrawingWorkbenchUiOverrides(inputState);
+  const {
+    viewportMode: overrideViewportMode,
+    ...restUiOverrides
+  } = uiOverrides;
+  const normalizedRawViewportMode = normalizeViewportMode(overrideViewportMode);
   const rawState: DrawingWorkbenchUiState = {
     ...buildDefaultDrawingWorkbenchUiState(),
-    ...uiOverrides,
+    ...restUiOverrides,
+    ...(normalizedRawViewportMode ? { viewportMode: normalizedRawViewportMode } : {}),
   };
-  const routeSelection = normalizeRouteSelection(routeSelectionOverrides, {
-    pergolaIds: input.pergolaIds,
-  });
-  const bridgedObjectSelection = hasRouteSelectionSignal(routeSelection)
-    ? deriveObjectSelectionFromRouteSelection(routeSelection)
-    : null;
-  const activeObjectFamily = normalizeActiveObjectFamily(
-    bridgedObjectSelection?.activeObjectFamily ?? rawState.activeObjectFamily,
-  );
-  const requestedObjectRef = bridgedObjectSelection?.activeObjectRef ?? rawState.activeObjectRef;
+  const objectFamily = normalizeObjectFamily(rawState.activeObjectRef.family);
+  const requestedObjectRef = rawState.activeObjectRef;
   const requestedActivePergolaId =
     rawState.activePergolaId ??
-    routeSelection.activePergolaId ??
     (requestedObjectRef.family === 'pergolas' ? requestedObjectRef.objectId : null);
-  const bridgedSelection = buildSelectionStateFromRouteSelection(routeSelection);
-  const normalizedSelection = normalizeDrawingWorkbenchSelectionState(uiOverrides.selection ?? bridgedSelection);
+  const normalizedSelection = normalizeDrawingWorkbenchSelectionState(uiOverrides.selection);
   let bridgedObjectRef = requestedObjectRef;
-  if (requestedObjectRef.family !== activeObjectFamily || !requestedObjectRef.objectId) {
-    if (activeObjectFamily === 'decks' && normalizedSelection.kind === 'geometry' && normalizedSelection.targetKind === 'deck') {
+  if (requestedObjectRef.family !== objectFamily || !requestedObjectRef.objectId) {
+    if (objectFamily === 'decks' && normalizedSelection.kind === 'geometry' && normalizedSelection.targetKind === 'deck') {
       bridgedObjectRef = { family: 'decks', objectId: normalizedSelection.targetId ?? null };
     } else if (
-      activeObjectFamily === 'openings' &&
+      objectFamily === 'openings' &&
       normalizedSelection.kind === 'geometry' &&
       normalizedSelection.targetKind === 'opening'
     ) {
       bridgedObjectRef = { family: 'openings', objectId: normalizedSelection.targetId ?? null };
     } else if (
-      activeObjectFamily === 'house_forms' &&
+      objectFamily === 'house_forms' &&
       normalizedSelection.kind === 'geometry' &&
       normalizedSelection.targetKind !== 'deck' &&
       normalizedSelection.targetKind !== 'opening'
     ) {
       bridgedObjectRef = { family: 'house_forms', objectId: normalizedSelection.targetId ?? null };
-    } else if (activeObjectFamily === 'decks' && routeSelection.activeHouseSelection.kind === 'deck') {
-      bridgedObjectRef = { family: 'decks', objectId: routeSelection.activeHouseSelection.targetId ?? null };
-    } else if (activeObjectFamily === 'openings' && routeSelection.activeHouseSelection.kind === 'opening') {
-      bridgedObjectRef = { family: 'openings', objectId: routeSelection.activeHouseSelection.targetId ?? null };
-    } else if (activeObjectFamily === 'pergolas' && routeSelection.activePergolaId) {
-      bridgedObjectRef = { family: 'pergolas', objectId: routeSelection.activePergolaId };
-    } else if (activeObjectFamily === 'pergolas' && requestedActivePergolaId) {
+    } else if (objectFamily === 'pergolas' && requestedActivePergolaId) {
       bridgedObjectRef = { family: 'pergolas', objectId: requestedActivePergolaId };
     }
   }
   let activeObjectRef = normalizeActiveObjectRef(
-    bridgedObjectRef.family === activeObjectFamily
+    bridgedObjectRef.family === objectFamily
       ? bridgedObjectRef
       : {
-          family: activeObjectFamily,
+          family: objectFamily,
           objectId: null,
     },
     input,
   );
   if (
-    activeObjectFamily === 'pergolas' &&
+    objectFamily === 'pergolas' &&
     !activeObjectRef.objectId &&
     bridgedObjectRef.family === 'pergolas' &&
     Boolean(bridgedObjectRef.objectId) &&
@@ -603,13 +317,8 @@ export function normalizeDrawingWorkbenchUiState(
   ) {
     activeObjectRef = { family: 'pergolas', objectId: input.pergolaIds?.[0] ?? null };
   }
-  const activeRailTab = normalizeActiveRailTab(
-    bridgedObjectSelection ? bridgedObjectSelection.activeRailTab : rawState.activeRailTab,
-    activeObjectFamily,
-    routeSelection.workbenchMode,
-  );
   const activePergolaId = normalizeActivePergolaId(
-    activeObjectFamily === 'pergolas' && activeObjectRef.family === 'pergolas' && activeObjectRef.objectId
+    objectFamily === 'pergolas' && activeObjectRef.family === 'pergolas' && activeObjectRef.objectId
       ? activeObjectRef.objectId
       : requestedActivePergolaId,
     input.pergolaIds ?? [],
@@ -617,8 +326,6 @@ export function normalizeDrawingWorkbenchUiState(
   return {
     ...rawState,
     activePergolaId,
-    activeRailTab,
-    activeObjectFamily,
     activeObjectRef,
     selection: normalizedSelection,
     viewportTransform: clampDrawingWorkbenchViewportTransform(rawState.viewportTransform),

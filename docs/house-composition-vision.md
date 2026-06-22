@@ -26,24 +26,24 @@ The tagline: **make the input space match what we can solve, not the other way a
 
 1. **Snap-attach** — when a designer drags a rectangle near an existing house form, snap aligns it edge-to-edge. Snap is **positioning only** — the two house forms remain independent first-class objects with separate ids, separate roofs, separate selection, separate edit state.
 
-2. **Join** — when a designer multi-selects two snapped house forms and clicks **Join**, they become a single composite house form. The composite carries the constituent rectangles + the join metadata. Once joined, they share one roof intent and render as one coherent roof.
+2. **Join** — when a designer multi-selects two snapped house forms and clicks **Join**, they become a single composite house form. The composite carries the constituent rectangles, the join metadata, and each rectangle's roof intent. Once joined, they render as one coherent house form while preserving per-rectangle intent for solve and detach.
 
-   **Detach** reverses Join — the composite splits back into N independent house forms in the same positions, each carrying the composite's roof intent as their initial intent.
+   **Detach** reverses Join — the composite splits back into N independent house forms in the same positions, each carrying its rectangle's roof intent as its initial intent.
 
 Snap without join means "I want these aligned." Join means "I want these to be one house." Separating the two preserves designer intent — a garage and a house that happen to be adjacent can stay separate without auto-joining.
 
-### One roof intent per composite
+### Per-rectangle roof intent in a composite
 
-The composite owns the roof intent (form, pitch, material, ridge axis preference, open-gable ends). Designer picks "hipped" once for the joined house form; every constituent rectangle is hipped. No per-constituent roof override in v1 — that complexity isn't needed and adding it would invite the "mixed-intent across one house" failure modes we don't want.
+Each rectangle primitive owns a `RectangleRoofIntent` (form, pitch, ridge axis preference, open-gable end caps). This is the shipped model: joined forms are one house form for selection/rendering, but the solver can still read the intent of each constituent rectangle. A simple one-rectangle house is just a one-primitive composition.
 
 ### Roof resolution rule
 
-When the solver renders a composite hipped roof:
+When the solver renders a composition:
 
-- **If the union of the joined rectangles is itself a rectangle**, route to the existing `buildRectangularRoof` on the merged dimensions. One ridge, four facets, simple gutter loop. (Already rock-solid.)
-- **Otherwise** (L, T, U, cross, etc.), solve each constituent rectangle independently and place an explicit **valley** at each inside corner where two rectangles meet at right angles.
+- **If the union of the joined rectangles is itself a rectangle and the roof intent can be represented as one rectangle**, route to the existing rectangular roof path on the merged dimensions. One ridge, four facets, simple gutter loop.
+- **Otherwise** (L, T, U, cross, mixed intent, etc.), compose the result from the constituent rectangle solves and explicit join/valley/stitched geometry, carrying diagnostics when the topology is approximate.
 
-Both branches end up calling `buildRectangularRoof` for the per-rectangle solves — the bulletproof path. The new code is the rectangle-union detector and the valley primitive. Neither is numerically fragile.
+The important rule is that composition intent is explicit input, not inferred from a free-form polygon after the fact.
 
 ### Dutch hip preservation
 
@@ -57,8 +57,8 @@ The rail's existing "Open End N" toggles operate on composite-level terminal end
 
 ### Honest limits (v1)
 
-- **Per-constituent roof override is not supported.** Designer can't say "hipped on the main block, skillion on the extension." If they want that, they keep the constituents as separate house forms (don't join). Could be added later if customers ask; not on the roadmap.
 - **Only axis-aligned rectangles.** Rotated rectangles, octagons, curves are out of scope. The polymorphic primitive type (see Phase 1) leaves room to add these later without rework.
+- **The main authoring flow stays simple.** The data model can preserve per-rectangle intent, but the UI should not add complexity unless a real designer workflow needs it.
 
 ## The plan (4 phases)
 
@@ -104,7 +104,7 @@ These are one-line disciplines that cost nothing to honor now but are painful to
 
 4. **Join validates structurally.** Reject joins where the rectangles don't share an edge (snap got close but didn't quite touch). Reject joins that would produce non-orthogonal composites. Errors are typed.
 
-5. **Terminal end ids are deterministic from the composite perimeter.** Avoids "I joined two rectangles and the terminal-end ids changed under me" surprises. Roof intent serializes cleanly across join/detach round-trips.
+5. **Terminal end ids are deterministic from the composite perimeter.** Avoids "I joined two rectangles and the terminal-end ids changed under me" surprises. Per-rectangle roof intent serializes cleanly across join/detach round-trips.
 
 6. **Legacy free-form solver is read-only.** No bug fixes, no new features. It's a museum exhibit kept alive for any leftover free-form data. Discourages investment in the dead path.
 
@@ -112,10 +112,9 @@ These are one-line disciplines that cost nothing to honor now but are painful to
 
 - **Migration of legacy free-form house forms.** Not used in any production project worth migrating. They keep working as-is via the legacy solver.
 - **Designer validation rounds.** The product owner is the designer.
-- **Per-constituent roof intent overrides.** Add later if a real customer need surfaces.
 - **Curves, rotated rectangles, octagons.** Type leaves room; implementation does not.
 - **Pricing implications of composition.** Costing path is downstream; the composition data model carries enough information for any future commercial adapter to consume.
 
-## CTA
+## Next use
 
-Phase 1 plan is at [`docs/pr-comp1-plan.md`](pr-comp1-plan.md). Say **"go comp1"** to start.
+Use this doc as the Gate 0 direction check for new house-form work. Historical PR plans remain linked for context, but current implementation details live in the code and current-state architecture docs.

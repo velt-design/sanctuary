@@ -17,7 +17,7 @@ import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectH
 
 type GeometryCameraPreset = 'iso' | 'front' | 'right' | 'top' | 'custom';
 
-export type DesignViewportProps = {
+type DesignViewportProps = {
   geometryPreview?: GeometryPreviewState | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;

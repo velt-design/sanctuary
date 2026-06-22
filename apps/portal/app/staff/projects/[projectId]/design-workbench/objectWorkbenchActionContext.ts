@@ -8,7 +8,7 @@ import type {
 
 type HouseContextSource = 'selected_house' | 'deck_host' | 'opening_host' | 'pergola_host';
 
-export type ObjectWorkbenchHouseActionContext = {
+type ObjectWorkbenchHouseActionContext = {
   houseForm: HouseFormModel;
   source: HouseContextSource;
 };

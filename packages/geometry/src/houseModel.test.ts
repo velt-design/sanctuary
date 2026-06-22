@@ -1,80 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AttachmentSide,
-  GeometryConfig,
-  HouseAttachmentStrategy,
-  HouseFootprintPreset,
-  HouseRoofForm,
-  Line3,
-  Point3,
-  Polygon3,
-  RawHouseInput,
-  RenderMesh3D,
-} from "./contracts";
-import { deriveHouseGableTerminalEnds } from "./houseRoofCapabilities";
-import { buildHouseFootprintPolygon } from "./footprints";
-import {
-  buildHouseModel3D,
-  buildHouseModel3DFromRawHouseInput,
-  buildHouseReferenceGeometry,
-} from "./houseModel";
+import type { RawHouseInput } from "./contracts";
+import { buildHouseModel3D, buildHouseModel3DFromRawHouseInput } from "./houseModel";
 import {
   makeFootprint,
-  makePresetFootprint,
-  HOUSE_FOOTPRINT_PRESETS,
-  HOUSE_ROOF_FORMS,
-  ATTACHMENT_SIDES,
-  pointOnSegment2D,
-  pointInPolygon2D,
-  pointInOrOnPolygon2D,
-  segmentInsidePolygon2D,
-  roofPointKey,
-  roofSegmentKey,
-  roofPointKeyXY,
-  roofSegmentKeyXY,
-  rebuildRoofPerimeterPolygon,
-  eavePolygonFromModel,
-  polygonAreaXY,
-  signedPolygonAreaXY,
-  reflexEaveVertices,
-  expectRoofFacetsCoverEaveOnce,
   expectRoofQaValid,
-  expectRoofFacetsInsideEave,
-  roofBoundarySegmentCounts,
-  roofBoundarySegments,
-  expectJoinedRoofFeaturesBackedByFinalFacets,
   expectRoofBoundaryEavePointsAtEaveHeight,
-  expectValleysStartAtReentrantCorners,
-  expectNoInternalEaveHeightRoofSeams,
   makeConfig,
-  allTerminalEndIdsForHippedConfig,
-  makePlacedFootprint,
-  makeFrontFootprint,
-  makeLeftFootprint,
-  makeRightFootprint,
   makeAttachmentEdge,
   expectPoint3CloseTo,
-  pointDistanceSquared3,
-  vectorLength3,
-  normalizeVector3,
-  dotPoint3,
-  countRenderMeshVerticalFaces,
-  pointDistanceToSegment2D,
-  sourceEdgeLineFromModel,
-  polygonIsHorizontal,
-  countRenderMeshFacesAlignedToNormal,
-  expectUnorderedSegment3CloseTo,
-  lineLength3,
-  crossPoint3,
-  subtractPoint3,
-  distanceToLine3D,
   expectPolygon3CloseTo,
-  expectPolygon3CloseToIgnoringRotation,
-  expectSolidBoundariesExact,
-  expectVerticalPrismRenderMesh,
-  expectMiteredRenderMeshesAroundCorners,
-  polygonOutwardVectorXY,
-  expectHouseGutterBoundariesUseProjection,
   expectHouseGutterSolidsMiteredAroundCorners,
   expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
@@ -84,6 +18,7 @@ import {
 describe("house model geometry builder", () => {
   it("builds walls, hipped roof planes, eave references, and a soffit attachment target", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({ wallHeightMm: 3100 }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -267,7 +202,7 @@ describe("buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)", () => {
     const attachmentEdge = makeAttachmentEdge();
 
     // Legacy path: pre-baked config -> buildHouseModel3D.
-    const legacy = buildHouseModel3D({ config, attachmentEdge });
+    const legacy = buildHouseModel3D({ houseId: "house-main", config, attachmentEdge });
     expect(legacy).not.toBeNull();
     if (!legacy) return;
 
@@ -286,7 +221,6 @@ describe("buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)", () => {
       roofForm: "hipped",
       roofPrimaryFallDirection: "positive_y",
       roofRidgeAxis: "x",
-      roofMaterial: "corrugated_iron",
       attachmentStrategy: "soffit_brackets",
       eave: {
         soffitDepthMm: "450",
@@ -330,10 +264,9 @@ describe("buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)", () => {
   });
 
   it("builds a real HouseModel3D for a freestanding house (PR-G2: pergolaAttachment = null)", () => {
-    // Pre-PR8b this returned null because `buildHouseModelConfig` short-
-    // circuited on freestanding. Multi-form workbench rendering needs
-    // freestanding forms to surface walls/roof/decks, so the short-circuit
-    // moved upstream (in `normalize.ts`) to the genuine "no footprint" gate.
+    // Freestanding forms need to surface walls/roof/decks for project-level
+    // rendering, so the null short-circuit belongs upstream in `normalize.ts`
+    // at the genuine "no footprint" gate.
     // PR-G2 dropped the synthetic pergola-context stub: freestanding callers
     // just pass `pergolaAttachment: null` and the geometry function applies
     // the freestanding defaults internally.

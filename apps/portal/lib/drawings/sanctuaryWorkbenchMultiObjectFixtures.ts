@@ -27,20 +27,6 @@ function makeMultiHouseUTwoPergolaFixtureSource(): {
       houseConnectionType: 'soffit',
       houseAttachmentStrategy: 'soffit_brackets',
       attachmentSide: 'rear',
-      houseFootprintMode: 'preset',
-      houseFootprintPreset: 'u_shape',
-      houseFootprintParams: {
-        widthM: '8',
-        offsetXM: '-1',
-        setbackM: '0.4',
-        bandDepthM: '1.8',
-        returnRunM: '2.4',
-        recessWidthM: '2.4',
-        recessDepthM: '1.2',
-        leftLegRunM: '5',
-        rightLegRunM: '5',
-        sideRunM: '2.4',
-      },
       houseRoofPitchDeg: '20',
       houseFasciaHeightMm: '300',
       houseEaveOverhangMm: '1000',
@@ -135,10 +121,6 @@ function makeMultiHouseUTwoPergolaFixtureSource(): {
       objectFirst: withSecondHouse,
     }),
   };
-}
-
-function housePoint(alongM: string, depthM: string) {
-  return { alongM, depthM };
 }
 
 function makeMultiHouseCustomProjectionFixtureSource(): {

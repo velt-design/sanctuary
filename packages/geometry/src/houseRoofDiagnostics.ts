@@ -1,6 +1,6 @@
 import type { GeometryMetadata, HouseModel3D } from "./contracts";
 
-export type HouseRoofStageStatus = "ok" | "failed" | "not_started";
+type HouseRoofStageStatus = "ok" | "failed" | "not_started";
 
 export type HouseRoofStageDiagnostics = {
   footprintNormalizationStatus: HouseRoofStageStatus;

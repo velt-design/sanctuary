@@ -186,7 +186,7 @@ export function roofSegmentOverlapLength2D(
   return Math.max(0, Math.min(aMax, bMax) - Math.max(aMin, bMin));
 }
 
-export function roofSegmentsProperlyIntersect2D(
+function roofSegmentsProperlyIntersect2D(
   aStart: RoofPoint2,
   aEnd: RoofPoint2,
   bStart: RoofPoint2,
@@ -247,7 +247,7 @@ export function roofPolygonIsSimple(polygon: RoofPoint2[]): boolean {
   return true;
 }
 
-export function roofSegmentInsidePolygonStrict(start: RoofPoint2, end: RoofPoint2, polygon: Polygon3): boolean {
+function roofSegmentInsidePolygonStrict(start: RoofPoint2, end: RoofPoint2, polygon: Polygon3): boolean {
   if (!pointInOrOnRoofPolygon(start, polygon) || !pointInOrOnRoofPolygon(end, polygon)) return false;
   const midpoint = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
   if (!pointInOrOnRoofPolygon(midpoint, polygon)) return false;

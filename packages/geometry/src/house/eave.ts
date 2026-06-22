@@ -1,4 +1,4 @@
-import type { HouseRoofForm, Point3, RoofPlane3D } from '../contracts';
+import type { HouseRoofForm, RoofPlane3D } from '../contracts';
 import { lineLength } from '../math3d';
 import { DEFAULT_ROOF_SOLID_THICKNESS_MM, ROOF_REGION_MIN_AREA_MM2 } from './constants';
 import {
@@ -16,7 +16,7 @@ import {
 } from './_internal';
 import { roofPlaneEquationHeightAtXY, roofSolidBottomPlaneEquation } from './roofPlane';
 
-export function isEavePackageEdge(edgeKind: HouseRoofPerimeterEdgeKind): boolean {
+function isEavePackageEdge(edgeKind: HouseRoofPerimeterEdgeKind): boolean {
   return edgeKind === 'drain_eave';
 }
 

@@ -10,12 +10,12 @@ import type { SolveAssembly3DErrorCode } from './solve.types';
  * union covers normalization failures, solve failures, and the orchestrator-
  * specific `house_context_mismatch` (retired in phase 4).
  */
-export type SolveProjectPergolaErrorCode =
+type SolveProjectPergolaErrorCode =
   | NormalizeGeometryConfigErrorCode
   | SolveAssembly3DErrorCode
   | 'house_context_mismatch';
 
-export type SolveProjectPergolaResult =
+type SolveProjectPergolaResult =
   | { ok: true; pergolaIndex: number; config: GeometryConfig; value: Assembly3D }
   | {
       ok: false;
@@ -24,7 +24,7 @@ export type SolveProjectPergolaResult =
       error: string;
     };
 
-export type SolveProjectResult = {
+type SolveProjectResult = {
   /**
    * Echo of the project-level house input that was supplied. Phase 3 of
    * milestone 13 keeps this purely informational -- no consumer mutates
@@ -37,7 +37,7 @@ export type SolveProjectResult = {
   pergolas: SolveProjectPergolaResult[];
 };
 
-export type SolveProjectInput = {
+type SolveProjectInput = {
   /**
    * Project-level house input. In single-house projects (today's reality),
    * this is built once from `houseAssembly.houseForms[0]` (or equivalent)

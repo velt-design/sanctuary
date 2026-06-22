@@ -13,13 +13,11 @@ type DeckInspectorProps = {
   activeDeck: ObjectWorkbenchDeckInspectorModel | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (
     deckId: string,
     patch: ObjectWorkbenchDeckPatch,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
   runAction: RunAction;
 };
 
@@ -27,10 +25,8 @@ export default function DeckInspector({
   activeDeck,
   disabled,
   fieldErrors,
-  onAddDeck,
   onCommitDeckPatch,
   onRemoveDeck,
-  onStartDeckOutline,
   runAction,
 }: DeckInspectorProps) {
   const deckSections = useMemo(
@@ -39,20 +35,16 @@ export default function DeckInspector({
         activeDeck,
         disabled,
         fieldErrors,
-        onAddDeck,
         onCommitDeckPatch,
         onRemoveDeck,
-        onStartDeckOutline,
         runAction,
       }),
     [
       activeDeck,
       disabled,
       fieldErrors,
-      onAddDeck,
       onCommitDeckPatch,
       onRemoveDeck,
-      onStartDeckOutline,
       runAction,
     ],
   );

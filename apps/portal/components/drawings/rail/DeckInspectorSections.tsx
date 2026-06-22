@@ -21,13 +21,11 @@ type BuildDeckInspectorSectionsInput = {
   activeDeck: ObjectWorkbenchDeckInspectorModel | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (
     deckId: string,
     patch: ObjectWorkbenchDeckPatch,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
   runAction: RunAction;
 };
 
@@ -37,15 +35,11 @@ export function buildDeckInspectorSections({
   fieldErrors,
   onCommitDeckPatch,
   onRemoveDeck,
-  onStartDeckOutline,
   runAction,
 }: BuildDeckInspectorSectionsInput): ReactNode[] {
   const activeDeckPlacement = activeDeck?.isAttached ? 'snapped' : 'floating';
   const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
   const deckWarningSummaries = activeDeck ? resolveDeckWarningSummaries(activeDeck) : [];
-  // PR-T9 (2026-05-29): top-row `Add deck` + `Custom outline` action
-  // buttons removed — the left rail already renders `+ Add deck`, and the
-  // Shape dropdown below is the canonical place to switch preset/custom.
   const deckButtons: ReactNode[] = [];
 
   if (!activeDeck) {
@@ -71,16 +65,11 @@ export function buildDeckInspectorSections({
     </div>,
     <p key="deck-selection-hint" className={styles.fieldHint}>
       {activeDeck.shape === 'preset'
-        ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit in floating placement with witness dimensions.'
-        : 'Only the selected deck shows active dimensions in plan/model space. Custom outlines can translate as one object relative to the house, expose witness dimensions, and still use the outline edge workflow for shape changes.'}
+        ? 'Only the selected deck shows active dimensions in the Plan Editor. Rectangular presets can be dragged there, snap to the house edge, or sit in floating placement with witness dimensions.'
+        : 'Only the selected deck shows active dimensions in the Plan Editor. Custom outlines can translate as one object relative to the house and expose witness dimensions.'}
     </p>,
   );
 
-  // PR-T9 (2026-05-29): `Deck name` text field, `Deck kind` select, and
-  // `Host edge / Witness edge` select removed. Name auto-derives from
-  // index; kind was never branched on by costing/geometry; host edge is
-  // snap-derived by `buildDeckCommitPatch` and the inspector dropdown
-  // misled users into thinking they could override the snap result.
   deckButtons.push(
     <SelectField
       key="deck-shape"
@@ -189,8 +178,8 @@ export function buildDeckInspectorSections({
 
     if (activeDeck.isAttached) {
       deckButtons.push(
-        <p key="deck-model-space-hint" className={styles.fieldHint}>
-          In Model Space, select this deck to edit width/depth plus host-edge start and end gaps. Drag the deck body to move it along the house edge or pull it into floating placement.
+        <p key="deck-plan-editor-hint" className={styles.fieldHint}>
+          In the Plan Editor, select this deck to edit width/depth plus host-edge start and end gaps. Drag the deck body to move it along the house edge or pull it into floating placement.
         </p>,
       );
     }
@@ -221,10 +210,6 @@ export function buildDeckInspectorSections({
     }
   }
 
-  // PR-T9 (2026-05-29): `Elevation mode` dropdown removed. Geometry no
-  // longer branches on `elevationMode`; the inspector field had three
-  // options when the only effective branch was `'ground'` (clamp negative
-  // offsets) vs not-ground.
   deckButtons.push(
     <NumberField
       key="deck-offset"
@@ -257,17 +242,6 @@ export function buildDeckInspectorSections({
       }
     />,
     <div key="deck-edit-actions" className={styles.buttonRow}>
-      <ActionButton
-        label="Redraw outline"
-        disabled={disabled}
-        onClick={() =>
-          void runAction(
-            `deck-outline-${activeDeck.id}`,
-            onStartDeckOutline?.(activeDeck.id),
-            'Unable to start deck outline drawing.',
-          )
-        }
-      />
       <ActionButton
         label="Reset position"
         disabled={disabled}

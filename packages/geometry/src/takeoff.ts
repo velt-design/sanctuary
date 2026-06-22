@@ -2,22 +2,23 @@ import type {
   Assembly3D,
   AssemblyMember3D,
   AssemblyMemberProfile,
-  AssemblyMemberRole,
   GeometryQuantityTakeoff,
-  GeometryQuantityTakeoffDiagnostic,
-  GeometryQuantityTakeoffDimensionSet,
-  GeometryQuantityTakeoffFlashingGirthBucket,
-  GeometryQuantityTakeoffFlashingItem,
-  GeometryQuantityTakeoffMemberBucket,
-  GeometryQuantityTakeoffMemberItem,
-  GeometryQuantityTakeoffRafters,
-  GeometryQuantityTakeoffRoofCladdingMaterial,
-  GeometryQuantityTakeoffRoofCladdingPanel,
   Line3,
-  QuantityHook,
-  RoofCladdingMaterial,
 } from "./contracts";
 import { lineLength, polygonArea } from "./math3d";
+
+type AssemblyMemberRole = Assembly3D["members"][number]["role"];
+type RoofCladdingMaterial = Assembly3D["roofCladdingPanels"][number]["material"];
+type QuantityHook = Assembly3D["quantityHooks"][number];
+type GeometryQuantityTakeoffDiagnostic = GeometryQuantityTakeoff["diagnostics"][number];
+type GeometryQuantityTakeoffDimensionSet = NonNullable<GeometryQuantityTakeoff["primaryDimensionsMm"]>;
+type GeometryQuantityTakeoffMemberItem = GeometryQuantityTakeoff["members"]["items"][number];
+type GeometryQuantityTakeoffMemberBucket = GeometryQuantityTakeoff["members"]["byRole"][AssemblyMemberRole];
+type GeometryQuantityTakeoffRoofCladdingPanel = GeometryQuantityTakeoff["roofCladding"]["items"][number];
+type GeometryQuantityTakeoffRoofCladdingMaterial = GeometryQuantityTakeoff["roofCladding"]["byMaterial"][number];
+type GeometryQuantityTakeoffRafters = GeometryQuantityTakeoff["rafters"];
+type GeometryQuantityTakeoffFlashingItem = GeometryQuantityTakeoff["flashings"]["items"][number];
+type GeometryQuantityTakeoffFlashingGirthBucket = GeometryQuantityTakeoff["flashings"]["byGirthMm"][string];
 
 const MEMBER_ROLES: AssemblyMemberRole[] = [
   "post",

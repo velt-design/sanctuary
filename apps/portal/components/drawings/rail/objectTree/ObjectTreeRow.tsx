@@ -4,20 +4,14 @@ import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/s
 import railStyles from '../WorkbenchRail.module.css';
 
 /*
- * PR-W3d.2 (2026-05-25) — single row inside the flat OBJECTS TREE.
+ * Presentational row for one object in the workbench tree.
  *
- * Reuses the existing rail button visual language (`objectButton`,
- * `objectButtonLabel`, `objectButtonMeta`, plus `buttonPrimary` /
- * `secondaryButton` for selected vs. unselected). The selection signal is
- * the primary-button styling; visibility-hidden state is communicated via
- * the subtitle text (e.g. "hidden in viewport") plus a data attribute so
- * tests can assert it.
- *
- * Pure presentational — no internal state, no async, no store reads. The
- * parent `<ObjectTreeSection>` builds the row data and dispatches selection.
+ * The parent builds row data from the rail model and dispatches selection;
+ * this component only renders the row highlight, subtitle, and stable test
+ * hooks.
  */
 
-export type ObjectTreeRowProps = {
+type ObjectTreeRowProps = {
   family: WorkbenchObjectFamily;
   objectId: string | null;
   label: string;

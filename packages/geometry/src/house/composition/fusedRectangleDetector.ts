@@ -18,7 +18,7 @@ import type { Polygon3 } from "../../contracts";
  * Trusts the input polygon to be CCW, orthogonal, and
  * collinear-cleaned (as produced by `composeFootprintFromComposition`).
  */
-export type FusedRectangleDetection =
+type FusedRectangleDetection =
   | {
       fused: true;
       originXMm: number;

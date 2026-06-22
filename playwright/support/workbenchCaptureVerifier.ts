@@ -14,7 +14,7 @@ type WorkbenchCaptureFailureReason =
   | 'missing_house_diagnostics'
   | 'no_failing_house';
 
-export type WorkbenchMultiHouseRoofFailureVerification = {
+type WorkbenchMultiHouseRoofFailureVerification = {
   ok: boolean;
   reason: WorkbenchCaptureFailureReason | null;
   message: string;

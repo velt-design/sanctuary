@@ -12,7 +12,6 @@ import {
 } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
@@ -55,7 +54,6 @@ type EstimateDrawingSheetProps = {
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
-  planViewModel?: PlanViewModel | null;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
@@ -281,7 +279,6 @@ export default function EstimateDrawingSheet({
   drawingSurfaceGeometry,
   planModel,
   sectionModel,
-  planViewModel,
   meta,
   editableFields = [],
   showDebugOverlays = false,
@@ -290,7 +287,6 @@ export default function EstimateDrawingSheet({
 }: EstimateDrawingSheetProps) {
   const legacyPlanModel = planModel ?? null;
   const legacySectionModel = sectionModel ?? null;
-  void planViewModel;
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);

@@ -483,7 +483,6 @@ function makeSolvedDrawingSurfaceGeometry(
       plan: geometryPlan,
       topProjection: geometryTopProjection,
     } as WorkbenchDrawingSurfaceGeometry['artifact'],
-    planViewModel: null,
     geometryPlan,
     geometryTopProjection,
     geometrySection: null,
@@ -497,7 +496,6 @@ function makeLegacyDrawingSurfaceGeometry(_drawing: {
   return {
     source: 'unavailable',
     artifact: null,
-    planViewModel: null,
     geometryPlan: null,
     geometryTopProjection: null,
     geometrySection: null,
@@ -852,9 +850,8 @@ describe('ModuleViewsCard', () => {
           artifact: {
             plan: makeGeometryPlanFixture(),
             topProjection: makeTopProjectionFixture(),
-            section: makeGeometrySectionFixture(),
-          } as WorkbenchDrawingSurfaceGeometry['artifact'],
-          planViewModel: null,
+          section: makeGeometrySectionFixture(),
+        } as WorkbenchDrawingSurfaceGeometry['artifact'],
           geometryPlan: makeGeometryPlanFixture(),
           geometryTopProjection: makeTopProjectionFixture(),
           geometrySection: makeGeometrySectionFixture(),

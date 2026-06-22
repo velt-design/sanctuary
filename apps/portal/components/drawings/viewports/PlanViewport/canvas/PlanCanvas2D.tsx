@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { GeometryTopProjectionShape } from '@sp/geometry';
+import type { GeometryTopProjectionShape, Point2 } from '@sp/geometry';
 import styles from './PlanCanvas.module.css';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { PlanRenderItem } from './planRenderItem';
 import type { PlanLayout } from './planLayout';
-import type { Point2 } from './polygonEdgeMath';
 import { planShapeIsPergolaDiagnosticFallback } from '@/lib/drawings/views/plan/planShapeOwnership';
 import {
   canvasCommittedBodyStyle,
@@ -18,7 +17,6 @@ import {
   CANVAS_DIAGNOSTIC_FALLBACK_PERGOLA,
   CANVAS_SELECTION_HALO,
   CANVAS_HOVER_HALO,
-  type CanvasShapeStyle,
 } from './canvasShapeStyle';
 import { resolveWheelZoomedTransform } from '../interactions/usePanZoom';
 import { useToolDispatcher } from '../tools/ToolDispatcher';
@@ -31,10 +29,10 @@ import type { PlanSeamIconTarget } from '../interactions/seams/seamIconTargets';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 const WHEEL_COMMIT_DEBOUNCE_MS = 120;
+type CanvasShapeStyle = typeof CANVAS_CONTEXT_LINE_STYLE;
 const LOCAL_HOVER_STYLE: CanvasShapeStyle = { stroke: '#7b8288', widthPx: 1, fill: null, dash: [5, 3] };
 
-// Preview / snap / seam overlays mirror the .edgeDragPreview / .movePreview /
-// .snapIndicator* / seam-icon styles in planLineweights.module.css. Outline
+// Preview / snap / seam overlays use concrete Canvas 2D styles. Outline
 // polygons + lines draw in CAMERA space (constant-px stroke); markers, labels
 // and seam chips draw in DEVICE space (constant on-screen size).
 const SNAP_COLOR = '#ff6b00';
@@ -96,8 +94,7 @@ function drawSeamIcon(ctx: CanvasRenderingContext2D, x: number, y: number, kind:
   ctx.fillText(kind === 'detach' ? '–' : '+', x, y + dpr);
 }
 
-// Dimension styling mirrors `.dimensionLine/.dimensionArrow/.dimensionLabel`
-// in planLineweights.module.css. Drawn in DEVICE space (constant on-screen
+// Dimension styling is drawn in DEVICE space (constant on-screen
 // size at any zoom — the CAD convention), not the camera-scaled body space.
 const DIM_STROKE = '#2a3a55';
 const DIM_LABEL_FILL = '#14172e';
@@ -194,7 +191,7 @@ function drawDimensions(
  * and dispatch through the shared tool dispatcher + `buildPointerDispatchAction`.
  * Pan/zoom apply imperatively and commit to React state only on gesture end.
  */
-export type PlanCanvas2DProps = {
+type PlanCanvas2DProps = {
   layout: PlanLayout;
   coordinateAdapter: PlanCoordinateAdapter;
   committedBodies: PlanRenderItem[];
@@ -477,12 +474,10 @@ export function PlanCanvas2D({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const handler = (event: WheelEvent) => {
-      const local = clientToLocal(event.clientX, event.clientY);
       // anchor must be in viewBox space (pre-camera-fit, post-pan/zoom-free):
       const rect = canvas.getBoundingClientRect();
       const { minX, minY, scaleFit, offsetX, offsetY } = fit(dataRef.current.layout, rect.width, rect.height);
       const anchor = { x: (event.clientX - rect.left - offsetX) / scaleFit + minX, y: (event.clientY - rect.top - offsetY) / scaleFit + minY };
-      void local;
       const next = resolveWheelZoomedTransform({ transform: liveTransformRef.current, deltaMode: event.deltaMode, deltaX: event.deltaX, deltaY: event.deltaY, anchor });
       if (!next) return;
       event.preventDefault();
@@ -493,7 +488,7 @@ export function PlanCanvas2D({
     };
     canvas.addEventListener('wheel', handler, { passive: false });
     return () => canvas.removeEventListener('wheel', handler);
-  }, [draw, commit, clientToLocal]);
+  }, [draw, commit]);
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (event.button === 2) {

@@ -1,7 +1,6 @@
 import type {
   Assembly3D,
   AssemblyMember3D,
-  AssemblyMemberEndCutPlane,
   AssemblyPosition,
   DatumFrame3,
   GeometryConfig,
@@ -29,6 +28,9 @@ import type {
 } from './contracts';
 
 type AssemblyDatum = GeometryConfig['datum'];
+type AssemblyMemberEndCutPlane = NonNullable<
+  Assembly3D['members'][number]['endCuts']
+>[number]['plane'];
 
 type TransformContext = {
   transformPoint: (p: Point3) => Point3;
@@ -288,13 +290,13 @@ function transformHouseModel(model: HouseModel3D, ctx: TransformContext): HouseM
  * geometry in world coords with `position` cleared so downstream
  * `applyAssemblyPosition3D` calls don't double-apply.
  *
- * Used by multi-form workbench rendering (PR8c): each additional house
- * form has its own `AssemblyPosition` derived from the draft's transform.
+ * Used by object-owned workbench house forms: each house form has its
+ * own `AssemblyPosition` derived from the persisted transform.
  * The form's house geometry is built in local coords via
- * `buildHouseReferenceGeometry` / `buildHouseModel3DFromRawHouseInput`,
- * then placed at world coords via this function. Pergola-attached forms
- * still go through `applyAssemblyPosition3D` -- this helper exists for
- * the standalone case where there's no surrounding `Assembly3D`.
+ * `buildHouseModel3DFromRawHouseInput`, then placed at world coords via
+ * this function. Full assembly solves still go through
+ * `applyAssemblyPosition3D`; this helper exists for standalone house
+ * reference geometry where there's no surrounding `Assembly3D`.
  */
 export function applyHouseReferencePosition(
   house: HouseReferenceGeometry,

@@ -3,7 +3,6 @@ import {
   resolveHouseFootprintParams,
   validateHouseComposition,
   type AxisAlignedRectangle,
-  type CompositionJoin,
   type HouseComposition,
   type HouseRoofPrimaryFallDirection,
   type HouseRoofRidgeAxis,
@@ -153,7 +152,7 @@ export function migrateLegacyFootprintToComposition(input: {
  * Returns null for non-rear attachment side (legacy frame math
  * verified for `rear` only). Caller falls back to defaults.
  */
-export function buildPresetCompositionFromLegacyData(input: {
+function buildPresetCompositionFromLegacyData(input: {
   legacyFootprint: LegacyFootprintInput;
   roofIntent: HouseFormRoofIntentModel;
 }): HouseComposition | null {
@@ -414,7 +413,7 @@ export function buildPresetCompositionFromLegacyData(input: {
  * rectangle composition from it. Returns null when the polygon
  * isn't recognisably a rectangle.
  */
-export function buildRectangleFromLegacyPolygon(input: {
+function buildRectangleFromLegacyPolygon(input: {
   polygon: ReadonlyArray<{ alongM: string; depthM: string }>;
   roofIntent: HouseFormRoofIntentModel;
 }): HouseComposition | null {
@@ -467,7 +466,7 @@ export function buildRectangleFromLegacyPolygon(input: {
  * Returns null when the polygon is degenerate (< 3 vertices or
  * collapses to zero area).
  */
-export function buildBoundingBoxCompositionFromLegacyPolygon(input: {
+function buildBoundingBoxCompositionFromLegacyPolygon(input: {
   polygon: ReadonlyArray<{ alongM: string; depthM: string }>;
   roofIntent: HouseFormRoofIntentModel;
 }): HouseComposition | null {
@@ -608,6 +607,3 @@ function normalizeFallDirection(
 function point(x: number, y: number): Point3 {
   return { x, y, z: 0 };
 }
-
-/** Avoid an import cycle by re-export here. */
-export type { CompositionJoin };

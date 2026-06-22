@@ -12,16 +12,11 @@ import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelection';
 
 /*
- * PR-W3d (2026-05-25) — thin wrapper around the visibility + flat OBJECTS
- * TREE rail. Inspector panel building moved to `WorkbenchInspectorHost`
- * (right-side `RightInspectorPanel`); this host now only:
- *   - forwards visibility + object-ref selection state to the rail
- *   - writes pergola row clicks into the canonical object-id selection state
- *   - wires the rail's inline "+ Add structure" affordance
+ * Left-rail host for visibility and object-tree navigation.
  *
- * `activeRailTab` and `onSelectRailTab` are gone — the rail no longer has
- * a tab strip. Family activity is derived from `activeObjectRef.family`
- * by `WorkbenchInspectorHost`.
+ * Forwards object-ref selection state, writes pergola row clicks into the
+ * canonical object-id selection state, and wires inline add affordances.
+ * Inspector panels live in WorkbenchInspectorHost.
  */
 
 type ObjectWorkbenchRailHostProps = {

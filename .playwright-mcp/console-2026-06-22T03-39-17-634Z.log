@@ -1,0 +1,96 @@
+[     664ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    1165ms] [LOG] [Fast Refresh] done in 605ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    2491ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    2554ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    2744ms] [ERROR] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[    3007ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    3308ms] [LOG] [Fast Refresh] done in 405ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    8956ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[   13735ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[  154125ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=K4_3zb2Ib1oW_o3NyQwPE' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[  157466ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=K4_3zb2Ib1oW_o3NyQwPE' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[  161553ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3078188ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3078202ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3078312ms] [ERROR] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[ 3086505ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 3332994ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3337315ms] [LOG] [Fast Refresh] done in 4425ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3337788ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3337788ms] [LOG] [Fast Refresh] done in 103ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3341288ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 3345138ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3349591ms] [LOG] [Fast Refresh] done in 281ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3352616ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 3574378ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3578854ms] [LOG] [Fast Refresh] done in 282ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3581891ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 3585075ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3589261ms] [LOG] [Fast Refresh] done in 4293ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3589725ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3589726ms] [LOG] [Fast Refresh] done in 101ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3590202ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3590203ms] [LOG] [Fast Refresh] done in 103ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 3593217ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 4732001ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4736715ms] [LOG] [Fast Refresh] done in 376ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4736823ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4737044ms] [LOG] [Fast Refresh] done in 321ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4742217ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 4755958ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4760339ms] [LOG] [Fast Refresh] done in 4404ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4760813ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4760816ms] [LOG] [Fast Refresh] done in 108ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4761322ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4761328ms] [LOG] [Fast Refresh] done in 108ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4764342ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163:0
+[ 4767979ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4768716ms] [LOG] [Fast Refresh] done in 762ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4768857ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4769127ms] [LOG] [Fast Refresh] done in 378ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4769252ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4769390ms] [LOG] [Fast Refresh] done in 246ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4770249ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4770290ms] [LOG] [Fast Refresh] done in 153ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4770407ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4770410ms] [LOG] [Fast Refresh] done in 106ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4771132ms] [ERROR] %o
+
+%s TypeError: Cannot read properties of undefined (reading 'prevIndex')
+    at computeOrthogonalStraightSkeletonOffset (http://localhost:3001/_next/static/chunks/packages_geometry_src_021juo3._.js?id=%255Bproject%255D%252Fpackages%252Fgeometry%252Fsrc%252FstraightSkeleton%252FoffsetSolve.ts+%255Bapp-client%255D+%2528ecmascript%2529:535:32)
+    at buildSkeletonRoof (http://localhost:3001/_next/static/chunks/packages_geometry_src_house_06i7807._.js:8752:237)
+    at composeRoofFromComposition (http://localhost:3001/_next/static/chunks/packages_geometry_src_house_06i7807._.js:9108:207)
+    at swapRoofFromComposition (http://localhost:3001/_next/static/chunks/apps_portal_lib_06sy127._.js:6726:237)
+    at buildHouseFormGeometryInputForForm (http://localhost:3001/_next/static/chunks/apps_portal_lib_06sy127._.js:6968:43)
+    at buildHouseFormGeometryInput (http://localhost:3001/_next/static/chunks/apps_portal_lib_06sy127._.js:7047:12)
+    at buildProjectHouseGeometryRegistry (http://localhost:3001/_next/static/chunks/apps_portal_lib_06sy127._.js:7076:234)
+    at buildWorkbenchSolvedModel (http://localhost:3001/_next/static/chunks/apps_portal_lib_06sy127._.js:8822:251)
+    at buildDrawingWorkbenchStore (http://localhost:3001/_next/static/chunks/apps_portal_lib_06sy127._.js:10351:224)
+    at EstimatesTab.useMemo[drawingWorkbenchStore] (http://localhost:3001/_next/static/chunks/apps_portal_components_projects_ProjectPage_tabs_EstimatesTab_tsx_03pdlb5._.js:849:261)
+    at updateMemo (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:5413:21)
+    at Object.useMemo (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15465:24)
+    at http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:1742:36
+    at EstimatesTab (http://localhost:3001/_next/static/chunks/apps_portal_components_projects_ProjectPage_tabs_EstimatesTab_tsx_03pdlb5._.js:848:208)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15037:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:4620:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6081:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6691:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9555:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9449:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9433:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:186)
+    at performSyncWorkOnRoot (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10263:9)
+    at flushSyncWorkAcrossRoots_impl (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10179:316)
+    at processRootScheduleInMicrotask (http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10200:106)
+    at http://localhost:3001/_next/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10274:158 The above error occurred in the <EstimatesTab> component. It was handled by the <ErrorBoundaryHandler> error boundary. @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:1998
+[ 4771137ms] [ERROR] [portal] {event: portal.global_error, message: Cannot read properties of undefined (reading 'prevIndex'), digest: null, pathname: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163} @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[ 4771138ms] [ERROR] [portal] {event: portal.global_error, message: Cannot read properties of undefined (reading 'prevIndex'), digest: null, pathname: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163} @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[ 4803657ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4808195ms] [LOG] [Fast Refresh] done in 4570ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4808708ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4808710ms] [LOG] [Fast Refresh] done in 103ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4809258ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4809258ms] [LOG] [Fast Refresh] done in 102ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4813737ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[ 4813793ms] [LOG] [Fast Refresh] done in 161ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431

@@ -23,7 +23,7 @@ function buildHouseFormFootprintPolygonMm(houseForm: HouseFormModel): Polygon3 {
   return composeFootprintFromComposition(houseForm.composition);
 }
 
-export function buildRawHouseInputFromHouseForm(houseForm: HouseFormModel): RawHouseInput {
+function buildRawHouseInputFromHouseForm(houseForm: HouseFormModel): RawHouseInput {
   const reconciledHouseForm = reconcileHouseFormRoofIntentForFootprint(houseForm);
   const polygon = composeFootprintFromComposition(reconciledHouseForm.composition);
   // Translate composition's mm Polygon3 back into the workbench's

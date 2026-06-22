@@ -1,23 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AttachmentSide,
-  GeometryConfig,
-  HouseAttachmentStrategy,
-  HouseFootprintPreset,
-  HouseRoofForm,
-  Line3,
-  Point3,
-  Polygon3,
-  RawHouseInput,
-  RenderMesh3D,
-} from "../contracts";
-import { deriveHouseGableTerminalEnds } from "../houseRoofCapabilities";
+import type { Polygon3 } from "../contracts";
 import { buildHouseFootprintPolygon } from "../footprints";
-import {
-  buildHouseModel3D,
-  buildHouseModel3DFromRawHouseInput,
-  buildHouseReferenceGeometry,
-} from "../houseModel";
+import { buildHouseModel3D } from "../houseModel";
 import { buildHouseModelTopProjectionShapes } from "../topProjection";
 import {
   makeFootprint,
@@ -25,57 +9,22 @@ import {
   HOUSE_FOOTPRINT_PRESETS,
   HOUSE_ROOF_FORMS,
   ATTACHMENT_SIDES,
-  pointOnSegment2D,
-  pointInPolygon2D,
-  pointInOrOnPolygon2D,
-  segmentInsidePolygon2D,
-  roofPointKey,
-  roofSegmentKey,
-  roofPointKeyXY,
-  roofSegmentKeyXY,
-  rebuildRoofPerimeterPolygon,
   eavePolygonFromModel,
   polygonAreaXY,
-  signedPolygonAreaXY,
-  reflexEaveVertices,
   expectRoofFacetsCoverEaveOnce,
   expectRoofQaValid,
   expectRoofFacetsInsideEave,
-  roofBoundarySegmentCounts,
-  roofBoundarySegments,
   expectJoinedRoofFeaturesBackedByFinalFacets,
   expectRoofBoundaryEavePointsAtEaveHeight,
-  expectValleysStartAtReentrantCorners,
   expectNoInternalEaveHeightRoofSeams,
   makeConfig,
-  allTerminalEndIdsForHippedConfig,
-  makePlacedFootprint,
-  makeFrontFootprint,
-  makeLeftFootprint,
-  makeRightFootprint,
   makeAttachmentEdge,
-  expectPoint3CloseTo,
-  pointDistanceSquared3,
-  vectorLength3,
   normalizeVector3,
-  dotPoint3,
   countRenderMeshVerticalFaces,
   pointDistanceToSegment2D,
   sourceEdgeLineFromModel,
   polygonIsHorizontal,
   countRenderMeshFacesAlignedToNormal,
-  expectUnorderedSegment3CloseTo,
-  lineLength3,
-  crossPoint3,
-  subtractPoint3,
-  distanceToLine3D,
-  expectPolygon3CloseTo,
-  expectPolygon3CloseToIgnoringRotation,
-  expectSolidBoundariesExact,
-  expectVerticalPrismRenderMesh,
-  expectMiteredRenderMeshesAroundCorners,
-  polygonOutwardVectorXY,
-  expectHouseGutterBoundariesUseProjection,
   expectHouseGutterSolidsMiteredAroundCorners,
   expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
   expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
@@ -94,6 +43,7 @@ describe("house model roof preset coverage", () => {
       { x: -2000, y: -2600, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint,
         strategy: "facade_ledger",
@@ -169,7 +119,7 @@ describe("house model roof preset coverage", () => {
     expect(Number(model?.metadata?.roofFacetCount ?? 0)).toBeGreaterThan(0);
     expect(model?.metadata?.roofWingCount).toBeUndefined();
     expectRoofQaValid(model!);
-    expectRoofFacetsInsideEave(model!, 2400);
+    expectRoofFacetsInsideEave(model!);
     expectRoofBoundaryEavePointsAtEaveHeight(model!, 2400);
     expectNoInternalEaveHeightRoofSeams(model!, 2400);
     expectRoofFacetsCoverEaveOnce(model!);
@@ -188,14 +138,17 @@ describe("house model roof preset coverage", () => {
 
   it("uses ridge-axis and pyramid roof metadata for long, deep, and square footprints", () => {
     const wide = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({ footprint: makeFootprint(6000, 1800) }),
       attachmentEdge: makeAttachmentEdge(),
     });
     const deep = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({ footprint: makeFootprint(1800, 6000) }),
       attachmentEdge: makeAttachmentEdge(),
     });
     const square = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({ footprint: makeFootprint(4000, 4000) }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -226,6 +179,7 @@ describe("house model roof preset coverage", () => {
       { x: 0, y: 0, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: lFootprint,
         roofForm: "flat",
@@ -242,6 +196,7 @@ describe("house model roof preset coverage", () => {
 
   it("builds mono roofs with the selected shared fall direction", () => {
     const positiveX = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         roofForm: "mono",
         roofPrimaryFallDirection: "positive_x",
@@ -250,6 +205,7 @@ describe("house model roof preset coverage", () => {
       attachmentEdge: makeAttachmentEdge(),
     });
     const negativeY = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         roofForm: "mono",
         roofPrimaryFallDirection: "negative_y",
@@ -301,6 +257,7 @@ describe("house model roof preset coverage", () => {
 
     for (const footprint of footprints) {
       const model = buildHouseModel3D({
+        houseId: 'test-house',
         config: makeConfig({
           footprint,
           roofForm: "mono",
@@ -327,6 +284,7 @@ describe("house model roof preset coverage", () => {
 
       for (const roofForm of HOUSE_ROOF_FORMS) {
         const model = buildHouseModel3D({
+          houseId: 'test-house',
           config: makeConfig({
             footprint,
             roofForm,
@@ -367,6 +325,7 @@ describe("house model roof preset coverage", () => {
 
         for (const roofForm of ["hipped"] as const) {
           const model = buildHouseModel3D({
+            houseId: 'test-house',
             config: makeConfig({
               footprint,
               attachmentSide,
@@ -400,6 +359,7 @@ describe("house model roof preset coverage", () => {
   it("auto-heals zero hipped roof pitches to visible roof geometry", () => {
     for (const roofForm of ["hipped"] as const) {
       const model = buildHouseModel3D({
+        houseId: 'test-house',
         config: makeConfig({
           footprint: makePresetFootprint("wrap_left"),
           roofForm,
@@ -652,6 +612,7 @@ describe("house model roof preset coverage", () => {
 
   it("leaves already-valid hipped eave offsets unrepaired", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: makePresetFootprint("wrap_left"),
         roofForm: "hipped",
@@ -673,6 +634,7 @@ describe("house model roof preset coverage", () => {
 
   it("aligns mono wall tops to the roof plane without dropping below the wall height", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         roofForm: "mono",
         roofPrimaryFallDirection: "positive_y",
@@ -699,12 +661,12 @@ describe("house model roof preset coverage", () => {
       { x: -2800, y: 400, z: 0 },
     ];
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint,
         attachmentSide: "front",
         strategy: "fascia_under_gutter",
         roofForm: "mono",
-        roofMaterial: "trapezoidal_5_rib",
         roofPitchDeg: 20,
         roofPrimaryFallDirection: "positive_y",
         eaveHeightMm: 2500,

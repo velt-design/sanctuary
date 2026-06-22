@@ -111,7 +111,7 @@ export function buildPlanSvgPresentationModel(input: {
       : [];
 
   const planRenderGraph = buildProjectionPlanRenderGraph(topProjectionShapes, {
-    projectionOnlyModelSpace: input.useProjectionOnlyModelSpacePlan,
+    projectionOnlyPlan: input.useProjectionOnlyModelSpacePlan,
   });
   const committedTopProjectionBodies = planRenderGraph.committedBodies;
   const renderedTopProjectionContextLines = planRenderGraph.contextLines;

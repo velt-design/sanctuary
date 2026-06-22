@@ -146,7 +146,7 @@ export type HouseComposition = {
  * can exhaustively switch on the error code; do not add an
  * `unknown` arm.
  */
-export type CompositionValidationError =
+type CompositionValidationError =
   | { code: "empty_composition" }
   | { code: "unsupported_primitive_kind"; primitiveIndex: number; kind: string }
   | { code: "non_positive_rectangle"; primitiveIndex: number }

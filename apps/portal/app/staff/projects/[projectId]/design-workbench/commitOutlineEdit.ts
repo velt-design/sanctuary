@@ -21,7 +21,7 @@ function resolveHouseWorldPositionMm(
   return { x: position.x, y: position.y };
 }
 
-export type BuildOutlineEditCommitHandlerInput = {
+type BuildOutlineEditCommitHandlerInput = {
   store: DrawingWorkbenchStore;
   objectWorkbenchActions: ObjectWorkbenchActions;
 };

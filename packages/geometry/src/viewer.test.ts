@@ -159,9 +159,9 @@ function addHouseModelContext(
 }
 
 describe("buildViewerSceneModel", () => {
-  it("keeps every scene object id globally unique across multi-house scenes (PR-Geo2 lock-in)", () => {
-    // PR-Geo2 (2026-05-25) — regression guard for the multi-house duplicate-id
-    // class of bug. If anyone reintroduces a hardcoded id pattern that doesn't
+  it("keeps every scene object id globally unique across multi-house scenes", () => {
+    // Regression guard for the multi-house duplicate-id class of bug. If
+    // anyone reintroduces a hardcoded id pattern that doesn't
     // get prefixed at the `buildHouseModelSceneObjects` seam, this test trips
     // and points them at the scene-assembly seam. The fix is always: either
     // route the id through the seam (it gets prefixed automatically) or
@@ -184,7 +184,7 @@ describe("buildViewerSceneModel", () => {
     const secondHouseModel = { ...hostHouseModel, houseId: "second-house" };
 
     const scene = buildViewerSceneModel(solveResult.value, {
-      additionalHouseModels: [secondHouseModel],
+      hostExcludedProjectHouseModels: [secondHouseModel],
     });
 
     const allIds = scene.layers.flatMap((layer) =>
@@ -978,7 +978,6 @@ describe("buildViewerSceneModel", () => {
         storeyMode: "single_storey",
         wallConstruction: "timber_frame",
         roofForm: "mono",
-        roofMaterial: "trapezoidal_5_rib",
         eaveHeightMm: 2500,
         wallHeightMm: 2500,
         roofPitchDeg: 20,
@@ -1136,16 +1135,11 @@ describe("buildViewerSceneModel", () => {
     ).toBe(false);
   });
 
-  it("renders semantic house model objects for freestanding assemblies when houseContext carries a footprint (PR8b)", () => {
-    // Pre-PR8b, freestanding pergolas suppressed house model rendering even
-    // when the houseContext had a real footprint. Multi-form workbench
-    // rendering inverts that: a freestanding house is a first-class form
-    // (e.g. a sleepout next to the main house) and must show walls/roof so
-    // users can see what they're authoring. Legacy "freestanding pergola
-    // with no house attachment" estimates always carried full house data in
-    // their context (the address has a house even when the pergola sits
-    // detached in the backyard); they now render the house alongside the
-    // pergola, which is the more honest visualisation.
+  it("renders semantic house model objects for freestanding assemblies when houseContext carries a footprint", () => {
+    // Freestanding houses are first-class object-owned forms. Even when a
+    // pergola is freestanding, a real house footprint should surface walls
+    // and roof so the project scene can show every authored house form.
+    // Missing-footprint tests still cover the genuine no-house case.
     const fixture = requireSupportedFixture("gable_freestanding_standard");
     const config = addHouseModelContext(fixture.config, {
       lengthMm: 6500,
@@ -1604,9 +1598,6 @@ describe("buildViewerSceneModel", () => {
     const scene = buildViewerSceneModel(solveResult.value);
     const claddingLayer = scene.layers.find(
       (layer) => layer.id === "roof_cladding",
-    );
-    const flashingLayer = scene.layers.find(
-      (layer) => layer.id === "roof_flashings",
     );
     const roofPlaneLayer = scene.layers.find(
       (layer) => layer.id === "roof_planes",

@@ -4,16 +4,12 @@ import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordi
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { PlanCanvas2D } from './PlanCanvas2D';
 import type { PlanSeamIconTarget } from '../interactions/seams/seamIconTargets';
-import type { GeometryTopProjectionShape } from '@sp/geometry';
+import type { GeometryTopProjectionShape, Point2 } from '@sp/geometry';
 import type { PlanDimension } from './planDimension';
 import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
 import type { MoveToolPreview } from '../tools/MoveTool';
 import type { PlanLayout } from './planLayout';
-import type { Point2 } from './polygonEdgeMath';
 import type { PlanRenderItem } from './planRenderItem';
-import type { PlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
-import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
-import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
 
 /**
  * PR-WB-CANVAS (Tier 3, 2026-06-22): the Plan view is now rendered by the
@@ -26,9 +22,8 @@ import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObj
  * `PlanCanvas` is now a thin seam mapping the render model (built by the
  * parent + usePlanRenderModel) onto the renderer. Pan/zoom, hit-testing,
  * hover, tool dispatch and the diagnostic overlay all live inside
- * PlanCanvas2D. A few props (`diagnostics`, `*Health`, `activeOutlinePolygon`)
- * are retained on the contract for callers but no longer rendered as SVG-root
- * data attributes — their behaviour is asserted directly on the render model.
+ * PlanCanvas2D. Diagnostics and projection health stay on the solved/render
+ * model owners instead of crossing this canvas seam as unused props.
  */
 type PlanCanvasProps = {
   layout: PlanLayout;
@@ -45,9 +40,6 @@ type PlanCanvasProps = {
    * selection halo so the active selection still reads as primary.
    */
   hoverHaloItems?: PlanRenderItem[];
-  diagnostics: PlanRenderDiagnostics;
-  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
-  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
   /**
    * Fires when the local pointer enters or leaves a top-projection shape.
    * Receives the full shape on enter, `null` on leave. Used by PlanViewport
@@ -61,8 +53,6 @@ type PlanCanvasProps = {
   movePreview?: MoveToolPreview | null;
   /** World-coord polygon (mm) of the object being moved; used by the move preview. */
   movePreviewSourcePolygon?: ReadonlyArray<Point2> | null;
-  /** Active outline polygon used for hit-testing — retained on the contract. */
-  activeOutlinePolygon?: ReadonlyArray<Point2> | null;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   screenAxisLabel: string;

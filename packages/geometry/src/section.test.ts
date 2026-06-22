@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildSectionViewModel, solveAssembly3D, type GeometryConfig, type HouseAttachmentStrategy, type Polygon3 } from '@sp/geometry';
+import { solveAssembly3D, type GeometryConfig, type HouseAttachmentStrategy, type Polygon3 } from '@sp/geometry';
+import { buildSectionViewModel } from './section';
 import { getGeometryFixtureCase } from './fixtures';
 
 function requireSupportedFixture(id: string) {

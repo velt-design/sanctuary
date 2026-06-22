@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import { type ModuleViewsStatus } from '@/app/staff/calculator/ModuleViewsCard';
 import ConfiguratorRail from './ConfiguratorRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import { useProjectPageDesignRail } from '@/components/projects/ProjectPage/ProjectPageDesignRailContext';
@@ -821,7 +821,6 @@ export default function EstimatesTab({
     [drawingDraft, drawingWorkbenchUi],
   );
   const salesPerson = selectedMeta?.createdBy ?? null;
-  const drawingView: ModuleViewsTab = drawingWorkbenchStore.ui.activeView;
   const drawingModuleIndex = 0;
   const activeDrawingModuleInput = useMemo(() => {
     const moduleInput = getActiveDrawingModuleInput(drawingDetail?.calculatorSnapshot ?? null, drawingModuleIndex);
@@ -841,6 +840,7 @@ export default function EstimatesTab({
   const drawingViewportMode = drawingWorkbenchStore.ui.viewportMode;
   const drawingStatus: ModuleViewsStatus = drawingWorkbenchStore.derived.status;
   const drawingSheetLabel = drawingWorkbenchStore.derived.projectSheetLabel;
+  const drawingView = 'plan' as const;
   const drawingMetaOverrides = useMemo(
     () =>
       buildEstimateDrawingSheetMetaOverrides({
@@ -857,7 +857,7 @@ export default function EstimatesTab({
         sheetTitleOverride: drawingMetaOverrides.moduleTitle,
         noteOverride: drawingMetaOverrides.note,
         sheetInfoRows: buildEstimateDrawingModuleInfoRows(activeDrawingModuleInput),
-        view: drawingView,
+        view: 'plan',
         versionLabel: selectedMeta?.versionLabel ?? selectedDetail?.versionLabel ?? null,
         estimateDate: selectedDetail?.createdAt ?? selectedMeta?.createdAt ?? null,
         projectName: projectSnapshot.project.name,
@@ -869,7 +869,6 @@ export default function EstimatesTab({
       drawingMetaOverrides.moduleTitle,
       drawingMetaOverrides.note,
       activeDrawingModuleInput,
-      drawingView,
       drawingModuleIndex,
       projectSnapshot.project.contactName,
       projectSnapshot.project.name,
@@ -1663,13 +1662,6 @@ export default function EstimatesTab({
                   {renderDesignWorkspace || drawingWorkbenchStore.derived.activeViewportGeometry ? (
                     <DrawingWorkbench
                       sheetLabel={drawingSheetLabel}
-                      view={drawingView}
-                      onViewChange={(nextView) =>
-                        setDrawingWorkbenchUi((current) => ({
-                          ...current,
-                          activeView: nextView,
-                        }))
-                      }
                       viewportMode={drawingViewportMode}
                       onViewportModeChange={(nextMode) =>
                         setDrawingWorkbenchUi((current) => ({
@@ -1681,7 +1673,6 @@ export default function EstimatesTab({
                       projectArtifact={drawingWorkbenchStore.derived.solvedModel.projectArtifact}
                       viewportGeometry={drawingWorkbenchStore.derived.activeViewportGeometry}
                       drawingSurfaceGeometry={drawingWorkbenchStore.derived.activeDrawingSurfaceGeometry}
-                      planViewModel={drawingWorkbenchStore.derived.activePlanViewModel}
                       modelViewportTransform={drawingWorkbenchStore.ui.viewportTransform}
                       onModelViewportTransformChange={(transform) =>
                         setDrawingWorkbenchUi((current) => ({
@@ -1690,9 +1681,6 @@ export default function EstimatesTab({
                         }))
                       }
                       meta={drawingSheetMeta}
-                      editableFields={drawingEditableFields}
-                      onCommitField={commitDrawingField}
-                      onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>

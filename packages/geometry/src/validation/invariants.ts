@@ -1,6 +1,7 @@
-import type { Assembly3D, AssemblyMember3D, GeometryConfig, GeometryValidationInvariant, QuantityHook } from '../contracts';
-import { dotProduct, lineDirection, lineLength, magnitude, normalizeVector, polygonArea, subtractPoints } from '../math3d';
-import { resolveAssemblyMemberProfileAnchors } from '../profiles';
+import type { Assembly3D, AssemblyMember3D, GeometryConfig, GeometryValidationInvariant } from '../contracts';
+import { dotProduct, lineLength, magnitude, normalizeVector, polygonArea, subtractPoints } from '../math3d';
+
+type QuantityHook = Assembly3D["quantityHooks"][number];
 
 const MM_TOLERANCE = 1;
 
@@ -14,14 +15,6 @@ function fail(key: string, message: string): GeometryValidationInvariant {
 
 function approxEqual(a: number, b: number, tolerance = MM_TOLERANCE): boolean {
   return Math.abs(a - b) <= tolerance;
-}
-
-function profileFaceY(member: AssemblyMember3D, face: 'backFaceY' | 'frontFaceY' | 'roofBearingFaceY'): number {
-  return resolveAssemblyMemberProfileAnchors(member.profile)[face];
-}
-
-function profileFaceZ(member: AssemblyMember3D, face: 'undersideZ' | 'topsideZ' | 'roofBearingFaceZ'): number {
-  return resolveAssemblyMemberProfileAnchors(member.profile)[face];
 }
 
 function recomputeQuantityHooks(assembly: Assembly3D): QuantityHook[] {

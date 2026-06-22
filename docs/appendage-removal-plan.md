@@ -141,9 +141,9 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 | [objectFirstWorkbenchModel.ts](apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts) | Remove `appendage` from `HouseFormRoofIntentModel` | -10 |
 | houseFirstWorkbenchModel.ts | Remove appendage from roof intent | -10 |
 | houseRoofFormAdapter.ts | Drop appendage field mapping | -15 |
-| [houseRoofFormNormalize.ts](apps/portal/lib/drawings/state/houseRoofFormNormalize.ts) | Drop appendage normalisation (silently drops field on read from persisted data) | -20 |
+| Retired roof normalisation helpers | The unused `houseRoofFormNormalize.ts` / `houseRoofFormRidgeAxis.ts` helper island was removed after proof that no live workbench path imported it. | -20 |
 | houseFirstWorkbenchAdapter.ts | Drop `appendageAllowed` derivation | -10 |
-| [buildHouseFormReferenceGeometry.ts](apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts) | Drop appendage in geometry handling | -10 |
+| Retired house reference wrapper | The unused `buildHouseFormReferenceGeometry.ts` wrapper was removed; live reference/model generation now goes through `houseFormGeometryInput.ts`. | -10 |
 
 ### Portal inspector + UI (3 files)
 
@@ -151,7 +151,7 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 |---|---|---|
 | [HouseFormRoofSections.tsx](apps/portal/components/drawings/rail/HouseFormRoofSections.tsx) | Delete 4 appendage fields + `canShowAppendageControls` / `appendageHelperText` / `appendageSupportedHostEdges` derivations + the `labelForAttachmentSideList` import if it becomes unused | -60 |
 | [objectWorkbenchInspectorModel.ts](apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts) | Drop ~6 appendage* fields from the derived inspector model | -25 |
-| [WorkbenchDiagnosticsPanel.tsx](apps/portal/app/staff/projects/[projectId]/design-workbench/WorkbenchDiagnosticsPanel.tsx) | Drop appendage diagnostics block (lines 72-103) | -35 |
+| Retired diagnostics panel | The old `WorkbenchDiagnosticsPanel.tsx` appendage diagnostics block was removed with the unused diagnostics panel. | -35 |
 
 ### Edit adapter + geometry input (2 files)
 

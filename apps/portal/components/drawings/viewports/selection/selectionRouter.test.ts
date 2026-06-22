@@ -3,7 +3,6 @@ import type { GeometryTopProjectionShape } from '@sp/geometry';
 import {
   defaultPrefixClassifier,
   routeSelectedObject,
-  stripOpeningDerivedSuffix,
   topProjectionShapeClassifier,
   type SelectionClassifier,
 } from './selectionRouter';
@@ -111,22 +110,6 @@ describe('selectionRouter', () => {
         kind: 'unhandled',
         objectId: 'roof-plane-2',
       });
-    });
-  });
-
-  describe('stripOpeningDerivedSuffix', () => {
-    it('strips known derived suffixes', () => {
-      expect(stripOpeningDerivedSuffix('opening-7-marker')).toBe('opening-7');
-      expect(stripOpeningDerivedSuffix('opening-7-outline-1')).toBe('opening-7');
-      expect(stripOpeningDerivedSuffix('opening-7-edge')).toBe('opening-7');
-    });
-
-    it('leaves a base opening id unchanged', () => {
-      expect(stripOpeningDerivedSuffix('opening-7')).toBe('opening-7');
-    });
-
-    it('does not strip suffixes that look similar but are not derived', () => {
-      expect(stripOpeningDerivedSuffix('opening-7-edgework')).toBe('opening-7-edgework');
     });
   });
 

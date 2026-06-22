@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { detachHouseFormAtSeam } from "./detachHouseFormAtSeam";
 import type {
   AxisAlignedRectangle,
-  CompositionJoin,
   HouseComposition,
   RectangleRoofIntent,
 } from "./types";

@@ -3,8 +3,6 @@ import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator
 import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import {
   normalizeObjectFirstWorkbenchDraftVNext,
-  type ObjectFirstDeckDraft,
-  type ObjectFirstPergolaDraft,
   type ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
@@ -724,7 +722,7 @@ function resolveCalculatorInputsFromSnapshot(snapshot: Record<string, unknown> |
   return null;
 }
 
-export function resolveEstimateDrawingOverridesFromSnapshot(snapshot: Record<string, unknown> | null): EstimateDrawingOverrides {
+function resolveEstimateDrawingOverridesFromSnapshot(snapshot: Record<string, unknown> | null): EstimateDrawingOverrides {
   if (!snapshot) return {};
   const outputs = isRecord(snapshot.outputs) ? snapshot.outputs : null;
   const raw = outputs && isRecord(outputs[ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY]) ? outputs[ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY] : null;
@@ -825,34 +823,6 @@ export function updateEstimateDrawingObjectFirstWorkbenchDraft(input: {
   nextDraft.objectFirst = normalizeObjectFirstDraft(input.objectFirst);
   delete (nextDraft as EstimateDrawingDraft & { houseFirst?: unknown }).houseFirst;
   return nextDraft;
-}
-
-export function updateEstimateDrawingObjectFirstDeckDrafts(input: {
-  draft: EstimateDrawingDraft;
-  decks: ObjectFirstDeckDraft[] | null;
-}): EstimateDrawingDraft {
-  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
-  return updateEstimateDrawingObjectFirstWorkbenchDraft({
-    draft: input.draft,
-    objectFirst: {
-      ...objectFirst,
-      decks: input.decks ?? [],
-    },
-  });
-}
-
-export function updateEstimateDrawingObjectFirstPergolaDrafts(input: {
-  draft: EstimateDrawingDraft;
-  pergolas: ObjectFirstPergolaDraft[] | null;
-}): EstimateDrawingDraft {
-  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
-  return updateEstimateDrawingObjectFirstWorkbenchDraft({
-    draft: input.draft,
-    objectFirst: {
-      ...objectFirst,
-      pergolas: input.pergolas ?? [],
-    },
-  });
 }
 
 export function buildEstimateDrawingSheetMetaOverrides(input: {

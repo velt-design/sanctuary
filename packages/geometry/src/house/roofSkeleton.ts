@@ -51,11 +51,11 @@ import { buildRoofPlane } from "./roofPlane";
  * corpus fixtures.
  */
 
-export type SkeletonRoofTranslateError =
+type SkeletonRoofTranslateError =
   | { code: "face_not_closed"; reason: string }
   | { code: "facets_do_not_partition"; reason: string };
 
-export type BuildSkeletonRoofResult =
+type BuildSkeletonRoofResult =
   | {
       ok: true;
       roofPlanes: RoofPlane3D[];

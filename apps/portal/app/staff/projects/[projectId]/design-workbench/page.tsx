@@ -4,7 +4,6 @@ import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import DesignWorkbenchEstimateClient from './DesignWorkbenchEstimateClient';
 import DesignWorkbenchFixtureClient from './DesignWorkbenchFixtureClient';
 import { loadDesignWorkbenchRouteContext } from '@/lib/drawings/loadDesignWorkbenchRouteContext';
-import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
@@ -35,14 +34,6 @@ function resolveQueryParam(value: string | string[] | undefined): string | null 
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   return trimmed || null;
-}
-
-function formatLabel(value: string): string {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
 }
 
 function renderInvalidFixtureLines(fixtureSlug: string): string[] {

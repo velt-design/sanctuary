@@ -11,7 +11,6 @@ export function buildPergolaSelectionUiState(input: {
     ...input.current,
     activePergolaId: input.pergolaId,
     ...buildDrawingWorkbenchObjectSelectionState({
-      activeRailTab: 'pergolas',
       activeObjectRef: { family: 'pergolas', objectId: input.pergolaId },
     }),
     selection: { kind: 'none', targetId: null },

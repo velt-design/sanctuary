@@ -2,12 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionViewModel } from '@sp/geometry';
 import { buildTopProjectionPlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import {
-  DEFAULT_DIMENSION_OFFSET_MM,
   buildEdgeDimensions,
   buildSelectionDimensions,
   buildSliceDimensions,
-  extractAxisSlices,
-  formatDimensionLengthMm,
   isRectilinearPolygon,
   resolvePlanDimensionGeometry,
   type PlanDimension,
@@ -48,13 +45,6 @@ const HORIZONTAL_DIM: PlanDimension = {
   start: { x: 0, y: 0 },
   end: { x: 2000, y: 0 },
 };
-
-describe('formatDimensionLengthMm', () => {
-  it('rounds to whole millimetres', () => {
-    expect(formatDimensionLengthMm(2399.6)).toBe('2400');
-    expect(formatDimensionLengthMm(2399.4)).toBe('2399');
-  });
-});
 
 describe('resolvePlanDimensionGeometry', () => {
   it('returns null for a zero-length dimension', () => {
@@ -102,9 +92,12 @@ describe('resolvePlanDimensionGeometry', () => {
 
   it('defaults the label to the rounded length in mm', () => {
     const adapter = buildAdapter();
-    const geometry = resolvePlanDimensionGeometry(HORIZONTAL_DIM, adapter)!;
-    expect(geometry.label).toBe('2000');
-    expect(geometry.lengthMm).toBe(2000);
+    const geometry = resolvePlanDimensionGeometry(
+      { id: 'rounding', start: { x: 0, y: 0 }, end: { x: 2399.6, y: 0 } },
+      adapter,
+    )!;
+    expect(geometry.label).toBe('2400');
+    expect(geometry.lengthMm).toBe(2399.6);
   });
 
   it('honours an explicit offsetMm', () => {
@@ -117,7 +110,7 @@ describe('resolvePlanDimensionGeometry', () => {
     const defaultGeometry = resolvePlanDimensionGeometry(HORIZONTAL_DIM, adapter)!;
     const customDelta = geometry.dimLine.from.y - geometry.extensionStart.from.y;
     const defaultDelta = defaultGeometry.dimLine.from.y - defaultGeometry.extensionStart.from.y;
-    expect(customDelta / defaultDelta).toBeCloseTo(customOffset / DEFAULT_DIMENSION_OFFSET_MM);
+    expect(customDelta / defaultDelta).toBeCloseTo(customOffset / 200);
   });
 
   it('keeps the label rotation within readable range [-90, 90]', () => {
@@ -488,41 +481,6 @@ describe('isRectilinearPolygon', () => {
         { x: 0, y: 500 },
       ]),
     ).toBe(true);
-  });
-});
-
-describe('extractAxisSlices', () => {
-  it('returns one x-slice and one y-slice for a rectangle', () => {
-    const { xSlices, ySlices } = extractAxisSlices([
-      { x: 0, y: 0 },
-      { x: 4000, y: 0 },
-      { x: 4000, y: 3000 },
-      { x: 0, y: 3000 },
-    ]);
-    expect(xSlices).toEqual([[0, 4000]]);
-    expect(ySlices).toEqual([[0, 3000]]);
-  });
-
-  it('returns 3 x-slices and 2 y-slices for the canonical U-shape', () => {
-    const { xSlices, ySlices } = extractAxisSlices([
-      { x: 0, y: 0 },
-      { x: 6000, y: 0 },
-      { x: 6000, y: 4000 },
-      { x: 4000, y: 4000 },
-      { x: 4000, y: 1500 },
-      { x: 2000, y: 1500 },
-      { x: 2000, y: 4000 },
-      { x: 0, y: 4000 },
-    ]);
-    expect(xSlices).toEqual([
-      [0, 2000],
-      [2000, 4000],
-      [4000, 6000],
-    ]);
-    expect(ySlices).toEqual([
-      [0, 1500],
-      [1500, 4000],
-    ]);
   });
 });
 

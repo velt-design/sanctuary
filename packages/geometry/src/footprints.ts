@@ -4,6 +4,7 @@ import type {
   HouseFootprintPolygonPointInput,
   HouseFootprintPreset,
   Line3,
+  Point2,
   Point3,
   Polygon3,
 } from './contracts';
@@ -27,7 +28,7 @@ function makeDefaultHouseFootprintParams(): HouseFootprintParams {
   };
 }
 
-export type ResolvedHouseFootprintParams = {
+type ResolvedHouseFootprintParams = {
   widthM: number;
   offsetXM: number;
   setbackM: number;
@@ -40,17 +41,12 @@ export type ResolvedHouseFootprintParams = {
   sideRunM: number;
 };
 
-type Point2 = {
-  x: number;
-  y: number;
-};
-
-export type HouseFootprintSideLocalPoint = {
+type HouseFootprintSideLocalPoint = {
   alongM: number;
   depthM: number;
 };
 
-export type HouseFootprintFrame = {
+type HouseFootprintFrame = {
   attachmentSide: AttachmentSide;
   pergolaWidthM: number;
   pergolaDepthM: number;
@@ -58,7 +54,7 @@ export type HouseFootprintFrame = {
   perpendicularDepthM: number;
 };
 
-export type HouseFootprintPolygonResult =
+type HouseFootprintPolygonResult =
   | {
       ok: true;
       polygon: Polygon3;

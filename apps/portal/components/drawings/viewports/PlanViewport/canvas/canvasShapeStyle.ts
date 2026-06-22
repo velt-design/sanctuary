@@ -1,17 +1,14 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 
 /**
- * PR-WB-CANVAS (2026-06-22): canvas-side equivalent of `shapeStyle.ts` +
- * `planLineweights.module.css`. The SVG path styles shapes via CSS token
- * classes; canvas can't use CSS classes, so this returns concrete fill /
- * stroke / width values that MIRROR those tokens. Keep in sync with
- * `planLineweights.module.css` (the `.tokens` block).
+ * PR-WB-CANVAS (2026-06-22): the Canvas 2D Plan renderer owns concrete
+ * fill / stroke / width values directly. The former SVG semantic-class
+ * mapper and CSS lineweight module have been retired.
  *
- * `widthPx` is a SCREEN width (the SVG uses `vector-effect: non-scaling-
- * stroke`, i.e. a constant device-px width at every zoom). The renderer
- * divides it by the camera scale so strokes stay constant on screen.
+ * `widthPx` is a SCREEN width. The renderer divides it by the camera scale
+ * so strokes stay constant on screen.
  */
-export type CanvasShapeStyle = {
+type CanvasShapeStyle = {
   fill: string | null;
   stroke: string | null;
   widthPx: number;

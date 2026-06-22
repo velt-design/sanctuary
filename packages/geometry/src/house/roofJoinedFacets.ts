@@ -13,7 +13,6 @@ import {
 } from './_internal';
 import {
   canonicalRoofSegmentKey,
-  cleanRoofPolygon2D,
   compareRoofPoints,
   orientRoofFeatureLine,
   point2FromPoint3,
@@ -234,14 +233,6 @@ function segmentOnEaveBoundary(input: { start: Point3; end: Point3; eavePolygon:
 
 function findEaveVertexIndex(candidate: Point3, eavePolygon: Polygon3, eaveHeightMm: number): number | null {
   if (Math.abs(candidate.z - eaveHeightMm) > 1) return null;
-  for (let index = 0; index < eavePolygon.length; index += 1) {
-    const vertex = eavePolygon[index]!;
-    if (Math.hypot(candidate.x - vertex.x, candidate.y - vertex.y) <= 1) return index;
-  }
-  return null;
-}
-
-function findEaveVertexIndexXY(candidate: Point3, eavePolygon: Polygon3): number | null {
   for (let index = 0; index < eavePolygon.length; index += 1) {
     const vertex = eavePolygon[index]!;
     if (Math.hypot(candidate.x - vertex.x, candidate.y - vertex.y) <= 1) return index;

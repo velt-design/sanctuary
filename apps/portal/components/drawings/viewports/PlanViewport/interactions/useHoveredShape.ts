@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 
-export type HoveredShape = {
+type HoveredShape = {
   shapeId: string;
   family: GeometryTopProjectionShape['family'];
   kind: string;
 };
 
-export type UseHoveredShapeOutput = {
+type UseHoveredShapeOutput = {
   hoveredShape: HoveredShape | null;
   onShapeEnter: (shape: GeometryTopProjectionShape) => void;
   onShapeLeave: (shapeId: string) => void;

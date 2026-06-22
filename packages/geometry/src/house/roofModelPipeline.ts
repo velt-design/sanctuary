@@ -18,14 +18,14 @@ export type HouseRoofModelPipelineFailureStage =
   | "roof_qa_validation"
   | "none";
 
-export type HouseRoofModelPipelineDiagnostics = HouseRoofStageDiagnostics & {
+type HouseRoofModelPipelineDiagnostics = HouseRoofStageDiagnostics & {
   houseId: string;
   modelPresent: boolean;
   failureStage: HouseRoofModelPipelineFailureStage;
   diagnosticCode: string | null;
 };
 
-export type HouseRoofModelPipelineResult =
+type HouseRoofModelPipelineResult =
   | {
       ok: true;
       houseId: string;
@@ -39,7 +39,7 @@ export type HouseRoofModelPipelineResult =
       diagnostics: HouseRoofModelPipelineDiagnostics;
     };
 
-export function houseRoofModelPipelineFailureStage(
+function houseRoofModelPipelineFailureStage(
   diagnostics: HouseRoofStageDiagnostics,
 ): HouseRoofModelPipelineFailureStage {
   if (diagnostics.footprintNormalizationStatus === "failed") {

@@ -70,7 +70,7 @@ export type ObjectWorkbenchRoofProvenance = Partial<
  * diagnostics so the inspector rail can render "failed at: eave
  * polygon construction" without re-pattern-matching the codes.
  */
-export type ObjectWorkbenchRoofFailingStageId =
+type ObjectWorkbenchRoofFailingStageId =
   | "footprint_normalization"
   | "eave_polygon_construction"
   | "roof_intent_normalization"
@@ -125,8 +125,6 @@ export type ObjectWorkbenchRoofStatus = {
   provenance: ObjectWorkbenchRoofProvenance;
 };
 
-export type ObjectWorkbenchRoofCompatibilityStatus = ObjectWorkbenchRoofStatus;
-
 export type ObjectWorkbenchHouseFormStatus = {
   lowConfidence: boolean;
   warnings: ObjectWorkbenchMigrationWarning[];
@@ -137,7 +135,7 @@ export type ObjectWorkbenchHouseFormStatus = {
   roof: ObjectWorkbenchRoofStatus | null;
 };
 
-export type ObjectWorkbenchDeckStatus = {
+type ObjectWorkbenchDeckStatus = {
   validation: {
     status: "valid" | "invalid";
     codes: string[];
@@ -151,7 +149,7 @@ export type ObjectWorkbenchDeckStatus = {
   interaction: DeckInteractionCapability;
 };
 
-export type ObjectWorkbenchOpeningStatus = {
+type ObjectWorkbenchOpeningStatus = {
   validation: {
     status: "valid" | "invalid";
     codes: string[];
@@ -169,7 +167,7 @@ export type ObjectWorkbenchPergolaAttachmentStrategy =
   | CalculatorHouseAttachmentStrategy
   | "auto";
 
-export type ObjectWorkbenchPergolaStatus = {
+type ObjectWorkbenchPergolaStatus = {
   connectionKind: ObjectWorkbenchPergolaConnectionKind;
   attachmentStrategy: ObjectWorkbenchPergolaAttachmentStrategy;
   confidence: "high" | "low";
@@ -197,15 +195,6 @@ function isAttachmentSide(
   value: string | null | undefined,
 ): value is AttachmentSide {
   return ATTACHMENT_SIDES.includes(value as AttachmentSide);
-}
-
-function parseFiniteNumber(
-  value: string | number | null | undefined,
-  fallback: number,
-): number {
-  const parsed =
-    typeof value === "number" ? value : Number(String(value ?? "").trim());
-  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function localPolygonToGeometryPolygon(

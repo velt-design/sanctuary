@@ -794,8 +794,3 @@ export function buildWorkbenchSolvedProject(input: {
   };
 }
 
-export function buildGeometryPreviewStateFromSolvedModel(
-  model: WorkbenchSolvedModel,
-): GeometryPreviewState {
-  return model.projectArtifact.geometryPreview;
-}

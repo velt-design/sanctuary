@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as geometryModule from '@sp/geometry';
-import * as legacyGeometryModule from '@sp/geometry/legacy';
 import type {
   Assembly3D,
   GeometryConfig,
@@ -11,7 +10,6 @@ import type {
   HouseModelConfig,
   ViewerSceneModel,
 } from '@sp/geometry';
-import type { LegacyAssemblyModel, LegacyGeometryConfig } from '@sp/geometry/legacy';
 
 const monoConfig: GeometryConfig = {
   projectId: 'proj_mono',
@@ -348,6 +346,7 @@ const houseAttachmentTarget: HouseAttachmentTarget3D = {
 };
 
 const houseModel: HouseModel3D = {
+  houseId: 'house-main',
   footprint: houseModelConfig.footprint ?? [],
   wallSegments: [
     {
@@ -510,89 +509,6 @@ const viewerScene: ViewerSceneModel = {
   ],
 };
 
-const legacyConfig: LegacyGeometryConfig = {
-  projectId: 'proj_legacy',
-  estimateId: 'est_legacy',
-  designRequestId: 'dpr_legacy',
-  pergolaType: 'mono',
-  widthMm: 6000,
-  projectionMm: 3000,
-  roofPitchDeg: 5,
-  roof: {
-    material: 'acrylic',
-  },
-  connection: {
-    type: 'soffit',
-    attachmentSide: 'rear',
-  },
-  supports: {
-    postMode: 'standard',
-  },
-  houseContext: {
-    soffitDepthMm: 450,
-  },
-  viewState: {
-    activeView: 'plan',
-    viewportMode: 'model',
-  },
-};
-
-const legacyAssembly: LegacyAssemblyModel = {
-  outline: [
-    { x: 0, y: 0 },
-    { x: 6000, y: 0 },
-    { x: 6000, y: 3000 },
-    { x: 0, y: 3000 },
-  ],
-  roofForm: {
-    kind: 'mono',
-    outline: [
-      { x: 0, y: 0 },
-      { x: 6000, y: 0 },
-      { x: 6000, y: 3000 },
-      { x: 0, y: 3000 },
-    ],
-    pitchDeg: 5,
-    eaveLine: {
-      start: { x: 0, y: 3000 },
-      end: { x: 6000, y: 3000 },
-    },
-    fallDirection: { x: 0, y: 1 },
-    boxPerimeter: false,
-  },
-  attachmentEdge: {
-    ring: 'outer',
-    index: 0,
-    id: 'rear',
-  },
-  houseContext: {
-    connectionType: 'soffit',
-    attachmentSide: 'rear',
-    attachmentEdge: {
-      ring: 'outer',
-      index: 0,
-      id: 'rear',
-    },
-    soffitDepthMm: 450,
-  },
-  posts: [],
-  beams: [],
-  rafters: [],
-  gutters: [],
-  supports: [],
-  fall: {
-    direction: { x: 0, y: 1 },
-    label: 'FALL',
-    source: 'roof_form',
-  },
-  semantics: {
-    connectionType: 'soffit',
-    roofType: 'mono',
-    structuralZones: [],
-    detailFamilies: [],
-  },
-};
-
 describe('@sp/geometry contracts', () => {
   it('resolves the canonical package export surface from @sp/geometry', () => {
     expect(geometryModule).toBeTypeOf('object');
@@ -600,11 +516,8 @@ describe('@sp/geometry contracts', () => {
     expect(typeof geometryModule.solveAssembly3D).toBe('function');
     expect(typeof geometryModule.validateGeometrySolve).toBe('function');
     expect(typeof geometryModule.buildViewerSceneModel).toBe('function');
-    expect(typeof geometryModule.buildTopProjectionViewModel).toBe('function');
     expect(typeof geometryModule.buildTopProjectionViewModelFromScene).toBe('function');
     expect(typeof geometryModule.buildTopProjectionParityReport).toBe('function');
-    expect(typeof geometryModule.buildPlanViewModel).toBe('function');
-    expect(typeof geometryModule.buildSectionViewModel).toBe('function');
     expect(typeof geometryModule.buildAssemblyQuantityTakeoff).toBe('function');
   });
 
@@ -752,7 +665,7 @@ describe('@sp/geometry contracts', () => {
     const sourceDir = path.resolve(__dirname);
     const sourceFiles = fs
       .readdirSync(sourceDir)
-      .filter((entry) => entry.endsWith('.ts') && !entry.endsWith('.test.ts') && entry !== 'legacy.ts')
+      .filter((entry) => entry.endsWith('.ts') && !entry.endsWith('.test.ts'))
       .map((entry) => fs.readFileSync(path.join(sourceDir, entry), 'utf8'))
       .join('\n');
 
@@ -765,9 +678,4 @@ describe('@sp/geometry contracts', () => {
     expect(sourceFiles).not.toContain('viewportMode');
   });
 
-  it('preserves the legacy 2D drawing-oriented contracts under the explicit legacy entrypoint', () => {
-    expect(legacyGeometryModule).toBeTypeOf('object');
-    expect(legacyConfig.viewState.activeView).toBe('plan');
-    expect(legacyAssembly.roofForm.kind).toBe('mono');
-  });
 });

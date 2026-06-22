@@ -1,84 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AttachmentSide,
-  GeometryConfig,
-  HouseAttachmentStrategy,
-  HouseFootprintPreset,
-  HouseRoofForm,
-  Line3,
-  Point3,
-  Polygon3,
-  RawHouseInput,
-  RenderMesh3D,
-} from "../contracts";
-import { deriveHouseGableTerminalEnds } from "../houseRoofCapabilities";
-import { buildHouseFootprintPolygon } from "../footprints";
+import type { HouseAttachmentStrategy } from "../contracts";
+import { buildHouseModel3D, buildHouseReferenceGeometry } from "../houseModel";
 import {
-  buildHouseModel3D,
-  buildHouseModel3DFromRawHouseInput,
-  buildHouseReferenceGeometry,
-} from "../houseModel";
-import {
-  makeFootprint,
-  makePresetFootprint,
-  HOUSE_FOOTPRINT_PRESETS,
-  HOUSE_ROOF_FORMS,
-  ATTACHMENT_SIDES,
-  pointOnSegment2D,
-  pointInPolygon2D,
-  pointInOrOnPolygon2D,
-  segmentInsidePolygon2D,
-  roofPointKey,
-  roofSegmentKey,
-  roofPointKeyXY,
-  roofSegmentKeyXY,
-  rebuildRoofPerimeterPolygon,
-  eavePolygonFromModel,
-  polygonAreaXY,
-  signedPolygonAreaXY,
-  reflexEaveVertices,
-  expectRoofFacetsCoverEaveOnce,
-  expectRoofQaValid,
-  expectRoofFacetsInsideEave,
-  roofBoundarySegmentCounts,
-  roofBoundarySegments,
-  expectJoinedRoofFeaturesBackedByFinalFacets,
-  expectRoofBoundaryEavePointsAtEaveHeight,
-  expectValleysStartAtReentrantCorners,
-  expectNoInternalEaveHeightRoofSeams,
   makeConfig,
-  allTerminalEndIdsForHippedConfig,
   makePlacedFootprint,
   makeFrontFootprint,
   makeLeftFootprint,
   makeRightFootprint,
   makeAttachmentEdge,
-  expectPoint3CloseTo,
-  pointDistanceSquared3,
-  vectorLength3,
-  normalizeVector3,
-  dotPoint3,
-  countRenderMeshVerticalFaces,
-  pointDistanceToSegment2D,
-  sourceEdgeLineFromModel,
-  polygonIsHorizontal,
-  countRenderMeshFacesAlignedToNormal,
-  expectUnorderedSegment3CloseTo,
-  lineLength3,
-  crossPoint3,
-  subtractPoint3,
-  distanceToLine3D,
-  expectPolygon3CloseTo,
-  expectPolygon3CloseToIgnoringRotation,
-  expectSolidBoundariesExact,
-  expectVerticalPrismRenderMesh,
-  expectMiteredRenderMeshesAroundCorners,
-  polygonOutwardVectorXY,
-  expectHouseGutterBoundariesUseProjection,
-  expectHouseGutterSolidsMiteredAroundCorners,
-  expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
-  expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
-  expectHouseRoofFeatureFlashings,
 } from "./houseModelTestSupport";
 
 describe("house model attachment targets", () => {
@@ -93,6 +22,7 @@ describe("house model attachment targets", () => {
     // `docs/decision-log.md` 2026-05-13 "Pergola Snap to Every House
     // Perimeter Edge".
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig(),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -129,6 +59,7 @@ describe("house model attachment targets", () => {
   it("projects fascia-under-gutter targets onto the setback house facade while preserving legacy references", () => {
     const originalAttachmentEdge = makeAttachmentEdge(2600);
     const house = buildHouseReferenceGeometry({
+      houseId: "test-house",
       config: makeConfig({
         footprint: makePlacedFootprint({
           offsetX: -1000,
@@ -160,6 +91,7 @@ describe("house model attachment targets", () => {
   it("projects front-side attachment targets onto the selected front facade while preserving solver references", () => {
     const originalAttachmentEdge = makeAttachmentEdge(2600);
     const house = buildHouseReferenceGeometry({
+      houseId: "test-house",
       config: makeConfig({
         attachmentSide: "front",
         footprint: makeFrontFootprint({
@@ -191,6 +123,7 @@ describe("house model attachment targets", () => {
 
   it("clips left-side soffit bracket targets to the overlapping selected side facade span", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         attachmentSide: "left",
         footprint: makeLeftFootprint({
@@ -214,6 +147,7 @@ describe("house model attachment targets", () => {
 
   it("selects the right-side wall source for side facade ledger targets", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         attachmentSide: "right",
         footprint: makeRightFootprint({
@@ -238,6 +172,7 @@ describe("house model attachment targets", () => {
 
   it("selects the selected-side source wall for post-supported tieback metadata", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         attachmentSide: "left",
         footprint: makeLeftFootprint({
@@ -258,6 +193,7 @@ describe("house model attachment targets", () => {
 
   it("clips projected attachment target spans to the overlapping house facade width", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: makePlacedFootprint({ offsetX: 1000, width: 3000 }),
         strategy: "soffit_brackets",
@@ -274,6 +210,7 @@ describe("house model attachment targets", () => {
 
   it("emits no visible attachment target line when the pergola span does not overlap the selected facade", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: makePlacedFootprint({ offsetX: 7000, width: 1000 }),
         strategy: "soffit_brackets",
@@ -290,6 +227,7 @@ describe("house model attachment targets", () => {
 
   it("uses projected facade lines for facade ledger targets", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: makePlacedFootprint({
           offsetX: -500,
@@ -320,6 +258,7 @@ describe("house model attachment targets", () => {
 
     for (const [strategy, kind] of cases) {
       const model = buildHouseModel3D({
+        houseId: 'test-house',
         config: makeConfig({ strategy }),
         attachmentEdge: makeAttachmentEdge(),
       });

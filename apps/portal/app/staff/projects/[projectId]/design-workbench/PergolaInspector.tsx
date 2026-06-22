@@ -18,13 +18,14 @@ import {
   pergolaAttachmentMethodIsWritable,
 } from '@/lib/drawings/state/pergolaAttachmentLabels';
 import { pergolaAttachmentFromStoredConnectionFields } from '@/lib/drawings/state/pergolaAttachment';
-import type { CommitResult } from './objectWorkbenchClientTypes';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type PergolaInspectorOption = {
   id: string;
   label: string;
 };
+
+type CommitResult = { ok: boolean; error?: string };
 
 type PergolaInspectorProps = {
   activePergolaModel: ObjectWorkbenchPergolaInspectorModel | null;

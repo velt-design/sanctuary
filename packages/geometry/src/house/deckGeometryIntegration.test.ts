@@ -1,84 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AttachmentSide,
-  GeometryConfig,
-  HouseAttachmentStrategy,
-  HouseFootprintPreset,
-  HouseRoofForm,
-  Line3,
-  Point3,
-  Polygon3,
-  RawHouseInput,
-  RenderMesh3D,
-} from "../contracts";
-import { deriveHouseGableTerminalEnds } from "../houseRoofCapabilities";
-import { buildHouseFootprintPolygon } from "../footprints";
+import { buildHouseModel3D } from "../houseModel";
 import {
-  buildHouseModel3D,
-  buildHouseModel3DFromRawHouseInput,
-  buildHouseReferenceGeometry,
-} from "../houseModel";
-import {
-  makeFootprint,
-  makePresetFootprint,
-  HOUSE_FOOTPRINT_PRESETS,
-  HOUSE_ROOF_FORMS,
-  ATTACHMENT_SIDES,
-  pointOnSegment2D,
-  pointInPolygon2D,
-  pointInOrOnPolygon2D,
-  segmentInsidePolygon2D,
-  roofPointKey,
-  roofSegmentKey,
-  roofPointKeyXY,
-  roofSegmentKeyXY,
-  rebuildRoofPerimeterPolygon,
-  eavePolygonFromModel,
-  polygonAreaXY,
-  signedPolygonAreaXY,
-  reflexEaveVertices,
-  expectRoofFacetsCoverEaveOnce,
-  expectRoofQaValid,
-  expectRoofFacetsInsideEave,
-  roofBoundarySegmentCounts,
-  roofBoundarySegments,
-  expectJoinedRoofFeaturesBackedByFinalFacets,
-  expectRoofBoundaryEavePointsAtEaveHeight,
-  expectValleysStartAtReentrantCorners,
-  expectNoInternalEaveHeightRoofSeams,
   makeConfig,
-  allTerminalEndIdsForHippedConfig,
-  makePlacedFootprint,
-  makeFrontFootprint,
-  makeLeftFootprint,
-  makeRightFootprint,
   makeAttachmentEdge,
-  expectPoint3CloseTo,
-  pointDistanceSquared3,
-  vectorLength3,
-  normalizeVector3,
-  dotPoint3,
-  countRenderMeshVerticalFaces,
-  pointDistanceToSegment2D,
-  sourceEdgeLineFromModel,
-  polygonIsHorizontal,
-  countRenderMeshFacesAlignedToNormal,
-  expectUnorderedSegment3CloseTo,
-  lineLength3,
-  crossPoint3,
-  subtractPoint3,
-  distanceToLine3D,
-  expectPolygon3CloseTo,
-  expectPolygon3CloseToIgnoringRotation,
-  expectSolidBoundariesExact,
   expectVerticalPrismRenderMesh,
-  expectMiteredRenderMeshesAroundCorners,
-  polygonOutwardVectorXY,
-  expectHouseGutterBoundariesUseProjection,
-  expectHouseGutterSolidsMiteredAroundCorners,
-  expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
-  expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
-  expectHouseRoofFeatureFlashings,
 } from "./houseModelTestSupport";
 
 describe("house model deck geometry", () => {
@@ -144,6 +69,7 @@ describe("house model deck geometry", () => {
     };
 
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config,
       attachmentEdge: makeAttachmentEdge(),
     });

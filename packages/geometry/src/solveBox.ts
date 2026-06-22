@@ -6,7 +6,6 @@ import type {
   DatumFrame3,
   GeometryConfig,
   Line3,
-  Plane3,
   Point3,
   RoofPlane3D,
   Vector3,
@@ -79,10 +78,6 @@ function frameForVerticalMember(origin: Point3): DatumFrame3 {
 
 function frameForHorizontalX(origin: Point3): DatumFrame3 {
   return frameFromXAxisZAxis(origin, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
-}
-
-function frameForHorizontalY(origin: Point3): DatumFrame3 {
-  return frameFromXAxisZAxis(origin, { x: 0, y: 1, z: 0 }, { x: 0, y: 0, z: 1 });
 }
 
 function frameForSlopedHorizontalMember(memberLine: Line3): DatumFrame3 {

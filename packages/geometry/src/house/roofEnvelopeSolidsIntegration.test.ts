@@ -1,89 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AttachmentSide,
-  GeometryConfig,
-  HouseAttachmentStrategy,
-  HouseFootprintPreset,
-  HouseRoofForm,
-  Line3,
-  Point3,
-  Polygon3,
-  RawHouseInput,
-  RenderMesh3D,
-} from "../contracts";
-import { deriveHouseGableTerminalEnds } from "../houseRoofCapabilities";
-import { buildHouseFootprintPolygon } from "../footprints";
-import {
-  buildHouseModel3D,
-  buildHouseModel3DFromRawHouseInput,
-  buildHouseReferenceGeometry,
-} from "../houseModel";
+import { buildHouseModel3D, buildHouseReferenceGeometry } from "../houseModel";
 import {
   makeFootprint,
-  makePresetFootprint,
-  HOUSE_FOOTPRINT_PRESETS,
-  HOUSE_ROOF_FORMS,
-  ATTACHMENT_SIDES,
-  pointOnSegment2D,
-  pointInPolygon2D,
-  pointInOrOnPolygon2D,
-  segmentInsidePolygon2D,
-  roofPointKey,
-  roofSegmentKey,
-  roofPointKeyXY,
-  roofSegmentKeyXY,
-  rebuildRoofPerimeterPolygon,
-  eavePolygonFromModel,
-  polygonAreaXY,
-  signedPolygonAreaXY,
-  reflexEaveVertices,
-  expectRoofFacetsCoverEaveOnce,
   expectRoofQaValid,
-  expectRoofFacetsInsideEave,
-  roofBoundarySegmentCounts,
-  roofBoundarySegments,
-  expectJoinedRoofFeaturesBackedByFinalFacets,
-  expectRoofBoundaryEavePointsAtEaveHeight,
-  expectValleysStartAtReentrantCorners,
-  expectNoInternalEaveHeightRoofSeams,
   makeConfig,
   allTerminalEndIdsForHippedConfig,
-  makePlacedFootprint,
-  makeFrontFootprint,
-  makeLeftFootprint,
-  makeRightFootprint,
   makeAttachmentEdge,
   expectPoint3CloseTo,
-  pointDistanceSquared3,
-  vectorLength3,
-  normalizeVector3,
-  dotPoint3,
-  countRenderMeshVerticalFaces,
-  pointDistanceToSegment2D,
-  sourceEdgeLineFromModel,
-  polygonIsHorizontal,
-  countRenderMeshFacesAlignedToNormal,
-  expectUnorderedSegment3CloseTo,
-  lineLength3,
-  crossPoint3,
-  subtractPoint3,
-  distanceToLine3D,
   expectPolygon3CloseTo,
-  expectPolygon3CloseToIgnoringRotation,
-  expectSolidBoundariesExact,
-  expectVerticalPrismRenderMesh,
-  expectMiteredRenderMeshesAroundCorners,
-  polygonOutwardVectorXY,
-  expectHouseGutterBoundariesUseProjection,
   expectHouseGutterSolidsMiteredAroundCorners,
-  expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes,
-  expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes,
-  expectHouseRoofFeatureFlashings,
 } from "./houseModelTestSupport";
 
 describe("house model roof envelope and solids", () => {
   it("uses house gutter projection as the rendered outside face offset", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         gutterWidthMm: 150,
         gutterProjectionMm: 160,
@@ -122,6 +53,7 @@ describe("house model roof envelope and solids", () => {
 
   it("builds a fascia-under-gutter zone with clamped safe line bounds", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         strategy: "fascia_under_gutter",
         fasciaHeightMm: 180,
@@ -140,6 +72,7 @@ describe("house model roof envelope and solids", () => {
 
   it("uses wall height for facade boundaries and eave height for roof and gutter references", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         eaveHeightMm: 3100,
         wallHeightMm: 5800,
@@ -154,6 +87,7 @@ describe("house model roof envelope and solids", () => {
 
   it("threads house model geometry into house reference output for both attached and freestanding configs", () => {
     const attached = buildHouseReferenceGeometry({
+      houseId: "test-house",
       config: makeConfig({
         connectionType: "fascia",
         strategy: "fascia_under_gutter",
@@ -161,6 +95,7 @@ describe("house model roof envelope and solids", () => {
       attachmentEdge: makeAttachmentEdge(),
     });
     const freestanding = buildHouseReferenceGeometry({
+      houseId: "test-house",
       config: makeConfig({
         connectionType: "freestanding",
         strategy: "soffit_brackets",
@@ -172,10 +107,10 @@ describe("house model roof envelope and solids", () => {
     expect(attached.fasciaLine).toEqual(makeAttachmentEdge());
     expect(attached.model?.roofPlanes).toHaveLength(4);
     expect(attached.attachmentTarget?.kind).toBe("zone");
-    // PR8b: freestanding houses now populate `model` so multi-form workbench
-    // rendering can show their walls/roof/decks. Pergola-attachment fields
-    // (wallPlane, fasciaLine, roofEdgeLine, attachmentTarget) stay null --
-    // there's no pergola wall to bind to.
+    // Freestanding houses populate `model` for project-level rendering so
+    // their walls/roof/decks remain visible. Pergola-attachment fields
+    // (wallPlane, fasciaLine, roofEdgeLine, attachmentTarget) stay null:
+    // there is no pergola wall to bind to.
     expect(freestanding.wallPlane).toBeNull();
     expect(freestanding.attachmentTarget).toBeNull();
     expect(freestanding.model?.roofPlanes).toHaveLength(4);
@@ -185,6 +120,7 @@ describe("house model roof envelope and solids", () => {
   it("omits house-side eave package geometry for supported rectangular gable roofs", () => {
     const rectFootprint = makeFootprint();
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         footprint: rectFootprint,
         roofForm: "hipped",
@@ -229,6 +165,7 @@ describe("house model roof envelope and solids", () => {
 
   it("omits house-side eave package geometry for supported orthogonal hipped roofs", () => {
     const model = buildHouseModel3D({
+      houseId: 'test-house',
       config: makeConfig({
         roofForm: "hipped",
       }),

@@ -2,22 +2,22 @@ import {
   applyEdgePerpendicularTranslation,
   findClosestPolygonEdge,
   polygonEdgeOutwardNormal,
-  type Point2,
 } from '../canvas/polygonEdgeMath';
+import type { Point2 } from '@sp/geometry';
 import type { ActiveObjectFamily } from '../canvas/planDimension';
 import type { SnapLineTarget } from '../interactions/snap/snapEngine';
 import { resolveEdgeSnap, type EdgeSnapResult } from './resolveEdgeSnap';
 import type { Tool, ToolPointerEvent } from './Tool';
 
-export type EdgeDragOutline = {
+type EdgeDragOutline = {
   id: string;
   family: ActiveObjectFamily;
   polygon: ReadonlyArray<Point2>;
 };
 
-export type EdgeDragOutlineSource = () => EdgeDragOutline | null;
+type EdgeDragOutlineSource = () => EdgeDragOutline | null;
 
-export type EdgeDragSnapTargetSource = () => ReadonlyArray<SnapLineTarget>;
+type EdgeDragSnapTargetSource = () => ReadonlyArray<SnapLineTarget>;
 
 export type EdgeDragPreview = {
   outlineId: string;
@@ -55,7 +55,7 @@ export type EdgeDragHover = {
   closestPoint: Point2;
 };
 
-export type EdgeDragToolConfig = {
+type EdgeDragToolConfig = {
   getActiveOutline: EdgeDragOutlineSource;
   edgeHitToleranceMm?: number;
   /**

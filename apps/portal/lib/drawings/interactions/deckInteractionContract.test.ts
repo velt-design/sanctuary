@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildDeckInteractionCapabilityFromSelection,
   resolveDeckInteractionCapability,
-  resolveDeckInteractionHint,
 } from './deckInteractionContract';
 
 const baseDeck = {
@@ -45,41 +43,4 @@ describe('deckInteractionContract', () => {
     expect(capability.selectionBadgeLabel).toBe('Blocked');
   });
 
-  it('rebuilds selected deck capability without viewport-owned labels', () => {
-    const capability = buildDeckInteractionCapabilityFromSelection({
-      custom: false,
-      interactionPlacement: 'floating',
-      dragEligible: true,
-      dragReason: 'Drag the selected deck body to move it freely.',
-      hostEdgeResolvable: true,
-      relationshipDimensionsAvailable: true,
-    });
-
-    expect(capability).toMatchObject({
-      selectedDeckType: 'preset_floating',
-      dragEligible: true,
-      selectionBadgeLabel: 'Drag deck',
-    });
-  });
-
-  it('produces snap-available hint text from the shared interaction state', () => {
-    const capability = resolveDeckInteractionCapability({
-      deck: { ...baseDeck, isAttached: false, presetType: 'rect_detached' },
-      dragInteractionAvailable: true,
-    });
-
-    const hint = resolveDeckInteractionHint({
-      capability,
-      phase: 'dragging',
-      previewState: {
-        placement: 'floating',
-        releasePlacement: 'snapped',
-      },
-    });
-
-    expect(hint).toMatchObject({
-      state: 'snap-available',
-      label: 'Wall candidate',
-    });
-  });
 });

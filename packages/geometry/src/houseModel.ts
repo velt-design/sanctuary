@@ -1,277 +1,71 @@
 import type {
-  DatumFrame3,
   GeometryConfig,
   GeometryMetadata,
   HouseDeck3D,
-  HouseDeckConfig,
-  HouseAttachmentStrategy,
   HouseAttachmentTarget3D,
   HouseModel3D,
   HouseReferenceGeometry,
   HouseRoofFeature3D,
-  HouseRoofFeatureKind,
   HouseRoofForm,
-  HouseRoofPrimaryFallDirection,
-  HouseRoofRidgeAxis,
   HouseWallSegment3D,
   Line3,
   Plane3,
-  Point3,
   Polygon3,
-  RenderMesh3D,
-  RoofFlashing3D,
   RoofPlane3D,
-  Vector3,
 } from "./contracts";
 import type { HouseModel3DRawHouseInput } from "./houseModelRawInputAdapter";
 import { buildHouseModel3DGeometryConfigInputFromRawHouseInput } from "./houseModelRawInputAdapter";
+import { normalizeHouseRoofPitchDegForForm } from "./houseRoofValidation";
 import {
-  normalizeHouseRoofPitchDegForForm,
-  validateHouseRoofSelection,
-} from "./houseRoofValidation";
-import {
-  crossProduct,
-  dotProduct,
-  lineLength,
-  normalizeVector,
   planeFromOriginAxes,
-  planeFromPoints,
-  scaleVector,
-  subtractPoints,
 } from "./math3d";
-import { buildHouseSideAttachmentLine } from "./footprints";
 import {
-  DEFAULT_DECK_SURFACE_THICKNESS_MM,
   DEFAULT_EAVE_HEIGHT_MM,
   DEFAULT_EAVE_OVERHANG_MM,
   DEFAULT_FASCIA_HEIGHT_MM,
-  DEFAULT_FASCIA_SOLID_THICKNESS_MM,
   DEFAULT_GUTTER_DEPTH_MM,
   DEFAULT_GUTTER_PROJECTION_MM,
   DEFAULT_GUTTER_WIDTH_MM,
-  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_GIRTH_MM,
-  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM,
-  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM,
-  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM,
   DEFAULT_ROOF_PITCH_DEG,
-  DEFAULT_ROOF_SOLID_THICKNESS_MM,
   DEFAULT_SOFFIT_DEPTH_MM,
-  DEFAULT_SOFFIT_SOLID_THICKNESS_MM,
-  DEFAULT_WALL_SOLID_THICKNESS_MM,
-  RIDGE_COLLAPSE_EPSILON_MM,
-  ROOF_JOIN_EPSILON_MM,
-  ROOF_JOIN_FEATURE_MIN_LENGTH_MM,
-  ROOF_REGION_MIN_AREA_MM2,
-  WORLD_Z,
 } from "./house/constants";
 import {
-  axisRange,
   boundingBox,
-  clamp,
-  distanceSquared2,
   finiteNumber,
-  finiteVectorLength,
-  line,
-  lineIntersection2,
-  lineIntersectionT2D,
-  midpoint2,
   point,
-  pointInPolygon2D,
-  pointOnRoofSegment2D,
-  polygonCentroid2D,
   positiveNumber,
-  rectangleCornersFromBox,
-  reflectPointAcrossX,
-  reflectVectorAcrossX,
-  signedAreaXY,
-  swapPointAxes,
-  swapVectorAxes,
-  edgeOutwardVector,
-  finiteRoofQaPoint,
-  miterCornerPoint,
-  negateVector,
-  planeFromBoundary,
-  polygonArea3D,
-  samePoint3WithinTolerance,
-  translatePointByVector,
-  uniqueSorted,
-  vertexFeatureKind,
-  type BentSpineTerminalGableClosure,
-  type HouseFootprintOpenSide,
-  type HouseGableTerminalEnd,
-  type HouseGableTerminalIntersection,
-  type HouseRoofBuildResult,
   type HouseRoofPerimeterEdge,
-  type HouseRoofPerimeterEdgeKind,
-  type HouseRoofPerimeterFlashingRole,
-  type HouseRoofPerimeterLine,
-  type HouseRoofPerimeterPolygon,
-  type JoinedRoofEdge,
-  type JoinedRoofFacet,
-  type JoinedRoofFacetBuildResult,
-  type JoinedRoofFeatureDraft,
-  type JoinedRoofRegion,
-  type JoinedRoofWavefrontLoop,
-  type JoinedRoofWavefrontResult,
-  type JoinedRoofWavefrontSegment,
-  type RoofPoint2,
 } from "./house/_internal";
-import {
-  buildHouseRoofPerimeterEdges,
-  classifyHousePerimeterEdges,
-  roofPlanePerimeterOverlapSegment,
-  roofPlaneTouchesPerimeterEdge,
-} from "./house/perimeterEdges";
+import { buildHouseRoofPerimeterEdges } from "./house/perimeterEdges";
 import { buildWallSegments, wallBoundaryHasFlatTop } from "./house/walls";
+import { deriveHouseGableTerminalEndsFromFootprint } from "./house/roofJoined";
 import {
-  buildRoofPlane,
-  pointInOrOnRoofPolygon,
-  pointOnRoofPolygonBoundary,
-  roofFeatureHeightAtXY,
-  roofHeightAtXY,
-  roofPlaneEquationHeightAtXY,
-  roofPlaneHeightAtXY,
-  roofSolidBottomPlaneEquation,
-  roofSolidPlaneEquationFromPlane,
-  type RoofSolidPlaneEquation,
-} from "./house/roofPlane";
-import {
-  buildPerimeterOffsetStripFootprints,
   buildPolygonFasciaPolygons,
   buildPolygonGutterBoundaries,
   buildPolygonGutterLines,
   buildPolygonSoffitPolygons,
-  isEavePackageEdge,
 } from "./house/eave";
-import {
-  buildRectangleHippedRoof,
-  buildRectangleRoofFeatures,
-} from "./house/roofRectangleHipped";
-import {
-  addRoofDissolveSplitPoint,
-  canonicalRoofSegmentKey,
-  cleanRoofPolygon2D,
-  clipRoofPolygonByScalar,
-  compareRoofPoints,
-  orientRoofFeatureLine,
-  point2FromPoint3,
-  pointOnRoofSegment2,
-  roofPoint2FromKey,
-  roofPoint2Key,
-  roofPoint3Key,
-  roofPointDistance2,
-  roofPointOnEaveBoundaryAtWrongHeight,
-  roofPolygonArea,
-  roofPolygonCentroid,
-  roofPolygonIsSimple,
-  roofRegionInsideEave,
-  roofSegmentIntersectionPoint,
-  roofSegmentInsidePolygonStrict,
-  roofSegmentOverlapLength2D,
-  roofSegmentParam,
-  roofSegmentsProperlyIntersect2D,
-  segmentInsideRoofPolygon,
-  signedArea2D,
-} from "./house/roof2D";
-import { buildJoinedRoofWavefrontRegions } from "./house/roofJoinedWavefront";
-import {
-  mergeAssignedRoofRegions,
-  sortJoinedRoofRegions,
-  validateJoinedRoofRegionFootprint,
-} from "./house/roofJoinedDissolve";
-import {
-  assignRoofRegion,
-  buildJoinedRoofEdges,
-  buildRectilinearRoofBaseRegions,
-  roofHeightFromEdge,
-  splitRoofRegionsByPlaneIntersections,
-} from "./house/roofJoinedRegions";
-import {
-  buildJoinedRoofFacetFromRegion,
-  buildJoinedRoofFacets,
-  buildJoinedRoofFeatures,
-  countJoinedRoofInternalEaveHeightSegments,
-} from "./house/roofJoinedFacets";
-import {
-  buildJoinedRectilinearHippedRoof,
-  edgeLiesOnConvexHull,
-  outwardNormalForEdge,
-  ridgeGraphTerminalNodes,
-  roofFeaturesAreAxisAligned,
-} from "./house/roofJoinedHipped";
-import {
-  applyBentSpineTerminalGableClosures,
-  buildBentSpineGableTerminalEndsX,
-  deriveBentSpineTerminalGableClosures,
-  deriveBentSpineTerminalIntersectionsX,
-  deriveHouseFootprintOpenSide,
-} from "./house/roofJoinedGableTerminals";
-import {
-  buildComplexFootprintRoof,
-  deriveHouseGableTerminalEndsFromFootprint,
-  reflectRoofBuildResultAcrossX,
-  swapRoofBuildResultAxes,
-} from "./house/roofJoined";
-export { deriveHouseGableTerminalEndsFromFootprint } from "./house/roofJoined";
-import { applyRoofQa, validateHouseRoofQa } from "./house/roofQa";
-import {
-  buildFlatHouseRoof,
-  buildHippedHouseRoof,
-  buildMonoHouseRoof,
-  buildPrimaryHouseRoof,
-  invalidHouseRoof,
-} from "./house/roofPrimary";
 import { buildSharedHouseRoof } from "./house/sharedHouseRoof";
-import {
-  boundaryZRange,
-  buildMiteredOffsetStripFootprints,
-  buildMiteredStripFootprints,
-  buildRoofSolidAdjacency,
-  buildRoofSolidBottomEdge,
-  buildRoofSolidRenderMesh,
-  buildVerticalPrismRenderMesh,
-  cleanPolygon3D,
-  clipPolygon3DByScalar,
-  polygonAveragePoint3D,
-  roofPlaneTopNormal,
-  roofSolidEdgeKey,
-  roofSolidPointKey,
-  type RoofSolidAdjacency,
-  type RoofSolidBottomEdge,
-  type RoofSolidEdgeReference,
-  type RoofSolidLine,
-} from "./house/roofSolids";
 import {
   buildHouseRoofFeatureFlashings,
   buildPerimeterFlashings,
 } from "./house/roofFlashings";
 import {
   buildHouseDecks,
-  resolveDeckHostWallSegment,
   resolveHouseDeckBoundary,
-  resolvePresetDeckBoundary,
 } from "./house/decks";
-import {
-  buildOpenGableFrameFeatures,
-  houseWallIsOpenGableFrame,
-} from "./house/roofFrames";
+import { buildOpenGableFrameFeatures } from "./house/roofFrames";
 import {
   buildAttachmentAwareMonoEavePolygon,
   buildAttachmentTarget,
   buildSemanticHouseAttachmentEdge,
-  buildZoneBoundary,
-  sourceEdgeIndexFromId,
 } from "./house/attachment";
 import { buildHouseEnvelopeSolids } from "./house/envelopeSolids";
 import {
   canonicalizeHouseFootprintPolygon,
-  closestPointOnLineSegment2D,
-  clearanceToPolygon,
-  findInteriorRoofNode,
   isOrthogonalFootprint,
   isRectanglePolygon,
   offsetFootprintPolygon,
-  polygonLineInterval,
 } from "./house/footprintMath";
 import { buildHouseOpenings } from "./house/openings";
 import { buildHippedRoofWithEaveOffsetRepair } from "./house/eaveOffsetRepair";
@@ -425,19 +219,18 @@ export function buildHouseModel3D(input: {
    * so the scene-assembly seam can prefix derived scene-object ids by
    * source house. Required even for single-house scenes — tests pass a
    * stable literal (e.g. `'test-house'`) so multi-house regressions trip
-   * the lock-in invariant test (PR-Geo2) rather than slipping through.
+   * the scene-id invariant test rather than slipping through.
    */
   houseId: string;
   config: GeometryConfig;
   attachmentEdge: Line3 | null;
 }): HouseModel3D | null {
-  // Freestanding houses get a full 3D model (walls + roof + envelope) since
-  // PR8b. The previous `return null` short-circuit was a vestige of an era
-  // where the workbench only rendered pergola-attached houses; multi-form
-  // rendering needs standalone forms to surface walls/roof/decks too. The
-  // pergola-dependent helpers downstream (`buildSemanticHouseAttachmentEdge`,
-  // `buildAttachmentTarget`) are already null-safe for freestanding -- the
-  // resulting `attachmentTarget` is `{ kind: 'none' }`, which is correct.
+  // Freestanding house forms get a full 3D model (walls + roof + envelope)
+  // because project-level scenes render house forms independently of pergola
+  // attachment. The pergola-dependent helpers downstream
+  // (`buildSemanticHouseAttachmentEdge`, `buildAttachmentTarget`) are already
+  // null-safe for freestanding: the resulting `attachmentTarget` is
+  // `{ kind: 'none' }`, which is correct.
   const model = input.config.houseContext.model;
   const rawFootprint = model?.footprint;
   if (!rawFootprint || rawFootprint.length < 3) return null;
@@ -909,9 +702,9 @@ export function buildHouseReferenceGeometry(input: {
   });
 
   if (input.config.connection.type === "freestanding") {
-    // Freestanding houses now populate `model` (PR8b) so multi-form workbench
-    // rendering can show walls/roof/decks. Pergola-attachment fields stay null
-    // -- there's no pergola wall to bind to, no fascia, no attachment target.
+    // Freestanding houses populate `model` for project-level house rendering.
+    // Pergola-attachment fields stay null: there is no pergola wall to bind
+    // to, no fascia, and no attachment target.
     return {
       wallPlane: null,
       fasciaLine: null,

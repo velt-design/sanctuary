@@ -1,0 +1,449 @@
+[     544ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[     616ms] [LOG] [Fast Refresh] done in 179ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    1716ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[    1741ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[   19953ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[   20005ms] [WARNING] THREE.THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  260666ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  261236ms] [LOG] [Fast Refresh] done in 674ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  262872ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  263162ms] [LOG] [Fast Refresh] done in 404ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  263867ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  263902ms] [LOG] [Fast Refresh] done in 146ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  264549ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  264576ms] [LOG] [Fast Refresh] done in 136ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  267603ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  271404ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  272017ms] [LOG] [Fast Refresh] done in 719ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  272598ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  272880ms] [LOG] [Fast Refresh] done in 397ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273006ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273045ms] [LOG] [Fast Refresh] done in 149ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273384ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273430ms] [LOG] [Fast Refresh] done in 160ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273558ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273594ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273935ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  273967ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  274108ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  274194ms] [LOG] [Fast Refresh] done in 191ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  277203ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  279232ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  279823ms] [LOG] [Fast Refresh] done in 698ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  280471ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  280847ms] [LOG] [Fast Refresh] done in 483ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  281526ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  281587ms] [LOG] [Fast Refresh] done in 166ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  282247ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  282334ms] [LOG] [Fast Refresh] done in 200ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  285464ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  289861ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  290402ms] [LOG] [Fast Refresh] done in 646ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291006ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291294ms] [LOG] [Fast Refresh] done in 397ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291416ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291453ms] [LOG] [Fast Refresh] done in 147ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291796ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291831ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291954ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  291979ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  292343ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  292386ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  292516ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  292543ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  295562ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  339931ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  340505ms] [LOG] [Fast Refresh] done in 686ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  341338ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  341674ms] [LOG] [Fast Refresh] done in 440ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  341796ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  341829ms] [LOG] [Fast Refresh] done in 148ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  342365ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  342398ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  342520ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  342548ms] [LOG] [Fast Refresh] done in 131ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  342961ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  343000ms] [LOG] [Fast Refresh] done in 145ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  343116ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  343159ms] [LOG] [Fast Refresh] done in 149ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  346189ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  361203ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  361761ms] [LOG] [Fast Refresh] done in 664ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  362417ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  362737ms] [LOG] [Fast Refresh] done in 434ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  362841ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  362892ms] [LOG] [Fast Refresh] done in 154ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  363436ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  363467ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  363593ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  363613ms] [LOG] [Fast Refresh] done in 136ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  363956ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  363998ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  364143ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  364176ms] [LOG] [Fast Refresh] done in 136ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  367012ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  374928ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  375482ms] [ERROR] The final argument passed to %s changed size between renders. The order and size of this array must remain constant.
+
+Previous: %s
+Incoming: %s useLayoutEffect [[object Object], [object Object],[object Object],[object Object],[object Object], , [object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object], , [object Object],[object Object],[object Object],[object Object], [object Object], , [object Object],[object Object],[object Object],[object Object], , [object Object], ()=>{
+            const canvas = canvasRef.current;
+            const parent = canvas?.parentElement;
+            if (!canvas || !parent) return;
+            const dpr = window.devicePixelRatio || 1;
+            const cssW = parent.clientWidth;
+            const cssH = parent.clientHeight;
+            if (cssW === 0 || cssH === 0) return;
+            if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+                canvas.width = Math.round(cssW * dpr);
+                canvas.height = Math.round(cssH * dpr);
+                canvas.style.width = `${cssW}px`;
+                canvas.style.height = `${cssH}px`;
+            }
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            const t = liveTransformRef.current;
+            const data = dataRef.current;
+            const { minX, minY, scaleFit, offsetX, offsetY } = fit(data.layout, cssW, cssH);
+            const scale = scaleFit * t.zoom;
+            // Camera affine: device = a·local + e (x), d·local + f (y).
+            const a = dpr * scale;
+            const d = dpr * scale;
+            const e = dpr * (offsetX + scaleFit * (t.panX - minX));
+            const f = dpr * (offsetY + scaleFit * (t.panY - minY));
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(a, 0, 0, d, e, f);
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            for (const item of data.committedBodies)strokePoly(ctx, item.points, (0, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["canvasCommittedBodyStyle"])(item.shape), scale, true);
+            for (const item of data.contextLines)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_CONTEXT_LINE_STYLE"], scale, false);
+            for (const item of data.diagnosticFallbackItems)strokePoly(ctx, item.points, (0, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$lib$2f$drawings$2f$views$2f$plan$2f$planShapeOwnership$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["planShapeIsPergolaDiagnosticFallback"])(item.shape) ? __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_DIAGNOSTIC_FALLBACK_PERGOLA"] : __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_DIAGNOSTIC_FALLBACK_HOUSE"], scale, true);
+            for (const item of data.detailLines)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_DETAIL_LINE_STYLE"], scale, false);
+            if (data.hoveredShapeId) {
+                const hovered = data.hitTargetItems.find({
+                    "PlanCanvas2D.useCallback[draw].hovered": (i)=>i.shape.id === data.hoveredShapeId
+                }["PlanCanvas2D.useCallback[draw].hovered"]);
+                if (hovered) strokePoly(ctx, hovered.points, LOCAL_HOVER_STYLE, scale, true);
+            }
+            for (const item of data.selectionHaloItems)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_SELECTION_HALO"], scale, true);
+            for (const item of data.hoverHaloItems)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_HOVER_HALO"], scale, true);
+            // Camera-space preview outlines (world-positioned, constant-px stroke).
+            const adapter = data.coordinateAdapter;
+            const toLocal = {
+                "PlanCanvas2D.useCallback[draw].toLocal": (w)=>adapter.projectionToSvg(w)
+            }["PlanCanvas2D.useCallback[draw].toLocal"];
+            const hover = data.edgeDragHover;
+            if (hover) strokePoly(ctx, [
+                toLocal(hover.edgeStart),
+                toLocal(hover.edgeEnd)
+            ], EDGE_HOVER_LINE_STYLE, scale, false);
+            const edp = data.edgeDragPreview;
+            if (edp) {
+                strokePoly(ctx, edp.previewPolygon.map(toLocal), EDGE_DRAG_PREVIEW_STYLE, scale, true);
+                if (edp.snap) strokePoly(ctx, [
+                    toLocal(edp.snap.target.start),
+                    toLocal(edp.snap.target.end)
+                ], SNAP_LINE_STYLE, scale, false);
+            }
+            const mp = data.movePreview;
+            const msrc = data.movePreviewSourcePolygon;
+            if (mp && msrc && msrc.length >= 3) {
+                strokePoly(ctx, msrc.map({
+                    "PlanCanvas2D.useCallback[draw]": (p)=>toLocal({
+                            x: p.x + mp.delta.x,
+                            y: p.y + mp.delta.y
+                        })
+                }["PlanCanvas2D.useCallback[draw]"]), MOVE_PREVIEW_STYLE, scale, true);
+                if (mp.snap) {
+                    strokePoly(ctx, [
+                        toLocal(mp.snap.edgeSnap.target.start),
+                        toLocal(mp.snap.edgeSnap.target.end)
+                    ], SNAP_LINE_STYLE, scale, false);
+                    if (mp.snap.secondary) strokePoly(ctx, [
+                        toLocal(mp.snap.secondary.edgeSnap.target.start),
+                        toLocal(mp.snap.secondary.edgeSnap.target.end)
+                    ], SNAP_LINE_STYLE, scale, false);
+                }
+            }
+            // Device-space overlays: dimensions, snap markers/labels, seam icons (all
+            // constant on-screen size). Project world → local → device via the camera.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            if (data.dimensions.length) drawDimensions(ctx, data.dimensions, adapter, a, d, e, f, dpr);
+            const projWorld = {
+                "PlanCanvas2D.useCallback[draw].projWorld": (w)=>{
+                    const l = toLocal(w);
+                    return {
+                        x: a * l.x + e,
+                        y: d * l.y + f
+                    };
+                }
+            }["PlanCanvas2D.useCallback[draw].projWorld"];
+            if (hover) {
+                const g = projWorld(hover.closestPoint);
+                drawMarkerDot(ctx, g.x, g.y, 4, dpr);
+            }
+            if (edp?.snap) {
+                const s = edp.previewPolygon[edp.edgeIndex];
+                const en = edp.previewPolygon[(edp.edgeIndex + 1) % edp.previewPolygon.length];
+                if (s && en) {
+                    const m = projWorld(midpoint(s, en));
+                    drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+                    drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[edp.snap.target.edgeKind] ?? edp.snap.target.edgeKind, dpr);
+                }
+            }
+            if (mp?.snap && msrc) {
+                const snap = mp.snap;
+                const pm = translatedMidpoint(msrc, snap.edgeIndex, mp.delta);
+                if (pm) {
+                    const m = projWorld(pm);
+                    drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+                    drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[snap.edgeSnap.target.edgeKind] ?? snap.edgeSnap.target.edgeKind, dpr);
+                }
+                if (snap.secondary) {
+                    const sm = translatedMidpoint(msrc, snap.secondary.edgeIndex, mp.delta);
+                    if (sm) {
+                        const m = projWorld(sm);
+                        drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+                        drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[snap.secondary.edgeSnap.target.edgeKind] ?? snap.secondary.edgeSnap.target.edgeKind, dpr);
+                    }
+                }
+                if (snap.cornerVertex) {
+                    const cv = projWorld(snap.cornerVertex);
+                    drawMarkerDot(ctx, cv.x, cv.y, 6, dpr);
+                }
+            }
+            for (const target of data.seamIconTargets){
+                const p = projWorld({
+                    x: target.worldXMm,
+                    y: target.worldYMm
+                });
+                drawSeamIcon(ctx, p.x, p.y, target.kind, dpr);
+            }
+        }] [[object Object], [object Object],[object Object],[object Object],[object Object], , [object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object],[object Object], , [object Object],[object Object],[object Object],[object Object], [object Object], , [object Object],[object Object],[object Object],[object Object], , , , , , , [object Object], ()=>{
+            const canvas = canvasRef.current;
+            const parent = canvas?.parentElement;
+            if (!canvas || !parent) return;
+            const dpr = window.devicePixelRatio || 1;
+            const cssW = parent.clientWidth;
+            const cssH = parent.clientHeight;
+            if (cssW === 0 || cssH === 0) return;
+            if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+                canvas.width = Math.round(cssW * dpr);
+                canvas.height = Math.round(cssH * dpr);
+                canvas.style.width = `${cssW}px`;
+                canvas.style.height = `${cssH}px`;
+            }
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            const t = liveTransformRef.current;
+            const data = dataRef.current;
+            const { minX, minY, scaleFit, offsetX, offsetY } = fit(data.layout, cssW, cssH);
+            const scale = scaleFit * t.zoom;
+            // Camera affine: device = a·local + e (x), d·local + f (y).
+            const a = dpr * scale;
+            const d = dpr * scale;
+            const e = dpr * (offsetX + scaleFit * (t.panX - minX));
+            const f = dpr * (offsetY + scaleFit * (t.panY - minY));
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(a, 0, 0, d, e, f);
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            for (const item of data.committedBodies)strokePoly(ctx, item.points, (0, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["canvasCommittedBodyStyle"])(item.shape), scale, true);
+            for (const item of data.contextLines)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_CONTEXT_LINE_STYLE"], scale, false);
+            for (const item of data.diagnosticFallbackItems)strokePoly(ctx, item.points, (0, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$lib$2f$drawings$2f$views$2f$plan$2f$planShapeOwnership$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["planShapeIsPergolaDiagnosticFallback"])(item.shape) ? __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_DIAGNOSTIC_FALLBACK_PERGOLA"] : __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_DIAGNOSTIC_FALLBACK_HOUSE"], scale, true);
+            for (const item of data.detailLines)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_DETAIL_LINE_STYLE"], scale, false);
+            if (data.hoveredShapeId) {
+                const hovered = data.hitTargetItems.find({
+                    "PlanCanvas2D.useCallback[draw].hovered": (i)=>i.shape.id === data.hoveredShapeId
+                }["PlanCanvas2D.useCallback[draw].hovered"]);
+                if (hovered) strokePoly(ctx, hovered.points, LOCAL_HOVER_STYLE, scale, true);
+            }
+            for (const item of data.selectionHaloItems)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_SELECTION_HALO"], scale, true);
+            for (const item of data.hoverHaloItems)strokePoly(ctx, item.points, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$portal$2f$components$2f$drawings$2f$viewports$2f$PlanViewport$2f$canvas$2f$canvasShapeStyle$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["CANVAS_HOVER_HALO"], scale, true);
+            // Camera-space preview outlines (world-positioned, constant-px stroke).
+            const adapter = data.coordinateAdapter;
+            const toLocal = {
+                "PlanCanvas2D.useCallback[draw].toLocal": (w)=>adapter.projectionToSvg(w)
+            }["PlanCanvas2D.useCallback[draw].toLocal"];
+            const hover = data.edgeDragHover;
+            if (hover) strokePoly(ctx, [
+                toLocal(hover.edgeStart),
+                toLocal(hover.edgeEnd)
+            ], EDGE_HOVER_LINE_STYLE, scale, false);
+            const edp = data.edgeDragPreview;
+            if (edp) {
+                strokePoly(ctx, edp.previewPolygon.map(toLocal), EDGE_DRAG_PREVIEW_STYLE, scale, true);
+                if (edp.snap) strokePoly(ctx, [
+                    toLocal(edp.snap.target.start),
+                    toLocal(edp.snap.target.end)
+                ], SNAP_LINE_STYLE, scale, false);
+            }
+            const mp = data.movePreview;
+            const msrc = data.movePreviewSourcePolygon;
+            if (mp && msrc && msrc.length >= 3) {
+                strokePoly(ctx, msrc.map({
+                    "PlanCanvas2D.useCallback[draw]": (p)=>toLocal({
+                            x: p.x + mp.delta.x,
+                            y: p.y + mp.delta.y
+                        })
+                }["PlanCanvas2D.useCallback[draw]"]), MOVE_PREVIEW_STYLE, scale, true);
+                if (mp.snap) {
+                    strokePoly(ctx, [
+                        toLocal(mp.snap.edgeSnap.target.start),
+                        toLocal(mp.snap.edgeSnap.target.end)
+                    ], SNAP_LINE_STYLE, scale, false);
+                    if (mp.snap.secondary) strokePoly(ctx, [
+                        toLocal(mp.snap.secondary.edgeSnap.target.start),
+                        toLocal(mp.snap.secondary.edgeSnap.target.end)
+                    ], SNAP_LINE_STYLE, scale, false);
+                }
+            }
+            // Device-space overlays: dimensions, snap markers/labels, seam icons (all
+            // constant on-screen size). Project world → local → device via the camera.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            if (data.dimensions.length) drawDimensions(ctx, data.dimensions, adapter, a, d, e, f, dpr);
+            const projWorld = {
+                "PlanCanvas2D.useCallback[draw].projWorld": (w)=>{
+                    const l = toLocal(w);
+                    return {
+                        x: a * l.x + e,
+                        y: d * l.y + f
+                    };
+                }
+            }["PlanCanvas2D.useCallback[draw].projWorld"];
+            if (hover) {
+                const g = projWorld(hover.closestPoint);
+                drawMarkerDot(ctx, g.x, g.y, 4, dpr);
+            }
+            if (edp?.snap) {
+                const s = edp.previewPolygon[edp.edgeIndex];
+                const en = edp.previewPolygon[(edp.edgeIndex + 1) % edp.previewPolygon.length];
+                if (s && en) {
+                    const m = projWorld(midpoint(s, en));
+                    drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+                    drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[edp.snap.target.edgeKind] ?? edp.snap.target.edgeKind, dpr);
+                }
+            }
+            if (mp?.snap && msrc) {
+                const snap = mp.snap;
+                const pm = translatedMidpoint(msrc, snap.edgeIndex, mp.delta);
+                if (pm) {
+                    const m = projWorld(pm);
+                    drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+                    drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[snap.edgeSnap.target.edgeKind] ?? snap.edgeSnap.target.edgeKind, dpr);
+                }
+                if (snap.secondary) {
+                    const sm = translatedMidpoint(msrc, snap.secondary.edgeIndex, mp.delta);
+                    if (sm) {
+                        const m = projWorld(sm);
+                        drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+                        drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[snap.secondary.edgeSnap.target.edgeKind] ?? snap.secondary.edgeSnap.target.edgeKind, dpr);
+                    }
+                }
+                if (snap.cornerVertex) {
+                    const cv = projWorld(snap.cornerVertex);
+                    drawMarkerDot(ctx, cv.x, cv.y, 6, dpr);
+                }
+            }
+            for (const target of data.seamIconTargets){
+                const p = projWorld({
+                    x: target.worldXMm,
+                    y: target.worldYMm
+                });
+                drawSeamIcon(ctx, p.x, p.y, target.kind, dpr);
+            }
+        }] @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:3272
+[  375488ms] [LOG] [Fast Refresh] done in 650ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  376134ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  376435ms] [LOG] [Fast Refresh] done in 410ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  376561ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  376602ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  376970ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377003ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377142ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377159ms] [LOG] [Fast Refresh] done in 133ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377503ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377527ms] [LOG] [Fast Refresh] done in 132ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377646ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  377674ms] [LOG] [Fast Refresh] done in 132ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  380699ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  408100ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  408656ms] [LOG] [Fast Refresh] done in 662ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  409327ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  409612ms] [LOG] [Fast Refresh] done in 397ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  409735ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  409768ms] [LOG] [Fast Refresh] done in 148ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  410342ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  410379ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  410999ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  411040ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  411156ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  411177ms] [LOG] [Fast Refresh] done in 130ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  414199ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  418669ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  419232ms] [LOG] [Fast Refresh] done in 665ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  419844ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420136ms] [LOG] [Fast Refresh] done in 402ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420269ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420319ms] [LOG] [Fast Refresh] done in 154ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420768ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420796ms] [LOG] [Fast Refresh] done in 142ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420970ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  420992ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  421301ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  421334ms] [LOG] [Fast Refresh] done in 145ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  421489ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  421509ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  424363ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  426730ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  427295ms] [LOG] [Fast Refresh] done in 672ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  427890ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428198ms] [LOG] [Fast Refresh] done in 413ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428327ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428355ms] [LOG] [Fast Refresh] done in 144ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428736ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428775ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428891ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  428917ms] [LOG] [Fast Refresh] done in 129ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  429266ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  429304ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  429422ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  429456ms] [LOG] [Fast Refresh] done in 143ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  432472ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  434971ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  435527ms] [LOG] [Fast Refresh] done in 663ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  436113ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  436405ms] [LOG] [Fast Refresh] done in 404ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  436534ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  436576ms] [LOG] [Fast Refresh] done in 148ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  437053ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  437114ms] [LOG] [Fast Refresh] done in 163ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  437743ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  437764ms] [LOG] [Fast Refresh] done in 132ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  440896ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  441723ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  442316ms] [LOG] [Fast Refresh] done in 690ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  442942ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  443408ms] [LOG] [Fast Refresh] done in 570ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  443898ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  443924ms] [LOG] [Fast Refresh] done in 136ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  444038ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  444067ms] [LOG] [Fast Refresh] done in 130ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  444414ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  444442ms] [LOG] [Fast Refresh] done in 134ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  444587ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  444611ms] [LOG] [Fast Refresh] done in 128ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  447451ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0
+[  451461ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  452009ms] [LOG] [Fast Refresh] done in 657ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  452601ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  452926ms] [LOG] [Fast Refresh] done in 437ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  453554ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  453619ms] [LOG] [Fast Refresh] done in 168ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  454198ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  454233ms] [LOG] [Fast Refresh] done in 137ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  454354ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  454376ms] [LOG] [Fast Refresh] done in 131ms @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[  457391ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/apps_portal_components_page-state_PageState_module_0sc2l4s.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163/design-workbench?planRenderer=canvas:0

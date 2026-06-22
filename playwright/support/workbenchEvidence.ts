@@ -55,7 +55,7 @@ async function screenshotLocator(
   return screenshot.byteLength;
 }
 
-export async function readPlanViewportEvidence(page: Page) {
+async function readPlanViewportEvidence(page: Page) {
   const viewport = page.locator('[data-plan-viewport="true"]').first();
   if ((await viewport.count()) === 0) return null;
 
@@ -82,7 +82,7 @@ export async function readPlanViewportEvidence(page: Page) {
   };
 }
 
-export async function readGeometry3DViewportEvidence(page: Page) {
+async function readGeometry3DViewportEvidence(page: Page) {
   const diagnostics = page.locator('[data-testid="geometry-3d-viewport-diagnostics"]').first();
   const shell = page.locator('[data-testid="geometry-3d-canvas-shell"]').first();
   const canvas = page.locator('[data-testid="geometry-3d-canvas"], [data-testid="geometry-3d-canvas-shell"] canvas, canvas').first();

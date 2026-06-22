@@ -52,7 +52,7 @@ export function pointInOrOnRoofPolygon(candidate: RoofPoint2, polygon: Polygon3)
   return pointInPolygon2D(candidate, polygon) || pointOnRoofPolygonBoundary(candidate, polygon);
 }
 
-export function roofPlaneHeightAtXY(roofPlane: RoofPlane3D, x: number, y: number): number | null {
+function roofPlaneHeightAtXY(roofPlane: RoofPlane3D, x: number, y: number): number | null {
   if (!pointInOrOnRoofPolygon({ x, y }, roofPlane.boundary)) return null;
   const planeEquation = roofSolidPlaneEquationFromPlane(roofPlane.plane);
   if (!planeEquation || Math.abs(planeEquation.normal.z) <= 1e-6) return null;

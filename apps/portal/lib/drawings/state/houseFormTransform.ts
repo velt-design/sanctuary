@@ -13,7 +13,7 @@ import type { HouseFormTransformModel } from './objectFirstWorkbenchModel';
  *   2. `rotationQuarterTurns` (0|1|2|3) → `rotationDeg` (multiples of 90).
  *      Portal constrains rotation to orthogonal turns so wall edges always
  *      align with the world axes; the geometry contract is fully general
- *      degrees, but PR8 only ever feeds it the discrete values.
+ *      degrees, but the workbench house-form UI only emits discrete turns.
  *
  * Lives in the portal package -- the geometry contract intentionally doesn't
  * know about portal-domain types. This converter is the bridge.

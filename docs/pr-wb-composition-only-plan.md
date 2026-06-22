@@ -72,7 +72,7 @@ The 25 production files referencing `.footprint.{mode, preset, polygon, params}`
 - `houseFormRawGeometry.ts`: `buildHouseFormFootprintPolygonMm` becomes `composeFootprintFromComposition(form.composition)`. One line.
 - `houseFormRoofIntentForFootprint.ts`: reconciles roof intent based on composition primitive count + shape (single rect vs composite). The existing branches on preset go away.
 - `objectWorkbenchDeckGeometry.ts`: derives deck attachment from composition's union polygon.
-- `WorkbenchDiagnosticsPanel.tsx`: surfaces composition data instead of preset name.
+- Diagnostics panel: currently retired from the inspector host. If a diagnostics surface is reintroduced, it should surface composition data instead of preset name.
 - `drawingWorkbenchRailModel.ts`: rail labels derived from composition (single-rect → "Rectangle"; multi-rect → "Composite (N rectangles)") instead of from `mode === 'custom_polygon' ? 'Custom footprint' : 'Footprint ready'`.
 - ...and so on for the other 20 files.
 
@@ -117,7 +117,7 @@ In `EstimateDrawingFootprintEdit`:
 | `apps/portal/app/staff/projects/[projectId]/design-workbench/tryConvertResizeToPresetParams.ts` (DELETED) | No longer needed. | -150 / 0 |
 | `apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts` | Action signatures. | -30 / +20 |
 | `apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.ts` | Drop footprint reads. | -10 / +10 |
-| `apps/portal/app/staff/projects/[projectId]/design-workbench/WorkbenchDiagnosticsPanel.tsx` | Read composition. | -15 / +15 |
+| Future diagnostics panel | If reintroduced, read composition instead of preset fields. The previous `WorkbenchDiagnosticsPanel.tsx` file was retired as unused workbench UI. | N/A |
 | `apps/portal/lib/drawings/exportRoofFailureRepro.ts` | Bug-report dump from composition. | -20 / +20 |
 | `apps/portal/lib/types/calculator.ts` | Drop `normalizeHouseFootprintParams` + related if no remaining consumer. | -50 / 0 |
 | Tests (~15 files) | Update fixture builders + remove obsolete preset tests. | -300 / +180 |

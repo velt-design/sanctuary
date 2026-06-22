@@ -31,9 +31,9 @@ import { buildTopProjectionViewModelFromScene } from './topProjection';
 import { validateGeometrySolve } from './validate';
 import { buildViewerSceneModel } from './viewer';
 
-export type PergolaGeometryFamily = GeometryConfig['family'] | 'unknown';
+type PergolaGeometryFamily = GeometryConfig['family'] | 'unknown';
 
-export type PergolaGeometrySolveErrorCode =
+type PergolaGeometrySolveErrorCode =
   | NormalizeGeometryConfigErrorCode
   | SolveAssembly3DErrorCode
   | 'unsupported_family';
@@ -116,7 +116,7 @@ export type PergolaGeometryInput = {
   hostHouse?: RawHouseInput | null;
 };
 
-export type PergolaGeometrySolveSuccess = {
+type PergolaGeometrySolveSuccess = {
   ok: true;
   config: GeometryConfig;
   assembly: Assembly3D;
@@ -128,13 +128,13 @@ export type PergolaGeometrySolveSuccess = {
   quantityTakeoff: GeometryQuantityTakeoff;
 };
 
-export type PergolaGeometrySolveFailure = {
+type PergolaGeometrySolveFailure = {
   ok: false;
   code: PergolaGeometrySolveErrorCode;
   error: string;
 };
 
-export type PergolaGeometrySolveResult =
+type PergolaGeometrySolveResult =
   | PergolaGeometrySolveSuccess
   | PergolaGeometrySolveFailure;
 

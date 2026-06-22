@@ -3,19 +3,6 @@
 import type { ReactNode } from 'react';
 import styles from './RightInspectorPanel.module.css';
 
-/*
- * PR-W3b (2026-05-23) — scaffold for the CAD-style right-inspector slot.
- *
- * This is a *placeholder* implementation. PR-W3c moves the per-object input
- * sections into here, one family at a
- * time. PR-W3d finishes by deleting the now-empty per-object input UI from
- * the left rail (the left rail then carries VISIBILITY + OBJECTS TREE only).
- *
- * Why scaffold first: the new 3-column grid + this panel become the mount
- * point for the moved sections. Landing the slot in isolation removes
- * layout churn from each subsequent section migration PR.
- */
-
 type RightInspectorPanelProps = {
   /**
    * Header label — e.g. "Pergola 1" when a pergola is selected, "House Form"
@@ -27,9 +14,7 @@ type RightInspectorPanelProps = {
    * Empty when no selection or no trust state.
    */
   trustStatusLabel?: string | null;
-  /**
-   * Section content. Sections come from PR-W3c-era extractions.
-   */
+  /** Selected-object inspector sections supplied by WorkbenchInspectorHost. */
   children?: ReactNode;
 };
 

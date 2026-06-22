@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import RightInspectorPanel from './RightInspectorPanel';
 
-describe('RightInspectorPanel (PR-W3b)', () => {
+describe('RightInspectorPanel', () => {
   it('renders the empty placeholder state when no selection is provided', () => {
     const markup = renderToStaticMarkup(<RightInspectorPanel />);
     expect(markup).toContain('data-right-inspector="true"');
