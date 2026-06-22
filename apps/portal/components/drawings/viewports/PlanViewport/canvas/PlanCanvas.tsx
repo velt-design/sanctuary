@@ -330,6 +330,13 @@ export function PlanCanvas({
         selectionHaloItems={selectionHaloItems}
         hoverHaloItems={hoverHaloItems}
         dimensions={dimensions}
+        edgeDragPreview={edgeDragPreview}
+        edgeDragHover={edgeDragHover}
+        movePreview={movePreview}
+        movePreviewSourcePolygon={movePreviewSourcePolygon}
+        seamIconTargets={seamIconTargets}
+        onJoinHouseForms={onJoinHouseForms}
+        onDetachHouseFormAtSeam={onDetachHouseFormAtSeam}
         onHoverShape={onHoverShape}
         transform={transform}
         onTransformChange={onTransformChange}

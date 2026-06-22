@@ -25,10 +25,76 @@ import { useToolDispatcher } from '../tools/ToolDispatcher';
 import { useHoveredShape } from '../interactions/useHoveredShape';
 import { buildPointerDispatchAction } from './pointerDispatch';
 import { resolvePlanDimensionGeometry, type PlanDimension } from './planDimension';
+import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
+import type { MoveToolPreview } from '../tools/MoveTool';
+import type { PlanSeamIconTarget } from '../interactions/seams/seamIconTargets';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 const WHEEL_COMMIT_DEBOUNCE_MS = 120;
 const LOCAL_HOVER_STYLE: CanvasShapeStyle = { stroke: '#7b8288', widthPx: 1, fill: null, dash: [5, 3] };
+
+// Preview / snap / seam overlays mirror the .edgeDragPreview / .movePreview /
+// .snapIndicator* / seam-icon styles in planLineweights.module.css. Outline
+// polygons + lines draw in CAMERA space (constant-px stroke); markers, labels
+// and seam chips draw in DEVICE space (constant on-screen size).
+const SNAP_COLOR = '#ff6b00';
+const SELECTION_COLOR = '#2f6f96';
+const EDGE_DRAG_PREVIEW_STYLE: CanvasShapeStyle = { stroke: SNAP_COLOR, widthPx: 1.5, fill: 'rgba(255, 107, 0, 0.06)', dash: [4, 2] };
+const EDGE_HOVER_LINE_STYLE: CanvasShapeStyle = { stroke: SNAP_COLOR, widthPx: 4, fill: null };
+const MOVE_PREVIEW_STYLE: CanvasShapeStyle = { stroke: SELECTION_COLOR, widthPx: 1.5, fill: 'rgba(47, 111, 150, 0.10)', dash: [6, 3] };
+const SNAP_LINE_STYLE: CanvasShapeStyle = { stroke: SNAP_COLOR, widthPx: 3, fill: null };
+const SEAM_ICON_RADIUS_PX = 9;
+const SEAM_ICON_HIT_RADIUS_PX = 11;
+
+const SNAP_KIND_LABEL: Record<string, string> = { roof_eave: 'Roof eave', wall: 'Wall', pergola_outline: 'Pergola' };
+
+function midpoint(a: Point2, b: Point2): Point2 {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function translatedMidpoint(poly: ReadonlyArray<Point2>, edgeIndex: number, delta: Point2): Point2 | null {
+  const s = poly[edgeIndex];
+  const en = poly[(edgeIndex + 1) % poly.length];
+  if (!s || !en) return null;
+  return { x: (s.x + en.x) / 2 + delta.x, y: (s.y + en.y) / 2 + delta.y };
+}
+
+function drawMarkerDot(ctx: CanvasRenderingContext2D, x: number, y: number, radiusPx: number, dpr: number): void {
+  ctx.beginPath();
+  ctx.arc(x, y, radiusPx * dpr, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = SNAP_COLOR;
+  ctx.lineWidth = 1 * dpr;
+  ctx.stroke();
+}
+
+function drawSnapLabel(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, dpr: number): void {
+  ctx.font = `600 ${10 * dpr}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3 * dpr;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.strokeText(text, x, y - 12 * dpr);
+  ctx.fillStyle = SNAP_COLOR;
+  ctx.fillText(text, x, y - 12 * dpr);
+}
+
+function drawSeamIcon(ctx: CanvasRenderingContext2D, x: number, y: number, kind: 'detach' | 'join', dpr: number): void {
+  ctx.beginPath();
+  ctx.arc(x, y, SEAM_ICON_RADIUS_PX * dpr, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = SNAP_COLOR;
+  ctx.lineWidth = 1.5 * dpr;
+  ctx.stroke();
+  ctx.font = `600 ${13 * dpr}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = SNAP_COLOR;
+  ctx.fillText(kind === 'detach' ? '–' : '+', x, y + dpr);
+}
 
 // Dimension styling mirrors `.dimensionLine/.dimensionArrow/.dimensionLabel`
 // in planLineweights.module.css. Drawn in DEVICE space (constant on-screen
@@ -138,6 +204,13 @@ export type PlanCanvas2DProps = {
   selectionHaloItems: PlanRenderItem[];
   hoverHaloItems?: PlanRenderItem[];
   dimensions?: ReadonlyArray<PlanDimension>;
+  edgeDragPreview?: EdgeDragPreview | null;
+  edgeDragHover?: EdgeDragHover | null;
+  movePreview?: MoveToolPreview | null;
+  movePreviewSourcePolygon?: ReadonlyArray<Point2> | null;
+  seamIconTargets?: ReadonlyArray<PlanSeamIconTarget>;
+  onJoinHouseForms?: (input: { formAId: string; formBId: string }) => void;
+  onDetachHouseFormAtSeam?: (input: { houseFormId: string; joinIndex: number }) => void;
   onHoverShape?: (shape: GeometryTopProjectionShape | null) => void;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
@@ -175,6 +248,13 @@ export function PlanCanvas2D({
   selectionHaloItems,
   hoverHaloItems = [],
   dimensions = [],
+  edgeDragPreview = null,
+  edgeDragHover = null,
+  movePreview = null,
+  movePreviewSourcePolygon = null,
+  seamIconTargets = [],
+  onJoinHouseForms,
+  onDetachHouseFormAtSeam,
   onHoverShape,
   transform,
   onTransformChange,
@@ -187,8 +267,8 @@ export function PlanCanvas2D({
   const panRef = useRef<{ pointerId: number; startClientX: number; startClientY: number; startPanX: number; startPanY: number } | null>(null);
   const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const dataRef = useRef({ layout, coordinateAdapter, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, hoveredShapeId: hoveredShape?.shapeId ?? null });
-  dataRef.current = { layout, coordinateAdapter, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, hoveredShapeId: hoveredShape?.shapeId ?? null };
+  const dataRef = useRef({ layout, coordinateAdapter, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, edgeDragPreview, edgeDragHover, movePreview, movePreviewSourcePolygon, seamIconTargets, hoveredShapeId: hoveredShape?.shapeId ?? null });
+  dataRef.current = { layout, coordinateAdapter, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, edgeDragPreview, edgeDragHover, movePreview, movePreviewSourcePolygon, seamIconTargets, hoveredShapeId: hoveredShape?.shapeId ?? null };
 
   const strokePoly = useCallback(
     (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], style: CanvasShapeStyle, scale: number, close: boolean) => {
@@ -253,14 +333,70 @@ export function PlanCanvas2D({
     }
     for (const item of data.selectionHaloItems) strokePoly(ctx, item.points, CANVAS_SELECTION_HALO, scale, true);
     for (const item of data.hoverHaloItems) strokePoly(ctx, item.points, CANVAS_HOVER_HALO, scale, true);
-    // Dimensions last, in device space (constant on-screen size).
-    if (data.dimensions.length) drawDimensions(ctx, data.dimensions, data.coordinateAdapter, a, d, e, f, dpr);
+
+    // Camera-space preview outlines (world-positioned, constant-px stroke).
+    const adapter = data.coordinateAdapter;
+    const toLocal = (w: Point2) => adapter.projectionToSvg(w);
+    const hover = data.edgeDragHover;
+    if (hover) strokePoly(ctx, [toLocal(hover.edgeStart), toLocal(hover.edgeEnd)], EDGE_HOVER_LINE_STYLE, scale, false);
+    const edp = data.edgeDragPreview;
+    if (edp) {
+      strokePoly(ctx, edp.previewPolygon.map(toLocal), EDGE_DRAG_PREVIEW_STYLE, scale, true);
+      if (edp.snap) strokePoly(ctx, [toLocal(edp.snap.target.start), toLocal(edp.snap.target.end)], SNAP_LINE_STYLE, scale, false);
+    }
+    const mp = data.movePreview;
+    const msrc = data.movePreviewSourcePolygon;
+    if (mp && msrc && msrc.length >= 3) {
+      strokePoly(ctx, msrc.map((p) => toLocal({ x: p.x + mp.delta.x, y: p.y + mp.delta.y })), MOVE_PREVIEW_STYLE, scale, true);
+      if (mp.snap) {
+        strokePoly(ctx, [toLocal(mp.snap.edgeSnap.target.start), toLocal(mp.snap.edgeSnap.target.end)], SNAP_LINE_STYLE, scale, false);
+        if (mp.snap.secondary) strokePoly(ctx, [toLocal(mp.snap.secondary.edgeSnap.target.start), toLocal(mp.snap.secondary.edgeSnap.target.end)], SNAP_LINE_STYLE, scale, false);
+      }
+    }
+
+    // Device-space overlays: dimensions, snap markers/labels, seam icons (all
+    // constant on-screen size). Project world → local → device via the camera.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (data.dimensions.length) drawDimensions(ctx, data.dimensions, adapter, a, d, e, f, dpr);
+    const projWorld = (w: Point2) => { const l = toLocal(w); return { x: a * l.x + e, y: d * l.y + f }; };
+    if (hover) { const g = projWorld(hover.closestPoint); drawMarkerDot(ctx, g.x, g.y, 4, dpr); }
+    if (edp?.snap) {
+      const s = edp.previewPolygon[edp.edgeIndex];
+      const en = edp.previewPolygon[(edp.edgeIndex + 1) % edp.previewPolygon.length];
+      if (s && en) {
+        const m = projWorld(midpoint(s, en));
+        drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+        drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[edp.snap.target.edgeKind] ?? edp.snap.target.edgeKind, dpr);
+      }
+    }
+    if (mp?.snap && msrc) {
+      const snap = mp.snap;
+      const pm = translatedMidpoint(msrc, snap.edgeIndex, mp.delta);
+      if (pm) {
+        const m = projWorld(pm);
+        drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+        drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[snap.edgeSnap.target.edgeKind] ?? snap.edgeSnap.target.edgeKind, dpr);
+      }
+      if (snap.secondary) {
+        const sm = translatedMidpoint(msrc, snap.secondary.edgeIndex, mp.delta);
+        if (sm) {
+          const m = projWorld(sm);
+          drawMarkerDot(ctx, m.x, m.y, 4, dpr);
+          drawSnapLabel(ctx, m.x, m.y, SNAP_KIND_LABEL[snap.secondary.edgeSnap.target.edgeKind] ?? snap.secondary.edgeSnap.target.edgeKind, dpr);
+        }
+      }
+      if (snap.cornerVertex) { const cv = projWorld(snap.cornerVertex); drawMarkerDot(ctx, cv.x, cv.y, 6, dpr); }
+    }
+    for (const target of data.seamIconTargets) {
+      const p = projWorld({ x: target.worldXMm, y: target.worldYMm });
+      drawSeamIcon(ctx, p.x, p.y, target.kind, dpr);
+    }
   }, [strokePoly]);
 
   useLayoutEffect(() => {
     liveTransformRef.current = transform;
     draw();
-  }, [transform, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, hoveredShape, layout, draw]);
+  }, [transform, committedBodies, diagnosticFallbackItems, contextLines, detailLines, hitTargetItems, selectionHaloItems, hoverHaloItems, dimensions, edgeDragPreview, edgeDragHover, movePreview, movePreviewSourcePolygon, seamIconTargets, hoveredShape, layout, draw]);
 
   useEffect(() => {
     const parent = canvasRef.current?.parentElement;
@@ -294,6 +430,30 @@ export function PlanCanvas2D({
     }
     return null;
   }, []);
+
+  // Seam icons are drawn at a constant device size; their hit radius in local
+  // space therefore shrinks as the user zooms in. Topmost-first.
+  const hitTestSeamIcon = useCallback((local: Point2): PlanSeamIconTarget | null => {
+    const data = dataRef.current;
+    if (!data.seamIconTargets.length) return null;
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const { scaleFit } = fit(data.layout, rect.width, rect.height);
+    const hitRadiusLocal = SEAM_ICON_HIT_RADIUS_PX / (scaleFit * (liveTransformRef.current.zoom || 1));
+    for (let i = data.seamIconTargets.length - 1; i >= 0; i -= 1) {
+      const t = data.seamIconTargets[i]!;
+      const iconLocal = data.coordinateAdapter.projectionToSvg({ x: t.worldXMm, y: t.worldYMm });
+      if (Math.hypot(local.x - iconLocal.x, local.y - iconLocal.y) <= hitRadiusLocal) return t;
+    }
+    return null;
+  }, []);
+
+  const pendingSeamRef = useRef<PlanSeamIconTarget | null>(null);
+  const fireSeamAction = useCallback((target: PlanSeamIconTarget) => {
+    if (target.kind === 'detach') onDetachHouseFormAtSeam?.({ houseFormId: target.houseFormId, joinIndex: target.joinIndex });
+    else onJoinHouseForms?.({ formAId: target.formAId, formBId: target.formBId });
+  }, [onDetachHouseFormAtSeam, onJoinHouseForms]);
 
   const dispatchPointer = useCallback(
     (kind: 'down' | 'move' | 'up', event: ReactPointerEvent<HTMLCanvasElement>, shape: GeometryTopProjectionShape | null) => {
@@ -344,11 +504,20 @@ export function PlanCanvas2D({
     }
     if (event.button !== 0) return;
     const local = clientToLocal(event.clientX, event.clientY);
+    // Seam icons take priority over the body under them (mirrors the SVG
+    // layer's stopPropagation). The action fires on pointer-up if still over.
+    const seam = local ? hitTestSeamIcon(local) : null;
+    if (seam) {
+      pendingSeamRef.current = seam;
+      try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* best-effort */ }
+      return;
+    }
     const hit = local ? hitTest(local) : null;
     dispatchPointer('down', event, hit?.shape ?? null);
-  }, [clientToLocal, hitTest, dispatchPointer]);
+  }, [clientToLocal, hitTest, hitTestSeamIcon, dispatchPointer]);
 
   const onPointerMove = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (pendingSeamRef.current) return;
     const pan = panRef.current;
     if (pan && pan.pointerId === event.pointerId) {
       const canvas = canvasRef.current;
@@ -373,6 +542,15 @@ export function PlanCanvas2D({
   }, [clientToLocal, hitTest, dispatchPointer, draw, hoveredShape, onShapeEnter, onShapeLeave, onHoverShape]);
 
   const onPointerUp = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const pendingSeam = pendingSeamRef.current;
+    if (pendingSeam) {
+      pendingSeamRef.current = null;
+      try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* best-effort */ }
+      const local = clientToLocal(event.clientX, event.clientY);
+      const stillOver = local ? hitTestSeamIcon(local) : null;
+      if (stillOver && stillOver.key === pendingSeam.key) fireSeamAction(pendingSeam);
+      return;
+    }
     const pan = panRef.current;
     if (pan && pan.pointerId === event.pointerId) {
       panRef.current = null;
@@ -382,7 +560,7 @@ export function PlanCanvas2D({
     }
     if (event.button !== 0) return;
     dispatchPointer('up', event, null);
-  }, [commit, dispatchPointer]);
+  }, [commit, dispatchPointer, clientToLocal, hitTestSeamIcon, fireSeamAction]);
 
   const handleFitView = useCallback(() => onTransformChange(IDENTITY_TRANSFORM), [onTransformChange]);
 
@@ -408,6 +586,7 @@ export function PlanCanvas2D({
         data-plan-committed-body-count={committedBodies.length}
         data-plan-hit-target-count={hitTargetCount}
         data-plan-dimension-count={dimensions.length}
+        data-plan-seam-icon-count={seamIconTargets.length}
         data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}
         data-plan-active-tool-id={dispatcher.activeTool.id}
