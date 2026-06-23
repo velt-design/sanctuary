@@ -14,6 +14,7 @@ import ScrollReset from '@/components/ScrollReset';
 import { Suspense, type CSSProperties } from 'react';
 import MetaPixel from '@/components/MetaPixel';
 import ArchiproPixel from '@/components/ArchiproPixel';
+import GoogleTagManager, { GoogleTagManagerNoScript } from '@/components/GoogleTagManager';
 import JsonLd from '@/components/JsonLd';
 import PortalMode from '@/components/PortalMode';
 import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
@@ -72,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" style={brandCssVars}>
       <head>
+        <GoogleTagManager />
         <JsonLd
           data={[
             {
@@ -116,6 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body>
+        <GoogleTagManagerNoScript />
         <ConsentProvider>
           <PortalMode />
           <WebVitals />

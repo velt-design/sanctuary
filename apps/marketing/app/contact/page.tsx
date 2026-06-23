@@ -117,9 +117,10 @@ export default function ContactPage() {
   // Analytics helper (GA4 via window.gtag, if configured)
   type GtagFn = (...args: any[]) => void;
   type FbqFn = (...args: any[]) => void;
+  type DataLayerEvent = Record<string, unknown>;
   const trackSubmitEvent = (phase:'start'|'success'|'error', extra?:Record<string, unknown>, eventId?: string) => {
     if (typeof window === 'undefined') return;
-    const w = window as typeof window & { gtag?: GtagFn; fbq?: FbqFn };
+    const w = window as typeof window & { dataLayer?: DataLayerEvent[]; gtag?: GtagFn; fbq?: FbqFn };
     const gtag = w.gtag;
     const fbq = w.fbq;
     const base = {
@@ -136,6 +137,15 @@ export default function ContactPage() {
       if (phase === 'success' && typeof fbq === 'function') {
         if (eventId) fbq('track', 'Lead', { ...base, ...extra }, { eventID: eventId });
         else fbq('track', 'Lead', { ...base, ...extra });
+      }
+      if (phase === 'success') {
+        w.dataLayer = w.dataLayer || [];
+        w.dataLayer.push({
+          event: 'lead_submitted',
+          ...base,
+          ...extra,
+          lead_event_id: eventId,
+        });
       }
     } catch {
       // Fail silently – analytics should never break form submission

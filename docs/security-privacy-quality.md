@@ -14,12 +14,15 @@ Optional categories must not load before explicit consent.
 
 | Integration | Category | Load Path | Purpose | Owner |
 | --- | --- | --- | --- | --- |
+| Google Tag Manager | analytics / marketing | `apps/marketing/components/GoogleTagManager.tsx` | Container for Google Ads conversion tags, conversion linker, and future vendor tags; consent defaults are denied before the container loads | Marketing and Engineering |
 | Google Analytics GA4 | analytics | `apps/marketing/components/Analytics.tsx`, `apps/marketing/app/runtime-ga.js/route.ts` | Page and Web Vitals analytics | Marketing and Engineering |
 | Meta Pixel browser | marketing | `apps/marketing/components/MetaPixel.tsx`, `apps/marketing/app/runtime-meta.js/route.ts` | Browser-side lead attribution | Marketing |
 | Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Server-side lead conversion reporting | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
 
 When adding or removing tracking, update this table and the privacy behavior.
+
+GTM migration note: the coded GA4 loader remains active while the GTM container is being configured. The public enquiry form pushes a non-PII `lead_submitted` dataLayer event after `/api/enquiry` succeeds so Google Ads conversion tracking can trigger without relying on a thank-you page. Once GA4 and Google Ads conversion tags are owned by GTM, remove or disable the coded GA4 loader to avoid duplicate page view or event reporting.
 
 ## Security Rules
 
