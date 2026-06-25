@@ -383,7 +383,7 @@ export default function ContactPage() {
           <div className="contact-mid__intro grid gap-y-[var(--vgap)]">
             <h1 className="product-title text-3xl lg:text-4xl font-semibold">Start your project</h1>
             <div className="contact-info text-sm">
-              <div><strong>Phone</strong> <a href="tel:+6496349482">+64 9 634 9482</a></div>
+              <div><strong>Phone</strong> <a href="tel:+64228545633">022 854 5633</a></div>
               <div><strong>Email</strong> <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a></div>
             </div>
 
@@ -644,7 +644,7 @@ export default function ContactPage() {
                 {submitState === 'success' ? (
                   <div className="hw-tile span-2" role="status" aria-live="polite">
                     <p><strong>Thanks – we’ve received your enquiry.</strong></p>
-                    <p>We’ll get back to you shortly. If it’s urgent, call <a href="tel:+6496349482">+64 9 634 9482</a>.</p>
+                    <p>We’ll get back to you shortly. If it’s urgent, call <a href="tel:+64228545633">022 854 5633</a>.</p>
                   </div>
                 ) : showGenericMidControls ? (
                   <>

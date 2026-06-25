@@ -69,7 +69,7 @@ export default function PrivacyPage(){
                 <p>To access, correct or delete your information, contact us at <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a>.</p>
 
                 <h2>Contact</h2>
-                <p>Sanctuary Pergolas — <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a> — <a href="tel:+6496349482">+64 9 634 9482</a></p>
+                <p>Sanctuary Pergolas — <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a> — <a href="tel:+64228545633">022 854 5633</a></p>
               </div>
             </div>
           </div>

@@ -6,10 +6,10 @@ describe('toIndicativeRangeOneSided', () => {
     const trueCostIncGst = 19999;
     const range = toIndicativeRangeOneSided(trueCostIncGst, 'residential');
 
-    // baseline = 19999 * 1.20 = 23998.8 -> rounds to 24000
-    // high = baseline * 1.15 = 27598.62 -> rounds to 27500
-    expect(range.lowIncGst).toBe(24000);
-    expect(range.highIncGst).toBe(27500);
+    // baseline = 19999 * 1.25 = 24998.75 -> rounds to 25000
+    // high = baseline * 1.15 = 28748.5625 -> rounds to 28750
+    expect(range.lowIncGst).toBe(25000);
+    expect(range.highIncGst).toBe(28750);
 
     expect(range.lowIncGst % 250).toBe(0);
     expect(range.highIncGst % 250).toBe(0);
@@ -19,10 +19,10 @@ describe('toIndicativeRangeOneSided', () => {
     const trueCostIncGst = 41234.56;
     const range = toIndicativeRangeOneSided(trueCostIncGst, 'commercial');
 
-    // baseline = 41234.56 * 1.20 = 49481.472 -> rounds to 49500
-    // high = baseline * 1.15 = 56903.69 -> rounds to 57000
-    expect(range.lowIncGst).toBe(49500);
-    expect(range.highIncGst).toBe(57000);
+    // baseline = 41234.56 * 1.25 = 51543.2 -> rounds to 51500
+    // high = baseline * 1.15 = 59274.68 -> rounds to 59500
+    expect(range.lowIncGst).toBe(51500);
+    expect(range.highIncGst).toBe(59500);
 
     expect(range.lowIncGst % 500).toBe(0);
     expect(range.highIncGst % 500).toBe(0);
@@ -37,7 +37,7 @@ describe('toIndicativeRangeOneSided', () => {
     const residential = toIndicativeSingleAmount(19999, 'residential');
     const commercial = toIndicativeSingleAmount(41234.56, 'commercial');
 
-    expect(residential).toEqual({ lowIncGst: 24000, highIncGst: 24000 });
-    expect(commercial).toEqual({ lowIncGst: 49500, highIncGst: 49500 });
+    expect(residential).toEqual({ lowIncGst: 25000, highIncGst: 25000 });
+    expect(commercial).toEqual({ lowIncGst: 51500, highIncGst: 51500 });
   });
 });

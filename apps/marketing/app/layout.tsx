@@ -97,7 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               '@type': 'LocalBusiness',
               name: 'Sanctuary Pergolas',
               url: 'https://www.sanctuarypergolas.co.nz',
-              telephone: '+64 9 634 9482',
+              telephone: '+64 22 854 5633',
               email: 'info@sanctuarypergolas.co.nz',
               address: {
                 '@type': 'PostalAddress',

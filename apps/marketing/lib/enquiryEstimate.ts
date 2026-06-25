@@ -5,10 +5,10 @@ export type MoneyRange = {
   highIncGst: number;
 };
 
-// PR-PE1 (2026-06-16): marketing-email quote multiplier reduced from 1.25 to
-// 1.20. The portal-side `QUOTE_MARGIN_MULTIPLIER` in `EstimatesTab.tsx` stays
-// at 1.25; that's the staff-quote markup, a different surface.
-export const QUOTE_MULTIPLIER = 1.20;
+// 2026-06-26: marketing-email quote multiplier set to 1.25 (25% markup). The
+// portal-side `QUOTE_MARGIN_MULTIPLIER` in `EstimatesTab.tsx` also stays at
+// 1.25; that's the staff-quote markup, a different surface.
+export const QUOTE_MULTIPLIER = 1.25;
 const UPLIFT_MAX = 1.15; // baseline -> +15%
 
 function roundTo(n: number, step: number) {

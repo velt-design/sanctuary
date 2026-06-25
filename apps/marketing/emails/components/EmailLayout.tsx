@@ -57,7 +57,7 @@ export function EmailLayout(props: { preview: string; children: React.ReactNode 
               <br />
               Outdoor living, designed around your home.
               <br />
-              Phone: +64 9 634 9482
+              Phone: 022 854 5633
               <br />
               Email: info@sanctuarypergolas.co.nz
             </Text>
