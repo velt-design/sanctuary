@@ -2,6 +2,7 @@ import 'server-only';
 
 import { randomUUID } from 'crypto';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
+import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import type { QuoteAcceptResult, QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion, QuoteVersionDetail } from './types';
@@ -1195,7 +1196,7 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
   const versionRes = await supabaseServiceRole
     .from('quote_versions')
-    .select('id, status, quote_id')
+    .select('id, status, quote_id, total_inc_gst_cents')
     .eq('id', quoteVersionUuid)
     .single();
   if (versionRes.error) {
@@ -1222,6 +1223,16 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   const projectUuid = String(quoteRes.data?.project_id ?? '');
   if (projectUuid) {
     await insertAuditEvent({ projectId: projectUuid, type: 'quote.accepted', payload: { quoteVersionId: quoteVersionUuid } });
+    await recordMarketingConversionEvent({
+      type: 'marketing.quote_accepted',
+      projectId: projectUuid,
+      primaryId: quoteVersionUuid,
+      payload: {
+        quoteVersionId: quoteVersionUuid,
+        quoteId: String(versionRes.data.quote_id ?? ''),
+        valueIncGstCents: Number(versionRes.data.total_inc_gst_cents ?? 0) || 0,
+      },
+    });
   }
   const invoiceResult = await ensureDepositInvoiceForAcceptedQuote({ quoteVersionUuid, actor });
 

@@ -10,6 +10,7 @@ import {
   EMAIL_PROJECT_COMPLETED_V1,
   EMAIL_PROJECT_SCHEDULED_V1,
 } from '@/lib/emails/transactionalTemplates';
+import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { isUuid } from '@/lib/supabase/mappers';
 import type { ProjectStatus } from '@/lib/types/project';
@@ -636,6 +637,14 @@ class AutomationRunner {
         return;
       case 'ui.action.book_site_visit':
         await this.onBookSiteVisit(projectId, (payload ?? {}) as BookSiteVisitPayload);
+        await recordMarketingConversionEvent({
+          type: 'marketing.site_visit_booked',
+          projectId,
+          payload: {
+            scheduledStart: (payload as BookSiteVisitPayload | null)?.scheduledStart ?? null,
+            scheduledEnd: (payload as BookSiteVisitPayload | null)?.scheduledEnd ?? null,
+          },
+        });
         return;
       case 'ui.action.complete_site_visit':
         await this.onCompleteSiteVisit(projectId);
@@ -651,6 +660,10 @@ class AutomationRunner {
         return;
       case 'ui.action.mark_deposit_received':
         await this.onDepositReceived(projectId);
+        await recordMarketingConversionEvent({
+          type: 'marketing.deposit_received',
+          projectId,
+        });
         return;
       case 'ui.action.confirm_schedule':
         await this.onConfirmSchedule(projectId);

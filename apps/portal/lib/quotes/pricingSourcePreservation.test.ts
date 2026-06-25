@@ -16,6 +16,7 @@ type TableName =
 type DbState = Record<TableName, Row[]>;
 
 const h = vi.hoisted(() => ({
+  recordMarketingConversionEvent: vi.fn(),
   supabaseServiceRole: {
     from: vi.fn(),
     rpc: vi.fn(),
@@ -24,6 +25,10 @@ const h = vi.hoisted(() => ({
 
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServiceRole: h.supabaseServiceRole,
+}));
+
+vi.mock('@/lib/marketingAttribution/server', () => ({
+  recordMarketingConversionEvent: h.recordMarketingConversionEvent,
 }));
 
 vi.mock('@/lib/estimates/server', () => ({
@@ -92,8 +97,9 @@ function resetDb(seed: Partial<DbState> = {}, queuedIds: Partial<Record<TableNam
   insertIds = Object.fromEntries(Object.entries(queuedIds).map(([table, values]) => [table, [...(values ?? [])]]));
   generatedCounter = 1;
   ops.length = 0;
-  h.supabaseServiceRole.from.mockImplementation((table: TableName) => new FakeQuery(table));
-  h.supabaseServiceRole.rpc.mockResolvedValue({ data: 'Q-1001', error: null });
+    h.supabaseServiceRole.from.mockImplementation((table: TableName) => new FakeQuery(table));
+    h.supabaseServiceRole.rpc.mockResolvedValue({ data: 'Q-1001', error: null });
+    h.recordMarketingConversionEvent.mockReset();
 }
 
 function attachRelations(table: TableName, row: Row, selectArg: string | null): Row {
@@ -547,6 +553,49 @@ describe('quote pricing source preservation in domain helpers', () => {
     expectNoRawCommercialPayload(revision?.pricing_source_metadata);
     expect(db.quote_line_items.find((row) => row.quote_version_id === ids.quoteVersionRevision)?.line_total_inc_gst_cents).toBe(14375);
     expect(ops.some((op) => op.table === 'estimates' && op.select?.includes('pricing_source, pricing_source_metadata'))).toBe(false);
+  });
+
+  it('records a marketing conversion event when a sent quote is accepted', async () => {
+    const invoice = {
+      id: ids.invoice,
+      invoice_ref: 'INV-1001',
+    };
+    const invoices = await import('../invoices/server');
+    vi.mocked(invoices.ensureDepositInvoiceForAcceptedQuote).mockResolvedValue({
+      invoice,
+      sent: false,
+      sendError: null,
+    } as any);
+
+    resetDb({
+      estimates: [
+        makeEstimate({
+          id: ids.estimateWorkbench,
+          source: 'workbench_solved',
+          costExGst: 100,
+          metadata: { selectedSource: 'workbench_solved' },
+        }),
+      ],
+      projects: [makeProject()],
+      quotes: [makeQuote()],
+      quote_versions: [makeQuoteVersion({ id: ids.quoteVersionSent, status: 'SENT', total_inc_gst_cents: 14375 })],
+      quote_line_items: [makeLine(ids.quoteVersionSent, 14375)],
+    });
+
+    const { markQuoteAccepted } = await import('./serverCore');
+    await markQuoteAccepted(appId('qv', ids.quoteVersionSent), 'ops@example.com');
+
+    expect(h.recordMarketingConversionEvent).toHaveBeenCalledWith({
+      type: 'marketing.quote_accepted',
+      projectId: ids.project,
+      primaryId: ids.quoteVersionSent,
+      payload: {
+        quoteVersionId: ids.quoteVersionSent,
+        quoteId: ids.quote,
+        valueIncGstCents: 14375,
+      },
+    });
+    expect(JSON.stringify(h.recordMarketingConversionEvent.mock.calls)).not.toContain('Taylor Client');
   });
 
   it.each([

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { dispatchStartModalVisibility, setStartModalOpenClass } from '@/lib/startModalBridge';
 import {
   START_FLOW_SCHEMA_VERSION,
@@ -440,18 +441,6 @@ function labelFor<T extends string>(
 
 function trimSingleLine(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
-}
-
-function getUtmPayload(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const params = new URLSearchParams(window.location.search);
-  const utm: Record<string, string> = {};
-  for (const [key, value] of params.entries()) {
-    if (key.toLowerCase().startsWith('utm_') && value) {
-      utm[key] = value;
-    }
-  }
-  return utm;
 }
 
 function formatHeightLabel(heightM: number | null): string {
@@ -1315,6 +1304,7 @@ export default function StartPage() {
         heating: draft.extras.heaters,
       };
 
+      const attribution = getBrowserMarketingAttribution();
       const payload = {
         enquiryType: draft.enquiryType,
         name: trimSingleLine(draft.name),
@@ -1331,7 +1321,8 @@ export default function StartPage() {
         roofMaterials: [...draft.roofMaterials],
         addOns,
         files: photoFiles.map((file) => ({ name: file.name, size: file.size, type: file.type })),
-        utm: getUtmPayload(),
+        utm: attribution.utm,
+        attribution,
         page: typeof window === 'undefined' ? '/start' : window.location.pathname,
         source: 'website-start',
         honeypot: '',

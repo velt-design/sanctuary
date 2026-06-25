@@ -13,6 +13,10 @@ import {
   type BlindLineItemInput,
 } from '@sp/costing';
 import { buildEstimateDbPayload } from '../../../../../apps/portal/lib/estimates/persistence';
+import {
+  normalizeMarketingAttributionInput,
+  recordMarketingConversionEvent,
+} from '../../../../../apps/portal/lib/marketingAttribution/server';
 import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
 import {
   EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
@@ -626,7 +630,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid body' }, { status: 400 });
   }
 
-  const rawPayload = safeJsonPayload(payload);
+  let rawPayload = safeJsonPayload(payload);
   const getField = (key: string): string => {
     const value = payload?.[key];
     if (typeof value === 'string') return value;
@@ -701,6 +705,10 @@ export async function POST(req: Request) {
 
   const utmRaw = maybeParseJson(payload.utm);
   const utm = isPlainObject(utmRaw) ? utmRaw : {};
+
+  const attributionRaw = maybeParseJson(payload.attribution);
+  const attribution = normalizeMarketingAttributionInput(attributionRaw, { utm, page, source });
+  rawPayload = safeJsonPayload({ ...payload, attribution });
 
   const filesRaw = maybeParseJson(payload.files);
   const files = Array.isArray(filesRaw) ? filesRaw : [];
@@ -859,6 +867,25 @@ export async function POST(req: Request) {
   if (enquiryError || !enquiryRow?.id) {
     return NextResponse.json({ ok: false, error: enquiryError?.message || 'Failed to create enquiry request' }, { status: 500 });
   }
+
+  await recordMarketingConversionEvent({
+    type: 'marketing.lead_submitted',
+    projectId,
+    primaryId: String(enquiryRow.id),
+    attribution: {
+      ...attribution,
+      enquiryRequestId: String(enquiryRow.id),
+    },
+    payload: {
+      enquiryRequestId: String(enquiryRow.id),
+      enquiryType,
+      source,
+      page: page || null,
+      baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
+      baseBudgetHighIncGst: budgets.baseRange?.highIncGst ?? null,
+    },
+    supabase,
+  });
 
   let designId: string | null = null;
   try {

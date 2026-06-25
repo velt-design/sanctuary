@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import '@/app/products/product.css';
 import '@/app/contact/dark.css';
 import '@/app/contact/spacing.css';
@@ -100,18 +101,6 @@ export default function ContactPage() {
       }
     } catch {}
     return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  };
-
-  const getUtmPayload = (): Record<string, string> => {
-    if (typeof window === 'undefined') return {};
-    const params = new URLSearchParams(window.location.search);
-    const utm: Record<string, string> = {};
-    for (const [key, value] of params.entries()) {
-      if (key.toLowerCase().startsWith('utm_')) {
-        if (value) utm[key] = value;
-      }
-    }
-    return utm;
   };
 
   // Analytics helper (GA4 via window.gtag, if configured)
@@ -300,6 +289,7 @@ export default function ContactPage() {
         enquiryType === 'Professional'
           ? proFiles.map((file) => ({ name: file.name, size: file.size, type: file.type }))
           : [];
+      const attribution = getBrowserMarketingAttribution();
       const payload = {
         enquiryType: enquiryTypeValue,
         name: userName.trim(),
@@ -317,7 +307,8 @@ export default function ContactPage() {
         addOns: addOnsPayload,
         company: enquiryType === 'Professional' ? userCompany.trim() || null : null,
         files: filesPayload,
-        utm: getUtmPayload(),
+        utm: attribution.utm,
+        attribution,
         page: typeof window !== 'undefined' ? window.location.pathname : '',
         source: 'website',
         honeypot: '',
