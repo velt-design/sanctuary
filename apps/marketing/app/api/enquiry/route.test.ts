@@ -92,6 +92,12 @@ function makeDb() {
       return this;
     }
 
+    upsert(payload: Row) {
+      this.op = 'insert';
+      this.payload = payload;
+      return this;
+    }
+
     single() {
       return this.execute(true);
     }
@@ -109,11 +115,15 @@ function makeDb() {
 
     private execute(single: boolean) {
       if (this.op === 'insert') {
+        // Tolerate tables outside the seeded set (e.g. email_outbox,
+        // email_templates) so best-effort upsert logging does not throw.
+        const idPool = (ids as Record<string, string[]>)[this.table];
+        const store = ((db as Record<string, Row[]>)[this.table] ??= []);
         const row = {
-          id: ids[this.table].shift() ?? `${this.table}-${db[this.table].length + 1}`,
+          id: idPool?.shift() ?? `${this.table}-${store.length + 1}`,
           ...this.payload,
         };
-        db[this.table].push(row);
+        store.push(row);
         return Promise.resolve({ data: single ? row : [row], error: null });
       }
 
@@ -129,6 +139,18 @@ function makeDb() {
 
   const client = {
     from: vi.fn((table: TableName) => new Query(table)),
+    storage: {
+      from: vi.fn(() => ({
+        download: vi.fn(async () => ({
+          data: { arrayBuffer: async () => new TextEncoder().encode('PDFDATA').buffer },
+          error: null,
+        })),
+        createSignedUrl: vi.fn(async (path: string) => ({
+          data: { signedUrl: `https://signed.test/${path}` },
+          error: null,
+        })),
+      })),
+    },
   };
 
   return { client, db };
@@ -201,5 +223,39 @@ describe('POST /api/enquiry attribution', () => {
       },
     });
     expect(JSON.stringify(db.audit_events)).not.toContain('Taylor');
+  });
+
+  it('inlines small professional uploads as autoresponder attachments', async () => {
+    const { client } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (sendCustomerAutoresponder as any).mockClear();
+
+    const response = await POST(
+      new Request('http://localhost/api/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enquiryType: 'professional',
+          name: 'Pat',
+          email: 'pat@example.com',
+          phone: '021000000',
+          suburb: 'Ponsonby',
+          company: 'BuildCo',
+          files: [{ path: 'pending/abc/0-plan.pdf', name: 'plan.pdf', size: 2048, type: 'application/pdf' }],
+          source: 'website',
+          page: '/contact',
+          honeypot: '',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sendCustomerAutoresponder).toHaveBeenCalledTimes(1);
+    const [, options] = (sendCustomerAutoresponder as any).mock.calls[0];
+    expect(options).toEqual({
+      attachments: [{ filename: 'plan.pdf', content: Buffer.from('PDFDATA').toString('base64') }],
+    });
   });
 });

@@ -46,7 +46,12 @@ function buildCustomerEmail(enquiry: EnquiryPayload, callWindowText: string): {
   };
 }
 
-export async function sendCustomerAutoresponder(enquiry: EnquiryPayload) {
+type AutoresponderAttachment = { filename: string; content: string };
+
+export async function sendCustomerAutoresponder(
+  enquiry: EnquiryPayload,
+  options?: { attachments?: AutoresponderAttachment[] },
+) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error('RESEND_API_KEY is not set');
@@ -59,6 +64,8 @@ export async function sendCustomerAutoresponder(enquiry: EnquiryPayload) {
   const html = await render(emailElement);
   const text = await render(emailElement, { plainText: true });
 
+  const attachments = options?.attachments?.length ? options.attachments : undefined;
+
   await resend.emails.send({
     from: FROM,
     to: enquiry.email,
@@ -67,5 +74,6 @@ export async function sendCustomerAutoresponder(enquiry: EnquiryPayload) {
     subject,
     html,
     text,
+    ...(attachments ? { attachments } : {}),
   });
 }

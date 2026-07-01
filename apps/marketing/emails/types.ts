@@ -48,6 +48,9 @@ export interface Professional extends EnquiryBase {
   enquiryType: 'professional';
   company?: string;
   filesReceivedCount?: number;
+  // Populated only when uploads are too large to inline as email attachments;
+  // rendered as expiring signed download links in the professional email.
+  attachmentLinks?: { name: string; url: string }[];
 }
 
 export type EnquiryPayload = ResidentialOrCommercial | Professional;

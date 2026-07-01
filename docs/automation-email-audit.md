@@ -46,6 +46,8 @@ Current website enquiry autoresponders keep the existing payload shape for previ
 
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 
+Professional enquiry file uploads are stored, not just counted. The browser mints signed upload URLs via `apps/marketing/app/api/enquiry/attachments/sign` and uploads directly to the private `enquiry-attachments` Supabase Storage bucket (bypassing the serverless request-body limit); the enquiry payload carries only storage paths. On send, `apps/marketing/app/api/enquiry` reads those files back and either inlines them as autoresponder attachments (total <= 8 MB) or attaches 7-day signed download links (rendered in the professional template). Staff receive them via the autoresponder BCC. All storage steps are best-effort: a failure degrades to metadata-only and never blocks the enquiry insert or autoresponder. Requires `NEXT_PUBLIC_SUPABASE_ANON_KEY` for the browser upload; without it, uploads degrade to metadata-only.
+
 ## Access Boundaries
 
 - `AutomationRunner` is server-only and uses service-role access intentionally.

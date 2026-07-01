@@ -618,6 +618,74 @@ async function readBody(req: Request): Promise<Record<string, unknown> | null> {
   return null;
 }
 
+const ENQUIRY_ATTACHMENT_BUCKET = 'enquiry-attachments';
+// Below this total, inline the files as email attachments; above it, send
+// expiring signed download links instead so the autoresponder stays small.
+const ATTACH_INLINE_MAX_BYTES = 8 * 1024 * 1024;
+const ATTACHMENT_LINK_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+type ResolvedAttachment = { filename: string; content: string };
+type AttachmentLink = { name: string; url: string };
+
+function storedAttachmentEntries(files: unknown): Array<{ path: string; name: string; size: number }> {
+  const list = Array.isArray(files) ? files : [];
+  const entries: Array<{ path: string; name: string; size: number }> = [];
+  for (const file of list) {
+    if (!isPlainObject(file)) continue;
+    const path = typeof file.path === 'string' ? file.path : '';
+    if (!path.startsWith('pending/')) continue;
+    const name =
+      typeof file.name === 'string' && file.name.trim()
+        ? file.name.trim()
+        : path.split('/').pop() || 'attachment';
+    const size = typeof file.size === 'number' && Number.isFinite(file.size) ? file.size : 0;
+    entries.push({ path, name, size });
+  }
+  return entries;
+}
+
+// Best-effort: never throws, so a Storage hiccup cannot block the enquiry or
+// its autoresponder. Returns inline attachments when small, else signed links.
+async function resolveProfessionalAttachments(
+  supabase: SupabaseClient,
+  files: unknown,
+): Promise<{ attachments: ResolvedAttachment[]; attachmentLinks: AttachmentLink[] }> {
+  const entries = storedAttachmentEntries(files);
+  if (!entries.length) return { attachments: [], attachmentLinks: [] };
+
+  const totalBytes = entries.reduce((sum, entry) => sum + (entry.size > 0 ? entry.size : 0), 0);
+
+  if (totalBytes > 0 && totalBytes <= ATTACH_INLINE_MAX_BYTES) {
+    const attachments: ResolvedAttachment[] = [];
+    for (const entry of entries) {
+      try {
+        const { data, error } = await supabase.storage.from(ENQUIRY_ATTACHMENT_BUCKET).download(entry.path);
+        if (error || !data) continue;
+        const arrayBuffer = await data.arrayBuffer();
+        attachments.push({ filename: entry.name, content: Buffer.from(arrayBuffer).toString('base64') });
+      } catch {
+        // Skip this file; other attachments and the email still go through.
+      }
+    }
+    if (attachments.length) return { attachments, attachmentLinks: [] };
+    // Downloads failed — fall through to links rather than dropping the files.
+  }
+
+  const attachmentLinks: AttachmentLink[] = [];
+  for (const entry of entries) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(ENQUIRY_ATTACHMENT_BUCKET)
+        .createSignedUrl(entry.path, ATTACHMENT_LINK_TTL_SECONDS);
+      if (error || !data?.signedUrl) continue;
+      attachmentLinks.push({ name: entry.name, url: data.signedUrl });
+    } catch {
+      // Skip this file.
+    }
+  }
+  return { attachments: [], attachmentLinks };
+}
+
 export async function POST(req: Request) {
   let payload: Record<string, unknown> | null = null;
   try {
@@ -944,9 +1012,12 @@ export async function POST(req: Request) {
             : undefined;
 
       let emailPayload: EnquiryPayload;
+      let professionalAttachments: ResolvedAttachment[] = [];
 
       if (enquiryType === 'professional') {
         const filesCount = Array.isArray(files) ? files.length : 0;
+        const resolved = await resolveProfessionalAttachments(supabase, files);
+        professionalAttachments = resolved.attachments;
         emailPayload = {
           leadId: enquiryRow.id,
           submittedAt,
@@ -962,6 +1033,7 @@ export async function POST(req: Request) {
           landingUrl: page || undefined,
           company: company || undefined,
           filesReceivedCount: filesCount,
+          ...(resolved.attachmentLinks.length ? { attachmentLinks: resolved.attachmentLinks } : {}),
         } satisfies Professional;
       } else {
         if (!budgets.baseRange) {
@@ -1027,7 +1099,10 @@ export async function POST(req: Request) {
 
       let sendError: Error | null = null;
       try {
-        await sendCustomerAutoresponder(emailPayload);
+        await sendCustomerAutoresponder(
+          emailPayload,
+          professionalAttachments.length ? { attachments: professionalAttachments } : undefined,
+        );
       } catch (err) {
         sendError = err instanceof Error ? err : new Error('Autoresponder send failed');
         console.error('Autoresponder send failed', err);

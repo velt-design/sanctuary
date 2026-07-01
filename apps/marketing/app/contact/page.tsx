@@ -7,6 +7,59 @@ import '@/app/products/product.css';
 import '@/app/contact/dark.css';
 import '@/app/contact/spacing.css';
 
+type ProAttachmentPayload = { path?: string; name: string; size: number; type: string };
+
+// Upload professional attachments directly to Supabase Storage via short-lived
+// signed URLs, then return their storage paths so the enquiry API can attach
+// them to the autoresponder. Degrades to metadata-only (no path) on any
+// failure so the enquiry itself always submits.
+async function uploadProfessionalAttachments(files: File[]): Promise<ProAttachmentPayload[]> {
+  const metaOnly: ProAttachmentPayload[] = files.map((file) => ({
+    name: file.name,
+    size: file.size,
+    type: file.type,
+  }));
+  if (!files.length) return [];
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) return metaOnly;
+
+  try {
+    const signRes = await fetch('/api/enquiry/attachments/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: metaOnly }),
+    });
+    if (!signRes.ok) return metaOnly;
+    const signJson = await signRes.json().catch(() => null);
+    const uploads = Array.isArray(signJson?.uploads) ? signJson.uploads : [];
+    if (uploads.length !== files.length) return metaOnly;
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const client = createClient(supabaseUrl, supabaseAnonKey);
+
+    return await Promise.all(
+      files.map(async (file, index): Promise<ProAttachmentPayload> => {
+        const upload = uploads[index];
+        try {
+          const { error } = await client.storage
+            .from('enquiry-attachments')
+            .uploadToSignedUrl(upload.path, upload.token, file, {
+              contentType: file.type || undefined,
+            });
+          if (error) return { name: file.name, size: file.size, type: file.type };
+          return { path: upload.path, name: file.name, size: file.size, type: file.type };
+        } catch {
+          return { name: file.name, size: file.size, type: file.type };
+        }
+      }),
+    );
+  } catch {
+    return metaOnly;
+  }
+}
+
 const PERGOLA_OPTIONS = ['Pitched pergola', 'Gable pergola', 'Hip pergola', 'Perimeter pergola'];
 const DISPLAY_STYLE_OPTS = PERGOLA_OPTIONS
   .map(s => s.replace(/\s*pergola$/i, ''))
@@ -287,7 +340,7 @@ export default function ContactPage() {
       };
       const filesPayload =
         enquiryType === 'Professional'
-          ? proFiles.map((file) => ({ name: file.name, size: file.size, type: file.type }))
+          ? await uploadProfessionalAttachments(proFiles)
           : [];
       const attribution = getBrowserMarketingAttribution();
       const payload = {
