@@ -34,31 +34,31 @@
   "warmJourneys": [
     {
       "name": "dashboard-to-projects",
-      "feedbackMsMax": 3500,
-      "usefulContentMsMax": 7000,
-      "enforced": false
+      "feedbackMsMax": 950,
+      "usefulContentMsMax": 2100,
+      "enforced": true
     },
     {
       "name": "projects-to-project",
-      "feedbackMsMax": 3500,
-      "usefulContentMsMax": 7000,
-      "enforced": false
+      "feedbackMsMax": 7200,
+      "usefulContentMsMax": 9500,
+      "enforced": true
     },
     {
       "name": "project-back-to-projects",
-      "feedbackMsMax": 3500,
-      "usefulContentMsMax": 7000,
-      "enforced": false
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true
     }
   ],
   "interactions": [
     {
       "name": "project-tab-details",
       "route": "/staff/projects/[projectId]",
-      "feedbackMsMax": 1200,
-      "usefulContentMsMax": 2000,
+      "feedbackMsMax": 250,
+      "usefulContentMsMax": 500,
       "productFeedbackMsMax": 250,
-      "enforced": false
+      "enforced": true
     },
     {
       "name": "schedule-unscheduled-panel-toggle",
@@ -70,9 +70,9 @@
     {
       "name": "calculator-input-current-result",
       "route": "/staff/calculator",
-      "feedbackMsMax": 1200,
-      "usefulContentMsMax": 5000,
-      "enforced": false
+      "feedbackMsMax": 700,
+      "usefulContentMsMax": 2950,
+      "enforced": true
     }
   ]
 }

@@ -198,6 +198,21 @@ npm run test:portal:performance:fixture
 
 `npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Contacts, and Schedule; warm Dashboard to Projects, Projects to project, browser back, and project tab navigation; and Schedule/Calculator interactions. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Portal Performance CI runs the authenticated suite five times, rejects missing journeys, and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
 
+The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms; the existing cold-route ceilings were not changed.
+
+| Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
+| --- | ---: | ---: | :---: | ---: |
+| Dashboard cold | 1708/1710/1753 ms | 1722/1727/1768 ms | Miss | Existing cold ceiling unchanged |
+| Projects cold | 1397/1399/3004 ms | 1407/1414/3013 ms | Miss | Existing cold ceiling unchanged |
+| Contacts cold | 1424/2106/2461 ms | 1448/2122/2471 ms | Miss | Existing cold ceiling unchanged |
+| Schedule cold | 1553/2687/3194 ms | 2506/3633/4125 ms | Miss | Existing cold ceiling unchanged |
+| Dashboard to Projects | 790/791/841 ms | 1703/1729/1763 ms | Miss | 950/2100 ms |
+| Projects to project | 5824/5996/6600 ms | 7728/7899/8511 ms | Miss | 7200/9500 ms |
+| Project back to Projects | 17/18/25 ms | 145/164/181 ms | Miss | 100/500 ms |
+| Project Details tab | 106/112/120 ms | 132/133/143 ms | Met | 250/500 ms |
+| Schedule unscheduled toggle | 59/73/80 ms | 66/85/87 ms | Met | Existing 1200/1200 ms ceiling unchanged |
+| Calculator current result | 541/550/560 ms | 2428/2440/2497 ms | Miss | 700/2950 ms |
+
 `npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
 
 `npm run test:portal:performance:fixture` measures workbench object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. It requires no authenticated project data and produces its own artifact.

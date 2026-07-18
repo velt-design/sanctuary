@@ -26,6 +26,10 @@ async function firstHref(page: Page, selector: string): Promise<string | null> {
   return link.getAttribute('href');
 }
 
+function portalShellNavigation(page: Page) {
+  return page.locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]').first();
+}
+
 test.describe('portal auth routing public flows', () => {
   test.use({
     storageState: { cookies: [], origins: [] },
@@ -48,18 +52,18 @@ test.describe('portal auth routing public flows', () => {
     await page.waitForURL((url) => url.pathname === '/staff/projects' && url.searchParams.get('q') === 'deck', {
       timeout: 60_000,
     });
-    await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
   });
 
   test('renders public login and access-status pages without portal navigation chrome', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByRole('heading', { name: 'Staff Login' })).toBeVisible();
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toHaveCount(0);
+    await expect(page.locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]')).toHaveCount(0);
     await expect(page.getByLabel('Sidebar reveal lab')).toHaveCount(0);
 
     await page.goto('/access-status?state=no-access&callbackUrl=%2Fdashboard');
     await expect(page.getByRole('heading', { name: 'Access not assigned' })).toBeVisible();
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toHaveCount(0);
+    await expect(page.locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]')).toHaveCount(0);
     await expect(page.getByLabel('Sidebar reveal lab')).toHaveCount(0);
   });
 });
@@ -68,7 +72,7 @@ test.describe('portal auth routing authenticated flows', () => {
   test('redirects authenticated /login visits to the callback destination', async ({ page }) => {
     await page.goto('/login?callbackUrl=%2Fstaff%2Fcontacts');
     await page.waitForURL((url) => url.pathname === '/staff/contacts', { timeout: 30_000 });
-    await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible();
   });
 
   test('enforces the admin-only pricebook boundary for the authenticated portal session', async ({ page }) => {
@@ -90,13 +94,13 @@ test.describe('portal auth routing authenticated flows', () => {
 
     await page.goto('/dashboard');
 
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(portalShellNavigation(page)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(page.locator('main[aria-label="Loading dashboard"]')).toHaveCount(0);
 
     gate.resolve();
 
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 60_000 });
   });
 
   test('shows real projects content immediately even while background queries are pending', async ({ page }) => {
@@ -116,13 +120,13 @@ test.describe('portal auth routing authenticated flows', () => {
 
     await page.goto('/staff/projects');
 
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+    await expect(portalShellNavigation(page)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
     await expect(page.locator('main[aria-label="Loading projects"]')).toHaveCount(0);
 
     gate.resolve();
 
-    await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
   });
 
   test('shows the project detail frame on first load without waiting on the snapshot api route', async ({ page }) => {
@@ -147,23 +151,26 @@ test.describe('portal auth routing authenticated flows', () => {
 
     await page.goto('/staff/contacts');
 
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
+    await expect(portalShellNavigation(page)).toBeVisible();
     await expect(page.locator('main[aria-label="Loading contacts"]')).toBeVisible();
     await expect(page.getByText('Loading contacts')).toHaveCount(0);
 
     gate.resolve();
 
-    await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible({ timeout: 60_000 });
   });
 
   test('renders the schedule shell with the shared page chrome', async ({ page }) => {
     await page.goto('/staff/schedule');
 
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+    await expect(portalShellNavigation(page)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
   });
 
   test('verifies the full schedule schema readiness contract through the authenticated app surface', async ({ page }) => {
+    await page.goto('/staff/schedule');
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
+
     const readiness = await page.evaluate(async () => {
       const res = await fetch('/api/staff/v1/schedule/readiness');
       const text = await res.text();
@@ -187,7 +194,7 @@ test.describe('portal auth routing authenticated flows', () => {
   test('keeps the schedule board search and panel controls responsive', async ({ page }) => {
     await page.goto('/staff/schedule');
 
-    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
 
     const search = page.getByPlaceholder('Search projects…');
     await expect(search).toBeVisible();
@@ -208,7 +215,7 @@ test.describe('portal auth routing authenticated flows', () => {
     );
 
     await page.goto('/staff/schedule');
-    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
 
     const sourceCard = page.locator('aside[aria-label="Unscheduled jobs"] [data-schedule-card-id]').first();
     test.skip((await sourceCard.count()) === 0, 'No unscheduled jobs are available for schedule drag/drop smoke coverage.');
@@ -230,27 +237,27 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(targetLane.getByText(jobName!, { exact: false })).toBeVisible({ timeout: 60_000 });
 
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('section[aria-label^="Lane "]').filter({ hasText: jobName! }).first()).toBeVisible({ timeout: 60_000 });
   });
 
   test('opens a contact detail page from the list without losing shell chrome', async ({ page }) => {
     await page.goto('/staff/contacts');
-    await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible({ timeout: 60_000 });
 
     const href = await firstHref(page, 'a[href^="/staff/contacts/"]');
     test.skip(!href, 'No contact detail links are available for smoke coverage.');
 
     await page.goto(href!);
 
-    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
+    await expect(portalShellNavigation(page)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Create Project' })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('Contact ID:')).toBeVisible();
   });
 
   test('opens and closes the shared import modal cleanly', async ({ page }) => {
     await page.goto('/staff/contacts');
-    await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible({ timeout: 60_000 });
 
     await page.locator('input[type="file"][accept=".csv,text/csv"]').setInputFiles({
       name: 'contacts.csv',
