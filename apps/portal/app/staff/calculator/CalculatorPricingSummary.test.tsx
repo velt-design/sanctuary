@@ -26,12 +26,12 @@ afterEach(() => {
 });
 
 describe('CalculatorPricingSummary', () => {
-  it('makes the rounded pergola customer price primary and internal costing secondary', () => {
+  it('makes the nearest-dollar pergola customer price primary and keeps internal costing at cents', () => {
     const { container, unmount } = renderIntoDocument(<CalculatorPricingSummary {...baseProps} />);
 
     expect(container.querySelector('h2')?.textContent).toBe('Pricing preview');
-    expect(container.textContent).toContain('Customer price (inc GST)$143.75');
-    expect(container.textContent).toContain('Customer price (ex GST) $125.00');
+    expect(container.textContent).toContain('Customer price (inc GST)$144');
+    expect(container.textContent).toContain('Customer price (ex GST) $125');
     expect(container.textContent).toContain('1.25× internal true cost · pergola only');
     expect(container.textContent).toContain('Internal costing');
     expect(container.textContent).toContain('True cost (ex GST)$100.00');
@@ -51,14 +51,27 @@ describe('CalculatorPricingSummary', () => {
     unmount();
   });
 
+  it('adds thousands separators while rounding the displayed pergola prices only', () => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary {...baseProps} internalTrueCostExGst={11339.33} internalTrueCostIncGst={13040.23} />,
+    );
+
+    expect(container.textContent).toContain('Customer price (inc GST)$16,300');
+    expect(container.textContent).toContain('Customer price (ex GST) $14,174');
+    expect(container.textContent).toContain('True cost (ex GST)$11339.33');
+    expect(container.textContent).toContain('Blind customer price (ex GST)$400.00');
+
+    unmount();
+  });
+
   it('renders the same customer price and freshness in the compact responsive presentation', () => {
     const { container, unmount } = renderIntoDocument(
       <CalculatorPricingSummary {...baseProps} variant="compact" />,
     );
 
     expect(container.querySelector('[data-pricing-summary-variant="compact"]')).not.toBeNull();
-    expect(container.textContent).toContain('Customer price (inc GST)$143.75');
-    expect(container.textContent).toContain('Ex GST $125.00');
+    expect(container.textContent).toContain('Customer price (inc GST)$144');
+    expect(container.textContent).toContain('Ex GST $125');
     expect(container.textContent).toContain('Live');
     expect(container.textContent).not.toContain('Internal costing');
     expect(container.textContent).not.toContain('Customer quote add-ons');
@@ -139,7 +152,7 @@ describe('CalculatorPricingSummary', () => {
       <CalculatorPricingSummary {...baseProps} variant="compact" resultFreshness="stale" />,
     );
 
-    expect(container.textContent).toContain('Last valid customer price (inc GST)$143.75');
+    expect(container.textContent).toContain('Last valid customer price (inc GST)$144');
     expect(container.textContent).toContain('recalculation pending');
     unmount();
   });

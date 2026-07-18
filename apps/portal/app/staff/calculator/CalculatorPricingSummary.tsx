@@ -29,6 +29,16 @@ function formatMoney(value: number | undefined): string {
   return `$${value.toFixed(2)}`;
 }
 
+const customerPriceNumberFormatter = new Intl.NumberFormat('en-NZ', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+function formatCustomerPrice(value: number | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return `$${customerPriceNumberFormatter.format(Math.round(value))}`;
+}
+
 function formatNumber(value: number | undefined, digits = 2): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return value.toFixed(digits);
@@ -78,10 +88,10 @@ export default function CalculatorPricingSummary({
       >
         <div className={styles.compactPrice}>
           <span className={styles.compactLabel}>{customerPriceLabel}</span>
-          <strong className={styles.compactValue}>{formatMoney(customerPrice?.incGst)}</strong>
+          <strong className={styles.compactValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
         </div>
         <div className={styles.compactMeta}>
-          <span>Ex GST {formatMoney(customerPrice?.exGst)}</span>
+          <span>Ex GST {formatCustomerPrice(customerPrice?.exGst)}</span>
           <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
         </div>
       </section>
@@ -109,8 +119,8 @@ export default function CalculatorPricingSummary({
 
       <div className={styles.hero}>
         <span className={styles.heroLabel}>{customerPriceLabel}</span>
-        <strong className={styles.heroValue}>{formatMoney(customerPrice?.incGst)}</strong>
-        <span className={styles.heroEx}>Customer price (ex GST) {formatMoney(customerPrice?.exGst)}</span>
+        <strong className={styles.heroValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
+        <span className={styles.heroEx}>Customer price (ex GST) {formatCustomerPrice(customerPrice?.exGst)}</span>
         <span className={styles.heroExplanation}>1.25× internal true cost · pergola only</span>
       </div>
 

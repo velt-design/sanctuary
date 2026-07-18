@@ -21,7 +21,8 @@ describe('calculator configuration sections', () => {
       'structure',
       'flashings',
       'overrides',
-      'add-ons',
+      'blinds',
+      'infills',
       'allowances',
       'house-footprint',
     ]);
@@ -29,7 +30,14 @@ describe('calculator configuration sections', () => {
 
   it('preserves Basic order while filtering absent and Advanced-only fields', () => {
     const sections = buildCalculatorConfigurationSections(
-      [field('project-context'), field('houseConnectionType'), field('lengthM'), field('flashings'), field('blindsList')],
+      [
+        field('project-context'),
+        field('houseConnectionType'),
+        field('lengthM'),
+        field('flashings'),
+        field('blindsList'),
+        field('infillsEditor'),
+      ],
       false,
     );
 
@@ -37,13 +45,15 @@ describe('calculator configuration sections', () => {
       'context',
       'connections-site',
       'structure',
-      'add-ons',
+      'blinds',
+      'infills',
     ]);
     expect(sections.flatMap((section) => section.fields.map((item) => item.id))).toEqual([
       'project-context',
       'houseConnectionType',
       'lengthM',
       'blindsList',
+      'infillsEditor',
     ]);
   });
 
@@ -58,7 +68,6 @@ describe('calculator configuration sections', () => {
 
   it('assigns standard, wide, and full presentation spans', () => {
     expect(calculatorConfigurationFieldLayout('lengthM')).toBe('standard');
-    expect(calculatorConfigurationFieldLayout('roofOrientation')).toBe('wide');
     expect(calculatorConfigurationFieldLayout('timberNoteRafters')).toBe('wide');
     expect(calculatorConfigurationFieldLayout('flashings')).toBe('full');
     expect(calculatorConfigurationFieldLayout('blindsList')).toBe('full');

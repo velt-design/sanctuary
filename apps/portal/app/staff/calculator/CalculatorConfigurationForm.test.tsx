@@ -32,8 +32,8 @@ describe('CalculatorConfigurationForm', () => {
         value: 'invalid',
         error: 'Enter a valid roof length between the supported limits.',
       },
-      { id: 'roofOrientation', label: 'Orientation', type: 'custom', content: <span>Diagram</span> },
       { id: 'blindsList', label: 'Blinds', type: 'custom', content: <button type="button">Configure</button> },
+      { id: 'infillsEditor', label: 'Infills', type: 'custom', content: <button type="button">Edit infills</button> },
       { id: 'flashings', label: 'Flashings', type: 'custom', content: <span>Advanced content</span> },
     ];
 
@@ -43,9 +43,16 @@ describe('CalculatorConfigurationForm', () => {
     expect(document.querySelector('#project-context')?.textContent).toBe('Agent Project');
     expect(document.querySelector('[data-calculator-configuration-section="connections-site"]')).not.toBeNull();
     expect(document.querySelector('[data-calculator-configuration-section="structure"]')).not.toBeNull();
-    expect(document.querySelector('[data-calculator-configuration-section="add-ons"]')).not.toBeNull();
+    const blindsSection = document.querySelector('[data-calculator-configuration-section="blinds"]');
+    const infillsSection = document.querySelector('[data-calculator-configuration-section="infills"]');
+    expect(blindsSection?.getAttribute('aria-label')).toBe('Blinds');
+    expect(infillsSection?.getAttribute('aria-label')).toBe('Infills');
+    expect(blindsSection?.querySelector('h2')).toBeNull();
+    expect(infillsSection?.querySelector('h2')).toBeNull();
+    expect(blindsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Blinds');
+    expect(infillsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Infills');
     expect(document.querySelector('[aria-label="Flashings"]')).toBeNull();
-    expect(document.querySelector('[data-calculator-field="roofOrientation"]')?.getAttribute('data-field-layout')).toBe('wide');
+    expect(document.querySelector('[data-calculator-field="roofOrientation"]')).toBeNull();
     expect(document.querySelector('[data-calculator-field="blindsList"]')?.getAttribute('data-field-layout')).toBe('full');
     expect(document.querySelector('[data-field-tile-appearance="configuration"]')).not.toBeNull();
 
@@ -68,6 +75,8 @@ describe('CalculatorConfigurationForm', () => {
       { id: 'lengthM', label: 'Length', type: 'number', value: '6' },
       { id: 'flashings', label: 'Flashings', type: 'custom', content: <span>Flashing editor</span> },
       { id: 'ledgerProfileOverride', label: 'Ledger profile', type: 'select', value: '', options: [] },
+      { id: 'blindsList', label: 'Blinds', type: 'custom', content: <span>Blind editor</span> },
+      { id: 'infillsEditor', label: 'Infills', type: 'custom', content: <span>Infill editor</span> },
       { id: 'houseFootprintPreset', label: 'Footprint', type: 'select', value: 'rectangle', options: [] },
     ];
 
@@ -77,7 +86,7 @@ describe('CalculatorConfigurationForm', () => {
       Array.from(document.querySelectorAll('[data-calculator-configuration-section]')).map((section) =>
         section.getAttribute('data-calculator-configuration-section'),
       ),
-    ).toEqual(['structure', 'flashings', 'overrides', 'house-footprint']);
+    ).toEqual(['structure', 'flashings', 'overrides', 'blinds', 'infills', 'house-footprint']);
     expect(document.querySelector('[data-calculator-field="flashings"]')?.getAttribute('data-field-layout')).toBe('full');
   });
 });

@@ -41,7 +41,6 @@ import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import RoofOrientationDiagram from './RoofOrientationDiagram';
 import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
 import InfillConfiguratorDialog from './InfillConfiguratorDialog';
@@ -3336,13 +3335,6 @@ export default function CalculatorGridClient({
       error: errors.projectionM,
       helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
-    {
-      id: 'roofOrientation',
-      label: 'Orientation',
-      type: 'custom',
-      content: <RoofOrientationDiagram />,
-      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
-    } satisfies FieldSchemaItem,
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
           {

@@ -24,6 +24,7 @@ type CalculatorConfigurationSectionDefinition = {
   id: string;
   title: string;
   density?: CalculatorConfigurationSectionDensity;
+  fieldLabelAsTitle?: boolean;
   advancedOnly?: boolean;
   fieldIds: readonly string[];
 };
@@ -67,7 +68,6 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
       'powdercoatCustomColour',
       'lengthM',
       'projectionM',
-      'roofOrientation',
       'hipCornerLengthBM',
       'hipCornerProjectionBM',
       'roofPitchDeg',
@@ -115,9 +115,16 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
     ],
   },
   {
-    id: 'add-ons',
-    title: 'Add-ons',
-    fieldIds: ['blindsList', 'infillsEditor'],
+    id: 'blinds',
+    title: 'Blinds',
+    fieldLabelAsTitle: true,
+    fieldIds: ['blindsList'],
+  },
+  {
+    id: 'infills',
+    title: 'Infills',
+    fieldLabelAsTitle: true,
+    fieldIds: ['infillsEditor'],
   },
   {
     id: 'allowances',
@@ -144,7 +151,6 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
 ] as const satisfies readonly CalculatorConfigurationSectionDefinition[];
 
 const WIDE_FIELD_IDS = new Set([
-  'roofOrientation',
   'timberSystemHeading',
   'timberNoteRafters',
   'timberNotePurlins',

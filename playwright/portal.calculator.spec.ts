@@ -49,6 +49,29 @@ async function expectStructureColumnCount(page: Page, expectedColumns: number) {
   expect(firstRowColumnCount).toBe(expectedColumns);
 }
 
+async function expectSmallVisualCorrections(page: Page) {
+  await expect(page.locator('[data-calculator-field="roofOrientation"]')).toHaveCount(0);
+  await expect(page.getByLabel('Roof orientation diagram')).toHaveCount(0);
+
+  const blinds = page.locator('[data-calculator-configuration-section="blinds"]');
+  const infills = page.locator('[data-calculator-configuration-section="infills"]');
+  await expect(blinds).toBeVisible();
+  await expect(infills).toBeVisible();
+  await expect(blinds.locator('[data-calculator-field="blindsList"]')).toHaveCount(1);
+  await expect(infills.locator('[data-calculator-field="infillsEditor"]')).toHaveCount(1);
+  expect(
+    await blinds.evaluate((element) =>
+      element.nextElementSibling?.getAttribute('data-calculator-configuration-section'),
+    ),
+  ).toBe('infills');
+
+  const pricing = page.getByRole('region', { name: 'Pricing preview' });
+  await expect(pricing.locator('strong').first()).toHaveText(/^\$\d{1,3}(?:,\d{3})*$/);
+  await expect(pricing.getByText(/^Customer price \(ex GST\)/)).toHaveText(
+    /^Customer price \(ex GST\) \$\d{1,3}(?:,\d{3})*$/,
+  );
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -81,6 +104,7 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
     await expectLocalDraftProtected(page);
+    await expectSmallVisualCorrections(page);
     await expect(page.getByRole('navigation', { name: 'Pergolas and modules' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Current customer price' })).toBeHidden();
     await expect(page.locator('[data-calculator-configuration-section="context"]')).toHaveAttribute('data-section-density', 'compact');
@@ -105,7 +129,9 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     );
     const expectedCustomerEx = Math.round(internalEx * 1.25 * 100) / 100;
     const expectedCustomerInc = Math.round(expectedCustomerEx * 1.15 * 100) / 100;
-    expect(customerInc).toBe(expectedCustomerInc);
+    const customerEx = parseCurrency(await pricing.getByText(/^Customer price \(ex GST\)/).innerText());
+    expect(customerEx).toBe(Math.round(expectedCustomerEx));
+    expect(customerInc).toBe(Math.round(expectedCustomerInc));
   });
 });
 
@@ -209,6 +235,7 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     await clearPreviewSplitPreference(page);
     await openCalculator(page);
     await expectLocalDraftProtected(page);
+    await expectSmallVisualCorrections(page);
     const dimensions = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate((element) => {
       const boundary = element.getBoundingClientRect().right;
       return {
@@ -266,6 +293,7 @@ for (const width of [1024, 768]) {
       await clearPreviewSplitPreference(page);
       await openCalculator(page);
       await expectLocalDraftProtected(page);
+      await expectSmallVisualCorrections(page);
       await expectStructureColumnCount(page, width === 1024 ? 3 : 2);
       await expect(page.getByRole('button', { name: /^Pergola 1 · Module 1/ })).toBeVisible();
       const compactPricing = page.getByRole('region', { name: 'Current customer price' });
@@ -287,6 +315,10 @@ for (const width of [1024, 768]) {
         const originalLength = await roofLength.inputValue();
         await roofLength.fill('');
         await expect(compactPricing.getByText('Last valid customer price (inc GST)', { exact: true })).toBeVisible();
+        await expect(compactPricing.locator('strong')).toHaveText(/^\$\d{1,3}(?:,\d{3})*$/);
+        expect(parseCurrency(await compactPricing.locator('strong').innerText())).toBe(
+          parseCurrency(await fullPricing.locator('strong').first().innerText()),
+        );
         await fullPricing.getByRole('button', { name: 'Errors (1)', exact: true }).click();
         const issueDialog = page.getByRole('dialog', { name: 'Issues' });
         await issueDialog.getByRole('button', { name: /Pergola 1 .* Module 1 .* Roof Length/ }).click();

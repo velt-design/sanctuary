@@ -209,18 +209,6 @@
   min-height: 44px;
 }
 
-.roofDiagram {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.roofDiagram svg {
-  width: min(240px, 100%);
-  height: auto;
-}
-
 .drawerOverlay {
   position: fixed;
   inset: 0;

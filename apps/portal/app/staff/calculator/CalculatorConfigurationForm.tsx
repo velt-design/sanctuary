@@ -33,7 +33,7 @@ export default function CalculatorConfigurationForm({
           data-calculator-configuration-section={section.id}
           data-section-density={section.density ?? 'default'}
         >
-          <h2 className={styles.sectionTitle}>{section.title}</h2>
+          {section.fieldLabelAsTitle ? null : <h2 className={styles.sectionTitle}>{section.title}</h2>}
           <div className={styles.fieldGrid} data-calculator-field-grid>
             {section.fields.map((field) => (
               <div
