@@ -215,11 +215,15 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('captures cold portal route metrics', async ({ page }) => {
-  await measureColdRoute(page, 'dashboard-cold', () => page.getByRole('heading', { name: 'Dashboard' }));
+  await measureColdRoute(page, 'dashboard-cold', () =>
+    page.getByRole('heading', { name: 'Dashboard', exact: true }),
+  );
   await measureColdRoute(page, 'projects-cold', () =>
     page.getByRole('heading', { name: 'Projects', exact: true }),
   );
-  await measureColdRoute(page, 'contacts-cold', () => page.getByRole('heading', { name: 'Contacts' }));
+  await measureColdRoute(page, 'contacts-cold', () =>
+    page.getByRole('heading', { name: 'Contacts', exact: true }),
+  );
   await measureColdRoute(page, 'schedule-cold', () =>
     page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ }),
   );
@@ -227,7 +231,7 @@ test('captures cold portal route metrics', async ({ page }) => {
 
 test('captures warm navigation and project tab metrics', async ({ page }) => {
   await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 60_000 });
 
   await measureWarmJourney(
     page,
