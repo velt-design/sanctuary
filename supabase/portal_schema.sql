@@ -161,6 +161,19 @@ end $$;
 
 create index if not exists quotes_by_project on public.quotes(project_id);
 
+create table if not exists public.file_artifacts (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references public.projects(id) on delete cascade,
+  filename text not null,
+  content_type text,
+  size_bytes int,
+  content_base64 text not null,
+  created_at timestamptz not null default now(),
+  created_by text
+);
+
+create index if not exists file_artifacts_by_project on public.file_artifacts(project_id);
+
 create table if not exists public.quote_versions (
   id uuid primary key default gen_random_uuid(),
   quote_id uuid not null references public.quotes(id) on delete cascade,
@@ -232,19 +245,6 @@ create trigger quote_line_items_set_updated_at before update on public.quote_lin
 for each row execute function public.set_updated_at();
 
 create index if not exists quote_line_items_by_version on public.quote_line_items(quote_version_id, sort_order);
-
-create table if not exists public.file_artifacts (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid references public.projects(id) on delete cascade,
-  filename text not null,
-  content_type text,
-  size_bytes int,
-  content_base64 text not null,
-  created_at timestamptz not null default now(),
-  created_by text
-);
-
-create index if not exists file_artifacts_by_project on public.file_artifacts(project_id);
 
 create table if not exists public.quote_send_logs (
   id uuid primary key default gen_random_uuid(),
