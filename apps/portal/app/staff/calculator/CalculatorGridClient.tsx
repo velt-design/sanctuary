@@ -200,6 +200,12 @@ import {
   InfillPresetMenu,
 } from './CalculatorInfillOverview';
 import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } from './CalculatorSaveDialogs';
+import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
+import CalculatorProjectPicker from './CalculatorProjectPicker';
+import {
+  calculatorResultFreshnessLabel,
+  deriveCalculatorResultFreshness,
+} from './calculatorResultFreshness';
 
 type FieldSchemaItem = {
   id: string;
@@ -301,10 +307,9 @@ function inferStockLengthFromLabel(label: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-type UiMode = 'basic' | 'advanced';
 const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
 const PREVIEW_SPLIT_STORAGE_KEY = 'sanctuary-portal:calculator:previewRightWidthPx:v1';
-const PREVIEW_SPLIT_STACK_BREAKPOINT_PX = 1100;
+const PREVIEW_SPLIT_STACK_BREAKPOINT_PX = 1120;
 const PREVIEW_SPLIT_LEFT_MIN_PX = 640;
 const PREVIEW_SPLIT_RIGHT_MIN_PX = 360;
 const PREVIEW_SPLIT_RIGHT_DEFAULT_PX = 520;
@@ -490,6 +495,7 @@ export default function CalculatorGridClient({
   const projectId = searchParams.get('projectId') ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
   const editEstimateId = searchParams.get('editEstimateId') ?? '';
+  const shouldOpenActiveDraft = searchParams.get('openActiveDraft') === '1';
   const projectEstimatesQuery = useQuery({
     ...estimateMetasByProjectQueryOptions(hostKey, projectId),
     enabled: Boolean(projectId),
@@ -530,7 +536,8 @@ export default function CalculatorGridClient({
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [uiMode, setUiMode] = useState<UiMode>('basic');
+  const [uiMode, setUiMode] = useState<CalculatorUiMode>('basic');
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
   const [isFootprintEditing, setIsFootprintEditing] = useState(false);
   const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<AttachmentSide | null>(null);
@@ -709,14 +716,15 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     if (!draftHydrated || !projectId || activeEditEstimateId || fromEstimateId) return;
-    if (restoredDraftForKeyRef.current) return;
+    if (restoredDraftForKeyRef.current && !shouldOpenActiveDraft) return;
     if (!activeDraftEstimateMeta) return;
     const qs = new URLSearchParams(searchParams.toString());
     qs.set('projectId', projectId);
     qs.set('editEstimateId', activeDraftEstimateMeta.id);
     qs.delete('fromEstimateId');
+    qs.delete('openActiveDraft');
     router.replace(`/staff/calculator?${qs.toString()}`);
-  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, router, searchParams]);
+  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, router, searchParams, shouldOpenActiveDraft]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -824,18 +832,6 @@ export default function CalculatorGridClient({
       data: snapshot,
     });
   }, [activeModuleIndex, draftEntityKey, draftHydrated, draftSessionKey, values]);
-
-  useEffect(() => {
-    const prevHtml = document.documentElement.style.overflow;
-    const prevBody = document.body.style.overflow;
-
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = prevHtml;
-      document.body.style.overflow = prevBody;
-    };
-  }, []);
 
   useEffect(() => {
     setActiveModuleIndex((prev) => {
@@ -1815,6 +1811,7 @@ export default function CalculatorGridClient({
   const materialsDebugAvailable = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_COSTING_DEBUG_ENABLED === '1';
 
   const [result, setResult] = useState<SiteOutputV1 | null>(null);
+  const [lastSuccessfulRequestPayloadJson, setLastSuccessfulRequestPayloadJson] = useState<string | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [materialsDebugEnabled, setMaterialsDebugEnabled] = useState(false);
@@ -1856,6 +1853,19 @@ export default function CalculatorGridClient({
   const infillModalOpenTrackedRef = useRef(false);
   const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
   const blindFieldPrefix = useId();
+
+  const resultFreshness = useMemo(
+    () =>
+      deriveCalculatorResultFreshness({
+        readyToCalculate,
+        isCalculating,
+        engineError,
+        hasResult: Boolean(result),
+        requestPayloadJson,
+        lastSuccessfulRequestPayloadJson,
+      }),
+    [engineError, isCalculating, lastSuccessfulRequestPayloadJson, readyToCalculate, requestPayloadJson, result],
+  );
 
   const issues = useMemo(() => {
     const out: Array<{ moduleIndex: number; fieldId: string; label: string; message: string }> = [];
@@ -1962,6 +1972,7 @@ export default function CalculatorGridClient({
   useEffect(() => {
     if (!readyToCalculate) {
       setEngineError(null);
+      setIsCalculating(false);
       return;
     }
 
@@ -1980,6 +1991,7 @@ export default function CalculatorGridClient({
         const json = await res.json();
         if (!res.ok) throw new Error(String(json?.error ?? 'Costing failed'));
         setResult(json as SiteOutputV1);
+        setLastSuccessfulRequestPayloadJson(requestPayloadJson);
       } catch (err) {
         if (controller.signal.aborted) return;
         const msg = err instanceof Error ? err.message : 'Costing failed';
@@ -2600,15 +2612,14 @@ export default function CalculatorGridClient({
         projectHasContact,
         hasModuleErrors,
         engineError,
-        hasResult: Boolean(result),
-        isCalculating,
+        resultFreshness,
         infillItems: infillsState.items,
         infillUiById,
       }),
-    [engineError, hasModuleErrors, infillUiById, infillsState.items, isCalculating, project, projectHasContact, projectId, result],
+    [engineError, hasModuleErrors, infillUiById, infillsState.items, project, projectHasContact, projectId, resultFreshness],
   );
   const statusActionHandlers: Record<CalculatorQuoteStatusActionKey, () => void> = {
-    selectProject: () => toast.error('Use Projects in the header to select/create one.'),
+    selectProject: () => setProjectPickerOpen(true),
     openProject: () => {
       if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
     },
@@ -2624,6 +2635,11 @@ export default function CalculatorGridClient({
     onAction: item.actionKey ? statusActionHandlers[item.actionKey] : undefined,
   }));
   const hasStatusBlockers = quoteStatusUi.hasStatusBlockers;
+
+  const handleProjectSelect = (selectedProject: Project) => {
+    setProjectPickerOpen(false);
+    router.push(`/staff/calculator?projectId=${encodeURIComponent(selectedProject.id)}&openActiveDraft=1`);
+  };
 
   const saveDesign = useCallback(
     async ({
@@ -3131,7 +3147,7 @@ export default function CalculatorGridClient({
       id: 'engine-status',
       label: 'Cost engine',
       type: 'readOnly',
-      value: isCalculating ? 'Calculating…' : engineError ? 'Error' : result ? 'Ready' : '—',
+      value: calculatorResultFreshnessLabel(resultFreshness),
       error: engineError ?? undefined,
       helperText: engineError ? undefined : 'True cost (ex‑GST)',
     },
@@ -4217,10 +4233,7 @@ export default function CalculatorGridClient({
           hasProject: Boolean(project),
           readyToCalculate,
           hasStatusBlockers,
-          isCalculating,
-          isEditingDesign,
-          engineError,
-          hasResult: Boolean(result),
+          resultFreshness,
           warningCount: warningsCount,
         });
         if (preflight.kind === 'error') {
@@ -4240,7 +4253,7 @@ export default function CalculatorGridClient({
       },
       helperText: projectId ? 'Save current design draft' : 'Requires project context',
       error: generateError ?? undefined,
-      disabled: isGenerating || hasStatusBlockers,
+      disabled: isGenerating || hasStatusBlockers || resultFreshness !== 'current',
     },
   ];
 
@@ -4408,7 +4421,8 @@ export default function CalculatorGridClient({
 
   const handlePreviewSplitPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
-    if (typeof window !== 'undefined' && window.innerWidth <= PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
+    const frameWidth = previewSplitRef.current?.getBoundingClientRect().width ?? 0;
+    if (frameWidth > 0 && frameWidth < PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
     previewSplitPointerIdRef.current = event.pointerId;
     setIsPreviewSplitDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -4435,7 +4449,8 @@ export default function CalculatorGridClient({
   };
 
   const handlePreviewSplitKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (typeof window !== 'undefined' && window.innerWidth <= PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
+    const frameWidth = previewSplitRef.current?.getBoundingClientRect().width ?? 0;
+    if (frameWidth > 0 && frameWidth < PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
     const step = event.shiftKey ? 48 : 16;
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
@@ -4492,25 +4507,21 @@ export default function CalculatorGridClient({
 
   return (
     <main className={`${styles.page} ${styles.previewPage}${isPreviewSplitDragging ? ` ${styles.previewPageResizing}` : ''}`}>
-      <h1 className="visually-hidden">Calculator</h1>
-
       <div className={styles.previewFrame}>
-        <div className={`${styles.modeToggleRow} ${styles.modeToggleFloating}`}>
-          <button
-            type="button"
-            className={uiMode === 'basic' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
-            onClick={() => setUiMode('basic')}
-          >
-            Basic
-          </button>
-          <button
-            type="button"
-            className={uiMode === 'advanced' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
-            onClick={() => setUiMode('advanced')}
-          >
-            Advanced
-          </button>
-        </div>
+        <CalculatorCommandBar
+          projectLabel={project ? project.projectName ?? project.name ?? 'Select project' : 'Select project'}
+          isEditingDesign={isEditingDesign}
+          activeModuleLabel={activeModuleLabel}
+          uiMode={uiMode}
+          onUiModeChange={setUiMode}
+          resultFreshness={resultFreshness}
+          blockerCount={quoteStatusUi.blockerCount}
+          onSelectProject={() => setProjectPickerOpen(true)}
+          saveLabel={generateField?.actionLabel ?? 'Save'}
+          saveDisabled={!generateField || Boolean(generateField.disabled)}
+          onSave={() => void generateField?.onAction?.()}
+          saveError={generateField?.error}
+        />
         <div className={styles.split} ref={previewSplitRef} style={splitStyle}>
           <div className={styles.leftCol}>
             <FieldGroup title="Context" fields={contextFields} />
@@ -4541,13 +4552,17 @@ export default function CalculatorGridClient({
             title="Drag to resize preview panel"
           />
 
-          <aside className={styles.rightCol} aria-label="Preview outputs">
+          <aside
+            className={resultFreshness === 'current' ? styles.rightCol : `${styles.rightCol} ${styles.rightColStale}`}
+            aria-label="Preview outputs"
+            data-result-freshness={resultFreshness}
+          >
             <div className={styles.previewSummary}>
               <div className={styles.previewSummaryHeader}>
                 <div>
                   <div className={styles.previewSummaryTitle}>Preview</div>
                   <div className={styles.previewSummarySub}>
-                    {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
+                    {calculatorResultFreshnessLabel(resultFreshness)}
                   </div>
                 </div>
                 {issuesCount ? (
@@ -4620,19 +4635,6 @@ export default function CalculatorGridClient({
 
               <QuoteStatusCard items={statusItems} />
 
-              {generateField ? (
-                <div className={styles.previewActions}>
-                  <button
-                    type="button"
-                    className={styles.previewPrimaryAction}
-                    onClick={generateField.onAction}
-                    disabled={generateField.disabled}
-                  >
-                    {generateField.actionLabel ?? 'Save'}
-                  </button>
-                  {generateField.error ? <p className={styles.previewError}>{generateField.error}</p> : null}
-                </div>
-              ) : null}
             </div>
 
             <section className={styles.previewCard} aria-label="Warnings">
@@ -5720,7 +5722,7 @@ export default function CalculatorGridClient({
           generateError,
           isGenerating,
           hasStatusBlockers,
-          hasResult: Boolean(result),
+          hasResult: resultFreshness === 'current',
           onConfirmReadyChange: setConfirmReady,
           onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
           onConfirmRequestDesignChange: (checked) => {
@@ -5735,6 +5737,13 @@ export default function CalculatorGridClient({
             }),
           onRepriceLatest: () => void saveDesign({ saveMode: 'reprice_latest' }),
         }}
+      />
+      <CalculatorProjectPicker
+        open={projectPickerOpen}
+        hostKey={hostKey}
+        selectedProjectId={projectId}
+        onClose={() => setProjectPickerOpen(false)}
+        onSelect={handleProjectSelect}
       />
     </main>
   );

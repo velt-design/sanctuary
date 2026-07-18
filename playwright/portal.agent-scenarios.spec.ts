@@ -36,6 +36,10 @@ test('agent can open seeded dynamic portal scenario routes', async ({ page }, te
         const debugExport = await expectPortalDebugExport(page, 'design-workbench');
         expect(debugExport.selectedIds.projectId).toBe(scenario.projectId);
         expect(debugExport.diagnostics.workbenchDebugFixture).toBeTruthy();
+      } else if (routeEntry.id === 'calculator') {
+        await expect(page.getByRole('heading', { name: 'Calculator', exact: true })).toBeVisible();
+        await expect(page.getByText(scenario.labels.projectName).first()).toBeVisible();
+        await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
       } else if (routeEntry.id === 'estimate-detail') {
         await expect(page.getByText(scenario.labels.projectName).first()).toBeVisible();
         const debugExport = await expectPortalDebugExport(page, 'estimate-detail');

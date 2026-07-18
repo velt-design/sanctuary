@@ -95,7 +95,9 @@
     "prepare": "husky || true",
     "portal:scenarios:ensure": "tsx scripts/ensure-portal-scenarios.ts",
     "portal:agent-scenarios": "npm run portal:auth-env && npx playwright test playwright/portal.agent-scenarios.spec.ts --project=portal-chromium",
-    "portal:agent-scenarios:provision": "npm run portal:test-user:ensure && npm run portal:scenarios:ensure && npm run portal:agent-scenarios"
+    "portal:agent-scenarios:provision": "npm run portal:test-user:ensure && npm run portal:scenarios:ensure && npm run portal:agent-scenarios",
+    "portal:calculator-ui": "npm run portal:auth-env && npx playwright test playwright/portal.calculator.spec.ts --project=portal-chromium",
+    "portal:calculator-ui:provision": "npm run portal:test-user:ensure && npm run portal:scenarios:ensure && npm run portal:calculator-ui"
   },
   "dependencies": {
     "@react-email/render": "^2.0.4",

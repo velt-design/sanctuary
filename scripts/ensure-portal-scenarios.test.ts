@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCalculatorScenarioInputs,
   readPortalScenarioConfig,
   redactPortalScenarioSecrets,
   stableScenarioUuid,
 } from './ensure-portal-scenarios';
+import { isCalculatorInputsV2 } from '../apps/portal/lib/types/calculator';
 
 const validEnv = {
   PORTAL_TEST_EMAIL: 'agent@example.test',
@@ -111,5 +113,21 @@ describe('stableScenarioUuid', () => {
     expect(stableScenarioUuid('staging', 'project-with-estimate', 'project')).not.toBe(base);
     expect(stableScenarioUuid('agent', 'quote-ready', 'project')).not.toBe(base);
     expect(stableScenarioUuid('agent', 'project-with-estimate', 'estimate')).not.toBe(base);
+  });
+});
+
+describe('buildCalculatorScenarioInputs', () => {
+  it('builds a usable V2 calculator draft for authenticated scenarios', () => {
+    const inputs = buildCalculatorScenarioInputs('[Agent Scenario] Calculator', 'AGENT-CALC');
+    expect(isCalculatorInputsV2(inputs)).toBe(true);
+    expect(inputs.projectName).toBe('[Agent Scenario] Calculator');
+    expect(inputs.quoteRef).toBe('AGENT-CALC');
+    expect(inputs.modules).toHaveLength(1);
+    expect(inputs.modules[0]).toMatchObject({
+      pergolaStyle: 'pitched',
+      roofMaterial: 'acrylic',
+      lengthM: '6',
+      projectionM: '3',
+    });
   });
 });

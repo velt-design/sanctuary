@@ -147,6 +147,12 @@ export function routeForPortalScenario(entry: PortalRouteCatalogEntry, state: Po
       }
       return `/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(scenario.estimateId)}`;
     }
+    case 'calculator': {
+      if (!scenario.estimateId) {
+        throw new Error(`Portal scenario "${scenario.scenarioId}" does not include an estimateId.`);
+      }
+      return `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(scenario.estimateId)}`;
+    }
     case 'quote-detail': {
       const quoteVersionId = scenario.quoteVersionId;
       if (!quoteVersionId) {

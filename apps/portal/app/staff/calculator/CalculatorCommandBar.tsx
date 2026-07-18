@@ -1,0 +1,91 @@
+import styles from './CalculatorTrustUi.module.css';
+import {
+  calculatorResultFreshnessLabel,
+  type CalculatorResultFreshness,
+} from './calculatorResultFreshness';
+
+export type CalculatorUiMode = 'basic' | 'advanced';
+
+export type CalculatorCommandBarProps = {
+  projectLabel: string;
+  isEditingDesign: boolean;
+  activeModuleLabel: string;
+  uiMode: CalculatorUiMode;
+  onUiModeChange: (mode: CalculatorUiMode) => void;
+  resultFreshness: CalculatorResultFreshness;
+  blockerCount: number;
+  onSelectProject: () => void;
+  saveLabel: string;
+  saveDisabled: boolean;
+  onSave: () => void;
+  saveError?: string;
+};
+
+export default function CalculatorCommandBar({
+  projectLabel,
+  isEditingDesign,
+  activeModuleLabel,
+  uiMode,
+  onUiModeChange,
+  resultFreshness,
+  blockerCount,
+  onSelectProject,
+  saveLabel,
+  saveDisabled,
+  onSave,
+  saveError,
+}: CalculatorCommandBarProps) {
+  const freshnessLabel = calculatorResultFreshnessLabel(resultFreshness);
+
+  return (
+    <header className={styles.commandBar}>
+      <div className={styles.commandBarIdentity}>
+        <div>
+          <h1 className={styles.commandBarTitle}>Calculator</h1>
+          <div className={styles.commandBarMeta}>
+            <button type="button" className={styles.commandBarProject} onClick={onSelectProject}>
+              {projectLabel}
+            </button>
+            <span aria-hidden="true">·</span>
+            <span>{isEditingDesign ? 'Editing draft' : 'New design'}</span>
+            <span aria-hidden="true">·</span>
+            <span>{activeModuleLabel}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.commandBarActions}>
+        <span
+          className={
+            blockerCount > 0 || resultFreshness !== 'current'
+              ? styles.commandBarStatusBlocked
+              : styles.commandBarStatusReady
+          }
+          title={freshnessLabel}
+          aria-label={`${freshnessLabel}. ${blockerCount ? `${blockerCount} blockers` : 'Ready to save'}`}
+        >
+          {blockerCount ? `${blockerCount} blocker${blockerCount === 1 ? '' : 's'}` : freshnessLabel}
+        </span>
+
+        <div className={styles.commandBarMode} aria-label="Calculator detail level">
+          {(['basic', 'advanced'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={uiMode === mode ? styles.commandBarModeActive : styles.commandBarModeButton}
+              onClick={() => onUiModeChange(mode)}
+              aria-pressed={uiMode === mode}
+            >
+              {mode === 'basic' ? 'Basic' : 'Advanced'}
+            </button>
+          ))}
+        </div>
+
+        <button type="button" className={styles.commandBarSave} onClick={onSave} disabled={saveDisabled}>
+          {saveLabel}
+        </button>
+      </div>
+      {saveError ? <p className={styles.commandBarError}>{saveError}</p> : null}
+    </header>
+  );
+}

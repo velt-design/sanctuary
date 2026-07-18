@@ -177,6 +177,8 @@ npm run portal:agent-access:provision
 npm run portal:scenarios:ensure
 npm run portal:agent-scenarios
 npm run portal:agent-scenarios:provision
+npm run portal:calculator-ui
+npm run portal:calculator-ui:provision
 npm run portal:agent-scorecard
 npm run portal:agent-scorecard:strict
 npm run portal:fixture-env
@@ -197,7 +199,9 @@ npm run test:portal:performance
 
 `npm run portal:scenarios:ensure` is the explicit service-role provisioning command for local/staging scenario data. It requires `PORTAL_TEST_SCENARIO_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it refuses missing targets and `production`, upserts deterministic `[Agent Scenario]` records, and writes non-secret route state to `playwright/.auth/portal-scenarios.json`. Optional env: `PORTAL_SCENARIOS=project-with-estimate,quote-ready,workbench-multi-object` and `PORTAL_SCENARIO_PREFIX=agent`.
 
-`npm run portal:agent-scenarios` captures authenticated browser state and opens dynamic routes from the catalog-backed scenario lane: project detail, estimate detail, quote detail, and design workbench. It reads `playwright/.auth/portal-scenarios.json` only and does not mutate data. `npm run portal:agent-scenarios:provision` is the opt-in combined command that provisions the test user, seeds scenarios, then runs scenario smoke; because user provisioning and scenario provisioning have separate safety gates, set both `PORTAL_TEST_PROVISION_TARGET=local|staging` and `PORTAL_TEST_SCENARIO_TARGET=local|staging`.
+`npm run portal:agent-scenarios` captures authenticated browser state and opens dynamic routes from the catalog-backed scenario lane: project detail, estimate detail, quote detail, design workbench, and calculator. It reads `playwright/.auth/portal-scenarios.json` only and does not mutate data. `npm run portal:agent-scenarios:provision` is the opt-in combined command that provisions the test user, seeds scenarios, then runs scenario smoke; because user provisioning and scenario provisioning have separate safety gates, set both `PORTAL_TEST_PROVISION_TARGET=local|staging` and `PORTAL_TEST_SCENARIO_TARGET=local|staging`.
+
+`npm run portal:calculator-ui` runs the authenticated calculator trust suite against the valid V2 `project-with-estimate` scenario. It checks current/stale result labelling, save blocking, project selection, 1366px horizontal fit, and page-owned scrolling at 1024px and 768px. `npm run portal:calculator-ui:provision` is the explicit local/staging provisioning variant and has the same two target safety requirements as the broader scenario provision command.
 
 `npm run portal:agent-scorecard` prints a read-only portal-agent quality snapshot from the route catalog, scenario registry, debug-export metadata, browser evidence adoption, and `npm run repo:health` headline. It does not run browser tests, provision users, seed scenarios, or mutate data. Use `npm run portal:agent-scorecard -- --json` for automation-friendly output. The human guide is `docs/portal-agent-scorecard.md`.
 

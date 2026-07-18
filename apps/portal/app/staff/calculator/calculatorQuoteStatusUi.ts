@@ -5,6 +5,7 @@ import {
   mapInfillSeverity,
   type UiWarning,
 } from './warnings';
+import type { CalculatorResultFreshness } from './calculatorResultFreshness';
 
 type EngineWarningInput = {
   level: string;
@@ -35,6 +36,7 @@ type CalculatorQuoteStatusItem = {
 type CalculatorQuoteStatusUi = {
   items: CalculatorQuoteStatusItem[];
   hasStatusBlockers: boolean;
+  blockerCount: number;
   anyInfillDraft: boolean;
 };
 
@@ -103,8 +105,7 @@ export function buildCalculatorQuoteStatusUi({
   projectHasContact,
   hasModuleErrors,
   engineError,
-  hasResult,
-  isCalculating,
+  resultFreshness,
   infillItems,
   infillUiById,
 }: {
@@ -113,8 +114,7 @@ export function buildCalculatorQuoteStatusUi({
   projectHasContact: boolean;
   hasModuleErrors: boolean;
   engineError: string | null | undefined;
-  hasResult: boolean;
-  isCalculating: boolean;
+  resultFreshness: CalculatorResultFreshness;
   infillItems: InfillLineItem[];
   infillUiById: ReadonlyMap<string, InfillUiWarningState | undefined>;
 }): CalculatorQuoteStatusUi {
@@ -147,8 +147,19 @@ export function buildCalculatorQuoteStatusUi({
     {
       id: 'engine',
       label: 'Engine ready',
-      level: engineError || !hasResult || isCalculating ? 'block' : 'ok',
-      detail: engineError ? engineError : isCalculating ? 'Calculating...' : hasResult ? 'Live' : 'Waiting',
+      level: resultFreshness === 'current' ? 'ok' : 'block',
+      detail:
+        resultFreshness === 'current'
+          ? 'Live'
+          : resultFreshness === 'calculating'
+            ? 'Updating...'
+            : resultFreshness === 'invalid'
+              ? 'Fix inputs to refresh result'
+              : resultFreshness === 'stale'
+                ? 'Recalculation pending'
+                : resultFreshness === 'error'
+                  ? engineError ?? 'Update failed'
+                  : 'Waiting for valid inputs',
     },
     {
       id: 'infills',
@@ -160,9 +171,11 @@ export function buildCalculatorQuoteStatusUi({
     },
   ];
 
+  const blockerCount = items.filter((item) => item.level === 'block').length;
   return {
     items,
-    hasStatusBlockers: items.some((item) => item.level === 'block'),
+    hasStatusBlockers: blockerCount > 0,
+    blockerCount,
     anyInfillDraft,
   };
 }
@@ -172,29 +185,23 @@ export function resolveGenerateDesignPreflight({
   hasProject,
   readyToCalculate,
   hasStatusBlockers,
-  isCalculating,
-  isEditingDesign,
-  engineError,
-  hasResult,
+  resultFreshness,
   warningCount,
 }: {
   projectId: string;
   hasProject: boolean;
   readyToCalculate: boolean;
   hasStatusBlockers: boolean;
-  isCalculating: boolean;
-  isEditingDesign: boolean;
-  engineError: string | null | undefined;
-  hasResult: boolean;
+  resultFreshness: CalculatorResultFreshness;
   warningCount: number;
 }): GenerateDesignPreflight {
-  if (!projectId) return { kind: 'error', message: 'Select a project first (use Projects in the header).' };
+  if (!projectId) return { kind: 'error', message: 'Select a project before saving design.' };
   if (!hasProject) return { kind: 'error', message: 'Project not found.' };
   if (!readyToCalculate) return { kind: 'error', message: 'Fix validation errors before saving design.' };
+  if (resultFreshness === 'calculating') return { kind: 'error', message: 'Please wait for calculation to finish.' };
+  if (resultFreshness === 'error') return { kind: 'error', message: 'Fix cost engine error before saving design.' };
+  if (resultFreshness !== 'current') return { kind: 'error', message: 'Wait for a current calculated result before saving design.' };
   if (hasStatusBlockers) return { kind: 'error', message: 'Resolve blockers in Quote Status before saving design.' };
-  if (isCalculating && !isEditingDesign) return { kind: 'error', message: 'Please wait for calculation to finish.' };
-  if (engineError && !isEditingDesign) return { kind: 'error', message: 'Fix cost engine error before saving design.' };
-  if (!hasResult && !isEditingDesign) return { kind: 'error', message: 'No calculated result yet.' };
-  if (warningCount === 0 && !isEditingDesign) return { kind: 'save' };
+  if (warningCount === 0) return { kind: 'save' };
   return { kind: 'confirm' };
 }

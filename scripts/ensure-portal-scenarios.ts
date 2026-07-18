@@ -11,6 +11,12 @@ import {
   type PortalScenarioStateFile,
   type PortalScenarioStateRecord,
 } from '../playwright/support/portalScenarioRegistry';
+import {
+  isCalculatorInputsV2,
+  migrateLegacyCalculatorInputsToV2,
+  type CalculatorInputs,
+  type LegacyCalculatorInputsV1,
+} from '../apps/portal/lib/types/calculator';
 
 export type PortalScenarioTarget = 'local' | 'staging';
 
@@ -187,6 +193,53 @@ function buildEstimateOutputs(projectName: string, contactName: string) {
   };
 }
 
+export function buildCalculatorScenarioInputs(projectName: string, quoteRef = ''): CalculatorInputs {
+  const legacy: LegacyCalculatorInputsV1 = {
+    projectName,
+    quoteRef,
+    pergolaStyle: 'pitched',
+    roofMaterial: 'acrylic',
+    extrusionColour: 'Black',
+    powdercoatStandardColour: '',
+    powdercoatIsCustom: false,
+    powdercoatCustomColour: '',
+    boxPerimeterEnabled: false,
+    internalRoofType: 'pitched',
+    fallDistanceMm: '0',
+    roofPitchDeg: '',
+    downpipeCount: '0',
+    downpipeJoinCount: '0',
+    downpipeElbowCount: '0',
+    separateGutterEnabled: false,
+    overhangEnabled: false,
+    overhangAmountM: '0.2',
+    overhangSupportBeamProfile: '150x50',
+    invertedEnabled: false,
+    invertedHouseGutter: true,
+    mixedSkylightStripCount: '1',
+    mixedSkylightStripWidthM: '0.62',
+    postCount: '4',
+    houseConnectionType: 'soffit',
+    postConnectionType: 'deck_bracket',
+    access: 'normal',
+    height: 'single_storey',
+    ground: 'easy',
+    lengthM: '6',
+    projectionM: '3',
+    postCutHeightM: '2.4',
+    travelExGst: '0',
+    extrasAllowanceExGst: '0',
+    timberRoofAllowanceExGst: '0',
+    quoteDiscountPct: '0',
+    blinds: { items: [] },
+  };
+  const inputs = migrateLegacyCalculatorInputsToV2(legacy);
+  if (!isCalculatorInputsV2(inputs) || inputs.modules.length === 0) {
+    throw new Error('Calculator scenario inputs must satisfy the current V2 contract.');
+  }
+  return inputs;
+}
+
 async function seedProjectScenario(
   supabase: SupabaseClient,
   config: PortalScenarioConfig,
@@ -238,7 +291,7 @@ async function seedProjectScenario(
       },
     },
     internal_notes: `Seeded ${scenarioId} estimate.`,
-    inputs: { scenarioId, source: 'portal-agent' },
+    inputs: buildCalculatorScenarioInputs(projectName, scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : ''),
     outputs: buildEstimateOutputs(projectName, contactName),
     warnings: [],
     updated_at: new Date().toISOString(),

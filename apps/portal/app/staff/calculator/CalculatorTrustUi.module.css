@@ -1,0 +1,344 @@
+.commandBar {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  box-shadow: 0 6px 18px rgba(var(--portal-text-rgb), 0.08);
+}
+
+.commandBarIdentity,
+.commandBarIdentity > div {
+  min-width: 0;
+}
+
+.commandBarTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.commandBarMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 4px;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.commandBarMeta > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commandBarProject {
+  max-width: 240px;
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--accentRgb), 0.4);
+  text-underline-offset: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.commandBarProject:focus-visible,
+.commandBarModeButton:focus-visible,
+.commandBarModeActive:focus-visible,
+.commandBarSave:focus-visible {
+  outline: 3px solid rgba(var(--accentRgb), 0.2);
+  outline-offset: 2px;
+}
+
+.commandBarActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.commandBarStatusReady,
+.commandBarStatusBlocked {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.commandBarStatusReady {
+  border: 1px solid rgba(22, 101, 52, 0.24);
+  background: rgba(22, 101, 52, 0.08);
+  color: rgb(22, 101, 52);
+}
+
+.commandBarStatusBlocked {
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  background: rgba(245, 158, 11, 0.1);
+  color: rgb(146, 64, 14);
+}
+
+.commandBarMode {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(var(--portal-text-rgb), 0.025);
+}
+
+.commandBarModeButton,
+.commandBarModeActive {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: transparent;
+  color: rgba(var(--portal-text-rgb), 0.64);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.commandBarModeActive {
+  border-color: rgba(var(--accentRgb), 0.34);
+  background: rgba(var(--accentRgb), 0.1);
+  color: var(--portal-text);
+}
+
+.commandBarSave {
+  min-width: 104px;
+  border: 1px solid rgba(var(--accentRgb), 0.5);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--accentRed);
+  color: var(--portal-text-inverse);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.commandBarSave:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.commandBarError {
+  position: absolute;
+  right: 12px;
+  top: calc(100% + 4px);
+  z-index: 2;
+  margin: 0;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgb(254, 242, 242);
+  color: rgb(185, 28, 28);
+  font-size: 11px;
+}
+
+.projectPicker {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.projectPickerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.projectPickerHeader h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.projectPickerHeader p {
+  margin: 6px 0 0;
+  color: rgba(var(--portal-text-rgb), 0.64);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.projectPickerClose {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.projectPickerSearchLabel {
+  display: grid;
+  gap: 6px;
+  color: rgba(var(--portal-text-rgb), 0.7);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projectPickerSearch {
+  width: 100%;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--portal-bg-surface);
+  color: inherit;
+  font-size: 14px;
+}
+
+.projectPickerSearch:focus {
+  outline: none;
+  border-color: rgba(var(--accentRgb), 0.68);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
+}
+
+.projectPickerResults {
+  display: grid;
+  gap: 6px;
+  max-height: min(460px, 55vh);
+  overflow-y: auto;
+}
+
+.projectPickerRow,
+.projectPickerRowSelected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.8);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.projectPickerRow:hover,
+.projectPickerRow:focus-visible,
+.projectPickerRowSelected {
+  border-color: rgba(var(--accentRgb), 0.42);
+  background: rgba(var(--accentRgb), 0.07);
+  outline: none;
+}
+
+.projectPickerRow > span:first-child,
+.projectPickerRowSelected > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.projectPickerRow strong,
+.projectPickerRowSelected strong,
+.projectPickerRow small,
+.projectPickerRowSelected small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectPickerRow small,
+.projectPickerRowSelected small {
+  color: rgba(var(--portal-text-rgb), 0.6);
+  font-size: 12px;
+}
+
+.projectPickerStatus {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: rgba(var(--portal-text-rgb), 0.06);
+  color: rgba(var(--portal-text-rgb), 0.7);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.projectPickerState {
+  margin: 0;
+  padding: 22px 12px;
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 12px;
+  color: rgba(var(--portal-text-rgb), 0.64);
+  text-align: center;
+}
+
+.projectPickerState button,
+.projectPickerFooter button {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: var(--portal-bg-surface);
+  color: inherit;
+  cursor: pointer;
+}
+
+.projectPickerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  font-size: 13px;
+}
+
+@container (max-width: 1119px) {
+  .commandBar {
+    position: sticky;
+    top: 0;
+    flex-wrap: wrap;
+  }
+
+  .commandBarIdentity {
+    flex: 1 1 320px;
+  }
+
+  .commandBarActions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+  }
+}
+
+@container (max-width: 700px) {
+  .commandBarMeta {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .commandBarActions {
+    justify-content: flex-start;
+  }
+
+  .commandBarStatusReady,
+  .commandBarStatusBlocked {
+    order: 3;
+  }
+}
+
+@media (max-width: 700px) {
+  .projectPickerRow,
+  .projectPickerRowSelected {
+    align-items: flex-start;
+  }
+}

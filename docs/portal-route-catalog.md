@@ -11,7 +11,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 - Add or update route metadata in `playwright/support/portalRouteCatalog.ts`.
 - Keep this doc aligned when route categories, smoke policy, or ownership changes.
 - Browser smoke specs should consume catalog subsets such as `agentAccessSmokeRoutes` and `agentScenarioSmokeRoutes`; do not create new hardcoded route lists.
-- Dynamic project, estimate, quote, and workbench routes are backed by explicit local/staging scenarios before they run in browser smoke.
+- Dynamic project, estimate, quote, workbench, and calculator routes are backed by explicit local/staging scenarios before they run in browser smoke.
 
 ## Smoke Statuses
 
@@ -45,7 +45,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `design-workbench` | `/staff/projects/:projectId/design-workbench` | workbench | staff | project_id | scenario-required | exported | `docs/design-workbench-architecture.md` |
 | `design-list` | `/staff/projects/design-packages` | project | staff | scenario_required | catalog-only | planned | `docs/design-list.md` |
 | `running-jobs` | `/staff/projects/running-jobs` | project | staff | scenario_required | catalog-only | planned | `docs/running-jobs.md` |
-| `calculator` | `/staff/calculator` | commercial | staff | none | catalog-only | planned | `docs/projects-contacts-estimates-calculator.md` |
+| `calculator` | `/staff/calculator` | commercial | staff | estimate_id | scenario-required | planned | `docs/projects-contacts-estimates-calculator.md` |
 | `admin-home` | `/admin` | admin | admin | admin_role | admin-only | planned | `docs/environment-auth-supabase.md` |
 | `pricebook` | `/pricebook` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
 | `admin-cost-materials` | `/admin/costs/materials` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
@@ -63,7 +63,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 - `/staff/contacts`
 - `/staff/schedule`
 
-The project list also requires at least one visible project for the staff test account. PR-Agent.3 adds seeded scenario data for project detail, estimate, quote, and workbench route smoke. Design List, Running Jobs, and schedule scenario coverage remain planned until those domains have narrow, safe seeding contracts.
+The project list also requires at least one visible project for the staff test account. Seeded scenario data covers project detail, estimate, quote, workbench, and calculator route smoke. Design List, Running Jobs, and schedule scenario coverage remain planned until those domains have narrow, safe seeding contracts.
 
 ## Scenario Lane
 
@@ -73,6 +73,7 @@ The project list also requires at least one visible project for the staff test a
 - `estimate-detail` through `project-with-estimate`
 - `quote-detail` through `quote-ready`
 - `design-workbench` through `workbench-multi-object`
+- `calculator` through `project-with-estimate`
 
 Seed those records explicitly with:
 
@@ -88,4 +89,4 @@ Scenario provisioning requires `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEX
 
 The first shared debug-export lane is gated to local/staging/debug runs. When enabled, project detail, redirected estimate detail, quote detail, and design workbench routes expose a JSON payload via `data-portal-debug-export="true"`. The payload follows `PortalPageDebugExport` and includes route, selected IDs, scenario labels where available, server/client state summaries, and diagnostics.
 
-Schedule, Design List, Running Jobs, calculator, and admin pages are cataloged as `planned`; they should add owner-approved payloads after their seeded scenarios or admin storage states exist.
+Schedule, Design List, Running Jobs, calculator, and admin pages still have `planned` debug exports. Calculator route and interaction smoke now run from seeded V2 inputs without waiting for that optional diagnostic payload.

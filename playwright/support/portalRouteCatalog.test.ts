@@ -93,6 +93,7 @@ describe('portalRouteCatalog', () => {
       'estimate-detail',
       'quote-detail',
       'design-workbench',
+      'calculator',
     ]);
 
     const seededIds = new Set(seededPortalScenarios.map((scenario) => scenario.id));

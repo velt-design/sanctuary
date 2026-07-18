@@ -127,19 +127,19 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: false,
       hasModuleErrors: true,
       engineError: null,
-      hasResult: false,
-      isCalculating: true,
+      resultFreshness: 'calculating',
       infillItems: [draftInfill],
       infillUiById: new Map([[draftInfill.id, makeInfillUiState({ status: 'draft' })]]),
     });
 
     expect(ui.hasStatusBlockers).toBe(true);
+    expect(ui.blockerCount).toBe(4);
     expect(ui.anyInfillDraft).toBe(true);
     expect(ui.items).toMatchObject([
       { id: 'project', level: 'ok', detail: 'Attached' },
       { id: 'contact', level: 'block', detail: 'Missing contact on project', actionKey: 'openProject' },
       { id: 'inputs', level: 'block', detail: 'Fix validation errors', actionKey: 'openIssues' },
-      { id: 'engine', level: 'block', detail: 'Calculating...' },
+      { id: 'engine', level: 'block', detail: 'Updating...' },
       { id: 'infills', level: 'block', detail: 'Finish required infill shape fields', actionKey: 'openInfills' },
     ]);
   });
@@ -151,8 +151,7 @@ describe('calculator quote status UI helpers', () => {
       projectHasContact: false,
       hasModuleErrors: false,
       engineError: 'Costing failed',
-      hasResult: false,
-      isCalculating: false,
+      resultFreshness: 'error',
       infillItems: [],
       infillUiById: new Map(),
     });
@@ -172,16 +171,13 @@ describe('calculator quote status UI helpers', () => {
       hasProject: true,
       readyToCalculate: true,
       hasStatusBlockers: false,
-      isCalculating: false,
-      isEditingDesign: false,
-      engineError: null,
-      hasResult: true,
+      resultFreshness: 'current' as const,
       warningCount: 0,
     };
 
     expect(resolveGenerateDesignPreflight({ ...base, projectId: '', hasProject: false })).toEqual({
       kind: 'error',
-      message: 'Select a project first (use Projects in the header).',
+      message: 'Select a project before saving design.',
     });
     expect(resolveGenerateDesignPreflight({ ...base, hasProject: false })).toEqual({
       kind: 'error',
@@ -191,21 +187,21 @@ describe('calculator quote status UI helpers', () => {
       kind: 'error',
       message: 'Fix validation errors before saving design.',
     });
-    expect(resolveGenerateDesignPreflight({ ...base, hasStatusBlockers: true })).toEqual({
-      kind: 'error',
-      message: 'Resolve blockers in Quote Status before saving design.',
-    });
-    expect(resolveGenerateDesignPreflight({ ...base, isCalculating: true })).toEqual({
+    expect(resolveGenerateDesignPreflight({ ...base, resultFreshness: 'calculating' })).toEqual({
       kind: 'error',
       message: 'Please wait for calculation to finish.',
     });
-    expect(resolveGenerateDesignPreflight({ ...base, engineError: 'Costing failed' })).toEqual({
+    expect(resolveGenerateDesignPreflight({ ...base, resultFreshness: 'error' })).toEqual({
       kind: 'error',
       message: 'Fix cost engine error before saving design.',
     });
-    expect(resolveGenerateDesignPreflight({ ...base, hasResult: false })).toEqual({
+    expect(resolveGenerateDesignPreflight({ ...base, resultFreshness: 'stale' })).toEqual({
       kind: 'error',
-      message: 'No calculated result yet.',
+      message: 'Wait for a current calculated result before saving design.',
+    });
+    expect(resolveGenerateDesignPreflight({ ...base, hasStatusBlockers: true })).toEqual({
+      kind: 'error',
+      message: 'Resolve blockers in Quote Status before saving design.',
     });
   });
 
@@ -215,15 +211,11 @@ describe('calculator quote status UI helpers', () => {
       hasProject: true,
       readyToCalculate: true,
       hasStatusBlockers: false,
-      isCalculating: false,
-      isEditingDesign: false,
-      engineError: null,
-      hasResult: true,
+      resultFreshness: 'current' as const,
       warningCount: 0,
     };
 
     expect(resolveGenerateDesignPreflight(base)).toEqual({ kind: 'save' });
     expect(resolveGenerateDesignPreflight({ ...base, warningCount: 1 })).toEqual({ kind: 'confirm' });
-    expect(resolveGenerateDesignPreflight({ ...base, isEditingDesign: true, hasResult: false })).toEqual({ kind: 'confirm' });
   });
 });

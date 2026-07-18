@@ -66,6 +66,10 @@ The calculator produces estimate snapshots. Estimate rows are versioned per proj
 - Calculator blind add-ons keep `widthMm` and `coverLengthMm` in saved estimate snapshots for compatibility, but the staff calculator presents and accepts those two dimensions in metres and converts them back to mm in the client adapter before pricing/persistence.
 - Drawing state can be stored inside estimate snapshot/drawing draft shapes, but design workbench architecture and compatibility rules are owned by `docs/design-workbench-architecture.md`.
 
+The calculator workspace keeps workflow context and save readiness in a persistent command bar. Staff can search active projects by name, quote reference, or address; selecting one opens that project's calculator workflow and active draft while the scratch draft remains in local/session storage under its original key.
+
+Calculator result freshness is explicit. Only a result produced from the current serialized costing request is `Live` and saveable. While inputs are invalid, awaiting recalculation, or affected by a costing error, the last successful totals and drawings remain visible for continuity but are labelled `Last valid result`; Quote Status and save preflight continue to block until the result is current. At narrow calculator widths the form and preview stack under one page-owned scrollbar; the split, independently scrollable workspace remains at widths of 1120px and above.
+
 Costing logic must remain in `packages/costing`; estimate code should persist and summarize costing output, not fork the costing engine.
 
 ## Estimate Pricing Rollout Boundary

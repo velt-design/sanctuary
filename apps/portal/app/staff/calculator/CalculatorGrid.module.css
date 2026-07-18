@@ -19,8 +19,9 @@
 
 .previewPage {
   height: 100dvh;
-  overflow: hidden;
+  overflow: auto;
   min-height: 0;
+  container-type: inline-size;
 }
 
 .previewFrame {
@@ -28,6 +29,9 @@
   height: 100%;
   overflow: hidden;
   min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
 }
 
 .grid {
@@ -2121,6 +2125,23 @@
   scrollbar-gutter: stable;
 }
 
+.leftCol,
+.rightCol {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--portal-text-rgb), 0.28) transparent;
+}
+
+.leftCol::-webkit-scrollbar,
+.rightCol::-webkit-scrollbar {
+  width: 7px;
+}
+
+.leftCol::-webkit-scrollbar-thumb,
+.rightCol::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(var(--portal-text-rgb), 0.24);
+}
+
 .modeToggleRow {
   display: inline-flex;
   gap: 8px;
@@ -2174,16 +2195,17 @@
   min-width: 0;
   padding-bottom: 24px;
   scrollbar-gutter: stable;
+  container: calculator-preview-rail / inline-size;
 }
 
 /* Keep scroll interactions, hide visible scrollbars in calculator surfaces. */
-.previewPage :is(.grid, .drawer, .modal, .infillRailList, .infillEditorForm, .infillEditorSummary, .leftCol, .rightCol, .materialsDebugJson) {
+.previewPage :is(.grid, .drawer, .modal, .infillRailList, .infillEditorForm, .infillEditorSummary, .materialsDebugJson) {
   -ms-overflow-style: none;
   scrollbar-width: none;
   scrollbar-gutter: auto;
 }
 
-.previewPage :is(.grid, .drawer, .modal, .infillRailList, .infillEditorForm, .infillEditorSummary, .leftCol, .rightCol, .materialsDebugJson)::-webkit-scrollbar {
+.previewPage :is(.grid, .drawer, .modal, .infillRailList, .infillEditorForm, .infillEditorSummary, .materialsDebugJson)::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
@@ -3910,6 +3932,18 @@
   box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.08);
 }
 
+.rightColStale .previewSummary {
+  border-color: rgba(180, 83, 9, 0.34);
+  box-shadow: 0 8px 20px rgba(180, 83, 9, 0.07);
+}
+
+.rightColStale .previewStatGrid,
+.rightColStale .moduleViewsCard,
+.rightColStale > .previewDetails {
+  opacity: 0.66;
+  transition: opacity 160ms ease;
+}
+
 .previewSummaryHeader {
   display: flex;
   align-items: flex-start;
@@ -3951,7 +3985,7 @@
 
 .previewStatGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -4456,10 +4490,11 @@
   margin-bottom: 10px;
 }
 
-@media (max-width: 1100px) {
+@container (max-width: 1119px) {
   .previewFrame {
     height: auto;
     overflow: visible;
+    grid-template-rows: auto auto;
   }
 
   .split {
@@ -4476,5 +4511,58 @@
   .rightCol {
     height: auto;
     overflow: visible;
+    scrollbar-gutter: auto;
+  }
+}
+
+@container calculator-preview-rail (max-width: 560px) {
+  .previewSummary,
+  .previewCard,
+  .moduleViewsCard,
+  .moduleViewsStage,
+  .modulePlanFrame,
+  .modulePlanCanvas {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .moduleViewsHeader,
+  .impactHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .moduleViewsControls {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .moduleViewsTabs {
+    max-width: 100%;
+  }
+
+  .moduleViewsSecondaryButton,
+  .moduleViewsTabButton {
+    padding-inline: 9px;
+  }
+
+  .modulePlanFrameModel,
+  .modulePlanCanvasModel {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .modulePlanSvgModel {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .previewRowValue {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
   }
 }
