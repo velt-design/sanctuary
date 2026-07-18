@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 function deferred() {
   let resolve!: () => void;
@@ -10,12 +10,27 @@ function deferred() {
 
 async function delayNetworkResponse(page: Page, pattern: string) {
   const gate = deferred();
-  await page.route(pattern, async (route) => {
-    const response = await route.fetch();
-    await gate.promise;
-    await route.fulfill({ response });
-  });
-  return gate;
+  const active = new Set<Promise<void>>();
+  const handler = async (route: Route) => {
+    const pending = (async () => {
+      await gate.promise;
+      await route.continue();
+    })();
+    active.add(pending);
+    try {
+      await pending;
+    } finally {
+      active.delete(pending);
+    }
+  };
+  await page.route(pattern, handler);
+  return {
+    async resolve() {
+      gate.resolve();
+      await Promise.allSettled([...active]);
+      await page.unroute(pattern, handler);
+    },
+  };
 }
 
 async function firstHref(page: Page, selector: string): Promise<string | null> {
@@ -98,7 +113,7 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(page.locator('main[aria-label="Loading dashboard"]')).toHaveCount(0);
 
-    gate.resolve();
+    await gate.resolve();
 
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 60_000 });
   });
@@ -124,7 +139,7 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
     await expect(page.locator('main[aria-label="Loading projects"]')).toHaveCount(0);
 
-    gate.resolve();
+    await gate.resolve();
 
     await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
   });
@@ -143,19 +158,20 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.locator('[data-project-page-frame="true"]')).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('[data-project-active-tab="quotes"]')).toBeVisible();
 
-    gate.resolve();
+    await gate.resolve();
   });
 
-  test('shows the shared list skeleton for contacts while queries are pending', async ({ page }) => {
+  test('shows real contacts content immediately while background queries are pending', async ({ page }) => {
     const gate = await delayNetworkResponse(page, '**/rest/v1/contacts**');
 
     await page.goto('/staff/contacts');
 
     await expect(portalShellNavigation(page)).toBeVisible();
-    await expect(page.locator('main[aria-label="Loading contacts"]')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible();
+    await expect(page.locator('main[aria-label="Loading contacts"]')).toHaveCount(0);
     await expect(page.getByText('Loading contacts')).toHaveCount(0);
 
-    gate.resolve();
+    await gate.resolve();
 
     await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible({ timeout: 60_000 });
   });
@@ -196,12 +212,18 @@ test.describe('portal auth routing authenticated flows', () => {
 
     await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
 
+    const collapse = page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ });
+    await expect(collapse).toBeVisible();
+    if ((await collapse.getAttribute('aria-expanded')) !== 'true') {
+      await collapse.click();
+      await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    }
+
     const search = page.getByPlaceholder('Search projects…');
     await expect(search).toBeVisible();
     await search.fill('alpha');
     await expect(search).toHaveValue('alpha');
 
-    const collapse = page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ });
     const initialExpanded = await collapse.getAttribute('aria-expanded');
 
     await collapse.click();
@@ -245,7 +267,7 @@ test.describe('portal auth routing authenticated flows', () => {
     await page.goto('/staff/contacts');
     await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible({ timeout: 60_000 });
 
-    const href = await firstHref(page, 'a[href^="/staff/contacts/"]');
+    const href = await firstHref(page, 'section[aria-label="Contacts list"] a[href^="/staff/contacts/"]');
     test.skip(!href, 'No contact detail links are available for smoke coverage.');
 
     await page.goto(href!);
