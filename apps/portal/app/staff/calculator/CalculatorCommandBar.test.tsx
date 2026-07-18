@@ -7,7 +7,7 @@ function renderBar(overrides: Partial<Parameters<typeof CalculatorCommandBar>[0]
     <CalculatorCommandBar
       projectLabel="Agent Project"
       isEditingDesign
-      activeModuleLabel="Pergola 1 - Module 1"
+      activeModuleLabel="Pergola 1 · Module 1"
       uiMode="basic"
       onUiModeChange={vi.fn()}
       resultFreshness="current"
@@ -29,7 +29,7 @@ describe('CalculatorCommandBar', () => {
     expect(markup).toContain('Calculator');
     expect(markup).toContain('Agent Project');
     expect(markup).toContain('Editing draft');
-    expect(markup).toContain('Pergola 1 - Module 1');
+    expect(markup).toContain('Pergola 1 · Module 1');
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain('aria-pressed="false"');
     expect(markup).toContain('Ready to save');

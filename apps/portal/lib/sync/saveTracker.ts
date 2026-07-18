@@ -39,6 +39,7 @@ const EMPTY_LOCAL_FIRST_SUMMARY: LocalFirstStoreSummary = {
   errorCount: 0,
   offlineCount: 0,
   entityCount: 0,
+  workingCopyCount: 0,
   pendingCount: 0,
 };
 
@@ -70,6 +71,7 @@ function isSummaryEqual(a: LocalFirstStoreSummary, b: LocalFirstStoreSummary): b
     a.errorCount === b.errorCount &&
     a.offlineCount === b.offlineCount &&
     a.entityCount === b.entityCount &&
+    a.workingCopyCount === b.workingCopyCount &&
     a.pendingCount === b.pendingCount &&
     a.lastSyncedAt === b.lastSyncedAt &&
     a.issueMessage === b.issueMessage

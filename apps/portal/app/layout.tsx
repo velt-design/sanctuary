@@ -8,6 +8,7 @@ import { Providers } from './providers';
 import { getPortalAccessState } from '@/lib/auth';
 import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
 import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
+import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter';
 
 export const metadata: Metadata = {
   title: 'Sanctuary Portal',
@@ -28,13 +29,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" style={cssVars}>
       <body>
-        <Providers>
-          <PortalAuthProvider initialAuthState={initialPortalAuthStateFromAccess(accessState)}>
+        <PortalAuthProvider initialAuthState={initialPortalAuthStateFromAccess(accessState)}>
+          <Providers>
+            <PortalVitalsReporter />
             <ToastProvider>
               <PortalShell>{children}</PortalShell>
             </ToastProvider>
-          </PortalAuthProvider>
-        </Providers>
+          </Providers>
+        </PortalAuthProvider>
       </body>
     </html>
   );

@@ -23,6 +23,12 @@ Optional categories must not load before explicit consent.
 
 When adding or removing tracking, update this table and the privacy behavior.
 
+## Portal Operational Performance Telemetry
+
+Authenticated portal Web Vitals are operational telemetry, not marketing analytics. `PortalVitalsReporter` submits CLS, FCP, INP, LCP, and TTFB to the first-party staff API with `sendBeacon` and a keepalive-fetch fallback. Failure is silent and never delays navigation.
+
+The event contract accepts only a closed route-template allowlist, metric value/rating, navigation type, device class, and an optional build ID. Raw URLs, query strings, record IDs, names, email addresses, user IDs, user-agent strings, and free-form text are not accepted or stored. Staff may insert through the authenticated route; only admins may read the grouped 7- or 30-day p75/p95 summary. Clients cannot update or delete metrics. A locked-down daily database job deletes rows older than 30 days.
+
 GTM migration note: the coded GA4 loader remains active while the GTM container is being configured. The public enquiry form pushes a non-PII `lead_submitted` dataLayer event after `/api/enquiry` succeeds so Google Ads conversion tracking can trigger without relying on a thank-you page. Server-side forward attribution now records `marketing.lead_submitted`, `marketing.site_visit_booked`, `marketing.quote_accepted`, and `marketing.deposit_received` in `audit_events`; Google Ads API upload/enhanced conversions remain a later integration once conversion action IDs and credentials are available. Once GA4 and Google Ads conversion tags are owned by GTM, remove or disable the coded GA4 loader to avoid duplicate page view or event reporting.
 
 ## Security Rules
@@ -63,6 +69,7 @@ npm run audit:governance
 npm run text:mojibake
 npm run brand:forbid
 npm run cache:forbid
+npx vitest run apps/portal/lib/performance/webVitals.test.ts apps/portal/app/api/staff/v1/performance/web-vitals/route.test.ts apps/portal/app/api/admin/performance/web-vitals/route.test.ts
 ```
 
 ## Ownership

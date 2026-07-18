@@ -7,6 +7,15 @@ import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
 import { fetchPortalRole } from '@/lib/queries/auth';
 import type { PortalRole } from '@/lib/authTypes';
 import { type PortalAuthInitialState, type PortalAuthStatus, type PortalAuthUser, toPortalAuthUser } from '@/lib/portalAccess';
+import {
+  clearLocalFirstStoreOwner,
+  discardAllLocalFirstState,
+  getLocalFirstStoreOwner,
+  getLocalFirstStoreSnapshot,
+  summarizeLocalFirstStoreState,
+} from '@/lib/localFirst/store';
+import { stopLocalFirstRuntime } from '@/lib/localFirst/runtime';
+import { clearLegacyUnscopedCalculatorSessionDrafts } from '@/lib/localFirst/sessionBoundary';
 
 const ROLE_CACHE_KEY = 'sanctuary-portal:portal-role-cache:v1';
 
@@ -56,7 +65,7 @@ type PortalAuthState = {
   role: PortalRole | null;
   email: string | null;
   isAdmin: boolean;
-  signOut: (redirectTo?: string) => Promise<void>;
+  signOut: (redirectTo?: string) => Promise<'signed_out' | 'cancelled'>;
   refresh: () => Promise<void>;
 };
 
@@ -91,6 +100,7 @@ export default function PortalAuthProvider({
       const stillCurrent = () => applyNonceRef.current === applyNonce;
 
       if (!session?.user) {
+        clearLegacyUnscopedCalculatorSessionDrafts();
         clearCachedRole();
         setState({ status: 'unauthenticated', user: null, role: null });
         return;
@@ -100,6 +110,7 @@ export default function PortalAuthProvider({
       const cached = readCachedRole(user.id);
       const previousState = stateRef.current;
       const sameUser = previousState.user?.id === user.id;
+      if (previousState.user?.id && !sameUser) clearLegacyUnscopedCalculatorSessionDrafts();
 
       if (cached?.role) {
         setState({ status: 'authenticated', user, role: cached.role });
@@ -147,10 +158,43 @@ export default function PortalAuthProvider({
 
   const signOut = useCallback(
     async (redirectTo?: string) => {
+      const currentUserId = stateRef.current.user?.id ?? null;
+      const ownsLocalState = Boolean(currentUserId && getLocalFirstStoreOwner() === currentUserId);
+      const summary = ownsLocalState
+        ? summarizeLocalFirstStoreState(getLocalFirstStoreSnapshot().state)
+        : null;
+      const retainedWork = Boolean(
+        summary &&
+        (summary.pendingCount > 0 ||
+          summary.conflictCount > 0 ||
+          summary.errorCount > 0 ||
+          summary.workingCopyCount > 0),
+      );
+      let discard = false;
+
+      if (summary?.syncingCount) {
+        discard = window.confirm(
+          'Some changes are still saving. Select OK to discard this device\'s unsaved changes and sign out, or Cancel to stay signed in and let saving finish.',
+        );
+        if (!discard) return 'cancelled';
+      } else if (retainedWork) {
+        const keepForLater = window.confirm(
+          'This device has changes that are not fully synced. Select OK to keep them for your next sign-in and sign out, or Cancel to stay signed in.',
+        );
+        if (!keepForLater) return 'cancelled';
+      }
+
+      if (ownsLocalState) {
+        stopLocalFirstRuntime({ clearOwner: false });
+        if (discard) await discardAllLocalFirstState();
+        clearLocalFirstStoreOwner();
+      }
+      clearLegacyUnscopedCalculatorSessionDrafts();
       clearCachedRole();
       await supabase.auth.signOut();
       setState({ status: 'unauthenticated', user: null, role: null });
       if (redirectTo) router.replace(redirectTo);
+      return 'signed_out';
     },
     [router, supabase],
   );

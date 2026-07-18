@@ -11,6 +11,14 @@ The portal uses local-first primitives for heavy staff editing flows where routi
 - `apps/portal/components/sync/LocalFirstRuntime.tsx`: starts runtime in the app.
 - `apps/portal/components/sync/LocalFirstPortalMutations.tsx`: registers portal mutation handlers.
 
+## Authenticated Owner Boundary
+
+Persisted browser state belongs to one authenticated user. React Query uses `sanctuary-portal-react-query:v4:<userId>` and the local-first store uses `sanctuary-portal-local-first:v2:<userId>`. The providers mount inside `PortalAuthProvider`; unauthenticated pages receive an ephemeral QueryClient and do not hydrate persisted portal data.
+
+On an owner change, the old queue runtime stops, removes online listeners, retry timers, and store subscribers, clears its in-memory QueryClient, and only then hydrates the new owner. Legacy unscoped query, local-first, and calculator session keys are quarantined and never replayed for a guessed owner. Calculator working copies inherit the local-first owner boundary and its physical session fallback key is `sanctuary-portal:calculator:draft:v2:<userId>:<draftScope>`.
+
+Sign-out is immediate when there is no retained work. Queued, offline, conflicted, failed, or draft work may be kept for the same user's next sign-in or the user may remain signed in. Actively syncing work requires the user to remain signed in until completion or explicitly confirm a discard. A discard clears only the current owner's local-first queue and working copies.
+
 ## Mutation Keys
 
 Current portal local-first mutations:
@@ -80,6 +88,7 @@ Spreadsheet surfaces use their own optimistic editing helpers and should stay al
 ```bash
 npm run test:portal -- apps/portal/lib/localFirst
 npm run test:portal -- apps/portal/components/sync/LocalFirstPortalMutations.test.tsx
+npx vitest run apps/portal/lib/localFirst/runtime.test.ts apps/portal/components/auth/PortalAuthProvider.test.tsx
 npm run test:portal
 ```
 

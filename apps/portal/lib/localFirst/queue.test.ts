@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { __resetLocalFirstQueueForTests, enqueueAndProcessLocalFirstMutation, registerLocalFirstMutationHandler, startLocalFirstQueueRuntime } from './queue';
+import {
+  __resetLocalFirstQueueForTests,
+  enqueueAndProcessLocalFirstMutation,
+  registerLocalFirstMutationHandler,
+  startLocalFirstQueueRuntime,
+  stopLocalFirstQueueRuntime,
+} from './queue';
 import {
   __resetLocalFirstStoreForTests,
   __setLocalFirstStorageAdapterForTests,
@@ -168,5 +174,31 @@ describe('localFirst queue', () => {
       expect(getLocalFirstEntitySyncState('quote:detail:local-quote:1').status).toBe('synced');
       expect(resolveLocalFirstId('local-quote:1')).toBe('qv_1');
     });
+  });
+
+  it('does not commit a handler result after the runtime stops', async () => {
+    let releaseHandler: () => void = () => undefined;
+    const handlerStarted = new Promise<void>((resolveStarted) => {
+      registerLocalFirstMutationHandler('estimate.slow-save', async () => {
+        resolveStarted();
+        await new Promise<void>((resolve) => { releaseHandler = resolve; });
+        return { kind: 'success' } as const;
+      });
+    });
+
+    await startLocalFirstQueueRuntime();
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: 'estimate:slow',
+      mutationKey: 'estimate.slow-save',
+      payload: { total: 99 },
+    });
+    await handlerStarted;
+    stopLocalFirstQueueRuntime();
+    releaseHandler();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getLocalFirstStoreSnapshot().state.queue).toHaveLength(1);
+    expect(getLocalFirstStoreSnapshot().state.queue[0]?.status).toBe('syncing');
   });
 });

@@ -6,6 +6,7 @@ import { projectPageSnapshotQueryOptions } from '@/lib/queries/projects';
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import {
   PORTAL_QUERY_CACHE_FALLBACK_BUSTER,
+  portalQueryStorageKey,
   portalEditorPersistMeta,
   resolvePortalQueryCacheBuster,
   shouldDehydratePortalQuery,
@@ -50,5 +51,11 @@ describe('portal query persistence', () => {
     expect(PORTAL_QUERY_CACHE_FALLBACK_BUSTER).toBe('v3');
     expect(resolvePortalQueryCacheBuster(undefined)).toBe('v3');
     expect(resolvePortalQueryCacheBuster('custom-v5')).toBe('custom-v5');
+  });
+
+  it('uses an authenticated-user-owned persistence key', () => {
+    expect(portalQueryStorageKey('user-a')).toBe('sanctuary-portal-react-query:v4:user-a');
+    expect(portalQueryStorageKey('user-b')).not.toBe(portalQueryStorageKey('user-a'));
+    expect(() => portalQueryStorageKey('  ')).toThrow(/user id/i);
   });
 });

@@ -11,6 +11,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/invoices/server.ts',
+  'apps/portal/lib/marketingAttribution/server.ts',
   'apps/portal/lib/quotes/serverCore.ts',
   'apps/portal/lib/quotes/serverEmail.ts',
   'apps/portal/lib/quotes/serverLoaders.ts',

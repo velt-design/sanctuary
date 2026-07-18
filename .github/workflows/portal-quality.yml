@@ -95,14 +95,26 @@ jobs:
       - name: Portal production build
         run: npm run build:portal
 
-      - name: Schedule bundle budget
-        run: npm run schedule:bundle-budget
+      - name: Portal route bundle budgets
+        run: npm run portal:bundle-budget
 
       - name: Production security audit
         run: npm run audit:security
 
       - name: Portal fixture browser smoke
         run: npm run test:portal:browser
+
+      - name: Fixture-safe workbench performance
+        if: always()
+        run: npm run test:portal:performance:fixture
+
+      - name: Upload workbench performance artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-workbench-performance
+          path: artifacts/portal-workbench-performance.json
+          if-no-files-found: warn
 
       - name: Authenticated browser gate prerequisites
         run: |
@@ -139,7 +151,6 @@ jobs:
       CI: true
       PORTAL_TEST_EMAIL: ${{ secrets.PORTAL_TEST_EMAIL }}
       PORTAL_TEST_PASSWORD: ${{ secrets.PORTAL_TEST_PASSWORD }}
-      PORTAL_PERF_ARTIFACT: artifacts/portal-route-timings.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -169,9 +180,15 @@ jobs:
             echo "- at least one project visible to the test account"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Capture portal route timings
+      - name: Capture five portal performance runs
         id: portal_performance
-        run: npm run test:portal:performance
+        run: |
+          mkdir -p artifacts/portal-performance
+          npm run portal:auth-runtime
+          for run in 1 2 3 4 5; do
+            echo "Authenticated performance repetition ${run}/5"
+            PORTAL_PERF_ARTIFACT="artifacts/portal-performance/run-${run}.json" npm run test:portal:performance:capture
+          done
 
       - name: Portal performance failure guidance
         if: ${{ failure() && steps.portal_performance.outcome == 'failure' }}
@@ -183,44 +200,14 @@ jobs:
             echo "This gate must not silently skip. Confirm authenticated runtime prerequisites first, then inspect the route timing artifact if one was generated."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish timing summary
+      - name: Validate and publish performance baseline
         if: always()
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const artifactPath = process.env.PORTAL_PERF_ARTIFACT;
-          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-
-          if (!artifactPath || !summaryPath || !fs.existsSync(artifactPath)) {
-            fs.appendFileSync(summaryPath, '## Portal Route Timings\n\nNo timing artifact was generated.\n');
-            process.exit(0);
-          }
-
-          const payload = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
-          const routes = Array.isArray(payload.routes) ? payload.routes : [];
-          const lines = [
-            '## Portal Route Timings',
-            '',
-            '| Route | Shell visible | Shell budget | Content visible | Content budget | Interaction | Interaction budget | Pass |',
-            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | :---: |',
-            ...routes.map((route) => {
-              const shellBudget = typeof route.shellVisibleMsMax === 'number' && route.shellVisibleMsMax > 0 ? `${route.shellVisibleMsMax}ms` : 'n/a';
-              const contentBudget =
-                typeof route.contentVisibleMsMax === 'number' && route.contentVisibleMsMax > 0 ? `${route.contentVisibleMsMax}ms` : 'n/a';
-              const interaction = typeof route.interactionMs === 'number' ? `${route.interactionMs}ms` : 'n/a';
-              const interactionBudget = typeof route.interactionMsMax === 'number' ? `${route.interactionMsMax}ms` : 'n/a';
-              const label = route.interactionLabel ? `${route.route} (${route.interactionLabel})` : route.route;
-              return `| ${label} | ${route.shellVisibleMs}ms | ${shellBudget} | ${route.contentVisibleMs}ms | ${contentBudget} | ${interaction} | ${interactionBudget} | ${route.withinBudget ? 'PASS' : 'FAIL'} |`;
-            }),
-          ];
-
-          fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
-          NODE
+        run: node scripts/summarize-portal-performance.mjs artifacts/portal-performance
 
       - name: Upload portal timing artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: portal-route-timings
-          path: artifacts/portal-route-timings.json
+          name: portal-performance-baseline
+          path: artifacts/portal-performance/*.json
           if-no-files-found: warn

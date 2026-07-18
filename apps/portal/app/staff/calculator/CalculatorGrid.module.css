@@ -2125,6 +2125,20 @@
   scrollbar-gutter: stable;
 }
 
+.configurationWorkspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 240px) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  align-items: start;
+}
+
+.configurationFields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
 .leftCol,
 .rightCol {
   scrollbar-width: thin;
@@ -4512,6 +4526,10 @@
     height: auto;
     overflow: visible;
     scrollbar-gutter: auto;
+  }
+
+  .configurationWorkspace {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

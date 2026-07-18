@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   __resetLocalFirstStoreForTests,
   __setLocalFirstStorageAdapterForTests,
+  bindLocalFirstStoreOwner,
+  clearLocalFirstStoreOwner,
   createEmptyLocalFirstState,
   discardLocalFirstEntityQueue,
   enqueueLocalFirstMutation,
@@ -11,6 +13,7 @@ import {
   registerLocalFirstIdAlias,
   getLocalFirstStoreSnapshot,
   getLocalFirstWorkingCopy,
+  localFirstStorageKey,
   resolveLocalFirstId,
   resolveLocalFirstQueueItemConflict,
   summarizeLocalFirstStoreState,
@@ -154,5 +157,36 @@ describe('localFirst store', () => {
     const merged = getAliasedLocalFirstEntitySyncState('qv_1', (id) => `quote:detail:${id}`);
     expect(merged.pendingCount).toBe(1);
     expect(merged.status).toBe('queued');
+  });
+
+  it('isolates persisted drafts and queues by authenticated owner', async () => {
+    const byOwner = new Map<string, LocalFirstPersistedState>();
+    __setLocalFirstStorageAdapterForTests({
+      get: async (ownerId) => structuredClone(byOwner.get(ownerId)),
+      set: async (state, ownerId) => {
+        byOwner.set(ownerId, structuredClone(state));
+      },
+    });
+    __resetLocalFirstStoreForTests();
+
+    bindLocalFirstStoreOwner('user-a');
+    await writeLocalFirstWorkingCopy({ entityKey: 'estimate:a', data: { customer: 'A' } });
+    await enqueueLocalFirstMutation({ entityKey: 'estimate:a', mutationKey: 'estimate.save', payload: { total: 1 } });
+    clearLocalFirstStoreOwner();
+
+    bindLocalFirstStoreOwner('user-b');
+    await ensureLocalFirstStoreReady();
+    expect(getLocalFirstWorkingCopy('estimate:a')).toBeNull();
+    expect(getLocalFirstStoreSnapshot().state.queue).toEqual([]);
+    await writeLocalFirstWorkingCopy({ entityKey: 'estimate:b', data: { customer: 'B' } });
+    clearLocalFirstStoreOwner();
+
+    bindLocalFirstStoreOwner('user-a');
+    await ensureLocalFirstStoreReady();
+    expect(getLocalFirstWorkingCopy<{ customer: string }>('estimate:a')?.data.customer).toBe('A');
+    expect(getLocalFirstWorkingCopy('estimate:b')).toBeNull();
+    expect(getLocalFirstStoreSnapshot().state.queue).toHaveLength(1);
+    expect(localFirstStorageKey('user-a')).toBe('sanctuary-portal-local-first:v2:user-a');
+    expect(localFirstStorageKey('user-a')).not.toContain('sanctuary-portal-local-first-v1');
   });
 });

@@ -41,7 +41,7 @@ npm run portal:build-env
 npm run portal:side-effects
 ```
 
-`portal:doctor:quick` runs docs guard, mojibake check, typecheck, lint, and portal Vitest. `portal:doctor` adds portal build, schedule bundle budget, drawing browser smoke, authenticated smoke, route performance, and production security audit.
+`portal:doctor:quick` runs docs guard, mojibake check, typecheck, lint, and portal Vitest. `portal:doctor` adds portal build, general route bundle budgets, drawing and fixture-performance browser smoke, authenticated smoke, route performance, and production security audit.
 
 `portal:build-env` is the fail-fast preflight for portal build-dependent gates. `npm run build:portal`, `npm run portal:side-effects`, and broad `npm run portal:doctor` run it before `next build` so an active portal dev server or Next build lock prints a clear manual-stop instruction instead of failing deep in the build.
 
@@ -95,6 +95,7 @@ npm run text:mojibake
 npm run packages:guard
 npm run cache:forbid
 npm run brand:forbid
+npm run portal:bundle-budget
 npm run schedule:bundle-budget
 ```
 
@@ -187,11 +188,21 @@ npm run test:portal:browser
 npm run test:portal:browser:headed
 npm run test:portal:smoke
 npm run test:portal:performance
+npm run test:portal:performance:capture
+npm run test:portal:performance:fixture
 ```
 
 `npm run portal:auth-env` is the cheap fail-fast credential preflight for authenticated portal browser gates. It checks that `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD` are set before Playwright starts, so missing credentials fail loudly instead of producing a skipped or late setup failure.
 
 `npm run portal:auth-runtime` is the authenticated runtime-readiness preflight for smoke and performance gates. It runs after `portal:auth-env`, signs in through the existing Playwright setup flow, verifies the session is not redirected to `/login` or `/access-status`, checks dashboard/projects/contacts/schedule shell access, confirms schedule readiness, and requires at least one project visible to the test account. `npm run test:portal:smoke`, `npm run test:portal:performance`, and broad `npm run portal:doctor` run it before their deeper authenticated assertions.
+
+`npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Contacts, and Schedule; warm Dashboard to Projects, Projects to project, browser back, and project tab navigation; and Schedule/Calculator interactions. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Portal Performance CI runs the authenticated suite five times, rejects missing journeys, and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
+
+`npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
+
+`npm run test:portal:performance:fixture` measures workbench object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. It requires no authenticated project data and produces its own artifact.
+
+After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Project Detail, Calculator, and Design Workbench. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
 `npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
 
@@ -201,7 +212,7 @@ npm run test:portal:performance
 
 `npm run portal:agent-scenarios` captures authenticated browser state and opens dynamic routes from the catalog-backed scenario lane: project detail, estimate detail, quote detail, design workbench, and calculator. It reads `playwright/.auth/portal-scenarios.json` only and does not mutate data. `npm run portal:agent-scenarios:provision` is the opt-in combined command that provisions the test user, seeds scenarios, then runs scenario smoke; because user provisioning and scenario provisioning have separate safety gates, set both `PORTAL_TEST_PROVISION_TARGET=local|staging` and `PORTAL_TEST_SCENARIO_TARGET=local|staging`.
 
-`npm run portal:calculator-ui` runs the authenticated calculator trust suite against the valid V2 `project-with-estimate` scenario, which has three modules across two pergolas. It checks current/stale result labelling, save blocking, internal-cost versus blind-customer-price wording, stored-versus-Live save review, deliberate Preserve/Reprice actions, project selection, module-switch edit retention, local draft status and reload restoration, 1366px horizontal fit, and page-owned scrolling plus responsive save review at 1024px and 768px. The browser suite does not press a save action or create persistent quote data. `npm run portal:calculator-ui:provision` is the explicit local/staging provisioning variant and has the same two target safety requirements as the broader scenario provision command.
+`npm run portal:calculator-ui` runs the authenticated calculator trust suite against the valid V2 `project-with-estimate` scenario, which has three modules across two pergolas. It checks canonical grouped module identity, fresh Add, deep Duplicate, Move without reordering, confirmed Remove, per-module validation badges and issue focus, current/stale result labelling, save blocking, internal-cost versus blind-customer-price wording, stored-versus-Live save review, deliberate Preserve/Reprice actions, project selection, module-switch edit retention, local draft status and reload restoration, 1366px horizontal fit, and page-owned scrolling plus responsive module access/save review at 1024px and 768px. The browser suite does not press a save action or create persistent quote data. `npm run portal:calculator-ui:provision` is the explicit local/staging provisioning variant and has the same two target safety requirements as the broader scenario provision command.
 
 `npm run portal:agent-scorecard` prints a read-only portal-agent quality snapshot from the route catalog, scenario registry, debug-export metadata, browser evidence adoption, and `npm run repo:health` headline. It does not run browser tests, provision users, seed scenarios, or mutate data. Use `npm run portal:agent-scorecard -- --json` for automation-friendly output. The human guide is `docs/portal-agent-scorecard.md`.
 
@@ -327,8 +338,8 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
-- Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, production security audit, fixture browser smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
-- Portal Performance Report runs authenticated route timing as a separate blocking job and uploads `portal-route-timings` when generated. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
+- Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, general route bundle budgets, production security audit, fixture browser/performance smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
+- Portal Performance Report runs five authenticated journey repetitions as a separate blocking job, rejects missing schema-v2 journeys, publishes p50/p75/p95, and uploads the `portal-performance-baseline` artifacts. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
 - Governance Monthly still runs the broader marketing/governance sweep with marketing tests, production dependency audit, and Lighthouse.

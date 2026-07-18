@@ -13,7 +13,7 @@ const noop = () => undefined;
 
 const summary: SaveDialogSummary = {
   modules: '2',
-  activeModule: 'Module 1: pitched + box perimeter',
+  activeModule: 'Pergola 1 · Module 1: pitched + box perimeter',
   roofSize: '6m × 3m',
   roofMaterial: 'acrylic',
   roofPitch: '5°',
@@ -87,6 +87,7 @@ describe('CalculatorSaveDialogs', () => {
   it('renders issues list and empty issues state', () => {
     const issue: CalculatorIssue = {
       moduleIndex: 1,
+      moduleLabel: 'Pergola 2 · Module 1',
       fieldId: 'lengthM',
       label: 'Roof length',
       message: 'Enter a roof length.',
@@ -95,7 +96,7 @@ describe('CalculatorSaveDialogs', () => {
     const emptyMarkup = renderToStaticMarkup(<IssuesDialogContent issues={[]} onClose={noop} onIssueClick={noop} />);
 
     expect(errorsMarkup).toContain('Issues');
-    expect(errorsMarkup).toContain('Module 2 · Roof length');
+    expect(errorsMarkup).toContain('Pergola 2 · Module 1 · Roof length');
     expect(errorsMarkup).toContain('Enter a roof length.');
     expect(errorsMarkup).toContain('Jump');
     expect(emptyMarkup).toContain('No validation errors.');
@@ -105,7 +106,7 @@ describe('CalculatorSaveDialogs', () => {
     const markup = renderSave({ confirmRequestDesign: true, confirmRequestDesignPriority: 'TIER_2' });
 
     expect(markup).toContain('This will save the current design draft for this project.');
-    expect(markup).toContain('Module 1: pitched + box perimeter');
+    expect(markup).toContain('Pergola 1 · Module 1: pitched + box perimeter');
     expect(markup).toContain('6m × 3m');
     expect(markup).toContain('No warnings for this design.');
     expect(markup).toContain('Internal true cost (ex‑GST)');

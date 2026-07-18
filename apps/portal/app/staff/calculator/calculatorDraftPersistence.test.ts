@@ -1,6 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import { makeDefaultCalculatorInputs, type CalculatorDraftSessionSnapshot } from './calculatorInputs';
-import { createCalculatorDraftPersistence, type CalculatorDraftPersistenceServices } from './calculatorDraftPersistence';
+import {
+  calculatorDraftPersistence,
+  createCalculatorDraftPersistence,
+  type CalculatorDraftPersistenceServices,
+} from './calculatorDraftPersistence';
+import {
+  __resetLocalFirstStoreForTests,
+  __setLocalFirstStorageAdapterForTests,
+  bindLocalFirstStoreOwner,
+  clearLocalFirstStoreOwner,
+  createEmptyLocalFirstState,
+} from '@/lib/localFirst/store';
+import { calculatorSessionStorageKey } from '@/lib/localFirst/sessionBoundary';
 
 function makeSnapshot(activeModuleIndex = 0): CalculatorDraftSessionSnapshot {
   return {
@@ -98,5 +110,29 @@ describe('calculatorDraftPersistence', () => {
     await expect(
       persistence.persist({ entityKey: 'entity', sessionKey: 'draft', snapshot: makeSnapshot() }),
     ).resolves.toEqual(expected);
+  });
+
+  it('does not expose user A session fallback to user B', async () => {
+    const byOwner = new Map<string, ReturnType<typeof createEmptyLocalFirstState>>();
+    __setLocalFirstStorageAdapterForTests({
+      get: async (ownerId) => structuredClone(byOwner.get(ownerId)),
+      set: async (state, ownerId) => { byOwner.set(ownerId, structuredClone(state)); },
+    });
+    __resetLocalFirstStoreForTests();
+    window.sessionStorage.clear();
+    const logicalKey = 'sanctuary-portal:calculator:draft:v1:project-1:new';
+
+    bindLocalFirstStoreOwner('user-a');
+    await calculatorDraftPersistence.persist({ entityKey: 'calculator:draft', sessionKey: logicalKey, snapshot: makeSnapshot() });
+    expect(window.sessionStorage.getItem(calculatorSessionStorageKey('user-a', logicalKey))).not.toBeNull();
+    clearLocalFirstStoreOwner();
+
+    bindLocalFirstStoreOwner('user-b');
+    await expect(
+      calculatorDraftPersistence.restore({ entityKey: 'calculator:draft', sessionKey: logicalKey }),
+    ).resolves.toBeNull();
+    expect(window.sessionStorage.getItem(calculatorSessionStorageKey('user-b', logicalKey))).toBeNull();
+    clearLocalFirstStoreOwner();
+    window.sessionStorage.clear();
   });
 });

@@ -13,30 +13,75 @@ import type {
   LocalFirstWorkingCopy,
 } from './types';
 
-const STORAGE_KEY = 'sanctuary-portal-local-first-v1';
+const LOCAL_FIRST_STORAGE_KEY_PREFIX = 'sanctuary-portal-local-first:v2:';
 
 type Listener = () => void;
 
 type LocalFirstStorageAdapter = {
-  get: () => Promise<LocalFirstPersistedState | undefined>;
-  set: (state: LocalFirstPersistedState) => Promise<void>;
+  get: (ownerId: string) => Promise<LocalFirstPersistedState | undefined>;
+  set: (state: LocalFirstPersistedState, ownerId: string) => Promise<void>;
 };
 
+export function localFirstStorageKey(ownerId: string): string {
+  const normalized = ownerId.trim();
+  if (!normalized) throw new Error('A portal user id is required for local-first storage.');
+  return `${LOCAL_FIRST_STORAGE_KEY_PREFIX}${normalized}`;
+}
+
 const defaultStorageAdapter: LocalFirstStorageAdapter = {
-  async get() {
-    const value = await get<unknown>(STORAGE_KEY);
+  async get(ownerId) {
+    const value = await get<unknown>(localFirstStorageKey(ownerId));
     return normalizePersistedState(value);
   },
-  async set(state) {
-    await set(STORAGE_KEY, state);
+  async set(state, ownerId) {
+    await set(localFirstStorageKey(ownerId), state);
   },
 };
 
 let storageAdapter: LocalFirstStorageAdapter = defaultStorageAdapter;
+let activeOwnerId: string | null = null;
+let ownerGeneration = 0;
 let snapshot: LocalFirstStoreSnapshot = { hydrated: false, state: createEmptyLocalFirstState() };
 let hydratePromise: Promise<void> | null = null;
 let mutationChain: Promise<void> = Promise.resolve();
 const listeners = new Set<Listener>();
+
+function storageOwnerId(): string {
+  if (activeOwnerId) return activeOwnerId;
+  if (storageAdapter !== defaultStorageAdapter) return '__local_first_test_owner__';
+  throw new Error('Local-first storage cannot hydrate before an authenticated portal user is bound.');
+}
+
+function ownerToken(): string {
+  const ownerId = activeOwnerId ?? (storageAdapter !== defaultStorageAdapter ? '__local_first_test_owner__' : '__unbound__');
+  return `${ownerId}::${ownerGeneration}`;
+}
+
+function resetInMemoryState() {
+  snapshot = { hydrated: false, state: createEmptyLocalFirstState() };
+  hydratePromise = null;
+  mutationChain = Promise.resolve();
+  emit();
+}
+
+export function bindLocalFirstStoreOwner(ownerId: string): void {
+  const normalized = ownerId.trim();
+  if (!normalized) throw new Error('A portal user id is required before starting local-first sync.');
+  if (activeOwnerId === normalized) return;
+  activeOwnerId = normalized;
+  ownerGeneration += 1;
+  resetInMemoryState();
+}
+
+export function clearLocalFirstStoreOwner(): void {
+  activeOwnerId = null;
+  ownerGeneration += 1;
+  resetInMemoryState();
+}
+
+export function getLocalFirstStoreOwner(): string | null {
+  return activeOwnerId;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -69,8 +114,9 @@ function emit() {
   }
 }
 
-function persistSnapshot(state: LocalFirstPersistedState) {
-  void storageAdapter.set(state).catch((error) => {
+async function persistSnapshot(state: LocalFirstPersistedState): Promise<void> {
+  const ownerId = storageOwnerId();
+  await storageAdapter.set(state, ownerId).catch((error) => {
     console.error('[localFirst] Failed to persist local-first state.', error);
   });
 }
@@ -350,8 +396,11 @@ export function subscribeToLocalFirstStore(listener: Listener): () => void {
 export async function ensureLocalFirstStoreReady(): Promise<void> {
   if (snapshot.hydrated) return;
   if (!hydratePromise) {
+    const scope = ownerToken();
+    const ownerId = storageOwnerId();
     hydratePromise = (async () => {
-      const hydratedState = (await storageAdapter.get()) ?? createEmptyLocalFirstState();
+      const hydratedState = (await storageAdapter.get(ownerId)) ?? createEmptyLocalFirstState();
+      if (scope !== ownerToken()) return;
       snapshot = { hydrated: true, state: hydratedState };
       emit();
     })().finally(() => {
@@ -362,13 +411,16 @@ export async function ensureLocalFirstStoreReady(): Promise<void> {
 }
 
 async function mutateLocalFirstState<T>(recipe: (draft: LocalFirstPersistedState) => T | Promise<T>): Promise<T> {
+  const scope = ownerToken();
   const operation = mutationChain.then(async () => {
     await ensureLocalFirstStoreReady();
+    if (scope !== ownerToken()) throw new Error('Local-first owner changed before the mutation started.');
     const draft = cloneState(snapshot.state);
     const result = await recipe(draft);
+    if (scope !== ownerToken()) throw new Error('Local-first owner changed while a mutation was running.');
     snapshot = { hydrated: true, state: draft };
     emit();
-    persistSnapshot(draft);
+    await persistSnapshot(draft);
     return result;
   });
 
@@ -419,6 +471,7 @@ export function summarizeLocalFirstStoreState(state: LocalFirstPersistedState): 
     errorCount,
     offlineCount,
     entityCount: Object.keys(state.entityStates).length,
+    workingCopyCount: Object.keys(state.workingCopies).length,
     pendingCount: queuedCount + syncingCount,
     lastSyncedAt,
     issueMessage,
@@ -674,6 +727,18 @@ export async function discardLocalFirstEntityQueue(entityKey: LocalFirstEntityKe
   });
 }
 
+export async function discardAllLocalFirstState(): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    const empty = createEmptyLocalFirstState();
+    draft.version = empty.version;
+    draft.workingCopies = empty.workingCopies;
+    draft.queue = empty.queue;
+    draft.entityStates = empty.entityStates;
+    draft.conflicts = empty.conflicts;
+    draft.idAliases = empty.idAliases;
+  });
+}
+
 export function getLocalFirstEntitySyncState(entityKey: LocalFirstEntityKey): LocalFirstEntitySyncState {
   return ensureEntityStateShape(entityKey, snapshot.state.entityStates[entityKey]);
 }
@@ -736,6 +801,8 @@ export function __setLocalFirstStorageAdapterForTests(adapter: LocalFirstStorage
 }
 
 export function __resetLocalFirstStoreForTests(): void {
+  activeOwnerId = null;
+  ownerGeneration += 1;
   snapshot = { hydrated: false, state: createEmptyLocalFirstState() };
   hydratePromise = null;
   mutationChain = Promise.resolve();

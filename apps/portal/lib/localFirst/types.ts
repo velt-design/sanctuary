@@ -66,6 +66,7 @@ export type LocalFirstStoreSummary = {
   errorCount: number;
   offlineCount: number;
   entityCount: number;
+  workingCopyCount: number;
   pendingCount: number;
   lastSyncedAt?: string;
   issueMessage?: string;

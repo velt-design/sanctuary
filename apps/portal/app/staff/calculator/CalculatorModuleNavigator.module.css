@@ -1,0 +1,343 @@
+.desktopRail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-width: 0;
+  max-height: calc(100dvh - 106px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.navigator {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.06);
+}
+
+.header,
+.groupHeader,
+.moduleSelectTop,
+.mobileHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.header {
+  align-items: flex-start;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title,
+.groupTitle,
+.summary,
+.emptyGroup {
+  margin: 0;
+}
+
+.title {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.summary,
+.emptyGroup,
+.moduleMeta {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.summary {
+  margin-top: 3px;
+}
+
+.addPergolaButton,
+.addModuleButton,
+.moduleActions button,
+.moveActions button,
+.mobileHeader button {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  border-radius: 999px;
+  background: var(--portal-bg-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.addPergolaButton {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+}
+
+.groups {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.group {
+  min-width: 0;
+}
+
+.groupHeader {
+  padding: 0 2px 6px;
+}
+
+.groupTitle {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.addModuleButton {
+  flex: 0 0 auto;
+  border-color: transparent;
+  padding: 4px 6px;
+  background: transparent;
+  color: rgba(var(--portal-text-rgb), 0.7);
+}
+
+.moduleList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.moduleItem,
+.moduleItemActive {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
+  background: rgba(var(--portal-text-rgb), 0.018);
+}
+
+.moduleItemActive {
+  border-color: rgba(var(--accentRgb), 0.48);
+  background: rgba(var(--accentRgb), 0.07);
+  box-shadow: 0 0 0 2px rgba(var(--accentRgb), 0.09);
+}
+
+.moduleSelect {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  border: none;
+  padding: 9px 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.moduleSelectTop strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.issueBadge,
+.readyBadge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 6px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.issueBadge {
+  border: 1px solid rgba(185, 28, 28, 0.24);
+  background: rgba(185, 28, 28, 0.08);
+  color: rgb(185, 28, 28);
+}
+
+.readyBadge {
+  border: 1px solid rgba(22, 101, 52, 0.18);
+  background: rgba(22, 101, 52, 0.06);
+  color: rgb(22, 101, 52);
+}
+
+.moduleMeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moduleActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0 8px 8px;
+}
+
+.moduleActions button,
+.moveActions button {
+  min-width: 0;
+  padding: 5px 6px;
+}
+
+.moduleActions button:disabled,
+.moveActions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.moduleActions .removeButton {
+  border-color: rgba(185, 28, 28, 0.24);
+  color: rgb(185, 28, 28);
+}
+
+.movePanel {
+  display: grid;
+  gap: 6px;
+  margin: 0 8px 8px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(var(--portal-text-rgb), 0.04);
+}
+
+.movePanel label {
+  color: rgba(var(--portal-text-rgb), 0.68);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.movePanel select {
+  width: 100%;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 9px;
+  padding: 7px 8px;
+  background: var(--portal-bg-surface);
+  color: inherit;
+}
+
+.moveActions {
+  display: flex;
+  gap: 6px;
+}
+
+.emptyGroup {
+  padding: 9px 10px;
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.16);
+  border-radius: 10px;
+}
+
+.mobileLauncher {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(var(--accentRgb), 0.34);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobileLauncher > span:first-child {
+  display: grid;
+  min-width: 0;
+}
+
+.mobileLauncher strong,
+.mobileLauncher > span:first-child > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileLauncher > span:first-child > span {
+  margin-top: 2px;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+}
+
+.mobileLauncherCount {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(var(--accentRgb), 0.09);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobileOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(var(--portal-text-rgb), 0.44);
+}
+
+.mobilePanel {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  border-radius: 18px;
+  background: var(--portal-bg-surface);
+  box-shadow: 0 24px 70px rgba(var(--portal-text-rgb), 0.28);
+}
+
+.mobileHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--portal-bg-surface);
+}
+
+.mobileHeader button {
+  padding: 6px 10px;
+}
+
+.mobilePanel .navigator {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.moduleSelect:focus-visible,
+.addPergolaButton:focus-visible,
+.addModuleButton:focus-visible,
+.moduleActions button:focus-visible,
+.moveActions button:focus-visible,
+.mobileLauncher:focus-visible,
+.mobileHeader button:focus-visible,
+.movePanel select:focus-visible {
+  outline: 3px solid rgba(var(--accentRgb), 0.2);
+  outline-offset: 2px;
+}
+
+@container (max-width: 1119px) {
+  .desktopRail {
+    display: none;
+  }
+
+  .mobileLauncher {
+    display: flex;
+  }
+}

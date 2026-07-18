@@ -12,6 +12,7 @@ describe('saveTracker', () => {
       errorCount: 0,
       offlineCount: 0,
       entityCount: 2,
+      workingCopyCount: 0,
       pendingCount: 3,
       lastSyncedAt: '2026-03-19T12:00:00.000Z',
     });
@@ -34,6 +35,7 @@ describe('saveTracker', () => {
       errorCount: 0,
       offlineCount: 0,
       entityCount: 1,
+      workingCopyCount: 0,
       pendingCount: 0,
       issueMessage: 'Estimate changed on another screen.',
     });
@@ -54,6 +56,7 @@ describe('saveTracker', () => {
       errorCount: 0,
       offlineCount: 0,
       entityCount: 1,
+      workingCopyCount: 0,
       pendingCount: 1,
     });
     saveTracker.setOnline(false);

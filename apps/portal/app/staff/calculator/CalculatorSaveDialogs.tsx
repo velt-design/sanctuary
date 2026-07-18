@@ -11,6 +11,7 @@ import type { UiWarning } from './warnings';
 
 export type CalculatorIssue = {
   moduleIndex: number;
+  moduleLabel: string;
   fieldId: string;
   label: string;
   message: string;
@@ -86,7 +87,7 @@ export function IssuesDialogContent({
                 <li key={`${issue.moduleIndex}-${issue.fieldId}`}>
                   <button type="button" className={styles.issueRow} onClick={() => onIssueClick(issue)}>
                     <div className={styles.issueMain}>
-                      <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} · ${issue.label}`}</div>
+                      <div className={styles.issueTitle}>{`${issue.moduleLabel} · ${issue.label}`}</div>
                       <div className={styles.issueMessage}>{issue.message}</div>
                     </div>
                     <span className={styles.issueJump}>Jump</span>

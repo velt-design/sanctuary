@@ -22,11 +22,19 @@ async function expectLocalDraftProtected(page: Page) {
   await expect(page.getByText('Browser draft only — use Save to update the estimate.', { exact: true })).toBeVisible();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function moduleNavigatorButton(page: Page, label: string) {
+  return page.getByRole('button', { name: new RegExp(`^${escapeRegExp(label)}`) });
+}
+
 async function withCalculatorEvidence(page: Page, testInfo: TestInfo, callback: () => Promise<void>) {
   await withPortalBrowserEvidence(
     page,
     testInfo,
-    { routeId: 'calculator', scenarioId: scenario.scenarioId, phase: 'calculator-trust-slice' },
+    { routeId: 'calculator', scenarioId: scenario.scenarioId, phase: 'calculator-module-navigator' },
     callback,
   );
 }
@@ -41,6 +49,9 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
     await expectLocalDraftProtected(page);
+    await expect(page.getByRole('navigation', { name: 'Pergolas and modules' })).toBeVisible();
+    await expect(moduleNavigatorButton(page, 'Pergola 1 · Module 1')).toHaveAttribute('aria-current', 'true');
+    await expect(page.getByText('Pergola 2 · Module 1', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Internal true cost (ex‑GST)', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Blind customer price (ex‑GST)', { exact: true }).first()).toBeVisible();
   });
@@ -52,22 +63,21 @@ test('local draft survives module switching and restores after reload', async ({
     await openCalculator(page);
     await expectLocalDraftProtected(page);
 
-    const moduleSelect = page.getByLabel('Module', { exact: true });
-    await expect(moduleSelect.locator('option')).toHaveCount(3);
+    await expect(page.getByRole('navigation', { name: 'Pergolas and modules' }).getByRole('listitem')).toHaveCount(3);
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
     const firstModuleLength = '6.25';
     const secondModuleLength = '4.95';
 
     await roofLength.fill(firstModuleLength);
     await expectLocalDraftProtected(page);
-    await moduleSelect.selectOption('1');
+    await moduleNavigatorButton(page, 'Pergola 1 · Module 2').click();
     await expect(roofLength).toHaveValue('4.8');
     await roofLength.fill(secondModuleLength);
     await expectLocalDraftProtected(page);
 
-    await moduleSelect.selectOption('0');
+    await moduleNavigatorButton(page, 'Pergola 1 · Module 1').click();
     await expect(roofLength).toHaveValue(firstModuleLength);
-    await moduleSelect.selectOption('1');
+    await moduleNavigatorButton(page, 'Pergola 1 · Module 2').click();
     await expect(roofLength).toHaveValue(secondModuleLength);
     await expectLocalDraftProtected(page);
 
@@ -75,11 +85,46 @@ test('local draft survives module switching and restores after reload', async ({
     await expect(page.getByRole('heading', { name: 'Calculator', exact: true })).toBeVisible();
     await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('Restored unsaved work', { exact: true })).toBeVisible();
-    await expect(moduleSelect).toHaveValue('1');
+    await expect(moduleNavigatorButton(page, 'Pergola 1 · Module 2')).toHaveAttribute('aria-current', 'true');
     await expect(roofLength).toHaveValue(secondModuleLength);
 
-    await moduleSelect.selectOption('0');
+    await moduleNavigatorButton(page, 'Pergola 1 · Module 1').click();
     await expect(roofLength).toHaveValue(firstModuleLength);
+  });
+});
+
+test('module navigator supports fresh add, duplicate, move, and confirmed remove', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await openCalculator(page);
+    const navigator = page.getByRole('navigation', { name: 'Pergolas and modules' });
+    const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
+
+    await roofLength.fill('8.4');
+    await navigator.getByRole('button', { name: 'Add module to Pergola 1', exact: true }).click();
+    await expect(roofLength).toHaveValue('6');
+    await expect(navigator.getByRole('listitem')).toHaveCount(4);
+
+    await roofLength.fill('7.35');
+    await navigator.getByRole('button', { name: 'Duplicate', exact: true }).click();
+    await expect(roofLength).toHaveValue('7.35');
+    await expect(navigator.getByRole('listitem')).toHaveCount(5);
+
+    await navigator.getByRole('button', { name: 'Move', exact: true }).click();
+    await navigator.getByLabel('Move to pergola').selectOption('pergola-2');
+    await navigator.getByRole('button', { name: 'Move module', exact: true }).click();
+    await expect(moduleNavigatorButton(page, 'Pergola 2 · Module 2')).toHaveAttribute('aria-current', 'true');
+    await expect(roofLength).toHaveValue('7.35');
+
+    await navigator.getByRole('button', { name: 'Remove', exact: true }).click();
+    const removeDialog = page.getByRole('dialog', { name: 'Remove module?' });
+    await expect(removeDialog).toContainText('browser draft');
+    await removeDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(navigator.getByRole('listitem')).toHaveCount(5);
+
+    await navigator.getByRole('button', { name: 'Remove', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Remove module?' }).getByRole('button', { name: 'Remove module', exact: true }).click();
+    await expect(navigator.getByRole('listitem')).toHaveCount(4);
   });
 });
 
@@ -133,6 +178,7 @@ for (const width of [1024, 768]) {
       await page.setViewportSize({ width, height: 768 });
       await openCalculator(page);
       await expectLocalDraftProtected(page);
+      await expect(page.getByRole('button', { name: /^Pergola 1 · Module 1/ })).toBeVisible();
       const main = page.locator('main').first();
       const before = await main.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight }));
       expect(before.scrollHeight).toBeGreaterThan(before.clientHeight);
@@ -151,10 +197,17 @@ test('invalid edits retain but relabel the last valid result and block save', as
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await openCalculator(page);
+    await moduleNavigatorButton(page, 'Pergola 2 · Module 1').click();
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
     await roofLength.fill('');
     await expect(page.getByText('Last valid result — fix inputs', { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeDisabled();
+    await expect(moduleNavigatorButton(page, 'Pergola 2 · Module 1')).toContainText('1 issue');
+    await page.getByRole('button', { name: 'Errors (1)', exact: true }).click();
+    const issueDialog = page.getByRole('dialog', { name: 'Issues' });
+    await expect(issueDialog).toContainText('Pergola 2 · Module 1 · Roof Length (m)');
+    await issueDialog.getByRole('button', { name: /Pergola 2 · Module 1 · Roof Length/ }).click();
+    await expect(roofLength).toBeFocused();
     await roofLength.fill('6');
     await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();

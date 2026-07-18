@@ -3,6 +3,7 @@ import {
   enqueueLocalFirstMutation,
   ensureLocalFirstStoreReady,
   getNextLocalFirstQueueItemForEntity,
+  getLocalFirstStoreOwner,
   listLocalFirstPendingEntityKeys,
   markLocalFirstPendingEntitiesOffline,
   markLocalFirstPendingEntitiesQueued,
@@ -32,7 +33,7 @@ function computeBackoffMs(attempt: number): number {
 }
 
 function scheduleEntityRetry(entityKey: LocalFirstEntityKey, retryAt?: string) {
-  if (typeof window === 'undefined') return;
+  if (!runtimeStarted || typeof window === 'undefined') return;
   const existing = retryTimers.get(entityKey);
   if (typeof existing === 'number') {
     window.clearTimeout(existing);
@@ -51,6 +52,16 @@ function clearRetryTimers() {
     window.clearTimeout(handle);
   }
   retryTimers.clear();
+}
+
+function detachOnlineListeners() {
+  if (typeof window !== 'undefined') {
+    if (handleOnline) window.removeEventListener('online', handleOnline);
+    if (handleOffline) window.removeEventListener('offline', handleOffline);
+  }
+  handleOnline = null;
+  handleOffline = null;
+  onlineListenerAttached = false;
 }
 
 async function processHandlerResult(item: LocalFirstQueueItem, result: LocalFirstMutationResult): Promise<'continue' | 'stop'> {
@@ -98,8 +109,10 @@ async function processSingleItem(item: LocalFirstQueueItem): Promise<'continue' 
       attempt: syncingItem.attempts,
       entityKey: syncingItem.entityKey,
     });
+    if (!runtimeStarted) return 'stop';
     return processHandlerResult(syncingItem, result);
   } catch (error) {
+    if (!runtimeStarted) return 'stop';
     const message = error instanceof Error ? error.message : 'Sync failed.';
     const retryAt = new Date(Date.now() + computeBackoffMs(syncingItem.attempts)).toISOString();
     const status = isOnline() ? 'error' : 'offline';
@@ -117,11 +130,13 @@ async function processSingleItem(item: LocalFirstQueueItem): Promise<'continue' 
 }
 
 async function processLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Promise<void> {
-  if (!runtimeStarted || runningEntities.has(entityKey)) return;
-  runningEntities.add(entityKey);
+  const runKey = `${getLocalFirstStoreOwner() ?? '__test__'}::${entityKey}`;
+  if (!runtimeStarted || runningEntities.has(runKey)) return;
+  runningEntities.add(runKey);
 
   try {
     while (true) {
+      if (!runtimeStarted) break;
       if (!isOnline()) {
         await markLocalFirstPendingEntitiesOffline();
         break;
@@ -134,7 +149,7 @@ async function processLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Pro
       if (outcome === 'stop') break;
     }
   } finally {
-    runningEntities.delete(entityKey);
+    runningEntities.delete(runKey);
   }
 }
 
@@ -178,6 +193,12 @@ export async function startLocalFirstQueueRuntime(): Promise<void> {
   }
 }
 
+export function stopLocalFirstQueueRuntime(): void {
+  runtimeStarted = false;
+  clearRetryTimers();
+  detachOnlineListeners();
+}
+
 export function registerLocalFirstMutationHandler(mutationKey: string, handler: LocalFirstMutationHandler): () => void {
   handlers.set(mutationKey, handler);
   if (runtimeStarted) {
@@ -204,15 +225,7 @@ export async function enqueueAndProcessLocalFirstMutation<TPayload>(input: {
 }
 
 export function __resetLocalFirstQueueForTests(): void {
+  stopLocalFirstQueueRuntime();
   handlers.clear();
   runningEntities.clear();
-  runtimeStarted = false;
-  clearRetryTimers();
-  if (typeof window !== 'undefined') {
-    if (handleOnline) window.removeEventListener('online', handleOnline);
-    if (handleOffline) window.removeEventListener('offline', handleOffline);
-  }
-  handleOnline = null;
-  handleOffline = null;
-  onlineListenerAttached = false;
 }

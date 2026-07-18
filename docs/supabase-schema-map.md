@@ -189,6 +189,35 @@ Migration source:
 - `supabase/migrations/20260307_000001_portal_theme_settings.sql`, `20260308_000002_portal_theme_user_presets.sql`, and `20260318_000001_portal_theme_stone_olive_default.sql`.
 - `supabase/costing_overrides.sql`, `supabase/migrations/20260326_000001_install_driver_curve_overrides.sql`, and security hardening.
 
+## Portal Performance Telemetry
+
+Owner docs: `docs/security-privacy-quality.md` and `docs/testing-and-qa.md`.
+
+Tables/RPCs:
+
+- `portal_performance_metrics`
+- `portal_performance_summary(integer)`
+- `purge_portal_performance_metrics()`
+
+Primary write path:
+
+- `PortalVitalsReporter` sends the closed, identifier-free event contract to `POST /api/staff/v1/performance/web-vitals`.
+- Staff inserts use an auth-bound Supabase client. Browser code does not read or mutate the table directly.
+
+Primary read path:
+
+- Admin-only grouped summaries use `GET /api/admin/performance/web-vitals?days=7|30`, backed by `portal_performance_summary`.
+
+Access and retention rule:
+
+- Portal staff may insert; only portal admins may select summaries; authenticated clients have no update/delete grant.
+- Route templates are allowlisted and raw URLs, identifiers, free-form text, user IDs, and user-agent strings are not stored.
+- `pg_cron` invokes the non-client-executable `purge_portal_performance_metrics()` daily and removes rows older than 30 days.
+
+Migration source:
+
+- `supabase/migrations/20260718_000001_portal_performance_metrics.sql`.
+
 ## Marketing, Automation, And Supporting Tables
 
 Owner docs: `docs/automation-email-audit.md`, `docs/platform-workflow.md`, `docs/security-privacy-quality.md`, `docs/projects-contacts-estimates-calculator.md`, and `docs/staff-api-auth-contracts.md`.

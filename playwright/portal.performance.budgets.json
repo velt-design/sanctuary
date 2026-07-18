@@ -1,31 +1,78 @@
 {
+  "productTargets": {
+    "feedbackMsMax": 100,
+    "warmTabFeedbackMsMax": 250,
+    "cachedContentMsMax": 500,
+    "longestTaskMsMax": 50
+  },
   "routes": [
     {
+      "name": "dashboard-cold",
       "route": "/dashboard",
       "shellVisibleMsMax": 3500,
       "contentVisibleMsMax": 6500
     },
     {
+      "name": "projects-cold",
       "route": "/staff/projects",
       "shellVisibleMsMax": 3500,
       "contentVisibleMsMax": 7000
     },
     {
+      "name": "contacts-cold",
       "route": "/staff/contacts",
       "shellVisibleMsMax": 4000,
       "contentVisibleMsMax": 7500
     },
     {
+      "name": "schedule-cold",
       "route": "/staff/schedule",
       "shellVisibleMsMax": 4500,
       "contentVisibleMsMax": 9000
     }
   ],
+  "warmJourneys": [
+    {
+      "name": "dashboard-to-projects",
+      "feedbackMsMax": 3500,
+      "usefulContentMsMax": 7000,
+      "enforced": false
+    },
+    {
+      "name": "projects-to-project",
+      "feedbackMsMax": 3500,
+      "usefulContentMsMax": 7000,
+      "enforced": false
+    },
+    {
+      "name": "project-back-to-projects",
+      "feedbackMsMax": 3500,
+      "usefulContentMsMax": 7000,
+      "enforced": false
+    }
+  ],
   "interactions": [
     {
+      "name": "project-tab-details",
+      "route": "/staff/projects/[projectId]",
+      "feedbackMsMax": 1200,
+      "usefulContentMsMax": 2000,
+      "productFeedbackMsMax": 250,
+      "enforced": false
+    },
+    {
+      "name": "schedule-unscheduled-panel-toggle",
       "route": "/staff/schedule",
-      "interactionLabel": "unscheduled-panel-toggle",
-      "interactionMsMax": 1200
+      "feedbackMsMax": 1200,
+      "usefulContentMsMax": 1200,
+      "enforced": true
+    },
+    {
+      "name": "calculator-input-current-result",
+      "route": "/staff/calculator",
+      "feedbackMsMax": 1200,
+      "usefulContentMsMax": 5000,
+      "enforced": false
     }
   ]
 }

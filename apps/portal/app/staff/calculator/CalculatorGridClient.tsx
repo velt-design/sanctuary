@@ -28,7 +28,6 @@ import type {
   CalculatorFlashingsState,
   CalculatorInputs,
   CalculatorModuleInputs,
-  CalculatorPergola,
   InfillLineItem,
 } from '@/lib/types/calculator';
 import {
@@ -118,7 +117,6 @@ import {
   defaultMixedAcrylicBays,
   formatFlashingLengthInput,
   formatInputNumber,
-  getPergolaLabel,
   getPitchForModule,
   getRoofTypeForModule,
   isGutterBeamProfile,
@@ -130,7 +128,6 @@ import {
   makeDefaultPrimaryFlashingRow,
   makeFlashingId,
   makeInfillId,
-  nextPergola,
   normalizeBlindsStateForUi,
   normalizeCalculatorInputsForUi,
   normalizeFlashingBand,
@@ -139,14 +136,22 @@ import {
   normalizeInfillsStateForUi,
   normalizeOverrideValue,
   normalizePanelOrientation,
-  normalizePergolasForUi,
-  prunePergolasForModules,
   roofLengthForPrimaryFlashing,
   toNonNegativeInt,
   toNumber,
   type InfillPresetKey,
 } from './calculatorInputs';
 import { useCalculatorDraftSession } from './useCalculatorDraftSession';
+import CalculatorModuleNavigator from './CalculatorModuleNavigator';
+import {
+  addCalculatorModule,
+  addCalculatorPergola,
+  buildCalculatorModuleNavigatorModel,
+  calculatorPergolaOptions,
+  duplicateCalculatorModule,
+  moveCalculatorModule,
+  removeCalculatorModule,
+} from './calculatorModuleNavigation';
 import {
   designRequestTierFromTotal,
 } from './calculatorSaveWorkflow';
@@ -769,7 +774,7 @@ export default function CalculatorGridClient({
     })();
   }, [acceptExternalDraft, activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, restoredFromLocalDraft, router, toast]);
 
-  const pergolas = useMemo(() => normalizePergolasForUi(values.pergolas), [values.pergolas]);
+  const pergolas = useMemo(() => calculatorPergolaOptions(values), [values]);
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
   const knownPergolaIds = useMemo(() => new Set(pergolas.map((pergola) => pergola.id)), [pergolas]);
   const modulesWithPergola = useMemo(
@@ -926,6 +931,36 @@ export default function CalculatorGridClient({
       return next;
     });
   }, [values.modules]);
+
+  const moduleNavigatorModel = useMemo(
+    () => buildCalculatorModuleNavigatorModel({ values, activeModuleIndex, errorsByModule }),
+    [activeModuleIndex, errorsByModule, values],
+  );
+
+  const commitModuleMutation = useCallback((result: ReturnType<typeof addCalculatorModule>) => {
+    setValues(result.values);
+    setActiveModuleIndex(result.activeModuleIndex);
+  }, [setActiveModuleIndex, setValues]);
+
+  const handleAddModule = useCallback((pergolaId: string) => {
+    commitModuleMutation(addCalculatorModule(values, activeModuleIndex, pergolaId));
+  }, [activeModuleIndex, commitModuleMutation, values]);
+
+  const handleAddPergola = useCallback(() => {
+    commitModuleMutation(addCalculatorPergola(values, activeModuleIndex));
+  }, [activeModuleIndex, commitModuleMutation, values]);
+
+  const handleDuplicateModule = useCallback((moduleIndex: number) => {
+    commitModuleMutation(duplicateCalculatorModule(values, activeModuleIndex, moduleIndex));
+  }, [activeModuleIndex, commitModuleMutation, values]);
+
+  const handleMoveModule = useCallback((moduleIndex: number, targetPergolaId: string) => {
+    commitModuleMutation(moveCalculatorModule(values, activeModuleIndex, moduleIndex, targetPergolaId));
+  }, [activeModuleIndex, commitModuleMutation, values]);
+
+  const handleRemoveModule = useCallback((moduleIndex: number) => {
+    commitModuleMutation(removeCalculatorModule(values, activeModuleIndex, moduleIndex));
+  }, [activeModuleIndex, commitModuleMutation, values]);
 
   const errors = errorsByModule[activeModuleIndex] ?? {};
   const hasModuleErrors = errorsByModule.some((map) => Object.values(map).some(Boolean));
@@ -1797,15 +1832,21 @@ export default function CalculatorGridClient({
   );
 
   const issues = useMemo(() => {
-    const out: Array<{ moduleIndex: number; fieldId: string; label: string; message: string }> = [];
+    const out: Array<{ moduleIndex: number; moduleLabel: string; fieldId: string; label: string; message: string }> = [];
     errorsByModule.forEach((map, moduleIndex) => {
       Object.entries(map).forEach(([fieldId, message]) => {
         if (!message) return;
-        out.push({ moduleIndex, fieldId, label: labelForIssueField(fieldId), message });
+        out.push({
+          moduleIndex,
+          moduleLabel: moduleNavigatorModel.items[moduleIndex]?.label ?? `Module ${moduleIndex + 1}`,
+          fieldId,
+          label: labelForIssueField(fieldId),
+          message,
+        });
       });
     });
     return out;
-  }, [errorsByModule]);
+  }, [errorsByModule, moduleNavigatorModel.items]);
 
   const issuesCount = issues.length;
   const suggestedDesignRequestTier = useMemo(
@@ -2051,13 +2092,7 @@ export default function CalculatorGridClient({
     const pergola = result?.pergolas?.find((entry) => entry.id === route.pergolaId) ?? fallbackPergola;
     return pergola?.modules?.[route.localModuleIndex] ?? resultModules[activeModuleIndex] ?? resultModules[0] ?? null;
   }, [result, resultModules, activeModuleIndex, moduleRoutes]);
-  const activeModuleRoute = moduleRoutes[activeModuleIndex] ?? moduleRoutes[0] ?? null;
-  const activeModulePergolaLabel = getPergolaLabel(
-    pergolas,
-    activeModuleRoute?.pergolaId ?? activePergolaId,
-    activeModuleIndex,
-  );
-  const activeModuleLabel = `${activeModulePergolaLabel} - Module ${(activeModuleRoute?.localModuleIndex ?? 0) + 1}`;
+  const activeModuleLabel = moduleNavigatorModel.activeModuleLabel;
   const modulePlanModel = useMemo(() => buildModulePlanModel(activeModule, moduleResult), [activeModule, moduleResult]);
   const moduleSectionModel = useMemo(() => buildModuleSectionModel(activeModule, moduleResult), [activeModule, moduleResult]);
   const canEditActiveHouseFootprint = canEditHouseFootprintPlan(modulePlanModel);
@@ -3141,105 +3176,6 @@ export default function CalculatorGridClient({
         ]),
 
     {
-      id: 'moduleIndex',
-      label: 'Module',
-      type: 'select',
-      value: String(activeModuleIndex),
-      onChange: (v) => {
-        const idx = Number.parseInt(String(v), 10);
-        if (!Number.isFinite(idx)) return;
-        setActiveModuleIndex(Math.max(0, Math.min(values.modules.length - 1, idx)));
-      },
-      options: modulesWithPergola.map((module, idx) => ({
-        label: `${getPergolaLabel(pergolas, module.pergolaId, idx)} · Module ${idx + 1}`,
-        value: String(idx),
-      })),
-      helperText:
-        values.modules.length > 1
-          ? `${values.modules.length} modules across ${pergolas.length} pergola${pergolas.length === 1 ? '' : 's'}`
-          : 'Single module job',
-    },
-    {
-      id: 'modulePergolaId',
-      label: 'Pergola',
-      type: 'select',
-      value: activePergolaId,
-      onChange: (v) => {
-        const targetPergolaId = String(v);
-        setValues((prev) => {
-          const nextPergolas = normalizePergolasForUi(prev.pergolas);
-          if (!nextPergolas.some((pergola) => pergola.id === targetPergolaId)) return prev;
-          const modules = prev.modules.slice();
-          const current = modules[activeModuleIndex] ?? makeDefaultModule(targetPergolaId);
-          modules[activeModuleIndex] = { ...current, pergolaId: targetPergolaId };
-          return { ...prev, modules };
-        });
-      },
-      options: pergolas.map((pergola) => ({ label: pergola.label, value: pergola.id })),
-      helperText: 'Move this module to another pergola',
-    },
-    {
-      id: 'addModule',
-      label: 'Add module to pergola',
-      type: 'action',
-      actionLabel: 'Add',
-      onAction: () => {
-        setValues((prev) => {
-          const base = prev.modules[activeModuleIndex] ?? prev.modules[0] ?? makeDefaultModule(activePergolaId);
-          return { ...prev, modules: [...prev.modules, { ...base, pergolaId: activePergolaId }] };
-        });
-        setActiveModuleIndex(values.modules.length);
-      },
-      helperText: 'Duplicates the current module inside this pergola',
-    },
-    {
-      id: 'addPergola',
-      label: 'Add pergola',
-      type: 'action',
-      actionLabel: 'Add',
-      onAction: () => {
-        setValues((prev) => {
-          const createdPergola = nextPergola(prev);
-          const base = prev.modules[activeModuleIndex] ?? prev.modules[0] ?? makeDefaultModule(createdPergola.id);
-          return {
-            ...prev,
-            pergolas: [...normalizePergolasForUi(prev.pergolas), createdPergola],
-            modules: [...prev.modules, { ...base, pergolaId: createdPergola.id }],
-          };
-        });
-        setActiveModuleIndex(values.modules.length);
-      },
-      helperText: 'Creates a separate pergola with a starter module',
-    },
-    ...(values.modules.length > 1
-      ? [
-          {
-            id: 'removeModule',
-            label: 'Remove module',
-            type: 'action',
-            actionLabel: 'Remove',
-            onAction: () => {
-              if (values.modules.length <= 1) return;
-              setValues((prev) => {
-                if (prev.modules.length <= 1) return prev;
-                const nextModules = prev.modules.slice();
-                nextModules.splice(activeModuleIndex, 1);
-                const normalizedPergolas = prunePergolasForModules(prev.pergolas, nextModules);
-                const fallbackId = normalizedPergolas[0]?.id ?? 'pergola-1';
-                const nextModulesWithPergola = nextModules.map((module) => {
-                  const validPergola = typeof module.pergolaId === 'string' && normalizedPergolas.some((pergola) => pergola.id === module.pergolaId);
-                  return validPergola ? module : { ...module, pergolaId: fallbackId };
-                });
-                return { ...prev, pergolas: normalizedPergolas, modules: nextModulesWithPergola };
-              });
-              setActiveModuleIndex(Math.min(activeModuleIndex, Math.max(0, values.modules.length - 2)));
-            },
-            helperText: 'Removes the current module',
-          } satisfies FieldSchemaItem,
-        ]
-      : []),
-
-    {
       id: 'pergolaStyle',
       label: 'Pergola style',
       type: 'select',
@@ -4201,11 +4137,6 @@ export default function CalculatorGridClient({
   const contextFields = pickFields([
     'project-context',
     'draft-notice',
-    'moduleIndex',
-    'modulePergolaId',
-    'addModule',
-    'addPergola',
-    'removeModule',
   ]);
 
   const structureFields = pickFields([
@@ -4408,7 +4339,7 @@ export default function CalculatorGridClient({
 
   const saveDialogSummary: SaveDialogSummary = {
     modules: String(values.modules.length),
-    activeModule: `Module ${activeModuleIndex + 1}: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}`,
+    activeModule: `${activeModuleLabel}: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}`,
     roofSize:
       activeModule.pergolaStyle === 'hip_corner'
         ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
@@ -4458,14 +4389,29 @@ export default function CalculatorGridClient({
         />
         <div className={styles.split} ref={previewSplitRef} style={splitStyle}>
           <div className={styles.leftCol}>
-            <FieldGroup title="Context" fields={contextFields} />
-            <FieldGroup title="Connections & Site" fields={connectionFields} />
-            <FieldGroup title="Structure" fields={structureFields} />
-            {isAdvancedUi ? <FieldGroup title="Flashings" fields={flashingsFields} /> : null}
-            {isAdvancedUi ? <FieldGroup title="Overrides" fields={overrideFields} /> : null}
-            <FieldGroup title="Add-ons" fields={addonFields} />
-            <FieldGroup title="Allowances" fields={allowanceFields} />
-            {isAdvancedUi ? <FieldGroup title="House Footprint" fields={houseFootprintFields} /> : null}
+            <div className={styles.configurationWorkspace}>
+              <CalculatorModuleNavigator
+                model={moduleNavigatorModel}
+                pergolas={pergolas}
+                moduleCount={values.modules.length}
+                onSelectModule={setActiveModuleIndex}
+                onAddModule={handleAddModule}
+                onAddPergola={handleAddPergola}
+                onDuplicateModule={handleDuplicateModule}
+                onMoveModule={handleMoveModule}
+                onRemoveModule={handleRemoveModule}
+              />
+              <div className={styles.configurationFields}>
+                <FieldGroup title="Context" fields={contextFields} />
+                <FieldGroup title="Connections & Site" fields={connectionFields} />
+                <FieldGroup title="Structure" fields={structureFields} />
+                {isAdvancedUi ? <FieldGroup title="Flashings" fields={flashingsFields} /> : null}
+                {isAdvancedUi ? <FieldGroup title="Overrides" fields={overrideFields} /> : null}
+                <FieldGroup title="Add-ons" fields={addonFields} />
+                <FieldGroup title="Allowances" fields={allowanceFields} />
+                {isAdvancedUi ? <FieldGroup title="House Footprint" fields={houseFootprintFields} /> : null}
+              </div>
+            </div>
           </div>
 
           <button

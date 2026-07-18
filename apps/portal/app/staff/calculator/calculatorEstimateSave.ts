@@ -27,9 +27,11 @@ import {
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import {
   clearLocalFirstWorkingCopy,
+  getLocalFirstStoreOwner,
   resolveLocalFirstId,
   writeLocalFirstWorkingCopy,
 } from '@/lib/localFirst/store';
+import { calculatorSessionStorageKey } from '@/lib/localFirst/sessionBoundary';
 import { qk } from '@/lib/queries/keys';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { apiJson } from '@/lib/repo/apiClient';
@@ -120,7 +122,8 @@ async function clearCalculatorDraft(input: {
 }) {
   if (typeof window !== 'undefined') {
     try {
-      window.sessionStorage.removeItem(input.draftSessionKey);
+      const ownerId = getLocalFirstStoreOwner();
+      if (ownerId) window.sessionStorage.removeItem(calculatorSessionStorageKey(ownerId, input.draftSessionKey));
     } catch {
       void 0;
     }

@@ -1,9 +1,11 @@
 import type { LocalFirstEntityKey } from '@/lib/localFirst/types';
 import {
   ensureLocalFirstStoreReady,
+  getLocalFirstStoreOwner,
   getLocalFirstWorkingCopy,
   writeLocalFirstWorkingCopy,
 } from '@/lib/localFirst/store';
+import { calculatorSessionStorageKey } from '@/lib/localFirst/sessionBoundary';
 import { isCalculatorInputsV2 } from '@/lib/types/calculator';
 import type { CalculatorDraftSessionSnapshot } from './calculatorInputs';
 
@@ -48,7 +50,14 @@ const defaultServices: CalculatorDraftPersistenceServices = {
   },
   writeWorkingCopy: writeLocalFirstWorkingCopy,
   getSessionStorage() {
-    return typeof window === 'undefined' ? null : window.sessionStorage;
+    const ownerId = getLocalFirstStoreOwner();
+    if (typeof window === 'undefined' || !ownerId) return null;
+    const storage = window.sessionStorage;
+    return {
+      getItem: (key: string) => storage.getItem(calculatorSessionStorageKey(ownerId, key)),
+      setItem: (key: string, value: string) => storage.setItem(calculatorSessionStorageKey(ownerId, key), value),
+      removeItem: (key: string) => storage.removeItem(calculatorSessionStorageKey(ownerId, key)),
+    };
   },
 };
 
