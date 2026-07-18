@@ -216,7 +216,9 @@ test.beforeEach(async ({ page }) => {
 
 test('captures cold portal route metrics', async ({ page }) => {
   await measureColdRoute(page, 'dashboard-cold', () => page.getByRole('heading', { name: 'Dashboard' }));
-  await measureColdRoute(page, 'projects-cold', () => page.getByRole('heading', { name: /Projects/ }));
+  await measureColdRoute(page, 'projects-cold', () =>
+    page.getByRole('heading', { name: 'Projects', exact: true }),
+  );
   await measureColdRoute(page, 'contacts-cold', () => page.getByRole('heading', { name: 'Contacts' }));
   await measureColdRoute(page, 'schedule-cold', () =>
     page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ }),
@@ -232,7 +234,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     'dashboard-to-projects',
     () => page.getByRole('link', { name: 'Projects', exact: true }).first().click(),
     () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
-    () => expect(page.getByRole('heading', { name: /Projects/ })).toBeVisible(),
+    () => expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible(),
   );
 
   const firstOpen = await firstProjectOpenLink(page);
