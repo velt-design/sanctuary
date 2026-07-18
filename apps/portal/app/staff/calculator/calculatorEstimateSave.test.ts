@@ -162,12 +162,9 @@ function makeHarness(overrides?: {
   services?: SaveCalculatorEstimateServices;
 }) {
   const callbacks = {
-    closeConfirm: vi.fn(),
     fail: vi.fn(),
-    pushRoute: vi.fn(),
     setGenerating: vi.fn(),
     setLoadedEstimateDetail: vi.fn(),
-    success: vi.fn(),
   } satisfies SaveCalculatorEstimateCallbacks;
   const services = {
     clearWorkingCopy: vi.fn(async () => undefined),
@@ -224,7 +221,7 @@ async function saveWithDefaults(
   overrides: Partial<SaveCalculatorEstimateInput> = {},
   harness = makeHarness(),
 ) {
-  await saveCalculatorEstimate({
+  const outcome = await saveCalculatorEstimate({
     activeDraftEstimateMetaId: null,
     activeEditEstimateId: '',
     activeModuleIndex: 0,
@@ -249,7 +246,7 @@ async function saveWithDefaults(
     ...overrides,
   });
 
-  return harness;
+  return { ...harness, outcome };
 }
 
 describe('saveCalculatorEstimate', () => {
@@ -270,7 +267,7 @@ describe('saveCalculatorEstimate', () => {
   it('blocks locked estimate updates before enqueueing a local-first mutation', async () => {
     const harness = makeHarness({ estimateMetas: [makeMeta('estimate-1', 'V2')] });
 
-    await saveWithDefaults(
+    const saved = await saveWithDefaults(
       {
         activeEditEstimateId: 'estimate-1',
         isEditingDesign: true,
@@ -285,6 +282,7 @@ describe('saveCalculatorEstimate', () => {
     expect(harness.callbacks.fail).toHaveBeenCalledWith(
       'This design is locked because it has been sent with a quote and can no longer be edited.',
     );
+    expect(saved.outcome).toBeNull();
     expect(harness.services.enqueueMutation).not.toHaveBeenCalled();
   });
 
@@ -296,7 +294,7 @@ describe('saveCalculatorEstimate', () => {
     };
     const harness = makeHarness({ estimateMetas: [makeMeta('estimate-1', 'V2')] });
 
-    await saveWithDefaults(
+    const saved = await saveWithDefaults(
       {
         activeEditEstimateId: 'estimate-1',
         isEditingDesign: true,
@@ -333,16 +331,20 @@ describe('saveCalculatorEstimate', () => {
       }),
     });
     expect(harness.services.clearWorkingCopy).toHaveBeenCalledWith('calculator:draft:test');
-    expect(harness.callbacks.pushRoute).toHaveBeenCalledWith('/staff/projects/project-1?tab=estimates&estimateId=estimate-1');
-    expect(harness.callbacks.success).toHaveBeenCalledWith(
-      'Design saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.',
-    );
+    expect(saved.outcome).toEqual({
+      estimateId: 'estimate-1',
+      projectId: 'project-1',
+      versionLabel: 'V2',
+      operation: 'updated',
+      saveMode: 'preserve_current',
+      pricingChanged: true,
+    });
   });
 
   it('rebuilds site-costing payloads for reprice edit saves', async () => {
     const harness = makeHarness({ estimateMetas: [makeMeta('estimate-1', 'V2')] });
 
-    await saveWithDefaults(
+    const saved = await saveWithDefaults(
       {
         activeEditEstimateId: 'estimate-1',
         isEditingDesign: true,
@@ -367,7 +369,14 @@ describe('saveCalculatorEstimate', () => {
         }),
       }),
     });
-    expect(harness.callbacks.success).toHaveBeenCalledWith('Design repriced locally. Syncing in the background.');
+    expect(saved.outcome).toEqual({
+      estimateId: 'estimate-1',
+      projectId: 'project-1',
+      versionLabel: 'V2',
+      operation: 'updated',
+      saveMode: 'reprice_latest',
+      pricingChanged: false,
+    });
   });
 
   it('creates a local estimate, prepends optimistic cache state, and preserves the next version label', async () => {
@@ -375,7 +384,7 @@ describe('saveCalculatorEstimate', () => {
       estimateMetas: [makeMeta('estimate-1', 'V1'), makeMeta('estimate-3', 'V3')],
     });
 
-    await saveWithDefaults({}, harness);
+    const saved = await saveWithDefaults({}, harness);
 
     expect(harness.services.upsertEstimateDetailCache).toHaveBeenCalledWith(
       harness.queryClient,
@@ -396,13 +405,20 @@ describe('saveCalculatorEstimate', () => {
         createDesignRequest: null,
       }),
     });
-    expect(harness.callbacks.pushRoute).toHaveBeenCalledWith('/staff/projects/project-1?tab=estimates');
+    expect(saved.outcome).toEqual({
+      estimateId: 'local-estimate:test',
+      projectId: 'project-1',
+      versionLabel: 'V4',
+      operation: 'created',
+      saveMode: 'reprice_latest',
+      pricingChanged: false,
+    });
   });
 
   it('passes calculator-generated design request payloads through estimate create mutations', async () => {
     const harness = makeHarness();
 
-    await saveWithDefaults(
+    const saved = await saveWithDefaults(
       {
         request: {
           createDesignRequest: { priorityTier: 'TIER_2' },
@@ -422,8 +438,9 @@ describe('saveCalculatorEstimate', () => {
         }),
       }),
     );
-    expect(harness.callbacks.success).toHaveBeenCalledWith(
-      'Design saved locally. Syncing design and drafting request in the background.',
-    );
+    expect(saved.outcome).toEqual(expect.objectContaining({
+      estimateId: 'local-estimate:test',
+      operation: 'created',
+    }));
   });
 });

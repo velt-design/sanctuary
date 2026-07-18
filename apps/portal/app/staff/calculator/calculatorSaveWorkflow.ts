@@ -60,7 +60,7 @@ export function getCalculatorSaveBlockerError({
 }): string | null {
   const actionLabel = calculatorSaveActionLabel(saveMode);
   if (hasStatusBlockers) return `Resolve blockers in Quote Status before ${actionLabel}.`;
-  if (saveMode === 'reprice_latest' && criticalWarningCount > 0) {
+  if (criticalWarningCount > 0) {
     return `Resolve critical warnings before ${actionLabel}.`;
   }
   return null;
@@ -103,10 +103,14 @@ export function getCalculatorProjectSnapshotError({
   return null;
 }
 
-export function buildCalculatorEstimateUpdateRedirect(projectId: string, estimateId: string): string {
-  return `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(estimateId)}`;
-}
-
-export function buildCalculatorEstimateCreateRedirect(projectId: string): string {
-  return `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates`;
+export function buildCalculatorEstimateHandoffRoutes(projectId: string, estimateId: string): {
+  project: string;
+  quote: string;
+} {
+  const projectRoute = `/staff/projects/${encodeURIComponent(projectId)}`;
+  const encodedEstimateId = encodeURIComponent(estimateId);
+  return {
+    project: `${projectRoute}?tab=estimates&estimateId=${encodedEstimateId}`,
+    quote: `${projectRoute}?tab=quotes&createFromEstimateId=${encodedEstimateId}`,
+  };
 }

@@ -154,7 +154,10 @@ import {
 import {
   designRequestTierFromTotal,
 } from './calculatorSaveWorkflow';
-import { saveCalculatorEstimate } from './calculatorEstimateSave';
+import {
+  saveCalculatorEstimate,
+  type CalculatorEstimateSaveOutcome,
+} from './calculatorEstimateSave';
 import {
   INFILL_DELETE_UNDO_MS,
   INFILL_PRESETS,
@@ -202,6 +205,8 @@ import {
 import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } from './CalculatorSaveDialogs';
 import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
 import CalculatorProjectPicker from './CalculatorProjectPicker';
+import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
+import { buildCalculatorPricingComparison } from './calculatorPricingComparison';
 import {
   calculatorResultFreshnessLabel,
   deriveCalculatorResultFreshness,
@@ -514,7 +519,7 @@ export default function CalculatorGridClient({
   );
   const draftEntityKey = useMemo(() => buildCalculatorDraftEntityKey(draftSessionKey), [draftSessionKey]);
   const restoredDraftForKeyRef = useRef(false);
-  const loadedEstimateDetailRef = useRef<EstimateDetail | null>(null);
+  const [loadedEstimateDetail, setLoadedEstimateDetail] = useState<EstimateDetail | null>(null);
 
   const [values, setValues] = useState<CalculatorInputs>(() => ({
     schemaVersion: 'v2',
@@ -562,7 +567,7 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     restoredDraftForKeyRef.current = false;
-    loadedEstimateDetailRef.current = null;
+    setLoadedEstimateDetail(null);
     setDraftHydrated(false);
 
     if (typeof window === 'undefined') {
@@ -757,7 +762,7 @@ export default function CalculatorGridClient({
             )
           ).estimate;
           if (!estimate) throw new Error('Design not found');
-          loadedEstimateDetailRef.current = estimate;
+          setLoadedEstimateDetail(estimate);
           if (estimate.editability.isLocked) {
             const msg = `Design ${estimate.versionLabel} is locked and can no longer be edited.`;
             setDraftNotice(msg);
@@ -1839,10 +1844,10 @@ export default function CalculatorGridClient({
   const [infillResolveOpen, setInfillResolveOpen] = useState(false);
   const [infillSummaryOpen, setInfillSummaryOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmReady, setConfirmReady] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [confirmRequestDesign, setConfirmRequestDesign] = useState(false);
   const [confirmRequestDesignPriority, setConfirmRequestDesignPriority] = useState<DesignRequestPriorityTier>('UNPRICED');
+  const [saveOutcome, setSaveOutcome] = useState<CalculatorEstimateSaveOutcome | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
   const infillRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -2227,6 +2232,17 @@ export default function CalculatorGridClient({
   const blindsUi = useMemo(() => buildCalculatorBlindsUi(blindsState.items), [blindsState.items]);
   const addonsTotals = buildAddonsTotals(blindsUi.totalEx, blindsUi.totalInc);
   const { coreEx: coreTotalEx, coreInc: coreTotalInc } = computeDisplayTotals(totalEx, totalInc, addonsTotals);
+  const pricingComparison = useMemo(
+    () =>
+      isEditingDesign
+        ? buildCalculatorPricingComparison({
+            estimate: loadedEstimateDetail,
+            values,
+            liveResult: result,
+          })
+        : null,
+    [isEditingDesign, loadedEstimateDetail, result, values],
+  );
   const engineWarningsRaw = useMemo(() => (result ? deriveSiteResultWarnings(result) : []), [result]);
 
   useEffect(() => {
@@ -2650,22 +2666,17 @@ export default function CalculatorGridClient({
       saveMode?: EstimateSaveMode;
     } = {}) => {
       setGenerateError(null);
-      await saveCalculatorEstimate({
+      const outcome = await saveCalculatorEstimate({
         activeDraftEstimateMetaId: activeDraftEstimateMeta?.id,
         activeEditEstimateId,
         activeModuleIndex,
         callbacks: {
-          closeConfirm: () => setConfirmOpen(false),
           fail: (msg) => {
             setGenerateError(msg);
             toast.error(msg);
           },
-          pushRoute: (href) => router.push(href),
           setGenerating: setIsGenerating,
-          setLoadedEstimateDetail: (estimate) => {
-            loadedEstimateDetailRef.current = estimate;
-          },
-          success: (msg) => toast.success(msg),
+          setLoadedEstimateDetail,
         },
         criticalWarningCount: criticalUiWarnings.length,
         draftEntityKey,
@@ -2675,7 +2686,7 @@ export default function CalculatorGridClient({
         hasStatusBlockers,
         hostKey,
         isEditingDesign,
-        loadedEstimateDetail: loadedEstimateDetailRef.current,
+        loadedEstimateDetail,
         project,
         projectId,
         queryClient,
@@ -2687,6 +2698,11 @@ export default function CalculatorGridClient({
         resultModules,
         values,
       });
+      if (outcome) {
+        setConfirmOpen(false);
+        setSaveOutcome(outcome);
+        toast.success('Design saved on this device.');
+      }
     },
     [
       activeModuleIndex,
@@ -2700,12 +2716,12 @@ export default function CalculatorGridClient({
       hasStatusBlockers,
       hostKey,
       isEditingDesign,
+      loadedEstimateDetail,
       project,
       projectId,
       queryClient,
       result,
       resultModules,
-      router,
       toast,
       values,
     ],
@@ -4195,12 +4211,12 @@ export default function CalculatorGridClient({
     { id: 'materialsEx', label: 'Materials (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
     { id: 'installEx', label: 'Install payout (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
     { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
-    { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
-    { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
-    { id: 'blindsTotalEx', label: 'Blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
-    { id: 'blindsTotalInc', label: 'Blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
-    { id: 'coreTotalEx', label: 'Total (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
-    { id: 'coreTotalInc', label: 'Total (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
+    { id: 'totalEx', label: 'Internal true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
+    { id: 'totalInc', label: 'Internal true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
+    { id: 'blindsTotalEx', label: 'Blind customer price (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
+    { id: 'blindsTotalInc', label: 'Blind customer price (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
+    { id: 'coreTotalEx', label: 'Internal true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
+    { id: 'coreTotalInc', label: 'Internal true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
     ...(issuesCount
       ? [
           {
@@ -4234,18 +4250,11 @@ export default function CalculatorGridClient({
           readyToCalculate,
           hasStatusBlockers,
           resultFreshness,
-          warningCount: warningsCount,
         });
         if (preflight.kind === 'error') {
           setGenerateError(preflight.message);
           return;
         }
-        if (preflight.kind === 'save') {
-          await saveDesign();
-          return;
-        }
-
-        setConfirmReady(false);
         setConfirmAcknowledgeWarnings(false);
         setConfirmRequestDesign(false);
         setConfirmRequestDesignPriority(suggestedDesignRequestTier);
@@ -4490,8 +4499,8 @@ export default function CalculatorGridClient({
     materialsEx: formatMaybeMoney(materialsEx),
     installEx: formatMaybeMoney(installEx),
     overheadEx: formatMaybeMoney(overheadEx),
-    coreTotalEx: formatMaybeMoney(coreTotalEx),
-    blindsEx: formatMaybeMoney(addonsTotals.blinds.ex),
+    trueCostEx: formatMaybeMoney(coreTotalEx),
+    blindCustomerEx: formatMaybeMoney(addonsTotals.blinds.ex),
   };
 
   const closeSaveConfirmDialog = () => {
@@ -4573,8 +4582,8 @@ export default function CalculatorGridClient({
               </div>
 
               <div className={styles.previewStatGrid}>
-                <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
-                <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
+                <PreviewStat label="Internal true cost (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
+                <PreviewStat label="Internal true cost (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
                 <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
                 <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                 <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
@@ -4617,20 +4626,21 @@ export default function CalculatorGridClient({
 
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(var(--portal-text-rgb), 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
-                  Add‑ons (informational)
+                  Customer quote add‑ons
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
+                  <span className={styles.previewRowLabel}>Blind customer price (ex‑GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
+                  <span className={styles.previewRowLabel}>Blind customer price (inc‑GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
                 </div>
                 <div className={styles.previewRow}>
                   <span className={styles.previewRowLabel}>Infills</span>
                   <span className={styles.previewRowValue}>{infillsState.items.length ? 'Configured (see BOM)' : 'Not configured'}</span>
                 </div>
+                <p className={styles.previewMuted}>Blind prices are added during quote creation and are excluded from pergola true cost.</p>
               </div>
 
               <QuoteStatusCard items={statusItems} />
@@ -5709,13 +5719,13 @@ export default function CalculatorGridClient({
         saveConfirmation={{
           isEditingDesign,
           summary: saveDialogSummary,
+          pricingComparison,
           warnings: {
             uiWarnings,
             criticalUiWarnings,
             reviewUiWarnings,
             infoUiWarnings,
           },
-          confirmReady,
           confirmAcknowledgeWarnings,
           confirmRequestDesign,
           confirmRequestDesignPriority,
@@ -5723,7 +5733,6 @@ export default function CalculatorGridClient({
           isGenerating,
           hasStatusBlockers,
           hasResult: resultFreshness === 'current',
-          onConfirmReadyChange: setConfirmReady,
           onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
           onConfirmRequestDesignChange: (checked) => {
             setConfirmRequestDesign(checked);
@@ -5737,6 +5746,10 @@ export default function CalculatorGridClient({
             }),
           onRepriceLatest: () => void saveDesign({ saveMode: 'reprice_latest' }),
         }}
+      />
+      <CalculatorSaveOutcomeDialog
+        outcome={saveOutcome}
+        onDismiss={() => setSaveOutcome(null)}
       />
       <CalculatorProjectPicker
         open={projectPickerOpen}

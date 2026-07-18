@@ -1,7 +1,12 @@
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import Modal from '@/components/ui/modal/Modal';
 import styles from './CalculatorGrid.module.css';
+import dialogStyles from './CalculatorSaveDialogs.module.css';
 import { formatDesignRequestTierLabel } from './calculatorSaveWorkflow';
+import {
+  formatCalculatorCostMoney,
+  type CalculatorPricingComparison,
+} from './calculatorPricingComparison';
 import type { UiWarning } from './warnings';
 
 export type CalculatorIssue = {
@@ -20,8 +25,8 @@ export type SaveDialogSummary = {
   materialsEx: string;
   installEx: string;
   overheadEx: string;
-  coreTotalEx: string;
-  blindsEx: string;
+  trueCostEx: string;
+  blindCustomerEx: string;
 };
 
 type WarningGroups = {
@@ -34,8 +39,8 @@ type WarningGroups = {
 type SaveConfirmationContentProps = {
   isEditingDesign: boolean;
   summary: SaveDialogSummary;
+  pricingComparison: CalculatorPricingComparison | null;
   warnings: WarningGroups;
-  confirmReady: boolean;
   confirmAcknowledgeWarnings: boolean;
   confirmRequestDesign: boolean;
   confirmRequestDesignPriority: DesignRequestPriorityTier;
@@ -43,7 +48,6 @@ type SaveConfirmationContentProps = {
   isGenerating: boolean;
   hasStatusBlockers: boolean;
   hasResult: boolean;
-  onConfirmReadyChange: (checked: boolean) => void;
   onConfirmAcknowledgeWarningsChange: (checked: boolean) => void;
   onConfirmRequestDesignChange: (checked: boolean) => void;
   onConfirmRequestDesignPriorityChange: (tier: DesignRequestPriorityTier) => void;
@@ -102,8 +106,8 @@ export function IssuesDialogContent({
 export function SaveConfirmationContent({
   isEditingDesign,
   summary,
+  pricingComparison,
   warnings,
-  confirmReady,
   confirmAcknowledgeWarnings,
   confirmRequestDesign,
   confirmRequestDesignPriority,
@@ -111,7 +115,6 @@ export function SaveConfirmationContent({
   isGenerating,
   hasStatusBlockers,
   hasResult,
-  onConfirmReadyChange,
   onConfirmAcknowledgeWarningsChange,
   onConfirmRequestDesignChange,
   onConfirmRequestDesignPriorityChange,
@@ -123,10 +126,10 @@ export function SaveConfirmationContent({
     <>
       <div className={styles.modalHeader}>
         <div>
-          <h2 className={styles.modalTitle}>{isEditingDesign ? 'Save design' : 'Save design'}</h2>
+          <h2 className={styles.modalTitle}>{isEditingDesign ? 'Review costing before saving' : 'Save design'}</h2>
           <p className={styles.modalSubtitle}>
             {isEditingDesign
-              ? 'Save design keeps this estimate on its current pricing. Use Reprice to latest to refresh costs under the active costing config.'
+              ? 'Choose whether to keep the estimate’s stored costing basis or replace it with the Live calculator result.'
               : 'This will save the current design draft for this project.'}
           </p>
         </div>
@@ -147,16 +150,24 @@ export function SaveConfirmationContent({
           </div>
         </section>
 
-        <section className={styles.modalSection} aria-label="Outputs summary">
-          <h3 className={styles.modalSectionTitle}>{isEditingDesign ? 'Latest pricing preview' : 'Outputs'}</h3>
-          <div className={styles.modalGrid}>
-            <SummaryMetric label="Materials (ex‑GST)" value={summary.materialsEx} />
-            <SummaryMetric label="Install payout (ex‑GST)" value={summary.installEx} />
-            <SummaryMetric label="Overhead (ex‑GST)" value={summary.overheadEx} />
-            <SummaryMetric label="Total (ex‑GST)" value={summary.coreTotalEx} />
-            <SummaryMetric label="Blinds (ex‑GST)" value={summary.blindsEx} />
-          </div>
-        </section>
+        {isEditingDesign && pricingComparison ? (
+          <PricingComparisonSection comparison={pricingComparison} />
+        ) : (
+          <section className={styles.modalSection} aria-label="Costing summary">
+            <h3 className={styles.modalSectionTitle}>Internal costing</h3>
+            <div className={styles.modalGrid}>
+              <SummaryMetric label="Materials (ex‑GST)" value={summary.materialsEx} />
+              <SummaryMetric label="Install payout (ex‑GST)" value={summary.installEx} />
+              <SummaryMetric label="Overhead (ex‑GST)" value={summary.overheadEx} />
+              <SummaryMetric label="Internal true cost (ex‑GST)" value={summary.trueCostEx} />
+            </div>
+            <div className={dialogStyles.quoteAddonNote}>
+              <span>Blind customer price (ex‑GST)</span>
+              <strong>{summary.blindCustomerEx}</strong>
+              <p>Added during quote creation and excluded from pergola true cost.</p>
+            </div>
+          </section>
+        )}
 
         <section className={styles.modalSection} aria-label="Warnings">
           <h3 className={styles.modalSectionTitle}>Warnings</h3>
@@ -185,11 +196,6 @@ export function SaveConfirmationContent({
             <span>I acknowledge the review warnings</span>
           </label>
         ) : null}
-
-        <label className={styles.modalCheckboxRow}>
-          <input type="checkbox" checked={confirmReady} onChange={(event) => onConfirmReadyChange(event.target.checked)} />
-          <span>{isEditingDesign ? 'I confirm this design is ready to save' : 'I confirm this design is ready to save'}</span>
-        </label>
 
         {!isEditingDesign ? (
           <>
@@ -232,10 +238,16 @@ export function SaveConfirmationContent({
         <button
           type="button"
           className={styles.modalButtonPrimary}
-          disabled={hasStatusBlockers || !confirmReady || isGenerating}
+          disabled={
+            warnings.criticalUiWarnings.length > 0 ||
+            hasStatusBlockers ||
+            (warnings.reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
+            !hasResult ||
+            isGenerating
+          }
           onClick={onSave}
         >
-          {isEditingDesign ? 'Save design' : 'Save design'}
+          {isEditingDesign ? 'Save design — keep stored costing' : 'Save design'}
         </button>
         {isEditingDesign ? (
           <button
@@ -244,18 +256,73 @@ export function SaveConfirmationContent({
             disabled={
               warnings.criticalUiWarnings.length > 0 ||
               hasStatusBlockers ||
-              !confirmReady ||
               (warnings.reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
               !hasResult ||
               isGenerating
             }
             onClick={onRepriceLatest}
           >
-            Reprice to latest
+            Reprice and save
           </button>
         ) : null}
       </div>
     </>
+  );
+}
+
+const COMPARISON_ROWS: Array<{
+  key: keyof NonNullable<CalculatorPricingComparison['live']>;
+  label: string;
+}> = [
+  { key: 'materialsEx', label: 'Materials (ex‑GST)' },
+  { key: 'installEx', label: 'Install payout (ex‑GST)' },
+  { key: 'overheadEx', label: 'Overhead (ex‑GST)' },
+  { key: 'trueCostEx', label: 'Internal true cost (ex‑GST)' },
+  { key: 'trueCostInc', label: 'Internal true cost (inc‑GST)' },
+];
+
+function PricingComparisonSection({ comparison }: { comparison: CalculatorPricingComparison }) {
+  const changeMessage = comparison.pricingInputsChanged
+    ? 'Cost-affecting design inputs have changed.'
+    : 'No cost-affecting design input changes were detected.';
+  const stateMessage =
+    comparison.storedPricingState === 'stale'
+      ? 'The stored estimate already uses preserved costing from an earlier design change.'
+      : comparison.storedPricingState === 'unknown'
+        ? 'This estimate predates recorded costing freshness, so review the stored values carefully.'
+        : null;
+
+  return (
+    <section className={styles.modalSection} aria-label="Stored and live costing comparison">
+      <div className={dialogStyles.comparisonHeading}>
+        <h3 className={styles.modalSectionTitle}>Internal true cost comparison</h3>
+        <span className={comparison.pricingInputsChanged ? dialogStyles.changedPill : dialogStyles.unchangedPill}>
+          {comparison.pricingInputsChanged ? 'Inputs changed' : 'Inputs unchanged'}
+        </span>
+      </div>
+      <p className={dialogStyles.comparisonNote}>{changeMessage}</p>
+      {stateMessage ? <p className={dialogStyles.staleNote}>{stateMessage}</p> : null}
+      <div className={dialogStyles.comparisonTable} role="table" aria-label="Costing comparison">
+        <div className={dialogStyles.comparisonHeader} role="row">
+          <span role="columnheader">Cost item</span>
+          <span role="columnheader">Stored estimate</span>
+          <span role="columnheader">Live calculator</span>
+          <span role="columnheader">Difference</span>
+        </div>
+        {COMPARISON_ROWS.map((row) => (
+          <div className={dialogStyles.comparisonRow} role="row" key={row.key}>
+            <span className={dialogStyles.comparisonLabel} role="rowheader">{row.label}</span>
+            <span data-label="Stored estimate" role="cell">{formatCalculatorCostMoney(comparison.stored?.[row.key] ?? null)}</span>
+            <span data-label="Live calculator" role="cell">{formatCalculatorCostMoney(comparison.live?.[row.key] ?? null)}</span>
+            <span data-label="Difference" role="cell">{formatCalculatorCostMoney(comparison.difference?.[row.key] ?? null, { signed: true })}</span>
+          </div>
+        ))}
+      </div>
+      <div className={dialogStyles.decisionHelp}>
+        <p><strong>Keep stored costing</strong> updates the design without replacing saved cost outputs.</p>
+        <p><strong>Reprice and save</strong> replaces saved cost outputs with the Live calculator result.</p>
+      </div>
+    </section>
   );
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildCalculatorEstimateCreateRedirect,
-  buildCalculatorEstimateUpdateRedirect,
+  buildCalculatorEstimateHandoffRoutes,
   calculatorSaveActionLabel,
   designRequestTierFromTotal,
   formatDesignRequestTierLabel,
@@ -100,7 +99,7 @@ describe('calculator save workflow helpers', () => {
         hasStatusBlockers: false,
         criticalWarningCount: 1,
       }),
-    ).toBeNull();
+    ).toBe('Resolve critical warnings before saving.');
   });
 
   it('resolves new, active-draft, edit-session, and aliased estimate targets', () => {
@@ -154,9 +153,9 @@ describe('calculator save workflow helpers', () => {
     expect(getCalculatorProjectSnapshotError({ hasContact: true, projectNameSnapshot: '   ' })).toBe('Project name is missing.');
     expect(getCalculatorProjectSnapshotError({ hasContact: true, projectNameSnapshot: 'Deck Build' })).toBeNull();
 
-    expect(buildCalculatorEstimateUpdateRedirect('project 1', 'estimate/1')).toBe(
-      '/staff/projects/project%201?tab=estimates&estimateId=estimate%2F1',
-    );
-    expect(buildCalculatorEstimateCreateRedirect('project 1')).toBe('/staff/projects/project%201?tab=estimates');
+    expect(buildCalculatorEstimateHandoffRoutes('project 1', 'estimate/1')).toEqual({
+      project: '/staff/projects/project%201?tab=estimates&estimateId=estimate%2F1',
+      quote: '/staff/projects/project%201?tab=quotes&createFromEstimateId=estimate%2F1',
+    });
   });
 });

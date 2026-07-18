@@ -7,6 +7,7 @@ import {
   type SaveDialogSummary,
 } from './CalculatorSaveDialogs';
 import type { UiWarning } from './warnings';
+import type { CalculatorPricingComparison } from './calculatorPricingComparison';
 
 const noop = () => undefined;
 
@@ -19,8 +20,16 @@ const summary: SaveDialogSummary = {
   materialsEx: '$100.00',
   installEx: '$200.00',
   overheadEx: '$50.00',
-  coreTotalEx: '$350.00',
-  blindsEx: '$25.00',
+  trueCostEx: '$350.00',
+  blindCustomerEx: '$25.00',
+};
+
+const pricingComparison: CalculatorPricingComparison = {
+  stored: { materialsEx: 90, installEx: 190, overheadEx: 45, trueCostEx: 325, trueCostInc: 373.75 },
+  live: { materialsEx: 100, installEx: 200, overheadEx: 50, trueCostEx: 350, trueCostInc: 402.5 },
+  difference: { materialsEx: 10, installEx: 10, overheadEx: 5, trueCostEx: 25, trueCostInc: 28.75 },
+  pricingInputsChanged: true,
+  storedPricingState: 'current',
 };
 
 const criticalWarning: UiWarning = {
@@ -49,13 +58,13 @@ function renderSave(overrides?: Partial<Parameters<typeof SaveConfirmationConten
     <SaveConfirmationContent
       isEditingDesign={false}
       summary={summary}
+      pricingComparison={null}
       warnings={{
         uiWarnings: [],
         criticalUiWarnings: [],
         reviewUiWarnings: [],
         infoUiWarnings: [],
       }}
-      confirmReady={false}
       confirmAcknowledgeWarnings={false}
       confirmRequestDesign={false}
       confirmRequestDesignPriority="UNPRICED"
@@ -63,7 +72,6 @@ function renderSave(overrides?: Partial<Parameters<typeof SaveConfirmationConten
       isGenerating={false}
       hasStatusBlockers={false}
       hasResult
-      onConfirmReadyChange={noop}
       onConfirmAcknowledgeWarningsChange={noop}
       onConfirmRequestDesignChange={noop}
       onConfirmRequestDesignPriorityChange={noop}
@@ -100,15 +108,18 @@ describe('CalculatorSaveDialogs', () => {
     expect(markup).toContain('Module 1: pitched + box perimeter');
     expect(markup).toContain('6m × 3m');
     expect(markup).toContain('No warnings for this design.');
+    expect(markup).toContain('Internal true cost (ex‑GST)');
+    expect(markup).toContain('Blind customer price (ex‑GST)');
+    expect(markup).toContain('excluded from pergola true cost');
     expect(markup).toContain('Request drafting after saving this design');
     expect(markup).toContain('Tier 2');
-    expect(markup).not.toContain('Reprice to latest');
+    expect(markup).not.toContain('Reprice and save');
   });
 
   it('renders edit-save copy, warning sections, acknowledgement, and reprice action', () => {
     const markup = renderSave({
       isEditingDesign: true,
-      confirmReady: true,
+      pricingComparison,
       confirmAcknowledgeWarnings: false,
       warnings: {
         uiWarnings: [criticalWarning, reviewWarning, infoWarning],
@@ -119,20 +130,25 @@ describe('CalculatorSaveDialogs', () => {
       generateError: 'Save failed.',
     });
 
-    expect(markup).toContain('Save design keeps this estimate on its current pricing.');
+    expect(markup).toContain('Choose whether to keep the estimate’s stored costing basis');
+    expect(markup).toContain('Stored estimate');
+    expect(markup).toContain('Live calculator');
+    expect(markup).toContain('+$25.00');
+    expect(markup).toContain('Cost-affecting design inputs have changed.');
     expect(markup).toContain('Critical (blocks saving)');
     expect(markup).toContain('Review (acknowledge to continue)');
     expect(markup).toContain('Info');
     expect(markup).toContain('I acknowledge the review warnings');
-    expect(markup).toContain('Reprice to latest');
+    expect(markup).toContain('Save design — keep stored costing');
+    expect(markup).toContain('Reprice and save');
     expect(markup).toContain('Save failed.');
   });
 
-  it('disables save and reprice buttons from confirmation state and warnings', () => {
-    const notReadyMarkup = renderSave({ isEditingDesign: true, confirmReady: false });
+  it('disables save actions from freshness, blockers, and warnings without a redundant ready checkbox', () => {
+    const staleMarkup = renderSave({ isEditingDesign: true, pricingComparison, hasResult: false });
     const criticalMarkup = renderSave({
       isEditingDesign: true,
-      confirmReady: true,
+      pricingComparison,
       warnings: {
         uiWarnings: [criticalWarning],
         criticalUiWarnings: [criticalWarning],
@@ -140,11 +156,12 @@ describe('CalculatorSaveDialogs', () => {
         infoUiWarnings: [],
       },
     });
-    const enabledMarkup = renderSave({ isEditingDesign: true, confirmReady: true, confirmAcknowledgeWarnings: true });
+    const enabledMarkup = renderSave({ isEditingDesign: true, pricingComparison, confirmAcknowledgeWarnings: true });
 
-    expect(notReadyMarkup).toContain('disabled=""');
+    expect(staleMarkup).toContain('disabled=""');
     expect(criticalMarkup).toContain('Critical warning.');
     expect(criticalMarkup).toContain('disabled=""');
-    expect(enabledMarkup).toContain('Reprice to latest');
+    expect(enabledMarkup).toContain('Reprice and save');
+    expect(enabledMarkup).not.toContain('I confirm this design is ready to save');
   });
 });

@@ -35,6 +35,31 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByText(scenario.labels.projectName).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
+    await expect(page.getByText('Internal true cost (ex‑GST)', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Blind customer price (ex‑GST)', { exact: true }).first()).toBeVisible();
+  });
+});
+
+test('editing save always shows stored versus live costing without creating a quote', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await openCalculator(page);
+    const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
+    const originalLength = await roofLength.inputValue();
+    await roofLength.fill(String(Number(originalLength || '6') + 0.1));
+    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+
+    await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Stored estimate', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Live calculator', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Cost-affecting design inputs have changed.', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Save design — keep stored costing', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Reprice and save', exact: true })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp('/staff/calculator'));
+    await expect(page.getByText('Draft quote created locally.', { exact: false })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   });
 });
 
@@ -47,6 +72,14 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
       scrollWidth: element.scrollWidth,
     }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+
+    await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
+    const dialogDimensions = await dialog.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(dialogDimensions.scrollWidth).toBeLessThanOrEqual(dialogDimensions.clientWidth + 1);
   });
 });
 
@@ -61,6 +94,10 @@ for (const width of [1024, 768]) {
       await main.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
       await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
       await expect(page.getByRole('complementary', { name: 'Preview outputs' })).toBeVisible();
+      await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+      const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
+      await expect(dialog.getByText('Stored estimate', { exact: true })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: 'Save design — keep stored costing', exact: true })).toBeVisible();
     });
   });
 }

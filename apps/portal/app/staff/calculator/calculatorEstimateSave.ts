@@ -38,8 +38,6 @@ import type { CalculatorInputs } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
 import { calculatorInputsFromEstimateDetail } from './calculatorInputs';
 import {
-  buildCalculatorEstimateCreateRedirect,
-  buildCalculatorEstimateUpdateRedirect,
   getCalculatorProjectSnapshotError,
   getCalculatorSaveBlockerError,
   getCalculatorSaveInitialError,
@@ -55,12 +53,18 @@ type SaveCalculatorEstimateRequest = {
 };
 
 type SaveCalculatorEstimateCallbacks = {
-  closeConfirm: () => void;
   fail: (message: string) => void;
-  pushRoute: (href: string) => void;
   setGenerating: (isGenerating: boolean) => void;
   setLoadedEstimateDetail: (estimate: EstimateDetail) => void;
-  success: (message: string) => void;
+};
+
+export type CalculatorEstimateSaveOutcome = {
+  estimateId: string;
+  projectId: string;
+  versionLabel: string;
+  operation: 'created' | 'updated';
+  saveMode: EstimateSaveMode;
+  pricingChanged: boolean;
 };
 
 type SaveCalculatorEstimateServices = {
@@ -178,7 +182,9 @@ async function writeOptimisticEstimate(input: {
   return optimisticEstimate;
 }
 
-export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput): Promise<void> {
+export async function saveCalculatorEstimate(
+  input: SaveCalculatorEstimateInput,
+): Promise<CalculatorEstimateSaveOutcome | null> {
   const services = input.services ?? {};
   const clearWorkingCopy = services.clearWorkingCopy ?? clearLocalFirstWorkingCopy;
   const createEstimateId = services.createLocalEstimateId ?? createLocalEstimateId;
@@ -205,9 +211,9 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
   });
   if (initialError) {
     callbacks.fail(initialError);
-    return;
+    return null;
   }
-  if (!projectForSave) return;
+  if (!projectForSave) return null;
 
   callbacks.setGenerating(true);
   try {
@@ -218,7 +224,7 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
     });
     if (blockerError) {
       callbacks.fail(blockerError);
-      return;
+      return null;
     }
 
     const cachedEstimateMetas =
@@ -243,12 +249,12 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
     if (estimateIdToUpdate) {
       if (!currentEstimate) {
         callbacks.fail('This edit session lost its source design. Please reopen the design and try again.');
-        return;
+        return null;
       }
 
       if (currentEstimate.editability.isLocked) {
         callbacks.fail('This design is locked because it has been sent with a quote and can no longer be edited.');
-        return;
+        return null;
       }
     }
 
@@ -261,7 +267,7 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
         pricingChanged,
       });
 
-      await writeOptimisticEstimate({
+      const optimisticEstimate = await writeOptimisticEstimate({
         currentEstimate,
         estimateId: canonicalEditEstimateId,
         estimatePayload,
@@ -291,30 +297,30 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
         payload: mutationPayload,
       });
 
-      callbacks.closeConfirm();
       await clearCalculatorDraft({
         draftEntityKey: input.draftEntityKey,
         draftSessionKey: input.draftSessionKey,
         clearWorkingCopy,
       });
-      callbacks.success(
-        pricingChanged
-          ? 'Design saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.'
-          : 'Design saved locally. Syncing in the background.',
-      );
-      callbacks.pushRoute(buildCalculatorEstimateUpdateRedirect(input.projectId, canonicalEditEstimateId));
-      return;
+      return {
+        estimateId: canonicalEditEstimateId,
+        projectId: input.projectId,
+        versionLabel: optimisticEstimate.versionLabel,
+        operation: 'updated',
+        saveMode: effectiveSaveMode,
+        pricingChanged,
+      };
     }
 
     if (!input.result) {
       callbacks.fail('No calculated result yet.');
-      return;
+      return null;
     }
 
     const activeResultModule = getSiteResultModule(input.result, input.activeModuleIndex) ?? input.resultModules[0] ?? null;
     if (!activeResultModule?.derived) {
       callbacks.fail('No derived result available for the active module.');
-      return;
+      return null;
     }
 
     const [meta, contact] = await Promise.all([
@@ -329,7 +335,7 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
     });
     if (snapshotError) {
       callbacks.fail(snapshotError);
-      return;
+      return null;
     }
     const contactSnapshot = contact!;
 
@@ -367,7 +373,7 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
 
     const localEstimateId = createEstimateId();
     if (estimateIdToUpdate) {
-      await writeOptimisticEstimate({
+      const optimisticEstimate = await writeOptimisticEstimate({
         currentEstimate,
         estimateId: canonicalEditEstimateId,
         estimatePayload,
@@ -397,18 +403,22 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
         payload: mutationPayload,
       });
 
-      callbacks.closeConfirm();
       await clearCalculatorDraft({
         draftEntityKey: input.draftEntityKey,
         draftSessionKey: input.draftSessionKey,
         clearWorkingCopy,
       });
-      callbacks.success('Design repriced locally. Syncing in the background.');
-      callbacks.pushRoute(buildCalculatorEstimateUpdateRedirect(input.projectId, canonicalEditEstimateId));
-      return;
+      return {
+        estimateId: canonicalEditEstimateId,
+        projectId: input.projectId,
+        versionLabel: optimisticEstimate.versionLabel,
+        operation: 'updated',
+        saveMode: effectiveSaveMode,
+        pricingChanged: false,
+      };
     }
 
-    await writeOptimisticEstimate({
+    const optimisticEstimate = await writeOptimisticEstimate({
       currentEstimate: null,
       estimateId: localEstimateId,
       estimatePayload,
@@ -439,20 +449,22 @@ export async function saveCalculatorEstimate(input: SaveCalculatorEstimateInput)
       payload: mutationPayload,
     });
 
-    callbacks.closeConfirm();
     await clearCalculatorDraft({
       draftEntityKey: input.draftEntityKey,
       draftSessionKey: input.draftSessionKey,
       clearWorkingCopy,
     });
-    callbacks.success(
-      input.request?.createDesignRequest
-        ? 'Design saved locally. Syncing design and drafting request in the background.'
-        : 'Design saved locally. Syncing in the background.',
-    );
-    callbacks.pushRoute(buildCalculatorEstimateCreateRedirect(input.projectId));
+    return {
+      estimateId: localEstimateId,
+      projectId: input.projectId,
+      versionLabel: optimisticEstimate.versionLabel,
+      operation: 'created',
+      saveMode: effectiveSaveMode,
+      pricingChanged: false,
+    };
   } catch (err) {
     callbacks.fail(err instanceof Error ? err.message : 'Failed to save design');
+    return null;
   } finally {
     callbacks.setGenerating(false);
   }

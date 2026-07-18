@@ -70,6 +70,12 @@ The calculator workspace keeps workflow context and save readiness in a persiste
 
 Calculator result freshness is explicit. Only a result produced from the current serialized costing request is `Live` and saveable. While inputs are invalid, awaiting recalculation, or affected by a costing error, the last successful totals and drawings remain visible for continuity but are labelled `Last valid result`; Quote Status and save preflight continue to block until the result is current. At narrow calculator widths the form and preview stack under one page-owned scrollbar; the split, independently scrollable workspace remains at widths of 1120px and above.
 
+Calculator money labels distinguish internal costing from customer-facing values. Cost-engine totals are `Internal true cost`; blind pricing is a `Blind customer price` that is added during quote creation and excluded from pergola true cost. The calculator does not invent a pergola customer price because quote mapping remains the owner of customer-pricing rules.
+
+Every valid calculator save opens a costing decision. For an existing estimate, staff see stored estimate costs beside the Live calculator result and choose either `Save design — keep stored costing` or `Reprice and save`. The comparison uses pricing-affecting input semantics, not merely whether the numerical total changed. Missing legacy breakdown values remain unknown (`—`). Preserve keeps the existing cost outputs and marks pricing stale when applicable; Reprice stores the Live result and marks pricing current.
+
+Successful calculator saves remain on the calculator long enough to show the actual local-first state (`syncing`, `synced`, `offline`, `error`, or `conflict`). Staff may stay, return to the exact saved estimate, or explicitly create a quote from that estimate. Quote handoff uses `?tab=quotes&createFromEstimateId=...`; navigation never creates a quote until the user selects that action. The action waits while state is still hydrating, permits queued/syncing/synced/offline local snapshots, and disables on sync error or conflict.
+
 Costing logic must remain in `packages/costing`; estimate code should persist and summarize costing output, not fork the costing engine.
 
 ## Estimate Pricing Rollout Boundary
@@ -232,4 +238,6 @@ Manual or browser checks should cover:
 - Update an unlocked estimate and confirm local-first pending/success state clears.
 - Try to update a sent/accepted/declined quote-backed estimate and confirm `ESTIMATE_LOCKED` conflict behavior.
 - Create a quote from an estimate and confirm the handoff uses quote domain routes.
+- Edit a valid calculator estimate and confirm Save always shows stored versus Live costing, Preserve remains primary, and opening the dialog creates no quote.
+- Save locally and confirm the outcome state follows the estimate entity queue; error/conflict blocks quote handoff while queued, syncing, synced, and offline states retain the local-first path.
 - Create a design request from an estimate and confirm Design List receives the request.

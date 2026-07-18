@@ -42,7 +42,6 @@ type CalculatorQuoteStatusUi = {
 
 type GenerateDesignPreflight =
   | { kind: 'error'; message: string }
-  | { kind: 'save' }
   | { kind: 'confirm' };
 
 export function buildCalculatorUiWarnings({
@@ -186,14 +185,12 @@ export function resolveGenerateDesignPreflight({
   readyToCalculate,
   hasStatusBlockers,
   resultFreshness,
-  warningCount,
 }: {
   projectId: string;
   hasProject: boolean;
   readyToCalculate: boolean;
   hasStatusBlockers: boolean;
   resultFreshness: CalculatorResultFreshness;
-  warningCount: number;
 }): GenerateDesignPreflight {
   if (!projectId) return { kind: 'error', message: 'Select a project before saving design.' };
   if (!hasProject) return { kind: 'error', message: 'Project not found.' };
@@ -202,6 +199,5 @@ export function resolveGenerateDesignPreflight({
   if (resultFreshness === 'error') return { kind: 'error', message: 'Fix cost engine error before saving design.' };
   if (resultFreshness !== 'current') return { kind: 'error', message: 'Wait for a current calculated result before saving design.' };
   if (hasStatusBlockers) return { kind: 'error', message: 'Resolve blockers in Quote Status before saving design.' };
-  if (warningCount === 0) return { kind: 'save' };
   return { kind: 'confirm' };
 }

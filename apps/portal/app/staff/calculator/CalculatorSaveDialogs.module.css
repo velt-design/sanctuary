@@ -1,0 +1,137 @@
+.comparisonHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.changedPill,
+.unchangedPill {
+  flex: none;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.changedPill {
+  color: rgb(146, 64, 14);
+  background: rgba(180, 83, 9, 0.11);
+}
+
+.unchangedPill {
+  color: rgb(22, 101, 52);
+  background: rgba(22, 101, 52, 0.09);
+}
+
+.comparisonNote,
+.staleNote,
+.decisionHelp p,
+.quoteAddonNote p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.comparisonNote {
+  color: rgba(var(--portal-text-rgb), 0.75);
+}
+
+.staleNote {
+  margin-top: 7px;
+  color: rgb(146, 64, 14);
+}
+
+.comparisonTable {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.11);
+  border-radius: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparisonHeader,
+.comparisonRow {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.4fr) repeat(3, minmax(105px, 1fr));
+  gap: 10px;
+  padding: 9px 11px;
+}
+
+.comparisonHeader {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  background: rgba(var(--portal-text-rgb), 0.045);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.comparisonRow {
+  align-items: baseline;
+  font-size: 12px;
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.comparisonLabel {
+  font-weight: 650;
+}
+
+.decisionHelp,
+.quoteAddonNote {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 10px 11px;
+  border-radius: 10px;
+  background: rgba(var(--portal-text-rgb), 0.035);
+  color: rgba(var(--portal-text-rgb), 0.76);
+}
+
+.quoteAddonNote {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.quoteAddonNote p {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+  .comparisonHeader {
+    display: none;
+  }
+
+  .comparisonRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .comparisonLabel {
+    grid-column: 1 / -1;
+  }
+
+  .comparisonRow [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 3px;
+    color: rgba(var(--portal-text-rgb), 0.58);
+    font-size: 9px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 460px) {
+  .comparisonHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .comparisonRow {
+    grid-template-columns: 1fr;
+  }
+
+  .comparisonLabel {
+    grid-column: auto;
+  }
+}

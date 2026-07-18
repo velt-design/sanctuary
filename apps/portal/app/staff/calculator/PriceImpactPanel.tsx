@@ -29,7 +29,7 @@ export default function PriceImpactPanel({
     <section className={styles.previewCard} aria-label="Price impact">
       <div className={styles.impactHeader}>
         <h2 className={styles.previewCardTitle} style={{ margin: 0 }}>
-          Price impact
+          True cost change
         </h2>
         <button type="button" className={styles.impactReset} onClick={onResetBaseline}>
           Reset baseline
@@ -42,11 +42,11 @@ export default function PriceImpactPanel({
         <>
           <div className={styles.impactGrid}>
             <div className={styles.impactStat}>
-              <span>Total (inc)</span>
+              <span>True cost (inc)</span>
               <strong>{fmtMoney(diff.delta.total_inc)}</strong>
             </div>
             <div className={styles.impactStat}>
-              <span>Total (ex)</span>
+              <span>True cost (ex)</span>
               <strong>{fmtMoney(diff.delta.total_ex)}</strong>
             </div>
             <div className={styles.impactStat}>
@@ -111,4 +111,3 @@ export default function PriceImpactPanel({
     </section>
   );
 }
-

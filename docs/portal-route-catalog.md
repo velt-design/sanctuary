@@ -45,7 +45,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `design-workbench` | `/staff/projects/:projectId/design-workbench` | workbench | staff | project_id | scenario-required | exported | `docs/design-workbench-architecture.md` |
 | `design-list` | `/staff/projects/design-packages` | project | staff | scenario_required | catalog-only | planned | `docs/design-list.md` |
 | `running-jobs` | `/staff/projects/running-jobs` | project | staff | scenario_required | catalog-only | planned | `docs/running-jobs.md` |
-| `calculator` | `/staff/calculator` | commercial | staff | estimate_id | scenario-required | planned | `docs/projects-contacts-estimates-calculator.md` |
+| `calculator` | `/staff/calculator?projectId=:projectId&editEstimateId=:estimateId` | commercial | staff | estimate_id | scenario-required | planned | `docs/projects-contacts-estimates-calculator.md` |
 | `admin-home` | `/admin` | admin | admin | admin_role | admin-only | planned | `docs/environment-auth-supabase.md` |
 | `pricebook` | `/pricebook` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
 | `admin-cost-materials` | `/admin/costs/materials` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
@@ -90,3 +90,5 @@ Scenario provisioning requires `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEX
 The first shared debug-export lane is gated to local/staging/debug runs. When enabled, project detail, redirected estimate detail, quote detail, and design workbench routes expose a JSON payload via `data-portal-debug-export="true"`. The payload follows `PortalPageDebugExport` and includes route, selected IDs, scenario labels where available, server/client state summaries, and diagnostics.
 
 Schedule, Design List, Running Jobs, calculator, and admin pages still have `planned` debug exports. Calculator route and interaction smoke now run from seeded V2 inputs without waiting for that optional diagnostic payload.
+
+The calculator's post-save quote action targets `/staff/projects/:projectId?tab=quotes&createFromEstimateId=:estimateId`. It is an explicit user-selected handoff to the existing quote workflow, not a separate catalog route or an automatic save side effect.

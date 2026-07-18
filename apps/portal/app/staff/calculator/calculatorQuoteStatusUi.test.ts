@@ -172,7 +172,6 @@ describe('calculator quote status UI helpers', () => {
       readyToCalculate: true,
       hasStatusBlockers: false,
       resultFreshness: 'current' as const,
-      warningCount: 0,
     };
 
     expect(resolveGenerateDesignPreflight({ ...base, projectId: '', hasProject: false })).toEqual({
@@ -205,17 +204,15 @@ describe('calculator quote status UI helpers', () => {
     });
   });
 
-  it('resolves save-immediate and confirmation preflight branches', () => {
+  it('always resolves valid saves through the confirmation decision', () => {
     const base = {
       projectId: 'project-1',
       hasProject: true,
       readyToCalculate: true,
       hasStatusBlockers: false,
       resultFreshness: 'current' as const,
-      warningCount: 0,
     };
 
-    expect(resolveGenerateDesignPreflight(base)).toEqual({ kind: 'save' });
-    expect(resolveGenerateDesignPreflight({ ...base, warningCount: 1 })).toEqual({ kind: 'confirm' });
+    expect(resolveGenerateDesignPreflight(base)).toEqual({ kind: 'confirm' });
   });
 });
