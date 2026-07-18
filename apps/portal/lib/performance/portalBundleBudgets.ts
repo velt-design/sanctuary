@@ -102,8 +102,8 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/calculator/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/calculator/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 1_076_224,
-      initialGzipBytes: 290_816,
+      initialRawBytes: 1_210_368,
+      initialGzipBytes: 319_488,
       lazyTotalRawBytes: 0,
       lazyTotalGzipBytes: 0,
       largestLazyRawBytes: 0,

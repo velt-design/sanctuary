@@ -237,7 +237,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'dashboard-to-projects',
     () => page.getByRole('link', { name: 'Projects', exact: true }).first().click(),
-    () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
+    () => page.waitForURL(/\/projects(?:\?|$)/),
     () => expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible(),
   );
 
@@ -255,7 +255,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     page,
     'project-back-to-projects',
     () => page.goBack(),
-    () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
+    () => page.waitForURL(/\/projects(?:\?|$)/),
     () => expect(page.getByRole('region', { name: 'Projects list' })).toBeVisible(),
   );
 
