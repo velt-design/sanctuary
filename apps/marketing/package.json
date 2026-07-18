@@ -17,7 +17,7 @@
     "@sp/theme": "0.0.0",
     "@supabase/supabase-js": "^2.90.1",
     "framer-motion": "^12.23.12",
-    "next": "^16.2.4",
+    "next": "^16.2.10",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "resend": "^6.12.2",

@@ -169,7 +169,7 @@ async function expectTopProjectionPlanParity(page: Page) {
   const planSvg = page.locator('[data-plan-viewport="true"]').first();
 
   await expect(planSvg).toBeVisible();
-  await expect(planSvg).toHaveAttribute('data-plan-render-source', 'geometry');
+  await expect(planSvg).toHaveAttribute('data-plan-render-source', 'geometry-canvas');
   await expect(planSvg).toHaveAttribute('data-plan-render-status', 'ready');
   await expect(planSvg).toHaveAttribute('data-plan-screen-axis', 'world_x_left_world_y_down');
   await expect(page.locator('[data-top-projection-role="hidden_from_top"]')).toHaveCount(0);

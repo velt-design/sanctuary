@@ -66,6 +66,8 @@ Schedule is one of the heaviest portal surfaces. Watch:
 - CSS coupling between views.
 - Drag/drop responsiveness.
 
+Action dialogs are part of the main Schedule client bundle so staff get immediate modal feedback. Board, Gantt, legacy fallback, diagnostics, and Site Visits keep their existing lazy/view boundaries.
+
 Use:
 
 ```bash
@@ -75,14 +77,14 @@ npm run test:portal:performance
 
 ## Verification
 
-Current local gate signal from 2026-05-03:
+Current local gate signal from 2026-07-18:
 
 ```bash
 npm run test:portal:schedule
 npm run schedule:bundle-budget
 ```
 
-The schedule test gate passed with 38 files and 215 tests, including the readiness route, V2 API/RPC command routes, Board/Gantt/Site Visits client coverage, and legacy fallback isolation. The bundle budget passed at 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, and 78.3 KiB lazy gzip.
+The schedule test coverage passes, including the readiness route, V2 API/RPC command routes, Board/Gantt/Site Visits clients, action dialogs, and legacy fallback isolation. From the same fresh production build, the general bundle gate passes at 621.9 KiB initial raw, 176.1 KiB initial gzip, 349.1 KiB lazy raw, and 80.6 KiB lazy gzip without changing the original Schedule ceilings.
 
 Focused tests:
 

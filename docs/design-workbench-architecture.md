@@ -125,6 +125,8 @@ The workbench has two primary render surfaces:
 
 Both surfaces must read from the solved geometry spine. If Plan and 3D disagree, investigate the first failing artifact/geometry/status stage before changing paint order or styling.
 
+The live canvas Plan surface reports `data-plan-render-source="geometry-canvas"`. Fixture browser coverage treats that diagnostic value as the current canvas contract; `geometry` remains the separate SVG calculator-drawing value.
+
 Geometry-ready Plan body rendering may only draw committed body layers. Reference geometry, diagnostic outlines, context lines, hit targets, drag previews, and selection outlines must remain explicitly named and must not become normal filled bodies.
 
 ## Diagnostics And Captured Repros

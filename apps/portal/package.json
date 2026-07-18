@@ -28,7 +28,7 @@
     "handlebars": "^4.7.9",
     "idb-keyval": "^6.2.2",
     "lucide-react": "^0.563.0",
-    "next": "^16.2.4",
+    "next": "^16.2.10",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.5.207",
     "react": "19.1.0",

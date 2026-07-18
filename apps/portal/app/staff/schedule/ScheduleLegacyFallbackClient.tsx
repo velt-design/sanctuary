@@ -30,7 +30,7 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
-import type { ScheduleActionModalsProps, ScheduleModalState } from './ScheduleActionModals';
+import ScheduleActionModals, { type ScheduleModalState } from './ScheduleActionModals';
 import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
 import type { ScheduleBoardDrop, ScheduleBoardMenuAction, ScheduleBoardViewProps } from './ScheduleBoardView';
 import type { ScheduleGanttViewProps } from './ScheduleGanttView';
@@ -54,13 +54,6 @@ const LazyScheduleGanttView = dynamic<ScheduleGanttViewProps>(
   {
     ssr: false,
     loading: () => <p className={styles.note}>Loading Gantt...</p>,
-  },
-);
-
-const LazyScheduleActionModals = dynamic<ScheduleActionModalsProps>(
-  () => import('./ScheduleActionModals'),
-  {
-    ssr: false,
   },
 );
 
@@ -1540,7 +1533,7 @@ export default function ScheduleLegacyFallbackClient({
         )}
 
       {hasOpenActionModal ? (
-        <LazyScheduleActionModals
+        <ScheduleActionModals
           state={actionModalState}
           scheduleMode={scheduleMode}
           findScheduleItem={(id) => scheduleItemById.get(id) ?? null}
