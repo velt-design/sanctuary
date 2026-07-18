@@ -39,7 +39,8 @@ describe('CalculatorConfigurationForm', () => {
 
     renderIntoDocument(<CalculatorConfigurationForm fields={fields} isAdvancedUi={false} />);
 
-    expect(document.querySelector('[data-calculator-configuration-section="context"]')).not.toBeNull();
+    expect(document.querySelector('[data-calculator-configuration-section="context"]')?.getAttribute('data-section-density')).toBe('compact');
+    expect(document.querySelector('#project-context')?.textContent).toBe('Agent Project');
     expect(document.querySelector('[data-calculator-configuration-section="connections-site"]')).not.toBeNull();
     expect(document.querySelector('[data-calculator-configuration-section="structure"]')).not.toBeNull();
     expect(document.querySelector('[data-calculator-configuration-section="add-ons"]')).not.toBeNull();

@@ -45,7 +45,7 @@ function uiById(items: InfillLineItem[], spacingM = 0.9): Map<string, { estimate
 }
 
 describe('calculator infill summary helpers', () => {
-  it('builds empty summary view model text and default chips', () => {
+  it('builds empty summary view model text without zero-count chips', () => {
     const summary = buildCalculatorInfillSummary([], new Map());
 
     expect(summary).toMatchObject({
@@ -66,14 +66,7 @@ describe('calculator infill summary helpers', () => {
       line3: null,
       text: 'No infills added yet',
     });
-    expect(summary.chips).toEqual([
-      { key: 'front', label: 'Front', count: 0, alwaysShow: true },
-      { key: 'side', label: 'Side', count: 0, alwaysShow: true },
-      { key: 'gable', label: 'Gable', count: 0, alwaysShow: true },
-      { key: 'house', label: 'House', count: 0, alwaysShow: false },
-      { key: 'wall', label: 'Wall', count: 0, alwaysShow: false },
-      { key: 'custom', label: 'Custom', count: 0, alwaysShow: false },
-    ]);
+    expect(summary.chips).toEqual([]);
   });
 
   it('summarizes sheet-only infills', () => {
@@ -85,11 +78,7 @@ describe('calculator infill summary helpers', () => {
     expect(summary.line1).toBe('1 infill added');
     expect(summary.line2).toBe('Front 0 · Side 1 · Gable 0');
     expect(summary.line3).toBe(`System: Sheet panels · Panels: ${summary.totals.panels} · Frames: ${summary.totals.mullions}`);
-    expect(summary.chips).toEqual([
-      { key: 'front', label: 'Front', count: 0, alwaysShow: true },
-      { key: 'side', label: 'Side', count: 1, alwaysShow: true },
-      { key: 'gable', label: 'Gable', count: 0, alwaysShow: true },
-    ]);
+    expect(summary.chips).toEqual([{ key: 'side', label: 'Side', count: 1 }]);
   });
 
   it('summarizes strip-only infills', () => {
@@ -120,7 +109,8 @@ describe('calculator infill summary helpers', () => {
     expect(summary.locationCounts).toMatchObject({ front: 1, house: 1, side: 0, gable_end: 0 });
     expect(summary.line1).toBe('2 infills added');
     expect(summary.line2).toBe('Front 1 · Side 0 · Gable 0 · House 1');
-    expect(summary.chips).toContainEqual({ key: 'house', label: 'House', count: 1, alwaysShow: false });
+    expect(summary.chips).toContainEqual({ key: 'house', label: 'House', count: 1 });
+    expect(summary.chips).not.toContainEqual(expect.objectContaining({ count: 0 }));
   });
 
   it('summarizes spacing ranges across infill systems', () => {

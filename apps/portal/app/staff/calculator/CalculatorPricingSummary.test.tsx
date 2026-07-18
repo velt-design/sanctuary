@@ -51,6 +51,52 @@ describe('CalculatorPricingSummary', () => {
     unmount();
   });
 
+  it('renders the same customer price and freshness in the compact responsive presentation', () => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary {...baseProps} variant="compact" />,
+    );
+
+    expect(container.querySelector('[data-pricing-summary-variant="compact"]')).not.toBeNull();
+    expect(container.textContent).toContain('Customer price (inc GST)$143.75');
+    expect(container.textContent).toContain('Ex GST $125.00');
+    expect(container.textContent).toContain('Live');
+    expect(container.textContent).not.toContain('Internal costing');
+    expect(container.textContent).not.toContain('Customer quote add-ons');
+
+    unmount();
+  });
+
+  it('collapses empty add-ons and renders only relevant configured add-ons', () => {
+    const empty = renderIntoDocument(
+      <CalculatorPricingSummary
+        {...baseProps}
+        blindCustomerPriceExGst={0}
+        blindCustomerPriceIncGst={0}
+        hasInfills={false}
+      />,
+    );
+    expect(empty.container.textContent).toContain('No customer-priced add-ons configured.');
+    expect(empty.container.textContent).not.toContain('Blind customer price');
+    expect(empty.container.textContent).not.toContain('Configured (see BOM)');
+    empty.unmount();
+
+    const infillsOnly = renderIntoDocument(
+      <CalculatorPricingSummary
+        {...baseProps}
+        blindCustomerPriceExGst={0}
+        blindCustomerPriceIncGst={0}
+      />,
+    );
+    expect(infillsOnly.container.textContent).toContain('InfillsConfigured (see BOM)');
+    expect(infillsOnly.container.textContent).not.toContain('Blind customer price');
+    infillsOnly.unmount();
+
+    const blindOnly = renderIntoDocument(<CalculatorPricingSummary {...baseProps} hasInfills={false} />);
+    expect(blindOnly.container.textContent).toContain('Blind customer price (ex GST)$400.00');
+    expect(blindOnly.container.textContent).not.toContain('InfillsConfigured');
+    blindOnly.unmount();
+  });
+
   it('opens existing issues from the pricing summary', () => {
     const onOpenIssues = vi.fn();
     const { container, unmount } = renderIntoDocument(
@@ -85,6 +131,16 @@ describe('CalculatorPricingSummary', () => {
       expect(container.textContent).toContain('Last valid customer price (inc GST)');
     }
 
+    unmount();
+  });
+
+  it('labels a compact stale result as last-valid', () => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary {...baseProps} variant="compact" resultFreshness="stale" />,
+    );
+
+    expect(container.textContent).toContain('Last valid customer price (inc GST)$143.75');
+    expect(container.textContent).toContain('recalculation pending');
     unmount();
   });
 

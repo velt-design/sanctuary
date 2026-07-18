@@ -31,7 +31,6 @@ type InfillSummaryChip = {
   key: string;
   label: string;
   count: number;
-  alwaysShow: boolean;
 };
 
 type CalculatorInfillSummary = {
@@ -121,13 +120,13 @@ export function buildCalculatorInfillSummary(
   const line3 = hasInfills ? `System: ${systemSummary} · Panels: ${totals.panels} · Frames: ${totals.mullions}` : null;
   const text = hasInfills ? line1 : 'No infills added yet';
   const chips = [
-    { key: 'front', label: 'Front', count: locationCounts.front, alwaysShow: true },
-    { key: 'side', label: 'Side', count: locationCounts.side, alwaysShow: true },
-    { key: 'gable', label: 'Gable', count: locationCounts.gable_end, alwaysShow: true },
-    { key: 'house', label: 'House', count: locationCounts.house, alwaysShow: false },
-    { key: 'wall', label: 'Wall', count: locationCounts.wall, alwaysShow: false },
-    { key: 'custom', label: 'Custom', count: locationCounts.custom, alwaysShow: false },
-  ].filter((chip) => !hasInfills || chip.alwaysShow || chip.count > 0);
+    { key: 'front', label: 'Front', count: locationCounts.front },
+    { key: 'side', label: 'Side', count: locationCounts.side },
+    { key: 'gable', label: 'Gable', count: locationCounts.gable_end },
+    { key: 'house', label: 'House', count: locationCounts.house },
+    { key: 'wall', label: 'Wall', count: locationCounts.wall },
+    { key: 'custom', label: 'Custom', count: locationCounts.custom },
+  ].filter((chip) => chip.count > 0);
 
   return {
     totals,

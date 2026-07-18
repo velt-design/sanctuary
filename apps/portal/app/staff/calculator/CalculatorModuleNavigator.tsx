@@ -217,6 +217,7 @@ export default function CalculatorModuleNavigator({
       <button
         type="button"
         className={styles.mobileLauncher}
+        data-calculator-module-launcher
         onClick={() => setMobileOpen(true)}
         aria-haspopup="dialog"
       >

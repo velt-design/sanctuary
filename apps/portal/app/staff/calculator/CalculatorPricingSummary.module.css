@@ -7,6 +7,50 @@
   box-shadow: 0 10px 28px rgba(var(--portal-text-rgb), 0.07);
 }
 
+.compactSummary {
+  display: none;
+  min-width: 0;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(var(--accentRgb), 0.09), rgba(var(--portal-bg-surface-rgb), 0.97));
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.06);
+}
+
+.compactSummaryStale {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: linear-gradient(135deg, rgba(180, 83, 9, 0.08), rgba(var(--portal-bg-surface-rgb), 0.97));
+}
+
+.compactPrice,
+.compactMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.compactLabel {
+  color: rgba(var(--portal-text-rgb), 0.68);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.compactValue {
+  flex: 0 0 auto;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.compactMeta {
+  margin-top: 7px;
+  color: rgba(var(--portal-text-rgb), 0.6);
+  font-size: 11px;
+}
+
 .summaryStale {
   border-color: rgba(180, 83, 9, 0.3);
   box-shadow: 0 10px 28px rgba(180, 83, 9, 0.06);
@@ -144,6 +188,29 @@
   color: rgba(var(--portal-text-rgb), 0.58);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.addonsSection .addonsEmpty {
+  margin-top: 0;
+  font-size: 12px;
+}
+
+@container calculator-page (max-width: 1119px) {
+  .compactSummary {
+    display: block;
+  }
+}
+
+@container calculator-page (max-width: 559px) {
+  .compactPrice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .compactValue {
+    font-size: 28px;
+  }
 }
 
 @container calculator-preview-rail (max-width: 420px) {

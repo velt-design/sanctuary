@@ -114,13 +114,15 @@ export function CalculatorInfillTile({
             ? 'Review configured infills, add new ones, or adjust the panel layout for this module.'
             : 'Add infills to close exposed sides or gable ends for more shelter and weather protection.'}
         </p>
-        <div className={styles.infillTilePillRow}>
-          {summaryChips.map((chip) => (
-            <span key={chip.key} className={styles.infillChip}>
-              {chip.label} {chip.count}
-            </span>
-          ))}
-        </div>
+        {summaryChips.length ? (
+          <div className={styles.infillTilePillRow}>
+            {summaryChips.map((chip) => (
+              <span key={chip.key} className={styles.infillChip}>
+                {chip.label} {chip.count}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {hasInfills ? (
           <div className={styles.infillTileMetricRow}>
             <div className={styles.infillTileMetric}>

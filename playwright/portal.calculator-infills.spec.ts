@@ -21,7 +21,7 @@ async function setNumber(dialog: Locator, label: string, value: string): Promise
   await input.press('Enter');
 }
 
-async function openResults(dialog: Locator, useKeyboard = false): Promise<void> {
+async function advanceToResults(dialog: Locator, useKeyboard = false): Promise<void> {
   await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
   const firstContinue = dialog.getByRole('button', { name: 'Continue', exact: true });
   if (useKeyboard) {
@@ -39,6 +39,10 @@ async function openResults(dialog: Locator, useKeyboard = false): Promise<void> 
     await secondContinue.click();
   }
   await expect(dialog.getByRole('button', { name: /^3 Results/ })).toHaveAttribute('aria-current', 'step');
+}
+
+async function openResults(dialog: Locator, useKeyboard = false): Promise<void> {
+  await advanceToResults(dialog, useKeyboard);
   await expect(dialog.getByRole('heading', { name: 'Pieces to cut', exact: true })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Materials to purchase', exact: true })).toBeVisible();
 }
@@ -125,6 +129,81 @@ test('authenticated calculator shows kerf-safe 3m x 1m strip purchasing at 1024p
     await expect(stripRow).toContainText('4.000m');
     const dimensions = await dialog.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    const piecesHeading = dialog.getByRole('heading', { name: 'Pieces to cut', exact: true });
+    const purchasesHeading = dialog.getByRole('heading', { name: 'Materials to purchase', exact: true });
+    const diagramHeading = dialog.getByRole('heading', { name: 'Cutting diagram', exact: true });
+    const productionOrder = await piecesHeading.evaluate((heading) => {
+      let scrollOwner = heading.parentElement;
+      while (scrollOwner) {
+        const overflowY = window.getComputedStyle(scrollOwner).overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && scrollOwner.scrollHeight > scrollOwner.clientHeight) break;
+        scrollOwner = scrollOwner.parentElement;
+      }
+      const headingBounds = heading.getBoundingClientRect();
+      const ownerBounds = scrollOwner?.getBoundingClientRect();
+      return {
+        scrollTop: scrollOwner?.scrollTop ?? -1,
+        headingTop: headingBounds.top,
+        ownerTop: ownerBounds?.top ?? -1,
+        ownerBottom: ownerBounds?.bottom ?? -1,
+      };
+    });
+    expect(productionOrder.scrollTop).toBeLessThanOrEqual(12);
+    expect(productionOrder.headingTop).toBeGreaterThanOrEqual(productionOrder.ownerTop);
+    expect(productionOrder.headingTop).toBeLessThan(productionOrder.ownerBottom);
+    const [piecesBox, purchasesBox, diagramBox] = await Promise.all([
+      piecesHeading.boundingBox(),
+      purchasesHeading.boundingBox(),
+      diagramHeading.boundingBox(),
+    ]);
+    expect(piecesBox).not.toBeNull();
+    expect(purchasesBox).not.toBeNull();
+    expect(diagramBox).not.toBeNull();
+    expect(piecesBox?.y ?? 0).toBeLessThan(purchasesBox?.y ?? 0);
+    expect(purchasesBox?.y ?? 0).toBeLessThan(diagramBox?.y ?? 0);
     await attachCalculatorScreenshot(page, testInfo, 'infill-strip-1024.png');
+  });
+});
+
+test('authenticated calculator blocks unmanufacturable stock and routes the fix to Opening', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-stock-blocker' }, async () => {
+    const dialog = await openCustomInfill(page, 1600);
+    await setNumber(dialog, 'Width (m)', '7');
+    await setNumber(dialog, 'Height (m)', '7');
+    await advanceToResults(dialog);
+
+    await expect(dialog.getByText('Cannot manufacture', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Copy as CSV', exact: true })).toHaveCount(0);
+    await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
+    await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
+    await expect(dialog.getByLabel('Panel material', { exact: true })).toBeFocused();
+  });
+});
+
+test('authenticated calculator routes invalid partial-edge rafter matching to Existing supports', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-partial-rafter-blocker' }, async () => {
+    const dialog = await openCustomInfill(page, 1600);
+    await dialog.getByLabel('Location', { exact: true }).selectOption('front');
+    await setNumber(dialog, 'Width (m)', '6');
+    await setNumber(dialog, 'Height (m)', '1');
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await dialog.getByLabel('Existing internal supports', { exact: true }).selectOption('match_roof_rafters');
+    await dialog.getByRole('button', { name: 'Back', exact: true }).click();
+    await setNumber(dialog, 'Width (m)', '5');
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+
+    await expect(dialog.getByLabel('Existing internal supports', { exact: true })).toHaveValue('match_roof_rafters');
+    await expect(dialog).toContainText('Roof-rafter matching only works on a full front or house edge. Choose explicit positions.');
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(dialog.getByText('Cannot manufacture', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Copy as CSV', exact: true })).toHaveCount(0);
+
+    await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
+    await expect(dialog.getByRole('button', { name: /^2 Existing supports$/ })).toHaveAttribute('aria-current', 'step');
+    await expect(dialog.getByLabel('Existing internal supports', { exact: true })).toBeFocused();
+    await dialog.getByLabel('Existing internal supports', { exact: true }).selectOption('none');
+    await dialog.getByRole('button', { name: /^3 Results/ }).click();
+    await expect(dialog.getByText('Ready', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Copy as CSV', exact: true })).toBeVisible();
   });
 });

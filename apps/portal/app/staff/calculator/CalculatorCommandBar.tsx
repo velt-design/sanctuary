@@ -42,7 +42,7 @@ export default function CalculatorCommandBar({
   const freshnessLabel = calculatorResultFreshnessLabel(resultFreshness);
 
   return (
-    <header className={styles.commandBar}>
+    <header className={styles.commandBar} data-calculator-command-bar>
       <div className={styles.commandBarIdentity}>
         <div>
           <h1 className={styles.commandBarTitle}>Calculator</h1>

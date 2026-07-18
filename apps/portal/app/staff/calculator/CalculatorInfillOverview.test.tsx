@@ -50,10 +50,7 @@ describe('CalculatorInfillOverview', () => {
       <CalculatorInfillTile
         hasInfills={false}
         summaryLine1="0 infills added"
-        summaryChips={[
-          { key: 'front', label: 'Front', count: 0 },
-          { key: 'side', label: 'Side', count: 0 },
-        ]}
+        summaryChips={[]}
         systemSummary="Not configured"
         totals={{ panels: 0, mullions: 0 }}
         presets={presets}
@@ -67,6 +64,8 @@ describe('CalculatorInfillOverview', () => {
     expect(markup).toContain('Add infill');
     expect(markup).toContain('Use preset');
     expect(markup).toContain('Edit infills');
+    expect(markup).not.toContain('Front 0');
+    expect(markup).not.toContain('Side 0');
   });
 
   it('renders populated tile summary metrics', () => {

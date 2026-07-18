@@ -25,6 +25,21 @@
   container-name: calculator-page;
 }
 
+@media (max-width: 1119px) {
+  .previewPage {
+    scroll-padding-top: 180px;
+  }
+
+  .previewPage :is(
+      [data-calculator-field],
+      [data-calculator-configuration-section],
+      [data-pricing-summary-variant],
+      [data-calculator-module-launcher]
+    ) {
+    scroll-margin-top: 180px;
+  }
+}
+
 .previewFrame {
   position: relative;
   height: 100%;
@@ -704,6 +719,53 @@
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
+.blindsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.blindCard,
+.blindTotalsCard {
+  padding: 12px;
+}
+
+.blindCardHeader,
+.blindCardActions,
+.blindTotalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.blindCardActions {
+  justify-content: flex-end;
+}
+
+.blindFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.blindAddAction {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.blindAddButton {
+  min-width: 124px;
+}
+
+.blindTotalsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .infillTileSummary {
   display: grid;
   gap: 2px;
@@ -950,9 +1012,22 @@
   padding: 0;
 }
 
-.infillResultsStage .infillPreviewCard {
-  width: min(420px, 100%);
+.infillResultsProductionSummary,
+.infillResultsDiagram {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.infillResultsDiagram .infillPreviewCard {
+  width: min(360px, 100%);
   justify-self: center;
+}
+
+@media (max-width: 1200px) {
+  .infillResultsDiagram .infillPreviewSvg {
+    max-height: 260px;
+  }
 }
 
 @media (min-width: 1201px) {
@@ -961,14 +1036,18 @@
     align-items: start;
   }
 
-  .infillResultsStage .infillPreviewCard {
-    grid-column: 1;
-    grid-row: 1 / span 2;
+  .infillResultsProductionSummary {
+    grid-column: 2;
+    grid-row: 1;
   }
 
-  .infillResultsStage .infillChosenSystem,
-  .infillResultsStage .infillComputedNote {
-    grid-column: 2;
+  .infillResultsDiagram {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .infillResultsDiagram .infillPreviewCard {
+    width: min(420px, 100%);
   }
 
   .infillResultsStage .infillCostDetails,
@@ -4069,98 +4148,6 @@
   transition: opacity 160ms ease;
 }
 
-.impactHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.impactReset {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 999px;
-  background: rgba(var(--portal-text-rgb), 0.02);
-  color: inherit;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.impactReset:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
-}
-
-.impactGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-}
-
-.impactStat {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 10px;
-  background: rgba(var(--portal-text-rgb), 0.02);
-  padding: 8px 10px;
-  display: grid;
-  gap: 2px;
-}
-
-.impactStat span {
-  font-size: 11px;
-  color: rgba(var(--portal-text-rgb), 0.58);
-}
-
-.impactStat strong {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.impactDrivers {
-  margin-top: 10px;
-  display: grid;
-  gap: 10px;
-}
-
-.impactDriversTitle {
-  margin-bottom: 6px;
-  font-size: 11px;
-  color: rgba(var(--portal-text-rgb), 0.62);
-}
-
-.impactList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 6px;
-}
-
-.impactRow {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 10px;
-  background: var(--portal-bg-surface);
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.impactRowLabel {
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 0;
-}
-
-.impactRowDelta {
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .statusHeader {
   display: flex;
   align-items: center;
@@ -4584,8 +4571,7 @@
     max-width: 100%;
   }
 
-  .moduleViewsHeader,
-  .impactHeader {
+  .moduleViewsHeader {
     flex-direction: column;
     align-items: stretch;
   }

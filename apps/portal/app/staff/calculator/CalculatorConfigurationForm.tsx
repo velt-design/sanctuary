@@ -28,9 +28,10 @@ export default function CalculatorConfigurationForm({
       {sections.map((section) => (
         <section
           key={section.id}
-          className={styles.section}
+          className={section.density === 'compact' ? `${styles.section} ${styles.sectionCompact}` : styles.section}
           aria-label={section.title}
           data-calculator-configuration-section={section.id}
+          data-section-density={section.density ?? 'default'}
         >
           <h2 className={styles.sectionTitle}>{section.title}</h2>
           <div className={styles.fieldGrid} data-calculator-field-grid>

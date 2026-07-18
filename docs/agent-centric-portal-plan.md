@@ -90,7 +90,7 @@ Why it matters: many portal bugs depend on specific projects, estimates, quotes,
 What it should add:
 
 - deterministic local/demo seed scenarios;
-- named scenarios such as `project-with-estimate`, `quote-ready`, `schedule-board-basic`, and `workbench-multi-object`;
+- named scenarios such as `project-with-estimate`, revisioned `calculator-multi-module`, `quote-ready`, `schedule-board-basic`, and `workbench-multi-object`;
 - one-command or documented setup.
 
 Done when:

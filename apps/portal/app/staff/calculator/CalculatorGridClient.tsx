@@ -10,9 +10,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import FieldTile, { type FieldOption } from './FieldTile';
 import styles from './CalculatorGrid.module.css';
@@ -49,6 +46,7 @@ import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
 import InfillActionsMenu from './InfillActionsMenu';
 import InfillConfiguratorDialog from './InfillConfiguratorDialog';
+import InfillResultsStage from './InfillResultsStage';
 import {
   addedSupportSummary,
   canOfferRafterMatching,
@@ -58,7 +56,6 @@ import {
   type InfillConfiguratorStage,
 } from './infillConfiguratorPresentation';
 import DuplicateDialog from './DuplicateDialog';
-import InfillCutList from './InfillCutList';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
 import ModuleViewsCard, {
@@ -210,7 +207,11 @@ import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } f
 import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
 import CalculatorConfigurationForm from './CalculatorConfigurationForm';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
-import CalculatorPricingSummary from './CalculatorPricingSummary';
+import CalculatorPricingSummary, { type CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
+import {
+  CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX,
+  useCalculatorPreviewSplit,
+} from './useCalculatorPreviewSplit';
 import CalculatorProjectPicker from './CalculatorProjectPicker';
 import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
 import { buildCalculatorPricingComparison } from './calculatorPricingComparison';
@@ -305,12 +306,6 @@ function inferStockLengthFromLabel(label: string): number | null {
 }
 
 const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
-const PREVIEW_SPLIT_STORAGE_KEY = 'sanctuary-portal:calculator:previewRightWidthPx:v1';
-const PREVIEW_SPLIT_STACK_BREAKPOINT_PX = 1120;
-const PREVIEW_SPLIT_LEFT_MIN_PX = 640;
-const PREVIEW_SPLIT_RIGHT_MIN_PX = 360;
-const PREVIEW_SPLIT_RIGHT_DEFAULT_PX = 480;
-const PREVIEW_SPLIT_HANDLE_WIDTH_PX = 18;
 
 type InfillDeletedState = {
   infill: InfillLineItem;
@@ -318,17 +313,6 @@ type InfillDeletedState = {
   expiresAt: number;
   draft?: InfillDraftEntry;
 };
-
-function clampNumber(n: number, min: number, max: number): number {
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}
-
-function maxPreviewRightWidth(frameWidthPx: number): number {
-  if (!Number.isFinite(frameWidthPx) || frameWidthPx <= 0) return PREVIEW_SPLIT_RIGHT_DEFAULT_PX;
-  const max = Math.floor(frameWidthPx - PREVIEW_SPLIT_LEFT_MIN_PX - PREVIEW_SPLIT_HANDLE_WIDTH_PX);
-  return Math.max(PREVIEW_SPLIT_RIGHT_MIN_PX, max);
-}
 
 function hasNonEmptyValue(value: string | undefined): value is string {
   return value !== undefined && value !== null && String(value).trim() !== '';
@@ -537,16 +521,11 @@ export default function CalculatorGridClient({
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintDragSession, setFootprintDragSession] = useState<HouseFootprintDragSession | null>(null);
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
-  const [previewRightWidthPx, setPreviewRightWidthPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
-  const [previewRightWidthMaxPx, setPreviewRightWidthMaxPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
-  const [isPreviewSplitDragging, setIsPreviewSplitDragging] = useState(false);
+  const previewSplit = useCalculatorPreviewSplit();
   const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
   const [blindDimensionDraftsM, setBlindDimensionDraftsM] = useState<Record<string, string>>({});
   const baselineResultRef = useRef<SiteOutputV1 | null>(null);
   const [impactDiff, setImpactDiff] = useState<ImpactDiff | null>(null);
-  const previewSplitRef = useRef<HTMLDivElement | null>(null);
-  const previewSplitPointerIdRef = useRef<number | null>(null);
-  const previewSplitStorageReadyRef = useRef(false);
   const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
   const footprintCanvasSvgRef = useRef<SVGSVGElement | null>(null);
@@ -575,66 +554,6 @@ export default function CalculatorGridClient({
       void 0;
     }
   }, [uiMode]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = window.localStorage.getItem(PREVIEW_SPLIT_STORAGE_KEY);
-      if (raw) {
-        const parsed = Number.parseFloat(raw);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          setPreviewRightWidthPx(Math.round(parsed));
-        }
-      }
-    } catch {
-      void 0;
-    } finally {
-      previewSplitStorageReadyRef.current = true;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!previewSplitStorageReadyRef.current) return;
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(PREVIEW_SPLIT_STORAGE_KEY, String(Math.round(previewRightWidthPx)));
-    } catch {
-      void 0;
-    }
-  }, [previewRightWidthPx]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const frame = previewSplitRef.current;
-    if (!frame) return;
-
-    const syncSplitBounds = () => {
-      const width = frame.getBoundingClientRect().width;
-      if (!Number.isFinite(width) || width <= 0) return;
-      const maxWidth = maxPreviewRightWidth(width);
-      setPreviewRightWidthMaxPx(maxWidth);
-      setPreviewRightWidthPx((prev) => {
-        const next = Math.round(clampNumber(prev, PREVIEW_SPLIT_RIGHT_MIN_PX, maxWidth));
-        return next === prev ? prev : next;
-      });
-    };
-
-    syncSplitBounds();
-
-    let observer: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(() => {
-        syncSplitBounds();
-      });
-      observer.observe(frame);
-    }
-
-    window.addEventListener('resize', syncSplitBounds);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', syncSplitBounds);
-    };
-  }, []);
 
   const isAdvancedUi = uiMode === 'advanced';
 
@@ -1789,6 +1708,7 @@ export default function CalculatorGridClient({
   const [infillDeleteTargetId, setInfillDeleteTargetId] = useState<string | null>(null);
   const [deletedInfill, setDeletedInfill] = useState<InfillDeletedState | null>(null);
   const [infillDuplicateOpen, setInfillDuplicateOpen] = useState(false);
+  const [infillAutomaticChoicesOpen, setInfillAutomaticChoicesOpen] = useState(false);
   const [infillCostDetailsOpen, setInfillCostDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
@@ -2298,35 +2218,33 @@ export default function CalculatorGridClient({
     activeModule.houseConnectionType === 'none' ? [GABLE_GUTTER_OPTIONS[1]] : GABLE_GUTTER_OPTIONS;
 
   const blindsListContent = (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className={styles.blindsEditor}>
       {blindsUi.rows.map((row, idx) => {
         const item = row.item;
         const statusClassName = row.statusTone === 'error' ? styles.error : styles.helper;
         const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
         return (
-          <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div key={item.id} className={`${styles.previewCard} ${styles.blindCard}`}>
+            <div className={styles.blindCardHeader}>
               <strong>Blind {idx + 1}</strong>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className={styles.blindCardActions}>
                 <button
                   type="button"
-                  className={styles.drawerClose}
-                  style={{ padding: '6px 10px', fontSize: 11 }}
+                  className={styles.infillSecondaryButton}
                   onClick={() => duplicateBlind(item.id)}
                 >
                   Duplicate
                 </button>
                 <button
                   type="button"
-                  className={styles.drawerClose}
-                  style={{ padding: '6px 10px', fontSize: 11 }}
+                  className={styles.infillSecondaryButton}
                   onClick={() => removeBlind(item.id)}
                 >
                   Delete
                 </button>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginTop: 10 }}>
+            <div className={styles.blindFieldGrid}>
               <FieldTile
                 id={`${domIdBase}-label`}
                 label="Label"
@@ -2387,23 +2305,22 @@ export default function CalculatorGridClient({
         );
       })}
 
-      <div className={styles.previewCard} style={{ padding: 12 }}>
+      <div className={styles.blindAddAction}>
         <button
           type="button"
-          className={styles.drawerClose}
-          style={{ width: '100%', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}
+          className={`${styles.infillSecondaryButton} ${styles.blindAddButton}`}
           onClick={() => addBlind()}
         >
           Add blind
         </button>
       </div>
 
-      <div className={styles.previewCard} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div className={`${styles.previewCard} ${styles.blindTotalsCard}`}>
+        <div className={styles.blindTotalRow}>
           <span>Blinds total (ex‑GST)</span>
           <span>{blindsUi.totalExLabel}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div className={styles.blindTotalRow}>
           <span>Blinds total (inc‑GST)</span>
           <span>{blindsUi.totalIncLabel}</span>
         </div>
@@ -2811,6 +2728,9 @@ export default function CalculatorGridClient({
   const jumpToInfillWarningTarget = (warning: InfillWarningItem) => {
     if (!selectedInfill) return;
     const targetStage = stageForInfillWarning(warning);
+    if (targetStage === 'opening' && warning.target.fieldKey === 'acrylic') {
+      setInfillAutomaticChoicesOpen(true);
+    }
     setInfillStage(targetStage);
     trackInfillEvent('infill_warning_clicked', {
       infill_id: selectedInfill.id,
@@ -2894,6 +2814,7 @@ export default function CalculatorGridClient({
       warnings: selectedComputedWarnings.length,
     });
     setInfillsOpen(false);
+    setInfillAutomaticChoicesOpen(false);
     setInfillCostDetailsOpen(false);
   };
 
@@ -3104,7 +3025,7 @@ export default function CalculatorGridClient({
       label: 'Project',
       type: 'readOnly',
       value: project ? project.projectName ?? project.name ?? '—' : projectId ? 'Not found' : 'None',
-      helperText: project ? `Attached: ${project.projectName ?? project.name ?? '—'}` : 'Use Projects in the header to select or create one.',
+      helperText: project ? undefined : 'Use Projects in the header to select or create one.',
       error: projectId && !project ? projectError ?? undefined : undefined,
     },
 
@@ -3189,7 +3110,7 @@ export default function CalculatorGridClient({
           ? 'Not supported for hip corner'
           : activeModule.boxPerimeterEnabled
             ? `Box beam = ${boxPerimeterBeamProfileUsedUi}`
-            : 'Off',
+            : undefined,
     },
     {
       id: 'roofMaterial',
@@ -4143,84 +4064,6 @@ export default function CalculatorGridClient({
     return actions.slice().sort((a, b) => (b.minutes ?? 0) - (a.minutes ?? 0));
   }, [result]);
 
-  const splitStyle = useMemo(
-    () =>
-      ({
-        ['--preview-right-width' as '--preview-right-width']: `${previewRightWidthPx}px`,
-      }) as CSSProperties,
-    [previewRightWidthPx],
-  );
-
-  const updatePreviewSplitFromClientX = (clientX: number) => {
-    const frame = previewSplitRef.current;
-    if (!frame) return;
-    const rect = frame.getBoundingClientRect();
-    if (!Number.isFinite(rect.width) || rect.width <= 0) return;
-    const maxWidth = maxPreviewRightWidth(rect.width);
-    const candidate = rect.right - clientX;
-    setPreviewRightWidthMaxPx(maxWidth);
-    setPreviewRightWidthPx(Math.round(clampNumber(candidate, PREVIEW_SPLIT_RIGHT_MIN_PX, maxWidth)));
-  };
-
-  const stopPreviewSplitDrag = () => {
-    previewSplitPointerIdRef.current = null;
-    setIsPreviewSplitDragging(false);
-  };
-
-  const handlePreviewSplitPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
-    const frameWidth = previewSplitRef.current?.getBoundingClientRect().width ?? 0;
-    if (frameWidth > 0 && frameWidth < PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
-    previewSplitPointerIdRef.current = event.pointerId;
-    setIsPreviewSplitDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-    updatePreviewSplitFromClientX(event.clientX);
-    event.preventDefault();
-  };
-
-  const handlePreviewSplitPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (previewSplitPointerIdRef.current !== event.pointerId) return;
-    updatePreviewSplitFromClientX(event.clientX);
-  };
-
-  const handlePreviewSplitPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (previewSplitPointerIdRef.current !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    stopPreviewSplitDrag();
-  };
-
-  const handlePreviewSplitLostPointerCapture = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (previewSplitPointerIdRef.current !== null && previewSplitPointerIdRef.current !== event.pointerId) return;
-    stopPreviewSplitDrag();
-  };
-
-  const handlePreviewSplitKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    const frameWidth = previewSplitRef.current?.getBoundingClientRect().width ?? 0;
-    if (frameWidth > 0 && frameWidth < PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
-    const step = event.shiftKey ? 48 : 16;
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      setPreviewRightWidthPx((prev) => Math.round(clampNumber(prev + step, PREVIEW_SPLIT_RIGHT_MIN_PX, previewRightWidthMaxPx)));
-      return;
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      setPreviewRightWidthPx((prev) => Math.round(clampNumber(prev - step, PREVIEW_SPLIT_RIGHT_MIN_PX, previewRightWidthMaxPx)));
-      return;
-    }
-    if (event.key === 'Home') {
-      event.preventDefault();
-      setPreviewRightWidthPx(PREVIEW_SPLIT_RIGHT_MIN_PX);
-      return;
-    }
-    if (event.key === 'End') {
-      event.preventDefault();
-      setPreviewRightWidthPx(previewRightWidthMaxPx);
-    }
-  };
-
   const saveDialogSummary: SaveDialogSummary = {
     modules: String(values.modules.length),
     activeModule: `${activeModuleLabel}: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}`,
@@ -4253,8 +4096,24 @@ export default function CalculatorGridClient({
     setIssuesOpen(false);
   };
 
+  const pricingSummaryProps: CalculatorPricingSummaryProps = {
+    resultFreshness,
+    issuesCount,
+    onOpenIssues: () => setIssuesOpen(true),
+    internalTrueCostExGst: coreTotalEx,
+    internalTrueCostIncGst: coreTotalInc,
+    materialsExGst: materialsEx,
+    installExGst: installEx,
+    overheadExGst: overheadEx,
+    crewHours,
+    installDays: crewDays,
+    blindCustomerPriceExGst: addonsTotals.blinds.ex,
+    blindCustomerPriceIncGst: addonsTotals.blinds.inc,
+    hasInfills: infillsState.items.length > 0,
+  };
+
   return (
-    <main className={`${styles.page} ${styles.previewPage}${isPreviewSplitDragging ? ` ${styles.previewPageResizing}` : ''}`}>
+    <main className={`${styles.page} ${styles.previewPage}${previewSplit.isDragging ? ` ${styles.previewPageResizing}` : ''}`}>
       <div className={styles.previewFrame}>
         <CalculatorCommandBar
           projectLabel={project ? project.projectName ?? project.name ?? 'Select project' : 'Select project'}
@@ -4271,7 +4130,7 @@ export default function CalculatorGridClient({
           onSave={() => void generateField?.onAction?.()}
           saveError={generateField?.error}
         />
-        <div className={styles.split} ref={previewSplitRef} style={splitStyle}>
+        <div className={styles.split} ref={previewSplit.splitRef} style={previewSplit.splitStyle}>
           <div className={styles.leftCol}>
             <div className={styles.configurationWorkspace}>
               <CalculatorModuleNavigator
@@ -4285,25 +4144,26 @@ export default function CalculatorGridClient({
                 onMoveModule={handleMoveModule}
                 onRemoveModule={handleRemoveModule}
               />
+              <CalculatorPricingSummary {...pricingSummaryProps} variant="compact" />
               <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
             </div>
           </div>
 
           <button
             type="button"
-            className={isPreviewSplitDragging ? `${styles.columnResizeHandle} ${styles.columnResizeHandleActive}` : styles.columnResizeHandle}
-            onPointerDown={handlePreviewSplitPointerDown}
-            onPointerMove={handlePreviewSplitPointerMove}
-            onPointerUp={handlePreviewSplitPointerUp}
-            onPointerCancel={handlePreviewSplitPointerUp}
-            onLostPointerCapture={handlePreviewSplitLostPointerCapture}
-            onKeyDown={handlePreviewSplitKeyDown}
+            className={previewSplit.isDragging ? `${styles.columnResizeHandle} ${styles.columnResizeHandleActive}` : styles.columnResizeHandle}
+            onPointerDown={previewSplit.onPointerDown}
+            onPointerMove={previewSplit.onPointerMove}
+            onPointerUp={previewSplit.onPointerUp}
+            onPointerCancel={previewSplit.onPointerCancel}
+            onLostPointerCapture={previewSplit.onLostPointerCapture}
+            onKeyDown={previewSplit.onKeyDown}
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize preview panel width"
-            aria-valuemin={PREVIEW_SPLIT_RIGHT_MIN_PX}
-            aria-valuemax={previewRightWidthMaxPx}
-            aria-valuenow={Math.round(clampNumber(previewRightWidthPx, PREVIEW_SPLIT_RIGHT_MIN_PX, previewRightWidthMaxPx))}
+            aria-valuemin={CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX}
+            aria-valuemax={previewSplit.rightWidthMaxPx}
+            aria-valuenow={previewSplit.rightWidthPx}
             title="Drag to resize preview panel"
           />
 
@@ -4313,21 +4173,7 @@ export default function CalculatorGridClient({
             data-result-freshness={resultFreshness}
           >
             <div className={styles.previewSummary}>
-              <CalculatorPricingSummary
-                resultFreshness={resultFreshness}
-                issuesCount={issuesCount}
-                onOpenIssues={() => setIssuesOpen(true)}
-                internalTrueCostExGst={coreTotalEx}
-                internalTrueCostIncGst={coreTotalInc}
-                materialsExGst={materialsEx}
-                installExGst={installEx}
-                overheadExGst={overheadEx}
-                crewHours={crewHours}
-                installDays={crewDays}
-                blindCustomerPriceExGst={addonsTotals.blinds.ex}
-                blindCustomerPriceIncGst={addonsTotals.blinds.inc}
-                hasInfills={infillsState.items.length > 0}
-              />
+              <CalculatorPricingSummary {...pricingSummaryProps} />
 
               <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
               <ModuleViewsCard
@@ -4696,7 +4542,11 @@ export default function CalculatorGridClient({
                             ]}
                           />
                         </div>
-                        <details className={`${styles.infillAutomaticChoices} ${styles.span12}`}>
+                        <details
+                          className={`${styles.infillAutomaticChoices} ${styles.span12}`}
+                          open={infillAutomaticChoicesOpen}
+                          onToggle={(event) => setInfillAutomaticChoicesOpen((event.currentTarget as HTMLDetailsElement).open)}
+                        >
                           <summary>Change automatic choices</summary>
                           <p>The calculator chooses the option needing the fewest extra supports, then the least stock and waste.</p>
                           <div className={styles.infillAutomaticChoicesGrid}>
@@ -5072,45 +4922,21 @@ export default function CalculatorGridClient({
                     </div>
                     ) : null}
 
-                    {infillStage === 'results' ? (
-                      <div className={styles.infillResultsStage}>
-                      <div className={`${styles.infillResultBanner} ${
-                        selectedResultStatus?.tone === 'blocked'
-                          ? styles.infillResultBannerBlocked
-                          : selectedResultStatus?.tone === 'needs_details'
-                            ? styles.infillResultBannerNeedsDetails
-                            : styles.infillResultBannerReady
-                      }`} role="status">
-                        <strong>{selectedResultStatus?.title}</strong>
-                        <span>{selectedResultStatus?.message}</span>
-                      </div>
-                      {selectedCriticalWarnings.length ? (
-                        <ul className={styles.infillWarningList}>
-                          {selectedCriticalWarnings.map((warning) => (
-                            <li key={warning.id}>
-                              <button type="button" className={styles.infillWarningButton} onClick={() => jumpToInfillWarningTarget(warning)}>
-                                <span>{warning.message}</span><span className={styles.infillWarningJump}>Fix details</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      <aside id="infill-summary-panel" className={styles.infillEditorSummary}>
-                    <section className={styles.infillComputedPanel} aria-label="Computed infill summary">
-                        <>
-                          {selectedInfillPreview}
-                          <div className={styles.infillChosenSystem}>
-                            <div><span>Panel material</span><strong>{acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}</strong></div>
-                            <div><span>Joiner direction</span><strong>{selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal'}</strong></div>
-                            <div><span>Additional supports</span><strong>{selectedInfillEstimate.estimatedMullionsTotal}</strong></div>
-                          </div>
-                          <p className={styles.infillComputedNote}>{addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}</p>
-                          <details
-                            className={styles.infillCostDetails}
-                            open={infillCostDetailsOpen}
-                            onToggle={(event) => setInfillCostDetailsOpen((event.currentTarget as HTMLDetailsElement).open)}
-                          >
-                            <summary>Cost and technical details</summary>
+                    {infillStage === 'results' && selectedResultStatus ? (
+                      <InfillResultsStage
+                        status={selectedResultStatus}
+                        blockers={selectedCriticalWarnings}
+                        materialLabel={acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}
+                        orientationLabel={selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal'}
+                        additionalSupportCount={selectedInfillEstimate.estimatedMullionsTotal}
+                        additionalSupportSummary={addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}
+                        cutListStatus={selectedInfillIsDraft ? 'draft' : 'valid'}
+                        cutListRows={selectedInfillEstimate.cutListRows ?? []}
+                        preview={selectedInfillPreview}
+                        technicalDetailsOpen={infillCostDetailsOpen}
+                        onTechnicalDetailsToggle={setInfillCostDetailsOpen}
+                        onFixBlocker={jumpToInfillWarningTarget}
+                        technicalDetails={(
                           <div className={styles.infillComputedGroup}>
                             <div className={styles.infillComputedGroupTitle}>Cost comparison</div>
                             {moduleBaselineLoading ? <p className={styles.infillComputedNote}>Loading module baseline...</p> : null}
@@ -5165,12 +4991,8 @@ export default function CalculatorGridClient({
                               </div>
                             </div>
                           </div>
-                          </details>
-                          <InfillCutList status={selectedInfillIsDraft ? 'draft' : 'valid'} rows={selectedInfillEstimate.cutListRows ?? []} />
-                        </>
-                    </section>
-                      </aside>
-                    </div>
+                        )}
+                      />
                     ) : null}
                   </>
                 ) : infillsState.items.length === 0 ? (

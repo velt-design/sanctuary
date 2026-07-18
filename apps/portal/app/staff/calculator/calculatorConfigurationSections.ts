@@ -18,10 +18,12 @@ export type CalculatorConfigurationField = {
 };
 
 export type CalculatorConfigurationFieldLayout = 'standard' | 'wide' | 'full';
+type CalculatorConfigurationSectionDensity = 'default' | 'compact';
 
 type CalculatorConfigurationSectionDefinition = {
   id: string;
   title: string;
+  density?: CalculatorConfigurationSectionDensity;
   advancedOnly?: boolean;
   fieldIds: readonly string[];
 };
@@ -34,6 +36,7 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
   {
     id: 'context',
     title: 'Context',
+    density: 'compact',
     fieldIds: ['project-context', 'draft-notice'],
   },
   {
