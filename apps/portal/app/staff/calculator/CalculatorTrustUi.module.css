@@ -116,6 +116,34 @@
   cursor: pointer;
 }
 
+.commandBarDraftStatus,
+.commandBarDraftStatusError {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  margin-top: 5px;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.commandBarDraftStatusLabel {
+  flex: 0 0 auto;
+  color: rgb(22, 101, 52);
+  font-weight: 750;
+}
+
+.commandBarDraftStatusError .commandBarDraftStatusLabel {
+  color: rgb(185, 28, 28);
+}
+
+.commandBarDraftStatusHelp {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .commandBarModeActive {
   border-color: rgba(var(--accentRgb), 0.34);
   background: rgba(var(--accentRgb), 0.1);
@@ -333,6 +361,18 @@
   .commandBarStatusReady,
   .commandBarStatusBlocked {
     order: 3;
+  }
+
+  .commandBarDraftStatus,
+  .commandBarDraftStatusError {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .commandBarDraftStatusHelp {
+    overflow: visible;
+    white-space: normal;
   }
 }
 

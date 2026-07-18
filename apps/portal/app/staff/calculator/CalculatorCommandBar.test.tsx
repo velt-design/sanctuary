@@ -11,6 +11,7 @@ function renderBar(overrides: Partial<Parameters<typeof CalculatorCommandBar>[0]
       uiMode="basic"
       onUiModeChange={vi.fn()}
       resultFreshness="current"
+      localDraftStatus={{ kind: 'saved' }}
       blockerCount={0}
       onSelectProject={vi.fn()}
       saveLabel="Save"
@@ -32,6 +33,8 @@ describe('CalculatorCommandBar', () => {
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain('aria-pressed="false"');
     expect(markup).toContain('Ready to save');
+    expect(markup).toContain('Saved locally');
+    expect(markup).toContain('Browser draft only — use Save to update the estimate.');
   });
 
   it('renders blocker count, freshness context, error, and a disabled save', () => {

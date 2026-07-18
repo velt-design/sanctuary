@@ -17,6 +17,11 @@ async function openCalculator(page: Page) {
   await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
 }
 
+async function expectLocalDraftProtected(page: Page) {
+  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Browser draft only — use Save to update the estimate.', { exact: true })).toBeVisible();
+}
+
 async function withCalculatorEvidence(page: Page, testInfo: TestInfo, callback: () => Promise<void>) {
   await withPortalBrowserEvidence(
     page,
@@ -35,8 +40,46 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByText(scenario.labels.projectName).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
+    await expectLocalDraftProtected(page);
     await expect(page.getByText('Internal true cost (ex‑GST)', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Blind customer price (ex‑GST)', { exact: true }).first()).toBeVisible();
+  });
+});
+
+test('local draft survives module switching and restores after reload', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await openCalculator(page);
+    await expectLocalDraftProtected(page);
+
+    const moduleSelect = page.getByLabel('Module', { exact: true });
+    await expect(moduleSelect.locator('option')).toHaveCount(3);
+    const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
+    const firstModuleLength = '6.25';
+    const secondModuleLength = '4.95';
+
+    await roofLength.fill(firstModuleLength);
+    await expectLocalDraftProtected(page);
+    await moduleSelect.selectOption('1');
+    await expect(roofLength).toHaveValue('4.8');
+    await roofLength.fill(secondModuleLength);
+    await expectLocalDraftProtected(page);
+
+    await moduleSelect.selectOption('0');
+    await expect(roofLength).toHaveValue(firstModuleLength);
+    await moduleSelect.selectOption('1');
+    await expect(roofLength).toHaveValue(secondModuleLength);
+    await expectLocalDraftProtected(page);
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Calculator', exact: true })).toBeVisible();
+    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText('Restored unsaved work', { exact: true })).toBeVisible();
+    await expect(moduleSelect).toHaveValue('1');
+    await expect(roofLength).toHaveValue(secondModuleLength);
+
+    await moduleSelect.selectOption('0');
+    await expect(roofLength).toHaveValue(firstModuleLength);
   });
 });
 
@@ -67,6 +110,7 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1366, height: 900 });
     await openCalculator(page);
+    await expectLocalDraftProtected(page);
     const dimensions = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate((element) => ({
       clientWidth: element.clientWidth,
       scrollWidth: element.scrollWidth,
@@ -88,6 +132,7 @@ for (const width of [1024, 768]) {
     await withCalculatorEvidence(page, testInfo, async () => {
       await page.setViewportSize({ width, height: 768 });
       await openCalculator(page);
+      await expectLocalDraftProtected(page);
       const main = page.locator('main').first();
       const before = await main.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight }));
       expect(before.scrollHeight).toBeGreaterThan(before.clientHeight);

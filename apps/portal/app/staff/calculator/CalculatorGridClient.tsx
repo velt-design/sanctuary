@@ -32,7 +32,6 @@ import type {
   InfillLineItem,
 } from '@/lib/types/calculator';
 import {
-  isCalculatorInputsV2,
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
   normalizeHouseFootprintParams,
@@ -105,10 +104,8 @@ import {
   isLocalEstimateId,
 } from '@/lib/localFirst/portalEntities';
 import {
-  ensureLocalFirstStoreReady,
   getLocalFirstWorkingCopy,
   resolveLocalFirstId,
-  writeLocalFirstWorkingCopy,
 } from '@/lib/localFirst/store';
 import {
   buildInfillItemsForPreset,
@@ -128,7 +125,6 @@ import {
   isPrimaryFlashingLengthAutoLinked,
   makeBlindId,
   makeDefaultBlindItem,
-  makeDefaultBlinds,
   makeDefaultInfillItem,
   makeDefaultModule,
   makeDefaultPrimaryFlashingRow,
@@ -148,9 +144,9 @@ import {
   roofLengthForPrimaryFlashing,
   toNonNegativeInt,
   toNumber,
-  type CalculatorDraftSessionSnapshot,
   type InfillPresetKey,
 } from './calculatorInputs';
+import { useCalculatorDraftSession } from './useCalculatorDraftSession';
 import {
   designRequestTierFromTotal,
 } from './calculatorSaveWorkflow';
@@ -518,24 +514,21 @@ export default function CalculatorGridClient({
     [activeEditEstimateId, fromEstimateId, projectId],
   );
   const draftEntityKey = useMemo(() => buildCalculatorDraftEntityKey(draftSessionKey), [draftSessionKey]);
-  const restoredDraftForKeyRef = useRef(false);
   const [loadedEstimateDetail, setLoadedEstimateDetail] = useState<EstimateDetail | null>(null);
-
-  const [values, setValues] = useState<CalculatorInputs>(() => ({
-    schemaVersion: 'v2',
-    projectName: '',
-    quoteRef: '',
-    access: 'normal',
-    height: 'single_storey',
-    jobType: 'residential',
-    travelExGst: '0',
-    extrasAllowanceExGst: '0',
-    quoteDiscountPct: '0',
-    pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
-    modules: [makeDefaultModule('pergola-1')],
-    blinds: makeDefaultBlinds(),
-  }));
-  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const {
+    values,
+    setValues,
+    activeModuleIndex,
+    setActiveModuleIndex,
+    draftHydrated,
+    restoredFromLocalDraft,
+    localDraftStatus,
+    acceptExternalDraft,
+  } = useCalculatorDraftSession({
+    draftEntityKey,
+    draftSessionKey,
+    awaitsExternalDraft: Boolean(activeEditEstimateId || fromEstimateId),
+  });
   const [project, setProject] = useState<Project | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
@@ -549,7 +542,6 @@ export default function CalculatorGridClient({
   const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintDragSession, setFootprintDragSession] = useState<HouseFootprintDragSession | null>(null);
-  const [draftHydrated, setDraftHydrated] = useState(false);
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
   const [previewRightWidthPx, setPreviewRightWidthPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
   const [previewRightWidthMaxPx, setPreviewRightWidthMaxPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
@@ -566,46 +558,8 @@ export default function CalculatorGridClient({
   const footprintCanvasSvgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    restoredDraftForKeyRef.current = false;
     setLoadedEstimateDetail(null);
-    setDraftHydrated(false);
-
-    if (typeof window === 'undefined') {
-      setDraftHydrated(true);
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        await ensureLocalFirstStoreReady();
-        const persistedDraft = getLocalFirstWorkingCopy<CalculatorDraftSessionSnapshot>(draftEntityKey)?.data ?? null;
-        const raw = persistedDraft ? null : window.sessionStorage.getItem(draftSessionKey);
-        const parsed = persistedDraft ?? (raw ? (JSON.parse(raw) as Partial<CalculatorDraftSessionSnapshot>) : null);
-        if (!parsed || !isCalculatorInputsV2(parsed.values) || cancelled) return;
-
-        const normalized = normalizeCalculatorInputsForUi(parsed.values);
-        const parsedIndex = Number.isFinite(Number(parsed.activeModuleIndex)) ? Math.trunc(Number(parsed.activeModuleIndex)) : 0;
-        const safeIndex = Math.max(0, Math.min(normalized.modules.length - 1, parsedIndex));
-
-        setValues(normalized);
-        setActiveModuleIndex(safeIndex);
-        setDraftNotice('Restored unsaved calculator inputs.');
-        restoredDraftForKeyRef.current = true;
-      } catch {
-        window.sessionStorage.removeItem(draftSessionKey);
-      } finally {
-        if (!cancelled) {
-          setDraftHydrated(true);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [draftEntityKey, draftSessionKey]);
+  }, [draftEntityKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -721,7 +675,7 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     if (!draftHydrated || !projectId || activeEditEstimateId || fromEstimateId) return;
-    if (restoredDraftForKeyRef.current && !shouldOpenActiveDraft) return;
+    if (restoredFromLocalDraft && !shouldOpenActiveDraft) return;
     if (!activeDraftEstimateMeta) return;
     const qs = new URLSearchParams(searchParams.toString());
     qs.set('projectId', projectId);
@@ -729,7 +683,7 @@ export default function CalculatorGridClient({
     qs.delete('fromEstimateId');
     qs.delete('openActiveDraft');
     router.replace(`/staff/calculator?${qs.toString()}`);
-  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, router, searchParams, shouldOpenActiveDraft]);
+  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, restoredFromLocalDraft, router, searchParams, shouldOpenActiveDraft]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -777,14 +731,13 @@ export default function CalculatorGridClient({
             return;
           }
 
-          if (restoredDraftForKeyRef.current) {
+          if (restoredFromLocalDraft) {
             setDraftNotice(`Restored unsaved edits for ${estimate.versionLabel}`);
             return;
           }
 
           const draft = calculatorInputsFromEstimateDetail(estimate);
-          setValues(draft);
-          setActiveModuleIndex(0);
+          acceptExternalDraft(draft);
           const msg =
             isLocalEstimateId(estimate.id) || (resolvedEditEstimateId ?? activeEditEstimateId).startsWith('local-estimate:')
               ? `Editing design ${estimate.versionLabel}. Changes will keep syncing in the background.`
@@ -794,7 +747,7 @@ export default function CalculatorGridClient({
           return;
         }
 
-        if (restoredDraftForKeyRef.current) return;
+        if (restoredFromLocalDraft) return;
 
         const draft = await duplicateEstimateToDraft(fromEstimateId);
         const normalizedDraft = normalizeCalculatorInputsForUi({
@@ -804,8 +757,7 @@ export default function CalculatorGridClient({
           blinds: normalizeBlindsStateForUi((draft as any).blinds),
         } as CalculatorInputs);
 
-        setValues(normalizedDraft);
-        setActiveModuleIndex(0);
+        acceptExternalDraft(normalizedDraft);
         const msg = `Draft design started from ${fromEstimateId}`;
         setDraftNotice(msg);
         toast.success(msg);
@@ -815,35 +767,7 @@ export default function CalculatorGridClient({
         toast.error(msg);
       }
     })();
-  }, [activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, router, toast]);
-
-  useEffect(() => {
-    if (!draftHydrated) return;
-    if (typeof window === 'undefined') return;
-
-    const snapshot: CalculatorDraftSessionSnapshot = {
-      activeModuleIndex,
-      updatedAt: Date.now(),
-      values,
-    };
-
-    try {
-      window.sessionStorage.setItem(draftSessionKey, JSON.stringify(snapshot));
-    } catch {
-      void 0;
-    }
-    void writeLocalFirstWorkingCopy({
-      entityKey: draftEntityKey,
-      data: snapshot,
-    });
-  }, [activeModuleIndex, draftEntityKey, draftHydrated, draftSessionKey, values]);
-
-  useEffect(() => {
-    setActiveModuleIndex((prev) => {
-      const max = Math.max(0, values.modules.length - 1);
-      return Math.min(prev, max);
-    });
-  }, [values.modules.length]);
+  }, [acceptExternalDraft, activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, restoredFromLocalDraft, router, toast]);
 
   const pergolas = useMemo(() => normalizePergolasForUi(values.pergolas), [values.pergolas]);
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
@@ -4524,6 +4448,7 @@ export default function CalculatorGridClient({
           uiMode={uiMode}
           onUiModeChange={setUiMode}
           resultFreshness={resultFreshness}
+          localDraftStatus={localDraftStatus}
           blockerCount={quoteStatusUi.blockerCount}
           onSelectProject={() => setProjectPickerOpen(true)}
           saveLabel={generateField?.actionLabel ?? 'Save'}

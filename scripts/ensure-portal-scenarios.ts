@@ -15,6 +15,7 @@ import {
   isCalculatorInputsV2,
   migrateLegacyCalculatorInputsToV2,
   type CalculatorInputs,
+  type CalculatorModuleInputs,
   type LegacyCalculatorInputsV1,
 } from '../apps/portal/lib/types/calculator';
 
@@ -240,6 +241,73 @@ export function buildCalculatorScenarioInputs(projectName: string, quoteRef = ''
   return inputs;
 }
 
+function cloneScenarioModule(
+  source: CalculatorModuleInputs,
+  key: string,
+  overrides: Partial<CalculatorModuleInputs>,
+): CalculatorModuleInputs {
+  const cloned = structuredClone(source);
+  return {
+    ...cloned,
+    ...overrides,
+    flashings: cloned.flashings
+      ? {
+          rows: cloned.flashings.rows.map((row, index) => ({
+            ...row,
+            id: `scenario-flashing-${key}-${index + 1}`,
+          })),
+        }
+      : undefined,
+    infills: cloned.infills
+      ? {
+          items: cloned.infills.items.map((item, index) => ({
+            ...item,
+            id: `scenario-infill-${key}-${index + 1}`,
+          })),
+        }
+      : undefined,
+  };
+}
+
+export function buildGuidedCalculatorScenarioInputs(projectName: string): CalculatorInputs {
+  const base = buildCalculatorScenarioInputs(projectName);
+  const source = base.modules[0];
+  if (!source) throw new Error('Guided calculator scenario requires a starter module.');
+
+  const guided: CalculatorInputs = {
+    ...base,
+    pergolas: [
+      { id: 'pergola-1', label: 'Pergola 1' },
+      { id: 'pergola-2', label: 'Pergola 2' },
+    ],
+    modules: [
+      cloneScenarioModule(source, 'p1-m1', {
+        pergolaId: 'pergola-1',
+        pergolaStyle: 'pitched',
+        lengthM: '6',
+        projectionM: '3',
+      }),
+      cloneScenarioModule(source, 'p1-m2', {
+        pergolaId: 'pergola-1',
+        pergolaStyle: 'gable',
+        lengthM: '4.8',
+        projectionM: '3.2',
+      }),
+      cloneScenarioModule(source, 'p2-m1', {
+        pergolaId: 'pergola-2',
+        pergolaStyle: 'hip',
+        lengthM: '5.4',
+        projectionM: '3.6',
+      }),
+    ],
+  };
+
+  if (!isCalculatorInputsV2(guided) || guided.modules.length !== 3 || guided.pergolas?.length !== 2) {
+    throw new Error('Guided calculator scenario inputs must satisfy the current multi-module V2 contract.');
+  }
+  return guided;
+}
+
 async function seedProjectScenario(
   supabase: SupabaseClient,
   config: PortalScenarioConfig,
@@ -291,7 +359,13 @@ async function seedProjectScenario(
       },
     },
     internal_notes: `Seeded ${scenarioId} estimate.`,
-    inputs: buildCalculatorScenarioInputs(projectName, scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : ''),
+    inputs:
+      scenarioId === 'project-with-estimate'
+        ? buildGuidedCalculatorScenarioInputs(projectName)
+        : buildCalculatorScenarioInputs(
+            projectName,
+            scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : '',
+          ),
     outputs: buildEstimateOutputs(projectName, contactName),
     warnings: [],
     updated_at: new Date().toISOString(),

@@ -200,6 +200,23 @@ export function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInpu
   return module;
 }
 
+export function makeDefaultCalculatorInputs(): CalculatorInputs {
+  return {
+    schemaVersion: 'v2',
+    projectName: '',
+    quoteRef: '',
+    access: 'normal',
+    height: 'single_storey',
+    jobType: 'residential',
+    travelExGst: '0',
+    extrasAllowanceExGst: '0',
+    quoteDiscountPct: '0',
+    pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+    modules: [makeDefaultModule('pergola-1')],
+    blinds: makeDefaultBlinds(),
+  };
+}
+
 export function makeBlindId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `blind-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -217,7 +234,7 @@ export function makeDefaultBlindItem(overrides?: Partial<BlindLineItem>): BlindL
   };
 }
 
-export function makeDefaultBlinds(): CalculatorBlindsState {
+function makeDefaultBlinds(): CalculatorBlindsState {
   return { items: [] };
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   ESTIMATE_CURRENT_LIVE_PRICING_SOURCE,
-  ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION,
   ESTIMATE_PRICING_SOURCE_BLOCKED_CODE,
   ESTIMATE_PRICING_SOURCE_GATE_VERSION,
   ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE,
@@ -18,7 +17,6 @@ import {
 } from './pricingRollout';
 import { buildEstimateDbPayload } from './persistence';
 import type { CommercialDesignInputV1, CommercialModuleInputV1, CommercialParityReportV1 } from '@sp/costing';
-import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 
 function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): CommercialModuleInputV1 {
   return {
@@ -277,23 +275,23 @@ describe('workbench solved pricing rollout readiness', () => {
     expect(payload.outputs).not.toHaveProperty('commercialDesignInput');
   });
 
-  it('derives a passing workbench_solved readiness report from a server-side estimate snapshot', () => {
-    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
-    if (!fixture) throw new Error('Expected mono-standard fixture');
-
+  it('keeps server-side snapshot readiness blocked after the workbench breakaway', () => {
     const readiness = buildEstimateWorkbenchSolvedReadinessFromSnapshot({
-      snapshot: fixture.snapshot,
+      snapshot: { inputs: { schemaVersion: 'v2' } },
       projectId: 'project-1',
-      estimateId: fixture.estimate.id,
+      estimateId: 'estimate-1',
     });
     const report = evaluateWorkbenchSolvedPricingReadiness(readiness);
 
-    expect(report.eligibleToEnable).toBe(true);
-    expect(report.blockingGateCodes).toEqual([]);
-    expect(readiness.quantityTakeoffSource).toBe('solved_geometry_spine');
-    expect(readiness.workbenchCommercialInput?.source).toBe('workbench_solved');
-    expect(readiness.parityReports).toHaveLength(1);
-    expect(readiness.parityReports[0]?.status).toBe('match');
+    expect(report.eligibleToEnable).toBe(false);
+    expect(report.blockingGateCodes).toEqual([
+      'workbench_solved_ready',
+      'quantity_takeoff_owned',
+      'commercial_parity_stable',
+    ]);
+    expect(readiness.quantityTakeoffSource).toBe('unknown');
+    expect(readiness.workbenchCommercialInput).toBeNull();
+    expect(readiness.parityReports).toEqual([]);
 
     const resolved = resolveEstimatePricingSourceForSave({
       actor: 'ops@example.com',
@@ -302,34 +300,23 @@ describe('workbench solved pricing rollout readiness', () => {
       readiness,
     });
 
-    expect(resolved.ok).toBe(true);
-    if (!resolved.ok) throw new Error('expected server-derived source to resolve');
-    expect(resolved.context.pricingSource).toBe('workbench_solved');
-    expect(resolved.context.pricingSourceMetadata).toMatchObject({
+    expect(resolved.ok).toBe(false);
+    if (resolved.ok) throw new Error('expected server-derived source to stay blocked');
+    expect(resolved.code).toBe(ESTIMATE_PRICING_SOURCE_BLOCKED_CODE);
+    expect(resolved.readinessReport.fallbackPricingSource).toBeNull();
+    expect(resolved.metadata).toMatchObject({
       gateVersion: ESTIMATE_PRICING_SOURCE_GATE_VERSION,
       requestedSource: 'workbench_solved',
       selectedSource: 'workbench_solved',
-      commercialInputSchemaVersion: 'commercial_design_v1',
-      quantityTakeoffSource: 'solved_geometry_spine',
-      parityReportVersion: ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION,
-      blockingGateCodes: [],
+      commercialInputSchemaVersion: null,
+      quantityTakeoffSource: 'unknown',
+      parityReportVersion: null,
+      blockingGateCodes: [
+        'workbench_solved_ready',
+        'quantity_takeoff_owned',
+        'commercial_parity_stable',
+      ],
     });
-    expect(resolved.context.pricingSourceMetadata.commercialInputHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(resolved.context.pricingSourceMetadata.parityReportHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(JSON.stringify(resolved.context.pricingSourceMetadata)).not.toContain('commercial_design_input');
-    expect(JSON.stringify(resolved.context.pricingSourceMetadata)).not.toContain('"pergolas"');
-    expect(JSON.stringify(resolved.context.pricingSourceMetadata)).not.toContain('"differences"');
-
-    const payload = buildEstimateDbPayload({
-      status: 'draft',
-      inputs: { schemaVersion: 'v2' },
-      outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
-      pricingSourceContext: resolved.context,
-    });
-
-    expect(payload.pricing_source).toBe('workbench_solved');
-    expect(payload.pricing_source_metadata).toEqual(resolved.context.pricingSourceMetadata);
-    expect(payload.commercial_design_input).toBe(readiness.workbenchCommercialInput);
   });
 
   it('keeps calculator live as the current pricing source', () => {

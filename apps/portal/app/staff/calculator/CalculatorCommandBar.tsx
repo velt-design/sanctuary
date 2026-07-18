@@ -3,16 +3,19 @@ import {
   calculatorResultFreshnessLabel,
   type CalculatorResultFreshness,
 } from './calculatorResultFreshness';
+import CalculatorDraftStatus from './CalculatorDraftStatus';
+import type { CalculatorLocalDraftStatus } from './useCalculatorDraftSession';
 
 export type CalculatorUiMode = 'basic' | 'advanced';
 
-export type CalculatorCommandBarProps = {
+type CalculatorCommandBarProps = {
   projectLabel: string;
   isEditingDesign: boolean;
   activeModuleLabel: string;
   uiMode: CalculatorUiMode;
   onUiModeChange: (mode: CalculatorUiMode) => void;
   resultFreshness: CalculatorResultFreshness;
+  localDraftStatus: CalculatorLocalDraftStatus;
   blockerCount: number;
   onSelectProject: () => void;
   saveLabel: string;
@@ -28,6 +31,7 @@ export default function CalculatorCommandBar({
   uiMode,
   onUiModeChange,
   resultFreshness,
+  localDraftStatus,
   blockerCount,
   onSelectProject,
   saveLabel,
@@ -51,6 +55,7 @@ export default function CalculatorCommandBar({
             <span aria-hidden="true">·</span>
             <span>{activeModuleLabel}</span>
           </div>
+          <CalculatorDraftStatus status={localDraftStatus} />
         </div>
       </div>
 

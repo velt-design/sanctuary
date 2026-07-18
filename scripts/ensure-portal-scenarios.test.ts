@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { calculateSiteCostV1 } from '@sp/costing';
 
 import {
   buildCalculatorScenarioInputs,
+  buildGuidedCalculatorScenarioInputs,
   readPortalScenarioConfig,
   redactPortalScenarioSecrets,
   stableScenarioUuid,
 } from './ensure-portal-scenarios';
 import { isCalculatorInputsV2 } from '../apps/portal/lib/types/calculator';
+import { buildSiteInputsFromCalculatorInputs } from '../apps/portal/lib/estimates/costingPayload';
 
 const validEnv = {
   PORTAL_TEST_EMAIL: 'agent@example.test',
@@ -129,5 +132,24 @@ describe('buildCalculatorScenarioInputs', () => {
       lengthM: '6',
       projectionM: '3',
     });
+  });
+
+  it('builds the guided calculator fixture with three independent modules across two pergolas', () => {
+    const inputs = buildGuidedCalculatorScenarioInputs('[Agent Scenario] Guided Calculator');
+    expect(isCalculatorInputsV2(inputs)).toBe(true);
+    expect(inputs.pergolas).toEqual([
+      { id: 'pergola-1', label: 'Pergola 1' },
+      { id: 'pergola-2', label: 'Pergola 2' },
+    ]);
+    expect(inputs.modules).toHaveLength(3);
+    expect(inputs.modules.map((module) => module.pergolaId)).toEqual(['pergola-1', 'pergola-1', 'pergola-2']);
+    expect(inputs.modules.map((module) => module.pergolaStyle)).toEqual(['pitched', 'gable', 'hip']);
+    expect(inputs.modules[0]).not.toBe(inputs.modules[1]);
+    expect(inputs.modules[1]).not.toBe(inputs.modules[2]);
+
+    const costingInputs = buildSiteInputsFromCalculatorInputs(inputs);
+    expect(costingInputs.pergolas).toHaveLength(2);
+    expect(costingInputs.pergolas.map((pergola) => pergola.modules.length)).toEqual([2, 1]);
+    expect(() => calculateSiteCostV1(costingInputs)).not.toThrow();
   });
 });
