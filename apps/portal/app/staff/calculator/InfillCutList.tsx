@@ -14,7 +14,7 @@ function escapeCsv(value: string): string {
 }
 
 export function cutListRowsToCsv(rows: CutListRow[]): string {
-  const header = ['Group', 'Piece type', 'Role', 'Part', 'Qty', 'Length/Range', 'Finished width', 'Finished height', 'Piece ID', 'Source infill', 'Allocated stock', 'Notes'];
+  const header = ['Group', 'Piece type', 'Role', 'Part', 'Qty', 'Cut length', 'Finished width', 'Finished height', 'Piece ID', 'Source infill', 'Allocated stock', 'Notes'];
   const lines = rows.map((row) =>
     [
       row.group === 'piece' ? 'Pieces to cut' : 'Materials to purchase',
@@ -67,6 +67,18 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
     window.setTimeout(() => setCopyMessage(null), 1800);
   };
 
+  const downloadCsv = () => {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'infill-cutting-and-purchase-list.csv';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   if (status === 'draft') {
     return (
       <p className={styles.infillComputedNote}>
@@ -89,7 +101,7 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
         <div className={styles.infillCutListHead} role="row">
           <span role="columnheader">Part</span>
           <span role="columnheader">Qty</span>
-          <span role="columnheader">Length/Range</span>
+          <span role="columnheader">Cut length</span>
           <span role="columnheader">Details</span>
         </div>
         {groupRows.map((row, idx) => (
@@ -115,10 +127,11 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
   return (
     <div className={styles.infillCutList}>
       <div className={styles.infillCutListHeader}>
-        <p className={styles.infillComputedNote}>Canonical finished-piece and purchase takeoff.</p>
-        <button type="button" className={styles.infillIconButton} onClick={copyCsv}>
-          Copy as CSV
-        </button>
+        <p className={styles.infillComputedNote}>Your cutting and purchase list.</p>
+        <div className={styles.infillCutListActions}>
+          <button type="button" className={styles.infillPrimaryButton} onClick={downloadCsv}>Download CSV</button>
+          <button type="button" className={styles.infillIconButton} onClick={copyCsv}>Copy CSV</button>
+        </div>
       </div>
 
       {pieceRows.length ? renderRows(pieceRows, 'Pieces to cut') : null}

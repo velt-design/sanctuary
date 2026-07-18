@@ -178,11 +178,16 @@ type InfillPanelOrientationInput = 'vertical' | 'horizontal' | 'auto';
 export type InfillMonoSlopeModeInput = 'heights' | 'pitch';
 export type InfillMonoSlopeAnchorInput = 'left' | 'right';
 
-type InfillSupportInput = {
+export type InfillEdge = 'top' | 'bottom' | 'left' | 'right';
+export type InfillEdgeConfirmation = 'yes' | 'no' | 'unsure';
+export type InfillEdgeConfirmations = Record<InfillEdge, InfillEdgeConfirmation>;
+
+export type InfillSupportInput = {
   hasTop: boolean;
   hasBottom: boolean;
   hasLeft: boolean;
   hasRight: boolean;
+  edgeConfirmations?: InfillEdgeConfirmations;
   internalSupportMode?: 'none' | 'match_roof_rafters' | 'center' | 'custom';
   internalSupportPositionsM?: string[];
 };

@@ -1,13 +1,14 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 import { openPortalPage, withPortalBrowserEvidence } from './support/portalAgent';
 
 async function openCustomInfill(page: Page, width: number): Promise<Locator> {
   await page.setViewportSize({ width, height: width <= 1024 ? 768 : 1000 });
   await openPortalPage(page, '/staff/calculator', { heading: 'Calculator' });
-  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
   const addInfill = page.getByRole('button', { name: 'Add infill', exact: true });
   await expect(addInfill).toHaveCount(1);
+  await expect(addInfill).toBeVisible({ timeout: 60_000 });
   await addInfill.click();
   const dialog = page.getByRole('dialog', { name: 'Infills' });
   await expect(dialog).toBeVisible();
@@ -103,9 +104,27 @@ test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, 
     await expect(sheetRow).toContainText('2');
     await expect(sheetRow).toContainText('3.050m');
 
-    await dialog.getByRole('button', { name: 'Copy as CSV', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Copy CSV', exact: true }).click();
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Pieces to cut,panel,rectangle,Acrylic panel 1,1,2.100m,1.200m,2.100m');
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Materials to purchase,stock,acrylic_sheet,Plexi sheet 3050 × 2030,2,3.050m,2.030m');
+    const downloadPromise = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Download CSV', exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('infill-cutting-and-purchase-list.csv');
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const downloadedCsv = await readFile(downloadPath as string, 'utf8');
+    expect(downloadedCsv).toContain('Pieces to cut,panel,rectangle,Acrylic panel 1,1,2.100m,1.200m,2.100m');
+    expect(downloadedCsv).toContain('Materials to purchase,stock,acrylic_sheet');
+
+    const [piecesHeadingBox, diagramHeadingBox, firstPieceRowBox, dialogBox] = await Promise.all([
+      dialog.getByRole('heading', { name: 'Pieces to cut', exact: true }).boundingBox(),
+      dialog.getByRole('heading', { name: 'Cutting diagram', exact: true }).boundingBox(),
+      pieces.getByRole('row').filter({ hasText: 'Acrylic panel 1' }).boundingBox(),
+      dialog.boundingBox(),
+    ]);
+    expect(piecesHeadingBox?.x ?? 0).toBeGreaterThan(diagramHeadingBox?.x ?? 0);
+    expect(firstPieceRowBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan((dialogBox?.y ?? 0) + (dialogBox?.height ?? 0));
     await attachCalculatorScreenshot(page, testInfo, 'infill-sheet-desktop.png');
   });
 });
@@ -173,7 +192,8 @@ test('authenticated calculator blocks unmanufacturable stock and routes the fix 
     await advanceToResults(dialog);
 
     await expect(dialog.getByText('Cannot manufacture', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Copy as CSV', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Download CSV', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Copy CSV', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
     await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
     await expect(dialog.getByLabel('Panel material', { exact: true })).toBeFocused();
@@ -196,7 +216,7 @@ test('authenticated calculator routes invalid partial-edge rafter matching to Ex
     await expect(dialog).toContainText('Roof-rafter matching only works on a full front or house edge. Choose explicit positions.');
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(dialog.getByText('Cannot manufacture', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Copy as CSV', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Download CSV', exact: true })).toHaveCount(0);
 
     await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
     await expect(dialog.getByRole('button', { name: /^2 Existing supports$/ })).toHaveAttribute('aria-current', 'step');
@@ -204,6 +224,35 @@ test('authenticated calculator routes invalid partial-edge rafter matching to Ex
     await dialog.getByLabel('Existing internal supports', { exact: true }).selectOption('none');
     await dialog.getByRole('button', { name: /^3 Results/ }).click();
     await expect(dialog.getByText('Ready', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Copy as CSV', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Download CSV', exact: true })).toBeVisible();
+  });
+});
+
+test('authenticated calculator confirms uncertain supports with compact mobile progression at 768px', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-support-confirmation-768' }, async () => {
+    const dialog = await openCustomInfill(page, 768);
+    await expect(dialog.getByText('Step 1 of 3 — Opening', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).not.toBeVisible();
+
+    const locationBox = await dialog.getByLabel('Location', { exact: true }).boundingBox();
+    const labelBox = await dialog.getByLabel('Label', { exact: true }).boundingBox();
+    expect(locationBox?.y ?? 0).toBeLessThan(labelBox?.y ?? 0);
+    await setNumber(dialog, 'Width (m)', '1.2');
+    await setNumber(dialog, 'Height (m)', '1');
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+
+    await expect(dialog.getByText('Step 2 of 3 — Existing supports', { exact: true })).toBeVisible();
+    const topEdge = dialog.getByRole('group', { name: 'Top edge', exact: true });
+    await expect(topEdge.getByLabel('Not sure — include a support', { exact: true })).toBeChecked();
+    await topEdge.getByLabel('Yes, a fixing member exists', { exact: true }).check();
+    await expect(dialog.getByRole('img', { name: /labelled top, bottom, left and right edges/i })).toBeVisible();
+    await expect(dialog.getByText('New support included', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+
+    await expect(dialog.getByText('Step 3 of 3 — Results', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Additional supports', { exact: true }).locator('..')).toContainText('3');
+    const dimensions = await dialog.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    await attachCalculatorScreenshot(page, testInfo, 'infill-support-confirmation-768.png');
   });
 });

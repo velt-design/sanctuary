@@ -5,6 +5,7 @@ import { resolveMonoSlopeShape } from './infillCompute';
 import type { InfillComputeStatus, InfillJoinerLine, InfillResolvedOrientation } from './infillCompute';
 
 type InfillPreviewProps = {
+  mode?: 'opening' | 'supports' | 'results';
   status: InfillComputeStatus;
   shape: InfillLineItem['shape'];
   orientationUsed: InfillResolvedOrientation;
@@ -15,9 +16,7 @@ type InfillPreviewProps = {
   bayBoundariesM: number[];
   bayWidthsM: number[];
   joinerLines: InfillJoinerLine[];
-  runSideM: number;
   acrossSideM: number;
-  centreLimitM: number;
 };
 
 function clamp01(n: number): number {
@@ -31,6 +30,7 @@ function toM(value: string): number {
 }
 
 export default function InfillPreview({
+  mode = 'results',
   status,
   shape,
   orientationUsed,
@@ -41,9 +41,7 @@ export default function InfillPreview({
   bayBoundariesM,
   bayWidthsM,
   joinerLines,
-  runSideM,
   acrossSideM,
-  centreLimitM,
 }: InfillPreviewProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -168,7 +166,7 @@ export default function InfillPreview({
       <svg
         viewBox="0 0 100 100"
         role="img"
-        aria-label="Infill layout preview"
+        aria-label={mode === 'supports' ? 'Infill support diagram with labelled top, bottom, left and right edges' : 'Infill layout preview'}
         className={isSwapping ? `${styles.infillPreviewSvg} ${styles.infillPreviewSvgSwap}` : styles.infillPreviewSvg}
       >
         <defs>
@@ -215,6 +213,15 @@ export default function InfillPreview({
           <circle key={tick.key} cx={tick.x} cy={tick.y} r={1.2} className={tick.supported ? styles.infillPreviewSupportDot : styles.infillPreviewSupportDotMissing} />
         ))}
 
+        {mode === 'supports' ? (
+          <>
+            <text x={(leftX + rightX) / 2} y={Math.min(leftTopY, rightTopY) - 3} className={styles.infillPreviewEdgeLabel} textAnchor="middle">Top</text>
+            <text x={(leftX + rightX) / 2} y={bottomY + 5} className={styles.infillPreviewEdgeLabel} textAnchor="middle">Bottom</text>
+            <text x={leftX - 3} y={(leftTopY + bottomY) / 2} className={styles.infillPreviewEdgeLabel} textAnchor="end">Left</text>
+            <text x={rightX + 3} y={(rightTopY + bottomY) / 2} className={styles.infillPreviewEdgeLabel}>Right</text>
+          </>
+        ) : null}
+
         <text x={(leftX + rightX) / 2} y={96} className={styles.infillPreviewLabel} textAnchor="middle">
           {`${toM(shape.widthM).toFixed(2)}m width`}
         </text>
@@ -232,18 +239,22 @@ export default function InfillPreview({
             </text>
           </>
         )}
-        <text x={rightX} y={16} className={styles.infillPreviewLabelMinor} textAnchor="end">
-          {`centre ${centreLimitM.toFixed(2)}m`}
-        </text>
-        <text x={leftX} y={16} className={styles.infillPreviewLabelMinor}>
-          {`run ${runSideM.toFixed(2)}m / across ${acrossSideM.toFixed(2)}m`}
-        </text>
         {bayLabelNodes}
       </svg>
 
       <div className={styles.infillPreviewLegend}>
-        <span>Preview</span>
-        <span>{orientationUsed === 'vertical' ? 'Vertical joiners' : 'Horizontal joiners'}</span>
+        {mode === 'supports' ? (
+          <>
+            <span><i className={styles.infillPreviewLegendExisting} />Existing fixing member</span>
+            <span><i className={styles.infillPreviewLegendNew} />New support included</span>
+            <span><i className={styles.infillPreviewLegendInternal} />Internal joiner needing support</span>
+          </>
+        ) : (
+          <>
+            <span>Cutting layout</span>
+            <span>{orientationUsed === 'vertical' ? 'Vertical joiners' : 'Horizontal joiners'}</span>
+          </>
+        )}
       </div>
     </div>
   );

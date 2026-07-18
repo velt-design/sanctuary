@@ -44,9 +44,11 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import RoofOrientationDiagram from './RoofOrientationDiagram';
 import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
-import InfillActionsMenu from './InfillActionsMenu';
 import InfillConfiguratorDialog from './InfillConfiguratorDialog';
+import InfillEditorHeader from './InfillEditorHeader';
+import InfillOpeningStage from './InfillOpeningStage';
 import InfillResultsStage from './InfillResultsStage';
+import InfillSupportsStage from './InfillSupportsStage';
 import {
   addedSupportSummary,
   canOfferRafterMatching,
@@ -136,7 +138,6 @@ import {
   normalizeFlashingsStateForUi,
   normalizeInfillsStateForUi,
   normalizeOverrideValue,
-  normalizePanelOrientation,
   roofLengthForPrimaryFlashing,
   toNonNegativeInt,
   toNumber,
@@ -2634,13 +2635,6 @@ export default function CalculatorGridClient({
   } = infillSummary;
 
   const selectedInfillDomIdBase = selectedInfill ? `infill-${selectedInfill.id}` : 'infill-none';
-  const selectedRectShape = selectedInfill?.shape.type === 'rect' ? selectedInfill.shape : null;
-  const selectedMonoShape = selectedInfill?.shape.type === 'mono_slope' ? selectedInfill.shape : null;
-  const selectedMonoResolved = selectedMonoShape ? resolveMonoSlopeShape(selectedMonoShape) : null;
-  const selectedMonoPitchMode = selectedMonoShape ? normalizeMonoSlopeMode(selectedMonoShape.slopeMode) === 'pitch' : false;
-  const selectedMonoAnchorField = selectedMonoResolved?.slopeAnchor === 'right' ? 'heightHighM' : 'heightLowM';
-  const selectedMonoDerivedHeight =
-    selectedMonoResolved?.slopeAnchor === 'right' ? selectedMonoResolved.leftHeightM : selectedMonoResolved?.rightHeightM;
   const selectedComputedWarnings = selectedInfillUi?.warnings ?? [];
   const selectedCriticalWarnings = selectedComputedWarnings.filter((warning) => warning.severity === 'error');
   const selectedOpeningComplete = selectedInfillUi ? isInfillOpeningComplete(selectedInfillUi) : false;
@@ -2650,6 +2644,7 @@ export default function CalculatorGridClient({
     : false;
   const selectedInfillPreview = selectedInfill && selectedInfillEstimate ? (
     <InfillPreview
+      mode={infillStage}
       status={selectedInfillIsDraft ? 'draft' : 'valid'}
       shape={selectedInfill.shape}
       orientationUsed={selectedInfillEstimate.panelOrientationUsed}
@@ -2660,9 +2655,7 @@ export default function CalculatorGridClient({
       bayBoundariesM={selectedInfillEstimate.bayBoundariesM}
       bayWidthsM={selectedInfillEstimate.bayWidthsM}
       joinerLines={selectedInfillEstimate.joinerLines}
-      runSideM={selectedInfillEstimate.runSideM}
       acrossSideM={selectedInfillEstimate.acrossSideM}
-      centreLimitM={selectedInfillEstimate.maxCentreM}
     />
   ) : null;
   const selectedLastValidEstimate = selectedInfill ? lastValidInfillEstimateRef.current[selectedInfill.id] ?? null : null;
@@ -4422,7 +4415,24 @@ export default function CalculatorGridClient({
           openingComplete={selectedOpeningComplete}
           blockerCount={selectedCriticalWarnings.length}
           onStageChange={setInfillStage}
-          editorHeader={null}
+          editorHeader={selectedInfill ? (
+            <InfillEditorHeader
+              items={infillsState.items}
+              selectedItem={selectedInfill}
+              selectedIndex={selectedInfillIndex}
+              locationLabel={locationLabel(selectedInfill.location)}
+              disablePaste={!infillHasClipboard}
+              onSelect={setSelectedInfillId}
+              onAdd={addCustomInfillFromOverview}
+              onDuplicate={() => duplicateInfill(selectedInfill.id)}
+              onDuplicateBulk={() => setInfillDuplicateOpen(true)}
+              onCopyGeometry={() => { void handleCopyInfillGeometry(); }}
+              onPasteGeometry={handlePasteInfillGeometry}
+              onMoveUp={() => moveInfill(selectedInfill.id, -1)}
+              onMoveDown={() => moveInfill(selectedInfill.id, 1)}
+              onDelete={() => requestDeleteInfill(selectedInfill.id)}
+            />
+          ) : null}
           notice={deletedInfill ? (
             <div className={styles.infillUndoToast} role="status" aria-live="polite">
               <span>Infill deleted.</span>
@@ -4452,474 +4462,121 @@ export default function CalculatorGridClient({
         >
                 {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
                   <>
-                    <div className={styles.infillEditorHeader}>
-                      <div>
-                        <h3 className={styles.infillEditorTitle}>{selectedInfill.label?.trim() || `Infill ${selectedInfillIndex + 1}`}</h3>
-                        <p className={styles.infillEditorSubtitle}>{locationLabel(selectedInfill.location)}</p>
-                        <label className={styles.infillMobileSelectLabel} htmlFor="infill-mobile-select">
-                          Infill
-                        </label>
-                        <select
-                          id="infill-mobile-select"
-                          className={styles.infillMobileSelect}
-                          value={selectedInfill.id}
-                          onChange={(event) => setSelectedInfillId(event.target.value)}
-                        >
-                          {infillsState.items.map((item, idx) => (
-                            <option key={item.id} value={item.id}>
-                              {item.label?.trim() || `Infill ${idx + 1}`}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className={styles.infillEditorActions}>
-                        <InfillAddButton label="Add infill" onAddCustom={addCustomInfillFromOverview} />
-                        <InfillActionsMenu
-                          disableMoveUp={selectedInfillIndex <= 0}
-                          disableMoveDown={selectedInfillIndex >= infillsState.items.length - 1}
-                          disablePaste={!infillHasClipboard}
-                          onDuplicate={() => duplicateInfill(selectedInfill.id)}
-                          onDuplicateBulk={() => setInfillDuplicateOpen(true)}
-                          onCopyGeometry={() => {
-                            void handleCopyInfillGeometry();
-                          }}
-                          onPasteGeometry={handlePasteInfillGeometry}
-                          onMoveUp={() => moveInfill(selectedInfill.id, -1)}
-                          onMoveDown={() => moveInfill(selectedInfill.id, 1)}
-                          onDelete={() => requestDeleteInfill(selectedInfill.id)}
-                        />
-                        <button
-                          type="button"
-                          className={`${styles.infillIconButton} ${styles.infillDeleteButton}`}
-                          onClick={() => requestDeleteInfill(selectedInfill.id)}
-                          aria-label={`Delete ${selectedInfill.label?.trim() || `Infill ${selectedInfillIndex + 1}`}`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
                     {infillStage === 'opening' ? (
-                    <div className={styles.infillGuidedStageGrid}>
-                    <section className={styles.infillSection} aria-labelledby="infill-opening-heading">
-                      <div className={styles.infillStageHeading}>
-                        <h3 id="infill-opening-heading">Describe the opening</h3>
-                        <p>Enter the position, shape and finished opening measurements.</p>
-                      </div>
-                      <div className={styles.infillBasicGrid}>
-                        <div className={styles.span6}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-label`}
-                            label="Label"
-                            type="text"
-                            value={selectedInfill.label ?? ''}
-                            onChange={(v) => setInfillItem(selectedInfill.id, { label: String(v) })}
-                          />
-                        </div>
-                        <div className={styles.span2}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-qty`}
-                            label="Qty"
-                            type="number"
-                            value={selectedInfill.qty}
-                            onChange={(v) => setInfillItem(selectedInfill.id, { qty: String(v) })}
-                            error={selectedInfillValidation.errors.qty}
-                          />
-                        </div>
-                        <div className={styles.span4}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-location`}
-                            label="Location"
-                            type="select"
-                            value={selectedInfill.location}
-                            onChange={(v) => setInfillLocation(selectedInfill.id, v as InfillLineItem['location'])}
-                            options={[
-                              { label: 'Front', value: 'front' },
-                              { label: 'House', value: 'house' },
-                              { label: 'Side', value: 'side' },
-                              { label: 'Gable end', value: 'gable_end' },
-                              { label: 'Wall', value: 'wall' },
-                              { label: 'Custom', value: 'custom' },
-                            ]}
-                          />
-                        </div>
-                        <details
-                          className={`${styles.infillAutomaticChoices} ${styles.span12}`}
-                          open={infillAutomaticChoicesOpen}
-                          onToggle={(event) => setInfillAutomaticChoicesOpen((event.currentTarget as HTMLDetailsElement).open)}
-                        >
-                          <summary>Change automatic choices</summary>
-                          <p>The calculator chooses the option needing the fewest extra supports, then the least stock and waste.</p>
-                          <div className={styles.infillAutomaticChoicesGrid}>
-                        <div>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-acrylic`}
-                            label="Panel material"
-                            type="select"
-                            value={selectedInfill.acrylicSource}
-                            onChange={(v) => setInfillAcrylicPreference(selectedInfill.id, v as InfillLineItem['acrylicSource'])}
-                            options={[
-                              { label: 'Automatic (recommended)', value: 'auto' },
-                              { label: 'Sheet panels', value: 'sheet_panels' },
-                              { label: '620 strips', value: 'strip_620' },
-                            ]}
-                            helperText={selectedAutoSwitchInlineHint ?? infillRunConstraintLine}
-                            error={selectedInfillValidation.errors.acrylicSource}
-                          />
-                          {selectedInfillEstimate?.acrylicSourceAutoSwitched ? (
-                            <button
-                              type="button"
-                              className={styles.infillInlineAction}
-                              onClick={() => setInfillAcrylicPreference(selectedInfill.id, selectedInfillEstimate.acrylicSourceUsed)}
-                            >
-                              {`Set preferred acrylic to ${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}`}
-                            </button>
-                          ) : null}
-                        </div>
-                        <div>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-joiner-direction`}
-                            label="Joiner direction"
-                            type="select"
-                            value={selectedInfill.panelOrientation}
-                            onChange={(v) => setInfillItem(selectedInfill.id, { panelOrientation: normalizePanelOrientation(v) })}
-                            options={[
-                              { label: 'Automatic (recommended)', value: 'auto' },
-                              { label: 'Vertical joiners', value: 'vertical' },
-                              { label: 'Horizontal joiners', value: 'horizontal' },
-                            ]}
-                            helperText="Auto chooses the direction that minimizes joiners and extra supports."
-                          />
-                        </div>
-                          </div>
-                        </details>
-                        <div className={styles.span4}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-shape-type`}
-                            label="Opening shape"
-                            type="select"
-                            value={selectedInfill.shape.type}
-                            onChange={(v) => {
-                              const nextType = v as InfillLineItem['shape']['type'];
-                              if (nextType === selectedInfill.shape.type) return;
-                              const shapeWidth = selectedInfill.shape.widthM;
-                              const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
-                              setInfillDraftById((prev) => {
-                                if (!prev[selectedInfill.id]) return prev;
-                                const next = { ...prev };
-                                delete next[selectedInfill.id];
-                                return next;
-                              });
-                              if (nextType === 'rect') {
-                                const rectHeight = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
-                                setInfillItem(selectedInfill.id, {
-                                  shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
-                                });
-                                return;
-                              }
-                              const low = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightLowM;
-                              const high = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
-                              setInfillItem(selectedInfill.id, {
-                                shape: {
-                                  type: 'mono_slope',
-                                  widthM: shapeWidth,
-                                  heightLowM: low,
-                                  heightHighM: high,
-                                  bottomOffsetM: shapeBottom,
-                                  slopeMode: 'heights',
-                                  slopeDeg: '',
-                                  slopeAnchor: 'left',
-                                },
-                              });
-                            }}
-                            options={[
-                              { label: 'Rectangle', value: 'rect' },
-                              { label: 'Sloping top', value: 'mono_slope' },
-                            ]}
-                          />
-                        </div>
-
-                        {selectedRectShape ? (
-                          <>
-                            <div className={styles.span4}>
-                              <FieldTile
-                                id={`${selectedInfillDomIdBase}-shape-width`}
-                                label="Width (m)"
-                                type="number"
-                                value={getInfillDraftValue(selectedInfill, 'widthM')}
-                                onChange={(v) => updateRequiredShapeField(selectedInfill, 'widthM', String(v))}
-                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
-                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
-                                error={selectedInfillValidation.errors.widthM}
-                              />
-                            </div>
-                            <div className={styles.span4}>
-                              <FieldTile
-                                id={`${selectedInfillDomIdBase}-shape-height`}
-                                label="Height (m)"
-                                type="number"
-                                value={getInfillDraftValue(selectedInfill, 'heightM')}
-                                onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightM', String(v))}
-                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightM', String(v))}
-                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightM', String(v))}
-                                error={selectedInfillValidation.errors.heightM}
-                              />
-                            </div>
-                          </>
-                        ) : selectedMonoShape ? (
-                          <>
-                            <div className={styles.span4}>
-                              <FieldTile
-                                id={`${selectedInfillDomIdBase}-shape-width`}
-                                label="Width (m)"
-                                type="number"
-                                value={getInfillDraftValue(selectedInfill, 'widthM')}
-                                onChange={(v) => updateRequiredShapeField(selectedInfill, 'widthM', String(v))}
-                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
-                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
-                                error={selectedInfillValidation.errors.widthM}
-                              />
-                            </div>
-                            <div className={styles.span4}>
-                              <FieldTile
-                                id={`${selectedInfillDomIdBase}-shape-mode`}
-                                label="Describe the sloping top"
-                                type="select"
-                                value={selectedMonoPitchMode ? 'pitch' : 'heights'}
-                                onChange={(v) => {
-                                  const nextMode = normalizeMonoSlopeMode(v);
-                                  updateMonoSlopeShape(selectedInfill, (shape) => {
-                                    const resolved = resolveMonoSlopeShape(shape);
-                                    return {
-                                      ...shape,
-                                      heightLowM: formatInputNumber(resolved.leftHeightM, 3),
-                                      heightHighM: formatInputNumber(resolved.rightHeightM, 3),
-                                      slopeMode: nextMode,
-                                      slopeDeg:
-                                        nextMode === 'pitch'
-                                          ? resolved.slopeDeg !== null
-                                            ? formatInputNumber(resolved.slopeDeg, 2)
-                                            : shape.slopeDeg ?? ''
-                                          : shape.slopeDeg ?? '',
-                                      slopeAnchor: nextMode === 'pitch' ? (resolved.leftHeightM <= resolved.rightHeightM ? 'left' : 'right') : shape.slopeAnchor ?? 'left',
-                                    };
-                                  });
-                                }}
-                                options={[
-                                  { label: 'Heights', value: 'heights' },
-                                  { label: 'Slope (deg)', value: 'pitch' },
-                                ]}
-                              />
-                            </div>
-                            {selectedMonoPitchMode ? (
-                              <>
-                                <div className={styles.span4}>
-                                  <FieldTile
-                                    id={`${selectedInfillDomIdBase}-shape-anchor`}
-                                    label="Lower side"
-                                    type="select"
-                                    value={selectedMonoResolved?.slopeAnchor ?? 'left'}
-                                    onChange={(v) =>
-                                      updateMonoSlopeShape(selectedInfill, (shape) => ({
-                                        ...shape,
-                                        slopeAnchor: normalizeMonoSlopeAnchor(v),
-                                      }))
-                                    }
-                                    options={[
-                                      { label: 'Left edge', value: 'left' },
-                                      { label: 'Right edge', value: 'right' },
-                                    ]}
-                                  />
-                                </div>
-                                <div className={styles.span4}>
-                                  <FieldTile
-                                    id={`${selectedInfillDomIdBase}-${selectedMonoResolved?.slopeAnchor === 'right' ? 'shape-high' : 'shape-low'}`}
-                                    label={selectedMonoResolved?.slopeAnchor === 'right' ? 'Right height (m)' : 'Left height (m)'}
-                                    type="number"
-                                    value={getInfillDraftValue(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey)}
-                                    onChange={(v) => updateRequiredShapeField(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey, String(v))}
-                                    onBlur={(v) => commitRequiredShapeField(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey, String(v))}
-                                    onEnter={(v) => commitRequiredShapeField(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey, String(v))}
-                                    error={
-                                      selectedMonoResolved?.slopeAnchor === 'right'
-                                        ? selectedInfillValidation.errors.heightHighM
-                                        : selectedInfillValidation.errors.heightLowM
-                                    }
-                                  />
-                                </div>
-                                <div className={styles.span4}>
-                                  <FieldTile
-                                    id={`${selectedInfillDomIdBase}-shape-slope`}
-                                    label="Slope (deg)"
-                                    type="number"
-                                    value={selectedMonoShape.slopeDeg ?? ''}
-                                    onChange={(v) =>
-                                      updateMonoSlopeShape(selectedInfill, (shape) => ({
-                                        ...shape,
-                                        slopeDeg: String(v),
-                                      }))
-                                    }
-                                    error={selectedInfillValidation.errors.slopeDeg}
-                                    helperText="Positive degrees. The opposite edge height is derived from the lower side and width."
-                                  />
-                                </div>
-                                <div className={styles.span4}>
-                                  <FieldTile
-                                    id={`${selectedInfillDomIdBase}-${selectedMonoResolved?.slopeAnchor === 'right' ? 'shape-low' : 'shape-high'}`}
-                                    label={selectedMonoResolved?.slopeAnchor === 'right' ? 'Left height (derived)' : 'Right height (derived)'}
-                                    type="readOnly"
-                                    value={formatMaybeNumber(selectedMonoDerivedHeight, 3)}
-                                  />
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className={styles.span4}>
-                                  <FieldTile
-                                    id={`${selectedInfillDomIdBase}-shape-low`}
-                                    label="Left height (m)"
-                                    type="number"
-                                    value={getInfillDraftValue(selectedInfill, 'heightLowM')}
-                                    onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
-                                    onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
-                                    onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
-                                    error={selectedInfillValidation.errors.heightLowM}
-                                  />
-                                </div>
-                                <div className={styles.span4}>
-                                  <FieldTile
-                                    id={`${selectedInfillDomIdBase}-shape-high`}
-                                    label="Right height (m)"
-                                    type="number"
-                                    value={getInfillDraftValue(selectedInfill, 'heightHighM')}
-                                    onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
-                                    onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
-                                    onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
-                                    error={selectedInfillValidation.errors.heightHighM}
-                                  />
-                                </div>
-                              </>
-                            )}
-                          </>
-                        ) : null}
-
-                        <div className={styles.span4}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-shape-bottom`}
-                            label="Bottom installation height (m)"
-                            type="number"
-                            value={selectedInfill.shape.bottomOffsetM ?? '0'}
-                            onChange={(v) =>
-                              setInfillItem(selectedInfill.id, {
-                                shape:
-                                  selectedInfill.shape.type === 'rect'
-                                    ? { ...selectedInfill.shape, bottomOffsetM: String(v) }
-                                    : { ...selectedInfill.shape, bottomOffsetM: String(v) },
-                              })
-                            }
-                            error={selectedInfillValidation.errors.bottomOffsetM}
-                            helperText="This positions the infill and does not change its cut size."
-                          />
-                        </div>
-                      </div>
-                    </section>
-                    <aside className={styles.infillGuidedPreview} aria-label="Opening preview">{selectedInfillPreview}</aside>
-                    </div>
+                      <InfillOpeningStage
+                        item={selectedInfill}
+                        domIdBase={selectedInfillDomIdBase}
+                        errors={selectedInfillValidation.errors}
+                        automaticChoicesOpen={infillAutomaticChoicesOpen}
+                        automaticSwitchHint={selectedAutoSwitchInlineHint}
+                        runConstraintLine={infillRunConstraintLine}
+                        acrylicAutoSwitched={selectedInfillEstimate.acrylicSourceAutoSwitched}
+                        resolvedAcrylicSource={selectedInfillEstimate.acrylicSourceUsed}
+                        resolvedAcrylicLabel={acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}
+                        preview={selectedInfillPreview}
+                        getDraftValue={(field) => getInfillDraftValue(selectedInfill, field)}
+                        onAutomaticChoicesToggle={setInfillAutomaticChoicesOpen}
+                        onItemChange={(patch) => setInfillItem(selectedInfill.id, patch)}
+                        onLocationChange={(location) => setInfillLocation(selectedInfill.id, location)}
+                        onAcrylicPreferenceChange={(source) => setInfillAcrylicPreference(selectedInfill.id, source)}
+                        onShapeTypeChange={(nextType) => {
+                          if (nextType === selectedInfill.shape.type) return;
+                          const shapeWidth = selectedInfill.shape.widthM;
+                          const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
+                          setInfillDraftById((previous) => {
+                            if (!previous[selectedInfill.id]) return previous;
+                            const next = { ...previous };
+                            delete next[selectedInfill.id];
+                            return next;
+                          });
+                          if (nextType === 'rect') {
+                            const rectHeight = selectedInfill.shape.type === 'rect'
+                              ? selectedInfill.shape.heightM
+                              : selectedInfill.shape.heightHighM;
+                            setInfillItem(selectedInfill.id, {
+                              shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
+                            });
+                            return;
+                          }
+                          const low = selectedInfill.shape.type === 'rect'
+                            ? selectedInfill.shape.heightM
+                            : selectedInfill.shape.heightLowM;
+                          const high = selectedInfill.shape.type === 'rect'
+                            ? selectedInfill.shape.heightM
+                            : selectedInfill.shape.heightHighM;
+                          setInfillItem(selectedInfill.id, {
+                            shape: {
+                              type: 'mono_slope',
+                              widthM: shapeWidth,
+                              heightLowM: low,
+                              heightHighM: high,
+                              bottomOffsetM: shapeBottom,
+                              slopeMode: 'heights',
+                              slopeDeg: '',
+                              slopeAnchor: 'left',
+                            },
+                          });
+                        }}
+                        onDraftChange={(field, value) => updateRequiredShapeField(selectedInfill, field, value)}
+                        onDraftCommit={(field, value) => commitRequiredShapeField(selectedInfill, field, value)}
+                        onMonoModeChange={(nextMode) => {
+                          updateMonoSlopeShape(selectedInfill, (shape) => {
+                            const resolved = resolveMonoSlopeShape(shape);
+                            return {
+                              ...shape,
+                              heightLowM: formatInputNumber(resolved.leftHeightM, 3),
+                              heightHighM: formatInputNumber(resolved.rightHeightM, 3),
+                              slopeMode: nextMode,
+                              slopeDeg:
+                                nextMode === 'pitch'
+                                  ? resolved.slopeDeg !== null
+                                    ? formatInputNumber(resolved.slopeDeg, 2)
+                                    : shape.slopeDeg ?? ''
+                                  : shape.slopeDeg ?? '',
+                              slopeAnchor:
+                                nextMode === 'pitch'
+                                  ? resolved.leftHeightM <= resolved.rightHeightM ? 'left' : 'right'
+                                  : shape.slopeAnchor ?? 'left',
+                            };
+                          });
+                        }}
+                        onMonoAnchorChange={(anchor) => {
+                          updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeAnchor: anchor }));
+                        }}
+                        onMonoSlopeChange={(slopeDeg) => {
+                          updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeDeg }));
+                        }}
+                        onBottomOffsetChange={(bottomOffsetM) => {
+                          setInfillItem(selectedInfill.id, { shape: { ...selectedInfill.shape, bottomOffsetM } });
+                        }}
+                      />
                     ) : null}
 
                     {infillStage === 'supports' ? (
-                    <div className={styles.infillGuidedStageGrid}>
-                    <section className={`${styles.infillSection} ${styles.infillSectionSecondary}`} aria-labelledby="infill-supports-heading">
-                      <div className={styles.infillStageHeading}>
-                        <h3 id="infill-supports-heading">Confirm existing fixing members</h3>
-                        <p>Turn an edge off when there is no suitable member to fix the acrylic joiner to. The purchase plan will add the required 50×50 support.</p>
-                      </div>
-                      <div className={styles.infillFieldGrid}>
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-support-top`}
-                          label="Existing member along the top"
-                          type="toggle"
-                          value={selectedInfill.support.hasTop}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasTop: Boolean(v) } })}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-support-bottom`}
-                          label="Existing member along the bottom"
-                          type="toggle"
-                          value={selectedInfill.support.hasBottom}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasBottom: Boolean(v) } })}
-                          helperText="Do not count the slab. Leave this off when another fixing member is required."
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-support-left`}
-                          label="Existing member along the left"
-                          type="toggle"
-                          value={selectedInfill.support.hasLeft}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasLeft: Boolean(v) } })}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-support-right`}
-                          label="Existing member along the right"
-                          type="toggle"
-                          value={selectedInfill.support.hasRight}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasRight: Boolean(v) } })}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-support-internal-mode`}
-                          label="Existing internal supports"
-                          type="select"
-                          value={selectedInfill.support.internalSupportMode ?? 'none'}
-                          onChange={(v) => {
-                            const nextMode = String(v) as InfillLineItem['support']['internalSupportMode'];
-                            setInfillItem(selectedInfill.id, {
-                              ...(nextMode !== 'match_roof_rafters' && !selectedCanOfferRafterMatching && selectedInfill.widthMode === 'match_roof_rafters'
-                                ? { widthMode: 'target_width' as const }
-                                : {}),
-                              support: { ...selectedInfill.support, internalSupportMode: nextMode },
-                            });
-                          }}
-                          options={[
-                            { label: 'No existing internal supports', value: 'none' },
-                            ...(selectedCanOfferRafterMatching
-                              ? [{ label: 'Match roof rafters', value: 'match_roof_rafters' }]
-                              : selectedInfill.support.internalSupportMode === 'match_roof_rafters'
-                                ? [{ label: 'Match roof rafters (not valid for this opening)', value: 'match_roof_rafters', disabled: true }]
-                              : []),
-                            { label: 'One at centre', value: 'center' },
-                            { label: 'Enter positions', value: 'custom' },
-                          ]}
-                          helperText={
-                            selectedInfill.support.internalSupportMode === 'match_roof_rafters' &&
-                            !selectedCanOfferRafterMatching
-                              ? 'Roof-rafter matching only works on a full front or house edge. Choose explicit positions.'
-                              : undefined
-                          }
-                        />
-                        {(selectedInfill.support.internalSupportMode ?? 'none') === 'custom' ? (
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-support-internal-pos`}
-                            label="Custom internal positions (m)"
-                            type="text"
-                            value={(selectedInfill.support.internalSupportPositionsM ?? []).join(', ')}
-                            onChange={(v) =>
-                              setInfillItem(selectedInfill.id, {
-                                support: {
-                                  ...selectedInfill.support,
-                                  internalSupportPositionsM: String(v)
-                                    .split(',')
-                                    .map((token) => token.trim())
-                                    .filter(Boolean),
-                                },
-                              })
-                            }
-                            helperText="Offsets along the subdivided side (m). Example: 0.8, 1.6"
-                            error={selectedInfillValidation.errors.internalSupportPositionsM}
-                          />
-                        ) : null}
-                      </div>
-                      <p className={styles.infillSupportResult}>{addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}</p>
-                    </section>
-                    <aside className={styles.infillGuidedPreview} aria-label="Support preview">{selectedInfillPreview}</aside>
-                    </div>
+                      <InfillSupportsStage
+                        item={selectedInfill}
+                        domIdBase={selectedInfillDomIdBase}
+                        canOfferRafterMatching={selectedCanOfferRafterMatching}
+                        internalPositionsError={selectedInfillValidation.errors.internalSupportPositionsM}
+                        additionalSupportSummary={addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}
+                        preview={selectedInfillPreview}
+                        onSupportChange={(support) => setInfillItem(selectedInfill.id, { support })}
+                        onInternalModeChange={(nextMode) => {
+                          setInfillItem(selectedInfill.id, {
+                            ...(nextMode !== 'match_roof_rafters'
+                              && !selectedCanOfferRafterMatching
+                              && selectedInfill.widthMode === 'match_roof_rafters'
+                              ? { widthMode: 'target_width' as const }
+                              : {}),
+                            support: { ...selectedInfill.support, internalSupportMode: nextMode },
+                          });
+                        }}
+                        onCustomPositionsChange={(internalSupportPositionsM) => {
+                          setInfillItem(selectedInfill.id, {
+                            support: { ...selectedInfill.support, internalSupportPositionsM },
+                          });
+                        }}
+                      />
                     ) : null}
 
                     {infillStage === 'results' && selectedResultStatus ? (

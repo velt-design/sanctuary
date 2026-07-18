@@ -3,6 +3,7 @@
 import type { InfillMonoSlopeAnchorInput, InfillMonoSlopeModeInput, InfillResolvedAcrylicSourceInput } from '@/lib/types/calculator';
 import { calculateInfillsTakeoffV1, type InfillTakeoffV1 } from '@sp/costing';
 import { canonicalCutListRows, type CutListRow } from './infillTakeoffPresentation';
+import { resolveSupportConfirmations } from './infillSupportPresentation';
 
 export type { CutListRow } from './infillTakeoffPresentation';
 
@@ -338,6 +339,7 @@ function makeOrientationEstimate(
 ): InfillUiEstimate {
   const qtyParsed = Number.parseInt(item.qty, 10);
   const qty = Number.isFinite(qtyParsed) && qtyParsed >= 1 ? Math.round(qtyParsed) : 1;
+  const resolvedSupport = resolveSupportConfirmations(item.support);
 
   const widthRaw = toNumber(item.shape.widthM);
   const widthInputInvalid = !Number.isFinite(widthRaw) || widthRaw < 0;
@@ -383,7 +385,7 @@ function makeOrientationEstimate(
   const joinerLinesEach = panelCountEach > 0 ? panelCountEach + 1 : 0;
   const joinerLinesTotal = joinerLinesEach * qty;
 
-  const rawCustomPositions = Array.isArray(item.support.internalSupportPositionsM) ? item.support.internalSupportPositionsM : [];
+  const rawCustomPositions = Array.isArray(resolvedSupport.internalSupportPositionsM) ? resolvedSupport.internalSupportPositionsM : [];
   const customPositionsM: number[] = [];
   let invalidCustomPositions = false;
   for (const token of rawCustomPositions) {
@@ -394,7 +396,7 @@ function makeOrientationEstimate(
     }
     customPositionsM.push(n);
   }
-  if ((item.support.internalSupportMode ?? 'none') === 'custom' && rawCustomPositions.length === 0) {
+  if ((resolvedSupport.internalSupportMode ?? 'none') === 'custom' && rawCustomPositions.length === 0) {
     invalidCustomPositions = false;
   }
 
@@ -403,7 +405,7 @@ function makeOrientationEstimate(
   if (panelCountEach > 1 && acrossSideM > 0) {
     for (let i = 1; i < panelCountEach; i += 1) {
       const x = (i * acrossSideM) / panelCountEach;
-      const mode = item.support.internalSupportMode ?? 'none';
+      const mode = resolvedSupport.internalSupportMode ?? 'none';
       const supportedByMode =
         mode === 'match_roof_rafters' ||
         (mode === 'center' && Math.abs(x - acrossSideM / 2) <= INFILL_JOINER_TOLERANCE_M) ||
@@ -427,8 +429,8 @@ function makeOrientationEstimate(
 
   const missingJambsEach =
     panelOrientationUsed === 'vertical'
-      ? (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0)
-      : (item.support.hasBottom === false ? 1 : 0) + (item.support.hasTop === false ? 1 : 0);
+      ? (!resolvedSupport.hasLeft ? 1 : 0) + (!resolvedSupport.hasRight ? 1 : 0)
+      : (!resolvedSupport.hasBottom ? 1 : 0) + (!resolvedSupport.hasTop ? 1 : 0);
   const missingJambsTotal = missingJambsEach * qty;
   const estimatedMullionsEach = unsupportedInternalEach + missingJambsEach;
   const estimatedMullionsTotal = estimatedMullionsEach * qty;
@@ -486,11 +488,11 @@ function makeOrientationEstimate(
           target_panel_width_m: toNumber(item.targetPanelWidthM),
           max_panel_width_m: toNumber(item.maxPanelWidthM),
           support: {
-            has_top: item.support.hasTop !== false,
-            has_bottom: item.support.hasBottom !== false,
-            has_left: item.support.hasLeft !== false,
-            has_right: item.support.hasRight !== false,
-            internal_support_mode: item.support.internalSupportMode,
+            has_top: resolvedSupport.hasTop,
+            has_bottom: resolvedSupport.hasBottom,
+            has_left: resolvedSupport.hasLeft,
+            has_right: resolvedSupport.hasRight,
+            internal_support_mode: resolvedSupport.internalSupportMode,
             internal_support_positions_m: customPositionsM,
           },
           shape: canonicalShape,
@@ -566,8 +568,8 @@ function makeOrientationEstimate(
     estimatedMullionsTotal: canonicalItem?.linear_cuts.filter((cut) => cut.profile === '50x50').length ?? estimatedMullionsTotal,
     topJoiner: canonicalCutsEach.some((cut) => cut.role === 'joiner_top'),
     bottomJoiner: canonicalCutsEach.some((cut) => cut.role === 'joiner_bottom'),
-    perimeterTopRailRequired: item.support.hasTop === false,
-    perimeterBottomRailRequired: item.support.hasBottom === false,
+    perimeterTopRailRequired: !resolvedSupport.hasTop,
+    perimeterBottomRailRequired: !resolvedSupport.hasBottom,
     stripCutMinM: canonicalStripCuts.length ? Math.min(...canonicalStripCuts) : null,
     stripCutMaxM: canonicalStripCuts.length ? Math.max(...canonicalStripCuts) : null,
     sheetAreaEachM2: canonicalPanelAreaEach,

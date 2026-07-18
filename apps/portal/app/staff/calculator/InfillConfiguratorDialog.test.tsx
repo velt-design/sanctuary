@@ -31,6 +31,7 @@ describe('InfillConfiguratorDialog', () => {
     );
 
     expect(buttonNamed('1Opening').getAttribute('aria-current')).toBe('step');
+    expect(document.body.textContent).toContain('Step 1 of 3 — Opening');
     expect(buttonNamed('2Existing supports').disabled).toBe(true);
     expect(buttonNamed('Continue').disabled).toBe(true);
 

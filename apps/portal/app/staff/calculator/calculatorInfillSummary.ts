@@ -117,7 +117,7 @@ export function buildCalculatorInfillSummary(
   ]
     .filter(Boolean)
     .join(' · ');
-  const line3 = hasInfills ? `System: ${systemSummary} · Panels: ${totals.panels} · Frames: ${totals.mullions}` : null;
+  const line3 = hasInfills ? `System: ${systemSummary} · Panels: ${totals.panels} · New supports: ${totals.mullions}` : null;
   const text = hasInfills ? line1 : 'No infills added yet';
   const chips = [
     { key: 'front', label: 'Front', count: locationCounts.front },

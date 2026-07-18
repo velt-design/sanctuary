@@ -30,7 +30,7 @@ function cloneShape(shape: InfillLineItem['shape']): InfillLineItem['shape'] {
   };
 }
 
-function toClipboardPayload(item: InfillLineItem): InfillGeometryClipboard {
+export function buildInfillGeometryClipboard(item: InfillLineItem): InfillGeometryClipboard {
   return {
     shape: cloneShape(item.shape),
     panelOrientation: normalizePanelOrientation(item.panelOrientation),
@@ -39,11 +39,20 @@ function toClipboardPayload(item: InfillLineItem): InfillGeometryClipboard {
   };
 }
 
+export function buildInfillGeometryPastePatch(clipboard: InfillGeometryClipboard): Partial<InfillLineItem> {
+  return {
+    shape: cloneShape(clipboard.shape),
+    panelOrientation: normalizePanelOrientation(clipboard.panelOrientation),
+    maxPanelWidthM: clipboard.maxPanelWidthM,
+    targetPanelWidthM: clipboard.targetPanelWidthM,
+  };
+}
+
 export function useInfillClipboard() {
   const [clipboard, setClipboard] = useState<InfillGeometryClipboard | null>(null);
 
   const copyGeometry = useCallback(async (item: InfillLineItem): Promise<InfillGeometryClipboard> => {
-    const payload = toClipboardPayload(item);
+    const payload = buildInfillGeometryClipboard(item);
     setClipboard(payload);
 
     try {
@@ -67,12 +76,7 @@ export function useInfillClipboard() {
   const pasteGeometry = useCallback(
     (item: InfillLineItem): Partial<InfillLineItem> | null => {
       if (!clipboard) return null;
-      return {
-        shape: cloneShape(clipboard.shape),
-        panelOrientation: normalizePanelOrientation(clipboard.panelOrientation),
-        maxPanelWidthM: clipboard.maxPanelWidthM,
-        targetPanelWidthM: clipboard.targetPanelWidthM,
-      };
+      return buildInfillGeometryPastePatch(clipboard);
     },
     [clipboard],
   );

@@ -77,7 +77,7 @@ describe('calculator infill summary helpers', () => {
     expect(summary.usedSpacingSummary).toBe('1.20m');
     expect(summary.line1).toBe('1 infill added');
     expect(summary.line2).toBe('Front 0 · Side 1 · Gable 0');
-    expect(summary.line3).toBe(`System: Sheet panels · Panels: ${summary.totals.panels} · Frames: ${summary.totals.mullions}`);
+    expect(summary.line3).toBe(`System: Sheet panels · Panels: ${summary.totals.panels} · New supports: ${summary.totals.mullions}`);
     expect(summary.chips).toEqual([{ key: 'side', label: 'Side', count: 1 }]);
   });
 
@@ -91,7 +91,7 @@ describe('calculator infill summary helpers', () => {
 
     expect(summary.systemSummary).toBe('620 strips');
     expect(summary.usedSpacingSummary).toBe('0.64m');
-    expect(summary.line3).toBe(`System: 620 strips · Panels: ${summary.totals.panels} · Frames: ${summary.totals.mullions}`);
+    expect(summary.line3).toBe(`System: 620 strips · Panels: ${summary.totals.panels} · New supports: ${summary.totals.mullions}`);
   });
 
   it('summarizes mixed systems and non-default locations', () => {

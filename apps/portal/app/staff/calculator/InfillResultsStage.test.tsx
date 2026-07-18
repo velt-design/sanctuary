@@ -68,7 +68,8 @@ describe('InfillResultsStage', () => {
     expect(document.querySelector('details')?.hasAttribute('open')).toBe(false);
     expect(content).toContain('Acrylic panel 1');
     expect(content).toContain('Plexi sheet 3050 x 2030');
-    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Copy as CSV'))).toBe(true);
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Download CSV'))).toBe(true);
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Copy CSV'))).toBe(true);
 
     unmount();
   });
@@ -97,7 +98,8 @@ describe('InfillResultsStage', () => {
     if (!(fixButton instanceof HTMLButtonElement)) throw new Error('Missing blocker action.');
     act(() => fixButton.click());
     expect(onFixBlocker).toHaveBeenCalledWith(blocker);
-    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Copy as CSV'))).toBe(false);
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Download CSV'))).toBe(false);
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Copy CSV'))).toBe(false);
 
     unmount();
   });

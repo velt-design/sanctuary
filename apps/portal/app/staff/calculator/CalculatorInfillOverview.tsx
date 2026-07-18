@@ -134,7 +134,7 @@ export function CalculatorInfillTile({
               <strong>{totals.panels}</strong>
             </div>
             <div className={styles.infillTileMetric}>
-              <span className={styles.infillTileMetricLabel}>Frames</span>
+              <span className={styles.infillTileMetricLabel}>New supports</span>
               <strong>{totals.mullions}</strong>
             </div>
           </div>
@@ -280,7 +280,7 @@ function InfillListRows({
             : `${styles.infillChip} ${styles.infillChipSuccess}`;
         const rowDetailLine =
           estimate.estimatedMullionsTotal > 0
-            ? `Panels ${estimate.panelCountTotal} | Frames ${estimate.estimatedMullionsTotal}`
+            ? `Panels ${estimate.panelCountTotal} | New supports ${estimate.estimatedMullionsTotal}`
             : `Panels ${estimate.panelCountTotal}`;
 
         return (

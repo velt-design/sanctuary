@@ -877,6 +877,18 @@
   border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
+.infillStageCompact {
+  display: none;
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border: 1px solid rgba(var(--accentRgb), 0.28);
+  border-radius: 10px;
+  background: rgba(var(--accentRgb), 0.07);
+  color: rgba(var(--portal-text-rgb), 0.82);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .infillStageButton {
   width: 100%;
   border: 1px solid rgba(var(--portal-text-rgb), 0.12);
@@ -996,6 +1008,65 @@
   font-weight: 600;
 }
 
+.infillSupportUncertainResult {
+  margin: 0 12px 8px;
+  border-radius: 10px;
+  background: rgba(180, 83, 9, 0.08);
+  color: rgba(120, 53, 15, 0.96);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.infillEdgeConfirmationGrid {
+  padding: 8px 12px 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.infillEdgeConfirmationGroup {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 11px;
+  background: var(--portal-bg-surface);
+}
+
+.infillEdgeConfirmationGroup legend {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.infillEdgeConfirmationGroup > p {
+  margin: 7px 0 0;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+}
+
+.infillEdgeConfirmationOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 5px 3px;
+  color: rgba(var(--portal-text-rgb), 0.78);
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.infillEdgeConfirmationOption input {
+  margin: 1px 0 0;
+  accent-color: rgb(var(--accentRgb));
+}
+
+.infillEdgeConfirmationOption:has(input:focus-visible) {
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
+}
+
 .infillResultsStage {
   display: grid;
   gap: 12px;
@@ -1043,15 +1114,19 @@
 
   .infillResultsDiagram {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 1 / span 2;
   }
 
   .infillResultsDiagram .infillPreviewCard {
     width: min(420px, 100%);
   }
 
-  .infillResultsStage .infillCostDetails,
   .infillResultsStage .infillCutList {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .infillResultsStage .infillCostDetails {
     grid-column: 1 / -1;
   }
 }
@@ -1783,6 +1858,14 @@
   stroke-width: 1.1;
 }
 
+.infillCutListActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .infillPreviewPanel {
   stroke: rgba(var(--portal-text-rgb), 0.28);
   stroke-width: 0.8;
@@ -1834,13 +1917,42 @@
   font-size: 2.1px;
 }
 
+.infillPreviewEdgeLabel {
+  fill: rgba(var(--portal-text-rgb), 0.88);
+  font-size: 2.6px;
+  font-weight: 750;
+}
+
 .infillPreviewLegend {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   font-size: 11px;
   color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.infillPreviewLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.infillPreviewLegend i {
+  width: 18px;
+  height: 0;
+  border-top: 2px solid rgba(var(--portal-text-rgb), 0.72);
+}
+
+.infillPreviewLegend .infillPreviewLegendNew {
+  border-top-color: rgba(180, 35, 24, 0.8);
+  border-top-style: dashed;
+}
+
+.infillPreviewLegend .infillPreviewLegendInternal {
+  border-top-color: #b42318;
+  border-top-style: dashed;
 }
 
 .infillPreviewPlaceholder {
@@ -2305,20 +2417,40 @@
   }
 
   .infillEditorHeader {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
   }
 
   .infillEditorActions {
-    justify-content: flex-start;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .infillStageNav {
-    grid-template-columns: 1fr;
+    display: none;
   }
 
-  .infillStageButton {
-    padding: 7px 9px;
+  .infillStageCompact {
+    display: block;
+  }
+
+  .infillEditorTitle,
+  .infillEditorSubtitle {
+    display: none;
+  }
+
+  .infillMobileSelectLabel {
+    margin-top: 0;
+  }
+
+  .infillMobileSelect {
+    width: 100%;
+  }
+
+  .infillEdgeConfirmationGrid {
+    grid-template-columns: 1fr;
   }
 
   .infillAutomaticChoicesGrid,

@@ -7,6 +7,7 @@ import {
   type InfillUiEstimate,
   type InfillUiState,
 } from './infillCompute';
+import { resolveSupportConfirmations } from './infillSupportPresentation';
 
 export type { InfillUiEstimate } from './infillCompute';
 
@@ -182,6 +183,7 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
   const out: NonNullable<CostInputsV1['infills']> = [];
   const roofRafterSpacingM = estimateRoofRafterSpacing(toNumber(module.lengthM)).spacingM;
   for (const raw of infills.items) {
+    const resolvedSupport = resolveSupportConfirmations(raw.support);
     const canonical = estimateCanonicalInfillUi(raw, roofRafterSpacingM, toNumber(module.lengthM));
     const maxPanelWidth = toNumber(raw.maxPanelWidthM);
     const targetPanelWidth = toNumber(raw.targetPanelWidthM);
@@ -191,8 +193,8 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
         ? 'match_roof_rafters'
         : 'target_width';
 
-    const internalPositions = Array.isArray(raw.support.internalSupportPositionsM)
-      ? raw.support.internalSupportPositionsM
+    const internalPositions = Array.isArray(resolvedSupport.internalSupportPositionsM)
+      ? resolvedSupport.internalSupportPositionsM
           .map(toNumber)
           .filter((n) => Number.isFinite(n) && n >= 0)
       : undefined;
@@ -227,11 +229,11 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
       target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
       max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
       support: {
-        has_top: raw.support.hasTop !== false,
-        has_bottom: raw.support.hasBottom !== false,
-        has_left: raw.support.hasLeft !== false,
-        has_right: raw.support.hasRight !== false,
-        internal_support_mode: raw.support.internalSupportMode,
+        has_top: resolvedSupport.hasTop,
+        has_bottom: resolvedSupport.hasBottom,
+        has_left: resolvedSupport.hasLeft,
+        has_right: resolvedSupport.hasRight,
+        internal_support_mode: resolvedSupport.internalSupportMode,
         internal_support_positions_m: internalPositions,
       },
       shape: shapeOut,

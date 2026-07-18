@@ -20,9 +20,7 @@ const common = {
   bayBoundariesM: [0, 2],
   bayWidthsM: [2],
   joinerLines: [],
-  runSideM: 1,
   acrossSideM: 2,
-  centreLimitM: 1.2,
 };
 
 afterEach(() => {
@@ -47,13 +45,33 @@ describe('InfillPreview canonical panels', () => {
     const { container, unmount } = renderIntoDocument(
       <InfillPreview
         {...common}
-        runSideM={2}
         shape={{ type: 'mono_slope', widthM: '2', heightLowM: '1', heightHighM: '2', bottomOffsetM: '0' }}
         panelPolygons={[{ id: 'panel-slope', points: [{ x_m: 0, y_m: 0 }, { x_m: 2, y_m: 0 }, { x_m: 2, y_m: 2 }, { x_m: 0, y_m: 1 }] }]}
       />,
     );
 
     expect(container.querySelector('polygon')?.getAttribute('points')).toBe('10.000,84.000 90.000,84.000 90.000,28.000 10.000,56.000');
+    unmount();
+  });
+
+  it('labels every edge and explains support marks in support mode', () => {
+    const { container, unmount } = renderIntoDocument(
+      <InfillPreview
+        {...common}
+        mode="supports"
+        supports={{ ...support, hasBottom: false }}
+        shape={{ type: 'rect', widthM: '2', heightM: '1', bottomOffsetM: '0' }}
+        panelPolygons={[]}
+      />,
+    );
+
+    expect(container.querySelector('svg')?.getAttribute('aria-label')).toContain('labelled top, bottom, left and right');
+    expect(container.textContent).toContain('Top');
+    expect(container.textContent).toContain('Bottom');
+    expect(container.textContent).toContain('Existing fixing member');
+    expect(container.textContent).toContain('New support included');
+    expect(container.textContent).not.toContain('run ');
+
     unmount();
   });
 });

@@ -89,7 +89,7 @@ describe('CalculatorInfillOverview', () => {
     expect(markup).toContain('2 infills added');
     expect(markup).toContain('Mixed systems');
     expect(markup).toContain('Panels</span><strong>5</strong>');
-    expect(markup).toContain('Frames</span><strong>3</strong>');
+    expect(markup).toContain('New supports</span><strong>3</strong>');
     expect(markup).toContain('Presets');
   });
 
@@ -145,7 +145,7 @@ describe('CalculatorInfillOverview', () => {
         rafterSpacingM={0.9}
         summaryLine1="2 infills added"
         summaryLine2="Front 1 · Side 1 · Gable 0"
-        summaryLine3="System: Mixed systems · Panels: 7 · Frames: 4"
+        summaryLine3="System: Mixed systems · Panels: 7 · New supports: 4"
         hasInfills
         presets={presets}
         onAddCustom={noop}
