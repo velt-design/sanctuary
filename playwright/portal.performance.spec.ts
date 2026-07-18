@@ -86,7 +86,9 @@ async function measureColdRoute(page: Page, name: string, ready: () => Locator) 
   const probe = await beginPortalJourney(page, { cold: true });
 
   await page.goto(budget.route);
-  await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]').first(),
+  ).toBeVisible({ timeout: 60_000 });
   const feedbackMs = elapsedJourneyMs(probe);
   await expect(ready()).toBeVisible({ timeout: 60_000 });
   const usefulContentMs = elapsedJourneyMs(probe);
