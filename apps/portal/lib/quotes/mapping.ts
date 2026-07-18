@@ -8,7 +8,8 @@ import {
 import type { Estimate } from '@/lib/types/estimate';
 import { priceAllBlinds, type BlindLineItemInput } from '@sp/costing';
 import type { QuoteLineItem } from './types';
-import { GST_RATE, lineTotalCents, toCents } from './utils';
+import { calculateStaffCustomerPriceFromCostEx, roundQuoteMoney } from './pricing';
+import { lineTotalCents, toCents } from './utils';
 import {
   formatDimension,
   formatModuleColour,
@@ -145,11 +146,6 @@ function extractLightingTotalCents(estimate: Estimate): number | null {
   return null;
 }
 
-function roundMoney(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.round(value * 100) / 100;
-}
-
 function normalizePergolaId(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback;
   const trimmed = value.trim();
@@ -174,9 +170,7 @@ type ModuleField = {
 };
 
 function lineUnitPriceIncFromCostEx(costEx: number): number {
-  const sellEx = roundMoney(costEx * 1.25);
-  const sellInc = roundMoney(sellEx * (1 + GST_RATE));
-  return toCents(sellInc);
+  return toCents(calculateStaffCustomerPriceFromCostEx(costEx)?.incGst ?? 0);
 }
 
 function normalizeComparisonValue(value: string | null): string | null {
@@ -370,7 +364,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
       });
 
       const lineCostEx = !showSharedLine && hasSharedCost && pergolaIndex === 0
-        ? roundMoney(pergolaCostEx + sharedCostEx)
+        ? roundQuoteMoney(pergolaCostEx + sharedCostEx)
         : pergolaCostEx;
 
       const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(lineCostEx);

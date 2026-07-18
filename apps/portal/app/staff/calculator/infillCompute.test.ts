@@ -117,12 +117,14 @@ describe('infill compute draft state', () => {
 
     const state = resolveInfillUiState(infill, 0.9);
     const cutRows = state.estimate.cutListRows;
-    const stripRow = cutRows.find((row) => row.part === 'Acrylic strip 620');
-    const internalJoinerRow = cutRows.find((row) => row.part === 'Internal joiner');
+    const panelRows = cutRows.filter((row) => row.group === 'piece' && row.part.startsWith('Acrylic panel'));
+    const internalJoinerRows = cutRows.filter((row) => row.group === 'piece' && row.part.startsWith('Joiner') && row.part.includes('Internal'));
+    const stripPurchase = cutRows.find((row) => row.group === 'purchase' && row.part.startsWith('Crystalite 620'));
 
-    expect(stripRow?.qty).toBe(state.estimate.panelCountTotal);
+    expect(panelRows).toHaveLength(state.estimate.panelCountTotal);
+    expect(stripPurchase?.qty).toBeGreaterThan(0);
     if (state.estimate.internalJoinerLinesTotal > 0) {
-      expect(internalJoinerRow?.qty).toBe(state.estimate.internalJoinerLinesTotal);
+      expect(internalJoinerRows).toHaveLength(state.estimate.internalJoinerLinesTotal);
     }
   });
 
@@ -184,5 +186,41 @@ describe('infill compute draft state', () => {
     expect(state.status).toBe('draft');
     expect(state.validation.errors.slopeDeg).toBeTruthy();
     expect(state.warnings.some((warning) => warning.target.fieldKey === 'shape-slope')).toBe(true);
+  });
+
+  it('shows the exact canonical rows for a 2.4m by 2.1m vertical sheet infill', () => {
+    const state = resolveInfillUiState(makeBaseInfill(), 0.9);
+    const rows = state.estimate.cutListRows;
+
+    expect(state.status).toBe('valid');
+    expect(rows.filter((row) => row.group === 'piece' && row.part.startsWith('Acrylic panel'))).toHaveLength(2);
+    expect(rows.find((row) => row.group === 'purchase' && row.part.startsWith('Plexi sheet'))?.qty).toBe(2);
+    expect(rows.filter((row) => row.group === 'piece' && row.part.startsWith('Joiner')).reduce((sum, row) => sum + (typeof row.lengthM === 'number' ? row.lengthM : 0), 0)).toBeCloseTo(11.1, 6);
+  });
+
+  it('shows two 4m purchases for a 3m by 1m horizontal strip infill because of kerf', () => {
+    const state = resolveInfillUiState(makeBaseInfill({
+      acrylicSource: 'strip_620',
+      panelOrientation: 'horizontal',
+      shape: { type: 'rect', widthM: '3', heightM: '1', bottomOffsetM: '0' },
+    }), 0.9);
+    const rows = state.estimate.cutListRows;
+
+    expect(rows.filter((row) => row.group === 'piece' && row.part.startsWith('Acrylic panel'))).toHaveLength(2);
+    expect(rows.find((row) => row.group === 'purchase' && row.part === 'Crystalite 620 · 4m')?.qty).toBe(2);
+    expect(rows.filter((row) => row.group === 'piece' && row.part.startsWith('Joiner')).reduce((sum, row) => sum + (typeof row.lengthM === 'number' ? row.lengthM : 0), 0)).toBeCloseTo(11, 6);
+  });
+
+  it('blocks a partial-edge roof-rafter match from save and export', () => {
+    const state = resolveInfillUiState(makeBaseInfill({
+      location: 'front',
+      widthMode: 'match_roof_rafters',
+      support: { ...makeBaseInfill().support, internalSupportMode: 'match_roof_rafters' },
+    }), 0.6, undefined, 3);
+
+    expect(state.status).toBe('draft');
+    expect(state.estimate.takeoffStatus).toBe('blocked');
+    expect(state.estimate.cutListRows).toHaveLength(0);
+    expect(state.warnings.some((warning) => warning.severity === 'error' && /full 3m edge/i.test(warning.message))).toBe(true);
   });
 });

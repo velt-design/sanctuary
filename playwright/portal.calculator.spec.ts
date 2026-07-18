@@ -26,6 +26,10 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function parseCurrency(value: string): number {
+  return Number.parseFloat(value.replace(/[^0-9.-]/g, ''));
+}
+
 function moduleNavigatorButton(page: Page, label: string) {
   return page.getByRole('button', { name: new RegExp(`^${escapeRegExp(label)}`) });
 }
@@ -52,8 +56,19 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByRole('navigation', { name: 'Pergolas and modules' })).toBeVisible();
     await expect(moduleNavigatorButton(page, 'Pergola 1 · Module 1')).toHaveAttribute('aria-current', 'true');
     await expect(page.getByText('Pergola 2 · Module 1', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Internal true cost (ex‑GST)', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Blind customer price (ex‑GST)', { exact: true }).first()).toBeVisible();
+    const pricing = page.getByRole('region', { name: 'Pricing preview' });
+    await expect(pricing.getByText('Customer price (inc GST)', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('1.25× internal true cost · pergola only', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('Internal costing', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('Blind customer price (ex GST)', { exact: true })).toBeVisible();
+
+    const customerInc = parseCurrency(await pricing.locator('strong').first().innerText());
+    const internalEx = parseCurrency(
+      await pricing.locator('dt', { hasText: 'True cost (ex GST)' }).locator('..').locator('dd').innerText(),
+    );
+    const expectedCustomerEx = Math.round(internalEx * 1.25 * 100) / 100;
+    const expectedCustomerInc = Math.round(expectedCustomerEx * 1.15 * 100) / 100;
+    expect(customerInc).toBe(expectedCustomerInc);
   });
 });
 
@@ -162,6 +177,13 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 
+    const houseConnectionBox = await page.getByLabel('House connection', { exact: true }).boundingBox();
+    const postConnectionBox = await page.getByLabel('Post connection', { exact: true }).boundingBox();
+    expect(houseConnectionBox).not.toBeNull();
+    expect(postConnectionBox).not.toBeNull();
+    expect(Math.abs((houseConnectionBox?.y ?? 0) - (postConnectionBox?.y ?? 0))).toBeLessThan(4);
+    expect(postConnectionBox?.x ?? 0).toBeGreaterThan((houseConnectionBox?.x ?? 0) + (houseConnectionBox?.width ?? 0));
+
     await page.getByRole('button', { name: 'Save', exact: true }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
     const dialogDimensions = await dialog.evaluate((element) => ({
@@ -185,6 +207,11 @@ for (const width of [1024, 768]) {
       await main.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
       await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
       await expect(page.getByRole('complementary', { name: 'Preview outputs' })).toBeVisible();
+      const previewDimensions = await page.getByRole('region', { name: 'Pricing preview' }).evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(previewDimensions.scrollWidth).toBeLessThanOrEqual(previewDimensions.clientWidth + 1);
       await page.getByRole('button', { name: 'Save', exact: true }).first().click();
       const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
       await expect(dialog.getByText('Stored estimate', { exact: true })).toBeVisible();
@@ -201,6 +228,7 @@ test('invalid edits retain but relabel the last valid result and block save', as
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
     await roofLength.fill('');
     await expect(page.getByText('Last valid result — fix inputs', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Last valid customer price (inc GST)', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeDisabled();
     await expect(moduleNavigatorButton(page, 'Pergola 2 · Module 1')).toContainText('1 issue');
     await page.getByRole('button', { name: 'Errors (1)', exact: true }).click();

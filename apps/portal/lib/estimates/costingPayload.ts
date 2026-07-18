@@ -250,7 +250,7 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
       qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
       location: raw.location,
       acrylic_source: raw.acrylicSource,
-      panel_orientation: resolvePayloadPanelOrientation(raw, roofRafterSpacingM),
+      panel_orientation: resolvePayloadPanelOrientation(raw, roofRafterSpacingM, toNumber(module.lengthM)),
       width_mode: widthMode,
       target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
       max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,

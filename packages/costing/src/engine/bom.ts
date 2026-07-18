@@ -1,5 +1,7 @@
 import type { CostingConfigV1 } from './config';
 import type { DerivedV1, FlashingBandV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
+import type { InfillTakeoffV1 } from './types';
+import { calculateInfillsTakeoffV1 } from './infillTakeoff';
 import { evalArithmeticExpr } from './expr';
 import { normaliseColour, normaliseProfile } from './normalise';
 import {
@@ -20,6 +22,7 @@ type BuildMaterialsResultV1 = {
   materials: MaterialsV1;
   notes_and_warnings: string[];
   derived_patch?: Partial<DerivedV1>;
+  infill_takeoff?: InfillTakeoffV1;
 };
 
 type JoinPolicy = 'joinable' | 'single';
@@ -43,6 +46,13 @@ type CutGroup = {
   cuts: CutItem[];
   originals_joinable: Map<string, number>;
   components: Set<string>;
+  kerf_m: number;
+  preferred_stock_lengths_m?: number[];
+};
+
+type BuildMaterialsOptionsV1 = {
+  module_id?: string;
+  scope_id?: string;
 };
 
 function evalQtyExpression(expr: string, vars: Record<string, number>): number {
@@ -244,20 +254,22 @@ function pickBarsForProfile(
     }));
 }
 
-function greedyBinPack(cutsDesc: number[], stockLengthM: number): { barsUsed: number; wasteM: number } {
-  const bars: number[] = [];
+function greedyBinPack(cutsDesc: number[], stockLengthM: number, kerfM = 0): { barsUsed: number; wasteM: number } {
+  const bars: Array<{ remaining: number; cuts: number }> = [];
 
   for (const cut of cutsDesc) {
     if (!Number.isFinite(cut) || cut <= 0) continue;
     let placed = false;
     for (let i = 0; i < bars.length; i += 1) {
-      if (bars[i] + 1e-6 >= cut) {
-        bars[i] -= cut;
+      const required = cut + (bars[i].cuts > 0 ? kerfM : 0);
+      if (bars[i].remaining + 1e-6 >= required) {
+        bars[i].remaining -= required;
+        bars[i].cuts += 1;
         placed = true;
         break;
       }
     }
-    if (!placed) bars.push(stockLengthM - cut);
+    if (!placed) bars.push({ remaining: stockLengthM - cut, cuts: 1 });
   }
 
   const barsUsed = bars.length;
@@ -267,7 +279,7 @@ function greedyBinPack(cutsDesc: number[], stockLengthM: number): { barsUsed: nu
   return { barsUsed, wasteM };
 }
 
-function greedyBinPackPlan(cutsDesc: CutItem[], stockLengthM: number): BinPackPlanExplain {
+function greedyBinPackPlan(cutsDesc: CutItem[], stockLengthM: number, kerfM = 0): BinPackPlanExplain {
   const cuts = [...cutsDesc]
     .filter((cut) => Number.isFinite(cut.length_m) && cut.length_m > 0)
     .sort((a, b) => b.length_m - a.length_m);
@@ -280,9 +292,10 @@ function greedyBinPackPlan(cutsDesc: CutItem[], stockLengthM: number): BinPackPl
   for (const cut of cuts) {
     let placed = false;
     for (let i = 0; i < bars.length; i += 1) {
-      if (bars[i].remaining_m + 1e-6 >= cut.length_m) {
-        bars[i].remaining_m -= cut.length_m;
-        bars[i].used_m += cut.length_m;
+      const required = cut.length_m + (bars[i].cuts.length > 0 ? kerfM : 0);
+      if (bars[i].remaining_m + 1e-6 >= required) {
+        bars[i].remaining_m -= required;
+        bars[i].used_m += required;
         bars[i].cuts.push({
           origin_id: cut.origin_id,
           component: cut.component,
@@ -357,7 +370,7 @@ function selectBestStock(
   bars: Array<PricebookItem & { stock_length_m: number }>,
   cuts: CutItem[],
   preferred: number[],
-  opts?: { trace?: MaterialsExplainCollector; groupKey?: string },
+  opts?: { trace?: MaterialsExplainCollector; groupKey?: string; kerfM?: number; preferredStockLengths?: number[] },
 ): {
   bar: (PricebookItem & { stock_length_m: number }) | null;
   barsUsed: number;
@@ -397,9 +410,10 @@ function selectBestStock(
     return joins;
   };
 
+  const effectivePreferred = opts?.preferredStockLengths?.length ? opts.preferredStockLengths : preferred;
   const candidates = bars
-    .filter((b) => preferred.includes(b.stock_length_m))
-    .sort((a, b) => preferred.indexOf(a.stock_length_m) - preferred.indexOf(b.stock_length_m));
+    .filter((b) => effectivePreferred.includes(b.stock_length_m))
+    .sort((a, b) => effectivePreferred.indexOf(a.stock_length_m) - effectivePreferred.indexOf(b.stock_length_m));
 
   for (const bar of candidates) {
     const unitCost = (bar as any).cost_ex_gst as number;
@@ -412,7 +426,7 @@ function selectBestStock(
       .map((cut) => cut.length_m)
       .filter((len) => Number.isFinite(len) && len > 0)
       .sort((a, b) => b - a);
-    const { barsUsed, wasteM } = greedyBinPack(cutsDesc, bar.stock_length_m);
+    const { barsUsed, wasteM } = greedyBinPack(cutsDesc, bar.stock_length_m, opts?.kerfM ?? 0);
     const totalCost = barsUsed * unitCost;
     const costPerM = unitCost / Math.max(bar.stock_length_m, 0.0001);
     const isExactFit = hasContinuousRun && Array.from(targets).some((t) => Math.abs(t - bar.stock_length_m) <= EPS);
@@ -604,55 +618,6 @@ function rafterDepthM(profile: string): number {
 
 const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_PURLIN_PROFILE = '50x50';
-const INFILL_SHEET_MAX_RUN_M = 3.05;
-const INFILL_STRIP_MAX_RUN_M = 6.0;
-const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
-const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
-const INFILL_SHEET_WASTE_FACTOR_DEFAULT = 0.15;
-
-function clampPos(n: number, min: number, max: number): number {
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}
-
-function splitWidths(totalW: number, targetW: number): number[] {
-  const total = Math.max(0, totalW);
-  const target = Math.max(0.05, targetW);
-  if (total <= 0) return [];
-  const panelCount = Math.max(1, Math.ceil(total / target));
-  const widths: number[] = [];
-  const base = total / panelCount;
-  for (let i = 0; i < panelCount; i += 1) widths.push(base);
-  return widths;
-}
-
-function infillRunLimitForSource(source: 'strip_620' | 'sheet_panels'): number {
-  return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
-}
-
-function pickInfillSourceForRun(
-  preferred: 'strip_620' | 'sheet_panels',
-  runSideM: number,
-): { source: 'strip_620' | 'sheet_panels' | null; switched: boolean; runLimitM: number } {
-  const preferredLimit = infillRunLimitForSource(preferred);
-  if (runSideM <= preferredLimit + 1e-6) {
-    return { source: preferred, switched: false, runLimitM: preferredLimit };
-  }
-  const fallback: 'strip_620' | 'sheet_panels' = preferred === 'sheet_panels' ? 'strip_620' : 'sheet_panels';
-  const fallbackLimit = infillRunLimitForSource(fallback);
-  if (runSideM <= fallbackLimit + 1e-6) {
-    return { source: fallback, switched: true, runLimitM: fallbackLimit };
-  }
-  return { source: null, switched: false, runLimitM: Math.max(preferredLimit, fallbackLimit) };
-}
-
-function infillCentreLimitForSource(source: 'strip_620' | 'sheet_panels'): number {
-  return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
 
 type PendingLineExplain =
   | { kind: 'extrusion_bar'; cut_group_key: string; notes_formula?: string }
@@ -674,6 +639,7 @@ function buildMaterialsV1Internal(
   config: CostingConfigV1,
   trace?: MaterialsExplainCollector,
   explainOpts?: MaterialsExplainOptions,
+  buildOptions?: BuildMaterialsOptionsV1,
 ): BuildMaterialsResultV1 {
   const warnings: string[] = [];
   const lines: MaterialsLineV1[] = [];
@@ -725,6 +691,8 @@ function buildMaterialsV1Internal(
       finish?: FinishMode;
       origin_prefix?: string;
       group_key?: string;
+      kerf_m?: number;
+      preferred_stock_lengths_m?: number[];
       explain?: { formula: string; deps: Record<string, unknown> };
     },
   ) => {
@@ -789,6 +757,8 @@ function buildMaterialsV1Internal(
         }
       });
       existing.components.add(component);
+      existing.kerf_m = Math.max(existing.kerf_m, Math.max(0, Number(opts?.kerf_m ?? 0)));
+      if (opts?.preferred_stock_lengths_m?.length) existing.preferred_stock_lengths_m = [...opts.preferred_stock_lengths_m];
       if (generatedCutExplain.length) trace?.cutGroupCuts(key, generatedCutExplain, 'append');
       return;
     }
@@ -821,6 +791,8 @@ function buildMaterialsV1Internal(
       cuts: groupCuts,
       originals_joinable: new Map<string, number>(),
       components: new Set([component]),
+      kerf_m: Math.max(0, Number(opts?.kerf_m ?? 0)),
+      preferred_stock_lengths_m: opts?.preferred_stock_lengths_m?.length ? [...opts.preferred_stock_lengths_m] : undefined,
     });
     if (generatedCutExplain.length) trace?.cutGroupCuts(key, generatedCutExplain, 'append');
     if (joinPolicy === 'joinable') {
@@ -2072,291 +2044,139 @@ function buildMaterialsV1Internal(
   pushFlashingMaterialLines(lines, flashingBandTotals);
 
   // === INFILLS (orientation-aware acrylic + joiners) ===
-  const infills = Array.isArray((inputs as any).infills) ? ((inputs as any).infills as NonNullable<InputsNormalizedV1['infills']>) : [];
+  const moduleInfills = Array.isArray((inputs as any).infills) ? ((inputs as any).infills as NonNullable<InputsNormalizedV1['infills']>) : [];
+  const infillModuleId = buildOptions?.module_id?.trim() || 'module-1';
+  const infillTakeoff = calculateInfillsTakeoffV1(
+    moduleInfills.map((infill) => ({ ...infill, module_id: infillModuleId })),
+    {
+      scope_id: buildOptions?.scope_id?.trim() || infillModuleId,
+      module_id: infillModuleId,
+      rafter_spacing_m: Number((derived as any).rafter_spacing_mm ?? 0) / 1000 || null,
+      edge_length_m: Number(inputs.length_m ?? 0) || null,
+      extrusion_colour: String((derived as any).powdercoat_colour_used ?? inputs.extrusion_colour),
+    },
+    config,
+  );
   let infillSheetAreaM2 = 0;
-  const infillSheetWasteFactor = INFILL_SHEET_WASTE_FACTOR_DEFAULT;
   let infillJoinerTotalM = 0;
   let infillInstanceCount = 0;
   let infillJoinerFixingsEach = 0;
   let infillStripPanelCount = 0;
   let infillExtraSupportsEach = 0;
+  // Canonical infill takeoff: this is the only active infill material source.
+  const canonicalPanels = infillTakeoff.items.flatMap((item) => item.panels);
+  const canonicalCuts = infillTakeoff.items.flatMap((item) => item.linear_cuts);
+  const canonicalJoinerCuts = canonicalCuts.filter((cut) => cut.profile === 'Joiners');
+  const canonicalSupportCuts = canonicalCuts.filter((cut) => cut.profile === '50x50');
+  const canonicalSheetPurchase = infillTakeoff.purchases.find((purchase) => purchase.material === 'acrylic_sheet');
+  const canonicalStripPurchase = infillTakeoff.purchases.find((purchase) => purchase.material === 'crystalite_620');
+  const canonicalJoinerPurchase = infillTakeoff.purchases.find((purchase) => purchase.material === 'joiner');
+  const canonicalSupportPurchase = infillTakeoff.purchases.find((purchase) => purchase.material === 'support_50x50');
 
-  const isSupportedInternal = (mode: string | undefined, x: number, spanM: number, positions?: number[]) => {
-    if (mode === 'match_roof_rafters') return true;
-    if (mode === 'center') return Math.abs(x - spanM / 2) < 0.02;
-    if (mode === 'custom' && Array.isArray(positions)) return positions.some((p) => Math.abs(x - Number(p)) < 0.02);
-    return false;
-  };
+  infillInstanceCount = infillTakeoff.totals.instance_count;
+  infillJoinerTotalM = infillTakeoff.totals.joiner_cut_m;
+  infillJoinerFixingsEach = canonicalJoinerCuts.reduce(
+    (total, cut) => total + Math.ceil(cut.length_m / ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M),
+    0,
+  );
+  infillSheetAreaM2 = canonicalPanels
+    .filter((panel) => panel.acrylic_source === 'sheet_panels')
+    .reduce((total, panel) => total + panel.finished_area_m2, 0);
+  infillStripPanelCount = canonicalPanels.filter((panel) => panel.acrylic_source === 'strip_620').length;
+  infillExtraSupportsEach = canonicalSupportCuts.length;
 
-  for (const infillRaw of infills) {
-    const qty = Math.max(1, Math.round(Number((infillRaw as any).qty ?? 1)));
-    const infillLabel = String((infillRaw as any).label ?? (infillRaw as any).id ?? 'infill');
-    const locationRaw = String((infillRaw as any).location ?? 'custom');
-    const isFrontOrHouse = locationRaw === 'front' || locationRaw === 'house';
-    const preferredAcrylicSource = String((infillRaw as any).acrylic_source ?? 'sheet_panels') as 'strip_620' | 'sheet_panels';
-    const panelOrientation = String((infillRaw as any).panel_orientation ?? 'vertical') === 'horizontal' ? 'horizontal' : 'vertical';
-    const widthMode = String((infillRaw as any).width_mode ?? 'target_width') as 'match_roof_rafters' | 'target_width';
+  for (const warning of infillTakeoff.warnings) {
+    pushWarning(`${warning.level === 'critical' ? 'INVALID: ' : ''}${warning.message}`);
+  }
 
-    const support = (infillRaw as any).support ?? {};
-    const hasTop = support.has_top !== false;
-    const hasBottom = support.has_bottom !== false;
-    const hasLeft = support.has_left !== false;
-    const hasRight = support.has_right !== false;
-    const internalMode = String(support.internal_support_mode ?? 'none');
-    const internalPositions = Array.isArray(support.internal_support_positions_m)
-      ? support.internal_support_positions_m
-          .map((p: unknown) => Number(p))
-          .filter((p: number) => Number.isFinite(p) && p >= 0)
-      : undefined;
+  if (canonicalJoinerCuts.length) {
+    addCuts(
+      'Joiners',
+      canonicalJoinerCuts.map((cut) => cut.length_m),
+      'Infill joiners',
+      'single',
+      {
+        origin_prefix: 'infill_joiner',
+        group_key: 'infill_joiners',
+        kerf_m: infillTakeoff.kerf_m,
+        preferred_stock_lengths_m: canonicalJoinerPurchase ? [canonicalJoinerPurchase.stock_length_m] : undefined,
+      },
+    );
+  }
+  if (canonicalSupportCuts.length) {
+    addCuts(
+      '50x50',
+      canonicalSupportCuts.map((cut) => cut.length_m),
+      'Infill supports 50x50',
+      'single',
+      {
+        origin_prefix: 'infill_5050',
+        group_key: 'infill_5050',
+        kerf_m: infillTakeoff.kerf_m,
+        preferred_stock_lengths_m: canonicalSupportPurchase ? [canonicalSupportPurchase.stock_length_m] : undefined,
+      },
+    );
+  }
 
-    const shape = (infillRaw as any).shape ?? {};
-    const shapeType = String(shape.type ?? 'rect');
-
-    let widthM = 0;
-    let avgHeightM = 0;
-    let maxHeightM = 0;
-    let heightAt = (_t01: number): number => 0;
-    if (shapeType === 'rect') {
-      widthM = Math.max(0, Number(shape.width_m ?? 0));
-      const h = Math.max(0, Number(shape.height_m ?? 0));
-      heightAt = () => h;
-      avgHeightM = h;
-      maxHeightM = h;
-    } else if (shapeType === 'mono_slope') {
-      widthM = Math.max(0, Number(shape.width_m ?? 0));
-      const h0 = Math.max(0, Number(shape.height_low_m ?? 0));
-      const h1 = Math.max(0, Number(shape.height_high_m ?? 0));
-      heightAt = (t01: number) => lerp(h0, h1, clampPos(t01, 0, 1));
-      avgHeightM = (h0 + h1) / 2;
-      maxHeightM = Math.max(h0, h1);
+  if (canonicalStripPurchase) {
+    const stripItem = findCrystalite620Item(config, { length_m: canonicalStripPurchase.stock_length_m, colour: 'Clear' });
+    if (!stripItem) {
+      pushWarning(`INVALID: Crystalite 620mm (Clear) ${canonicalStripPurchase.stock_length_m}m not found in materials pricebook.`);
     } else {
-      pushWarning(`Unsupported infill shape '${shapeType}'; skipping infill.`);
-      continue;
+      const unitCost = Number((stripItem as any).cost_ex_gst ?? 0);
+      lines.push({
+        id: `infill.crystalite_620_${canonicalStripPurchase.stock_length_m}m`,
+        label: stripItem.name,
+        profile: 'Crystalite 620mm',
+        unit: stripItem.unit,
+        qty: canonicalStripPurchase.qty,
+        unit_cost_ex_gst: roundMoney(unitCost),
+        line_cost_ex_gst: roundMoney(canonicalStripPurchase.qty * unitCost),
+        notes: `Canonical infill takeoff: ${infillStripPanelCount} panel(s), ${canonicalStripPurchase.qty}x${canonicalStripPurchase.stock_length_m}m stock, kerf ${roundMoney(infillTakeoff.kerf_m * 1000)}mm.`,
+      });
     }
+  }
 
-    if (widthM <= 0 || maxHeightM <= 0) continue;
-
-    const runSideM = panelOrientation === 'vertical' ? maxHeightM : widthM;
-    const acrossSideM = panelOrientation === 'vertical' ? widthM : maxHeightM;
-    if (runSideM <= 0 || acrossSideM <= 0) continue;
-
-    const sourceSelection = pickInfillSourceForRun(preferredAcrylicSource, runSideM);
-    if (!sourceSelection.source) {
-      pushWarning(
-        `Infill '${infillLabel}': run side ${roundMoney(runSideM)}m exceeds sheet (${roundMoney(
-          INFILL_SHEET_MAX_RUN_M,
-        )}m) and strip (${roundMoney(INFILL_STRIP_MAX_RUN_M)}m) limits; skipping infill.`,
-      );
-      continue;
-    }
-    const acrylicSource = sourceSelection.source;
-    if (sourceSelection.switched) {
-      pushWarning(
-        `Infill '${infillLabel}': auto-switched acrylic source from ${preferredAcrylicSource} to ${acrylicSource} because run side ${roundMoney(
-          runSideM,
-        )}m exceeds ${roundMoney(infillRunLimitForSource(preferredAcrylicSource))}m.`,
-      );
-    }
-
-    const panelWidthsAcross = splitWidths(acrossSideM, infillCentreLimitForSource(acrylicSource));
-    if (!panelWidthsAcross.length) continue;
-    infillInstanceCount += qty;
-
-    const boundaryAcross: number[] = [0];
-    for (const span of panelWidthsAcross) boundaryAcross.push(boundaryAcross[boundaryAcross.length - 1] + span);
-
-    const boundaryJoinerLens: number[] = [];
-    if (panelOrientation === 'vertical') {
-      for (const x of boundaryAcross) {
-        const t = widthM > 0 ? x / widthM : 0;
-        boundaryJoinerLens.push(Math.max(0, heightAt(t)));
-      }
+  if (canonicalSheetPurchase) {
+    const plexiSheetIdClearInfill = String(sheetCfg?.pricebook_sheet_ids?.Clear ?? '');
+    const sheetItem =
+      findPricebookItemById(config, plexiSheetIdClearInfill) ??
+      config.materials.items.find((item) => item.category === 'roofing_sheet' && item.unit === 'sheet' && String(item.name ?? '').includes('(Clear)')) ??
+      null;
+    if (!sheetItem) {
+      pushWarning('INVALID: Infills: Plexi sheet 3050x2030 (Clear) not found in materials pricebook.');
     } else {
-      for (let i = 0; i < boundaryAcross.length; i += 1) boundaryJoinerLens.push(Math.max(0, widthM));
-    }
-
-    const leftEdgeLen = Math.max(0, heightAt(0));
-    const rightEdgeLen = Math.max(0, heightAt(1));
-    const bottomEdgeLen = panelOrientation === 'vertical' ? Math.max(0, widthM) : Math.max(0, boundaryJoinerLens[0] ?? widthM);
-    const topEdgeLen =
-      panelOrientation === 'vertical'
-        ? Math.max(0, shapeType === 'mono_slope' ? widthM / Math.max(0.02, effectiveCos) : widthM)
-        : Math.max(0, boundaryJoinerLens[boundaryJoinerLens.length - 1] ?? widthM);
-    const sideEdgeA = panelOrientation === 'vertical' ? Math.max(0, boundaryJoinerLens[0] ?? leftEdgeLen) : leftEdgeLen;
-    const sideEdgeB =
-      panelOrientation === 'vertical'
-        ? Math.max(0, boundaryJoinerLens[boundaryJoinerLens.length - 1] ?? rightEdgeLen)
-        : rightEdgeLen;
-    const joinerTotalEach =
-      boundaryJoinerLens.reduce((acc, len) => acc + Math.max(0, len), 0) + Math.max(0, topEdgeLen) + Math.max(0, bottomEdgeLen);
-    if (joinerTotalEach > 0) {
-      infillJoinerFixingsEach += Math.ceil(joinerTotalEach / ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M) * qty;
-    }
-    const missingJambsEach =
-      panelOrientation === 'vertical' ? (hasLeft ? 0 : 1) + (hasRight ? 0 : 1) : (hasBottom ? 0 : 1) + (hasTop ? 0 : 1);
-
-    for (const len of boundaryJoinerLens) {
-      if (len <= 0) continue;
-      for (let q = 0; q < qty; q += 1)
-        addCuts('Joiners', [len], 'Infill joiners (panel boundaries)', 'joinable', { origin_prefix: 'infill_joiner_boundary' });
-      infillJoinerTotalM += len * qty;
-    }
-    if (topEdgeLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('Joiners', [topEdgeLen], 'Infill joiners (top edge)', 'joinable', { origin_prefix: 'infill_joiner_top' });
-      infillJoinerTotalM += topEdgeLen * qty;
-    }
-    if (bottomEdgeLen > 0) {
-      for (let q = 0; q < qty; q += 1)
-        addCuts('Joiners', [bottomEdgeLen], 'Infill joiners (bottom edge)', 'joinable', { origin_prefix: 'infill_joiner_bottom' });
-      infillJoinerTotalM += bottomEdgeLen * qty;
-    }
-
-    if (!hasLeft && sideEdgeA > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [sideEdgeA], 'Infill support 50x50 (left jamb)', 'joinable', { origin_prefix: 'infill_5050_left' });
-    }
-    if (!hasRight && sideEdgeB > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [sideEdgeB], 'Infill support 50x50 (right jamb)', 'joinable', { origin_prefix: 'infill_5050_right' });
-    }
-    if (!hasTop && topEdgeLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [topEdgeLen], 'Infill support 50x50 (top rail)', 'joinable', { origin_prefix: 'infill_5050_top' });
-    }
-    if (!hasBottom && bottomEdgeLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [bottomEdgeLen], 'Infill support 50x50 (bottom rail)', 'joinable', { origin_prefix: 'infill_5050_bottom' });
-    }
-
-    let unsupportedInternalEach = 0;
-    for (let i = 1; i < boundaryAcross.length - 1; i += 1) {
-      const x = boundaryAcross[i];
-      const supported =
-        isSupportedInternal(internalMode, x, acrossSideM, internalPositions) ||
-        (panelOrientation === 'vertical' && widthMode === 'match_roof_rafters' && isFrontOrHouse);
-      if (supported) continue;
-      const len = boundaryJoinerLens[i];
-      if (len <= 0) continue;
-      unsupportedInternalEach += 1;
-      for (let q = 0; q < qty; q += 1)
-        addCuts('50x50', [len], 'Infill support 50x50 (internal mullion)', 'joinable', { origin_prefix: 'infill_5050_internal' });
-    }
-    infillExtraSupportsEach += (unsupportedInternalEach + missingJambsEach) * qty;
-
-    if (acrylicSource === 'strip_620') {
-      const cuts: number[] = [];
-      for (let p = 0; p < panelWidthsAcross.length; p += 1) {
-        if (panelOrientation === 'vertical') {
-          const x0 = boundaryAcross[p];
-          const x1 = boundaryAcross[p + 1];
-          const t0 = widthM > 0 ? x0 / widthM : 0;
-          const t1 = widthM > 0 ? x1 / widthM : 0;
-          const requiredLen = Math.max(heightAt(t0), heightAt(t1));
-          if (requiredLen <= 0) continue;
-          for (let q = 0; q < qty; q += 1) cuts.push(requiredLen);
-        } else {
-          const requiredLen = Math.max(0, widthM);
-          if (requiredLen <= 0) continue;
-          for (let q = 0; q < qty; q += 1) cuts.push(requiredLen);
-        }
-      }
-      infillStripPanelCount += cuts.length;
-
-      if (cuts.length) {
-        const stripLenOptions = [4, 5, 6];
-        let best: { len: number; bars: number; waste: number; cost: number } | null = null;
-        for (const stockLen of stripLenOptions) {
-          if (!cuts.every((c) => c <= stockLen + 1e-6)) continue;
-          const { barsUsed, wasteM } = greedyBinPack([...cuts].sort((a, b) => b - a), stockLen);
-          const item = findCrystalite620Item(config, { length_m: stockLen, colour: 'Clear' });
-          if (!item) {
-            pushWarning(`Crystalite 620mm (Clear) ${stockLen}m not found in materials pricebook.`);
-            continue;
-          }
-          const unitCost = Number((item as any).cost_ex_gst ?? 0);
-          const totalCost = barsUsed * unitCost;
-          if (!best || totalCost < best.cost - 1e-6 || (Math.abs(totalCost - best.cost) < 1e-6 && wasteM < best.waste - 1e-6)) {
-            best = { len: stockLen, bars: barsUsed, waste: wasteM, cost: totalCost };
-          }
-        }
-
-        if (best) {
-          const item = findCrystalite620Item(config, { length_m: best.len, colour: 'Clear' });
-          if (item) {
-            const unitCost = Number((item as any).cost_ex_gst ?? 0);
-            lines.push({
-              id: `infill.crystalite_620_${best.len}m`,
-              label: `Crystalite 620mm (Clear) ${best.len}m`,
-              profile: 'Crystalite 620mm',
-              unit: 'bar',
-              qty: best.bars,
-              unit_cost_ex_gst: roundMoney(unitCost),
-              line_cost_ex_gst: roundMoney(best.bars * unitCost),
-              notes: `Infills (strip mode): ${cuts.length} panel(s) cut; packed into ${best.bars}x${best.len}m; waste ${roundMoney(best.waste)}m.`,
-            });
-            addProfileTotals('Crystalite 620mm', best.len, best.bars, best.waste);
-          }
-        } else {
-          pushWarning('Infills (strip mode): could not price Crystalite 620mm bars (no valid stock length / missing SKUs).');
-        }
-      }
-    } else {
-      infillSheetAreaM2 += Math.max(0, widthM * avgHeightM) * qty;
+      const unitCost = Number((sheetItem as any).cost_ex_gst ?? 0);
+      lines.push({
+        id: 'infill.acrylic_sheet_clear',
+        label: sheetItem.name,
+        profile: 'Plexi sheet 3050x2030',
+        unit: sheetItem.unit,
+        qty: canonicalSheetPurchase.qty,
+        unit_cost_ex_gst: roundMoney(unitCost),
+        line_cost_ex_gst: roundMoney(canonicalSheetPurchase.qty * unitCost),
+        notes: `Canonical physical placement: ${canonicalPanels.filter((panel) => panel.acrylic_source === 'sheet_panels').length} panel(s) on ${canonicalSheetPurchase.qty} sheet(s).`,
+      });
     }
   }
 
   if (infillJoinerTotalM > 0) {
     const rubberMetres = roundMoney(infillJoinerTotalM * 2);
-    const topRubber = findRubberItem(config, 'Top V Rubber');
-    const bottomRubber = findRubberItem(config, 'Bottom Flat Rubbers');
-    if (!topRubber) pushWarning('Top V Rubber item not found in materials pricebook.');
-    else {
-      const unitCost = Number((topRubber as any).cost_ex_gst ?? 0);
+    for (const profile of ['Top V Rubber', 'Bottom Flat Rubbers'] as const) {
+      const rubberItem = findRubberItem(config, profile);
+      if (!rubberItem) {
+        pushWarning(`${profile} item not found in materials pricebook.`);
+        continue;
+      }
+      const unitCost = Number((rubberItem as any).cost_ex_gst ?? 0);
       lines.push({
-        id: topRubber.id,
-        label: topRubber.name,
-        unit: topRubber.unit,
+        id: rubberItem.id,
+        label: rubberItem.name,
+        unit: rubberItem.unit,
         qty: rubberMetres,
         unit_cost_ex_gst: roundMoney(unitCost),
         line_cost_ex_gst: roundMoney(rubberMetres * unitCost),
-        notes: 'Top V rubber for infill joiners (per metre).',
-      });
-    }
-    if (!bottomRubber) pushWarning('Bottom Flat Rubbers item not found in materials pricebook.');
-    else {
-      const unitCost = Number((bottomRubber as any).cost_ex_gst ?? 0);
-      lines.push({
-        id: bottomRubber.id,
-        label: bottomRubber.name,
-        unit: bottomRubber.unit,
-        qty: rubberMetres,
-        unit_cost_ex_gst: roundMoney(unitCost),
-        line_cost_ex_gst: roundMoney(rubberMetres * unitCost),
-        notes: 'Bottom flat rubbers for infill joiners (per metre).',
-      });
-    }
-  }
-
-  if (infillSheetAreaM2 > 0) {
-    const sheetAreaM2 = 3.05 * 2.03;
-    const effectiveAreaM2 = infillSheetAreaM2 * (1 + infillSheetWasteFactor);
-    const sheetsNeeded = Math.max(1, Math.ceil(effectiveAreaM2 / Math.max(sheetAreaM2, 0.01)));
-    const plexiSheetIdClearInfill = String(sheetCfg?.pricebook_sheet_ids?.Clear ?? '');
-    const plexiSheetClearInfill =
-      findPricebookItemById(config, plexiSheetIdClearInfill) ??
-      config.materials.items.find((it) => it.category === 'roofing_sheet' && it.unit === 'sheet' && String(it.name ?? '').includes('(Clear)')) ??
-      null;
-    if (!plexiSheetClearInfill) {
-      pushWarning('Infills (sheet mode): Plexi sheet 3050x2030 (Clear) not found in materials pricebook.');
-    } else {
-      const unitCost = Number((plexiSheetClearInfill as any).cost_ex_gst ?? 0);
-      lines.push({
-        id: 'infill.acrylic_sheet_clear',
-        label: plexiSheetClearInfill.name,
-        profile: 'Plexi sheet 3050x2030',
-        unit: plexiSheetClearInfill.unit,
-        qty: sheetsNeeded,
-        unit_cost_ex_gst: roundMoney(unitCost),
-        line_cost_ex_gst: roundMoney(sheetsNeeded * unitCost),
-        notes: `Infills (sheet mode pooled): area ${roundMoney(infillSheetAreaM2)}m2 x (1+${Math.round(
-          infillSheetWasteFactor * 100,
-        )}%) = ${roundMoney(effectiveAreaM2)}m2; sheets ${sheetsNeeded} (sheet area ${roundMoney(sheetAreaM2)}m2).`,
+        notes: `${profile} for canonical infill joiner cuts.`,
       });
     }
   }
@@ -2455,7 +2275,12 @@ function buildMaterialsV1Internal(
       );
     }
 
-    const selection = selectBestStock(bars, group.cuts, preferredStockLengths, { trace, groupKey });
+    const selection = selectBestStock(bars, group.cuts, preferredStockLengths, {
+      trace,
+      groupKey,
+      kerfM: group.kerf_m,
+      preferredStockLengths: group.preferred_stock_lengths_m,
+    });
     if (!selection.bar || selection.barsUsed <= 0) {
       if (trace) {
         trace.joinableOriginals(
@@ -2550,7 +2375,7 @@ function buildMaterialsV1Internal(
       stockLengthM: selection.bar.stock_length_m,
     });
     if (trace?.shouldCollectFullGroup(groupKey) && expandedForChosen.length > 0) {
-      trace.binPackPlan(groupKey, greedyBinPackPlan(expandedForChosen, selection.bar.stock_length_m));
+      trace.binPackPlan(groupKey, greedyBinPackPlan(expandedForChosen, selection.bar.stock_length_m, group.kerf_m));
     }
     trace?.cutGroupTotals(groupKey, {
       bars_used: selection.barsUsed,
@@ -2858,6 +2683,7 @@ function buildMaterialsV1Internal(
       },
     },
     notes_and_warnings: warnings,
+    infill_takeoff: infillTakeoff,
     derived_patch: {
       splice_join_count: spliceJoinCount,
       acrylic_joiner_bottom_total_m: roundMoney(acrylicJoinerBottomTotalM),
@@ -2878,8 +2704,9 @@ export function buildMaterialsV1(
   inputs: InputsNormalizedV1,
   derived: DerivedV1,
   config: CostingConfigV1,
+  options?: BuildMaterialsOptionsV1,
 ): BuildMaterialsResultV1 {
-  return buildMaterialsV1Internal(inputs, derived, config);
+  return buildMaterialsV1Internal(inputs, derived, config, undefined, undefined, options);
 }
 
 export function buildMaterialsV1Explain(

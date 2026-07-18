@@ -207,15 +207,34 @@ describe('infill BOM takeoff', () => {
     },
   };
 
-  it('sheet mode adds pooled infill acrylic sheet line and joiner bars', () => {
+  it('sheet mode prices the same physical sheet plan and joiner total returned by the canonical takeoff', () => {
     const result = calculateCostV1({
       ...baseInputs,
       roof_material: 'timber',
-      infills: [baseInfill],
+      infills: [{ ...baseInfill, shape: { type: 'rect', width_m: 2.4, height_m: 2.1 } }],
     });
 
-    expect(result.materials.lines.some((line) => line.id === 'infill.acrylic_sheet_clear' && line.qty >= 1)).toBe(true);
+    expect(result.infill_takeoff?.totals).toMatchObject({ panel_count: 2, sheet_count: 2, joiner_cut_m: 11.1 });
+    expect(result.materials.lines.find((line) => line.id === 'infill.acrylic_sheet_clear')?.qty).toBe(2);
+    expect(result.derived.infill_joiner_total_m).toBeCloseTo(11.1, 6);
     expect(result.materials.lines.some((line) => line.profile === 'Joiners')).toBe(true);
+  });
+
+  it('horizontal strip mode counts the perimeter once and uses kerf-aware stock', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'timber',
+      infills: [{
+        ...baseInfill,
+        acrylic_source: 'strip_620',
+        panel_orientation: 'horizontal',
+        shape: { type: 'rect', width_m: 3, height_m: 1 },
+      }],
+    });
+
+    expect(result.infill_takeoff?.totals).toMatchObject({ panel_count: 2, joiner_cut_m: 11, strip_stock_count: 2 });
+    expect(result.materials.lines.find((line) => line.id === 'infill.crystalite_620_4m')?.qty).toBe(2);
+    expect(result.derived.infill_joiner_total_m).toBeCloseTo(11, 6);
   });
 
   it('strip mode adds Crystalite 620 infill line', () => {

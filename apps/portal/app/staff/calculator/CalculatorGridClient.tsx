@@ -205,6 +205,7 @@ import {
 } from './CalculatorInfillOverview';
 import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } from './CalculatorSaveDialogs';
 import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
+import CalculatorPricingSummary from './CalculatorPricingSummary';
 import CalculatorProjectPicker from './CalculatorProjectPicker';
 import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
 import { buildCalculatorPricingComparison } from './calculatorPricingComparison';
@@ -318,7 +319,7 @@ const PREVIEW_SPLIT_STORAGE_KEY = 'sanctuary-portal:calculator:previewRightWidth
 const PREVIEW_SPLIT_STACK_BREAKPOINT_PX = 1120;
 const PREVIEW_SPLIT_LEFT_MIN_PX = 640;
 const PREVIEW_SPLIT_RIGHT_MIN_PX = 360;
-const PREVIEW_SPLIT_RIGHT_DEFAULT_PX = 520;
+const PREVIEW_SPLIT_RIGHT_DEFAULT_PX = 480;
 const PREVIEW_SPLIT_HANDLE_WIDTH_PX = 18;
 
 type InfillDeletedState = {
@@ -2438,10 +2439,10 @@ export default function CalculatorGridClient({
       new Map(
         infillsState.items.map((item) => [
           item.id,
-          resolveInfillUiState(item, roofRafterSpacingEstimate.spacingM, infillDraftById[item.id]),
+          resolveInfillUiState(item, roofRafterSpacingEstimate.spacingM, infillDraftById[item.id], toNumber(activeModule.lengthM)),
         ]),
       ),
-    [infillsState.items, roofRafterSpacingEstimate.spacingM, infillDraftById],
+    [activeModule.lengthM, infillsState.items, roofRafterSpacingEstimate.spacingM, infillDraftById],
   );
 
   useEffect(() => {
@@ -2698,8 +2699,8 @@ export default function CalculatorGridClient({
       targetPanelWidthM: '1.2',
       maxPanelWidthM: '1.2',
     });
-    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id])?.estimate ?? null;
-  }, [infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
+    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id], toNumber(activeModule.lengthM))?.estimate ?? null;
+  }, [activeModule.lengthM, infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
   const stripComplexityEstimate = useMemo(() => {
     if (!selectedInfill) return null;
     const variant = makeDefaultInfillItem({
@@ -2709,8 +2710,8 @@ export default function CalculatorGridClient({
       targetPanelWidthM: '0.64',
       maxPanelWidthM: '0.64',
     });
-    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id])?.estimate ?? null;
-  }, [infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
+    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id], toNumber(activeModule.lengthM))?.estimate ?? null;
+  }, [activeModule.lengthM, infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
 
   const infillSummary = useMemo(
     () => buildCalculatorInfillSummary(infillsState.items, infillUiById),
@@ -4438,29 +4439,21 @@ export default function CalculatorGridClient({
             data-result-freshness={resultFreshness}
           >
             <div className={styles.previewSummary}>
-              <div className={styles.previewSummaryHeader}>
-                <div>
-                  <div className={styles.previewSummaryTitle}>Preview</div>
-                  <div className={styles.previewSummarySub}>
-                    {calculatorResultFreshnessLabel(resultFreshness)}
-                  </div>
-                </div>
-                {issuesCount ? (
-                  <button type="button" className={styles.previewIssueButton} onClick={() => setIssuesOpen(true)}>
-                    Errors ({issuesCount})
-                  </button>
-                ) : null}
-              </div>
-
-              <div className={styles.previewStatGrid}>
-                <PreviewStat label="Internal true cost (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
-                <PreviewStat label="Internal true cost (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
-                <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
-                <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
-                <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
-                <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
-                <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 0)} />
-              </div>
+              <CalculatorPricingSummary
+                resultFreshness={resultFreshness}
+                issuesCount={issuesCount}
+                onOpenIssues={() => setIssuesOpen(true)}
+                internalTrueCostExGst={coreTotalEx}
+                internalTrueCostIncGst={coreTotalInc}
+                materialsExGst={materialsEx}
+                installExGst={installEx}
+                overheadExGst={overheadEx}
+                crewHours={crewHours}
+                installDays={crewDays}
+                blindCustomerPriceExGst={addonsTotals.blinds.ex}
+                blindCustomerPriceIncGst={addonsTotals.blinds.inc}
+                hasInfills={infillsState.items.length > 0}
+              />
 
               <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
               <ModuleViewsCard
@@ -4494,25 +4487,6 @@ export default function CalculatorGridClient({
                     : undefined
                 }
               />
-
-              <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(var(--portal-text-rgb), 0.02)' }}>
-                <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
-                  Customer quote add‑ons
-                </div>
-                <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blind customer price (ex‑GST)</span>
-                  <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
-                </div>
-                <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blind customer price (inc‑GST)</span>
-                  <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
-                </div>
-                <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Infills</span>
-                  <span className={styles.previewRowValue}>{infillsState.items.length ? 'Configured (see BOM)' : 'Not configured'}</span>
-                </div>
-                <p className={styles.previewMuted}>Blind prices are added during quote creation and are excluded from pergola true cost.</p>
-              </div>
 
               <QuoteStatusCard items={statusItems} />
 
@@ -5658,15 +5632,6 @@ function FieldGroup({ title, fields }: { title: string; fields: FieldSchemaItem[
         ))}
       </div>
     </section>
-  );
-}
-
-function PreviewStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.previewStat}>
-      <span className={styles.previewStatLabel}>{label}</span>
-      <span className={styles.previewStatValue}>{value}</span>
-    </div>
   );
 }
 

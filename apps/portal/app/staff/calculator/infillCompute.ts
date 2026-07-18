@@ -1,6 +1,10 @@
 ﻿import type { InfillLineItem } from '@/lib/types/calculator';
 
 import type { InfillMonoSlopeAnchorInput, InfillMonoSlopeModeInput } from '@/lib/types/calculator';
+import { calculateInfillsTakeoffV1, type InfillTakeoffV1 } from '@sp/costing';
+import { canonicalCutListRows, type CutListRow } from './infillTakeoffPresentation';
+
+export type { CutListRow } from './infillTakeoffPresentation';
 
 export const RAFTER_SPACING_MM_MAX = 642;
 const INFILL_SHEET_MAX_RUN_M = 3.05;
@@ -49,14 +53,7 @@ export type InfillJoinerLine = {
   supported: boolean;
 };
 
-export type CutListRow = {
-  part: string;
-  qty: number;
-  lengthM?: number | { min: number; max: number };
-  notes?: string;
-};
-
-type InfillUiEstimate = {
+export type InfillUiEstimate = {
   widthM: number;
   maxHeightM: number;
   qty: number;
@@ -98,6 +95,8 @@ type InfillUiEstimate = {
   sheetAreaEachM2: number;
   sheetAreaTotalM2: number;
   cutListRows: CutListRow[];
+  takeoffStatus: InfillTakeoffV1['status'];
+  takeoffWarnings: string[];
   invalidHeightInput: boolean;
   invalidPitchInput: boolean;
   widthInputInvalid: boolean;
@@ -117,6 +116,7 @@ type InfillUiValidation = {
     maxPanelWidthM?: string;
     bottomOffsetM?: string;
     internalSupportPositionsM?: string;
+    takeoff?: string;
   };
   warnings: InfillWarningItem[];
 };
@@ -269,12 +269,6 @@ function maxCentreForAcrylicSource(source: InfillLineItem['acrylicSource']): num
   return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
 }
 
-function roundForCutList(n: number, digits = 3): number {
-  if (!Number.isFinite(n)) return 0;
-  const factor = 10 ** digits;
-  return Math.round(n * factor) / factor;
-}
-
 function buildBayBoundaries(acrossSideM: number, panelCountEach: number): number[] {
   if (!Number.isFinite(acrossSideM) || acrossSideM <= 0 || panelCountEach <= 0) return [0];
   const out: number[] = [];
@@ -307,83 +301,6 @@ function boundaryWarningFix(
   if (!support.hasBottom) return { type: 'toggleSupport', key: 'hasBottom', value: true };
   if (!support.hasTop) return { type: 'toggleSupport', key: 'hasTop', value: true };
   return undefined;
-}
-
-function buildCutListRows(estimate: {
-  acrylicSourceUsed: InfillLineItem['acrylicSource'];
-  panelCountEach: number;
-  panelCountTotal: number;
-  stripCutMinM: number | null;
-  stripCutMaxM: number | null;
-  sheetAreaEachM2: number;
-  sheetAreaTotalM2: number;
-  topJoiner: boolean;
-  bottomJoiner: boolean;
-  qty: number;
-  acrossSideM: number;
-  internalJoinerLinesTotal: number;
-  runSideM: number;
-  estimatedMullionsTotal: number;
-}): CutListRow[] {
-  const rows: CutListRow[] = [];
-
-  if (estimate.acrylicSourceUsed === 'sheet_panels') {
-    rows.push({
-      part: 'Acrylic sheet area (estimate)',
-      qty: Math.max(0, estimate.panelCountTotal),
-      notes: `${formatMaybeNumber(estimate.sheetAreaEachM2, 2)}m2 each, ${formatMaybeNumber(estimate.sheetAreaTotalM2, 2)}m2 total (pooled across job).`,
-    });
-  } else {
-    const stripLength =
-      estimate.stripCutMinM !== null && estimate.stripCutMaxM !== null
-        ? estimate.stripCutMinM === estimate.stripCutMaxM
-          ? roundForCutList(estimate.stripCutMinM)
-          : { min: roundForCutList(estimate.stripCutMinM), max: roundForCutList(estimate.stripCutMaxM) }
-        : undefined;
-    rows.push({
-      part: 'Acrylic strip 620',
-      qty: Math.max(0, estimate.panelCountTotal),
-      lengthM: stripLength,
-      notes: 'Cut length estimate by panel bay.',
-    });
-  }
-
-  if (estimate.topJoiner) {
-    rows.push({
-      part: 'Top joiner',
-      qty: Math.max(0, estimate.qty),
-      lengthM: roundForCutList(estimate.acrossSideM),
-      notes: 'One per infill.',
-    });
-  }
-
-  if (estimate.bottomJoiner) {
-    rows.push({
-      part: 'Bottom joiner',
-      qty: Math.max(0, estimate.qty),
-      lengthM: roundForCutList(estimate.acrossSideM),
-      notes: 'One per infill.',
-    });
-  }
-
-  if (estimate.internalJoinerLinesTotal > 0) {
-    rows.push({
-      part: 'Internal joiner',
-      qty: Math.max(0, estimate.internalJoinerLinesTotal),
-      lengthM: roundForCutList(estimate.runSideM),
-      notes: 'Per internal bay boundary.',
-    });
-  }
-
-  if (estimate.estimatedMullionsTotal > 0) {
-    rows.push({
-      part: '50x50 mullion (estimate)',
-      qty: Math.max(0, estimate.estimatedMullionsTotal),
-      notes: 'Cut to fit on site.',
-    });
-  }
-
-  return rows;
 }
 
 function locationLabel(value: InfillLineItem['location']): string {
@@ -442,6 +359,7 @@ function makeOrientationEstimate(
   item: InfillLineItem,
   roofRafterSpacingM: number,
   panelOrientationUsed: InfillResolvedOrientation,
+  roofEdgeLengthM?: number,
 ): InfillUiEstimate {
   const qtyParsed = Number.parseInt(item.qty, 10);
   const qty = Number.isFinite(qtyParsed) && qtyParsed >= 1 ? Math.round(qtyParsed) : 1;
@@ -567,65 +485,118 @@ function makeOrientationEstimate(
   const sheetAreaTotalM2 = sheetAreaEachM2 * qty;
   const topJoiner = panelCountEach > 0;
   const bottomJoiner = panelCountEach > 0;
-  const cutListRows = buildCutListRows({
-    acrylicSourceUsed,
-    panelCountEach,
-    panelCountTotal,
-    stripCutMinM,
-    stripCutMaxM,
-    sheetAreaEachM2,
-    sheetAreaTotalM2,
-    topJoiner,
-    bottomJoiner,
-    qty,
-    acrossSideM,
-    internalJoinerLinesTotal,
-    runSideM,
-    estimatedMullionsTotal,
-  });
+  const canonicalShape = item.shape.type === 'rect'
+    ? { type: 'rect' as const, width_m: widthM, height_m: maxHeightM, bottom_offset_m: Math.max(0, toNumber(item.shape.bottomOffsetM ?? '0') || 0) }
+    : (() => {
+        const resolved = resolveMonoSlopeShape(item.shape);
+        return {
+          type: 'mono_slope' as const,
+          width_m: widthM,
+          height_low_m: Math.max(0, resolved.leftHeightM),
+          height_high_m: Math.max(0, resolved.rightHeightM),
+          bottom_offset_m: Math.max(0, toNumber(item.shape.bottomOffsetM ?? '0') || 0),
+        };
+      })();
+  const canonicalTakeoff = widthM > 0 && maxHeightM > 0 && !invalidHeightInput
+    ? calculateInfillsTakeoffV1([
+        {
+          id: item.id,
+          module_id: 'calculator-module',
+          label: item.label,
+          qty,
+          location: item.location,
+          acrylic_source: item.acrylicSource,
+          panel_orientation: panelOrientationUsed,
+          width_mode: widthModeUsed,
+          target_panel_width_m: toNumber(item.targetPanelWidthM),
+          max_panel_width_m: toNumber(item.maxPanelWidthM),
+          support: {
+            has_top: item.support.hasTop !== false,
+            has_bottom: item.support.hasBottom !== false,
+            has_left: item.support.hasLeft !== false,
+            has_right: item.support.hasRight !== false,
+            internal_support_mode: item.support.internalSupportMode,
+            internal_support_positions_m: customPositionsM,
+          },
+          shape: canonicalShape,
+        },
+      ], {
+        scope_id: `calculator-${item.id}`,
+        module_id: 'calculator-module',
+        rafter_spacing_m: roofRafterSpacingM,
+        edge_length_m: roofEdgeLengthM,
+      })
+    : null;
+  const canonicalItem = canonicalTakeoff?.items[0];
+  const cutListRows = canonicalTakeoff && canonicalItem ? canonicalCutListRows(canonicalTakeoff, canonicalItem) : [];
+  const canonicalPanelsEach = canonicalItem?.panels.filter((panel) => panel.instance_index === 0) ?? [];
+  const canonicalCutsEach = canonicalItem?.linear_cuts.filter((cut) => cut.instance_index === 0) ?? [];
+  const canonicalInternalJoinersEach = canonicalCutsEach.filter((cut) => cut.role === 'joiner_internal');
+  const canonicalInternalSupportsEach = canonicalCutsEach.filter((cut) => cut.role === 'support_internal');
+  const canonicalPerimeterSupportsEach = canonicalCutsEach.filter((cut) => cut.role.startsWith('support_') && cut.role !== 'support_internal');
+  const canonicalJoinersEach = canonicalCutsEach.filter((cut) => cut.profile === 'Joiners');
+  const resolvedOrientation = canonicalItem?.resolved_orientation ?? panelOrientationUsed;
+  const resolvedSource = canonicalItem?.resolved_acrylic_source ?? acrylicSourceUsed;
+  const canonicalAcross = resolvedOrientation === 'vertical' ? widthM : maxHeightM;
+  const canonicalRun = resolvedOrientation === 'vertical' ? maxHeightM : widthM;
+  const canonicalBoundaries = canonicalPanelsEach.length
+    ? Array.from(new Set(canonicalPanelsEach.flatMap((panel) => panel.points.map((point) => resolvedOrientation === 'vertical' ? point.x_m : point.y_m))))
+        .sort((a, b) => a - b)
+    : bayBoundariesM;
+  const canonicalUnsupportedPositions = new Set(canonicalInternalSupportsEach.map((cut) => cut.boundary_position_m));
+  const canonicalJoinerLines = canonicalInternalJoinersEach.map((cut) => ({
+    positionM: cut.boundary_position_m ?? 0,
+    supported: !canonicalUnsupportedPositions.has(cut.boundary_position_m),
+  }));
+  const canonicalStripCuts = resolvedSource === 'strip_620' ? canonicalPanelsEach.map((panel) => panel.blank_length_m) : [];
+  const canonicalPanelAreaEach = canonicalPanelsEach.reduce((sum, panel) => sum + panel.finished_area_m2, 0);
+  const takeoffStatus = canonicalTakeoff?.status ?? 'blocked';
+  const takeoffWarnings = canonicalTakeoff?.warnings.filter((warning) => warning.level === 'critical').map((warning) => warning.message) ?? [];
 
   return {
     widthM,
     maxHeightM,
     qty,
     panelOrientationRequested: normalizePanelOrientation(item.panelOrientation),
-    panelOrientationUsed,
-    runSideM,
-    acrossSideM,
-    materialRunLimitM: sourceDecision.runLimitM,
-    maxCentreM,
+    panelOrientationUsed: resolvedOrientation,
+    runSideM: canonicalRun,
+    acrossSideM: canonicalAcross,
+    materialRunLimitM: maxRunForAcrylicSource(resolvedSource),
+    maxCentreM: maxCentreForAcrylicSource(resolvedSource),
     preferredAcrylicSource: item.acrylicSource,
-    acrylicSourceUsed,
-    acrylicSourceAutoSwitched: sourceDecision.switched,
-    acrylicSourceUnavailable,
+    acrylicSourceUsed: resolvedSource,
+    acrylicSourceAutoSwitched: resolvedSource !== item.acrylicSource,
+    acrylicSourceUnavailable: takeoffStatus === 'blocked' && canonicalPanelsEach.length === 0,
     canMatchRafters,
     widthModeUsed,
     roofRafterSpacingM,
-    panelCountEach,
-    panelCountTotal,
-    internalJoinerLinesEach,
-    internalJoinerLinesTotal,
-    bayBoundariesM,
-    bayWidthsM,
-    joinerLines,
-    joinerLinesEach,
-    joinerLinesTotal,
-    unsupportedInternalEach,
-    unsupportedInternalTotal,
-    unsupportedInternalIndicesEach,
-    missingJambsEach,
-    missingJambsTotal,
-    estimatedMullionsEach,
-    estimatedMullionsTotal,
-    topJoiner,
-    bottomJoiner,
+    panelCountEach: canonicalPanelsEach.length,
+    panelCountTotal: canonicalItem?.panels.length ?? panelCountTotal,
+    internalJoinerLinesEach: canonicalInternalJoinersEach.length,
+    internalJoinerLinesTotal: canonicalItem?.linear_cuts.filter((cut) => cut.role === 'joiner_internal').length ?? internalJoinerLinesTotal,
+    bayBoundariesM: canonicalBoundaries,
+    bayWidthsM: canonicalBoundaries.slice(1).map((value, index) => Math.max(0, value - canonicalBoundaries[index])),
+    joinerLines: canonicalJoinerLines,
+    joinerLinesEach: canonicalJoinersEach.length,
+    joinerLinesTotal: canonicalItem?.linear_cuts.filter((cut) => cut.profile === 'Joiners').length ?? joinerLinesTotal,
+    unsupportedInternalEach: canonicalInternalSupportsEach.length,
+    unsupportedInternalTotal: canonicalItem?.linear_cuts.filter((cut) => cut.role === 'support_internal').length ?? unsupportedInternalTotal,
+    unsupportedInternalIndicesEach: canonicalJoinerLines.flatMap((line, index) => line.supported ? [] : [index + 1]),
+    missingJambsEach: canonicalPerimeterSupportsEach.length,
+    missingJambsTotal: (canonicalItem?.linear_cuts.filter((cut) => cut.role.startsWith('support_') && cut.role !== 'support_internal').length ?? missingJambsTotal),
+    estimatedMullionsEach: canonicalInternalSupportsEach.length + canonicalPerimeterSupportsEach.length,
+    estimatedMullionsTotal: canonicalItem?.linear_cuts.filter((cut) => cut.profile === '50x50').length ?? estimatedMullionsTotal,
+    topJoiner: canonicalCutsEach.some((cut) => cut.role === 'joiner_top'),
+    bottomJoiner: canonicalCutsEach.some((cut) => cut.role === 'joiner_bottom'),
     perimeterTopRailRequired: item.support.hasTop === false,
     perimeterBottomRailRequired: item.support.hasBottom === false,
-    stripCutMinM,
-    stripCutMaxM,
-    sheetAreaEachM2,
-    sheetAreaTotalM2,
+    stripCutMinM: canonicalStripCuts.length ? Math.min(...canonicalStripCuts) : null,
+    stripCutMaxM: canonicalStripCuts.length ? Math.max(...canonicalStripCuts) : null,
+    sheetAreaEachM2: canonicalPanelAreaEach,
+    sheetAreaTotalM2: canonicalItem?.panels.reduce((sum, panel) => sum + panel.finished_area_m2, 0) ?? sheetAreaTotalM2,
     cutListRows,
+    takeoffStatus,
+    takeoffWarnings,
     invalidHeightInput,
     invalidPitchInput: item.shape.type === 'mono_slope' && normalizeMonoSlopeMode(item.shape.slopeMode) === 'pitch'
       ? !resolveMonoSlopeShape(item.shape).pitchValid
@@ -645,20 +616,20 @@ function compareEstimates(a: InfillUiEstimate, b: InfillUiEstimate): number {
   return 0;
 }
 
-export function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): InfillUiEstimate {
+export function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number, roofEdgeLengthM?: number): InfillUiEstimate {
   const requested = normalizePanelOrientation(item.panelOrientation);
   if (requested === 'auto') {
-    const vertical = makeOrientationEstimate(item, roofRafterSpacingM, 'vertical');
-    const horizontal = makeOrientationEstimate(item, roofRafterSpacingM, 'horizontal');
+    const vertical = makeOrientationEstimate(item, roofRafterSpacingM, 'vertical', roofEdgeLengthM);
+    const horizontal = makeOrientationEstimate(item, roofRafterSpacingM, 'horizontal', roofEdgeLengthM);
     return compareEstimates(vertical, horizontal) <= 0 ? vertical : horizontal;
   }
-  return makeOrientationEstimate(item, roofRafterSpacingM, requested);
+  return makeOrientationEstimate(item, roofRafterSpacingM, requested, roofEdgeLengthM);
 }
 
-export function resolvePayloadPanelOrientation(item: InfillLineItem, roofRafterSpacingM: number): InfillResolvedOrientation {
+export function resolvePayloadPanelOrientation(item: InfillLineItem, roofRafterSpacingM: number, roofEdgeLengthM?: number): InfillResolvedOrientation {
   const requested = normalizePanelOrientation(item.panelOrientation);
   if (requested === 'auto') {
-    return estimateInfillUi(item, roofRafterSpacingM).panelOrientationUsed;
+    return estimateInfillUi(item, roofRafterSpacingM, roofEdgeLengthM).panelOrientationUsed;
   }
   return requested;
 }
@@ -726,6 +697,10 @@ function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimate): Inf
       target: { section: 'basic', fieldKey: 'acrylic' },
       fix: { type: 'setPreferredAcrylic', value: estimate.acrylicSourceUsed },
     });
+  }
+
+  if (estimate.takeoffStatus === 'blocked') {
+    errors.takeoff = estimate.takeoffWarnings[0] ?? 'This infill cannot be cut from the available stock.';
   }
 
   const bottomOffsetRaw = toNumber(item.shape.bottomOffsetM ?? '0');
@@ -812,8 +787,13 @@ function hasRequiredValidationError(errors: InfillUiValidation['errors'], item: 
   });
 }
 
-export function resolveInfillUiState(item: InfillLineItem, roofRafterSpacingM: number, draft?: InfillDraftEntry): InfillUiState {
-  const estimate = estimateInfillUi(item, roofRafterSpacingM);
+export function resolveInfillUiState(
+  item: InfillLineItem,
+  roofRafterSpacingM: number,
+  draft?: InfillDraftEntry,
+  roofEdgeLengthM?: number,
+): InfillUiState {
+  const estimate = estimateInfillUi(item, roofRafterSpacingM, roofEdgeLengthM);
   const validation = validateInfillUi(item, estimate);
   const missingFields: InfillDraftFieldKey[] = [];
   const draftErrors: InfillUiState['draftErrors'] = {};
@@ -904,12 +884,24 @@ export function resolveInfillUiState(item: InfillLineItem, roofRafterSpacingM: n
     });
   }
 
+  estimate.takeoffWarnings.forEach((message, index) => {
+    draftWarnings.push({
+      id: `takeoff-blocker-${index}`,
+      severity: 'error',
+      message,
+      target: { section: 'supports', fieldKey: 'support-internal-mode' },
+    });
+  });
+
   const warningMap = new Map<string, InfillWarningItem>();
   for (const warning of [...validation.warnings, ...draftWarnings]) {
     if (!warningMap.has(warning.id)) warningMap.set(warning.id, warning);
   }
 
-  const status: InfillComputeStatus = missingFields.length > 0 || hasRequiredValidationError(validation.errors, item) ? 'draft' : 'valid';
+  const status: InfillComputeStatus =
+    missingFields.length > 0 || hasRequiredValidationError(validation.errors, item) || estimate.takeoffStatus === 'blocked'
+      ? 'draft'
+      : 'valid';
 
   return {
     status,

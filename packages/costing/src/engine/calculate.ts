@@ -1,6 +1,8 @@
 import { loadCostingConfigV1, type CostingConfigV1 } from './config';
 import { applyGst, normalizeAndDeriveV1 } from './derive';
 import { buildMaterialsV1, buildMaterialsV1Explain } from './bom';
+import { poolInfillsTakeoffsV1 } from './infillTakeoff';
+import { pooledInfillMaterialLines } from './infillMaterialPooling';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
 import { buildOverheadV1 } from './overheads';
 import type {
@@ -408,6 +410,7 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
     inputs_normalized: derivedResult.inputs_normalized,
     derived: derivedWithPatch,
     materials: materialsResult.materials,
+    infill_takeoff: materialsResult.infill_takeoff,
     install: installResult.install,
     overhead: overheadResult.overhead,
     add_ons: addOnsBase,
@@ -494,6 +497,7 @@ export function calculateCostV1WithMaterialsExplain(
     inputs_normalized: derivedResult.inputs_normalized,
     derived: derivedWithPatch,
     materials: materialsResult.result.materials,
+    infill_takeoff: materialsResult.result.infill_takeoff,
     install: installResult.install,
     overhead: overheadResult.overhead,
     add_ons: addOnsBase,
@@ -575,7 +579,10 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     );
     const inputsForMaterials = withModuleInfills(derivedResult.inputs_normalized, moduleInput);
 
-    const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg);
+    const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg, {
+      module_id: `module-${idx + 1}`,
+      scope_id: `module-${idx + 1}`,
+    });
     const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
     const installResult = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
       scope: 'module',
@@ -597,6 +604,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
       inputs_normalized: derivedResult.inputs_normalized,
       derived: derivedWithPatch,
       materials: materialsResult.materials,
+      infill_takeoff: materialsResult.infill_takeoff,
       install: installResult.install,
       overhead: {
         method: 'job_rollup',
@@ -639,6 +647,12 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     }
   }
 
+  const jobInfillTakeoff = poolInfillsTakeoffsV1(
+    modules.map((module) => module.infill_takeoff),
+    { scope_id: 'job' },
+    cfg,
+  );
+
   const overheadFlags = deriveOverheadFlagsForModules(modules);
   const jobPergolaPitchDeg = resolvePergolaPitchDeg(modules);
   const jobPergolaAreaM2 = resolvePergolaAreaM2(modules);
@@ -646,32 +660,9 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
   const jobScaffoldingDayRateExGst = jobRequiresScaffolding ? resolveScaffoldingDayRateExGst(jobType, jobPergolaAreaM2) : 0;
   const jobScaffoldingActions = buildScaffoldingLabourActions(cfg, jobRequiresScaffolding ? 1 : 0);
 
-  const infillSheetLinePattern = /^m\d+\.infill\.acrylic_sheet_clear$/;
-  const infillSheetLines = jobMaterialsLines.filter((line) => infillSheetLinePattern.test(String(line.id ?? '')));
-  if (infillSheetLines.length > 0) {
-    const unitCost = Number(infillSheetLines[0]?.unit_cost_ex_gst ?? NaN);
-    const costsConsistent =
-      Number.isFinite(unitCost) &&
-      infillSheetLines.every((line) => Math.abs(Number(line.unit_cost_ex_gst ?? NaN) - unitCost) <= 0.01);
-
-    if (costsConsistent) {
-      const pooledQty = roundMoney(infillSheetLines.reduce((acc, line) => acc + Number(line.qty ?? 0), 0));
-      if (pooledQty > 0) {
-        const filtered = jobMaterialsLines.filter((line) => !infillSheetLinePattern.test(String(line.id ?? '')));
-        jobMaterialsLines.length = 0;
-        jobMaterialsLines.push(...filtered);
-        jobMaterialsLines.push({
-          id: 'job.infill.acrylic_sheet_clear',
-          label: '[Job] Acrylic sheets (infills pooled)',
-          profile: 'Plexi sheet 3050x2030',
-          unit: 'sheet',
-          qty: pooledQty,
-          unit_cost_ex_gst: roundMoney(unitCost),
-          line_cost_ex_gst: roundMoney(pooledQty * unitCost),
-        });
-      }
-    }
-  }
+  const pooledJobInfillLines = pooledInfillMaterialLines(jobMaterialsLines, jobInfillTakeoff, cfg);
+  jobMaterialsLines.length = 0;
+  jobMaterialsLines.push(...pooledJobInfillLines);
 
   // Job-scoped actions run once (if configured).
   const jobScopedActions = new Map<string, InstallActionV1>();
@@ -746,7 +737,6 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     module.derived = { ...module.derived, site_days: siteDays };
   }
 
-  let scaffoldingDayRateTotal = 0;
   if (jobRequiresScaffolding) {
     const scaffoldingLine = buildScaffoldingDayRateLine(
       SCAFFOLD_DAY_RATE_LINE_ID,
@@ -756,14 +746,13 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     );
     if (scaffoldingLine) {
       jobMaterialsLines.push(scaffoldingLine);
-      scaffoldingDayRateTotal = Number(scaffoldingLine.line_cost_ex_gst ?? 0);
     }
   }
 
   const crewMinutesTotal = roundMoney(baseCrewMinutes + dayCycle.crewMinutes);
   const crewHoursTotal = roundMoney(crewMinutesTotal / 60);
 
-  const materialsTotal = roundMoney(modules.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0) + scaffoldingDayRateTotal);
+  const materialsTotal = roundMoney(jobMaterialsLines.reduce((acc, line) => acc + Number(line.line_cost_ex_gst ?? 0), 0));
   const installTotal = roundMoney(
     modules.reduce((acc, m) => acc + m.install.totals.install_ex_gst, 0) +
       jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0) +
@@ -793,6 +782,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
   return {
     module_count: modules.length,
     modules,
+    infill_takeoff: jobInfillTakeoff,
     materials: {
       lines: jobMaterialsLines,
       totals: {
@@ -899,7 +889,11 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       );
       const inputsForMaterials = withModuleInfills(derivedResult.inputs_normalized, moduleInput);
 
-      const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg);
+      const scopedModuleId = `${pergola.id}.module-${mIdx + 1}`;
+      const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg, {
+        module_id: scopedModuleId,
+        scope_id: scopedModuleId,
+      });
       const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
       const installResult = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
         scope: 'module',
@@ -920,6 +914,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
         inputs_normalized: derivedResult.inputs_normalized,
         derived: derivedWithPatch,
         materials: materialsResult.materials,
+        infill_takeoff: materialsResult.infill_takeoff,
         install: installResult.install,
         overhead: {
           method: 'site_rollup',
@@ -995,7 +990,15 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
 
     const pergolaCrewMinutes = roundMoney(pergolaInstallActions.reduce((acc, a) => acc + a.minutes, 0));
     const pergolaCrewHours = roundMoney(pergolaCrewMinutes / 60);
-    const pergolaMaterialsTotal = roundMoney(pergolaModules.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0));
+    const pergolaInfillTakeoff = poolInfillsTakeoffsV1(
+      pergolaModules.map((module) => module.infill_takeoff),
+      { scope_id: pergola.id },
+      cfg,
+    );
+    const pooledPergolaLines = pooledInfillMaterialLines(pergolaMaterialsLines, pergolaInfillTakeoff, cfg);
+    pergolaMaterialsLines.length = 0;
+    pergolaMaterialsLines.push(...pooledPergolaLines);
+    const pergolaMaterialsTotal = roundMoney(pergolaMaterialsLines.reduce((acc, line) => acc + Number(line.line_cost_ex_gst ?? 0), 0));
     const pergolaInstallTotal = roundMoney(pergolaInstallActions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
 
     pergolaMaterialsLines.sort((a, b) => a.id.localeCompare(b.id));
@@ -1007,6 +1010,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       ...(pergola.label ? { label: pergola.label } : null),
       module_count: pergolaModules.length,
       modules: pergolaModules,
+      infill_takeoff: pergolaInfillTakeoff,
       materials: {
         lines: pergolaMaterialsLines,
         totals: {
@@ -1052,33 +1056,14 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
 
   const scaffoldingLabourActions = buildScaffoldingLabourActions(cfg, scaffoldingPergolas.length);
 
-  // Pool infill sheets (if consistent cost) for the site output lines.
-  const infillSheetLinePattern = /^m\d+\.infill\.acrylic_sheet_clear$/;
-  const infillSheetLines = siteMaterialsLines.filter((line) => infillSheetLinePattern.test(String(line.id ?? '')));
-  if (infillSheetLines.length > 0) {
-    const unitCost = Number(infillSheetLines[0]?.unit_cost_ex_gst ?? NaN);
-    const costsConsistent =
-      Number.isFinite(unitCost) &&
-      infillSheetLines.every((line) => Math.abs(Number(line.unit_cost_ex_gst ?? NaN) - unitCost) <= 0.01);
-
-    if (costsConsistent) {
-      const pooledQty = roundMoney(infillSheetLines.reduce((acc, line) => acc + Number(line.qty ?? 0), 0));
-      if (pooledQty > 0) {
-        const filtered = siteMaterialsLines.filter((line) => !infillSheetLinePattern.test(String(line.id ?? '')));
-        siteMaterialsLines.length = 0;
-        siteMaterialsLines.push(...filtered);
-        siteMaterialsLines.push({
-          id: 'job.infill.acrylic_sheet_clear',
-          label: '[Job] Acrylic sheets (infills pooled)',
-          profile: 'Plexi sheet 3050x2030',
-          unit: 'sheet',
-          qty: pooledQty,
-          unit_cost_ex_gst: roundMoney(unitCost),
-          line_cost_ex_gst: roundMoney(pooledQty * unitCost),
-        });
-      }
-    }
-  }
+  const siteInfillTakeoff = poolInfillsTakeoffsV1(
+    modulesAll.map((module) => module.infill_takeoff),
+    { scope_id: 'site' },
+    cfg,
+  );
+  const pooledSiteInfillLines = pooledInfillMaterialLines(siteMaterialsLines, siteInfillTakeoff, cfg);
+  siteMaterialsLines.length = 0;
+  siteMaterialsLines.push(...pooledSiteInfillLines);
 
   // Site-scoped actions run once (if configured).
   const jobScopedActions = new Map<string, InstallActionV1>();
@@ -1189,7 +1174,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
   const crewMinutesTotal = roundMoney(baseCrewMinutes + dayCycle.crewMinutes);
   const crewHoursTotal = roundMoney(crewMinutesTotal / 60);
 
-  const materialsTotal = roundMoney(modulesAll.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0) + scaffoldingMaterialsTotal);
+  const materialsTotal = roundMoney(siteMaterialsLines.reduce((acc, line) => acc + Number(line.line_cost_ex_gst ?? 0), 0));
   const moduleInstallTotal = roundMoney(pergolaOutputs.reduce((acc, pergola) => acc + pergola.install.totals.install_ex_gst, 0));
   const jobActionsTotal = roundMoney(jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
   const sharedInstallTotal = roundMoney(jobActionsTotal + dayCycle.installExGst);
@@ -1262,6 +1247,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
   return {
     pergola_count: pergolaOutputs.length,
     pergolas: pergolaOutputs,
+    infill_takeoff: siteInfillTakeoff,
     shared: {
       install: {
         actions: sharedInstallActions,

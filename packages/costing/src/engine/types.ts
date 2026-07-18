@@ -152,6 +152,151 @@ export type InfillInputV1 = {
   shape: InfillShapeV1;
 };
 
+export type InfillRequestedPanelOrientationV1 = InfillPanelOrientationV1 | 'auto';
+export type InfillRequestedAcrylicSourceV1 = InfillAcrylicSourceV1 | 'auto';
+
+export type InfillTakeoffInputV1 = Omit<InfillInputV1, 'panel_orientation' | 'acrylic_source'> & {
+  acrylic_source: InfillRequestedAcrylicSourceV1;
+  module_id?: string;
+  panel_orientation?: InfillRequestedPanelOrientationV1;
+};
+
+export type InfillTakeoffPointV1 = { x_m: number; y_m: number };
+
+export type InfillPanelPieceV1 = {
+  id: string;
+  module_id: string;
+  infill_id: string;
+  instance_index: number;
+  panel_index: number;
+  acrylic_source: InfillAcrylicSourceV1;
+  orientation: InfillPanelOrientationV1;
+  shape: 'rectangle' | 'trapezoid' | 'triangle';
+  points: InfillTakeoffPointV1[];
+  finished_width_m: number;
+  finished_height_m: number;
+  finished_area_m2: number;
+  blank_width_m: number;
+  blank_length_m: number;
+};
+
+export type InfillLinearCutRoleV1 =
+  | 'joiner_top'
+  | 'joiner_bottom'
+  | 'joiner_left'
+  | 'joiner_right'
+  | 'joiner_internal'
+  | 'support_top'
+  | 'support_bottom'
+  | 'support_left'
+  | 'support_right'
+  | 'support_internal';
+
+export type InfillLinearCutV1 = {
+  id: string;
+  module_id: string;
+  infill_id: string;
+  instance_index: number;
+  role: InfillLinearCutRoleV1;
+  profile: 'Joiners' | '50x50';
+  colour?: string;
+  length_m: number;
+  boundary_position_m?: number;
+};
+
+export type InfillStockAllocationV1 = {
+  stock_index: number;
+  piece_ids: string[];
+  used_m?: number;
+  waste_m?: number;
+  placements?: Array<{
+    piece_id: string;
+    x_m: number;
+    y_m: number;
+    width_m: number;
+    height_m: number;
+    rotated: boolean;
+  }>;
+};
+
+export type InfillStockPurchaseV1 = {
+  id: string;
+  material: 'acrylic_sheet' | 'crystalite_620' | 'joiner' | 'support_50x50';
+  profile?: 'Joiners' | '50x50';
+  colour?: string;
+  stock_length_m: number;
+  stock_width_m?: number;
+  qty: number;
+  total_stock_m?: number;
+  total_cut_m?: number;
+  waste_m?: number;
+  total_stock_m2?: number;
+  total_cut_m2?: number;
+  waste_m2?: number;
+  allocations: InfillStockAllocationV1[];
+};
+
+export type InfillTakeoffWarningV1 = {
+  level: 'critical' | 'info';
+  code:
+    | 'invalid_geometry'
+    | 'source_auto_switched'
+    | 'source_unavailable'
+    | 'stock_unavailable'
+    | 'rafter_context_required'
+    | 'partial_rafter_match';
+  message: string;
+  module_id?: string;
+  infill_id?: string;
+};
+
+export type InfillTakeoffItemV1 = {
+  module_id: string;
+  infill_id: string;
+  label?: string;
+  requested_acrylic_source: InfillRequestedAcrylicSourceV1;
+  resolved_acrylic_source: InfillAcrylicSourceV1;
+  requested_orientation: InfillRequestedPanelOrientationV1;
+  resolved_orientation: InfillPanelOrientationV1;
+  panels: InfillPanelPieceV1[];
+  linear_cuts: InfillLinearCutV1[];
+  warnings: InfillTakeoffWarningV1[];
+};
+
+export type InfillTakeoffV1 = {
+  schema_version: 'infill_takeoff_v1';
+  status: 'valid' | 'blocked';
+  scope_id: string;
+  kerf_m: number;
+  items: InfillTakeoffItemV1[];
+  purchases: InfillStockPurchaseV1[];
+  warnings: InfillTakeoffWarningV1[];
+  totals: {
+    instance_count: number;
+    panel_count: number;
+    panel_area_m2: number;
+    joiner_cut_m: number;
+    support_cut_m: number;
+    extra_support_count: number;
+    sheet_count: number;
+    strip_stock_count: number;
+  };
+};
+
+export type CalculateInfillsTakeoffOptionsV1 = {
+  scope_id?: string;
+  module_id?: string;
+  rafter_spacing_m?: number | null;
+  edge_length_m?: number | null;
+  extrusion_colour?: string;
+  kerf_m?: number;
+  sheet_stock_length_m?: number;
+  sheet_stock_width_m?: number;
+  strip_stock_lengths_m?: number[];
+  joiner_stock_lengths_m?: number[];
+  support_stock_lengths_m?: number[];
+};
+
 export type CostInputsV1 = {
   length_m: number;
   roof_span_m?: number;
@@ -526,6 +671,7 @@ export type CostOutputV1 = {
   overhead: OverheadV1;
   add_ons: AddOnsV1;
   totals: TotalsV1;
+  infill_takeoff?: InfillTakeoffV1;
 };
 
 export type JobInputsV1 = {
@@ -544,6 +690,7 @@ export type JobOutputV1 = {
   overhead: OverheadV1;
   add_ons: AddOnsV1;
   totals: TotalsV1;
+  infill_takeoff?: InfillTakeoffV1;
 };
 
 export type PergolaInputsV1 = {
@@ -569,6 +716,7 @@ export type PergolaOutputV1 = {
   install: InstallV1;
   overhead: OverheadV1;
   totals: TotalsV1;
+  infill_takeoff?: InfillTakeoffV1;
 };
 
 export type SiteSharedOutputV1 = {
@@ -586,6 +734,7 @@ export type SiteOutputV1 = {
   overhead: OverheadV1;
   add_ons: AddOnsV1;
   totals: TotalsV1;
+  infill_takeoff?: InfillTakeoffV1;
 };
 
 // ============================================================================

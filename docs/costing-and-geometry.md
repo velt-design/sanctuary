@@ -72,13 +72,33 @@ Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-on
 
 Pitched-acrylic pergolas use a flat `$2000 ex GST` overhead total only when EVERY module is `pergola_style === 'pitched'` AND `roof_material === 'acrylic'` AND not `box_perimeter`, AND every acrylic module is at or below `3.0m` sloped `rafter_length_m`. If any module fails any of those checks (gable, hip-corner, box-perimeter, mixed/timber, or rafter > 3m), the costing engine falls back to the normal `fixed_plus_variable` overhead formula. (Tightened from "any acrylic-only" to "pitched-acrylic only" in PR-PE2 / 2026-06-16 — gable / box-perimeter / hip-corner acrylic builds carry their own per-style startup costs that the flat cap was hiding.)
 
-Website enquiry base pergola budgets use the `1.20x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range. (Reduced from `1.25x` in PR-PE1 / 2026-06-16. The marketing route also explicitly sets `post_count: 2` to match the typical "standard build" instead of inheriting the cost engine's default of 4. The portal-side staff-quote `QUOTE_MARGIN_MULTIPLIER` stays at `1.25` — that's a separate surface for actual project quotes.)
+Website enquiry base pergola budgets use the `1.20x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range. (Reduced from `1.25x` in PR-PE1 / 2026-06-16. The marketing route also explicitly sets `post_count: 2` to match the typical "standard build" instead of inheriting the cost engine's default of 4. Portal staff customer pricing remains a separate `1.25x` surface. `apps/portal/lib/quotes/pricing.ts` owns its rounded ex-GST-then-GST sequence for both the calculator preview and quote mapping.)
 
 Primary route:
 
 ```text
 apps/marketing/app/api/enquiry/route.ts
 ```
+
+## Infill Takeoff And Procurement
+
+`calculateInfillsTakeoffV1()` in `@sp/costing` is the canonical owner of valid infill geometry, finished pieces, joiners, added 50x50 supports, and purchase stock. The costing BOM, labour drivers, calculator cut list, and CSV export must consume this takeoff; portal code may validate draft strings and present the result but must not independently recalculate valid infills.
+
+The aperture is solved as a polygon and sliced at panel boundaries. Rectangle, trapezoid, and triangle panel geometry remains traceable to module, infill, and instance IDs. Perimeter joiners remain required even when an existing structural support is present. Missing structural supports add length-bearing 50x50 cuts. Bottom offset is installation position only and does not alter the aperture or finished cuts. Mono-slope top length comes from the infill width and its own height difference.
+
+Roof-rafter matching is valid only for vertical panels on a full front or house edge with derived rafter spacing. A partial edge, missing spacing, horizontal request, or unrelated location is a blocking takeoff error and requires explicit support positions or a different mode.
+
+Procurement is physical rather than area-based:
+
+- sheet stock is `3.05m x 2.03m`, allows 90-degree rotation, and uses deterministic shelf/guillotine placement;
+- non-rectangular panels reserve their full bounding rectangle;
+- Crystalite uses fixed `620mm`-wide stock in `4m`, `5m`, and `6m` lengths;
+- strip, joiner, and 50x50 stock use one-dimensional packing with `3mm` kerf between consecutive cuts;
+- there is no edge trim allowance, so one exact `3.05m` finished sheet cut may use the nominal sheet length;
+- physical offcuts pool only within the current job/site scope; module takeoffs remain standalone comparison outputs;
+- any piece that cannot fit available stock blocks materials/save/export instead of falling back to total area.
+
+Module, job, pergola, and site costing outputs expose additive `infill_takeoff` data. Job and site material totals are summed from the final pooled material lines, not pre-pooling module totals.
 
 ## Geometry Source Of Truth
 
@@ -153,13 +173,15 @@ Acrylic and joiner downslope length use the same physical driver:
 
 ## Acrylic Sheet Rounding
 
-Sheet-mode acrylic quantity is computed from total acrylic area, then rounded once:
+Roof-cladding sheet-mode acrylic quantity is computed from total acrylic area, then rounded once:
 
 ```text
 sheet_count = ceil(acrylic_area_total_m2 / sheet_area_m2)
 ```
 
 Do not round per plane and then sum. That over-counts some gable cases.
+
+This area-rounding rule does not apply to infills. Infill sheets use the physical placement rules above.
 
 ## Verification
 

@@ -1,14 +1,21 @@
 import type { CostInputsV1 } from '@sp/costing';
 import type { CalculatorModuleInputs, InfillLineItem } from '@/lib/types/calculator';
-import { RAFTER_SPACING_MM_MAX, normalizeInfillsStateForUi, normalizePanelOrientation, toNumber, type InfillPresetKey } from './calculatorInputs';
-import { resolveMonoSlopeShape, resolvePayloadPanelOrientation, type InfillUiState } from './infillCompute';
+import { RAFTER_SPACING_MM_MAX, normalizeInfillsStateForUi, toNumber, type InfillPresetKey } from './calculatorInputs';
+import {
+  estimateInfillUi as estimateCanonicalInfillUi,
+  resolveMonoSlopeShape,
+  resolvePayloadPanelOrientation,
+  type InfillUiEstimate,
+  type InfillUiState,
+} from './infillCompute';
+
+export type { InfillUiEstimate } from './infillCompute';
 
 export const INFILL_DELETE_UNDO_MS = 8000;
 export const INFILL_SHEET_MAX_RUN_M = 3.05;
 export const INFILL_STRIP_MAX_RUN_M = 6.0;
 export const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
 export const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
-const INFILL_JOINER_TOLERANCE_M = 0.02;
 
 export const INFILL_PRESETS: Array<{ key: InfillPresetKey; label: string }> = [
   { key: 'front', label: 'Front infill (match roof rafters)' },
@@ -18,47 +25,6 @@ export const INFILL_PRESETS: Array<{ key: InfillPresetKey; label: string }> = [
   { key: 'wall_panel', label: 'Wall panel (partial height)' },
   { key: 'custom', label: 'Custom' },
 ];
-
-export type InfillUiEstimate = {
-  widthM: number;
-  maxHeightM: number;
-  qty: number;
-  panelOrientationUsed: InfillLineItem['panelOrientation'];
-  runSideM: number;
-  acrossSideM: number;
-  materialRunLimitM: number;
-  maxCentreM: number;
-  preferredAcrylicSource: InfillLineItem['acrylicSource'];
-  acrylicSourceUsed: InfillLineItem['acrylicSource'];
-  acrylicSourceAutoSwitched: boolean;
-  acrylicSourceUnavailable: boolean;
-  canMatchRafters: boolean;
-  widthModeUsed: InfillLineItem['widthMode'];
-  roofRafterSpacingM: number;
-  panelCountEach: number;
-  panelCountTotal: number;
-  internalJoinerLinesEach: number;
-  internalJoinerLinesTotal: number;
-  joinerLinesEach: number;
-  joinerLinesTotal: number;
-  unsupportedInternalEach: number;
-  unsupportedInternalTotal: number;
-  missingJambsEach: number;
-  missingJambsTotal: number;
-  estimatedMullionsEach: number;
-  estimatedMullionsTotal: number;
-  topJoiner: boolean;
-  bottomJoiner: boolean;
-  perimeterTopRailRequired: boolean;
-  perimeterBottomRailRequired: boolean;
-  stripCutMinM: number | null;
-  stripCutMaxM: number | null;
-  sheetAreaEachM2: number;
-  sheetAreaTotalM2: number;
-  invalidHeightInput: boolean;
-  widthInputInvalid: boolean;
-  invalidCustomPositions: boolean;
-};
 
 type InfillUiValidation = {
   errors: {
@@ -77,47 +43,13 @@ type InfillUiValidation = {
 };
 
 
-function clampNumber(n: number, min: number, max: number): number {
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}
-
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '\u00e2\u20ac\u201d';
   return n.toFixed(digits);
 }
 
-function isFrontOrHouseLocation(location: InfillLineItem['location']): boolean {
-  return location === 'front' || location === 'house';
-}
-
-function normalizeWidthModeForLocation(item: InfillLineItem): InfillLineItem['widthMode'] {
-  if (!isFrontOrHouseLocation(item.location)) return 'target_width';
-  return item.widthMode === 'match_roof_rafters' ? 'match_roof_rafters' : 'target_width';
-}
-
 export function maxRunForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
   return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
-}
-
-function pickAcrylicSourceForRun(
-  preferred: InfillLineItem['acrylicSource'],
-  runSideM: number,
-): {
-  source: InfillLineItem['acrylicSource'] | null;
-  switched: boolean;
-  runLimitM: number;
-} {
-  const preferredMax = maxRunForAcrylicSource(preferred);
-  if (runSideM <= preferredMax + 1e-6) {
-    return { source: preferred, switched: false, runLimitM: preferredMax };
-  }
-  const fallback: InfillLineItem['acrylicSource'] = preferred === 'sheet_panels' ? 'strip_620' : 'sheet_panels';
-  const fallbackMax = maxRunForAcrylicSource(fallback);
-  if (runSideM <= fallbackMax + 1e-6) {
-    return { source: fallback, switched: true, runLimitM: fallbackMax };
-  }
-  return { source: null, switched: false, runLimitM: Math.max(preferredMax, fallbackMax) };
 }
 
 export function maxCentreForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
@@ -174,159 +106,13 @@ export function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: 
   return { spacingM: RAFTER_SPACING_MM_MAX / 1000, source: 'fallback' };
 }
 
-export function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): InfillUiEstimate {
-  const qtyParsed = Number.parseInt(item.qty, 10);
-  const qty = Number.isFinite(qtyParsed) && qtyParsed >= 1 ? Math.round(qtyParsed) : 1;
-
-  const widthRaw = toNumber(item.shape.widthM);
-  const widthInputInvalid = !Number.isFinite(widthRaw) || widthRaw < 0;
-  const widthM = Number.isFinite(widthRaw) && widthRaw > 0 ? widthRaw : 0;
-
-  let invalidHeightInput = false;
-  let heightAt = (_t01: number) => 0;
-  let avgHeightM = 0;
-  let maxHeightM = 0;
-
-  if (item.shape.type === 'rect') {
-    const hRaw = toNumber(item.shape.heightM);
-    invalidHeightInput = !Number.isFinite(hRaw) || hRaw < 0;
-    const h = Number.isFinite(hRaw) && hRaw > 0 ? hRaw : 0;
-    heightAt = () => h;
-    avgHeightM = h;
-    maxHeightM = h;
-  } else {
-    const lowRaw = toNumber(item.shape.heightLowM);
-    const highRaw = toNumber(item.shape.heightHighM);
-    invalidHeightInput = !Number.isFinite(lowRaw) || !Number.isFinite(highRaw) || lowRaw < 0 || highRaw < 0;
-    const low = Number.isFinite(lowRaw) && lowRaw > 0 ? lowRaw : 0;
-    const high = Number.isFinite(highRaw) && highRaw > 0 ? highRaw : 0;
-    heightAt = (t01: number) => low + (high - low) * clampNumber(t01, 0, 1);
-    avgHeightM = (low + high) / 2;
-    maxHeightM = Math.max(low, high);
-  }
-
-  const panelOrientationUsed = normalizePanelOrientation(item.panelOrientation);
-  const runSideM = panelOrientationUsed === 'vertical' ? maxHeightM : widthM;
-  const acrossSideM = panelOrientationUsed === 'vertical' ? widthM : maxHeightM;
-  const sourceDecision = pickAcrylicSourceForRun(item.acrylicSource, runSideM);
-  const acrylicSourceUsed = sourceDecision.source ?? item.acrylicSource;
-  const acrylicSourceUnavailable = sourceDecision.source === null;
-  const maxCentreM = maxCentreForAcrylicSource(acrylicSourceUsed);
-  const canMatchRafters = isFrontOrHouseLocation(item.location);
-  const widthModeUsed = normalizeWidthModeForLocation(item);
-  const panelCountEach = !acrylicSourceUnavailable && acrossSideM > 0 ? Math.max(1, Math.ceil(acrossSideM / maxCentreM)) : 0;
-  const panelCountTotal = panelCountEach * qty;
-  const internalJoinerLinesEach = panelCountEach > 0 ? Math.max(0, panelCountEach - 1) : 0;
-  const internalJoinerLinesTotal = internalJoinerLinesEach * qty;
-  const joinerLinesEach = panelCountEach > 0 ? panelCountEach + 1 : 0;
-  const joinerLinesTotal = joinerLinesEach * qty;
-
-  const rawCustomPositions = Array.isArray(item.support.internalSupportPositionsM) ? item.support.internalSupportPositionsM : [];
-  const customPositionsM: number[] = [];
-  let invalidCustomPositions = false;
-  for (const token of rawCustomPositions) {
-    const n = Number.parseFloat(String(token).trim());
-    if (!Number.isFinite(n) || n < 0) {
-      invalidCustomPositions = true;
-      continue;
-    }
-    customPositionsM.push(n);
-  }
-  if ((item.support.internalSupportMode ?? 'none') === 'custom' && rawCustomPositions.length === 0) {
-    invalidCustomPositions = false;
-  }
-
-  let unsupportedInternalEach = 0;
-  if (panelCountEach > 1 && acrossSideM > 0) {
-    for (let i = 1; i < panelCountEach; i += 1) {
-      const x = (i * acrossSideM) / panelCountEach;
-      const mode = item.support.internalSupportMode ?? 'none';
-      const supportedByMode =
-        mode === 'match_roof_rafters' ||
-        (mode === 'center' && Math.abs(x - acrossSideM / 2) <= INFILL_JOINER_TOLERANCE_M) ||
-        (mode === 'custom' && customPositionsM.some((p) => Math.abs(p - x) <= INFILL_JOINER_TOLERANCE_M));
-      const supportedByRafters = panelOrientationUsed === 'vertical' && canMatchRafters && widthModeUsed === 'match_roof_rafters';
-      if (!supportedByMode && !supportedByRafters) unsupportedInternalEach += 1;
-    }
-  }
-
-  const unsupportedInternalTotal = unsupportedInternalEach * qty;
-  const missingJambsEach =
-    panelOrientationUsed === 'vertical'
-      ? (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0)
-      : (item.support.hasBottom === false ? 1 : 0) + (item.support.hasTop === false ? 1 : 0);
-  const missingJambsTotal = missingJambsEach * qty;
-  const estimatedMullionsEach = unsupportedInternalEach + missingJambsEach;
-  const estimatedMullionsTotal = estimatedMullionsEach * qty;
-
-  let stripCutMinM: number | null = null;
-  let stripCutMaxM: number | null = null;
-  if (acrylicSourceUsed === 'strip_620' && panelCountEach > 0) {
-    if (panelOrientationUsed === 'vertical' && widthM > 0) {
-      const cuts: number[] = [];
-      for (let panelIndex = 0; panelIndex < panelCountEach; panelIndex += 1) {
-        const x0 = (panelIndex * widthM) / panelCountEach;
-        const x1 = ((panelIndex + 1) * widthM) / panelCountEach;
-        const t0 = widthM > 0 ? x0 / widthM : 0;
-        const t1 = widthM > 0 ? x1 / widthM : 0;
-        const cut = Math.max(0, Math.max(heightAt(t0), heightAt(t1)));
-        if (cut > 0) cuts.push(cut);
-      }
-      if (cuts.length) {
-        stripCutMinM = Math.min(...cuts);
-        stripCutMaxM = Math.max(...cuts);
-      }
-    } else if (runSideM > 0) {
-      stripCutMinM = runSideM;
-      stripCutMaxM = runSideM;
-    }
-  }
-
-  const sheetAreaEachM2 = Math.max(0, widthM * Math.max(0, avgHeightM));
-  const sheetAreaTotalM2 = sheetAreaEachM2 * qty;
-
-  return {
-    widthM,
-    maxHeightM,
-    qty,
-    panelOrientationUsed,
-    runSideM,
-    acrossSideM,
-    materialRunLimitM: sourceDecision.runLimitM,
-    maxCentreM,
-    preferredAcrylicSource: item.acrylicSource,
-    acrylicSourceUsed,
-    acrylicSourceAutoSwitched: sourceDecision.switched,
-    acrylicSourceUnavailable,
-    canMatchRafters,
-    widthModeUsed,
-    roofRafterSpacingM,
-    panelCountEach,
-    panelCountTotal,
-    internalJoinerLinesEach,
-    internalJoinerLinesTotal,
-    joinerLinesEach,
-    joinerLinesTotal,
-    unsupportedInternalEach,
-    unsupportedInternalTotal,
-    missingJambsEach,
-    missingJambsTotal,
-    estimatedMullionsEach,
-    estimatedMullionsTotal,
-    topJoiner: panelCountEach > 0,
-    bottomJoiner: panelCountEach > 0,
-    perimeterTopRailRequired: item.support.hasTop === false,
-    perimeterBottomRailRequired: item.support.hasBottom === false,
-    stripCutMinM,
-    stripCutMaxM,
-    sheetAreaEachM2,
-    sheetAreaTotalM2,
-    invalidHeightInput,
-    widthInputInvalid,
-    invalidCustomPositions,
-  };
+export function estimateInfillUi(
+  item: InfillLineItem,
+  roofRafterSpacingM: number,
+  roofEdgeLengthM?: number,
+): InfillUiEstimate {
+  return estimateCanonicalInfillUi(item, roofRafterSpacingM, roofEdgeLengthM);
 }
-
 export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimate): InfillUiValidation {
   const errors: InfillUiValidation['errors'] = {};
   const warnings: string[] = [];
@@ -442,7 +228,7 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
       qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
       location: raw.location,
       acrylic_source: raw.acrylicSource,
-      panel_orientation: resolvePayloadPanelOrientation(raw, roofRafterSpacingM),
+      panel_orientation: resolvePayloadPanelOrientation(raw, roofRafterSpacingM, toNumber(module.lengthM)),
       width_mode: widthMode,
       target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
       max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,

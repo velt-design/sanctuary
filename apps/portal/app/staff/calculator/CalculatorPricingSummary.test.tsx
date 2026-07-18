@@ -1,0 +1,106 @@
+import { act } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { renderIntoDocument } from '../../../../../test/reactHarness';
+import CalculatorPricingSummary from './CalculatorPricingSummary';
+import type { CalculatorResultFreshness } from './calculatorResultFreshness';
+
+const baseProps = {
+  resultFreshness: 'current' as const,
+  issuesCount: 0,
+  onOpenIssues: vi.fn(),
+  internalTrueCostExGst: 100,
+  internalTrueCostIncGst: 115,
+  materialsExGst: 55,
+  installExGst: 25,
+  overheadExGst: 20,
+  crewHours: 12.5,
+  installDays: 2,
+  blindCustomerPriceExGst: 400,
+  blindCustomerPriceIncGst: 460,
+  hasInfills: true,
+};
+
+afterEach(() => {
+  document.body.innerHTML = '';
+  vi.clearAllMocks();
+});
+
+describe('CalculatorPricingSummary', () => {
+  it('makes the rounded pergola customer price primary and internal costing secondary', () => {
+    const { container, unmount } = renderIntoDocument(<CalculatorPricingSummary {...baseProps} />);
+
+    expect(container.querySelector('h2')?.textContent).toBe('Pricing preview');
+    expect(container.textContent).toContain('Customer price (inc GST)$143.75');
+    expect(container.textContent).toContain('Customer price (ex GST) $125.00');
+    expect(container.textContent).toContain('1.25× internal true cost · pergola only');
+    expect(container.textContent).toContain('Internal costing');
+    expect(container.textContent).toContain('True cost (ex GST)$100.00');
+
+    unmount();
+  });
+
+  it('keeps blind customer pricing and infills separate from the pergola price', () => {
+    const { container, unmount } = renderIntoDocument(<CalculatorPricingSummary {...baseProps} />);
+
+    expect(container.textContent).toContain('Customer quote add-ons');
+    expect(container.textContent).toContain('Blind customer price (ex GST)$400.00');
+    expect(container.textContent).toContain('Blind customer price (inc GST)$460.00');
+    expect(container.textContent).toContain('Configured (see BOM)');
+    expect(container.textContent).toContain('excluded from pergola true cost');
+
+    unmount();
+  });
+
+  it('opens existing issues from the pricing summary', () => {
+    const onOpenIssues = vi.fn();
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary {...baseProps} issuesCount={2} onOpenIssues={onOpenIssues} />,
+    );
+
+    const button = container.querySelector('button');
+    expect(button?.textContent).toBe('Errors (2)');
+    act(() => button?.click());
+    expect(onOpenIssues).toHaveBeenCalledOnce();
+
+    unmount();
+  });
+
+  it.each<CalculatorResultFreshness>([
+    'waiting',
+    'calculating',
+    'current',
+    'stale',
+    'invalid',
+    'error',
+  ])('renders the %s freshness state without hiding the price context', (resultFreshness) => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary {...baseProps} resultFreshness={resultFreshness} />,
+    );
+
+    expect(container.querySelector('[data-result-freshness]')?.getAttribute('data-result-freshness')).toBe(resultFreshness);
+    if (resultFreshness === 'current') {
+      expect(container.textContent).toContain('Customer price (inc GST)');
+      expect(container.textContent).not.toContain('Last valid customer price');
+    } else {
+      expect(container.textContent).toContain('Last valid customer price (inc GST)');
+    }
+
+    unmount();
+  });
+
+  it('shows unavailable values without inventing a customer price', () => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary
+        {...baseProps}
+        resultFreshness="waiting"
+        internalTrueCostExGst={undefined}
+        internalTrueCostIncGst={undefined}
+      />,
+    );
+
+    expect(container.textContent).toContain('Customer price (inc GST)—');
+    expect(container.textContent).not.toContain('Last valid customer price');
+
+    unmount();
+  });
+});

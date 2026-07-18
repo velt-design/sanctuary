@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildQuoteLineItemsFromEstimate } from './mapping';
+import { calculateStaffCustomerPriceFromCostEx } from './pricing';
 
 function makeModule(overrides: Record<string, unknown> = {}) {
   return {
@@ -104,6 +105,9 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items[0]?.unitPriceIncGstCents).toBe(14375);
     expect(result.items[1]?.unitPriceIncGstCents).toBe(28750);
     expect(result.items[2]?.unitPriceIncGstCents).toBe(5750);
+    expect(result.items[0]?.unitPriceIncGstCents).toBe(
+      Math.round((calculateStaffCustomerPriceFromCostEx(100)?.incGst ?? 0) * 100),
+    );
     expect(result.items[2]?.description).toContain('Site costs');
     expect(result.coreTotalIncCents).toBe(48875);
   });

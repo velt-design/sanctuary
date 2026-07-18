@@ -39,7 +39,7 @@ The project page's Activity tab surfaces a current-design snapshot bar that pick
 
 - Draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.
 - Calculator save completion offers an explicit handoff through `?tab=quotes&createFromEstimateId=...`. Following that action creates the draft from the exact saved estimate through the existing local-first quote workflow; merely opening the save review or outcome UI has no quote side effect.
-- When calculator inputs were saved while preserving stored costing, the handoff explicitly says the quote will use that stored costing basis rather than the Live calculator preview. The quote domain still owns customer-pricing rules and blind customer-price line items.
+- When calculator inputs were saved while preserving stored costing, the handoff explicitly says the quote will use that stored costing basis rather than the Live calculator preview. `apps/portal/lib/quotes/pricing.ts` owns the shared `1.25x`, rounded-ex-GST-then-GST customer-pricing sequence used by quote mapping and the non-persisted calculator preview. The quote domain still owns quote line creation and blind customer-price line items.
 - Sending a quote requires a recipient, subject, priced line items, a generated quote PDF, and configured email/public URL env.
 - Sent quote versions are locked from normal draft editing.
 - Sending or resending creates a fresh public accept token hash, logs the email attempt, stores/redacts tokenized body content, and attaches generated PDFs through `file_artifacts`.
