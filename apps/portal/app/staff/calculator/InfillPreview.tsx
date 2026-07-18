@@ -9,6 +9,7 @@ type InfillPreviewProps = {
   shape: InfillLineItem['shape'];
   orientationUsed: InfillResolvedOrientation;
   panelCountEach: number;
+  panelPolygons: Array<{ id: string; points: Array<{ x_m: number; y_m: number }> }>;
   unsupportedJoinerIndicesEach: number[];
   supports: InfillLineItem['support'];
   bayBoundariesM: number[];
@@ -34,6 +35,7 @@ export default function InfillPreview({
   shape,
   orientationUsed,
   panelCountEach,
+  panelPolygons,
   unsupportedJoinerIndicesEach,
   supports,
   bayBoundariesM,
@@ -97,6 +99,16 @@ export default function InfillPreview({
   const rightTopY = bottomY - shapeHeight * clamp01(rightM / maxHeightM);
 
   const polygonPoints = `${leftX},${bottomY} ${rightX},${bottomY} ${rightX},${rightTopY} ${leftX},${leftTopY}`;
+  const canonicalPanelPoints = panelPolygons.map((panel) => ({
+    id: panel.id,
+    points: panel.points
+      .map((point) => {
+        const x = leftX + (rightX - leftX) * clamp01(point.x_m / widthM);
+        const y = bottomY - shapeHeight * clamp01(point.y_m / maxHeightM);
+        return `${x.toFixed(3)},${y.toFixed(3)}`;
+      })
+      .join(' '),
+  }));
   const unsupported = new Set(unsupportedJoinerIndicesEach);
 
   const previewJoiners = joinerLines.map((joiner, idx) => {
@@ -166,7 +178,9 @@ export default function InfillPreview({
           </linearGradient>
         </defs>
 
-        <polygon points={polygonPoints} className={styles.infillPreviewShape} fill="url(#infill-preview-fill)" />
+        {canonicalPanelPoints.length ? canonicalPanelPoints.map((panel) => (
+          <polygon key={panel.id} points={panel.points} className={styles.infillPreviewPanel} fill="url(#infill-preview-fill)" />
+        )) : <polygon points={polygonPoints} className={styles.infillPreviewShape} fill="url(#infill-preview-fill)" />}
 
         {previewJoiners.map((line) => (
           <line

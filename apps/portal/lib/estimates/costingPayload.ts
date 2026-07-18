@@ -1,17 +1,12 @@
 import type { CostInputsV1, CostOutputV1, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
-import {
-  RAFTER_SPACING_MM_MAX,
-  resolveMonoSlopeShape,
-  resolvePayloadPanelOrientation,
-} from '@/app/staff/calculator/infillCompute';
+import { RAFTER_SPACING_MM_MAX } from '@/app/staff/calculator/infillCompute';
+import { parseInfillsForPayload } from '@/app/staff/calculator/calculatorInfillUi';
 import type {
   CalculatorFlashingBand,
   CalculatorFlashingPurpose,
-  CalculatorInfillsState,
   CalculatorInputs,
   CalculatorModuleInputs,
   CalculatorPergola,
-  InfillLineItem,
 } from '@/lib/types/calculator';
 import { normalizeAttachmentSide } from '@/lib/types/calculator';
 import type { PortalEstimatePayload } from '@/lib/localFirst/portalEntities';
@@ -185,88 +180,6 @@ function buildFlashingDefaultsForModule(
   }
 
   return out;
-}
-
-function normalizeInfillsState(value: unknown): CalculatorInfillsState {
-  if (!value || typeof value !== 'object' || !Array.isArray((value as any).items)) return { items: [] };
-  return value as CalculatorInfillsState;
-}
-
-function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: number): { spacingM: number; source: 'derived' | 'fallback' } {
-  if (typeof derivedRafterCount === 'number' && Number.isFinite(derivedRafterCount) && derivedRafterCount > 1 && Number.isFinite(lengthM) && lengthM > 0) {
-    return {
-      spacingM: Math.max(0.05, lengthM / (Math.max(2, Math.round(derivedRafterCount)) - 1)),
-      source: 'derived',
-    };
-  }
-  if (Number.isFinite(lengthM) && lengthM > 0) {
-    const bays = Math.max(1, Math.ceil((lengthM * 1000) / RAFTER_SPACING_MM_MAX));
-    return { spacingM: Math.max(0.05, lengthM / bays), source: 'fallback' };
-  }
-  return { spacingM: RAFTER_SPACING_MM_MAX / 1000, source: 'fallback' };
-}
-
-function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['infills'] | undefined {
-  const infills = normalizeInfillsState((module as any).infills);
-  if (!Array.isArray(infills.items) || infills.items.length === 0) return undefined;
-
-  const out: NonNullable<CostInputsV1['infills']> = [];
-  const roofRafterSpacingM = estimateRoofRafterSpacing(toNumber(module.lengthM)).spacingM;
-
-  for (const raw of infills.items as InfillLineItem[]) {
-    const maxPanelWidth = toNumber(raw.maxPanelWidthM);
-    const targetPanelWidth = toNumber(raw.targetPanelWidthM);
-    const qty = toNumber(raw.qty);
-    const widthMode =
-      (raw.location === 'front' || raw.location === 'house') && raw.widthMode === 'match_roof_rafters'
-        ? 'match_roof_rafters'
-        : 'target_width';
-
-    const internalPositions = Array.isArray(raw.support.internalSupportPositionsM)
-      ? raw.support.internalSupportPositionsM
-          .map(toNumber)
-          .filter((n) => Number.isFinite(n) && n >= 0)
-      : undefined;
-
-    const shapeOut: NonNullable<CostInputsV1['infills']>[number]['shape'] =
-      raw.shape.type === 'rect'
-        ? {
-            type: 'rect',
-            width_m: Number.isFinite(toNumber(raw.shape.widthM)) ? toNumber(raw.shape.widthM) : 0,
-            height_m: Number.isFinite(toNumber(raw.shape.heightM)) ? toNumber(raw.shape.heightM) : 0,
-            bottom_offset_m: Number.isFinite(toNumber(raw.shape.bottomOffsetM ?? '')) ? toNumber(raw.shape.bottomOffsetM ?? '') : undefined,
-          }
-        : {
-            type: 'mono_slope',
-            width_m: Number.isFinite(toNumber(raw.shape.widthM)) ? toNumber(raw.shape.widthM) : 0,
-            height_low_m: resolveMonoSlopeShape(raw.shape).leftHeightM,
-            height_high_m: resolveMonoSlopeShape(raw.shape).rightHeightM,
-            bottom_offset_m: Number.isFinite(toNumber(raw.shape.bottomOffsetM ?? '')) ? toNumber(raw.shape.bottomOffsetM ?? '') : undefined,
-          };
-
-    out.push({
-      id: raw.id,
-      label: raw.label?.trim() ? raw.label.trim() : undefined,
-      qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
-      location: raw.location,
-      acrylic_source: raw.acrylicSource,
-      panel_orientation: resolvePayloadPanelOrientation(raw, roofRafterSpacingM, toNumber(module.lengthM)),
-      width_mode: widthMode,
-      target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
-      max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
-      support: {
-        has_top: raw.support.hasTop !== false,
-        has_bottom: raw.support.hasBottom !== false,
-        has_left: raw.support.hasLeft !== false,
-        has_right: raw.support.hasRight !== false,
-        internal_support_mode: raw.support.internalSupportMode,
-        internal_support_positions_m: internalPositions,
-      },
-      shape: shapeOut,
-    });
-  }
-
-  return out.length ? out : undefined;
 }
 
 function normalizePergolas(pergolas: CalculatorInputs['pergolas']): CalculatorPergola[] {

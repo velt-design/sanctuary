@@ -21,11 +21,24 @@ async function setNumber(dialog: Locator, label: string, value: string): Promise
   await input.press('Enter');
 }
 
-async function openCutList(dialog: Locator, force = false): Promise<void> {
-  const cutList = dialog.getByRole('button', { name: 'Cut list', exact: true });
-  await expect(cutList).toHaveCount(1);
-  if (force) await cutList.evaluate((element: HTMLButtonElement) => element.click());
-  else await cutList.click();
+async function openResults(dialog: Locator, useKeyboard = false): Promise<void> {
+  await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
+  const firstContinue = dialog.getByRole('button', { name: 'Continue', exact: true });
+  if (useKeyboard) {
+    await firstContinue.focus();
+    await firstContinue.press('Enter');
+  } else {
+    await firstContinue.click();
+  }
+  await expect(dialog.getByRole('button', { name: /^2 Existing supports$/ })).toHaveAttribute('aria-current', 'step');
+  const secondContinue = dialog.getByRole('button', { name: 'Continue', exact: true });
+  if (useKeyboard) {
+    await secondContinue.focus();
+    await secondContinue.press('Enter');
+  } else {
+    await secondContinue.click();
+  }
+  await expect(dialog.getByRole('button', { name: /^3 Results/ })).toHaveAttribute('aria-current', 'step');
   await expect(dialog.getByRole('heading', { name: 'Pieces to cut', exact: true })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: 'Materials to purchase', exact: true })).toBeVisible();
 }
@@ -39,15 +52,39 @@ async function attachCalculatorScreenshot(page: Page, testInfo: TestInfo, name: 
 
 test.describe.configure({ mode: 'serial' });
 
+test('authenticated calculator resolves and displays automatic choices', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-automatic-selection' }, async () => {
+    const dialog = await openCustomInfill(page, 1600);
+    await dialog.getByText('Change automatic choices', { exact: true }).click();
+    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('auto');
+    await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('auto');
+    await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+    await setNumber(dialog, 'Width (m)', '1.2');
+    await setNumber(dialog, 'Height (m)', '1');
+    await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
+    await openResults(dialog);
+
+    await expect(dialog.getByText('Panel material', { exact: true }).locator('..')).toContainText('Sheet panels');
+    await expect(dialog.getByText('Joiner direction', { exact: true }).locator('..')).toContainText('Vertical');
+    await expect(dialog.getByText('Cost and technical details', { exact: true }).locator('..')).not.toHaveAttribute('open', '');
+  });
+});
+
 test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, and CSV at desktop', async ({ page, context }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-sheet-accuracy' }, async () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const dialog = await openCustomInfill(page, 1600);
-    await dialog.getByLabel('Acrylic type (preferred)', { exact: true }).selectOption('sheet_panels');
+    await dialog.getByText('Change automatic choices', { exact: true }).click();
+    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('auto');
+    await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('auto');
+    await dialog.getByLabel('Panel material', { exact: true }).selectOption('sheet_panels');
     await dialog.getByLabel('Joiner direction', { exact: true }).selectOption('vertical');
     await setNumber(dialog, 'Width (m)', '2.4');
     await setNumber(dialog, 'Height (m)', '2.1');
-    await openCutList(dialog);
+    await openResults(dialog);
+
+    await expect(dialog.getByText('Panel material').locator('..')).toContainText('Sheet panels');
+    await expect(dialog.getByText('Joiner direction').locator('..')).toContainText('Vertical');
 
     const pieces = dialog.getByRole('table', { name: 'Pieces to cut · Infill cut list estimate' });
     const purchases = dialog.getByRole('table', { name: 'Materials to purchase · Infill cut list estimate' });
@@ -72,11 +109,12 @@ test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, 
 test('authenticated calculator shows kerf-safe 3m x 1m strip purchasing at 1024px', async ({ page }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-strip-accuracy-1024' }, async () => {
     const dialog = await openCustomInfill(page, 1024);
-    await dialog.getByLabel('Acrylic type (preferred)', { exact: true }).selectOption('strip_620');
+    await dialog.getByText('Change automatic choices', { exact: true }).click();
+    await dialog.getByLabel('Panel material', { exact: true }).selectOption('strip_620');
     await dialog.getByLabel('Joiner direction', { exact: true }).selectOption('horizontal');
     await setNumber(dialog, 'Width (m)', '3');
     await setNumber(dialog, 'Height (m)', '1');
-    await openCutList(dialog, true);
+    await openResults(dialog, true);
 
     const pieces = dialog.getByRole('table', { name: 'Pieces to cut · Infill cut list estimate' });
     const purchases = dialog.getByRole('table', { name: 'Materials to purchase · Infill cut list estimate' });

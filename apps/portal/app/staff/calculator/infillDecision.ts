@@ -1,5 +1,5 @@
 ﻿import type { CostInputsV1, CostOutputV1 } from '@sp/costing';
-import type { InfillLineItem } from '@/lib/types/calculator';
+import type { InfillResolvedAcrylicSourceInput } from '@/lib/types/calculator';
 
 type ModuleCostSnapshot = {
   totals: {
@@ -54,7 +54,7 @@ function cloneInfillPayloadItem(item: NonNullable<CostInputsV1['infills']>[numbe
 
 export function applyAcrylicVariantToInfillPayload(
   item: NonNullable<CostInputsV1['infills']>[number],
-  source: InfillLineItem['acrylicSource'],
+  source: InfillResolvedAcrylicSourceInput,
 ): NonNullable<CostInputsV1['infills']>[number] {
   const maxPanelWidth = source === 'sheet_panels' ? 1.2 : 0.64;
   const targetPanelWidth = source === 'sheet_panels' ? 1.2 : 0.64;

@@ -267,7 +267,7 @@ export function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): Infi
     id: makeInfillId(),
     qty: '1',
     location: 'custom',
-    acrylicSource: 'sheet_panels',
+    acrylicSource: 'auto',
     panelOrientation: 'auto',
     widthMode: 'target_width',
     targetPanelWidthM: '1',
@@ -404,7 +404,7 @@ function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineIte
   const left = makeDefaultInfillItem({
     label: 'Gable left',
     location: 'gable_end',
-    acrylicSource: 'sheet_panels',
+    acrylicSource: 'auto',
     widthMode: 'target_width',
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
@@ -431,7 +431,7 @@ function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineIte
   const right = makeDefaultInfillItem({
     label: 'Gable right',
     location: 'gable_end',
-    acrylicSource: 'sheet_panels',
+    acrylicSource: 'auto',
     widthMode: 'target_width',
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
@@ -503,7 +503,7 @@ export function buildInfillItemsForPreset(module: CalculatorModuleInputs, preset
       makeDefaultInfillItem({
         label: 'Wall panel',
         location: 'wall',
-        acrylicSource: 'sheet_panels',
+        acrylicSource: 'auto',
         widthMode: 'target_width',
         shape: {
           type: 'rect',
@@ -523,7 +523,11 @@ export function buildInfillItemsForPreset(module: CalculatorModuleInputs, preset
     ];
   }
 
-  return [makeDefaultInfillItem({ label: 'Custom infill', ...buildInfillPreset(module, 'custom') })];
+  return [makeDefaultInfillItem({
+    label: 'Custom infill',
+    ...buildInfillPreset(module, 'custom'),
+    shape: { type: 'rect', widthM: '', heightM: '', bottomOffsetM: '0' },
+  })];
 }
 
 export function normalizeBlindsStateForUi(value: unknown): CalculatorBlindsState {

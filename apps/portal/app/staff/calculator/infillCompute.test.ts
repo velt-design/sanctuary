@@ -63,8 +63,9 @@ describe('infill compute draft state', () => {
     expect(state.estimate.bayBoundariesM.length).toBe(state.estimate.panelCountEach + 1);
   });
 
-  it('emits actionable warning targets', () => {
+  it('keeps automatic choices and planned supports out of actionable warnings', () => {
     const infill = makeBaseInfill({
+      acrylicSource: 'auto',
       panelOrientation: 'auto',
       shape: {
         type: 'rect',
@@ -76,12 +77,11 @@ describe('infill compute draft state', () => {
 
     const state = resolveInfillUiState(infill, 0.9);
 
-    expect(state.warnings.some((warning) => warning.target.section === 'basic' && warning.target.fieldKey === 'acrylic')).toBe(true);
-    expect(state.warnings.some((warning) => warning.target.section === 'basic' && warning.target.fieldKey === 'joiner-direction')).toBe(true);
-    expect(state.warnings.some((warning) => warning.target.section === 'supports' && warning.target.fieldKey === 'support-internal-mode')).toBe(true);
+    expect(state.warnings).toEqual([]);
+    expect(state.estimate.estimatedMullionsTotal).toBeGreaterThan(0);
   });
 
-  it('tracks unsupported joiners in both estimate and warnings', () => {
+  it('tracks unsupported joiners as planned supports rather than warnings', () => {
     const infill = makeBaseInfill({
       shape: {
         type: 'rect',
@@ -101,7 +101,8 @@ describe('infill compute draft state', () => {
 
     const state = resolveInfillUiState(infill, 0.9);
     expect(state.estimate.unsupportedInternalIndicesEach.length).toBe(state.estimate.unsupportedInternalEach);
-    expect(state.warnings.some((warning) => warning.id === 'unsupported-joiners')).toBe(state.estimate.unsupportedInternalEach > 0);
+    expect(state.estimate.unsupportedInternalEach).toBeGreaterThan(0);
+    expect(state.warnings.some((warning) => warning.id === 'unsupported-joiners')).toBe(false);
   });
 
   it('returns cut list rows aligned with summary counts', () => {

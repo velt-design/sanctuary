@@ -167,6 +167,31 @@ describe('calculator infill UI helpers', () => {
     });
   });
 
+  it('resolves automatic material and direction before building CostInputsV1', () => {
+    const module = {
+      ...makeDefaultModule(),
+      lengthM: '3',
+      infills: {
+        items: [makeBaseInfill({ acrylicSource: 'auto', panelOrientation: 'auto' })],
+      },
+    };
+
+    const payload = parseInfillsForPayload(module);
+
+    expect(payload?.[0]?.acrylic_source).not.toBe('auto');
+    expect(payload?.[0]?.panel_orientation).not.toBe('auto');
+    expect(['sheet_panels', 'strip_620']).toContain(payload?.[0]?.acrylic_source);
+    expect(['vertical', 'horizontal']).toContain(payload?.[0]?.panel_orientation);
+  });
+
+  it('does not warn when bottom installation height exceeds panel height', () => {
+    const infill = makeBaseInfill({
+      shape: { type: 'rect', widthM: '2', heightM: '0.5', bottomOffsetM: '1.2' },
+    });
+
+    expect(validateInfillUi(infill, estimateInfillUi(infill, 0.9)).warnings).toEqual([]);
+  });
+
   it('parses mono-slope pitch infills into resolved heights', () => {
     const module = {
       ...makeDefaultModule(),

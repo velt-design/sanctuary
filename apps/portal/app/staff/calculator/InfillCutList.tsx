@@ -68,7 +68,11 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
   };
 
   if (status === 'draft') {
-    return <p className={styles.infillComputedNote}>Complete required shape fields to generate the cut list estimate.</p>;
+    return (
+      <p className={styles.infillComputedNote}>
+        Complete the required details or resolve the manufacturing blocker to generate the cut list.
+      </p>
+    );
   }
 
   if (!rows.length) {

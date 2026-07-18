@@ -3,6 +3,7 @@ import type { EstimateDetail } from '@/lib/estimates/types';
 import type { CalculatorInputs } from '@/lib/types/calculator';
 import {
   calculatorDraftSessionKey,
+  buildInfillItemsForPreset,
   calculatorInputsFromEstimateDetail,
   makeDefaultModule,
   normalizeCalculatorInputsForUi,
@@ -53,6 +54,26 @@ describe('calculator input defaults and normalization', () => {
       purpose: 'CUSTOM',
     });
     expect(module.infills).toEqual({ items: [] });
+  });
+
+  it('defaults new infills to automatic material and direction while preserving saved manual choices', () => {
+    const automatic = normalizeInfillsStateForUi({ items: [{ id: 'new' }] }).items[0];
+    const manual = normalizeInfillsStateForUi({
+      items: [{ id: 'saved', acrylicSource: 'strip_620', panelOrientation: 'horizontal' }],
+    }).items[0];
+
+    expect(automatic).toMatchObject({ acrylicSource: 'auto', panelOrientation: 'auto' });
+    expect(manual).toMatchObject({ acrylicSource: 'strip_620', panelOrientation: 'horizontal' });
+  });
+
+  it('uses automatic choices for every new infill preset', () => {
+    const module = makeDefaultModule('pergola-a');
+    const presets = ['front', 'house', 'side', 'gable_triangles', 'wall_panel', 'custom'] as const;
+
+    for (const preset of presets) {
+      expect(buildInfillItemsForPreset(module, preset).every((item) => item.acrylicSource === 'auto' && item.panelOrientation === 'auto')).toBe(true);
+    }
+    expect(buildInfillItemsForPreset(module, 'custom')[0]?.shape).toMatchObject({ widthM: '', heightM: '' });
   });
 
   it('normalizes malformed pergolas, modules, blinds, and infills to safe UI defaults', () => {

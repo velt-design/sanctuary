@@ -44,16 +44,22 @@ import { getProject } from '@/lib/repo/projectsRepo';
 import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import RoofOrientationDiagram from './RoofOrientationDiagram';
 import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
 import InfillActionsMenu from './InfillActionsMenu';
-import InfillSectionNav, { type InfillEditorSectionId } from './InfillSectionNav';
+import InfillConfiguratorDialog from './InfillConfiguratorDialog';
+import {
+  addedSupportSummary,
+  canOfferRafterMatching,
+  infillResultStatus,
+  isInfillOpeningComplete,
+  stageForInfillWarning,
+  type InfillConfiguratorStage,
+} from './infillConfiguratorPresentation';
 import DuplicateDialog from './DuplicateDialog';
 import InfillCutList from './InfillCutList';
-import ResolveWarningsPanel from './ResolveWarningsPanel';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
 import ModuleViewsCard, {
@@ -85,7 +91,6 @@ import {
   infillFieldId,
   type InfillDraftEntry,
   type InfillDraftFieldKey,
-  type InfillWarningFix,
   type InfillUiState,
   type InfillWarningItem,
 } from './infillCompute';
@@ -166,7 +171,6 @@ import {
   estimateRoofRafterSpacing,
   locationLabel,
   maxCentreForAcrylicSource,
-  maxRunForAcrylicSource,
   parseInfillsForPayload,
   type InfillUiEstimate,
 } from './calculatorInfillUi';
@@ -328,8 +332,6 @@ type InfillDeletedState = {
   expiresAt: number;
   draft?: InfillDraftEntry;
 };
-
-type InfillSectionId = InfillEditorSectionId;
 
 function clampNumber(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -1486,7 +1488,7 @@ export default function CalculatorGridClient({
       delete next[id];
       return next;
     });
-    setInfillOpenSection('basic');
+    setInfillStage('opening');
   };
 
   const setInfillDraftValue = (infillId: string, field: InfillDraftFieldKey, raw: string) => {
@@ -1585,7 +1587,7 @@ export default function CalculatorGridClient({
     if (!itemsToAdd.length) return;
     const nextSelectedId = itemsToAdd[0]?.id ?? null;
     setInfillItems((items) => [...items, ...itemsToAdd]);
-    setInfillOpenSection('basic');
+    setInfillStage('opening');
     if (nextSelectedId) {
       setPendingInfillSelectionId(nextSelectedId);
       setSelectedInfillId(nextSelectedId);
@@ -1667,7 +1669,7 @@ export default function CalculatorGridClient({
       setPendingInfillSelectionId(nextSelectedId);
       setSelectedInfillId(nextSelectedId);
     }
-    setInfillOpenSection('basic');
+    setInfillStage('opening');
     trackInfillEvent('infill_duplicate_bulk', {
       infill_id: id,
       count: created.length,
@@ -1753,7 +1755,7 @@ export default function CalculatorGridClient({
     }
     setPendingInfillSelectionId(deletedInfill.infill.id);
     setSelectedInfillId(deletedInfill.infill.id);
-    setInfillOpenSection('basic');
+    setInfillStage('opening');
     trackInfillEvent('infill_undo_delete', {
       infill_id: deletedInfill.infill.id,
       location: deletedInfill.infill.location,
@@ -1797,12 +1799,11 @@ export default function CalculatorGridClient({
   const [selectedInfillId, setSelectedInfillId] = useState<string | null>(null);
   const [pendingInfillSelectionId, setPendingInfillSelectionId] = useState<string | null>(null);
   const [infillDraftById, setInfillDraftById] = useState<Record<string, InfillDraftEntry>>({});
-  const [infillOpenSection, setInfillOpenSection] = useState<InfillSectionId>('basic');
+  const [infillStage, setInfillStage] = useState<InfillConfiguratorStage>('opening');
   const [infillDeleteTargetId, setInfillDeleteTargetId] = useState<string | null>(null);
   const [deletedInfill, setDeletedInfill] = useState<InfillDeletedState | null>(null);
   const [infillDuplicateOpen, setInfillDuplicateOpen] = useState(false);
-  const [infillResolveOpen, setInfillResolveOpen] = useState(false);
-  const [infillSummaryOpen, setInfillSummaryOpen] = useState(false);
+  const [infillCostDetailsOpen, setInfillCostDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [confirmRequestDesign, setConfirmRequestDesign] = useState(false);
@@ -2050,7 +2051,7 @@ export default function CalculatorGridClient({
   ]);
 
   useEffect(() => {
-    if (!infillsOpen || !activeModulePayload || !readyToCalculate || isCalculating || engineError) {
+    if (!infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !readyToCalculate || isCalculating || engineError) {
       setModuleBaseline(null);
       setModuleBaselineError(null);
       setModuleBaselineLoading(false);
@@ -2083,7 +2084,7 @@ export default function CalculatorGridClient({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [activeModulePayload, engineError, infillsOpen, isCalculating, readyToCalculate]);
+  }, [activeModulePayload, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, readyToCalculate]);
 
   const resultModules = useMemo(() => (result?.pergolas ?? []).flatMap((pergola) => pergola.modules ?? []), [result]);
   const moduleResult = useMemo(() => {
@@ -2502,7 +2503,7 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     const selectedInfillId = selectedInfill?.id ?? null;
-    if (!infillsOpen || !activeModulePayload || !moduleBaseline || !selectedInfillId || !readyToCalculate || isCalculating || engineError) {
+    if (!infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !moduleBaseline || !selectedInfillId || !readyToCalculate || isCalculating || engineError) {
       setInfillWithoutCost(null);
       setCompareSheetCost(null);
       setCompareStripCost(null);
@@ -2561,7 +2562,7 @@ export default function CalculatorGridClient({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [activeModulePayload, engineError, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
+  }, [activeModulePayload, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
 
   const uiWarnings = useMemo(
     () =>
@@ -2738,12 +2739,32 @@ export default function CalculatorGridClient({
   const selectedMonoDerivedHeight =
     selectedMonoResolved?.slopeAnchor === 'right' ? selectedMonoResolved.leftHeightM : selectedMonoResolved?.rightHeightM;
   const selectedComputedWarnings = selectedInfillUi?.warnings ?? [];
+  const selectedCriticalWarnings = selectedComputedWarnings.filter((warning) => warning.severity === 'error');
+  const selectedOpeningComplete = selectedInfillUi ? isInfillOpeningComplete(selectedInfillUi) : false;
+  const selectedResultStatus = selectedInfillUi ? infillResultStatus(selectedInfillUi) : null;
+  const selectedCanOfferRafterMatching = selectedInfill && selectedInfillEstimate
+    ? canOfferRafterMatching(selectedInfill.location, selectedInfillEstimate.widthM, toNumber(activeModule.lengthM))
+    : false;
+  const selectedInfillPreview = selectedInfill && selectedInfillEstimate ? (
+    <InfillPreview
+      status={selectedInfillIsDraft ? 'draft' : 'valid'}
+      shape={selectedInfill.shape}
+      orientationUsed={selectedInfillEstimate.panelOrientationUsed}
+      panelCountEach={selectedInfillEstimate.panelCountEach}
+      panelPolygons={selectedInfillEstimate.panelPolygons}
+      unsupportedJoinerIndicesEach={selectedInfillEstimate.unsupportedInternalIndicesEach}
+      supports={selectedInfill.support}
+      bayBoundariesM={selectedInfillEstimate.bayBoundariesM}
+      bayWidthsM={selectedInfillEstimate.bayWidthsM}
+      joinerLines={selectedInfillEstimate.joinerLines}
+      runSideM={selectedInfillEstimate.runSideM}
+      acrossSideM={selectedInfillEstimate.acrossSideM}
+      centreLimitM={selectedInfillEstimate.maxCentreM}
+    />
+  ) : null;
   const selectedLastValidEstimate = selectedInfill ? lastValidInfillEstimateRef.current[selectedInfill.id] ?? null : null;
-  const computedOrDraftDash = (value: string): string => (selectedInfillIsDraft ? 'Incomplete' : value);
   const {
-    selectedDraftGhostLine,
     infillRunConstraintLine,
-    infillSpacingConstraintLine,
     selectedAutoSwitchInlineHint,
   } = useMemo(
     () =>
@@ -2754,36 +2775,14 @@ export default function CalculatorGridClient({
       }),
     [selectedInfillEstimate, selectedInfillIsDraft, selectedLastValidEstimate],
   );
-  const showInfillAdvancedSection = false;
-  const getVisibleInfillSection = (section: InfillSectionId): InfillSectionId =>
-    section === 'advanced' && !showInfillAdvancedSection ? 'basic' : section;
-
   const { hasClipboard: infillHasClipboard, copyGeometry: copyInfillGeometry, pasteGeometry: pasteInfillGeometry } = useInfillClipboard();
 
   const setInfillAcrylicPreference = (infillId: string, source: InfillLineItem['acrylicSource']) => {
-    const targetWidth = source === 'sheet_panels' ? '1.2' : '0.64';
+    const targetWidth = source === 'strip_620' ? '0.64' : '1.2';
     setInfillItem(infillId, {
       acrylicSource: source,
       targetPanelWidthM: targetWidth,
       maxPanelWidthM: targetWidth,
-    });
-  };
-
-  const applyInfillWarningFix = (fix: InfillWarningFix) => {
-    if (!selectedInfill) return;
-    if (fix.type === 'setPreferredAcrylic') {
-      setInfillAcrylicPreference(selectedInfill.id, fix.value);
-      return;
-    }
-    if (fix.type === 'setCentreLimit') {
-      setInfillItem(selectedInfill.id, { maxPanelWidthM: String(fix.value), targetPanelWidthM: String(fix.value) });
-      return;
-    }
-    setInfillItem(selectedInfill.id, {
-      support: {
-        ...selectedInfill.support,
-        [fix.key]: fix.value,
-      },
     });
   };
 
@@ -2806,7 +2805,7 @@ export default function CalculatorGridClient({
       return;
     }
     setInfillItem(selectedInfill.id, patch);
-    setInfillOpenSection('basic');
+    setInfillStage('opening');
     trackInfillEvent('infill_paste_geometry', {
       infill_id: selectedInfill.id,
       location: selectedInfill.location,
@@ -2814,12 +2813,6 @@ export default function CalculatorGridClient({
     });
     toast.success('Geometry pasted.');
   };
-
-  useEffect(() => {
-    if (selectedComputedWarnings.length > 0) return;
-    if (!infillResolveOpen) return;
-    setInfillResolveOpen(false);
-  }, [infillResolveOpen, selectedComputedWarnings.length]);
 
   const flashInfillTarget = (el: HTMLElement | null) => {
     if (!el) return;
@@ -2831,13 +2824,13 @@ export default function CalculatorGridClient({
 
   const jumpToInfillWarningTarget = (warning: InfillWarningItem) => {
     if (!selectedInfill) return;
-    const targetSection = getVisibleInfillSection(warning.target.section);
-    setInfillOpenSection(targetSection);
+    const targetStage = stageForInfillWarning(warning);
+    setInfillStage(targetStage);
     trackInfillEvent('infill_warning_clicked', {
       infill_id: selectedInfill.id,
       warning_id: warning.id,
       severity: warning.severity,
-      section: targetSection,
+      section: targetStage,
     });
     window.requestAnimationFrame(() => {
       const fieldId = infillFieldId(selectedInfill.id, warning.target.fieldKey);
@@ -2870,7 +2863,7 @@ export default function CalculatorGridClient({
   }, [infillsOpen, selectedInfill?.id]);
 
   const focusInfillPrimaryField = (infillId: string) => {
-    setInfillOpenSection('basic');
+    setInfillStage('opening');
     window.requestAnimationFrame(() => {
       const field = document.getElementById(`infill-${infillId}-label`) as HTMLElement | null;
       if (!field) return;
@@ -2897,12 +2890,6 @@ export default function CalculatorGridClient({
   }, [activeModuleIndex, infillsOpen, infillsState.items.length]);
 
   useEffect(() => {
-    if (showInfillAdvancedSection) return;
-    if (infillOpenSection !== 'advanced') return;
-    setInfillOpenSection('basic');
-  }, [infillOpenSection, showInfillAdvancedSection]);
-
-  useEffect(() => {
     if (!infillsOpen || !selectedInfill) return;
     if (infillLastSelectionEventRef.current === selectedInfill.id) return;
     infillLastSelectionEventRef.current = selectedInfill.id;
@@ -2921,8 +2908,7 @@ export default function CalculatorGridClient({
       warnings: selectedComputedWarnings.length,
     });
     setInfillsOpen(false);
-    setInfillSummaryOpen(false);
-    setInfillResolveOpen(false);
+    setInfillCostDetailsOpen(false);
   };
 
   useInfillHotkeys({
@@ -4695,28 +4681,22 @@ export default function CalculatorGridClient({
 
       {infillsOpen ? (
         <>
-        <Modal
-          open
-          ariaLabel="Infills"
-          onClose={closeInfillModal}
+        <InfillConfiguratorDialog
           closeOnEsc={!infillDeleteTarget && !infillDuplicateOpen}
-          overlayClassName={styles.infillDrawerOverlay}
-          panelClassName={styles.infillDrawerPanel}
-          maxWidthPx={1520}
-        >
-          <div className={styles.infillDrawer}>
-            <div className={styles.infillDrawerHeader}>
-              <div>
-                <h2 className={styles.infillDrawerTitle}>Infills</h2>
-                <p className={styles.infillDrawerSubtitle}>Acrylic infill modules for this pergola module.</p>
-              </div>
-              <button type="button" className={styles.infillDrawerClose} onClick={closeInfillModal}>
-                Close
-              </button>
+          onClose={closeInfillModal}
+          stage={infillStage}
+          openingComplete={selectedOpeningComplete}
+          blockerCount={selectedCriticalWarnings.length}
+          onStageChange={setInfillStage}
+          editorHeader={null}
+          notice={deletedInfill ? (
+            <div className={styles.infillUndoToast} role="status" aria-live="polite">
+              <span>Infill deleted.</span>
+              <button type="button" className={styles.infillUndoButton} onClick={undoDeleteInfill}>Undo</button>
             </div>
-
-            <div className={styles.infillDrawerBody}>
-              <CalculatorInfillRail
+          ) : null}
+          rail={(
+            <CalculatorInfillRail
                 items={infillsState.items}
                 selectedInfillId={selectedInfill?.id ?? null}
                 uiById={infillUiById}
@@ -4733,9 +4713,9 @@ export default function CalculatorGridClient({
                 onFocusPrimaryField={focusInfillPrimaryField}
                 onMoveInfill={moveInfill}
                 onRowRef={setInfillRowRef}
-              />
-
-              <section className={styles.infillEditor} aria-label="Selected infill editor">
+            />
+          )}
+        >
                 {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
                   <>
                     <div className={styles.infillEditorHeader}>
@@ -4760,13 +4740,6 @@ export default function CalculatorGridClient({
                       </div>
                       <div className={styles.infillEditorActions}>
                         <InfillAddButton label="Add infill" onAddCustom={addCustomInfillFromOverview} />
-                        <button
-                          type="button"
-                          className={`${styles.infillIconButton} ${styles.infillSummaryToggleButton}`}
-                          onClick={() => setInfillSummaryOpen((prev) => !prev)}
-                        >
-                          Summary
-                        </button>
                         <InfillActionsMenu
                           disableMoveUp={selectedInfillIndex <= 0}
                           disableMoveDown={selectedInfillIndex >= infillsState.items.length - 1}
@@ -4791,27 +4764,13 @@ export default function CalculatorGridClient({
                         </button>
                       </div>
                     </div>
-                    <InfillSectionNav
-                      value={infillOpenSection}
-                      warningsCount={selectedComputedWarnings.length}
-                      showAdvanced={showInfillAdvancedSection}
-                      onChange={(next) => {
-                        const nextSection = getVisibleInfillSection(next);
-                        setInfillOpenSection(nextSection);
-                        if (nextSection === 'preview' || nextSection === 'cut_list') setInfillSummaryOpen(true);
-                      }}
-                    />
-
-                    <div className={styles.infillEditorGrid}>
-                      <div className={styles.infillEditorForm}>
-                    <details
-                      className={styles.infillSection}
-                      open={infillOpenSection === 'basic'}
-                      onToggle={(event) => {
-                        if ((event.currentTarget as HTMLDetailsElement).open) setInfillOpenSection('basic');
-                      }}
-                    >
-                      <summary className={styles.infillSectionSummary}>Basic</summary>
+                    {infillStage === 'opening' ? (
+                    <div className={styles.infillGuidedStageGrid}>
+                    <section className={styles.infillSection} aria-labelledby="infill-opening-heading">
+                      <div className={styles.infillStageHeading}>
+                        <h3 id="infill-opening-heading">Describe the opening</h3>
+                        <p>Enter the position, shape and finished opening measurements.</p>
+                      </div>
                       <div className={styles.infillBasicGrid}>
                         <div className={styles.span6}>
                           <FieldTile
@@ -4849,14 +4808,19 @@ export default function CalculatorGridClient({
                             ]}
                           />
                         </div>
-                        <div className={styles.span4}>
+                        <details className={`${styles.infillAutomaticChoices} ${styles.span12}`}>
+                          <summary>Change automatic choices</summary>
+                          <p>The calculator chooses the option needing the fewest extra supports, then the least stock and waste.</p>
+                          <div className={styles.infillAutomaticChoicesGrid}>
+                        <div>
                           <FieldTile
                             id={`${selectedInfillDomIdBase}-acrylic`}
-                            label="Acrylic type (preferred)"
+                            label="Panel material"
                             type="select"
                             value={selectedInfill.acrylicSource}
                             onChange={(v) => setInfillAcrylicPreference(selectedInfill.id, v as InfillLineItem['acrylicSource'])}
                             options={[
+                              { label: 'Automatic (recommended)', value: 'auto' },
                               { label: 'Sheet panels', value: 'sheet_panels' },
                               { label: '620 strips', value: 'strip_620' },
                             ]}
@@ -4873,7 +4837,7 @@ export default function CalculatorGridClient({
                             </button>
                           ) : null}
                         </div>
-                        <div className={styles.span4}>
+                        <div>
                           <FieldTile
                             id={`${selectedInfillDomIdBase}-joiner-direction`}
                             label="Joiner direction"
@@ -4881,37 +4845,19 @@ export default function CalculatorGridClient({
                             value={selectedInfill.panelOrientation}
                             onChange={(v) => setInfillItem(selectedInfill.id, { panelOrientation: normalizePanelOrientation(v) })}
                             options={[
-                              { label: 'Auto (recommended)', value: 'auto' },
+                              { label: 'Automatic (recommended)', value: 'auto' },
                               { label: 'Vertical joiners', value: 'vertical' },
                               { label: 'Horizontal joiners', value: 'horizontal' },
                             ]}
                             helperText="Auto chooses the direction that minimizes joiners and extra supports."
                           />
                         </div>
-                        <div className={styles.span4}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-run-across`}
-                            label="Long side / Subdivided side (m)"
-                            type="readOnly"
-                            value={computedOrDraftDash(
-                              `${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)} / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}`,
-                            )}
-                            helperText="Subdivided side is split into bays at the max spacing."
-                          />
-                        </div>
-                        <div className={styles.span4}>
-                          <FieldTile
-                            id={`${selectedInfillDomIdBase}-centre-limit`}
-                            label="Max bay spacing (m)"
-                            type="readOnly"
-                            value={computedOrDraftDash(formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2))}
-                            helperText={infillSpacingConstraintLine}
-                          />
-                        </div>
+                          </div>
+                        </details>
                         <div className={styles.span4}>
                           <FieldTile
                             id={`${selectedInfillDomIdBase}-shape-type`}
-                            label="Shape"
+                            label="Opening shape"
                             type="select"
                             value={selectedInfill.shape.type}
                             onChange={(v) => {
@@ -4948,8 +4894,8 @@ export default function CalculatorGridClient({
                               });
                             }}
                             options={[
-                              { label: 'Rect', value: 'rect' },
-                              { label: 'Mono-slope', value: 'mono_slope' },
+                              { label: 'Rectangle', value: 'rect' },
+                              { label: 'Sloping top', value: 'mono_slope' },
                             ]}
                           />
                         </div>
@@ -4998,7 +4944,7 @@ export default function CalculatorGridClient({
                             <div className={styles.span4}>
                               <FieldTile
                                 id={`${selectedInfillDomIdBase}-shape-mode`}
-                                label="Mono-slope input"
+                                label="Describe the sloping top"
                                 type="select"
                                 value={selectedMonoPitchMode ? 'pitch' : 'heights'}
                                 onChange={(v) => {
@@ -5121,7 +5067,7 @@ export default function CalculatorGridClient({
                         <div className={styles.span4}>
                           <FieldTile
                             id={`${selectedInfillDomIdBase}-shape-bottom`}
-                            label="Bottom offset (m)"
+                            label="Bottom installation height (m)"
                             type="number"
                             value={selectedInfill.shape.bottomOffsetM ?? '0'}
                             onChange={(v) =>
@@ -5133,65 +5079,82 @@ export default function CalculatorGridClient({
                               })
                             }
                             error={selectedInfillValidation.errors.bottomOffsetM}
+                            helperText="This positions the infill and does not change its cut size."
                           />
                         </div>
                       </div>
-                    </details>
+                    </section>
+                    <aside className={styles.infillGuidedPreview} aria-label="Opening preview">{selectedInfillPreview}</aside>
+                    </div>
+                    ) : null}
 
-                    <details
-                      className={`${styles.infillSection} ${styles.infillSectionSecondary}`}
-                      open={infillOpenSection === 'supports'}
-                      onToggle={(event) => {
-                        if ((event.currentTarget as HTMLDetailsElement).open) setInfillOpenSection('supports');
-                      }}
-                    >
-                      <summary className={styles.infillSectionSummary}>Supports (existing fixing members)</summary>
+                    {infillStage === 'supports' ? (
+                    <div className={styles.infillGuidedStageGrid}>
+                    <section className={`${styles.infillSection} ${styles.infillSectionSecondary}`} aria-labelledby="infill-supports-heading">
+                      <div className={styles.infillStageHeading}>
+                        <h3 id="infill-supports-heading">Confirm existing fixing members</h3>
+                        <p>Turn an edge off when there is no suitable member to fix the acrylic joiner to. The purchase plan will add the required 50×50 support.</p>
+                      </div>
                       <div className={styles.infillFieldGrid}>
                         <FieldTile
                           id={`${selectedInfillDomIdBase}-support-top`}
-                          label="Top support exists"
+                          label="Existing member along the top"
                           type="toggle"
                           value={selectedInfill.support.hasTop}
                           onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasTop: Boolean(v) } })}
                         />
                         <FieldTile
                           id={`${selectedInfillDomIdBase}-support-bottom`}
-                          label="Bottom support exists"
+                          label="Existing member along the bottom"
                           type="toggle"
                           value={selectedInfill.support.hasBottom}
                           onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasBottom: Boolean(v) } })}
-                          helperText="Never slab; if unchecked we assume additional member required."
+                          helperText="Do not count the slab. Leave this off when another fixing member is required."
                         />
                         <FieldTile
                           id={`${selectedInfillDomIdBase}-support-left`}
-                          label="Left support exists"
+                          label="Existing member along the left"
                           type="toggle"
                           value={selectedInfill.support.hasLeft}
                           onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasLeft: Boolean(v) } })}
                         />
                         <FieldTile
                           id={`${selectedInfillDomIdBase}-support-right`}
-                          label="Right support exists"
+                          label="Existing member along the right"
                           type="toggle"
                           value={selectedInfill.support.hasRight}
                           onChange={(v) => setInfillItem(selectedInfill.id, { support: { ...selectedInfill.support, hasRight: Boolean(v) } })}
                         />
                         <FieldTile
                           id={`${selectedInfillDomIdBase}-support-internal-mode`}
-                          label="Internal support mode"
+                          label="Existing internal supports"
                           type="select"
                           value={selectedInfill.support.internalSupportMode ?? 'none'}
-                          onChange={(v) =>
+                          onChange={(v) => {
+                            const nextMode = String(v) as InfillLineItem['support']['internalSupportMode'];
                             setInfillItem(selectedInfill.id, {
-                              support: { ...selectedInfill.support, internalSupportMode: String(v) as InfillLineItem['support']['internalSupportMode'] },
-                            })
-                          }
+                              ...(nextMode !== 'match_roof_rafters' && !selectedCanOfferRafterMatching && selectedInfill.widthMode === 'match_roof_rafters'
+                                ? { widthMode: 'target_width' as const }
+                                : {}),
+                              support: { ...selectedInfill.support, internalSupportMode: nextMode },
+                            });
+                          }}
                           options={[
-                            { label: 'None', value: 'none' },
-                            { label: 'Match roof rafters', value: 'match_roof_rafters' },
-                            { label: 'Center', value: 'center' },
-                            { label: 'Custom positions', value: 'custom' },
+                            { label: 'No existing internal supports', value: 'none' },
+                            ...(selectedCanOfferRafterMatching
+                              ? [{ label: 'Match roof rafters', value: 'match_roof_rafters' }]
+                              : selectedInfill.support.internalSupportMode === 'match_roof_rafters'
+                                ? [{ label: 'Match roof rafters (not valid for this opening)', value: 'match_roof_rafters', disabled: true }]
+                              : []),
+                            { label: 'One at centre', value: 'center' },
+                            { label: 'Enter positions', value: 'custom' },
                           ]}
+                          helperText={
+                            selectedInfill.support.internalSupportMode === 'match_roof_rafters' &&
+                            !selectedCanOfferRafterMatching
+                              ? 'Roof-rafter matching only works on a full front or house edge. Choose explicit positions.'
+                              : undefined
+                          }
                         />
                         {(selectedInfill.support.internalSupportMode ?? 'none') === 'custom' ? (
                           <FieldTile
@@ -5215,72 +5178,53 @@ export default function CalculatorGridClient({
                           />
                         ) : null}
                       </div>
-                    </details>
-
-                    {showInfillAdvancedSection ? (
-                      <details
-                        className={`${styles.infillSection} ${styles.infillSectionSecondary}`}
-                        open={infillOpenSection === 'advanced'}
-                        onToggle={(event) => {
-                          if ((event.currentTarget as HTMLDetailsElement).open) setInfillOpenSection('advanced');
-                        }}
-                      >
-                        <summary className={styles.infillSectionSummary}>Advanced</summary>
-                        <p className={styles.modalNote}>No advanced infill options configured yet.</p>
-                      </details>
+                      <p className={styles.infillSupportResult}>{addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}</p>
+                    </section>
+                    <aside className={styles.infillGuidedPreview} aria-label="Support preview">{selectedInfillPreview}</aside>
+                    </div>
                     ) : null}
 
+                    {infillStage === 'results' ? (
+                      <div className={styles.infillResultsStage}>
+                      <div className={`${styles.infillResultBanner} ${
+                        selectedResultStatus?.tone === 'blocked'
+                          ? styles.infillResultBannerBlocked
+                          : selectedResultStatus?.tone === 'needs_details'
+                            ? styles.infillResultBannerNeedsDetails
+                            : styles.infillResultBannerReady
+                      }`} role="status">
+                        <strong>{selectedResultStatus?.title}</strong>
+                        <span>{selectedResultStatus?.message}</span>
                       </div>
-
-                      <aside
-                        id="infill-summary-panel"
-                        className={`${styles.infillEditorSummary} ${infillSummaryOpen ? styles.infillEditorSummaryOpen : ''}`.trim()}
-                      >
+                      {selectedCriticalWarnings.length ? (
+                        <ul className={styles.infillWarningList}>
+                          {selectedCriticalWarnings.map((warning) => (
+                            <li key={warning.id}>
+                              <button type="button" className={styles.infillWarningButton} onClick={() => jumpToInfillWarningTarget(warning)}>
+                                <span>{warning.message}</span><span className={styles.infillWarningJump}>Fix details</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      <aside id="infill-summary-panel" className={styles.infillEditorSummary}>
                     <section className={styles.infillComputedPanel} aria-label="Computed infill summary">
-                      <div className={styles.infillSummaryTabs}>
-                        <button
-                          type="button"
-                          className={
-                            infillOpenSection === 'cut_list'
-                              ? styles.infillSummaryTabButton
-                              : `${styles.infillSummaryTabButton} ${styles.infillSummaryTabButtonActive}`
-                          }
-                          onClick={() => setInfillOpenSection('preview')}
-                        >
-                          Preview
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            infillOpenSection === 'cut_list'
-                              ? `${styles.infillSummaryTabButton} ${styles.infillSummaryTabButtonActive}`
-                              : styles.infillSummaryTabButton
-                          }
-                          onClick={() => setInfillOpenSection('cut_list')}
-                        >
-                          Cut list
-                        </button>
-                      </div>
-                      {infillOpenSection === 'cut_list' ? (
-                        <InfillCutList status={selectedInfillIsDraft ? 'draft' : 'valid'} rows={selectedInfillEstimate.cutListRows ?? []} />
-                      ) : (
                         <>
-                          <InfillPreview
-                            status={selectedInfillIsDraft ? 'draft' : 'valid'}
-                            shape={selectedInfill.shape}
-                            orientationUsed={selectedInfillEstimate.panelOrientationUsed}
-                            panelCountEach={selectedInfillEstimate.panelCountEach}
-                            unsupportedJoinerIndicesEach={selectedInfillEstimate.unsupportedInternalIndicesEach}
-                            supports={selectedInfill.support}
-                            bayBoundariesM={selectedInfillEstimate.bayBoundariesM}
-                            bayWidthsM={selectedInfillEstimate.bayWidthsM}
-                            joinerLines={selectedInfillEstimate.joinerLines}
-                            runSideM={selectedInfillEstimate.runSideM}
-                            acrossSideM={selectedInfillEstimate.acrossSideM}
-                            centreLimitM={selectedInfillEstimate.maxCentreM}
-                          />
+                          {selectedInfillPreview}
+                          <div className={styles.infillChosenSystem}>
+                            <div><span>Panel material</span><strong>{acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}</strong></div>
+                            <div><span>Joiner direction</span><strong>{selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal'}</strong></div>
+                            <div><span>Additional supports</span><strong>{selectedInfillEstimate.estimatedMullionsTotal}</strong></div>
+                          </div>
+                          <p className={styles.infillComputedNote}>{addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}</p>
+                          <details
+                            className={styles.infillCostDetails}
+                            open={infillCostDetailsOpen}
+                            onToggle={(event) => setInfillCostDetailsOpen((event.currentTarget as HTMLDetailsElement).open)}
+                          >
+                            <summary>Cost and technical details</summary>
                           <div className={styles.infillComputedGroup}>
-                            <div className={styles.infillComputedGroupTitle}>Decision support</div>
+                            <div className={styles.infillComputedGroupTitle}>Cost comparison</div>
                             {moduleBaselineLoading ? <p className={styles.infillComputedNote}>Loading module baseline...</p> : null}
                             {moduleBaselineError ? <p className={styles.previewError}>{moduleBaselineError}</p> : null}
                             {infillDecisionLoading ? <p className={styles.infillComputedNote}>Running option comparison...</p> : null}
@@ -5333,149 +5277,13 @@ export default function CalculatorGridClient({
                               </div>
                             </div>
                           </div>
-                          <h3 className={styles.infillComputedTitle}>Computed summary</h3>
-                          {selectedDraftGhostLine ? <p className={styles.infillComputedGhost}>{selectedDraftGhostLine}</p> : null}
-
-                      <div className={styles.infillComputedGroup}>
-                        <div className={styles.infillComputedGroupTitle}>Layout</div>
-                        <PreviewRow
-                          label="Joiner direction used"
-                          value={computedOrDraftDash(
-                            selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical joiners' : 'Horizontal joiners',
-                          )}
-                        />
-                        <PreviewRow
-                          label="Acrylic used"
-                          value={computedOrDraftDash(
-                            `${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}${
-                              selectedInfillEstimate.acrylicSourceAutoSwitched ? ' (auto-switched)' : ''
-                            }`,
-                          )}
-                        />
-                        {selectedInfillEstimate.acrylicSourceAutoSwitched ? (
-                          <details className={styles.infillAutoSwitchWhy}>
-                            <summary>Why?</summary>
-                            <p>
-                              {`Auto-switch triggered because run ${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)}m exceeds ${acrylicSourceLabel(
-                                selectedInfillEstimate.preferredAcrylicSource,
-                              )} max ${formatMaybeNumber(maxRunForAcrylicSource(selectedInfillEstimate.preferredAcrylicSource), 2)}m.`}
-                            </p>
                           </details>
-                        ) : null}
-                        <PreviewRow
-                          label="Long side / Subdivided side"
-                          value={computedOrDraftDash(
-                            `${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)}m / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}m`,
-                          )}
-                        />
-                        <PreviewRow label="Max bay spacing" value={computedOrDraftDash(`${formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}m`)} />
-                        <PreviewRow
-                          label="Panels across"
-                          value={computedOrDraftDash(`${selectedInfillEstimate.panelCountEach} each / ${selectedInfillEstimate.panelCountTotal} total`)}
-                        />
-                        <PreviewRow
-                          label="Internal joiner lines"
-                          value={computedOrDraftDash(
-                            `${selectedInfillEstimate.internalJoinerLinesEach} each / ${selectedInfillEstimate.internalJoinerLinesTotal} total`,
-                          )}
-                        />
-                      </div>
-
-                      <div className={styles.infillComputedGroup}>
-                        <div className={styles.infillComputedGroupTitle}>Support impact</div>
-                        <PreviewRow
-                          label="Joiners needing support"
-                          value={computedOrDraftDash(
-                            `${selectedInfillEstimate.unsupportedInternalEach} each / ${selectedInfillEstimate.unsupportedInternalTotal} total`,
-                          )}
-                        />
-                        <PreviewRow
-                          label="Estimated 50x50 mullions"
-                          value={computedOrDraftDash(
-                            `${selectedInfillEstimate.estimatedMullionsEach} each / ${selectedInfillEstimate.estimatedMullionsTotal} total`,
-                          )}
-                        />
-                        <PreviewRow
-                          label="Missing boundary supports"
-                          value={computedOrDraftDash(
-                            `${selectedInfillEstimate.missingJambsEach} each / ${selectedInfillEstimate.missingJambsTotal} total`,
-                          )}
-                        />
-                      </div>
-
-                      <div className={styles.infillComputedGroup}>
-                        <div className={styles.infillComputedGroupTitle}>Acrylic procurement estimate</div>
-                        {selectedInfillEstimate.acrylicSourceUsed === 'strip_620' ? (
-                          <>
-                            <PreviewRow label="Strip width" value={computedOrDraftDash('0.62m')} />
-                            <PreviewRow
-                              label="Required cut lengths"
-                              value={computedOrDraftDash(
-                                selectedInfillEstimate.stripCutMinM !== null && selectedInfillEstimate.stripCutMaxM !== null
-                                  ? `${formatMaybeNumber(selectedInfillEstimate.stripCutMinM, 2)}m to ${formatMaybeNumber(selectedInfillEstimate.stripCutMaxM, 2)}m`
-                                  : 'No cuts calculated',
-                              )}
-                            />
-                          </>
-                        ) : (
-                          <PreviewRow
-                            label="Area"
-                            value={computedOrDraftDash(
-                              `${formatMaybeNumber(selectedInfillEstimate.sheetAreaEachM2, 2)}m2 each / ${formatMaybeNumber(selectedInfillEstimate.sheetAreaTotalM2, 2)}m2 total`,
-                            )}
-                          />
-                        )}
-                      </div>
-
-                      {selectedComputedWarnings.length ? (
-                        <div className={styles.infillComputedGroup}>
-                          <div className={styles.infillComputedGroupHeader}>
-                            <div className={styles.infillComputedGroupTitle}>Warnings</div>
-                            <button
-                              type="button"
-                              className={styles.infillIconButton}
-                              onClick={() => {
-                                setInfillResolveOpen(true);
-                                trackInfillEvent('infill_resolve_mode_open', {
-                                  infill_id: selectedInfill.id,
-                                  warnings: selectedComputedWarnings.length,
-                                });
-                              }}
-                            >
-                              Resolve warnings ({selectedComputedWarnings.length})
-                            </button>
-                          </div>
-                          <ul className={styles.infillWarningList}>
-                            {selectedComputedWarnings.map((warning) => (
-                              <li key={warning.id}>
-                                <button type="button" className={styles.infillWarningButton} onClick={() => jumpToInfillWarningTarget(warning)}>
-                                  <span>{warning.message}</span>
-                                  <span className={styles.infillWarningJump}>Jump</span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                          <ResolveWarningsPanel
-                            open={infillResolveOpen}
-                            warnings={selectedComputedWarnings}
-                            onClose={() => setInfillResolveOpen(false)}
-                            onJumpToField={jumpToInfillWarningTarget}
-                            onApplyFix={(fix, warning) => {
-                              applyInfillWarningFix(fix);
-                              trackInfillEvent('infill_resolve_apply_fix', {
-                                infill_id: selectedInfill.id,
-                                warning_id: warning.id,
-                                fix_type: fix.type,
-                              });
-                            }}
-                          />
-                        </div>
-                      ) : null}
+                          <InfillCutList status={selectedInfillIsDraft ? 'draft' : 'valid'} rows={selectedInfillEstimate.cutListRows ?? []} />
                         </>
-                      )}
                     </section>
                       </aside>
                     </div>
+                    ) : null}
                   </>
                 ) : infillsState.items.length === 0 ? (
                   <div className={styles.infillEditorEmpty}>
@@ -5508,26 +5316,7 @@ export default function CalculatorGridClient({
                     </div>
                   </div>
                 )}
-              </section>
-            </div>
-
-            <div className={styles.infillDrawerFooter}>
-              <span className={styles.infillDrawerFooterNote}>Changes save automatically.</span>
-              <button type="button" className={styles.modalButtonPrimary} onClick={closeInfillModal}>
-                Done
-              </button>
-            </div>
-
-            {deletedInfill ? (
-              <div className={styles.infillUndoToast} role="status" aria-live="polite">
-                <span>Infill deleted.</span>
-                <button type="button" className={styles.infillUndoButton} onClick={undoDeleteInfill}>
-                  Undo
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </Modal>
+        </InfillConfiguratorDialog>
         <DuplicateDialog
           open={infillDuplicateOpen && Boolean(selectedInfill)}
           sourceLabel={selectedInfill?.label?.trim() || `Infill ${Math.max(1, selectedInfillIndex + 1)}`}

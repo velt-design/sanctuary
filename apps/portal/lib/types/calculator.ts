@@ -170,7 +170,8 @@ export type CalculatorBlindsState = {
   items: BlindLineItem[];
 };
 
-type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
+export type InfillResolvedAcrylicSourceInput = 'strip_620' | 'sheet_panels';
+type InfillAcrylicSourceInput = InfillResolvedAcrylicSourceInput | 'auto';
 type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
 type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
 type InfillPanelOrientationInput = 'vertical' | 'horizontal' | 'auto';

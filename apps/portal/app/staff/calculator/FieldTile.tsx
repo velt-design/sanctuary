@@ -1,7 +1,7 @@
 import styles from './CalculatorGrid.module.css';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 
-export type FieldOption = { label: string; value: string };
+export type FieldOption = { label: string; value: string; disabled?: boolean };
 
 export type FieldTileType =
   | 'number'
@@ -79,7 +79,7 @@ export default function FieldTile({
           aria-invalid={error ? true : undefined}
         >
           {(options ?? []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option key={opt.value} value={opt.value} disabled={opt.disabled}>
               {opt.label}
             </option>
           ))}

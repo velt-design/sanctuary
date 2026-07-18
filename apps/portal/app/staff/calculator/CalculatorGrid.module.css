@@ -804,36 +804,243 @@
   grid-template-columns: 320px minmax(0, 1fr);
 }
 
-.infillSectionNav {
-  display: flex;
-  flex-wrap: wrap;
+.infillStageNav {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0 0 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
   border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
-.infillSectionNavButton {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  border-radius: 999px;
+.infillStageButton {
+  width: 100%;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
   background: rgba(var(--portal-text-rgb), 0.02);
-  color: rgba(var(--portal-text-rgb), 0.78);
+  color: rgba(var(--portal-text-rgb), 0.7);
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 6px 12px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.infillSectionNavButtonActive {
-  border-color: rgba(var(--accentRgb), 0.4);
-  background: rgba(var(--accentRgb), 0.08);
-  color: rgba(var(--portal-text-rgb), 0.9);
+.infillStageButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.infillSectionNavButton:focus {
+.infillStageButton:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
+.infillStageButtonActive {
+  border-color: rgba(var(--accentRgb), 0.42);
+  background: rgba(var(--accentRgb), 0.08);
+  color: rgba(var(--portal-text-rgb), 0.92);
+}
+
+.infillStageNumber {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(var(--portal-text-rgb), 0.08);
+  font-size: 11px;
+}
+
+.infillStageButtonActive .infillStageNumber {
+  background: rgba(var(--accentRgb), 0.16);
+}
+
+.infillGuidedBody {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.infillGuidedStageGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 16px;
+  align-items: start;
+}
+
+.infillStageHeading {
+  padding: 14px 14px 4px;
+}
+
+.infillStageHeading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.infillStageHeading p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.infillGuidedPreview {
+  position: sticky;
+  top: 0;
+  min-width: 0;
+}
+
+.infillAutomaticChoices {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 12px;
+  background: rgba(var(--portal-text-rgb), 0.015);
+  padding: 10px 12px;
+}
+
+.infillAutomaticChoices > summary,
+.infillCostDetails > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.infillAutomaticChoices > p {
+  margin: 6px 0 10px;
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.66);
+}
+
+.infillAutomaticChoicesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.infillSupportResult {
+  margin: 0 12px 12px;
+  border-radius: 10px;
+  background: rgba(21, 128, 61, 0.08);
+  color: rgba(25, 91, 55, 0.95);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.infillResultsStage {
+  display: grid;
+  gap: 12px;
+}
+
+.infillResultsStage .infillEditorSummary {
+  position: static;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  padding: 0;
+}
+
+.infillResultsStage .infillPreviewCard {
+  width: min(420px, 100%);
+  justify-self: center;
+}
+
+@media (min-width: 1201px) {
+  .infillResultsStage .infillComputedPanel {
+    grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .infillResultsStage .infillPreviewCard {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .infillResultsStage .infillChosenSystem,
+  .infillResultsStage .infillComputedNote {
+    grid-column: 2;
+  }
+
+  .infillResultsStage .infillCostDetails,
+  .infillResultsStage .infillCutList {
+    grid-column: 1 / -1;
+  }
+}
+
+.infillResultBanner {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.infillResultBanner strong {
+  font-size: 15px;
+}
+
+.infillResultBannerReady {
+  border-color: rgba(21, 128, 61, 0.24);
+  background: rgba(21, 128, 61, 0.07);
+}
+
+.infillResultBannerNeedsDetails {
+  border-color: rgba(161, 98, 7, 0.25);
+  background: rgba(161, 98, 7, 0.08);
+}
+
+.infillResultBannerBlocked {
+  border-color: rgba(180, 35, 24, 0.3);
+  background: rgba(180, 35, 24, 0.08);
+}
+
+.infillChosenSystem {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.infillChosenSystem > div {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.infillChosenSystem span {
+  font-size: 11px;
+  color: rgba(var(--portal-text-rgb), 0.62);
+}
+
+.infillChosenSystem strong {
+  font-size: 13px;
+}
+
+.infillCostDetails {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.infillCostDetails[open] > summary {
+  margin-bottom: 10px;
+}
+
+.infillGuidedFooterActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .infillListRows {
@@ -1087,10 +1294,6 @@
   display: none;
 }
 
-.infillSummaryToggleButton {
-  display: none;
-}
-
 .infillEditorHeader {
   display: flex;
   justify-content: space-between;
@@ -1109,26 +1312,6 @@
 .infillEditorActions {
   display: flex;
   gap: 8px;
-}
-
-.infillEditorGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
-  gap: 16px;
-  align-items: start;
-  min-width: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.infillEditorForm {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  overflow-y: auto;
-  padding-right: 4px;
-  max-height: 100%;
-  scrollbar-gutter: stable;
 }
 
 .infillEditorSummary {
@@ -1207,37 +1390,6 @@
   display: grid;
   gap: 12px;
   min-width: 0;
-}
-
-.infillSummaryTabs {
-  display: inline-flex;
-  gap: 6px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
-  border-radius: 999px;
-  padding: 4px;
-  background: rgba(var(--portal-text-rgb), 0.02);
-}
-
-.infillSummaryTabButton {
-  border: none;
-  background: transparent;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(var(--portal-text-rgb), 0.65);
-  cursor: pointer;
-}
-
-.infillSummaryTabButtonActive {
-  background: var(--portal-bg-surface);
-  color: rgba(var(--portal-text-rgb), 0.85);
-  box-shadow: 0 2px 6px rgba(var(--portal-text-rgb), 0.08);
-}
-
-.infillSummaryTabButton:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .infillComputedTitle {
@@ -1549,6 +1701,11 @@
 .infillPreviewShape {
   stroke: rgba(var(--portal-text-rgb), 0.28);
   stroke-width: 1.1;
+}
+
+.infillPreviewPanel {
+  stroke: rgba(var(--portal-text-rgb), 0.28);
+  stroke-width: 0.8;
 }
 
 .infillPreviewJoiner {
@@ -1998,37 +2155,12 @@
     min-width: 260px;
   }
 
-  .infillEditorGrid {
+  .infillGuidedStageGrid {
     grid-template-columns: 1fr;
   }
 
-  .infillSummaryToggleButton {
-    display: inline-flex;
-  }
-
-  .infillEditorSummary {
-    position: fixed;
-    top: 52px;
-    right: 12px;
-    width: min(420px, calc(100vw - 24px));
-    max-height: calc(100vh - 140px);
-    z-index: 6;
-    border-radius: 14px;
-    padding: 2px;
-    transform: translateX(calc(100% + 24px));
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 220ms ease, opacity 220ms ease;
-  }
-
-  .infillEditorSummaryOpen {
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .infillEditorSummary .infillComputedPanel {
-    box-shadow: 0 18px 36px rgba(var(--portal-text-rgb), 0.22);
+  .infillGuidedPreview {
+    position: static;
   }
 
   .infillCutListHead,
@@ -2099,6 +2231,23 @@
 
   .infillEditorActions {
     justify-content: flex-start;
+  }
+
+  .infillStageNav {
+    grid-template-columns: 1fr;
+  }
+
+  .infillStageButton {
+    padding: 7px 9px;
+  }
+
+  .infillAutomaticChoicesGrid,
+  .infillChosenSystem {
+    grid-template-columns: 1fr;
+  }
+
+  .infillDrawerFooter {
+    align-items: flex-end;
   }
 
   .moduleViewsHeader {

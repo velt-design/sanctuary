@@ -4,7 +4,6 @@ import { RAFTER_SPACING_MM_MAX, normalizeInfillsStateForUi, toNumber, type Infil
 import {
   estimateInfillUi as estimateCanonicalInfillUi,
   resolveMonoSlopeShape,
-  resolvePayloadPanelOrientation,
   type InfillUiEstimate,
   type InfillUiState,
 } from './infillCompute';
@@ -49,10 +48,12 @@ function formatMaybeNumber(n: number | undefined, digits = 2): string {
 }
 
 export function maxRunForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+  if (source === 'auto') return INFILL_STRIP_MAX_RUN_M;
   return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
 }
 
 export function maxCentreForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+  if (source === 'auto') return INFILL_SHEET_MAX_SHORT_SIDE_M;
   return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
 }
 
@@ -74,6 +75,7 @@ export function locationLabel(value: InfillLineItem['location']): string {
 }
 
 export function acrylicSourceLabel(value: InfillLineItem['acrylicSource']): string {
+  if (value === 'auto') return 'Automatic';
   return value === 'strip_620' ? '620 strips' : 'Sheet panels';
 }
 
@@ -127,26 +129,19 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
     errors.widthM = 'Enter a value of at least 0.';
   }
 
-  let maxHeight = 0;
   if (item.shape.type === 'rect') {
     const heightRaw = toNumber(item.shape.heightM);
     if (!Number.isFinite(heightRaw) || heightRaw < 0) {
       errors.heightM = 'Enter a value of at least 0.';
-    } else {
-      maxHeight = Math.max(maxHeight, heightRaw);
     }
   } else {
     const lowRaw = toNumber(item.shape.heightLowM);
     const highRaw = toNumber(item.shape.heightHighM);
     if (!Number.isFinite(lowRaw) || lowRaw < 0) {
       errors.heightLowM = 'Enter a value of at least 0.';
-    } else {
-      maxHeight = Math.max(maxHeight, lowRaw);
     }
     if (!Number.isFinite(highRaw) || highRaw < 0) {
       errors.heightHighM = 'Enter a value of at least 0.';
-    } else {
-      maxHeight = Math.max(maxHeight, highRaw);
     }
   }
 
@@ -155,7 +150,7 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
       INFILL_SHEET_MAX_RUN_M,
       2,
     )}m, strips ${formatMaybeNumber(INFILL_STRIP_MAX_RUN_M, 2)}m).`;
-  } else if (estimate.acrylicSourceAutoSwitched) {
+  } else if (estimate.acrylicSourceAutoSwitched && item.acrylicSource !== 'auto') {
     warnings.push(
       `Acrylic source auto-switched from ${acrylicSourceLabel(estimate.preferredAcrylicSource)} to ${acrylicSourceLabel(estimate.acrylicSourceUsed)} because run side ${formatMaybeNumber(estimate.runSideM, 2)}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(estimate.preferredAcrylicSource), 2)}m.`,
     );
@@ -164,8 +159,6 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
   const bottomOffsetRaw = toNumber(item.shape.bottomOffsetM ?? '0');
   if (!Number.isFinite(bottomOffsetRaw) || bottomOffsetRaw < 0) {
     errors.bottomOffsetM = 'Enter a value of at least 0.';
-  } else if (maxHeight > 0 && bottomOffsetRaw >= maxHeight) {
-    warnings.push('Bottom offset is greater than or equal to panel height.');
   }
 
   const mode = item.support.internalSupportMode ?? 'none';
@@ -189,6 +182,7 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
   const out: NonNullable<CostInputsV1['infills']> = [];
   const roofRafterSpacingM = estimateRoofRafterSpacing(toNumber(module.lengthM)).spacingM;
   for (const raw of infills.items) {
+    const canonical = estimateCanonicalInfillUi(raw, roofRafterSpacingM, toNumber(module.lengthM));
     const maxPanelWidth = toNumber(raw.maxPanelWidthM);
     const targetPanelWidth = toNumber(raw.targetPanelWidthM);
     const qty = toNumber(raw.qty);
@@ -227,8 +221,8 @@ export function parseInfillsForPayload(module: CalculatorModuleInputs): CostInpu
       label: raw.label?.trim() ? raw.label.trim() : undefined,
       qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
       location: raw.location,
-      acrylic_source: raw.acrylicSource,
-      panel_orientation: resolvePayloadPanelOrientation(raw, roofRafterSpacingM, toNumber(module.lengthM)),
+      acrylic_source: canonical.acrylicSourceUsed,
+      panel_orientation: canonical.panelOrientationUsed,
       width_mode: widthMode,
       target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
       max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
