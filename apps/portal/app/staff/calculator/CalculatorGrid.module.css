@@ -22,6 +22,7 @@
   overflow: auto;
   min-height: 0;
   container-type: inline-size;
+  container-name: calculator-page;
 }
 
 .previewFrame {
@@ -2280,12 +2281,6 @@
   align-items: start;
 }
 
-.configurationFields {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-}
-
 .leftCol,
 .rightCol {
   scrollbar-width: thin;
@@ -4061,24 +4056,6 @@
   padding: 3px 8px;
   font-size: 11px;
   color: var(--mv-chip-text);
-}
-
-.previewFieldGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(164px, 1fr));
-  gap: 10px;
-}
-
-.previewFieldGrid .tile {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.09);
-  border-radius: 11px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.82);
-  height: auto;
-}
-
-.previewFieldGrid .tile:focus-within {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .previewSummary {

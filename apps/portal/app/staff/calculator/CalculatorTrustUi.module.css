@@ -348,19 +348,23 @@
   }
 }
 
-@container (max-width: 700px) {
+@container (max-width: 779px) {
+  .commandBar {
+    align-items: flex-start;
+  }
+
+  .commandBarIdentity {
+    flex-basis: 100%;
+  }
+
   .commandBarMeta {
     flex-wrap: wrap;
     white-space: normal;
   }
 
   .commandBarActions {
-    justify-content: flex-start;
-  }
-
-  .commandBarStatusReady,
-  .commandBarStatusBlocked {
-    order: 3;
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .commandBarDraftStatus,

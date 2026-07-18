@@ -13,9 +13,8 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from 'react';
-import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
+import FieldTile, { type FieldOption } from './FieldTile';
 import styles from './CalculatorGrid.module.css';
 import type {
   BlindFabric as BlindFabricInput,
@@ -209,6 +208,8 @@ import {
 } from './CalculatorInfillOverview';
 import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } from './CalculatorSaveDialogs';
 import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
+import CalculatorConfigurationForm from './CalculatorConfigurationForm';
+import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import CalculatorPricingSummary from './CalculatorPricingSummary';
 import CalculatorProjectPicker from './CalculatorProjectPicker';
 import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
@@ -217,21 +218,6 @@ import {
   calculatorResultFreshnessLabel,
   deriveCalculatorResultFreshness,
 } from './calculatorResultFreshness';
-
-type FieldSchemaItem = {
-  id: string;
-  label: string;
-  type: FieldTileType;
-  value?: string | boolean;
-  content?: ReactNode;
-  onChange?: (next: string | boolean) => void;
-  options?: FieldOption[];
-  disabled?: boolean;
-  helperText?: string;
-  error?: string;
-  onAction?: () => void;
-  actionLabel?: string;
-};
 
 type MaterialsExplainApiResponse = {
   output: {
@@ -4115,95 +4101,6 @@ export default function CalculatorGridClient({
 
   const generateField = schema.find((field) => field.id === 'generate-estimate') ?? null;
 
-  const schemaMap = useMemo(() => new Map(schema.map((field) => [field.id, field])), [schema]);
-  const pickFields = (ids: string[]): FieldSchemaItem[] =>
-    ids
-      .map((id) => schemaMap.get(id))
-      .filter(Boolean) as FieldSchemaItem[];
-
-  const contextFields = pickFields([
-    'project-context',
-    'draft-notice',
-  ]);
-
-  const structureFields = pickFields([
-    'pergolaStyle',
-    'boxPerimeterEnabled',
-    'roofMaterial',
-    'mixedAcrylicBaysMain',
-    'mixedAcrylicBaysA',
-    'mixedAcrylicBaysB',
-    'timberSystemHeading',
-    'timberNoteRafters',
-    'timberNotePurlins',
-    'timberNoteEdgeRafters',
-    'timberRoofAboveType',
-    'timberInsulatedPanelThicknessMm',
-    'timberTrayWidthMm',
-    'extrusionColour',
-    'powdercoatStandardColour',
-    'powdercoatIsCustom',
-    'powdercoatCustomColour',
-    'lengthM',
-    'projectionM',
-    'roofOrientation',
-    'hipCornerLengthBM',
-    'hipCornerProjectionBM',
-    'roofPitchDeg',
-    'gableEndFramesMode',
-    'gableHouseEdgeGutter',
-    'gableOuterEdgeGutter',
-    'invertedEnabled',
-    'invertedHouseGutter',
-    'overhangEnabled',
-    'overhangAmountM',
-    'perSideSpanM',
-    'slopedLengthPerSideM',
-    'postCutHeightM',
-    'postCount',
-    'boxPitchDeg',
-    'boxRiseMm',
-    'boxGutterHouseEdge',
-    'boxGutterFarEdge',
-    'downpipeCount',
-    'downpipeJoinCount',
-    'downpipeElbowCount',
-  ]);
-
-  const flashingsFields = pickFields(['flashings']);
-
-  const overrideFields = pickFields([
-    'ledgerProfileOverride',
-    'rafterProfileOverride',
-    'postProfileOverride',
-    'frontBeamProfileOverride',
-    'ridgeBeamProfileOverride',
-    'tieBeamProfileOverride',
-    'strutProfileOverride',
-    'boxPerimeterBeamProfileOverride',
-    'overhangSupportBeamProfile',
-    'separateGutterEnabled',
-  ]);
-
-  const addonFields = pickFields(['blindsList', 'infillsEditor']);
-
-  const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height', 'jobType']);
-
-  const allowanceFields = pickFields(['travelExGst', 'extrasAllowanceExGst', 'quoteDiscountPct']);
-
-  const houseFootprintFields = pickFields([
-    'attachmentSide',
-    'drawingRotationQuarterTurns',
-    'houseFootprintPreset',
-    'houseFootprintBandDepthM',
-    'houseFootprintReturnRunM',
-    'houseFootprintRecessWidthM',
-    'houseFootprintRecessDepthM',
-    'houseFootprintLeftLegRunM',
-    'houseFootprintRightLegRunM',
-    'houseFootprintSideRunM',
-  ]);
-
   const copyMaterialsExplainJson = async () => {
     if (!materialsExplainJson) return;
     try {
@@ -4388,16 +4285,7 @@ export default function CalculatorGridClient({
                 onMoveModule={handleMoveModule}
                 onRemoveModule={handleRemoveModule}
               />
-              <div className={styles.configurationFields}>
-                <FieldGroup title="Context" fields={contextFields} />
-                <FieldGroup title="Connections & Site" fields={connectionFields} />
-                <FieldGroup title="Structure" fields={structureFields} />
-                {isAdvancedUi ? <FieldGroup title="Flashings" fields={flashingsFields} /> : null}
-                {isAdvancedUi ? <FieldGroup title="Overrides" fields={overrideFields} /> : null}
-                <FieldGroup title="Add-ons" fields={addonFields} />
-                <FieldGroup title="Allowances" fields={allowanceFields} />
-                {isAdvancedUi ? <FieldGroup title="House Footprint" fields={houseFootprintFields} /> : null}
-              </div>
+              <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
             </div>
           </div>
 
@@ -5393,34 +5281,6 @@ export default function CalculatorGridClient({
         onSelect={handleProjectSelect}
       />
     </main>
-  );
-}
-
-function FieldGroup({ title, fields }: { title: string; fields: FieldSchemaItem[] }) {
-  if (!fields.length) return null;
-  return (
-    <section className={styles.previewCard} aria-label={title}>
-      <h2 className={styles.previewCardTitle}>{title}</h2>
-      <div className={styles.previewFieldGrid}>
-        {fields.map((field) => (
-          <FieldTile
-            key={field.id}
-            id={field.id}
-            label={field.label}
-            type={field.type}
-            value={field.value}
-            content={field.content}
-            onChange={field.onChange}
-            options={field.options}
-            disabled={field.disabled}
-            helperText={field.helperText}
-            error={field.error}
-            onAction={field.onAction}
-            actionLabel={field.actionLabel}
-          />
-        ))}
-      </div>
-    </section>
   );
 }
 

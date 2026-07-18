@@ -1,0 +1,112 @@
+.form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  container: calculator-configuration / inline-size;
+}
+
+.section {
+  min-width: 0;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 14px;
+  padding: 15px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.95);
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  color: rgba(var(--portal-text-rgb), 0.72);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px 18px;
+  align-items: start;
+}
+
+.fieldSlot {
+  min-width: 0;
+  align-self: start;
+}
+
+.fieldSlotWide,
+.fieldSlotFull {
+  grid-column: 1 / -1;
+}
+
+:global([data-field-tile-appearance='configuration']) {
+  min-height: 0;
+  height: auto;
+  justify-content: flex-start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+:global([data-field-tile-appearance='configuration']:focus-within) {
+  outline: none;
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+  min-height: 16px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
+  min-height: 40px;
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='helper']),
+:global([data-field-tile-appearance='configuration'] [data-field-part='error']) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+@container calculator-configuration (min-width: 360px) {
+  .fieldGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fieldSlotWide {
+    grid-column: span 2;
+  }
+}
+
+@container calculator-configuration (min-width: 560px) {
+  .fieldGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fieldSlotFull {
+    grid-column: 1 / -1;
+  }
+}
+
+@container calculator-page (max-width: 779px) {
+  .fieldGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container calculator-page (max-width: 559px) {
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .section {
+    padding: 13px;
+  }
+
+  .fieldSlotWide,
+  .fieldSlotFull {
+    grid-column: 1 / -1;
+  }
+}

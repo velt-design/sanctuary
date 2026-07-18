@@ -22,6 +22,19 @@ async function expectLocalDraftProtected(page: Page) {
   await expect(page.getByText('Browser draft only — use Save to update the estimate.', { exact: true })).toBeVisible();
 }
 
+async function expectStructureColumnCount(page: Page, expectedColumns: number) {
+  const fieldGrid = page.locator(
+    '[data-calculator-configuration-section="structure"] [data-calculator-field-grid]',
+  );
+  await expect(fieldGrid).toBeVisible();
+  const firstRowColumnCount = await fieldGrid.locator(':scope > [data-calculator-field]').evaluateAll((elements) => {
+    const boxes = elements.map((element) => element.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0);
+    const firstRowTop = Math.min(...boxes.map((box) => box.top));
+    return boxes.filter((box) => Math.abs(box.top - firstRowTop) < 4).length;
+  });
+  expect(firstRowColumnCount).toBe(expectedColumns);
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -54,6 +67,7 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
     await expectLocalDraftProtected(page);
     await expect(page.getByRole('navigation', { name: 'Pergolas and modules' })).toBeVisible();
+    await expectStructureColumnCount(page, 3);
     await expect(moduleNavigatorButton(page, 'Pergola 1 · Module 1')).toHaveAttribute('aria-current', 'true');
     await expect(page.getByText('Pergola 2 · Module 1', { exact: true }).first()).toBeVisible();
     const pricing = page.getByRole('region', { name: 'Pricing preview' });
@@ -183,6 +197,7 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     expect(postConnectionBox).not.toBeNull();
     expect(Math.abs((houseConnectionBox?.y ?? 0) - (postConnectionBox?.y ?? 0))).toBeLessThan(4);
     expect(postConnectionBox?.x ?? 0).toBeGreaterThan((houseConnectionBox?.x ?? 0) + (houseConnectionBox?.width ?? 0));
+    await expectStructureColumnCount(page, 2);
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
@@ -200,6 +215,7 @@ for (const width of [1024, 768]) {
       await page.setViewportSize({ width, height: 768 });
       await openCalculator(page);
       await expectLocalDraftProtected(page);
+      await expectStructureColumnCount(page, width === 1024 ? 3 : 2);
       await expect(page.getByRole('button', { name: /^Pergola 1 · Module 1/ })).toBeVisible();
       const main = page.locator('main').first();
       const before = await main.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight }));

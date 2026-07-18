@@ -29,6 +29,7 @@ type FieldTileProps = {
   actionLabel?: string;
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
   step?: number | string;
+  appearance?: 'default' | 'configuration';
 };
 
 export default function FieldTile({
@@ -48,6 +49,7 @@ export default function FieldTile({
   actionLabel,
   inputMode,
   step,
+  appearance = 'default',
 }: FieldTileProps) {
   const helperId = helperText ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -55,17 +57,17 @@ export default function FieldTile({
   const isChecked = value === true;
 
   return (
-    <div className={styles.tile}>
+    <div className={styles.tile} data-field-tile-appearance={appearance}>
       {type === 'custom' ? (
-        <div className={styles.label}>{label}</div>
+        <div className={styles.label} data-field-part="label">{label}</div>
       ) : (
-        <label htmlFor={id} className={styles.label}>
+        <label htmlFor={id} className={styles.label} data-field-part="label">
           {label}
         </label>
       )}
 
       {type === 'custom' ? (
-        <div id={id} className={styles.customContent} aria-describedby={describedBy}>
+        <div id={id} className={styles.customContent} aria-describedby={describedBy} data-field-part="custom">
           {content}
         </div>
       ) : type === 'select' ? (
@@ -85,7 +87,7 @@ export default function FieldTile({
           ))}
         </select>
       ) : type === 'toggle' ? (
-        <div className={styles.toggleRow}>
+        <div className={styles.toggleRow} data-field-part="toggle">
           <input
             id={id}
             className={styles.toggleBox}
@@ -99,7 +101,7 @@ export default function FieldTile({
           <span className={styles.toggleText}>{isChecked ? 'On' : 'Off'}</span>
         </div>
       ) : type === 'readOnly' ? (
-        <output id={id} className={styles.readOnlyValue} aria-describedby={describedBy}>
+        <output id={id} className={styles.readOnlyValue} aria-describedby={describedBy} data-field-part="control">
           {String(value ?? '')}
         </output>
       ) : type === 'action' ? (
@@ -141,11 +143,11 @@ export default function FieldTile({
       )}
 
       {error ? (
-        <div id={errorId} className={styles.error}>
+        <div id={errorId} className={styles.error} data-field-part="error">
           {error}
         </div>
       ) : helperText ? (
-        <div id={helperId} className={styles.helper}>
+        <div id={helperId} className={styles.helper} data-field-part="helper">
           {helperText}
         </div>
       ) : null}
