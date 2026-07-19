@@ -7,9 +7,9 @@ import type { Project } from '@/lib/types/project';
 import { qk } from '@/lib/queries/keys';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
-const push = vi.fn();
 const replace = vi.fn();
 const prefetch = vi.fn();
+const openProject = vi.fn();
 const prefetchQuery = vi.fn();
 const invalidateQueries = vi.fn();
 const toastError = vi.fn();
@@ -23,8 +23,13 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, replace, prefetch }),
+  useRouter: () => ({ replace, prefetch }),
   useSearchParams: () => mockSearchParams,
+}));
+
+vi.mock('./ProjectInstantOpen', () => ({
+  preloadProjectInstantView: vi.fn(() => Promise.resolve()),
+  useProjectInstantOpen: () => ({ instantProject: null, openProject }),
 }));
 
 vi.mock('@/components/ui/toast/ToastProvider', () => ({
@@ -87,9 +92,9 @@ const initialContacts: Contact[] = [
 
 describe('ProjectsIndexClient', () => {
   beforeEach(() => {
-    push.mockReset();
     replace.mockReset();
     prefetch.mockReset();
+    openProject.mockReset();
     prefetchQuery.mockReset();
     prefetchQuery.mockResolvedValue(undefined);
     invalidateQueries.mockReset();
@@ -208,7 +213,7 @@ describe('ProjectsIndexClient', () => {
       row?.dispatchEvent(eventFactory());
     });
 
-    expect(push).toHaveBeenCalledWith('/staff/projects/proj_1');
+    expect(openProject).toHaveBeenCalledWith('proj_1');
     expect(prefetchQuery).toHaveBeenCalled();
 
     rendered.unmount();
@@ -233,6 +238,7 @@ describe('ProjectsIndexClient', () => {
     expect(link?.getAttribute('href')).toBe('/staff/projects/proj_1');
     expect(prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
     expect(prefetchQuery).toHaveBeenCalled();
+    expect(openProject).toHaveBeenCalledWith('proj_1');
 
     rendered.unmount();
   });

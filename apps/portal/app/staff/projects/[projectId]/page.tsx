@@ -3,12 +3,12 @@ import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 
-const VALID_TABS = new Set(['estimates', 'quotes', 'job-packs', 'emails']);
+const VALID_TABS = new Set(['activity', 'estimates', 'quotes', 'job-packs', 'emails']);
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw && VALID_TABS.has(raw)) return raw;
-  return 'estimates';
+  return 'activity';
 }
 
 type SearchParams = { [key: string]: string | string[] | undefined };

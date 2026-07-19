@@ -39,7 +39,7 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('data-estimate-id="est_1"');
   });
 
-  it('coerces removed files tabs back to estimates', async () => {
+  it('coerces removed files tabs back to activity', async () => {
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ tab: 'files' }),
@@ -47,6 +47,6 @@ describe('ProjectDetailPage', () => {
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('data-project-id="proj_1"');
-    expect(markup).toContain('data-tab="estimates"');
+    expect(markup).toContain('data-tab="activity"');
   });
 });

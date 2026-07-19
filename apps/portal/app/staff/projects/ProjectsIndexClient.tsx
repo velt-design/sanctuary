@@ -30,6 +30,7 @@ import {
 } from '@/lib/projects/pipelineDefinition';
 import { patchProjectListItem } from '@/lib/queries/projectCache';
 import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpenPreload';
+import { preloadProjectInstantView, useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
   filterProjectsForIndex,
@@ -79,6 +80,7 @@ export default function ProjectsIndexClient({
   initialTodayYmd: string;
 }) {
   const router = useRouter();
+  const { instantProject, openProject } = useProjectInstantOpen();
   const searchParams = useSearchParams();
   const toast = useToast();
   const { role } = usePortalSession();
@@ -175,6 +177,7 @@ export default function ProjectsIndexClient({
   const prepareProjectOpen = useCallback(
     (projectId: string) => {
       void preloadProjectOpen(queryClient, router, host, projectId);
+      void preloadProjectInstantView();
     },
     [host, queryClient, router],
   );
@@ -401,6 +404,8 @@ export default function ProjectsIndexClient({
       })()
     : '';
 
+  if (instantProject) return instantProject;
+
   return (
     <main className={styles.page}>
       <PageHeader
@@ -588,7 +593,7 @@ export default function ProjectsIndexClient({
                           tabIndex={0}
                           onClick={() => {
                             prepareProjectOpen(p.id);
-                            router.push(projectDetailHref(p.id));
+                            openProject(p.id);
                           }}
                           onMouseEnter={(e) => {
                             prepareProjectOpen(p.id);
@@ -602,7 +607,7 @@ export default function ProjectsIndexClient({
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
                               prepareProjectOpen(p.id);
-                              router.push(projectDetailHref(p.id));
+                              openProject(p.id);
                             }
                           }}
                         >
@@ -654,7 +659,10 @@ export default function ProjectsIndexClient({
                                 prefetch={false}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                                  e.preventDefault();
                                   prepareProjectOpen(p.id);
+                                  openProject(p.id);
                                 }}
                                 onFocus={() => prepareProjectOpen(p.id)}
                                 onMouseEnter={() => prepareProjectOpen(p.id)}
