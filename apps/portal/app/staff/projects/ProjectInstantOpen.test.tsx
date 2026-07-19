@@ -1,4 +1,4 @@
-import { act } from 'react';
+import { act, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { useProjectInstantOpen } from './ProjectInstantOpen';
@@ -13,9 +13,23 @@ vi.mock('next/dynamic', () => ({
   },
 }));
 
-function InstantOpenHarness() {
+vi.mock('next/navigation', () => ({
+  usePathname: () => window.location.pathname,
+}));
+
+function InstantOpenHarness({ onOpened }: { onOpened?: () => void }) {
   const { openProject } = useProjectInstantOpen();
-  return <button type="button" onClick={() => openProject('proj_1')}>Open project</button>;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        openProject('proj_1');
+        onOpened?.();
+      }}
+    >
+      Open project
+    </button>
+  );
 }
 
 function renderHarness() {
@@ -23,6 +37,19 @@ function renderHarness() {
     <ProjectInstantNavigationProvider>
       <InstantOpenHarness />
     </ProjectInstantNavigationProvider>,
+  );
+}
+
+function SettledRouteHarness() {
+  const [underlyingRoute, setUnderlyingRoute] = useState<'list' | 'project'>('list');
+  return (
+    <ProjectInstantNavigationProvider>
+      {underlyingRoute === 'list' ? (
+        <InstantOpenHarness onOpened={() => setUnderlyingRoute('project')} />
+      ) : (
+        <div>Underlying project route</div>
+      )}
+    </ProjectInstantNavigationProvider>
   );
 }
 
@@ -47,9 +74,11 @@ describe('useProjectInstantOpen', () => {
     rendered.unmount();
   });
 
-  it('restores the projects list when browser back returns before the server handoff', () => {
-    const rendered = renderHarness();
+  it('restores the projects list when browser back returns after the underlying route settles', () => {
+    const rendered = renderIntoDocument(<SettledRouteHarness />);
     act(() => rendered.container.querySelector('button')?.click());
+
+    expect(rendered.container.textContent).not.toContain('Open project');
 
     window.history.replaceState(null, '', '/staff/projects');
     act(() => window.dispatchEvent(new PopStateEvent('popstate')));
