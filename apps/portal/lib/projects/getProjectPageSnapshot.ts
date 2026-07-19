@@ -217,6 +217,7 @@ export async function getProjectPageSnapshot(
   projectId: string,
   diagnostics?: PortalServerLogContext,
   supabase?: SupabaseClient,
+  authenticatedUserId?: string | null,
 ): Promise<ProjectPageSnapshot | null> {
   const client = supabase ?? (await getSupabaseServerAuth());
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
@@ -251,8 +252,9 @@ export async function getProjectPageSnapshot(
     projectRow.followUpDate,
   );
 
-  const userRes = await client.auth.getUser();
-  const currentUserId = userRes?.data?.user?.id ?? null;
+  const currentUserId = authenticatedUserId === undefined
+    ? (await client.auth.getUser())?.data?.user?.id ?? null
+    : authenticatedUserId;
 
   const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes, notesRes] = await Promise.all([
     contactUuid

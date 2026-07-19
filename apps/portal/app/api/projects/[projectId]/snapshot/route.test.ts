@@ -24,7 +24,7 @@ describe('GET /api/projects/[projectId]/snapshot diagnostics', () => {
     supabase.from.mockReset();
     requireStaffContext.mockResolvedValue({
       ok: true,
-      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      session: { user: { id: 'user_1', email: 'ops@example.com' }, role: 'staff' },
       supabase,
     });
   });
@@ -56,6 +56,7 @@ describe('GET /api/projects/[projectId]/snapshot diagnostics', () => {
         requestId: 'req_snapshot_ok',
       }),
       supabase,
+      'user_1',
     );
   });
 

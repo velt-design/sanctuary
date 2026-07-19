@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { User } from '@supabase/supabase-js';
+import { cache } from 'react';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import type { PortalRole } from '@/lib/authTypes';
 import {
@@ -13,28 +14,43 @@ import {
 } from '@/lib/portalAccess';
 import { redirect } from 'next/navigation';
 
-type PortalSession = {
+export type PortalSession = {
   user: User;
   role: PortalRole;
 };
 
-export async function getPortalAccessState(): Promise<PortalAccessState> {
+// React cache is scoped to the current server render. It prevents nested layouts
+// and pages from repeating the same auth and portal-role lookup without creating
+// a process-wide cache that could cross users or requests.
+const getRequestPortalAccess = cache(async (): Promise<{
+  accessState: PortalAccessState;
+  authenticatedUser: User | null;
+}> => {
   const supabase = await getSupabaseServerAuth();
-  return resolvePortalAccessState(supabase as unknown as PortalAccessLookup);
+  const lookup = supabase as unknown as PortalAccessLookup;
+  let authenticatedUser: User | null = null;
+  const trackedLookup: PortalAccessLookup = {
+    auth: {
+      getUser: async () => {
+        const result = await supabase.auth.getUser();
+        authenticatedUser = result.data?.user ?? null;
+        return result;
+      },
+    },
+    from: lookup.from.bind(lookup),
+  };
+  const accessState = await resolvePortalAccessState(trackedLookup);
+  return { accessState, authenticatedUser };
+});
+
+export async function getPortalAccessState(): Promise<PortalAccessState> {
+  return (await getRequestPortalAccess()).accessState;
 }
 
 export async function getPortalSession(): Promise<PortalSession | null> {
-  const accessState = await getPortalAccessState();
-  if (accessState.kind !== 'authenticated') return null;
-
-  const supabase = await getSupabaseServerAuth();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) return null;
-
-  return {
-    user: userData.user,
-    role: accessState.session.role,
-  };
+  const { accessState, authenticatedUser } = await getRequestPortalAccess();
+  if (accessState.kind !== 'authenticated' || !authenticatedUser) return null;
+  return { user: authenticatedUser, role: accessState.session.role };
 }
 
 function redirectForAccessState(accessState: PortalAccessState, callbackUrl: string): never {
@@ -55,21 +71,14 @@ function redirectForAccessState(accessState: PortalAccessState, callbackUrl: str
 }
 
 async function requirePortalSessionPageAccess(callbackUrl: string): Promise<PortalSession> {
-  const accessState = await getPortalAccessState();
+  const { accessState, authenticatedUser } = await getRequestPortalAccess();
   if (accessState.kind !== 'authenticated') {
     redirectForAccessState(accessState, callbackUrl);
   }
-
-  const supabase = await getSupabaseServerAuth();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) {
+  if (!authenticatedUser) {
     redirect(buildLoginHref(callbackUrl));
   }
-
-  return {
-    user: userData.user,
-    role: accessState.session.role,
-  };
+  return { user: authenticatedUser, role: accessState.session.role };
 }
 
 export async function requireStaffPageAccess(callbackUrl: string): Promise<PortalSession> {

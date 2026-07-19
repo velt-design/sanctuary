@@ -26,7 +26,7 @@ function createQuery(result: QueryResult) {
 }
 
 const fakeAuth = {
-  auth: { getUser: async () => ({ data: { user: { id: 'auth-user-1' } }, error: null }) },
+  auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'auth-user-1' } }, error: null })) },
 };
 
 describe('getProjectPageSnapshot', () => {
@@ -34,6 +34,7 @@ describe('getProjectPageSnapshot', () => {
     vi.resetModules();
     fromMock.mockReset();
     logPortalServerError.mockReset();
+    fakeAuth.auth.getUser.mockClear();
   });
 
   it('returns a snapshot without scheduling invoice retries during read', async () => {
@@ -87,6 +88,7 @@ describe('getProjectPageSnapshot', () => {
         startedAt: performance.now(),
       },
       { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
     );
 
     expect(snapshot).toMatchObject({
@@ -105,6 +107,7 @@ describe('getProjectPageSnapshot', () => {
       },
     });
     expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
+    expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
 
@@ -147,6 +150,7 @@ describe('getProjectPageSnapshot', () => {
         startedAt: performance.now(),
       },
       { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
     );
 
     expect(snapshot?.project).toMatchObject({
@@ -154,6 +158,7 @@ describe('getProjectPageSnapshot', () => {
       name: 'Alpha Project',
       stage: 'new',
     });
+    expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).toHaveBeenCalledWith(
       expect.objectContaining({
         route: '/api/projects/[projectId]/snapshot',
