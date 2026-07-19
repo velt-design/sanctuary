@@ -204,7 +204,7 @@ Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mo
 
 Wave 1 Slice 2 replaced the Dashboard-to-Projects row with exactly five production-mode authenticated runs from Portal Quality run `29675363201`. The journey recorded 43/44/44 ms feedback p50/p75/p95, 75/76/99 ms useful-content p50/p75/p95, and 2243/2277/2311 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
 
-Wave 1 Slice 3 adds Dashboard-to-Contacts with the same 100/500 ms product target. Its final p50/p75/p95 and locked regression ceiling remain pending until exactly five authenticated production-mode CI repetitions complete; existing ceilings are unchanged meanwhile.
+Wave 1 Slice 3 replaced Dashboard-to-Contacts with exactly five production-mode authenticated runs from Portal Quality run `29678858906`. The journey recorded 33/35/35 ms feedback p50/p75/p95, 50/52/53 ms useful-content p50/p75/p95, and 3053/3080/3096 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
 
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |
@@ -213,7 +213,7 @@ Wave 1 Slice 3 adds Dashboard-to-Contacts with the same 100/500 ms product targe
 | Contacts cold | 1424/2106/2461 ms | 1448/2122/2471 ms | Miss | Existing cold ceiling unchanged |
 | Schedule cold | 1553/2687/3194 ms | 2506/3633/4125 ms | Miss | Existing cold ceiling unchanged |
 | Dashboard to Projects | 43/44/44 ms | 75/76/99 ms | Met | 100/500 ms |
-| Dashboard to Contacts | Pending five authenticated CI runs | Pending five authenticated CI runs | Pending | 100/500 ms provisional |
+| Dashboard to Contacts | 33/35/35 ms | 50/52/53 ms | Met | 100/500 ms |
 | Projects to project | 41/44/45 ms | 58/60/60 ms | Met | 100/500 ms |
 | Project back to Projects | 5/5/6 ms | 16/18/20 ms | Met | 100/500 ms |
 | Project Details tab | 52/55/72 ms | 56/64/79 ms | Met | 250/500 ms |
