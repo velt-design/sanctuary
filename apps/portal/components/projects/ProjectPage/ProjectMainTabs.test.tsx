@@ -22,16 +22,13 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 vi.mock('./projectTabModules', () => ({
+  ActivityTab: () => <div data-testid="activity-tab" />,
   EmailsTab: () => <div data-testid="emails-tab" />,
   EstimatesTab: () => <div data-testid="estimates-tab" />,
   InvoicesTab: () => <div data-testid="invoices-tab" />,
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
   QuotesTab: () => <div data-testid="quotes-tab" />,
   preloadProjectTab: (...args: unknown[]) => preloadModuleMock(...args),
-}));
-
-vi.mock('./tabs/ActivityTab', () => ({
-  default: () => <div data-testid="activity-tab" />,
 }));
 
 vi.mock('./projectDetailsModule', () => ({
@@ -172,6 +169,24 @@ describe('ProjectMainTabs', () => {
     });
 
     expect(preloadModuleMock).toHaveBeenCalledWith('quotes', expect.objectContaining({
+      host: 'host',
+      projectId: 'proj_1',
+    }));
+
+    rendered.unmount();
+  });
+
+  it('preloads the Activity workflow from user intent', () => {
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
+    const activity = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
+      (node) => node.textContent?.trim() === 'Activity',
+    );
+
+    act(() => {
+      activity?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+
+    expect(preloadModuleMock).toHaveBeenCalledWith('activity', expect.objectContaining({
       host: 'host',
       projectId: 'proj_1',
     }));

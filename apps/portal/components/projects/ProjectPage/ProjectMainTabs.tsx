@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import ActivityTab from './tabs/ActivityTab';
 import { LazyProjectDetailsSidebar, preloadProjectDetails } from './projectDetailsModule';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import {
+  ActivityTab,
   EmailsTab,
   EstimatesTab,
   InvoicesTab,
