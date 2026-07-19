@@ -202,13 +202,15 @@ The initial authenticated baseline was locked on 2026-07-19 from exactly five CI
 
 Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mode authenticated runs from Portal Quality run `29671978619`. Project opening recorded 41/44/45 ms feedback p50/p75/p95, 58/60/60 ms useful-content p50/p75/p95, and 2286/2290/2956 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. The resulting locked regression ceiling is 100 ms feedback and 500 ms useful content, matching the product target.
 
+Wave 1 Slice 2 replaced the Dashboard-to-Projects row with exactly five production-mode authenticated runs from Portal Quality run `29675363201`. The journey recorded 43/44/44 ms feedback p50/p75/p95, 75/76/99 ms useful-content p50/p75/p95, and 2243/2277/2311 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
+
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |
 | Dashboard cold | 1708/1710/1753 ms | 1722/1727/1768 ms | Miss | Existing cold ceiling unchanged |
 | Projects cold | 1397/1399/3004 ms | 1407/1414/3013 ms | Miss | Existing cold ceiling unchanged |
 | Contacts cold | 1424/2106/2461 ms | 1448/2122/2471 ms | Miss | Existing cold ceiling unchanged |
 | Schedule cold | 1553/2687/3194 ms | 2506/3633/4125 ms | Miss | Existing cold ceiling unchanged |
-| Dashboard to Projects | Slice 2 CI evidence pending | Slice 2 CI evidence pending | Target: 100/500 ms | 100/500 ms |
+| Dashboard to Projects | 43/44/44 ms | 75/76/99 ms | Met | 100/500 ms |
 | Projects to project | 41/44/45 ms | 58/60/60 ms | Met | 100/500 ms |
 | Project back to Projects | 5/5/6 ms | 16/18/20 ms | Met | 100/500 ms |
 | Project Details tab | 52/55/72 ms | 56/64/79 ms | Met | 250/500 ms |
@@ -219,7 +221,7 @@ Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mo
 
 `npm run test:portal:performance:fixture` measures workbench object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. It requires no authenticated project data and produces its own artifact.
 
-After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Projects Index was measured at 697,496 raw / 200,319 gzip initial and 2,714,108 raw / 622,030 gzip lazy; its limits are that fresh build plus 5%, rounded up to KiB. The shared Schedule-route gzip increase versus Slice 1 was about 0.9 KiB. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
+After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy; its limits are that fresh build plus 5%, rounded up to KiB. The shared Schedule-route gzip increase versus Slice 1 was about 2.4 KiB, within Slice 2's 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
 The Slice 1 analyser correction exposed that Project Detail's old 3,014,656 raw / 757,760 gzip ceiling had counted zero lazy bytes. The honest fresh-build measurement is 661,832 raw / 191,398 gzip initial plus 2,720,112 raw / 623,328 gzip lazy (3,381,944 raw / 814,726 gzip combined). Most deferred bytes belong to the existing Estimates drawing/workbench dependency. The per-boundary regression budgets remain blocking, but the old combined cap is not yet restored; do not hide those bytes or weaken the analyser. Reducing that existing Estimate/workbench dependency requires its own scoped lane because this slice does not change calculator, geometry, costing, or Workbench behaviour.
 
