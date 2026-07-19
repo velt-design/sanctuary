@@ -307,14 +307,41 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
       elements.map((element) => {
         const range = document.createRange();
         range.selectNodeContents(element);
+        const styles = window.getComputedStyle(element);
         return {
+          flexShrink: styles.flexShrink,
           lineCount: new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size,
-          whiteSpace: window.getComputedStyle(element).whiteSpace,
+          overflowWrap: styles.overflowWrap,
+          whiteSpace: styles.whiteSpace,
+          wordBreak: styles.wordBreak,
         };
       }),
     );
+    expect(internalValuePresentation.every((value) => value.flexShrink === '0')).toBe(true);
+    expect(internalValuePresentation.every((value) => value.overflowWrap === 'normal')).toBe(true);
     expect(internalValuePresentation.every((value) => value.whiteSpace === 'nowrap')).toBe(true);
+    expect(internalValuePresentation.every((value) => value.wordBreak === 'normal')).toBe(true);
     expect(internalValuePresentation.every((value) => value.lineCount === 1)).toBe(true);
+
+    const internalLabels = page
+      .getByRole('region', { name: 'Pricing preview' })
+      .getByText('Internal costing', { exact: true })
+      .locator('..')
+      .locator('dt');
+    await expect(internalLabels).toHaveCount(7);
+    const internalLabelPresentation = await internalLabels.evaluateAll((elements) =>
+      elements.map((element) => {
+        const styles = window.getComputedStyle(element);
+        return {
+          clipped: element.scrollWidth > element.clientWidth + 1,
+          flexShrink: styles.flexShrink,
+          whiteSpace: styles.whiteSpace,
+        };
+      }),
+    );
+    expect(internalLabelPresentation.every((label) => label.flexShrink === '1')).toBe(true);
+    expect(internalLabelPresentation.every((label) => label.whiteSpace === 'normal')).toBe(true);
+    expect(internalLabelPresentation.every((label) => !label.clipped)).toBe(true);
 
     const impact = page.getByRole('region', { name: 'Price impact' });
     const resetBox = await impact.getByRole('button', { name: 'Reset baseline', exact: true }).boundingBox();
