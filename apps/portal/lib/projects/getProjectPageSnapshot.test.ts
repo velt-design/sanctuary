@@ -72,7 +72,6 @@ describe('getProjectPageSnapshot', () => {
       deposit_invoices: { data: { id: 'inv_1' }, error: null },
       project_task_checks: { data: [], error: null },
       email_outbox: { data: [], error: null },
-      audit_events: { data: [], error: null },
       job_pack_generations: { data: null, error: null },
       project_notes: { data: [], error: null },
     };
@@ -113,6 +112,7 @@ describe('getProjectPageSnapshot', () => {
     });
     expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
     expect(fromMock).not.toHaveBeenCalledWith('contacts');
+    expect(fromMock).not.toHaveBeenCalledWith('audit_events');
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
@@ -137,6 +137,7 @@ describe('getProjectPageSnapshot', () => {
     expect(fromMock).toHaveBeenCalledWith('projects');
     expect(fromMock).toHaveBeenCalledWith('project_notes');
     expect(fromMock).not.toHaveBeenCalledWith('contacts');
+    expect(fromMock).not.toHaveBeenCalledWith('audit_events');
 
     projectResult.resolve({
       data: {
@@ -171,7 +172,6 @@ describe('getProjectPageSnapshot', () => {
       deposit_invoices: { data: null, error: null },
       project_task_checks: { data: [], error: null },
       email_outbox: { data: null, error: { message: 'outbox unavailable' } },
-      audit_events: { data: [], error: null },
       job_pack_generations: { data: null, error: null },
       project_notes: { data: [], error: null },
     };

@@ -90,10 +90,6 @@ function mapEmail(row: any): ProjectEmailLog {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
 function mapOutboxToActivity(row: any): ProjectActivityItem | null {
   const at =
     typeof row?.sent_at === 'string'
@@ -118,86 +114,6 @@ function mapOutboxToActivity(row: any): ProjectActivityItem | null {
     type: 'email_sent',
     title,
     detail: detailParts.length ? detailParts.join(' — ') : undefined,
-  };
-}
-
-function mapAuditToActivity(row: any): ProjectActivityItem | null {
-  const at = typeof row?.created_at === 'string' ? row.created_at : '';
-  if (!at) return null;
-
-  const typeRaw = typeof row?.type === 'string' ? row.type : 'note';
-  const payload = isRecord(row?.payload) ? (row.payload as Record<string, unknown>) : {};
-
-  if (typeRaw === 'email_sent' || typeRaw === 'email_failed') {
-    const title = typeRaw === 'email_failed' ? 'Email failed' : 'Email sent';
-    const to = typeof payload.to === 'string' ? payload.to : '';
-    const subject = typeof payload.subject === 'string' ? payload.subject : '';
-    return {
-      id: String(row?.id ?? ''),
-      at,
-      type: 'email_sent',
-      title,
-      detail: [to ? `To: ${to}` : '', subject].filter(Boolean).join(' — ') || undefined,
-    };
-  }
-
-  if (typeRaw === 'dashboard.next_action_note') {
-    const note = typeof payload.note === 'string' ? payload.note : '';
-    return {
-      id: String(row?.id ?? ''),
-      at,
-      type: 'note',
-      title: 'Note added',
-      detail: note || undefined,
-    };
-  }
-
-  if (typeRaw.startsWith('quote.')) {
-    const toList = Array.isArray(payload.to) ? payload.to : typeof payload.to === 'string' ? [payload.to] : [];
-    const toDetail = toList.length ? `To: ${toList.join(', ')}` : undefined;
-
-    switch (typeRaw) {
-      case 'quote.created':
-        return { id: String(row?.id ?? ''), at, type: 'quote_created', title: 'Quote created' };
-      case 'quote.sent':
-        return { id: String(row?.id ?? ''), at, type: 'quote_sent', title: 'Quote sent', detail: toDetail };
-      case 'quote.resent':
-        return { id: String(row?.id ?? ''), at, type: 'quote_resent', title: 'Quote resent', detail: toDetail };
-      case 'quote.revised':
-        return { id: String(row?.id ?? ''), at, type: 'quote_revised', title: 'Quote revised' };
-      case 'quote.accepted':
-        return { id: String(row?.id ?? ''), at, type: 'quote_accepted', title: 'Quote accepted' };
-      case 'quote.declined':
-        return { id: String(row?.id ?? ''), at, type: 'quote_declined', title: 'Quote declined' };
-      case 'quote.deleted':
-        return { id: String(row?.id ?? ''), at, type: 'quote_deleted', title: 'Quote deleted' };
-      default:
-        break;
-    }
-  }
-
-  if (typeRaw.startsWith('invoice.')) {
-    switch (typeRaw) {
-      case 'invoice.created':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice created' };
-      case 'invoice.sent':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice sent' };
-      case 'invoice.voided':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice voided' };
-      case 'invoice.send_failed':
-      case 'invoice.send_failed_final':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice send failed' };
-      default:
-        break;
-    }
-  }
-
-  return {
-    id: String(row?.id ?? ''),
-    at,
-    type: 'note',
-    title: typeRaw,
-    detail: undefined,
   };
 }
 
@@ -226,7 +142,7 @@ export async function getProjectPageSnapshot(
   // Every read below is scoped by the same project id and auth-bound RLS
   // client, so start them together. The contact relation is included with the
   // project row to avoid a second dependent database round trip.
-  const [projectRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes, notesRes] = await Promise.all([
+  const [projectRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, jobPackRes, notesRes] = await Promise.all([
     client
       .from('projects')
       .select('*,contact:contacts(*)')
@@ -269,12 +185,6 @@ export async function getProjectPageSnapshot(
       .select('id,subject,to_email,status,sent_at,created_at,email_type')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
-    client
-      .from('audit_events')
-      .select('id,type,payload,created_at')
-      .eq('project_id', projectUuid)
-      .order('created_at', { ascending: false })
-      .limit(50),
     client.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
     client
       .from('project_notes')
@@ -316,9 +226,6 @@ export async function getProjectPageSnapshot(
   if (emailRes?.error) {
     logSnapshotError(diagnostics, 'email_outbox query failed', emailRes.error, 'email_outbox');
   }
-  if (auditRes?.error) {
-    logSnapshotError(diagnostics, 'audit_events query failed', auditRes.error, 'audit_events');
-  }
   if (siteVisitRes?.error) {
     logSnapshotError(diagnostics, 'site_visit_events query failed', siteVisitRes.error, 'site_visit_events');
   }
@@ -353,11 +260,7 @@ export async function getProjectPageSnapshot(
   const outboxActivity = (Array.isArray(emailRes?.data) ? emailRes.data : [])
     .map(mapOutboxToActivity)
     .filter(Boolean) as ProjectActivityItem[];
-  const auditActivity = (Array.isArray(auditRes?.data) ? auditRes.data : [])
-    .map(mapAuditToActivity)
-    .filter(Boolean) as ProjectActivityItem[];
-
-  const activity = [...outboxActivity, ...auditActivity].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const activity = outboxActivity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
   const siteVisitRow = siteVisitRes?.data ?? null;
   const siteVisitStatus = typeof (siteVisitRow as any)?.status === 'string' ? String((siteVisitRow as any).status).toUpperCase() : '';
