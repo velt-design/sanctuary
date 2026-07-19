@@ -80,7 +80,7 @@ export default function ProjectsIndexClient({
   initialTodayYmd: string;
 }) {
   const router = useRouter();
-  const { instantProject, openProject } = useProjectInstantOpen();
+  const { openProject } = useProjectInstantOpen();
   const searchParams = useSearchParams();
   const toast = useToast();
   const { role } = usePortalSession();
@@ -403,8 +403,6 @@ export default function ProjectsIndexClient({
         return c?.displayName ?? visibleProject.clientName ?? '';
       })()
     : '';
-
-  if (instantProject) return instantProject;
 
   return (
     <main className={styles.page}>

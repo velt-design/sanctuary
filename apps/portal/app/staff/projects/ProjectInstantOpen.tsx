@@ -1,9 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback } from 'react';
 import ProjectDetailLoading from './[projectId]/loading';
 import { projectDetailHref } from '@/lib/queries/projectOpenPreload';
+import { useProjectInstantNavigation } from './ProjectInstantNavigation';
 
 const loadProjectSnapshotPage = () => import('./[projectId]/ProjectSnapshotPageClient');
 const InstantProjectSnapshotPage = dynamic(loadProjectSnapshotPage, {
@@ -15,34 +16,22 @@ export function preloadProjectInstantView(): Promise<unknown> {
 }
 
 export function useProjectInstantOpen(): {
-  instantProject: ReactNode | null;
   openProject: (projectId: string) => void;
 } {
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const { showProject } = useProjectInstantNavigation();
 
   const openProject = useCallback((nextProjectId: string) => {
     const href = projectDetailHref(nextProjectId);
-    setProjectId(nextProjectId);
-    window.history.pushState(null, '', href);
-  }, []);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (window.location.pathname === '/staff/projects') setProjectId(null);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  return {
-    instantProject: projectId ? (
+    showProject(
+      href,
       <InstantProjectSnapshotPage
-        projectId={projectId}
+        projectId={nextProjectId}
         tab="activity"
         estimateId={null}
         debugExportEnabled={false}
-      />
-    ) : null,
-    openProject,
-  };
+      />,
+    );
+  }, [showProject]);
+
+  return { openProject };
 }

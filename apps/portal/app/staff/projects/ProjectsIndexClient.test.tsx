@@ -29,7 +29,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('./ProjectInstantOpen', () => ({
   preloadProjectInstantView: vi.fn(() => Promise.resolve()),
-  useProjectInstantOpen: () => ({ instantProject: null, openProject }),
+  useProjectInstantOpen: () => ({ openProject }),
 }));
 
 vi.mock('@/components/ui/toast/ToastProvider', () => ({

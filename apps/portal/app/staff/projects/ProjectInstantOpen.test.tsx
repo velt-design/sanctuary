@@ -2,6 +2,7 @@ import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { useProjectInstantOpen } from './ProjectInstantOpen';
+import ProjectInstantNavigationProvider from './ProjectInstantNavigation';
 
 vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<unknown>) => {
@@ -13,8 +14,16 @@ vi.mock('next/dynamic', () => ({
 }));
 
 function InstantOpenHarness() {
-  const { instantProject, openProject } = useProjectInstantOpen();
-  return instantProject ?? <button type="button" onClick={() => openProject('proj_1')}>Open project</button>;
+  const { openProject } = useProjectInstantOpen();
+  return <button type="button" onClick={() => openProject('proj_1')}>Open project</button>;
+}
+
+function renderHarness() {
+  return renderIntoDocument(
+    <ProjectInstantNavigationProvider>
+      <InstantOpenHarness />
+    </ProjectInstantNavigationProvider>,
+  );
 }
 
 describe('useProjectInstantOpen', () => {
@@ -23,7 +32,7 @@ describe('useProjectInstantOpen', () => {
   });
 
   it('updates history and shows the cached project client before the server route settles', () => {
-    const rendered = renderIntoDocument(<InstantOpenHarness />);
+    const rendered = renderHarness();
 
     act(() => {
       rendered.container.querySelector('button')?.click();
@@ -39,7 +48,7 @@ describe('useProjectInstantOpen', () => {
   });
 
   it('restores the projects list when browser back returns before the server handoff', () => {
-    const rendered = renderIntoDocument(<InstantOpenHarness />);
+    const rendered = renderHarness();
     act(() => rendered.container.querySelector('button')?.click());
 
     window.history.replaceState(null, '', '/staff/projects');
