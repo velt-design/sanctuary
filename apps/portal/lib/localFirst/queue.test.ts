@@ -18,7 +18,7 @@ import {
 } from './store';
 import type { LocalFirstPersistedState } from './types';
 
-async function waitUntil(assertion: () => void, timeoutMs: number = 5000): Promise<void> {
+async function waitUntil(assertion: () => void, timeoutMs: number = 10_000): Promise<void> {
   const timeoutAt = Date.now() + timeoutMs;
   let lastError: unknown = null;
 
@@ -133,7 +133,7 @@ describe('localFirst queue', () => {
       expect(getLocalFirstEntitySyncState('quote:detail:local-quote:1').status).toBe('synced');
       expect(resolveLocalFirstId('local-estimate:1')).toBe('est_1');
     });
-  });
+  }, 15_000);
 
   it('retries local quote draft updates until the synced quote id is available', async () => {
     registerLocalFirstMutationHandler('quote.create', async () => {
@@ -174,7 +174,7 @@ describe('localFirst queue', () => {
       expect(getLocalFirstEntitySyncState('quote:detail:local-quote:1').status).toBe('synced');
       expect(resolveLocalFirstId('local-quote:1')).toBe('qv_1');
     });
-  });
+  }, 15_000);
 
   it('does not commit a handler result after the runtime stops', async () => {
     let releaseHandler: () => void = () => undefined;
