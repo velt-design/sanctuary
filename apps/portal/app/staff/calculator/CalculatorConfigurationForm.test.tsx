@@ -23,6 +23,7 @@ describe('CalculatorConfigurationForm', () => {
           { label: 'Soffit', value: 'soffit' },
           { label: 'Fascia', value: 'fascia' },
         ],
+        helperText: 'Choose how the pergola connects to the house.',
         onChange,
       },
       {
@@ -66,6 +67,8 @@ describe('CalculatorConfigurationForm', () => {
     expect(document.querySelector('[data-field-part="error"]')?.textContent).toBe(
       'Enter a valid roof length between the supported limits.',
     );
+    expect(document.querySelector('[data-field-part="helper"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Choose how the pergola connects to the house.');
 
     const select = document.querySelector('#houseConnectionType') as HTMLSelectElement;
     act(() => {

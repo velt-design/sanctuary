@@ -76,6 +76,9 @@ async function expectVisualRefinementSurfaces(page: Page) {
   await expect(page.locator('[data-section-surface="card"]')).toHaveCount(2);
   await expect(page.locator('[data-calculator-configuration-sheet]')).toHaveCount(2);
   await expect(page.locator('[data-module-actions="compact"]')).toHaveCount(1);
+  await expect(
+    page.locator('[data-calculator-configuration-form] [data-field-part="helper"]'),
+  ).toHaveCount(0);
 
   const toggleHeight = await page.locator('[data-field-part="toggle"]').first().evaluate(
     (element) => Math.round(element.getBoundingClientRect().height),

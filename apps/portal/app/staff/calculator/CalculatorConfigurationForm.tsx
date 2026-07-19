@@ -70,7 +70,6 @@ export default function CalculatorConfigurationForm({
               onChange={field.onChange}
               options={field.options}
               disabled={field.disabled}
-              helperText={field.helperText}
               error={field.error}
               onAction={field.onAction}
               actionLabel={field.actionLabel}
