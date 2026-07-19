@@ -142,7 +142,7 @@
 
 .internalSection,
 .addonsSection {
-  padding: 16px;
+  padding: 14px 16px;
 }
 
 .internalSection h3,
@@ -157,13 +157,17 @@
 .addonsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 16px;
+  gap: 3px 18px;
 }
 
 .metric {
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.065);
 }
 
 .metric dt {
@@ -176,6 +180,7 @@
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+  text-align: right;
 }
 
 .addonsSection {

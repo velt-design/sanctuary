@@ -47,6 +47,10 @@ describe('CalculatorConfigurationForm', () => {
     const infillsSection = document.querySelector('[data-calculator-configuration-section="infills"]');
     expect(blindsSection?.getAttribute('aria-label')).toBe('Blinds');
     expect(infillsSection?.getAttribute('aria-label')).toBe('Infills');
+    expect(blindsSection?.getAttribute('data-section-surface')).toBe('card');
+    expect(infillsSection?.getAttribute('data-section-surface')).toBe('card');
+    expect(document.querySelectorAll('[data-calculator-configuration-sheet]')).toHaveLength(1);
+    expect(document.querySelector('[data-calculator-configuration-section="context"]')?.parentElement?.hasAttribute('data-calculator-configuration-sheet')).toBe(true);
     expect(blindsSection?.querySelector('h2')).toBeNull();
     expect(infillsSection?.querySelector('h2')).toBeNull();
     expect(blindsSection?.querySelector('[data-field-part="label"]')?.textContent).toBe('Blinds');
@@ -55,6 +59,7 @@ describe('CalculatorConfigurationForm', () => {
     expect(document.querySelector('[data-calculator-field="roofOrientation"]')).toBeNull();
     expect(document.querySelector('[data-calculator-field="blindsList"]')?.getAttribute('data-field-layout')).toBe('full');
     expect(document.querySelector('[data-field-tile-appearance="configuration"]')).not.toBeNull();
+    expect(document.querySelector('[data-field-part="toggle"]')).toBeNull();
 
     const lengthInput = document.querySelector('#lengthM') as HTMLInputElement;
     expect(lengthInput.getAttribute('aria-describedby')).toBe('lengthM-error');
@@ -88,5 +93,21 @@ describe('CalculatorConfigurationForm', () => {
       ),
     ).toEqual(['structure', 'flashings', 'overrides', 'blinds', 'infills', 'house-footprint']);
     expect(document.querySelector('[data-calculator-field="flashings"]')?.getAttribute('data-field-layout')).toBe('full');
+    expect(document.querySelectorAll('[data-calculator-configuration-sheet]')).toHaveLength(2);
+    expect(document.querySelector('[data-calculator-configuration-section="structure"]')?.getAttribute('data-section-surface')).toBe('quiet');
+  });
+
+  it('keeps toggles inside the existing configuration field contract', () => {
+    renderIntoDocument(
+      <CalculatorConfigurationForm
+        fields={[{ id: 'boxPerimeterEnabled', label: 'Box perimeter', type: 'toggle', value: false }]}
+        isAdvancedUi={false}
+      />,
+    );
+
+    const toggle = document.querySelector('[data-field-part="toggle"]');
+    expect(toggle).not.toBeNull();
+    expect(toggle?.textContent).toBe('Off');
+    expect(toggle?.closest('[data-calculator-configuration-sheet]')).not.toBeNull();
   });
 });

@@ -89,6 +89,10 @@ describe('CalculatorModuleNavigator', () => {
     expect(rail.textContent).toContain('Pergola 2 · Module 1');
     expect(rail.textContent).toContain('2 issues');
     expect(rail.querySelector('button[aria-current="true"]')?.textContent).toContain('Pergola 1 · Module 1');
+    const actions = rail.querySelector('[data-module-actions="compact"]');
+    expect(actions?.textContent).toContain('Duplicate');
+    expect(actions?.textContent).toContain('Move');
+    expect(actions?.textContent).toContain('Remove');
   });
 
   it('keeps an empty pergola visible with its add-module action', () => {

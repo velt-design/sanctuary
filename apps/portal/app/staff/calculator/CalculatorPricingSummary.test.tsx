@@ -35,6 +35,8 @@ describe('CalculatorPricingSummary', () => {
     expect(container.textContent).toContain('1.25× internal true cost · pergola only');
     expect(container.textContent).toContain('Internal costing');
     expect(container.textContent).toContain('True cost (ex GST)$100.00');
+    expect(container.querySelector('[data-pricing-metric-layout="inline"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-pricing-metric]').length).toBe(10);
 
     unmount();
   });

@@ -57,7 +57,6 @@
 
 .addPergolaButton,
 .addModuleButton,
-.moduleActions button,
 .moveActions button,
 .mobileHeader button {
   border: 1px solid rgba(var(--portal-text-rgb), 0.16);
@@ -176,13 +175,34 @@
 }
 
 .moduleActions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  padding: 0 8px 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 8px 7px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.075);
 }
 
-.moduleActions button,
+.moduleActions button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  padding: 5px 4px;
+  background: transparent;
+  color: rgba(var(--portal-text-rgb), 0.66);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.moduleActions button:hover {
+  background: rgba(var(--portal-text-rgb), 0.045);
+  color: var(--portal-text);
+}
+
 .moveActions button {
   min-width: 0;
   padding: 5px 6px;
@@ -195,7 +215,6 @@
 }
 
 .moduleActions .removeButton {
-  border-color: rgba(185, 28, 28, 0.24);
   color: rgb(185, 28, 28);
 }
 

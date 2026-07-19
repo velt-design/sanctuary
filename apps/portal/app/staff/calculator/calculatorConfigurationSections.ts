@@ -19,11 +19,13 @@ export type CalculatorConfigurationField = {
 
 export type CalculatorConfigurationFieldLayout = 'standard' | 'wide' | 'full';
 type CalculatorConfigurationSectionDensity = 'default' | 'compact';
+type CalculatorConfigurationSectionSurface = 'quiet' | 'card';
 
 type CalculatorConfigurationSectionDefinition = {
   id: string;
   title: string;
   density?: CalculatorConfigurationSectionDensity;
+  surface?: CalculatorConfigurationSectionSurface;
   fieldLabelAsTitle?: boolean;
   advancedOnly?: boolean;
   fieldIds: readonly string[];
@@ -117,12 +119,14 @@ export const CALCULATOR_CONFIGURATION_SECTIONS = [
   {
     id: 'blinds',
     title: 'Blinds',
+    surface: 'card',
     fieldLabelAsTitle: true,
     fieldIds: ['blindsList'],
   },
   {
     id: 'infills',
     title: 'Infills',
+    surface: 'card',
     fieldLabelAsTitle: true,
     fieldIds: ['infillsEditor'],
   },

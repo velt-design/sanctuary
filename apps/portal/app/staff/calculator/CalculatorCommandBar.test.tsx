@@ -35,6 +35,8 @@ describe('CalculatorCommandBar', () => {
     expect(markup).toContain('Ready to save');
     expect(markup).toContain('Saved locally');
     expect(markup).toContain('Browser draft only — use Save to update the estimate.');
+    expect(markup).toContain('data-calculator-command-actions="true"');
+    expect(markup.indexOf('data-calculator-command-actions')).toBeLessThan(markup.indexOf('>Save</button>'));
   });
 
   it('renders blocker count, freshness context, error, and a disabled save', () => {

@@ -4152,8 +4152,6 @@ export default function CalculatorGridClient({
           >
             <div className={styles.previewSummary}>
               <CalculatorPricingSummary {...pricingSummaryProps} />
-
-              <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
               <ModuleViewsCard
                 moduleLabel={activeModuleLabel}
                 view={moduleViewsTab}
@@ -4185,6 +4183,8 @@ export default function CalculatorGridClient({
                     : undefined
                 }
               />
+
+              <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
 
               <QuoteStatusCard items={statusItems} />
 

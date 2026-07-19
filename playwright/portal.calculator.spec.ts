@@ -72,6 +72,33 @@ async function expectSmallVisualCorrections(page: Page) {
   );
 }
 
+async function expectVisualRefinementSurfaces(page: Page) {
+  await expect(page.locator('[data-section-surface="card"]')).toHaveCount(2);
+  await expect(page.locator('[data-calculator-configuration-sheet]')).toHaveCount(2);
+  await expect(page.locator('[data-module-actions="compact"]')).toHaveCount(1);
+
+  const toggleHeight = await page.locator('[data-field-part="toggle"]').first().evaluate(
+    (element) => Math.round(element.getBoundingClientRect().height),
+  );
+  const inputHeight = await page.getByLabel('Roof material', { exact: true }).evaluate(
+    (element) => Math.round(element.getBoundingClientRect().height),
+  );
+  expect(Math.abs(toggleHeight - inputHeight)).toBeLessThanOrEqual(1);
+}
+
+async function expectPreviewHierarchy(page: Page, expectModuleViewInViewport: boolean) {
+  const order = await page
+    .locator(
+      '[aria-label="Pricing preview"], [aria-label="Module views"], [aria-label="Price impact"], [aria-label="Quote status"]',
+    )
+    .evaluateAll((elements) => elements.map((element) => element.getAttribute('aria-label')));
+  expect(order).toEqual(['Pricing preview', 'Module views', 'Price impact', 'Quote status']);
+
+  if (expectModuleViewInViewport) {
+    await expect(page.getByRole('region', { name: 'Module views' })).toBeInViewport();
+  }
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -105,6 +132,8 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
     await expectLocalDraftProtected(page);
     await expectSmallVisualCorrections(page);
+    await expectVisualRefinementSurfaces(page);
+    await expectPreviewHierarchy(page, true);
     await expect(page.getByRole('navigation', { name: 'Pergolas and modules' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Current customer price' })).toBeHidden();
     await expect(page.locator('[data-calculator-configuration-section="context"]')).toHaveAttribute('data-section-density', 'compact');
@@ -236,6 +265,8 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     await openCalculator(page);
     await expectLocalDraftProtected(page);
     await expectSmallVisualCorrections(page);
+    await expectVisualRefinementSurfaces(page);
+    await expectPreviewHierarchy(page, true);
     const dimensions = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate((element) => {
       const boundary = element.getBoundingClientRect().right;
       return {
@@ -294,8 +325,11 @@ for (const width of [1024, 768]) {
       await openCalculator(page);
       await expectLocalDraftProtected(page);
       await expectSmallVisualCorrections(page);
+      await expectVisualRefinementSurfaces(page);
+      await expectPreviewHierarchy(page, false);
       await expectStructureColumnCount(page, width === 1024 ? 3 : 2);
       await expect(page.getByRole('button', { name: /^Pergola 1 · Module 1/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeInViewport();
       const compactPricing = page.getByRole('region', { name: 'Current customer price' });
       const fullPricing = page.getByRole('region', { name: 'Pricing preview' });
       await expect(compactPricing).toBeVisible();

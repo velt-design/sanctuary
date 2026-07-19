@@ -18,6 +18,8 @@
         "apps/portal/app/staff/calculator/CalculatorPricingSummary.test.tsx",
         "apps/portal/app/staff/calculator/PriceImpactPanel.tsx",
         "apps/portal/app/staff/calculator/PriceImpactPanel.test.tsx",
+        "apps/portal/app/staff/calculator/priceImpactPresentation.ts",
+        "apps/portal/app/staff/calculator/priceImpactPresentation.test.ts",
         "apps/portal/app/staff/calculator/useCalculatorPreviewSplit.ts",
         "apps/portal/app/staff/calculator/useCalculatorPreviewSplit.test.tsx",
         "apps/portal/app/staff/calculator/calculatorModuleNavigation.ts",
@@ -34,7 +36,7 @@
         "apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx",
         "apps/portal/app/staff/calculator/moduleViews.ts"
       ],
-      "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files, though pure calculator input defaults, normalization, browser-draft persistence/session state, module navigation modelling and presentation, configuration-section definitions and presentation, pricing-summary presentation, preview-split sizing and persistence, price-impact presentation and styles, save-readiness, quote-status/save-preflight helpers, the guided infill dialog, selected-infill header, Opening/Supports/Results stage presenters, visual infill shape-template picker/model, support-confirmation model, infill UI/payload plus summary view-model helpers, infill overview/list presenters, save dialog presenters, flashings view-model helpers, and blinds view-model helpers now live outside CalculatorGridClient.",
+      "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files, though pure calculator input defaults, normalization, browser-draft persistence/session state, module navigation modelling and presentation, configuration-section definitions and presentation, pricing-summary presentation, preview-split sizing and persistence, price-impact ranking/presentation and styles, save-readiness, quote-status/save-preflight helpers, the guided infill dialog, selected-infill header, Opening/Supports/Results stage presenters, visual infill shape-template picker/model, support-confirmation model, infill UI/payload plus summary view-model helpers, infill overview/list presenters, save dialog presenters, flashings view-model helpers, and blinds view-model helpers now live outside CalculatorGridClient.",
       "nextSafeExtraction": "Extract issue-to-section mapping from CalculatorGridClient next; move infill draft/state orchestration into a dedicated controller before adding unrelated calculator workflows.",
       "focusedTests": [
         "npx vitest run apps/portal/app/staff/calculator",

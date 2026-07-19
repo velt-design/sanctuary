@@ -46,7 +46,7 @@ function formatNumber(value: number | undefined, digits = 2): string {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className={styles.metric}>
+    <div className={styles.metric} data-pricing-metric>
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
@@ -126,7 +126,7 @@ export default function CalculatorPricingSummary({
 
       <div className={styles.internalSection}>
         <h3>Internal costing</h3>
-        <dl className={styles.internalGrid}>
+        <dl className={styles.internalGrid} data-pricing-metric-layout="inline">
           <Metric label="True cost (ex GST)" value={formatMoney(internalTrueCostExGst)} />
           <Metric label="True cost (inc GST)" value={formatMoney(internalTrueCostIncGst)} />
           <Metric label="Materials" value={formatMoney(materialsExGst)} />
@@ -140,7 +140,7 @@ export default function CalculatorPricingSummary({
       <div className={styles.addonsSection}>
         <h3>Customer quote add-ons</h3>
         {hasBlindPricing || hasInfills ? (
-          <dl className={styles.addonsGrid}>
+          <dl className={styles.addonsGrid} data-pricing-metric-layout="inline">
             {hasBlindPricing ? (
               <>
                 <Metric label="Blind customer price (ex GST)" value={formatMoney(blindCustomerPriceExGst)} />
