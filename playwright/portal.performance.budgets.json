@@ -36,19 +36,22 @@
       "name": "dashboard-to-projects",
       "feedbackMsMax": 950,
       "usefulContentMsMax": 2100,
-      "enforced": true
+      "enforced": true,
+      "aggregation": "p75"
     },
     {
       "name": "projects-to-project",
       "feedbackMsMax": 7200,
       "usefulContentMsMax": 9500,
-      "enforced": true
+      "enforced": true,
+      "aggregation": "p75"
     },
     {
       "name": "project-back-to-projects",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "enforced": true
+      "enforced": true,
+      "aggregation": "p75"
     }
   ],
   "interactions": [
@@ -58,7 +61,8 @@
       "feedbackMsMax": 250,
       "usefulContentMsMax": 500,
       "productFeedbackMsMax": 250,
-      "enforced": true
+      "enforced": true,
+      "aggregation": "p75"
     },
     {
       "name": "schedule-unscheduled-panel-toggle",
@@ -72,7 +76,8 @@
       "route": "/staff/calculator",
       "feedbackMsMax": 700,
       "usefulContentMsMax": 2950,
-      "enforced": true
+      "enforced": true,
+      "aggregation": "p75"
     }
   ]
 }

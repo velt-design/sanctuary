@@ -198,7 +198,7 @@ npm run test:portal:performance:fixture
 
 `npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Contacts, and Schedule; warm Dashboard to Projects, Projects to project, browser back, and project tab navigation; and Schedule/Calculator interactions. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Portal Performance CI runs the authenticated suite five times, rejects missing journeys, and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
 
-The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms; the existing cold-route ceilings were not changed.
+The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms, and are enforced against the five-run p75 aggregate. Existing cold-route and Schedule-toggle ceilings remain per-run and were not changed.
 
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |

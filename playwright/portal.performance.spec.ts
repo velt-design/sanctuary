@@ -24,6 +24,7 @@ type JourneyBudget = {
   feedbackMsMax: number;
   usefulContentMsMax: number;
   enforced: boolean;
+  aggregation?: 'run' | 'p75';
   productFeedbackMsMax?: number;
 };
 
@@ -70,7 +71,7 @@ function recordJourney(journey: PortalPerformanceJourney) {
 }
 
 function assertRegressionBudget(journey: PortalPerformanceJourney, budget: JourneyBudget) {
-  if (!budget.enforced) return;
+  if (!budget.enforced || budget.aggregation === 'p75') return;
   expect(
     journey.feedbackMs,
     `${journey.name} feedback ${journey.feedbackMs}ms exceeded ${budget.feedbackMsMax}ms`,
