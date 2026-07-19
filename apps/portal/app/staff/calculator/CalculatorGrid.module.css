@@ -954,6 +954,157 @@
   color: rgba(var(--portal-text-rgb), 0.68);
 }
 
+.infillShapeTemplateFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.infillShapeTemplateFieldset > legend {
+  padding: 0;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.infillShapeTemplateFieldset > p {
+  margin: 4px 0 9px;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+}
+
+.infillShapeTemplateGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.infillShapeTemplateCard {
+  position: relative;
+  min-width: 0;
+  min-height: 116px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
+  background: var(--portal-bg-surface);
+  padding: 9px;
+  display: grid;
+  grid-template-rows: 62px auto;
+  gap: 7px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.infillShapeTemplateCard:hover {
+  border-color: rgba(var(--accentRgb), 0.3);
+}
+
+.infillShapeTemplateCard:has(input:checked) {
+  border-color: rgba(var(--accentRgb), 0.54);
+  background: rgba(var(--accentRgb), 0.07);
+  box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.14);
+}
+
+.infillShapeTemplateCard:has(input:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
+.infillShapeTemplateCard > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.infillShapeTemplateIcon {
+  width: 100%;
+  height: 62px;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.infillShapeTemplateIcon polygon {
+  fill: rgba(var(--accentRgb), 0.09);
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.infillShapeTemplateIcon line {
+  stroke: rgba(var(--portal-text-rgb), 0.22);
+  stroke-width: 1.5;
+}
+
+.infillShapeTemplateCard:has(input:checked) .infillShapeTemplateIcon {
+  color: rgb(var(--accentRgb));
+}
+
+.infillShapeTemplateCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.infillShapeTemplateCopy strong {
+  font-size: 12px;
+}
+
+.infillShapeTemplateCopy small {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.infillTriangleSideFieldset {
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--portal-bg-surface);
+}
+
+.infillTriangleSideFieldset legend {
+  padding: 0 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.74);
+}
+
+.infillTriangleSideFieldset > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.infillTriangleSideFieldset label {
+  position: relative;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 9px;
+  padding: 8px 9px;
+  text-align: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.infillTriangleSideFieldset label:has(input:checked) {
+  border-color: rgba(var(--accentRgb), 0.48);
+  background: rgba(var(--accentRgb), 0.08);
+  font-weight: 700;
+}
+
+.infillTriangleSideFieldset label:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
+}
+
+.infillTriangleSideFieldset input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 .infillGuidedPreview {
   position: sticky;
   top: 0;
@@ -1032,6 +1183,27 @@
   margin: 7px 0 0;
   color: rgba(var(--portal-text-rgb), 0.62);
   font-size: 11px;
+}
+
+.infillTrianglePointNotice {
+  min-width: 0;
+  padding: 12px;
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.16);
+  border-radius: 11px;
+  background: rgba(var(--portal-text-rgb), 0.025);
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.infillTrianglePointNotice strong {
+  font-size: 12px;
+}
+
+.infillTrianglePointNotice span {
+  color: rgba(var(--portal-text-rgb), 0.64);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .infillEdgeConfirmationOption {
@@ -2457,6 +2629,23 @@
 
   .moduleViewsTabs {
     align-self: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .infillShapeTemplateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .infillShapeTemplateCard {
+    min-height: 86px;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    align-items: center;
+  }
+
+  .infillShapeTemplateIcon {
+    height: 58px;
   }
 }
 

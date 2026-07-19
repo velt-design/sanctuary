@@ -66,6 +66,68 @@ describe('calculateInfillsTakeoffV1', () => {
     expect(result.items[0].panels.every((panel) => panel.shape === 'trapezoid')).toBe(true);
   });
 
+  it.each([
+    ['right', 0, 1, 'joiner_left', 'support_left'],
+    ['left', 1, 0, 'joiner_right', 'support_right'],
+  ] as const)('treats a %s-high zero-ended mono-slope as a true three-edge triangle', (_highSide, left, right, omittedJoiner, omittedSupport) => {
+    const base = makeInfill();
+    const result = calculateInfillsTakeoffV1([makeInfill({
+      acrylic_source: 'auto',
+      panel_orientation: 'auto',
+      support: {
+        ...base.support,
+        has_top: false,
+        has_bottom: false,
+        has_left: false,
+        has_right: false,
+      },
+      shape: { type: 'mono_slope', width_m: 1, height_low_m: left, height_high_m: right },
+    })]);
+    const cuts = result.items[0].linear_cuts;
+
+    expect(result.status).toBe('valid');
+    expect(result.items[0].panels).toHaveLength(1);
+    expect(result.items[0].panels[0]).toMatchObject({
+      shape: 'triangle',
+      finished_area_m2: 0.5,
+    });
+    expect(result.items[0].panels[0].points).toHaveLength(3);
+    expect(cuts.filter((cut) => cut.profile === 'Joiners')).toHaveLength(3);
+    expect(cuts.filter((cut) => cut.profile === '50x50')).toHaveLength(3);
+    expect(cuts.some((cut) => cut.role === omittedJoiner || cut.role === omittedSupport)).toBe(false);
+    expect(cuts.every((cut) => cut.length_m > 0)).toBe(true);
+    expect(result.totals.joiner_cut_m).toBeCloseTo(2 + Math.SQRT2, 6);
+    expect(result.totals.extra_support_count).toBe(3);
+    expect(result.purchases.every((purchase) => purchase.allocations.every((allocation) => allocation.piece_ids.length > 0))).toBe(true);
+  });
+
+  it('clips horizontal panels within a triangular aperture', () => {
+    const result = calculateInfillsTakeoffV1([makeInfill({
+      acrylic_source: 'strip_620',
+      panel_orientation: 'horizontal',
+      shape: { type: 'mono_slope', width_m: 2, height_low_m: 0, height_high_m: 1.5 },
+    })]);
+
+    expect(result.status).toBe('valid');
+    expect(result.items[0].panels.length).toBeGreaterThan(1);
+    expect(result.items[0].panels.every((panel) => panel.points.length >= 3)).toBe(true);
+    expect(result.items[0].panels.at(-1)?.finished_width_m).toBeLessThan(result.items[0].panels[0].finished_width_m);
+    expect(result.items[0].linear_cuts.some((cut) => cut.role === 'joiner_left')).toBe(false);
+  });
+
+  it('blocks a zero-area mono-slope with a specific invalid-shape warning', () => {
+    const result = calculateInfillsTakeoffV1([makeInfill({
+      shape: { type: 'mono_slope', width_m: 2, height_low_m: 0, height_high_m: 0 },
+    })]);
+
+    expect(result.status).toBe('blocked');
+    expect(result.items[0].panels).toEqual([]);
+    expect(result.items[0].linear_cuts).toEqual([]);
+    expect(result.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'invalid_geometry' }),
+    ]));
+  });
+
   it('honours a tighter requested maximum panel width without exceeding the material centre limit', () => {
     const result = calculateInfillsTakeoffV1([makeInfill({ max_panel_width_m: 0.8 })]);
 

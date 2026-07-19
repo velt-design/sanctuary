@@ -63,13 +63,13 @@ export function updateEdgeConfirmation(
   });
 }
 
-export function getUnsureEdges(support: InfillSupportInput): InfillEdge[] {
+export function getUnsureEdges(support: InfillSupportInput, edges: InfillEdge[] = INFILL_EDGES): InfillEdge[] {
   const resolved = normalizeEdgeConfirmations(support.edgeConfirmations, support);
-  return INFILL_EDGES.filter((edge) => resolved[edge] === 'unsure');
+  return edges.filter((edge) => resolved[edge] === 'unsure');
 }
 
-export function supportConfirmationSummary(support: InfillSupportInput): string | null {
-  const unsureEdges = getUnsureEdges(support);
+export function supportConfirmationSummary(support: InfillSupportInput, edges: InfillEdge[] = INFILL_EDGES): string | null {
+  const unsureEdges = getUnsureEdges(support, edges);
   if (!unsureEdges.length) return null;
   const labels = unsureEdges.map((edge) => edge[0].toUpperCase() + edge.slice(1));
   const edgeList = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;

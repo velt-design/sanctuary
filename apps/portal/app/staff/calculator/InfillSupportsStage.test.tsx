@@ -43,4 +43,37 @@ describe('InfillSupportsStage', () => {
 
     unmount();
   });
+
+  it('replaces a triangle point with guidance instead of asking about a nonexistent edge', () => {
+    const item = makeDefaultInfillItem({
+      shape: {
+        type: 'mono_slope',
+        widthM: '2',
+        heightLowM: '0',
+        heightHighM: '1.5',
+        slopeMode: 'heights',
+      },
+    });
+    const { container, unmount } = renderIntoDocument(
+      <InfillSupportsStage
+        item={item}
+        domIdBase="triangle-supports"
+        canOfferRafterMatching={false}
+        additionalSupportSummary="3 new supports are included."
+        preview={<div>Triangle support diagram</div>}
+        onSupportChange={vi.fn()}
+        onInternalModeChange={vi.fn()}
+        onCustomPositionsChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelectorAll('fieldset')).toHaveLength(3);
+    expect(container.querySelector('input[name="triangle-supports-support-left-choice"]')).toBeNull();
+    expect(container.textContent).toContain('Triangle point');
+    expect(container.textContent).toContain('no fixing edge or support required');
+    expect(container.textContent).toContain('Top, Bottom and Right edges were not confirmed');
+    expect(container.textContent).not.toContain('Top, Bottom, Left and Right edges were not confirmed');
+
+    unmount();
+  });
 });

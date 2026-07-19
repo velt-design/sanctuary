@@ -7,8 +7,15 @@ import type {
   InfillResolvedAcrylicSourceInput,
 } from '@/lib/types/calculator';
 import FieldTile from './FieldTile';
+import InfillShapeTemplatePicker from './InfillShapeTemplatePicker';
 import styles from './CalculatorGrid.module.css';
 import { resolveMonoSlopeShape, type InfillDraftFieldKey } from './infillCompute';
+import {
+  getTriangleHighSide,
+  inferInfillOpeningTemplate,
+  type InfillOpeningTemplate,
+  type InfillTriangleHighSide,
+} from './infillOpeningTemplates';
 
 type OpeningErrors = Partial<Record<
   'acrylicSource' | 'qty' | 'widthM' | 'heightM' | 'heightLowM' | 'heightHighM' | 'slopeDeg' | 'bottomOffsetM',
@@ -31,7 +38,8 @@ type InfillOpeningStageProps = {
   onItemChange: (patch: Partial<InfillLineItem>) => void;
   onLocationChange: (location: InfillLineItem['location']) => void;
   onAcrylicPreferenceChange: (source: InfillLineItem['acrylicSource']) => void;
-  onShapeTypeChange: (type: InfillLineItem['shape']['type']) => void;
+  onShapeTemplateChange: (template: InfillOpeningTemplate) => void;
+  onTriangleHighSideChange: (side: InfillTriangleHighSide) => void;
   onDraftChange: (field: InfillDraftFieldKey, value: string) => void;
   onDraftCommit: (field: InfillDraftFieldKey, value: string) => void;
   onMonoModeChange: (mode: InfillMonoSlopeModeInput) => void;
@@ -61,7 +69,8 @@ export default function InfillOpeningStage({
   onItemChange,
   onLocationChange,
   onAcrylicPreferenceChange,
-  onShapeTypeChange,
+  onShapeTemplateChange,
+  onTriangleHighSideChange,
   onDraftChange,
   onDraftCommit,
   onMonoModeChange,
@@ -71,6 +80,9 @@ export default function InfillOpeningStage({
 }: InfillOpeningStageProps) {
   const monoShape = item.shape.type === 'mono_slope' ? item.shape : null;
   const monoResolved = monoShape ? resolveMonoSlopeShape(monoShape) : null;
+  const openingTemplate = inferInfillOpeningTemplate(item.shape);
+  const triangleHighSide = getTriangleHighSide(item.shape);
+  const trianglePeakField: InfillDraftFieldKey = triangleHighSide === 'left' ? 'heightLowM' : 'heightHighM';
   const pitchMode = monoShape?.slopeMode === 'pitch';
   const anchorField: InfillDraftFieldKey = monoResolved?.slopeAnchor === 'right' ? 'heightHighM' : 'heightLowM';
   const derivedHeight = monoResolved
@@ -100,6 +112,13 @@ export default function InfillOpeningStage({
           <p>Enter the position, shape and finished opening measurements.</p>
         </div>
         <div className={styles.infillBasicGrid}>
+          <div className={styles.span12}>
+            <InfillShapeTemplatePicker
+              domIdBase={domIdBase}
+              value={openingTemplate}
+              onChange={onShapeTemplateChange}
+            />
+          </div>
           <div className={styles.span4}>
             <FieldTile
               id={`${domIdBase}-location`}
@@ -117,21 +136,39 @@ export default function InfillOpeningStage({
               ]}
             />
           </div>
-          <div className={styles.span4}>
-            <FieldTile
-              id={`${domIdBase}-shape-type`}
-              label="Opening shape"
-              type="select"
-              value={item.shape.type}
-              onChange={(value) => onShapeTypeChange(value as InfillLineItem['shape']['type'])}
-              options={[{ label: 'Rectangle', value: 'rect' }, { label: 'Sloping top', value: 'mono_slope' }]}
-            />
-          </div>
 
-          {item.shape.type === 'rect' ? (
+          {openingTemplate === 'rectangle' && item.shape.type === 'rect' ? (
             <>
               {numberField('widthM', 'Width (m)', errors.widthM)}
               {numberField('heightM', 'Height (m)', errors.heightM)}
+            </>
+          ) : openingTemplate === 'triangle' && monoShape ? (
+            <>
+              {numberField('widthM', 'Width (m)', errors.widthM)}
+              {numberField(
+                trianglePeakField,
+                'Peak height (m)',
+                triangleHighSide === 'left' ? errors.heightLowM : errors.heightHighM,
+              )}
+              <div className={styles.span4}>
+                <fieldset className={styles.infillTriangleSideFieldset}>
+                  <legend>High side</legend>
+                  <div>
+                    {(['left', 'right'] as const).map((side) => (
+                      <label key={side}>
+                        <input
+                          type="radio"
+                          name={`${domIdBase}-triangle-high-side`}
+                          value={side}
+                          checked={triangleHighSide === side}
+                          onChange={() => onTriangleHighSideChange(side)}
+                        />
+                        <span>{side === 'left' ? 'Left' : 'Right'}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </div>
             </>
           ) : monoShape && monoResolved ? (
             <>

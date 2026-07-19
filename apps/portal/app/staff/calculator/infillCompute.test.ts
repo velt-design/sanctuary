@@ -1,5 +1,6 @@
 ﻿import { describe, expect, it } from 'vitest';
 import type { InfillLineItem } from '@/lib/types/calculator';
+import { buildInfillItemsForPreset, makeDefaultModule } from './calculatorInputs';
 import { resolveInfillUiState } from './infillCompute';
 
 function makeBaseInfill(overrides?: Partial<InfillLineItem>): InfillLineItem {
@@ -210,6 +211,48 @@ describe('infill compute draft state', () => {
     expect(rows.filter((row) => row.group === 'piece' && row.part.startsWith('Acrylic panel'))).toHaveLength(2);
     expect(rows.find((row) => row.group === 'purchase' && row.part === 'Crystalite 620 · 4m')?.qty).toBe(2);
     expect(rows.filter((row) => row.group === 'piece' && row.part.startsWith('Joiner')).reduce((sum, row) => sum + (typeof row.lengthM === 'number' ? row.lengthM : 0), 0)).toBeCloseTo(11, 6);
+  });
+
+  it('uses canonical triangle panels and omits the collapsed edge from rows and supports', () => {
+    const state = resolveInfillUiState(makeBaseInfill({
+      acrylicSource: 'auto',
+      panelOrientation: 'auto',
+      support: {
+        hasTop: false,
+        hasBottom: false,
+        hasLeft: false,
+        hasRight: false,
+        internalSupportMode: 'none',
+        internalSupportPositionsM: [],
+      },
+      shape: {
+        type: 'mono_slope',
+        widthM: '1',
+        heightLowM: '0',
+        heightHighM: '1',
+        bottomOffsetM: '0',
+        slopeMode: 'heights',
+      },
+    }), 0.9);
+    const pieces = state.estimate.cutListRows.filter((row) => row.group === 'piece');
+
+    expect(state.status).toBe('valid');
+    expect(state.estimate.panelPolygons[0]?.points).toHaveLength(3);
+    expect(pieces.find((row) => row.pieceType === 'panel')?.role).toBe('triangle');
+    expect(pieces.filter((row) => row.pieceType === 'linear_cut')).toHaveLength(6);
+    expect(pieces.some((row) => row.role === 'joiner_left' || row.role === 'support_left')).toBe(false);
+    expect(state.estimate.estimatedMullionsTotal).toBe(3);
+  });
+
+  it('produces valid canonical takeoffs for both halves of the gable-triangles preset', () => {
+    const triangles = buildInfillItemsForPreset(makeDefaultModule('pergola-1'), 'gable_triangles');
+    const states = triangles.map((triangle) => resolveInfillUiState(triangle, 0.9));
+
+    expect(states).toHaveLength(2);
+    expect(states.every((state) => state.status === 'valid')).toBe(true);
+    expect(states.every((state) => state.estimate.panelPolygons.every((panel) => panel.points.length >= 3))).toBe(true);
+    expect(states[0].estimate.cutListRows.some((row) => row.role === 'joiner_left')).toBe(false);
+    expect(states[1].estimate.cutListRows.some((row) => row.role === 'joiner_right')).toBe(false);
   });
 
   it('blocks a partial-edge roof-rafter match from save and export', () => {

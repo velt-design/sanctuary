@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { InfillEdge, InfillEdgeConfirmation, InfillLineItem } from '@/lib/types/calculator';
 import FieldTile from './FieldTile';
 import styles from './CalculatorGrid.module.css';
+import { getTrianglePointSide } from './infillOpeningTemplates';
 import {
   INFILL_EDGES,
   normalizeEdgeConfirmations,
@@ -47,7 +48,9 @@ export default function InfillSupportsStage({
   onCustomPositionsChange,
 }: InfillSupportsStageProps) {
   const confirmations = normalizeEdgeConfirmations(item.support.edgeConfirmations, item.support);
-  const uncertainSummary = supportConfirmationSummary(item.support);
+  const trianglePointSide = getTrianglePointSide(item.shape);
+  const activeEdges = INFILL_EDGES.filter((edge) => edge !== trianglePointSide);
+  const uncertainSummary = supportConfirmationSummary(item.support, activeEdges);
   const internalMode = item.support.internalSupportMode ?? 'none';
 
   return (
@@ -59,7 +62,12 @@ export default function InfillSupportsStage({
         </div>
 
         <div className={styles.infillEdgeConfirmationGrid}>
-          {INFILL_EDGES.map((edge) => (
+          {INFILL_EDGES.map((edge) => edge === trianglePointSide ? (
+            <div key={edge} id={`${domIdBase}-support-${edge}`} className={styles.infillTrianglePointNotice} role="note">
+              <strong>{edgeLabels[edge]}</strong>
+              <span>Triangle point — there is no fixing edge or support required here.</span>
+            </div>
+          ) : (
             <fieldset key={edge} id={`${domIdBase}-support-${edge}`} className={styles.infillEdgeConfirmationGroup}>
               <legend>{edgeLabels[edge]}</legend>
               {confirmationOptions.map((option) => (

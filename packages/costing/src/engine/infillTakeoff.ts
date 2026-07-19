@@ -53,6 +53,11 @@ function positive(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function nonNegative(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function polygonArea(points: InfillTakeoffPointV1[]): number {
   if (points.length < 3) return 0;
   let sum = 0;
@@ -130,15 +135,16 @@ function shapePolygon(shape: InfillInputV1['shape']): InfillTakeoffPointV1[] | n
       { x_m: 0, y_m: height },
     ];
   }
-  const low = positive(shape.height_low_m);
-  const high = positive(shape.height_high_m);
-  if (!low || !high) return null;
-  return [
+  const low = nonNegative(shape.height_low_m);
+  const high = nonNegative(shape.height_high_m);
+  if (low === null || high === null || Math.max(low, high) <= EPSILON) return null;
+  const polygon = normalizePolygon([
     { x_m: 0, y_m: 0 },
     { x_m: width, y_m: 0 },
     { x_m: width, y_m: high },
     { x_m: 0, y_m: low },
-  ];
+  ]);
+  return polygon.length >= 3 && polygonArea(polygon) > EPSILON ? polygon : null;
 }
 
 function heightAtX(shape: InfillInputV1['shape'], x: number): number {
@@ -490,19 +496,19 @@ function buildCandidate(
   const topLength = item.shape.type === 'rect'
     ? item.shape.width_m
     : Math.hypot(item.shape.width_m, item.shape.height_high_m - item.shape.height_low_m);
-  const perimeter: Array<{ role: InfillLinearCutRoleV1; length: number }> = [
+  const perimeter = ([
     { role: 'joiner_bottom', length: apertureBounds.width },
     { role: 'joiner_top', length: topLength },
     { role: 'joiner_left', length: heightAtX(item.shape, 0) },
     { role: 'joiner_right', length: heightAtX(item.shape, apertureBounds.width) },
-  ];
+  ] satisfies Array<{ role: InfillLinearCutRoleV1; length: number }>).filter((entry) => entry.length > EPSILON);
   const support = item.support;
-  const perimeterSupports: Array<{ needed: boolean; role: InfillLinearCutRoleV1; length: number }> = [
+  const perimeterSupports = ([
     { needed: !support.has_bottom, role: 'support_bottom', length: apertureBounds.width },
     { needed: !support.has_top, role: 'support_top', length: topLength },
     { needed: !support.has_left, role: 'support_left', length: heightAtX(item.shape, 0) },
     { needed: !support.has_right, role: 'support_right', length: heightAtX(item.shape, apertureBounds.width) },
-  ];
+  ] satisfies Array<{ needed: boolean; role: InfillLinearCutRoleV1; length: number }>).filter((entry) => entry.length > EPSILON);
   const internalPositions = (support.internal_support_positions_m ?? []).filter((position) => Number.isFinite(position));
   let addedSupportCount = perimeterSupports.filter((entry) => entry.needed).length * qty;
 
@@ -706,6 +712,29 @@ export function calculateInfillsTakeoffV1(
     const requestedSource: InfillRequestedAcrylicSourceV1 = input.acrylic_source;
     const preferred: InfillAcrylicSourceV1 = requestedSource === 'auto' ? 'sheet_panels' : requestedSource;
     const fallback: InfillAcrylicSourceV1 = preferred === 'sheet_panels' ? 'strip_620' : 'sheet_panels';
+    if (!shapePolygon(input.shape)) {
+      const warning: InfillTakeoffWarningV1 = {
+        level: 'critical',
+        code: 'invalid_geometry',
+        message: `${input.label ?? input.id}: opening requires a positive width and a positive-area rectangle, sloping top, or triangle.`,
+        module_id: moduleId,
+        infill_id: input.id,
+      };
+      warnings.push(warning);
+      items.push({
+        module_id: moduleId,
+        infill_id: input.id,
+        label: input.label,
+        requested_acrylic_source: requestedSource,
+        resolved_acrylic_source: preferred,
+        requested_orientation: requestedOrientation,
+        resolved_orientation: requestedOrientation === 'horizontal' ? 'horizontal' : 'vertical',
+        panels: [],
+        linear_cuts: [],
+        warnings: [warning],
+      });
+      continue;
+    }
     const preferredSources: InfillAcrylicSourceV1[] = requestedSource === 'auto' ? ['sheet_panels', 'strip_620'] : [preferred];
     const preferredCandidates = preferredSources
       .flatMap((source) => orientations.map((orientation) => buildCandidate(input, moduleId, source, orientation, resolvedOptions)))

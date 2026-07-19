@@ -75,6 +75,70 @@ test('authenticated calculator resolves and displays automatic choices', async (
   });
 });
 
+test('authenticated calculator uses visual templates and produces a true triangle at 768px', async ({ page, context }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-triangle-template-768' }, async () => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const dialog = await openCustomInfill(page, 768);
+    const rectangle = dialog.getByRole('radio', { name: /^Rectangle/ });
+    const slopingTop = dialog.getByRole('radio', { name: /^Sloping top/ });
+    const triangle = dialog.getByRole('radio', { name: /^Triangle/ });
+
+    await expect(rectangle).toBeChecked();
+    await expect(slopingTop).not.toBeChecked();
+    await expect(triangle).not.toBeChecked();
+    const cardBoxes = await Promise.all([
+      rectangle.locator('..').boundingBox(),
+      slopingTop.locator('..').boundingBox(),
+      triangle.locator('..').boundingBox(),
+    ]);
+    expect(cardBoxes.every((box) => Math.abs((box?.y ?? 0) - (cardBoxes[0]?.y ?? 0)) <= 2)).toBe(true);
+
+    await rectangle.focus();
+    await rectangle.press('ArrowRight');
+    await expect(slopingTop).toBeChecked();
+    await expect(dialog.getByLabel('Left height (m)', { exact: true })).toBeVisible();
+    await expect(dialog.getByLabel('Right height (m)', { exact: true })).toBeVisible();
+
+    await triangle.locator('..').click();
+    await expect(triangle).toBeChecked();
+    await expect(dialog.getByLabel('Peak height (m)', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('radio', { name: 'Right', exact: true })).toBeChecked();
+    await setNumber(dialog, 'Width (m)', '1');
+    await setNumber(dialog, 'Peak height (m)', '1');
+    await dialog.getByRole('radio', { name: 'Left', exact: true }).locator('..').click();
+
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(dialog.getByRole('group', { name: 'Right edge', exact: true })).toHaveCount(0);
+    await expect(dialog.getByText(/Triangle point.*no fixing edge or support required/i)).toBeVisible();
+    await expect(dialog.getByRole('img', { name: /right point/i })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+
+    await expect(dialog.getByText('Ready', { exact: true })).toBeVisible();
+    const pieces = dialog.getByRole('table', { name: /Pieces to cut/ });
+    await expect(pieces.getByRole('row').filter({ hasText: 'Acrylic panel 1' })).toContainText('triangle');
+    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Top/ })).toHaveCount(1);
+    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Bottom/ })).toHaveCount(1);
+    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Left/ })).toHaveCount(1);
+    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Right/ })).toHaveCount(0);
+
+    await dialog.getByRole('button', { name: 'Copy CSV', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Pieces to cut,panel,triangle,Acrylic panel 1');
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toContain(',joiner_right,');
+    const downloadPromise = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Download CSV', exact: true }).click();
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    expect(downloadPath).not.toBeNull();
+    const downloadedCsv = await readFile(downloadPath as string, 'utf8');
+    expect(downloadedCsv).toContain('Pieces to cut,panel,triangle,Acrylic panel 1');
+    expect(downloadedCsv).not.toContain(',joiner_right,');
+
+    const dimensions = await dialog.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    await attachCalculatorScreenshot(page, testInfo, 'infill-triangle-template-768.png');
+  });
+});
+
 test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, and CSV at desktop', async ({ page, context }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-sheet-accuracy' }, async () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);

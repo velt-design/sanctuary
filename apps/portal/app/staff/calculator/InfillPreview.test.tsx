@@ -54,6 +54,27 @@ describe('InfillPreview canonical panels', () => {
     unmount();
   });
 
+  it('renders a true triangle without a zero-length edge or support marker', () => {
+    const { container, unmount } = renderIntoDocument(
+      <InfillPreview
+        {...common}
+        mode="supports"
+        shape={{ type: 'mono_slope', widthM: '2', heightLowM: '0', heightHighM: '1.5', bottomOffsetM: '0' }}
+        panelPolygons={[{ id: 'panel-triangle', points: [{ x_m: 0, y_m: 0 }, { x_m: 2, y_m: 0 }, { x_m: 2, y_m: 1.5 }] }]}
+      />,
+    );
+
+    expect(container.querySelector('polygon')?.getAttribute('points')).toBe('10.000,84.000 90.000,84.000 90.000,28.000');
+    expect(container.querySelector('svg')?.getAttribute('aria-label')).toContain('left point');
+    expect(container.querySelectorAll('svg > line')).toHaveLength(3);
+    expect(container.querySelectorAll('svg > circle')).toHaveLength(3);
+    expect(container.textContent).toContain('Point');
+    expect(container.textContent).toContain('Right');
+    expect(container.textContent).not.toContain('Left');
+
+    unmount();
+  });
+
   it('labels every edge and explains support marks in support mode', () => {
     const { container, unmount } = renderIntoDocument(
       <InfillPreview

@@ -48,6 +48,7 @@ import InfillEditorHeader from './InfillEditorHeader';
 import InfillOpeningStage from './InfillOpeningStage';
 import InfillResultsStage from './InfillResultsStage';
 import InfillSupportsStage from './InfillSupportsStage';
+import { applyInfillOpeningTemplate, setTriangleHighSide, syncInfillMonoSlopeDraft } from './infillOpeningTemplates';
 import {
   addedSupportSummary,
   canOfferRafterMatching,
@@ -1420,15 +1421,7 @@ export default function CalculatorGridClient({
   };
 
   const syncMonoSlopeShape = (shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>): InfillLineItem['shape'] => {
-    const resolved = resolveMonoSlopeShape(shape);
-    return {
-      ...shape,
-      heightLowM: formatInputNumber(resolved.leftHeightM, 3),
-      heightHighM: formatInputNumber(resolved.rightHeightM, 3),
-      slopeMode: normalizeMonoSlopeMode(shape.slopeMode),
-      slopeDeg: shape.slopeDeg ?? '',
-      slopeAnchor: normalizeMonoSlopeAnchor(shape.slopeAnchor),
-    };
+    return syncInfillMonoSlopeDraft(shape);
   };
 
   const updateMonoSlopeShape = (
@@ -4471,42 +4464,20 @@ export default function CalculatorGridClient({
                         onItemChange={(patch) => setInfillItem(selectedInfill.id, patch)}
                         onLocationChange={(location) => setInfillLocation(selectedInfill.id, location)}
                         onAcrylicPreferenceChange={(source) => setInfillAcrylicPreference(selectedInfill.id, source)}
-                        onShapeTypeChange={(nextType) => {
-                          if (nextType === selectedInfill.shape.type) return;
-                          const shapeWidth = selectedInfill.shape.widthM;
-                          const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
+                        onShapeTemplateChange={(template) => {
+                          const nextShape = applyInfillOpeningTemplate(selectedInfill.shape, template);
+                          if (nextShape === selectedInfill.shape) return;
                           setInfillDraftById((previous) => {
                             if (!previous[selectedInfill.id]) return previous;
                             const next = { ...previous };
                             delete next[selectedInfill.id];
                             return next;
                           });
-                          if (nextType === 'rect') {
-                            const rectHeight = selectedInfill.shape.type === 'rect'
-                              ? selectedInfill.shape.heightM
-                              : selectedInfill.shape.heightHighM;
-                            setInfillItem(selectedInfill.id, {
-                              shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
-                            });
-                            return;
-                          }
-                          const low = selectedInfill.shape.type === 'rect'
-                            ? selectedInfill.shape.heightM
-                            : selectedInfill.shape.heightLowM;
-                          const high = selectedInfill.shape.type === 'rect'
-                            ? selectedInfill.shape.heightM
-                            : selectedInfill.shape.heightHighM;
+                          setInfillItem(selectedInfill.id, { shape: nextShape });
+                        }}
+                        onTriangleHighSideChange={(side) => {
                           setInfillItem(selectedInfill.id, {
-                            shape: {
-                              type: 'mono_slope',
-                              widthM: shapeWidth,
-                              heightLowM: low,
-                              heightHighM: high,
-                              bottomOffsetM: shapeBottom,
-                              slopeMode: 'heights',
-                              slopeDeg: '',
-                              slopeAnchor: 'left',
-                            },
+                            shape: setTriangleHighSide(selectedInfill.shape, side),
                           });
                         }}
                         onDraftChange={(field, value) => updateRequiredShapeField(selectedInfill, field, value)}
