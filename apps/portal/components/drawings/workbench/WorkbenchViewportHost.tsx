@@ -21,7 +21,6 @@ import type {
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import type { PlanSeamIconForm } from '@/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets';
 import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/tools/EdgeDragTool';
 import PlanViewport, {
@@ -29,6 +28,7 @@ import PlanViewport, {
   type MoveRequest,
 } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
+import { Geometry3DDesignViewport } from './workbenchViewportModules';
 import styles from './DrawingWorkbench.module.css';
 
 type WorkbenchViewportHostProps = {
@@ -176,7 +176,7 @@ export default function WorkbenchViewportHost({
           onDetachHouseFormAtSeam={onDetachHouseFormAtSeam}
         />
       ) : (
-        <DesignViewport
+        <Geometry3DDesignViewport
           geometryPreview={routedGeometryPreview}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}

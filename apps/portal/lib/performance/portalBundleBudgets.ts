@@ -119,15 +119,15 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/page/react-loadable-manifest.json',
     budgets: {
-      // 2026-07-19 fresh build after making every project tab a workflow boundary.
-      // The initial route is now 661 KiB; the lazy values are newly visible because
-      // Turbopack leaves this route's React loadable manifest empty.
-      initialRawBytes: 694_272,
-      initialGzipBytes: 200_704,
-      lazyTotalRawBytes: 2_856_960,
-      lazyTotalGzipBytes: 655_360,
-      largestLazyRawBytes: 2_591_744,
-      largestLazyGzipBytes: 587_776,
+      // 2026-07-19 fresh build after splitting 3D Review behind explicit
+      // viewport intent. Each value is the fresh measurement plus 5%, rounded
+      // to KiB; the combined ceiling remains below the original route cap.
+      initialRawBytes: 742_400,
+      initialGzipBytes: 212_992,
+      lazyTotalRawBytes: 1_822_720,
+      lazyTotalGzipBytes: 380_928,
+      largestLazyRawBytes: 1_567_744,
+      largestLazyGzipBytes: 321_536,
     },
   },
   {
@@ -152,12 +152,14 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/design-workbench/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/design-workbench/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 2_681_856,
-      initialGzipBytes: 671_744,
-      lazyTotalRawBytes: 0,
-      lazyTotalGzipBytes: 0,
-      largestLazyRawBytes: 0,
-      largestLazyGzipBytes: 0,
+      // The old all-initial ceiling is redistributed across initial and 3D-lazy
+      // code without increasing the combined raw or gzip allowance.
+      initialRawBytes: 1_701_888,
+      initialGzipBytes: 415_744,
+      lazyTotalRawBytes: 979_968,
+      lazyTotalGzipBytes: 256_000,
+      largestLazyRawBytes: 979_968,
+      largestLazyGzipBytes: 256_000,
     },
   },
 ] as const;

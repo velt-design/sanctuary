@@ -9,8 +9,8 @@ let mockActiveTab: string = 'quotes';
 let mockConfiguratorOverride = false;
 let latestShowDetailsTab: boolean | undefined;
 
-vi.mock('./ProjectDetailsSidebar', () => ({
-  default: () => <section data-testid="mock-details-panel">Details panel</section>,
+vi.mock('./projectDetailsModule', () => ({
+  LazyProjectDetailsSidebar: () => <section data-testid="mock-details-panel">Details panel</section>,
 }));
 
 vi.mock('./ProjectMainTabs', () => ({

@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import ProjectDetailsSidebar from './ProjectDetailsSidebar';
+import ActivityTab from './tabs/ActivityTab';
+import { LazyProjectDetailsSidebar, preloadProjectDetails } from './projectDetailsModule';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import {
-  ActivityTab,
   EmailsTab,
   EstimatesTab,
   InvoicesTab,
@@ -134,13 +134,15 @@ export default function ProjectMainTabs({
   }, [requestedTab, showDetailsTab]);
 
   const prefetchTabData = (tabKey: TabKey) => {
-    if (tabKey !== 'details') {
-      void preloadProjectTab(tabKey as ProjectTabModuleKey, {
-        host: hostKey,
-        projectId,
-        queryClient,
-      });
+    if (tabKey === 'details') {
+      void preloadProjectDetails();
+      return;
     }
+    void preloadProjectTab(tabKey as ProjectTabModuleKey, {
+      host: hostKey,
+      projectId,
+      queryClient,
+    });
   };
 
   return (
@@ -209,7 +211,7 @@ export default function ProjectMainTabs({
             <ProjectSnapshotTabStatus snapshotState={snapshotState} label="activity" />
           )
         ) : null}
-        {activeTab === 'details' ? <ProjectDetailsSidebar project={snapshot.project} /> : null}
+        {activeTab === 'details' ? <LazyProjectDetailsSidebar project={snapshot.project} /> : null}
         {activeTab === 'emails' ? (
           snapshotContentReady ? (
             <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} />

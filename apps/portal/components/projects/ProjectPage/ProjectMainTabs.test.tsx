@@ -6,6 +6,7 @@ import ProjectMainTabs from './ProjectMainTabs';
 const replaceMock = vi.fn();
 const prefetchQueryMock = vi.fn();
 const preloadModuleMock = vi.fn();
+const preloadProjectDetailsMock = vi.fn();
 let mockSearchParams = 'tab=estimates';
 
 vi.mock('next/navigation', () => ({
@@ -21,7 +22,6 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 vi.mock('./projectTabModules', () => ({
-  ActivityTab: () => <div data-testid="activity-tab" />,
   EmailsTab: () => <div data-testid="emails-tab" />,
   EstimatesTab: () => <div data-testid="estimates-tab" />,
   InvoicesTab: () => <div data-testid="invoices-tab" />,
@@ -30,8 +30,13 @@ vi.mock('./projectTabModules', () => ({
   preloadProjectTab: (...args: unknown[]) => preloadModuleMock(...args),
 }));
 
-vi.mock('./ProjectDetailsSidebar', () => ({
-  default: () => <div data-testid="details-tab" />,
+vi.mock('./tabs/ActivityTab', () => ({
+  default: () => <div data-testid="activity-tab" />,
+}));
+
+vi.mock('./projectDetailsModule', () => ({
+  LazyProjectDetailsSidebar: () => <div data-testid="details-tab" />,
+  preloadProjectDetails: (...args: unknown[]) => preloadProjectDetailsMock(...args),
 }));
 
 vi.mock('@/lib/queries/invoices', () => ({
@@ -75,6 +80,7 @@ describe('ProjectMainTabs', () => {
     replaceMock.mockReset();
     prefetchQueryMock.mockReset();
     preloadModuleMock.mockReset();
+    preloadProjectDetailsMock.mockReset();
     mockSearchParams = 'tab=estimates';
     window.sessionStorage.clear();
   });
@@ -170,6 +176,21 @@ describe('ProjectMainTabs', () => {
       projectId: 'proj_1',
     }));
 
+    rendered.unmount();
+  });
+
+  it('preloads the responsive Details workflow from user intent', () => {
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="estimates" />);
+    const details = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
+      (node) => node.textContent?.trim() === 'Details',
+    );
+
+    act(() => {
+      details?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    });
+
+    expect(preloadProjectDetailsMock).toHaveBeenCalledOnce();
+    expect(preloadModuleMock).not.toHaveBeenCalledWith('details', expect.anything());
     rendered.unmount();
   });
 });

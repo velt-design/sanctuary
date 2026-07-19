@@ -12,16 +12,17 @@ export type ProjectTabModuleKey =
   | 'job-packs'
   | 'emails';
 
+type ProjectLazyTabModuleKey = Exclude<ProjectTabModuleKey, 'activity'>;
+
 const loaders = {
-  activity: () => import('./tabs/ActivityTab'),
   estimates: () => import('./tabs/EstimatesTab'),
   quotes: () => import('./tabs/QuotesTab'),
   invoices: () => import('./tabs/InvoicesTab'),
   'job-packs': () => import('./tabs/JobPacksTab'),
   emails: () => import('./tabs/EmailsTab'),
-} satisfies Record<ProjectTabModuleKey, () => Promise<unknown>>;
+} satisfies Record<ProjectLazyTabModuleKey, () => Promise<unknown>>;
 
-function loadingState(label: string, key: ProjectTabModuleKey) {
+function loadingState(label: string, key: ProjectLazyTabModuleKey) {
   return function ProjectTabLoadingState() {
     return (
       <div className={styles.tabLoadingState} data-project-tab-loading={key} role="status">
@@ -31,7 +32,6 @@ function loadingState(label: string, key: ProjectTabModuleKey) {
   };
 }
 
-export const ActivityTab = dynamic(loaders.activity, { loading: loadingState('activity', 'activity') });
 export const EstimatesTab = dynamic(loaders.estimates, { loading: loadingState('designs', 'estimates') });
 export const QuotesTab = dynamic(loaders.quotes, { loading: loadingState('quotes', 'quotes') });
 export const InvoicesTab = dynamic(loaders.invoices, { loading: loadingState('invoices', 'invoices') });
@@ -43,7 +43,7 @@ export async function preloadProjectTab(
   context: { host: string; projectId: string; queryClient: QueryClient },
 ): Promise<void> {
   await Promise.all([
-    loaders[tab](),
+    tab === 'activity' ? Promise.resolve() : loaders[tab](),
     import('./projectTabDataPreload').then(({ preloadProjectTabData }) =>
       preloadProjectTabData(tab, context),
     ),

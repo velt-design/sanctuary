@@ -17,7 +17,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import ProjectDetailsSidebar from './ProjectDetailsSidebar';
+import { LazyProjectDetailsSidebar } from './projectDetailsModule';
 import { ProjectPageDesignRailProvider } from './ProjectPageDesignRailContext';
 import ProjectMainTabs from './ProjectMainTabs';
 import ProjectPanelFrame from './ProjectPanelFrame';
@@ -323,7 +323,7 @@ export default function ProjectPageShell({
 
   const renderPanel = (panelId: ProjectPanelId) => {
     if (panelId === 'details') {
-      return <ProjectDetailsSidebar project={snapshot.project} />;
+      return <LazyProjectDetailsSidebar project={snapshot.project} />;
     }
     return null;
   };
