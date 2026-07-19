@@ -34,8 +34,8 @@
   "warmJourneys": [
     {
       "name": "dashboard-to-projects",
-      "feedbackMsMax": 950,
-      "usefulContentMsMax": 2100,
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
       "enforced": true,
       "aggregation": "p75"
     },

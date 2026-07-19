@@ -5,6 +5,11 @@ import type { Project } from '@/lib/types/project';
 import type { Contact } from '@/lib/types/contact';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import {
+  PROJECTS_INDEX_QUERY_SCOPE,
+  type ProjectsIndexArchiveFilter,
+  type ProjectsIndexResponse,
+} from './projectsIndex';
 
 function cloneProject(project: Project): Project {
   return { ...project };
@@ -82,16 +87,90 @@ export function patchProjectListItem(
   projectId: string,
   updater: (project: Project) => Project,
 ) {
-  queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host), (current) => {
+  const patchRows = (current: Project[] | undefined, scope: 'active' | 'all') => {
     if (!Array.isArray(current)) return current;
-    let changed = false;
-    const next = current.map((project) => {
-      if (project.id !== projectId) return project;
-      changed = true;
-      return cloneProject(updater(project));
+    const existing = current.find((project) => project.id === projectId);
+    if (!existing) return current;
+    const nextProject = cloneProject(updater(existing));
+    if (scope === 'active' && nextProject.isArchived) {
+      return current.filter((project) => project.id !== projectId);
+    }
+    return current.map((project) => (project.id === projectId ? nextProject : project));
+  };
+
+  for (const scope of ['active', 'all'] as const) {
+    queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host, scope), (current) => patchRows(current, scope));
+  }
+
+  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
+    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) => {
+      if (!current) return current;
+      const existing = current.projects.rows.find((project) => project.id === projectId);
+      if (!existing) return current;
+      const nextProject = cloneProject(updater(existing));
+      const belongs =
+        archive === 'all' || (archive === 'active' ? !nextProject.isArchived : Boolean(nextProject.isArchived));
+      const rows = belongs
+        ? current.projects.rows.map((project) => (project.id === projectId ? nextProject : project))
+        : current.projects.rows.filter((project) => project.id !== projectId);
+      return { ...current, projects: { ...current.projects, rows } };
     });
-    return changed ? next : current;
-  });
+  }
+}
+
+export function patchContactListItem(
+  queryClient: QueryClient,
+  host: string,
+  contactId: string,
+  updater: (contact: Contact) => Contact,
+) {
+  const patchRows = (current: Contact[] | undefined) => {
+    if (!Array.isArray(current)) return current;
+    return current.map((contact) => (contact.id === contactId ? { ...updater(contact) } : contact));
+  };
+  queryClient.setQueryData<Contact[] | undefined>(qk.contacts.list(host), patchRows);
+  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
+    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) =>
+      current
+        ? { ...current, contacts: { ...current.contacts, rows: patchRows(current.contacts.rows) ?? [] } }
+        : current,
+    );
+  }
+}
+
+export function removeProjectListItem(queryClient: QueryClient, host: string, projectId: string) {
+  for (const scope of ['active', 'all'] as const) {
+    queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host, scope), (current) =>
+      Array.isArray(current) ? current.filter((project) => project.id !== projectId) : current,
+    );
+  }
+  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
+    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) =>
+      current
+        ? {
+            ...current,
+            projects: {
+              ...current.projects,
+              rows: current.projects.rows.filter((project) => project.id !== projectId),
+            },
+          }
+        : current,
+    );
+  }
+}
+
+export async function invalidateProjectsIndexCaches(
+  queryClient: QueryClient,
+  host: string,
+  options?: { includeContacts?: boolean },
+) {
+  await Promise.allSettled([
+    queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }),
+    queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }),
+    options?.includeContacts
+      ? queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) })
+      : Promise.resolve(),
+  ]);
 }
 
 export async function invalidateProjectReadCaches(
@@ -112,6 +191,7 @@ export async function invalidateProjectReadCaches(
     queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
     includeProjectDetail ? queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }) : Promise.resolve(),
+    includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }) : Promise.resolve(),
     opts?.includeQuotes ? queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(host, projectId) }) : Promise.resolve(),
     opts?.includeEstimates ? queryClient.invalidateQueries({ queryKey: qk.estimates.metaByProject(host, projectId) }) : Promise.resolve(),
   ]);

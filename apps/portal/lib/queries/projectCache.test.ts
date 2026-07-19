@@ -3,8 +3,13 @@ import {
   buildProjectSnapshotPlaceholder,
   getProjectSnapshotPlaceholderFromCaches,
   invalidateProjectReadCaches,
+  patchContactListItem,
+  patchProjectListItem,
+  removeProjectListItem,
 } from './projectCache';
 import { qk } from './keys';
+import { QueryClient } from '@tanstack/react-query';
+import { PROJECTS_INDEX_QUERY_SCOPE, type ProjectsIndexResponse } from './projectsIndex';
 
 describe('projectCache helpers', () => {
   it('builds a usable project snapshot placeholder from a project summary', () => {
@@ -50,6 +55,7 @@ describe('projectCache helpers', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.snapshot('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.detail('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.listPrefix('host') });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.quotes.versionsByProject('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.estimates.metaByProject('host', 'proj_123') });
   });
@@ -102,5 +108,42 @@ describe('projectCache helpers', () => {
     expect(getProjectSnapshotPlaceholderFromCaches(userA, 'host-a', 'proj_private')).toBeDefined();
     expect(getProjectSnapshotPlaceholderFromCaches(userA, 'host-b', 'proj_private')).toBeUndefined();
     expect(getProjectSnapshotPlaceholderFromCaches(userB, 'host-a', 'proj_private')).toBeUndefined();
+  });
+
+  it('keeps canonical and combined index caches coherent for edits, archive, contacts, and deletion', () => {
+    const client = new QueryClient();
+    const project = { id: 'proj_1', projectName: 'Original', status: 'NEW', isArchived: false } as any;
+    const contact = { id: 'ct_1', displayName: 'Alex', phone: '111' } as any;
+    const response = (archive: ProjectsIndexResponse['archive']): ProjectsIndexResponse => ({
+      archive,
+      projects: { rows: [project], totalCount: 1, truncated: false },
+      contacts: { rows: [contact], totalCount: 1, truncated: false },
+      generatedAt: '2026-07-19T00:00:00.000Z',
+    });
+    client.setQueryData(qk.projects.list('host', 'active'), [project]);
+    client.setQueryData(qk.projects.list('host', 'all'), [project]);
+    client.setQueryData(qk.contacts.list('host'), [contact]);
+    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'), response('active'));
+    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'all'), response('all'));
+
+    patchProjectListItem(client, 'host', 'proj_1', (current) => ({
+      ...current,
+      projectName: 'Updated',
+      isArchived: true,
+    }));
+    expect(client.getQueryData<any[]>(qk.projects.list('host', 'active'))).toEqual([]);
+    expect(client.getQueryData<any[]>(qk.projects.list('host', 'all'))?.[0]).toMatchObject({
+      projectName: 'Updated',
+      isArchived: true,
+    });
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.projects.rows).toEqual([]);
+
+    patchContactListItem(client, 'host', 'ct_1', (current) => ({ ...current, phone: '222' }));
+    expect(client.getQueryData<any[]>(qk.contacts.list('host'))?.[0].phone).toBe('222');
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'all'))?.contacts.rows[0].phone).toBe('222');
+
+    removeProjectListItem(client, 'host', 'proj_1');
+    expect(client.getQueryData<any[]>(qk.projects.list('host', 'all'))).toEqual([]);
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'all'))?.projects.rows).toEqual([]);
   });
 });

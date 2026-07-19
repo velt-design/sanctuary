@@ -3,6 +3,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import DashboardView from './DashboardView';
 import type { DashboardData } from '@/lib/dashboard/types';
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 vi.mock('./_components/DashboardTasksCard.client', () => ({
   default: (props: { initialTasks: Array<{ title: string; completedAt?: string | null }> }) => (
     <section aria-label="Tasks">

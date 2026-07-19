@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PortalDebugExportButton from '@/components/debug/PortalDebugExportButton';
@@ -122,9 +122,9 @@ export default function ProjectSnapshotPageClient({
                 Retry
               </button>
             ) : null}
-            <Link href="/staff/projects" className={styles.backLink}>
+            <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
               Back to Projects
-            </Link>
+            </ProjectsIndexLink>
           </div>
         </section>
       </main>

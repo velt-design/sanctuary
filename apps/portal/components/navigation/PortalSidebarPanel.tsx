@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
@@ -17,6 +17,7 @@ import {
 import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
 import { todayYmd } from '@/lib/scheduling/date';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { openProjectsIndexInstantly, preloadProjectsIndex } from '@/lib/queries/projectsIndexNavigation';
 import styles from './PortalSidebarPanel.module.css';
 
 type PinnedOpenParentState = {
@@ -116,6 +117,7 @@ function isChildActive(
 
 export default function PortalSidebarPanel() {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { email, role } = usePortalSession();
   const { beginRouteTransition } = usePortalRouteTransition();
@@ -167,9 +169,10 @@ export default function PortalSidebarPanel() {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
+      if (openProjectsIndexInstantly(event, router, href)) return;
       beginRouteTransition({ href, label, source: 'sidebar-panel' });
     },
-    [beginRouteTransition],
+    [beginRouteTransition, router],
   );
 
   const handleChevronClick = useCallback(
@@ -188,23 +191,28 @@ export default function PortalSidebarPanel() {
   );
 
   const prefetchFor = useCallback(
-    (key: string) => {
+    (key: string, href: string) => {
+      if (key === 'projects' || href.startsWith('/staff/projects?')) {
+        preloadProjectsIndex(queryClient, router, href);
+        return;
+      }
       if (key !== 'schedule') return;
       const token = `${key}:${hostKey}:${today}`;
       if (prefetchedRef.current.has(token)) return;
       prefetchedRef.current.add(token);
       void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
     },
-    [hostKey, queryClient, today],
+    [hostKey, queryClient, router, today],
   );
 
   const handleIconLinkClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
+      if (openProjectsIndexInstantly(event, router, href)) return;
       beginRouteTransition({ href, label, source: 'sidebar-rail' });
     },
-    [beginRouteTransition],
+    [beginRouteTransition, router],
   );
 
   return (
@@ -229,13 +237,16 @@ export default function PortalSidebarPanel() {
                 <div className={cx(styles.parentRow, isParentCurrent && styles.parentRowBubbled)}>
                   <Link
                     href={item.href}
+                    prefetch={item.key === 'projects' ? false : undefined}
                     aria-label={item.label}
                     aria-current={isParentCurrent ? 'page' : undefined}
                     className={cx(styles.iconButton, isParentCurrent && styles.iconButtonActive)}
                     data-nav-key={item.key}
                     onClick={(event) => handleIconLinkClick(event, item.href, item.label)}
-                    onMouseEnter={() => prefetchFor(item.key)}
-                    onFocus={() => prefetchFor(item.key)}
+                    onMouseEnter={() => prefetchFor(item.key, item.href)}
+                    onFocus={() => prefetchFor(item.key, item.href)}
+                    onPointerDown={() => prefetchFor(item.key, item.href)}
+                    onTouchStart={() => prefetchFor(item.key, item.href)}
                   >
                     <item.Icon
                       aria-hidden="true"
@@ -248,9 +259,14 @@ export default function PortalSidebarPanel() {
                   <div className={styles.parentHeader}>
                     <Link
                       href={item.href}
+                      prefetch={item.key === 'projects' ? false : undefined}
                       aria-current={isParentCurrent ? 'page' : undefined}
                       className={styles.parentLink}
                       onClick={(event) => handleNavLinkClick(event, item.href, item.label)}
+                      onMouseEnter={() => prefetchFor(item.key, item.href)}
+                      onFocus={() => prefetchFor(item.key, item.href)}
+                      onPointerDown={() => prefetchFor(item.key, item.href)}
+                      onTouchStart={() => prefetchFor(item.key, item.href)}
                     >
                       <span className={styles.parentLabel}>{item.label}</span>
                     </Link>
@@ -280,9 +296,14 @@ export default function PortalSidebarPanel() {
                           <Link
                             key={child.key}
                             href={child.href}
+                            prefetch={child.href === '/staff/projects' ? false : undefined}
                             aria-current={childActive ? 'page' : undefined}
                             className={cx(styles.childRow, childActive && styles.childRowActive)}
                             onClick={(event) => handleNavLinkClick(event, child.href, child.label)}
+                            onMouseEnter={() => prefetchFor(item.key, child.href)}
+                            onFocus={() => prefetchFor(item.key, child.href)}
+                            onPointerDown={() => prefetchFor(item.key, child.href)}
+                            onTouchStart={() => prefetchFor(item.key, child.href)}
                           >
                             {child.label}
                           </Link>

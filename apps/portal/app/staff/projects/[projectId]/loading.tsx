@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 
 export default function ProjectDetailLoading() {
@@ -10,9 +10,9 @@ export default function ProjectDetailLoading() {
           <p className={styles.subtitle} role="status">
             Preparing the project summary in the background.
           </p>
-          <Link href="/staff/projects" className={styles.backLink}>
+          <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
             Back to Projects
-          </Link>
+          </ProjectsIndexLink>
         </div>
       </section>
     </main>

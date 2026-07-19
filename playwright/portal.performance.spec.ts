@@ -235,16 +235,21 @@ test('captures cold portal route metrics', async ({ page }) => {
 test('captures warm navigation and project tab metrics', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 60_000 });
+  const projectsNavLink = page.getByRole('link', { name: 'Projects', exact: true }).first();
+  await projectsNavLink.hover();
 
   await measureWarmJourney(
     page,
     'dashboard-to-projects',
-    () => page.getByRole('link', { name: 'Projects', exact: true }).first().dispatchEvent('click'),
-    () => Promise.race([
-      page.waitForURL(/\/projects(?:\?|$)/),
-      page.locator('[aria-label="Page loading"]').waitFor({ state: 'visible' }),
-    ]),
-    () => expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible(),
+    () => projectsNavLink.dispatchEvent('click'),
+    () => page.waitForURL(/\/staff\/projects(?:\?|$)/),
+    async () => {
+      await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Filters' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Projects list' })).toBeVisible();
+      await expect(page.locator('[data-projects-index-state]')).toBeVisible();
+    },
+    () => expect(page.locator('[data-projects-index-background-ready="true"]')).toBeVisible({ timeout: 60_000 }),
   );
 
   const firstOpen = await firstProjectOpenLink(page);

@@ -8,6 +8,10 @@ const useQueryMock = vi.fn();
 const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {

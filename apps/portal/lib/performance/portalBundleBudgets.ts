@@ -13,7 +13,7 @@ export type PortalBundleBudgets = {
 };
 
 export type PortalBundleRouteConfig = {
-  id: 'schedule' | 'project-detail' | 'calculator' | 'design-workbench';
+  id: 'schedule' | 'projects-index' | 'project-detail' | 'calculator' | 'design-workbench';
   route: string;
   routeKey: string;
   clientReferenceManifest: string;
@@ -78,6 +78,22 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
       lazyTotalGzipBytes: 84_000,
       largestLazyRawBytes: 210_000,
       largestLazyGzipBytes: 43_000,
+    },
+  },
+  {
+    id: 'projects-index',
+    route: '/staff/projects',
+    routeKey: '/staff/projects/page',
+    clientReferenceManifest: 'server/app/staff/projects/page_client-reference-manifest.js',
+    reactLoadableManifest: 'server/app/staff/projects/page/react-loadable-manifest.json',
+    budgets: {
+      // 2026-07-19 fresh production measurement plus 5%, rounded up to KiB.
+      initialRawBytes: 733_184,
+      initialGzipBytes: 210_944,
+      lazyTotalRawBytes: 2_850_816,
+      lazyTotalGzipBytes: 653_312,
+      largestLazyRawBytes: 2_606_080,
+      largestLazyGzipBytes: 589_824,
     },
   },
   {

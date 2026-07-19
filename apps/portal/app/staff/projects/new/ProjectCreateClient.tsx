@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -109,9 +109,9 @@ export default function ProjectCreateClient() {
         title="New Project"
         right={
           <HeaderActions>
-            <Link className={styles.buttonSecondary} href="/staff/projects">
+            <ProjectsIndexLink className={styles.buttonSecondary} href="/staff/projects">
               Projects
-            </Link>
+            </ProjectsIndexLink>
           </HeaderActions>
         }
       />
@@ -306,9 +306,9 @@ export default function ProjectCreateClient() {
               <button className={styles.button} type="submit" disabled={Boolean(busy) || !canSubmit}>
                 {busy === 'createProject' ? 'Creating…' : 'Create Project'}
               </button>
-              <Link className={styles.buttonSecondary} href="/staff/projects">
+              <ProjectsIndexLink className={styles.buttonSecondary} href="/staff/projects">
                 Cancel
-              </Link>
+              </ProjectsIndexLink>
             </div>
           </form>
         </div>

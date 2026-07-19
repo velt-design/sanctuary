@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectDetailPage from './page';
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 vi.mock('./ProjectSnapshotPageClient', () => ({
   default: (props: { projectId: string; tab: string; estimateId: string | null; debugExportEnabled: boolean }) => (
     <div

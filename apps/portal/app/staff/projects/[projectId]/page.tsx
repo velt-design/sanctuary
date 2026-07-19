@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
@@ -37,9 +37,9 @@ export default async function ProjectDetailPage({
           <div className={styles.surfaceInner}>
             <h1 className={styles.title}>Project unavailable</h1>
             <p className={styles.subtitle}>Invalid project id.</p>
-            <Link href="/staff/projects" className={styles.backLink}>
+            <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
               Back to Projects
-            </Link>
+            </ProjectsIndexLink>
           </div>
         </section>
       </main>

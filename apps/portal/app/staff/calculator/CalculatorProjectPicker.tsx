@@ -6,6 +6,7 @@ import Modal from '@/components/ui/modal/Modal';
 import { projectsListQueryOptions } from '@/lib/queries/projects';
 import { projectStatusLabel, type Project } from '@/lib/types/project';
 import styles from './CalculatorTrustUi.module.css';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 
 export type CalculatorProjectPickerProps = {
   open: boolean;
@@ -136,7 +137,7 @@ export default function CalculatorProjectPicker({
         </div>
 
         <div className={styles.projectPickerFooter}>
-          <a href="/staff/projects">Browse all projects</a>
+          <ProjectsIndexLink href="/staff/projects">Browse all projects</ProjectsIndexLink>
           <button type="button" onClick={onClose}>Cancel</button>
         </div>
       </div>

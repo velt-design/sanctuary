@@ -6,12 +6,16 @@ import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { qk } from '@/lib/queries/keys';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
+import { ApiError } from '@/lib/repo/apiClient';
+import { PROJECTS_INDEX_QUERY_SCOPE } from '@/lib/queries/projectsIndex';
 
 const replace = vi.fn();
 const prefetch = vi.fn();
 const openProject = vi.fn();
 const prefetchQuery = vi.fn();
 const invalidateQueries = vi.fn();
+const setQueryData = vi.fn();
+const getQueryData = vi.fn();
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
 const toastInfo = vi.fn();
@@ -60,6 +64,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useQueryClient: () => ({
       prefetchQuery,
       invalidateQueries,
+      setQueryData,
+      getQueryData,
     }),
   };
 });
@@ -97,13 +103,23 @@ describe('ProjectsIndexClient', () => {
     prefetchQuery.mockReset();
     prefetchQuery.mockResolvedValue(undefined);
     invalidateQueries.mockReset();
+    setQueryData.mockReset();
+    getQueryData.mockReset();
     toastError.mockReset();
     toastSuccess.mockReset();
     toastInfo.mockReset();
     useQueryMock.mockReset();
-    useQueryMock.mockImplementation((options: { initialData?: unknown }) => ({
-      data: options.initialData,
+    useQueryMock.mockImplementation(() => ({
+      data: {
+        archive: 'active',
+        projects: { rows: initialProjects, totalCount: 1, truncated: false },
+        contacts: { rows: initialContacts, totalCount: 1, truncated: false },
+        generatedAt: '2026-04-03T01:00:00.000Z',
+      },
       error: null,
+      isFetching: false,
+      isPlaceholderData: false,
+      refetch: vi.fn(),
     }));
   });
 
@@ -111,11 +127,9 @@ describe('ProjectsIndexClient', () => {
     document.body.innerHTML = '';
   });
 
-  it('initializes the projects and contacts queries from server data and renders the filtered table immediately', () => {
+  it('renders fresh index data through the combined authenticated query', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialProjects={initialProjects}
-        initialContacts={initialContacts}
         initialFilters={{ query: 'deck', statusFilter: 'SENT', dueFilter: 'today', archiveFilter: 'active' }}
         initialTodayYmd="2026-04-03"
       />,
@@ -123,14 +137,7 @@ describe('ProjectsIndexClient', () => {
 
     expect(useQueryMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: qk.projects.list('host', 'active'),
-        initialData: initialProjects,
-      }),
-    );
-    expect(useQueryMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: qk.contacts.list('host'),
-        initialData: initialContacts,
+        queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'),
       }),
     );
     expect((rendered.container.querySelector('#projectSearch') as HTMLInputElement | null)?.value).toBe('deck');
@@ -148,8 +155,6 @@ describe('ProjectsIndexClient', () => {
   it('exposes an Active/Archived/All archive filter', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialProjects={initialProjects}
-        initialContacts={initialContacts}
         initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
         initialTodayYmd="2026-04-03"
       />,
@@ -163,6 +168,122 @@ describe('ProjectsIndexClient', () => {
     rendered.unmount();
   });
 
+  it('does not retain active rows while the archived scope is pending', () => {
+    useQueryMock.mockImplementation((options: { queryKey: readonly unknown[] }) => {
+      if (options.queryKey.at(-1) === 'archived') {
+        return {
+          data: undefined,
+          error: null,
+          isFetching: true,
+          isPlaceholderData: false,
+          refetch: vi.fn(),
+        };
+      }
+      return {
+        data: {
+          archive: 'active',
+          projects: { rows: initialProjects, totalCount: 1, truncated: false },
+          contacts: { rows: initialContacts, totalCount: 1, truncated: false },
+          generatedAt: '2026-04-03T01:00:00.000Z',
+        },
+        error: null,
+        isFetching: false,
+        isPlaceholderData: false,
+        refetch: vi.fn(),
+      };
+    });
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+    const archive = rendered.container.querySelector('#projectArchiveFilter') as HTMLSelectElement;
+
+    act(() => {
+      archive.value = 'archived';
+      archive.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(rendered.container.textContent).not.toContain('Deck Build');
+    expect(rendered.container.textContent).toContain('Updating projects…');
+    rendered.unmount();
+  });
+
+  it('renders a truthful pending list instead of an empty state without cached data', () => {
+    useQueryMock.mockReturnValue({
+      data: undefined,
+      error: null,
+      isFetching: true,
+      isPlaceholderData: false,
+      refetch: vi.fn(),
+    });
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+
+    expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('pending');
+    expect(rendered.container.textContent).toContain('Updating projects…');
+    expect(rendered.container.textContent).not.toContain('No projects yet');
+    rendered.unmount();
+  });
+
+  it('keeps known rows visible when a refresh fails', () => {
+    const refetch = vi.fn();
+    useQueryMock.mockReturnValue({
+      data: {
+        archive: 'active',
+        projects: { rows: initialProjects, totalCount: 1, truncated: false },
+        contacts: { rows: initialContacts, totalCount: 1, truncated: false },
+        generatedAt: '2026-04-03T01:00:00.000Z',
+      },
+      error: new Error('offline'),
+      isFetching: false,
+      isPlaceholderData: false,
+      refetch,
+    });
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+
+    expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('refresh-failed');
+    expect(rendered.container.textContent).toContain('Deck Build');
+    expect(rendered.container.textContent).toContain('Retry');
+    rendered.unmount();
+  });
+
+  it.each([401, 403])('hides cached rows after an access-ending %s response', (status) => {
+    useQueryMock.mockReturnValue({
+      data: {
+        archive: 'active',
+        projects: { rows: initialProjects, totalCount: 1, truncated: false },
+        contacts: { rows: initialContacts, totalCount: 1, truncated: false },
+        generatedAt: '2026-04-03T01:00:00.000Z',
+      },
+      error: new ApiError('Access ended', { status, body: null }),
+      isFetching: false,
+      isPlaceholderData: false,
+      refetch: vi.fn(),
+    });
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+
+    expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('unavailable');
+    expect(rendered.container.textContent).not.toContain('Deck Build');
+    expect(rendered.container.textContent).toContain('cannot access');
+    rendered.unmount();
+  });
+
   it.each([
     ['hover', 'mouseover', 'tr'],
     ['focus', 'focusin', 'a'],
@@ -171,8 +292,6 @@ describe('ProjectsIndexClient', () => {
   ])('preloads the project route and snapshot on %s intent', (_label, eventName, selector) => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialProjects={initialProjects}
-        initialContacts={initialContacts}
         initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
         initialTodayYmd="2026-04-03"
       />,
@@ -200,8 +319,6 @@ describe('ProjectsIndexClient', () => {
   ])('navigates from %s after preparing the project', (_label, eventFactory) => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialProjects={initialProjects}
-        initialContacts={initialContacts}
         initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
         initialTodayYmd="2026-04-03"
       />,
@@ -221,8 +338,6 @@ describe('ProjectsIndexClient', () => {
   it('prepares the project before the Open link handles navigation', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialProjects={initialProjects}
-        initialContacts={initialContacts}
         initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
         initialTodayYmd="2026-04-03"
       />,

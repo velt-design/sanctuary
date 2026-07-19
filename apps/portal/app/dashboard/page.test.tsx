@@ -7,6 +7,10 @@ import type { DashboardData } from '@/lib/dashboard/types';
 const getDashboardDataMock = vi.fn();
 const requireStaffPageAccessMock = vi.fn();
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 vi.mock('@/lib/dashboard/getDashboardData', () => ({
   getDashboardData: (...args: unknown[]) => getDashboardDataMock(...args),
 }));

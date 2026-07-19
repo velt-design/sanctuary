@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import type { Contact } from '@/lib/types/contact';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
@@ -11,11 +10,8 @@ import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { contactsListQueryOptions } from '@/lib/queries/contacts';
-import { projectsListQueryOptions } from '@/lib/queries/projects';
+import { useQueryClient } from '@tanstack/react-query';
 import { ProjectRowTooltip, useProjectRowTooltip } from './ProjectRowTooltip';
-import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
@@ -28,7 +24,12 @@ import {
   stageKeyToStatus,
   type PipelineStageKey,
 } from '@/lib/projects/pipelineDefinition';
-import { patchProjectListItem } from '@/lib/queries/projectCache';
+import {
+  invalidateProjectsIndexCaches,
+  patchContactListItem,
+  patchProjectListItem,
+  removeProjectListItem,
+} from '@/lib/queries/projectCache';
 import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpenPreload';
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
@@ -38,6 +39,7 @@ import {
   type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
+import { useProjectsIndexData } from './useProjectsIndexData';
 
 type EditableField = 'name' | 'phone' | 'address';
 type EditingState = { id: string; field: EditableField; value: string } | null;
@@ -56,26 +58,9 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
 }
 
 export default function ProjectsIndexClient({
-  initialProjects,
-  // PR-PG1 (2026-06-16): server-side row counts. `null` when the server fetch
-  // didn't request a count (older callers / fallback paths) — banner stays
-  // hidden in that case.
-  initialProjectsTotalCount = null,
-  // PR-PG1c (2026-06-16): chunked-fetch truncation signal. True when the
-  // server fetch hit `MAX_LIST_FETCH_ROWS` before exhausting the table.
-  initialProjectsTruncated = false,
-  initialContacts,
-  initialContactsTotalCount = null,
-  initialContactsTruncated = false,
   initialFilters,
   initialTodayYmd,
 }: {
-  initialProjects: Project[];
-  initialProjectsTotalCount?: number | null;
-  initialProjectsTruncated?: boolean;
-  initialContacts: Contact[];
-  initialContactsTotalCount?: number | null;
-  initialContactsTruncated?: boolean;
   initialFilters: ProjectsIndexFilters;
   initialTodayYmd: string;
 }) {
@@ -106,19 +91,9 @@ export default function ProjectsIndexClient({
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const queryClient = useQueryClient();
-
-  const includeArchived = archiveFilter !== 'active';
-  const { data: projectsData, error: projectsError } = useQuery({
-    ...projectsListQueryOptions(host, { includeArchived }),
-    initialData: initialProjects,
-  });
-  const { data: contactsData, error: contactsError } = useQuery({
-    ...contactsListQueryOptions(host),
-    initialData: initialContacts,
-  });
-
-  const projects = projectsData ?? [];
-  const contacts = contactsData ?? [];
+  const projectsIndex = useProjectsIndexData(host, archiveFilter);
+  const projects = projectsIndex.data?.projects.rows ?? [];
+  const contacts = projectsIndex.data?.contacts.rows ?? [];
 
   useEffect(() => {
     const nextFilters = parseProjectsIndexFilters(searchParams);
@@ -127,26 +102,6 @@ export default function ProjectsIndexClient({
     setDueFilter(nextFilters.dueFilter);
     setArchiveFilter(nextFilters.archiveFilter);
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!projectsError) return;
-    if (projects.length) {
-      toast.error("Couldn't refresh projects (showing last saved).");
-      return;
-    }
-    const msg = projectsError instanceof Error ? projectsError.message : 'Failed to load projects.';
-    toast.error(msg);
-  }, [projects.length, projectsError, toast]);
-
-  useEffect(() => {
-    if (!contactsError) return;
-    if (contacts.length) {
-      toast.error("Couldn't refresh contacts (showing last saved).");
-      return;
-    }
-    const msg = contactsError instanceof Error ? contactsError.message : 'Failed to load contacts.';
-    toast.error(msg);
-  }, [contacts.length, contactsError, toast]);
 
   useEffect(() => {
     const t = searchParams.get('toast');
@@ -201,11 +156,7 @@ export default function ProjectsIndexClient({
 
   const patchContactPhoneInCache = useCallback(
     (contactId: string, nextPhone: string) => {
-      const queryKey = qk.contacts.list(host);
-      queryClient.setQueryData<Contact[] | undefined>(queryKey, (current) => {
-        if (!Array.isArray(current)) return current;
-        return current.map((c) => (c.id === contactId ? { ...c, phone: nextPhone } : c));
-      });
+      patchContactListItem(queryClient, host, contactId, (contact) => ({ ...contact, phone: nextPhone }));
     },
     [host, queryClient],
   );
@@ -274,10 +225,7 @@ export default function ProjectsIndexClient({
         patchContactPhoneInCache(project.contactId, trimmed);
       }
 
-      await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
-      if (field === 'phone') {
-        await queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) });
-      }
+      await invalidateProjectsIndexCaches(queryClient, host, { includeContacts: field === 'phone' });
       setEditing(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save change.';
@@ -317,7 +265,7 @@ export default function ProjectsIndexClient({
           ...p,
           status: stageKeyToStatus(nextStage),
         }));
-        await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+        await invalidateProjectsIndexCaches(queryClient, host);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to update stage.';
         toast.error(msg);
@@ -384,7 +332,11 @@ export default function ProjectsIndexClient({
         throw new Error(msg);
       }
       toast.success(willArchive ? 'Project archived.' : 'Project restored.');
-      await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+      patchProjectListItem(queryClient, host, project.id, (current) => ({
+        ...current,
+        isArchived: willArchive,
+      }));
+      await invalidateProjectsIndexCaches(queryClient, host);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update archive state';
       toast.error(msg);
@@ -404,7 +356,11 @@ export default function ProjectsIndexClient({
     : '';
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      data-projects-index-state={projectsIndex.state}
+      data-projects-index-background-ready={projectsIndex.backgroundReady ? 'true' : 'false'}
+    >
       <PageHeader
         title="Projects"
         right={
@@ -423,18 +379,18 @@ export default function ProjectsIndexClient({
       />
 
       <ListCountBanner
-        totalCount={initialProjectsTotalCount}
+        totalCount={projectsIndex.data?.projects.totalCount ?? null}
         visibleCount={projects.length}
         entityLabelSingular="project"
         entityLabelPlural="projects"
-        truncated={initialProjectsTruncated}
+        truncated={projectsIndex.data?.projects.truncated ?? false}
       />
       <ListCountBanner
-        totalCount={initialContactsTotalCount}
+        totalCount={projectsIndex.data?.contacts.totalCount ?? null}
         visibleCount={contacts.length}
         entityLabelSingular="contact"
         entityLabelPlural="contacts"
-        truncated={initialContactsTruncated}
+        truncated={projectsIndex.data?.contacts.truncated ?? false}
       />
 
       <div className={styles.stack}>
@@ -503,9 +459,19 @@ export default function ProjectsIndexClient({
         <section className={styles.section} aria-label="Projects list">
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>All Projects</h2>
-            <span className={styles.muted} suppressHydrationWarning>
-              {filteredProjects.length} shown
-            </span>
+            <div className={styles.muted} suppressHydrationWarning>
+              {projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? 'Updating…' : null}
+              {projectsIndex.state === 'fresh' ? `${filteredProjects.length} shown` : null}
+              {projectsIndex.state === 'unavailable' ? 'Access unavailable' : null}
+              {projectsIndex.state === 'refresh-failed' ? (
+                <>
+                  {projects.length ? 'Refresh failed · ' : null}
+                  <button type="button" className={styles.link} onClick={() => void projectsIndex.retry()}>
+                    Retry
+                  </button>
+                </>
+              ) : null}
+            </div>
           </div>
           <div className={styles.sectionBody}>
             {filteredProjects.length ? (
@@ -711,6 +677,17 @@ export default function ProjectsIndexClient({
                   </tbody>
                 </table>
               </div>
+            ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
+              <p className={styles.note}>Updating projects…</p>
+            ) : projectsIndex.state === 'unavailable' ? (
+              <p className={styles.note}>Your account cannot access the Projects list.</p>
+            ) : projectsIndex.state === 'refresh-failed' ? (
+              <p className={styles.note}>
+                Projects could not be loaded.{' '}
+                <button type="button" className={styles.link} onClick={() => void projectsIndex.retry()}>
+                  Retry
+                </button>
+              </p>
             ) : (
               <p className={styles.note}>
                 {projects.length ? 'No projects match this filter.' : 'No projects yet. Click “New Project” to create one.'}
@@ -788,7 +765,8 @@ export default function ProjectsIndexClient({
                     setDeleteTarget(null);
                     setDeleteConfirmText('');
                     setDeleteReason('');
-                    await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+                    removeProjectListItem(queryClient, host, deleteTarget.id);
+                    await invalidateProjectsIndexCaches(queryClient, host);
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Failed to delete project';
                     toast.error(msg);

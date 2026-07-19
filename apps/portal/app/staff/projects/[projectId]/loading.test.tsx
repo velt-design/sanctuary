@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectDetailLoading from './loading';
 
-vi.mock('next/link', () => ({
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
   default: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
     <a href={String(href)} {...props}>{children}</a>
   ),
