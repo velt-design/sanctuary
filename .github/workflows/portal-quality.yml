@@ -18,6 +18,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       PORTAL_TEST_EMAIL: ${{ secrets.PORTAL_TEST_EMAIL }}
       PORTAL_TEST_PASSWORD: ${{ secrets.PORTAL_TEST_PASSWORD }}
+      PORTAL_PLAYWRIGHT_PRODUCTION: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -169,6 +170,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build portal for production timing
+        run: npm run build:portal
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
