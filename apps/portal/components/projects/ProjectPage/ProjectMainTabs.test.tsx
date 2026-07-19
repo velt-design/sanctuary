@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectMainTabs from './ProjectMainTabs';
 
 const replaceMock = vi.fn();
 const prefetchQueryMock = vi.fn();
+const preloadModuleMock = vi.fn();
 let mockSearchParams = 'tab=estimates';
 
 vi.mock('next/navigation', () => ({
@@ -18,28 +20,14 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }));
 
-vi.mock('./tabs/ActivityTab', () => ({
-  default: () => <div data-testid="activity-tab" />,
-}));
-
-vi.mock('./tabs/EmailsTab', () => ({
-  default: () => <div data-testid="emails-tab" />,
-}));
-
-vi.mock('./tabs/EstimatesTab', () => ({
-  default: () => <div data-testid="estimates-tab" />,
-}));
-
-vi.mock('./tabs/InvoicesTab', () => ({
-  default: () => <div data-testid="invoices-tab" />,
-}));
-
-vi.mock('./tabs/JobPacksTab', () => ({
-  default: () => <div data-testid="job-packs-tab" />,
-}));
-
-vi.mock('./tabs/QuotesTab', () => ({
-  default: () => <div data-testid="quotes-tab" />,
+vi.mock('./projectTabModules', () => ({
+  ActivityTab: () => <div data-testid="activity-tab" />,
+  EmailsTab: () => <div data-testid="emails-tab" />,
+  EstimatesTab: () => <div data-testid="estimates-tab" />,
+  InvoicesTab: () => <div data-testid="invoices-tab" />,
+  JobPacksTab: () => <div data-testid="job-packs-tab" />,
+  QuotesTab: () => <div data-testid="quotes-tab" />,
+  preloadProjectTab: (...args: unknown[]) => preloadModuleMock(...args),
 }));
 
 vi.mock('./ProjectDetailsSidebar', () => ({
@@ -86,6 +74,7 @@ describe('ProjectMainTabs', () => {
   beforeEach(() => {
     replaceMock.mockReset();
     prefetchQueryMock.mockReset();
+    preloadModuleMock.mockReset();
     mockSearchParams = 'tab=estimates';
     window.sessionStorage.clear();
   });
@@ -149,6 +138,37 @@ describe('ProjectMainTabs', () => {
     expect(rendered.container.querySelector('[data-testid="activity-tab"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="details-tab"]')).toBeNull();
     expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity');
+
+    rendered.unmount();
+  });
+
+  it('does not present placeholder activity as an empty activity feed', () => {
+    mockSearchParams = 'tab=activity';
+    const rendered = renderIntoDocument(
+      <ProjectMainTabs snapshot={snapshot} snapshotContentReady={false} snapshotState="summary" tab="activity" />,
+    );
+
+    expect(rendered.container.querySelector('[data-project-tab-awaiting-snapshot="activity"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Updating activity in the background');
+    expect(rendered.container.querySelector('[data-testid="activity-tab"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('preloads both tab code and tab data from user intent', () => {
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
+    const quotes = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
+      (node) => node.textContent?.trim() === 'Quotes',
+    );
+
+    act(() => {
+      quotes?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    });
+
+    expect(preloadModuleMock).toHaveBeenCalledWith('quotes', expect.objectContaining({
+      host: 'host',
+      projectId: 'proj_1',
+    }));
 
     rendered.unmount();
   });

@@ -87,12 +87,15 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 3_014_656,
-      initialGzipBytes: 757_760,
-      lazyTotalRawBytes: 0,
-      lazyTotalGzipBytes: 0,
-      largestLazyRawBytes: 0,
-      largestLazyGzipBytes: 0,
+      // 2026-07-19 fresh build after making every project tab a workflow boundary.
+      // The initial route is now 661 KiB; the lazy values are newly visible because
+      // Turbopack leaves this route's React loadable manifest empty.
+      initialRawBytes: 694_272,
+      initialGzipBytes: 200_704,
+      lazyTotalRawBytes: 2_856_960,
+      lazyTotalGzipBytes: 655_360,
+      largestLazyRawBytes: 2_591_744,
+      largestLazyGzipBytes: 587_776,
     },
   },
   {
@@ -187,6 +190,61 @@ function lazyEntries(nextDir: string, manifest: ReactLoadableManifest): PortalLa
     .sort((a, b) => b.rawBytes - a.rawBytes);
 }
 
+function turbopackLazyEntries(
+  nextDir: string,
+  initial: PortalBundleFileMetric[],
+): PortalLazyChunkMetric[] {
+  const entries: PortalLazyChunkMetric[] = [];
+  const loaderPattern = /Promise\.all\(\[((?:["']static\/chunks\/[^"']+["']\s*,?\s*)+)\]\.map\([^)]*=>[^)]*\.l\([^)]*\)\)\)/g;
+  const filePattern = /["'](static\/chunks\/[^"']+\.(?:js|css))["']/g;
+
+  for (const initialFile of initial) {
+    if (!initialFile.file.endsWith('.js')) continue;
+    const source = readRequiredFile(path.join(nextDir, initialFile.file));
+    let loaderMatch: RegExpExecArray | null;
+    let loaderIndex = 0;
+    while ((loaderMatch = loaderPattern.exec(source)) !== null) {
+      const referencedFiles = Array.from(loaderMatch[1].matchAll(filePattern), (match) => match[1]);
+      const files = uniqueMetrics(nextDir, referencedFiles);
+      if (!files.length) continue;
+      entries.push({
+        id: `turbopack:${initialFile.file}:${loaderIndex}`,
+        files,
+        rawBytes: sumRaw(files),
+        gzipBytes: sumGzip(files),
+      });
+      loaderIndex += 1;
+    }
+  }
+
+  return entries;
+}
+
+function uniqueLazyEntries(entries: PortalLazyChunkMetric[]): PortalLazyChunkMetric[] {
+  const seen = new Set<string>();
+  return entries
+    .filter((entry) => {
+      const key = entry.files.map((file) => file.file).sort().join('|');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.rawBytes - a.rawBytes);
+}
+
+function excludeInitialChunks(
+  entries: PortalLazyChunkMetric[],
+  initial: PortalBundleFileMetric[],
+): PortalLazyChunkMetric[] {
+  const initialFiles = new Set(initial.map((file) => file.file));
+  return entries
+    .map((entry) => {
+      const files = entry.files.filter((file) => !initialFiles.has(file.file));
+      return { ...entry, files, rawBytes: sumRaw(files), gzipBytes: sumGzip(files) };
+    })
+    .filter((entry) => entry.files.length > 0);
+}
+
 function failuresFor(report: Omit<PortalBundleBudgetReport, 'failures'>): PortalBundleBudgetFailure[] {
   const actual: PortalBundleBudgets = {
     initialRawBytes: report.initial.rawBytes,
@@ -217,7 +275,13 @@ export function analyzePortalBundleRoute(options: {
   const config = options.config;
   const budgets = { ...config.budgets, ...(options.budgets ?? {}) };
   const initial = uniqueMetrics(nextDir, initialFiles(readClientManifest(nextDir, config)));
-  const entries = lazyEntries(nextDir, readLoadableManifest(nextDir, config));
+  const entries = uniqueLazyEntries(excludeInitialChunks(
+    [
+      ...lazyEntries(nextDir, readLoadableManifest(nextDir, config)),
+      ...turbopackLazyEntries(nextDir, initial),
+    ],
+    initial,
+  ));
   const lazy = uniqueMetrics(nextDir, entries.flatMap((entry) => entry.files.map((file) => file.file)));
   const topContributors = uniqueMetrics(nextDir, [...initial, ...lazy].map((file) => file.file))
     .sort((a, b) => b.rawBytes - a.rawBytes)

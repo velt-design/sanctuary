@@ -127,6 +127,7 @@ async function measureWarmJourney(
   action: () => Promise<unknown>,
   feedbackReady: () => Promise<unknown>,
   usefulContentReady: () => Promise<unknown>,
+  backgroundReady?: () => Promise<unknown>,
 ) {
   const budget = warmBudget(name);
   const probe = await beginPortalJourney(page);
@@ -135,6 +136,7 @@ async function measureWarmJourney(
   const feedbackMs = elapsedJourneyMs(probe);
   await usefulContentReady();
   const usefulContentMs = elapsedJourneyMs(probe);
+  await backgroundReady?.();
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
   const regressionBudgetMet =
     feedbackMs <= budget.feedbackMsMax && usefulContentMs <= budget.usefulContentMsMax;
@@ -249,7 +251,15 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     'projects-to-project',
     () => firstOpen.click(),
     () => page.waitForURL(/\/staff\/projects\/[^/?]+(?:\?|$)/),
-    () => expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible(),
+    async () => {
+      await expect(page.locator('[data-project-shell-ready="true"]')).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible();
+    },
+    async () => {
+      await expect(page.locator('[data-project-background-ready="true"]')).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('[data-project-tab-loading]')).toHaveCount(0, { timeout: 60_000 });
+      await expect(page.locator('[data-project-tab-awaiting-snapshot]')).toHaveCount(0, { timeout: 60_000 });
+    },
   );
 
   await measureWarmJourney(

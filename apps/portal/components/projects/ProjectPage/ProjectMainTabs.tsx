@@ -3,20 +3,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import ActivityTab from './tabs/ActivityTab';
-import EmailsTab from './tabs/EmailsTab';
-import EstimatesTab from './tabs/EstimatesTab';
-import InvoicesTab from './tabs/InvoicesTab';
-import JobPacksTab from './tabs/JobPacksTab';
 import ProjectDetailsSidebar from './ProjectDetailsSidebar';
-import QuotesTab from './tabs/QuotesTab';
-import type { ProjectPageSnapshot } from '@/lib/projects/types';
+import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
-import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
-import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
-import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import {
+  ActivityTab,
+  EmailsTab,
+  EstimatesTab,
+  InvoicesTab,
+  JobPacksTab,
+  QuotesTab,
+  preloadProjectTab,
+  type ProjectTabModuleKey,
+} from './projectTabModules';
 
 const BASE_TABS = [
   { key: 'activity', label: 'Activity' },
@@ -35,13 +36,34 @@ function coerceTab(value: string | undefined, allowedTabs: readonly { key: TabKe
   return (allowedTabs.find((t) => t.key === value)?.key ?? 'activity') as TabKey;
 }
 
+function ProjectSnapshotTabStatus({
+  label,
+  snapshotState,
+}: {
+  label: string;
+  snapshotState: ProjectSnapshotLoadState;
+}) {
+  const failed = snapshotState === 'refresh-failed';
+  return (
+    <div className={layout.tabLoadingState} data-project-tab-awaiting-snapshot={label} role="status">
+      {failed
+        ? `Couldn’t refresh ${label}. The project summary is still available.`
+        : `Updating ${label} in the background…`}
+    </div>
+  );
+}
+
 export default function ProjectMainTabs({
   snapshot,
+  snapshotContentReady = true,
+  snapshotState = 'fresh',
   showDetailsTab = false,
   tab,
   onActiveTabChange,
 }: {
   snapshot: ProjectPageSnapshot;
+  snapshotContentReady?: boolean;
+  snapshotState?: ProjectSnapshotLoadState;
   showDetailsTab?: boolean;
   tab: string;
   onActiveTabChange?: (tab: TabKey) => void;
@@ -112,46 +134,14 @@ export default function ProjectMainTabs({
   }, [requestedTab, showDetailsTab]);
 
   const prefetchTabData = (tabKey: TabKey) => {
-    if (tabKey === 'estimates') {
-      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
-      return;
-    }
-    if (tabKey === 'quotes') {
-      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
-      void queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
-      return;
-    }
-    if (tabKey === 'invoices') {
-      void queryClient.prefetchQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId));
-      return;
-    }
-    if (tabKey === 'job-packs') {
-      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+    if (tabKey !== 'details') {
+      void preloadProjectTab(tabKey as ProjectTabModuleKey, {
+        host: hostKey,
+        projectId,
+        queryClient,
+      });
     }
   };
-
-  useEffect(() => {
-    const key = `sp_project_tabs_warmup_v1:${hostKey}:${projectId}`;
-    if (typeof window === 'undefined') return;
-    if (window.sessionStorage.getItem(key) === '1') return;
-    window.sessionStorage.setItem(key, '1');
-
-    const run = async () => {
-      await Promise.allSettled([
-        queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)),
-        queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId)),
-        queryClient.prefetchQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId)),
-      ]);
-    };
-
-    const ric = (window as any).requestIdleCallback as ((cb: () => void, opts?: { timeout: number }) => number) | undefined;
-    if (typeof ric === 'function') {
-      ric(() => void run(), { timeout: 2500 });
-      return;
-    }
-    const t = window.setTimeout(() => void run(), 200);
-    return () => window.clearTimeout(t);
-  }, [hostKey, projectId, queryClient]);
 
   return (
     <section
@@ -171,6 +161,7 @@ export default function ProjectMainTabs({
                   onClick={() => updateParams({ tab: tabItem.key })}
                   onMouseEnter={() => prefetchTabData(tabItem.key)}
                   onFocus={() => prefetchTabData(tabItem.key)}
+                  onPointerDown={() => prefetchTabData(tabItem.key)}
                   className={`${legacy.tabButton} ${isActive ? legacy.tabButtonActive : ''}`}
                   aria-selected={isActive}
                   role="tab"
@@ -211,9 +202,21 @@ export default function ProjectMainTabs({
         className={`${legacy.sectionBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
       >
-        {activeTab === 'activity' ? <ActivityTab snapshot={snapshot} /> : null}
+        {activeTab === 'activity' ? (
+          snapshotContentReady ? (
+            <ActivityTab snapshot={snapshot} />
+          ) : (
+            <ProjectSnapshotTabStatus snapshotState={snapshotState} label="activity" />
+          )
+        ) : null}
         {activeTab === 'details' ? <ProjectDetailsSidebar project={snapshot.project} /> : null}
-        {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
+        {activeTab === 'emails' ? (
+          snapshotContentReady ? (
+            <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} />
+          ) : (
+            <ProjectSnapshotTabStatus snapshotState={snapshotState} label="emails" />
+          )
+        ) : null}
         {activeTab === 'estimates' ? (
           <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} />
         ) : null}

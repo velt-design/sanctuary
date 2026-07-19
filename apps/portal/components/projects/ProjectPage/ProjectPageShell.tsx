@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { ProjectPageSnapshot } from '@/lib/projects/types';
+import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import ProjectDetailsSidebar from './ProjectDetailsSidebar';
 import { ProjectPageDesignRailProvider } from './ProjectPageDesignRailContext';
 import ProjectMainTabs from './ProjectMainTabs';
@@ -213,9 +213,13 @@ function ProjectRailHandle({
 
 export default function ProjectPageShell({
   snapshot,
+  snapshotContentReady = true,
+  snapshotState = 'fresh',
   tab,
 }: {
   snapshot: ProjectPageSnapshot;
+  snapshotContentReady?: boolean;
+  snapshotState?: ProjectSnapshotLoadState;
   tab: string;
 }) {
   const {
@@ -443,6 +447,8 @@ export default function ProjectPageShell({
         <section className={styles.center}>
           <ProjectMainTabs
             snapshot={snapshot}
+            snapshotContentReady={snapshotContentReady}
+            snapshotState={snapshotState}
             showDetailsTab={!isDesktopLayout}
             tab={tab}
             onActiveTabChange={setActiveTab}

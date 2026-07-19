@@ -34,8 +34,9 @@ Contacts and projects are staff-owned portal records. Marketing lead capture can
 
 - Contact create/update routes write `contacts` and return mapped contact shapes.
 - Project create/detail routes write and read `projects`.
-- Project detail pages use `ProjectPageSnapshot` data from `apps/portal/lib/projects/getProjectPageSnapshot.ts`.
-- Contact writes and project snapshot reads run through auth-bound staff Supabase clients from the route context; tests should inject fake server clients instead of mocking the legacy compatibility client.
+- Project detail pages use the existing authenticated React Query request to `/api/projects/[projectId]/snapshot`; the server route renders the project shell without repeating that snapshot read.
+- When the current user's active/all project list already contains the project, the page builds an immediate summary from that list and the matching contact-list cache. The full snapshot replaces it quietly through the same query key. A different user's persisted cache is never consulted.
+- Contact writes and the snapshot API run through auth-bound staff Supabase clients from the route context; tests should inject fake server clients instead of mocking the legacy compatibility client.
 - Project cache patching around creates/details lives with local-first helpers so lists and detail views stay coherent.
 - Staff/admin browser UI should use API, query, or local-first layers, not direct table writes.
 - Top-level list-fetch boundaries (contacts/projects/design-packages/running-jobs and any sibling) MUST go through `fetchAllPages()` from [`apps/portal/lib/list/listLimits.ts`](../apps/portal/lib/list/listLimits.ts). It pages through Supabase 1000 rows at a time up to `MAX_LIST_FETCH_ROWS = 5000`, defeating both PostgREST's silent 1000-row default (PR-PG1) AND any Supabase project-level `db-max-rows` cap (PR-PG1c). Inline `.range(0, MAX_LIST_FETCH_ROWS - 1)` is treated as a bug. Use `count: 'exact'` and surface `truncated` from the result to feed a `ListCountBanner`. See the [list-pagination plan](list-pagination-plan.md) and [PR-PG1c plan](pr-pg1c-plan.md). Conditional filters (`.in(...)`, `.is(...)`) MUST be applied INSIDE the page-builder callback, never outside the helper — applying them outside loses the filter on later pages.
@@ -45,6 +46,10 @@ Keep contact fields, project fields, and estimate snapshot fields distinct. Esti
 ## Project Snapshot, Pipeline, And Tasks
 
 `ProjectPageSnapshot` is the project detail read model for the staff project page. It combines project/contact data, pipeline state, task state, activity, and email summaries.
+
+Project opening has five explicit read states: `pending` for a direct link with no known summary, `summary` while cached list/contact fields are visible, `fresh` after the full snapshot arrives, `refresh-failed` when known data remains visible with Retry, and `unavailable` after a `401`, `403`, or `404` response. Access-ending responses must hide cached project data. Debug exports are fresh-snapshot-only.
+
+Project rows preload the route and existing snapshot query on hover, keyboard focus, touch, or pointer-down. There is no automatic first-three-project fan-out. Project workflow tabs are separate lazy code boundaries; hovering or focusing a tab preloads its code and owned query data. Activity and Emails depend on the full snapshot, so they show `Updating...` during the summary state and never turn placeholder empty arrays into a false empty state.
 
 - Pipeline stages and task definitions live in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Manual task completion is stored in `project_task_checks`.

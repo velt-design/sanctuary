@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
@@ -13,7 +13,7 @@ import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
-import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
+import { projectsListQueryOptions } from '@/lib/queries/projects';
 import { ProjectRowTooltip, useProjectRowTooltip } from './ProjectRowTooltip';
 import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -29,6 +29,7 @@ import {
   type PipelineStageKey,
 } from '@/lib/projects/pipelineDefinition';
 import { patchProjectListItem } from '@/lib/queries/projectCache';
+import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpenPreload';
 import {
   buildContactsById,
   filterProjectsForIndex,
@@ -103,7 +104,6 @@ export default function ProjectsIndexClient({
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const queryClient = useQueryClient();
-  const prefetchedSnapshotsRef = useRef(new Set<string>());
 
   const includeArchived = archiveFilter !== 'active';
   const { data: projectsData, error: projectsError } = useQuery({
@@ -172,19 +172,12 @@ export default function ProjectsIndexClient({
     );
   }, [archiveFilter, contactsById, dueFilter, initialTodayYmd, projects, query, statusFilter]);
 
-  const prefetchProjectSnapshot = (projectId: string) => {
-    const token = `${host}:${projectId}`;
-    if (prefetchedSnapshotsRef.current.has(token)) return;
-    prefetchedSnapshotsRef.current.add(token);
-    void queryClient.prefetchQuery(projectPageSnapshotQueryOptions(host, projectId));
-  };
-
-  useEffect(() => {
-    if (!filteredProjects.length) return;
-    for (const project of filteredProjects.slice(0, 3)) {
-      prefetchProjectSnapshot(project.id);
-    }
-  }, [filteredProjects]);
+  const prepareProjectOpen = useCallback(
+    (projectId: string) => {
+      void preloadProjectOpen(queryClient, router, host, projectId);
+    },
+    [host, queryClient, router],
+  );
 
   const closeDeleteModal = () => {
     if (isDeleteBusy) return;
@@ -594,17 +587,23 @@ export default function ProjectsIndexClient({
                           className={styles.rowClickable}
                           tabIndex={0}
                           onClick={() => {
-                            prefetchProjectSnapshot(p.id);
-                            router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
+                            prepareProjectOpen(p.id);
+                            router.push(projectDetailHref(p.id));
                           }}
                           onMouseEnter={(e) => {
-                            prefetchProjectSnapshot(p.id);
+                            prepareProjectOpen(p.id);
                             handleRowMouseEnter(p.id, e);
                           }}
                           onMouseLeave={() => handleRowMouseLeave()}
-                          onFocus={() => prefetchProjectSnapshot(p.id)}
+                          onFocus={() => prepareProjectOpen(p.id)}
+                          onPointerDown={() => prepareProjectOpen(p.id)}
+                          onTouchStart={() => prepareProjectOpen(p.id)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              prepareProjectOpen(p.id);
+                              router.push(projectDetailHref(p.id));
+                            }
                           }}
                         >
                           <td>{renderEditable('name', nameValue, 'Project name', true)}</td>
@@ -651,8 +650,16 @@ export default function ProjectsIndexClient({
                             <div className={styles.rowActions}>
                               <Link
                                 className={styles.link}
-                                href={`/staff/projects/${encodeURIComponent(p.id)}`}
-                                onClick={(e) => e.stopPropagation()}
+                                href={projectDetailHref(p.id)}
+                                prefetch={false}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  prepareProjectOpen(p.id);
+                                }}
+                                onFocus={() => prepareProjectOpen(p.id)}
+                                onMouseEnter={() => prepareProjectOpen(p.id)}
+                                onPointerDown={() => prepareProjectOpen(p.id)}
+                                onTouchStart={() => prepareProjectOpen(p.id)}
                               >
                                 Open
                               </Link>

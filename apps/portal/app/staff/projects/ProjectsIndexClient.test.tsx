@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectsIndexClient from './ProjectsIndexClient';
 import type { Contact } from '@/lib/types/contact';
@@ -8,6 +9,7 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 
 const push = vi.fn();
 const replace = vi.fn();
+const prefetch = vi.fn();
 const prefetchQuery = vi.fn();
 const invalidateQueries = vi.fn();
 const toastError = vi.fn();
@@ -17,11 +19,11 @@ const useQueryMock = vi.fn();
 const mockSearchParams = new URLSearchParams('q=deck&status=sent&due=today');
 
 vi.mock('next/link', () => ({
-  default: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
+  default: ({ children, prefetch: _prefetch, ...props }: { children?: ReactNode; prefetch?: boolean } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, replace }),
+  useRouter: () => ({ push, replace, prefetch }),
   useSearchParams: () => mockSearchParams,
 }));
 
@@ -87,7 +89,9 @@ describe('ProjectsIndexClient', () => {
   beforeEach(() => {
     push.mockReset();
     replace.mockReset();
+    prefetch.mockReset();
     prefetchQuery.mockReset();
+    prefetchQuery.mockResolvedValue(undefined);
     invalidateQueries.mockReset();
     toastError.mockReset();
     toastSuccess.mockReset();
@@ -132,6 +136,7 @@ describe('ProjectsIndexClient', () => {
 
     const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');
     expect(headers).toEqual(['Name', 'Client', 'Phone', 'Address', 'Status', 'Actions']);
+    expect(prefetchQuery).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
@@ -150,6 +155,84 @@ describe('ProjectsIndexClient', () => {
     expect(select).not.toBeNull();
     const options = Array.from(select?.querySelectorAll('option') ?? []).map((opt) => opt.value);
     expect(options).toEqual(['active', 'archived', 'all']);
+
+    rendered.unmount();
+  });
+
+  it.each([
+    ['hover', 'mouseover', 'tr'],
+    ['focus', 'focusin', 'a'],
+    ['touch', 'touchstart', 'tr'],
+    ['pointer down', 'pointerdown', 'a'],
+  ])('preloads the project route and snapshot on %s intent', (_label, eventName, selector) => {
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialProjects={initialProjects}
+        initialContacts={initialContacts}
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+    const target = selector === 'tr'
+      ? rendered.container.querySelector('tbody tr')
+      : rendered.container.querySelector('a[href="/staff/projects/proj_1"]');
+
+    act(() => {
+      target?.dispatchEvent(new Event(eventName, { bubbles: true }));
+    });
+
+    expect(prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
+    expect(prefetchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: qk.projects.snapshot('host', 'proj_1') }),
+    );
+
+    rendered.unmount();
+  });
+
+  it.each([
+    ['row click', () => new MouseEvent('click', { bubbles: true })],
+    ['keyboard Enter', () => new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })],
+    ['keyboard Space', () => new KeyboardEvent('keydown', { key: ' ', bubbles: true })],
+  ])('navigates from %s after preparing the project', (_label, eventFactory) => {
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialProjects={initialProjects}
+        initialContacts={initialContacts}
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+    const row = rendered.container.querySelector('tbody tr');
+
+    act(() => {
+      row?.dispatchEvent(eventFactory());
+    });
+
+    expect(push).toHaveBeenCalledWith('/staff/projects/proj_1');
+    expect(prefetchQuery).toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('prepares the project before the Open link handles navigation', () => {
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialProjects={initialProjects}
+        initialContacts={initialContacts}
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+    const link = rendered.container.querySelector('a[href="/staff/projects/proj_1"]');
+    link?.addEventListener('click', (event) => event.preventDefault());
+
+    act(() => {
+      link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    expect(link?.getAttribute('href')).toBe('/staff/projects/proj_1');
+    expect(prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
+    expect(prefetchQuery).toHaveBeenCalled();
 
     rendered.unmount();
   });

@@ -1,13 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PortalDebugExportButton from '@/components/debug/PortalDebugExportButton';
 import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import { buildPortalPageDebugExport, type PortalPageDebugExport } from '@/lib/debug/portalPageDebugExport';
 import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
-import type { ProjectPageSnapshot, ProjectPageSnapshotResponse } from '@/lib/projects/types';
+import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
+import { ApiError } from '@/lib/repo/apiClient';
+import { getProjectSnapshotPlaceholderFromCaches } from '@/lib/queries/projectCache';
 import { projectPageSnapshotQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
@@ -15,29 +18,42 @@ export default function ProjectSnapshotPageClient({
   projectId,
   tab,
   estimateId,
-  initialSnapshot,
   debugExportEnabled,
 }: {
   projectId: string;
   tab: string;
   estimateId: string | null;
-  initialSnapshot: ProjectPageSnapshot;
   debugExportEnabled: boolean;
 }) {
+  const queryClient = useQueryClient();
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const initialData = useMemo<ProjectPageSnapshotResponse>(
-    () => ({ snapshot: initialSnapshot, generatedAt: new Date().toISOString() }),
-    [initialSnapshot],
+  const summary = useMemo(
+    () => getProjectSnapshotPlaceholderFromCaches(queryClient, host, projectId),
+    [host, projectId, queryClient],
   );
 
-  const { data } = useQuery({
+  const snapshotQuery = useQuery({
     ...projectPageSnapshotQueryOptions(host, projectId),
-    initialData,
+    placeholderData: summary,
   });
 
-  const snapshot = data?.snapshot ?? initialSnapshot;
+  const status = snapshotQuery.error instanceof ApiError ? snapshotQuery.error.status : null;
+  const accessUnavailable = status === 401 || status === 403 || status === 404;
+  const snapshot = accessUnavailable
+    ? null
+    : snapshotQuery.data?.snapshot ?? summary?.snapshot ?? null;
+  const snapshotContentReady = Boolean(snapshotQuery.data && !snapshotQuery.isPlaceholderData);
+  const loadState: ProjectSnapshotLoadState = accessUnavailable
+    ? 'unavailable'
+    : snapshotQuery.error
+      ? 'refresh-failed'
+      : !snapshot
+        ? 'pending'
+        : snapshotQuery.isPlaceholderData
+          ? 'summary'
+          : 'fresh';
   const debugExport = useMemo<PortalPageDebugExport | null>(() => {
-    if (!debugExportEnabled) return null;
+    if (!debugExportEnabled || loadState !== 'fresh' || !snapshot) return null;
 
     const isEstimateRoute = Boolean(estimateId);
     const pageId = isEstimateRoute ? 'estimate-detail' : 'project-detail';
@@ -77,12 +93,70 @@ export default function ProjectSnapshotPageClient({
       },
       scenario: inferPortalScenarioFromLabel(snapshot.project.name),
     });
-  }, [debugExportEnabled, estimateId, host, projectId, snapshot, tab]);
+  }, [debugExportEnabled, estimateId, host, loadState, projectId, snapshot, tab]);
+
+  if (!snapshot) {
+    const pending = loadState === 'pending';
+    const unavailable = loadState === 'unavailable';
+    const title = pending
+      ? 'Opening project…'
+      : unavailable && (status === 401 || status === 403)
+        ? 'Project access unavailable'
+        : unavailable
+          ? 'Project unavailable'
+          : 'Could not refresh project';
+    const message = pending
+      ? 'Loading the latest project details in the background.'
+      : unavailable
+        ? 'The project may have been removed, or your access may have changed.'
+        : 'Check your connection and try again.';
+
+    return (
+      <main className={styles.page} data-project-id={projectId} data-project-snapshot-state={loadState}>
+        <section className={styles.surface}>
+          <div className={styles.surfaceInner}>
+            <h1 className={styles.title}>{title}</h1>
+            <p className={styles.subtitle} role={pending ? 'status' : undefined}>{message}</p>
+            {!pending && !unavailable ? (
+              <button type="button" className={styles.refreshButton} onClick={() => void snapshotQuery.refetch()}>
+                Retry
+              </button>
+            ) : null}
+            <Link href="/staff/projects" className={styles.backLink}>
+              Back to Projects
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
-    <main className={styles.page} data-project-id={projectId}>
+    <main
+      className={styles.page}
+      data-project-background-ready={loadState === 'fresh' ? 'true' : undefined}
+      data-project-id={projectId}
+      data-project-shell-ready="true"
+      data-project-snapshot-state={loadState}
+    >
       {debugExport ? <PortalDebugExportButton payload={debugExport} /> : null}
-      <ProjectPageFrame snapshot={snapshot} tab={tab} />
+      {loadState === 'summary' ? (
+        <div className={styles.backgroundStatus} role="status">Updating project…</div>
+      ) : null}
+      {loadState === 'refresh-failed' ? (
+        <div className={styles.backgroundStatus} role="status">
+          Couldn&apos;t refresh this project. Showing the last known details.
+          <button type="button" className={styles.inlineRetryButton} onClick={() => void snapshotQuery.refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
+      <ProjectPageFrame
+        snapshot={snapshot}
+        snapshotContentReady={snapshotContentReady}
+        snapshotState={loadState}
+        tab={tab}
+      />
     </main>
   );
 }

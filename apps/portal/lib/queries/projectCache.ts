@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot, ProjectPageSnapshotResponse } from '@/lib/projects/types';
 import { qk } from './keys';
 import type { Project } from '@/lib/types/project';
+import type { Contact } from '@/lib/types/contact';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 
@@ -9,7 +10,10 @@ function cloneProject(project: Project): Project {
   return { ...project };
 }
 
-export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSnapshotResponse {
+export function buildProjectSnapshotPlaceholder(
+  project: Project,
+  contact?: Contact | null,
+): ProjectPageSnapshotResponse {
   const normalized = normalizeProjectStatus(project.status ?? 'NEW');
   const stage = normalizePipelineStageKey(normalized.status) ?? 'new';
   const snapshot: ProjectPageSnapshot = {
@@ -18,7 +22,11 @@ export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSn
       name: project.projectName ?? project.name ?? 'Project',
       stage,
       ...(project.contactId ? { contactId: project.contactId } : {}),
-      ...(project.clientName ? { contactName: project.clientName } : {}),
+      ...(contact?.displayName ?? project.clientName
+        ? { contactName: contact?.displayName ?? project.clientName }
+        : {}),
+      ...(contact?.email ? { contactEmail: contact.email } : {}),
+      ...(contact?.phone ? { contactPhone: contact.phone } : {}),
       ...(project.region ? { region: project.region } : {}),
       ...(project.quoteRef ? { quoteRef: project.quoteRef } : {}),
       ...(project.siteAddress ?? project.address ? { siteAddress: project.siteAddress ?? project.address ?? undefined } : {}),
@@ -42,6 +50,21 @@ export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSn
     snapshot,
     generatedAt: project.updatedAt ?? project.createdAt ?? new Date().toISOString(),
   };
+}
+
+export function getProjectSnapshotPlaceholderFromCaches(
+  queryClient: QueryClient,
+  host: string,
+  projectId: string,
+): ProjectPageSnapshotResponse | undefined {
+  const activeProjects = queryClient.getQueryData<Project[]>(qk.projects.list(host, 'active'));
+  const allProjects = queryClient.getQueryData<Project[]>(qk.projects.list(host, 'all'));
+  const project = [...(activeProjects ?? []), ...(allProjects ?? [])].find((entry) => entry.id === projectId);
+  if (!project) return undefined;
+
+  const contacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
+  const contact = project.contactId ? contacts?.find((entry) => entry.id === project.contactId) : undefined;
+  return buildProjectSnapshotPlaceholder(project, contact);
 }
 
 export function patchProjectSnapshot(

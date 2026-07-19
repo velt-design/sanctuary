@@ -3,17 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectDetailPage from './page';
 
-const getProjectPageSnapshotMock = vi.fn();
-
-vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({
-  getProjectPageSnapshot: (...args: unknown[]) => getProjectPageSnapshotMock(...args),
-}));
-
 vi.mock('./ProjectSnapshotPageClient', () => ({
-  default: (props: { projectId: string; tab: string; initialSnapshot: { project: { name: string } } }) => (
-    <div data-testid="project-page" data-project-id={props.projectId} data-tab={props.tab}>
-      {props.initialSnapshot.project.name}
-    </div>
+  default: (props: { projectId: string; tab: string; estimateId: string | null; debugExportEnabled: boolean }) => (
+    <div
+      data-testid="project-page"
+      data-project-id={props.projectId}
+      data-tab={props.tab}
+      data-estimate-id={props.estimateId ?? ''}
+      data-debug-enabled={String(props.debugExportEnabled)}
+    />
   ),
 }));
 
@@ -29,51 +27,19 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('Invalid project id.');
   });
 
-  it('renders an unavailable state when the project snapshot is missing', async () => {
-    getProjectPageSnapshotMock.mockResolvedValue(null);
-
+  it('passes route state to the client without blocking on the project snapshot', async () => {
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: 'proj_1' }),
-      searchParams: Promise.resolve({}),
-    })) as ReactElement;
-    const markup = renderToStaticMarkup(ui);
-
-    expect(getProjectPageSnapshotMock).toHaveBeenCalledWith('proj_1');
-    expect(markup).toContain('Project unavailable');
-    expect(markup).toContain('We could not load this project.');
-  });
-
-  it('loads the snapshot on the server and passes it to the client frame entrypoint', async () => {
-    getProjectPageSnapshotMock.mockResolvedValue({
-      project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
-      pipeline: { stage: 'new' },
-      tasks: { stage: 'new', items: [] },
-      activity: [],
-      emails: [],
-      notes: [],
-    });
-
-    const ui = (await ProjectDetailPage({
-      params: Promise.resolve({ projectId: 'proj_1' }),
-      searchParams: Promise.resolve({ tab: 'quotes' }),
+      searchParams: Promise.resolve({ tab: 'quotes', estimateId: 'est_1' }),
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('data-project-id="proj_1"');
     expect(markup).toContain('data-tab="quotes"');
-    expect(markup).toContain('Deck Build');
+    expect(markup).toContain('data-estimate-id="est_1"');
   });
 
   it('coerces removed files tabs back to estimates', async () => {
-    getProjectPageSnapshotMock.mockResolvedValue({
-      project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
-      pipeline: { stage: 'new' },
-      tasks: { stage: 'new', items: [] },
-      activity: [],
-      emails: [],
-      notes: [],
-    });
-
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: 'proj_1' }),
       searchParams: Promise.resolve({ tab: 'files' }),
