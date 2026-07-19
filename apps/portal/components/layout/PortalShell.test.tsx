@@ -69,6 +69,27 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('renders the project mutation QA fixture without auth redirects or portal chrome', () => {
+    mockPathname = '/qa/projects-index-mutation-fixture';
+    mockSession = {
+      status: 'unauthenticated',
+      email: null,
+      role: null,
+    } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Mutation fixture</div>
+      </PortalShell>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toBe('Mutation fixture');
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).toBeNull();
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
   it('renders protected routes with the pinned shell chrome for authenticated users', () => {
     const rendered = renderIntoDocument(
       <PortalShell>

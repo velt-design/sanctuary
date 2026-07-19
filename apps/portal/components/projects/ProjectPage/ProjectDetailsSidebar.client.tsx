@@ -1,211 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
-import { apiJson } from '@/lib/repo/apiClient';
-import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import {
-  normalizeProjectDetailsDraft,
-  patchProjectDetailsCaches,
-  type PortalProjectDetailsDraft,
-} from '@/lib/localFirst/portalEntities';
-
-const AUTOSAVE_DELAY_MS = 700;
-
-function toDraft(project: ProjectPageSnapshot['project']): PortalProjectDetailsDraft {
-  return {
-    contactName: project.contactName ?? '',
-    contactEmail: project.contactEmail ?? '',
-    contactPhone: project.contactPhone ?? '',
-    projectName: project.name ?? '',
-    siteAddress: project.siteAddress ?? '',
-    region: project.region ?? '',
-    quoteRef: project.quoteRef ?? '',
-    nextActionDate: project.nextActionDate ?? '',
-  };
-}
-
-function isValidYmd(value: string): boolean {
-  if (!value.trim()) return true;
-  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
-}
-
-function sameDraft(a: PortalProjectDetailsDraft, b: PortalProjectDetailsDraft): boolean {
-  return JSON.stringify(normalizeProjectDetailsDraft(a)) === JSON.stringify(normalizeProjectDetailsDraft(b));
-}
-
-function saveLabel(args: { dirty: boolean; isSaving: boolean; lastSavedAt: string | null }): string | null {
-  if (args.isSaving) return 'Saving…';
-  if (args.dirty) return 'Unsaved edits';
-  if (args.lastSavedAt) return 'Saved';
-  return null;
-}
-
-function buildProjectDetailsRequest(projectId: string, contactId: string | null, draft: PortalProjectDetailsDraft) {
-  return {
-    path: `/api/projects/${encodeURIComponent(projectId)}/details`,
-    body: JSON.stringify({
-      project: {
-        name: draft.projectName,
-        siteAddress: draft.siteAddress,
-        region: draft.region,
-        quoteRef: draft.quoteRef,
-        nextActionDate: draft.nextActionDate,
-      },
-      contact: {
-        name: draft.contactName,
-        email: draft.contactEmail,
-        phone: draft.contactPhone,
-      },
-      contactId,
-    }),
-  };
-}
+import { isValidProjectDetailsYmd, useProjectDetailsDraft } from './useProjectDetailsDraft';
 
 export default function ProjectDetailsSidebarClient({ project }: { project: ProjectPageSnapshot['project'] }) {
-  const queryClient = useQueryClient();
-  const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<PortalProjectDetailsDraft>(() => toDraft(project));
-  const [savedDraft, setSavedDraft] = useState<PortalProjectDetailsDraft>(() => normalizeProjectDetailsDraft(toDraft(project)));
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const draftRef = useRef(draft);
-  const inFlightSerializedRef = useRef<string | null>(null);
-  const savePromiseRef = useRef<Promise<boolean> | null>(null);
-  const lastProjectSerializedRef = useRef<string>(JSON.stringify(normalizeProjectDetailsDraft(toDraft(project))));
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
-
-  useEffect(() => {
-    const nextSavedDraft = normalizeProjectDetailsDraft(toDraft(project));
-    const serialized = JSON.stringify(nextSavedDraft);
-    if (serialized === lastProjectSerializedRef.current) return;
-
-    lastProjectSerializedRef.current = serialized;
-    setSavedDraft(nextSavedDraft);
-    if (!isEditing) {
-      setDraft(nextSavedDraft);
-    }
-  }, [isEditing, project]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null && typeof window !== 'undefined') {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const canSave = useMemo(() => {
-    if (!draft.projectName.trim()) return false;
-    if (!isValidYmd(draft.nextActionDate)) return false;
-    return true;
-  }, [draft]);
-
-  const dirty = useMemo(() => !sameDraft(draft, savedDraft), [draft, savedDraft]);
-
-  const flushDraft = useCallback(async () => {
-    const nextDraft = normalizeProjectDetailsDraft(draftRef.current);
-    if (!nextDraft.projectName.trim()) return false;
-    if (!isValidYmd(nextDraft.nextActionDate)) return false;
-
-    const serialized = JSON.stringify(nextDraft);
-    const savedSerialized = JSON.stringify(savedDraft);
-    if (serialized === savedSerialized) {
-      return true;
-    }
-
-    if (inFlightSerializedRef.current === serialized && savePromiseRef.current) {
-      return savePromiseRef.current;
-    }
-
-    const previousSavedDraft = savedDraft;
-    const request = buildProjectDetailsRequest(project.id, project.contactId ?? null, nextDraft);
-    patchProjectDetailsCaches(queryClient, hostKey, project.id, nextDraft, {
-      contactId: project.contactId ?? null,
-    });
-
-    setError(null);
-    setIsSaving(true);
-
-    const savePromise = apiJson(request.path, {
-      method: 'PATCH',
-      body: request.body,
-    })
-      .then(async () => {
-        setSavedDraft(nextDraft);
-        setLastSavedAt(new Date().toISOString());
-        await invalidateProjectReadCaches(queryClient, hostKey, project.id);
-        return true;
-      })
-      .catch((err) => {
-        patchProjectDetailsCaches(queryClient, hostKey, project.id, previousSavedDraft, {
-          contactId: project.contactId ?? null,
-        });
-        const msg = err instanceof Error ? err.message : 'Failed to save project details';
-        setError(msg);
-        throw err;
-      })
-      .finally(() => {
-        setIsSaving(false);
-        if (inFlightSerializedRef.current === serialized) {
-          inFlightSerializedRef.current = null;
-          savePromiseRef.current = null;
-        }
-      });
-
-    inFlightSerializedRef.current = serialized;
-    savePromiseRef.current = savePromise;
-    return savePromise;
-  }, [hostKey, project.contactId, project.id, queryClient, savedDraft]);
-
-  useEffect(() => {
-    if (!isEditing || !dirty || !canSave) return;
-    if (timerRef.current !== null && typeof window !== 'undefined') {
-      window.clearTimeout(timerRef.current);
-    }
-    timerRef.current = window.setTimeout(() => {
-      void flushDraft().catch(() => undefined);
-    }, AUTOSAVE_DELAY_MS);
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, [canSave, dirty, flushDraft, isEditing]);
-
-  const updateDraftField = useCallback((field: keyof PortalProjectDetailsDraft, value: string) => {
-    setError(null);
-    setDraft((prev) => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleDone = async () => {
-    if (!canSave) return;
-    try {
-      await flushDraft();
-      setIsEditing(false);
-    } catch {
-      // Error state is already set in flushDraft.
-    }
-  };
-
-  const handleReset = () => {
-    if (isSaving) return;
-    setError(null);
-    setDraft(savedDraft);
-    setIsEditing(false);
-  };
-
-  const statusText = saveLabel({ dirty, isSaving, lastSavedAt });
-  const displayed = isEditing ? draft : savedDraft;
+  const {
+    canRetry,
+    canSave,
+    displayed,
+    draft,
+    error,
+    finishEditing,
+    isEditing,
+    isSaving,
+    resetEditing,
+    retry,
+    reviewLocalDraft,
+    saveCurrentDraft,
+    setIsEditing,
+    statusText,
+    updateDraftField,
+  } = useProjectDetailsDraft(project);
 
   return (
     <section className={legacy.section} aria-label="Project details">
@@ -215,10 +31,10 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
           {statusText ? <span className={legacy.note}>{statusText}</span> : null}
           {isEditing ? (
             <>
-              <button type="button" className={legacy.button} disabled={!canSave || isSaving} onClick={handleDone}>
-                {isSaving ? 'Saving…' : 'Done'}
+              <button type="button" className={legacy.button} disabled={!canSave} onClick={finishEditing}>
+                Done
               </button>
-              <button type="button" className={legacy.buttonSecondary} disabled={isSaving} onClick={handleReset}>
+              <button type="button" className={legacy.buttonSecondary} disabled={isSaving} onClick={resetEditing}>
                 Reset
               </button>
             </>
@@ -230,7 +46,21 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
         </div>
       </div>
       <div className={legacy.sectionBody}>
-        {error ? <p className={legacy.error}>{error}</p> : null}
+        {error ? (
+          <div className={legacy.field} role="status">
+            <p className={legacy.error}>{error}</p>
+            {canRetry ? (
+              <div className={legacy.actions}>
+                <button type="button" className={legacy.buttonSecondary} onClick={() => void retry()}>
+                  Retry now
+                </button>
+                <button type="button" className={legacy.buttonSecondary} onClick={reviewLocalDraft}>
+                  Review changes
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {isEditing ? (
           <div className={legacy.formGrid}>
@@ -239,8 +69,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="contactName"
                 value={draft.contactName}
-                onChange={(e) => updateDraftField('contactName', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('contactName', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -248,8 +78,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="contactEmail"
                 value={draft.contactEmail}
-                onChange={(e) => updateDraftField('contactEmail', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('contactEmail', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -257,8 +87,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="contactPhone"
                 value={draft.contactPhone}
-                onChange={(e) => updateDraftField('contactPhone', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('contactPhone', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -266,8 +96,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="projectName"
                 value={draft.projectName}
-                onChange={(e) => updateDraftField('projectName', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('projectName', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -275,8 +105,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="siteAddress"
                 value={draft.siteAddress}
-                onChange={(e) => updateDraftField('siteAddress', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('siteAddress', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -284,8 +114,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="region"
                 value={draft.region}
-                onChange={(e) => updateDraftField('region', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('region', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -293,8 +123,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="quoteRef"
                 value={draft.quoteRef}
-                onChange={(e) => updateDraftField('quoteRef', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('quoteRef', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
             </div>
             <div className={legacy.field}>
@@ -302,10 +132,12 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="nextActionDate"
                 value={draft.nextActionDate}
-                onChange={(e) => updateDraftField('nextActionDate', e.target.value)}
-                onBlur={() => void flushDraft().catch(() => undefined)}
+                onChange={(event) => updateDraftField('nextActionDate', event.target.value)}
+                onBlur={saveCurrentDraft}
               />
-              {!isValidYmd(draft.nextActionDate) ? <p className={legacy.error}>Invalid date format.</p> : null}
+              {!isValidProjectDetailsYmd(draft.nextActionDate) ? (
+                <p className={legacy.error}>Invalid date format.</p>
+              ) : null}
             </div>
           </div>
         ) : (

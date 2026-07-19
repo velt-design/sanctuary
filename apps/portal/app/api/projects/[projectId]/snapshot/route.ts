@@ -15,7 +15,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ projectId: stri
   if (!id) return jsonError('Invalid projectId', 400, diagnostics);
 
   try {
-    const snapshot = await getProjectPageSnapshot(id, diagnostics, auth.supabase);
+    const snapshot = await getProjectPageSnapshot(
+      id,
+      diagnostics,
+      auth.supabase,
+      auth.session.user.id,
+    );
     if (!snapshot) return jsonError('Project not found', 404, diagnostics);
 
     return NextResponse.json({

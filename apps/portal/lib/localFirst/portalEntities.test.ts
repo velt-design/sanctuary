@@ -10,7 +10,6 @@ import { qk } from '../queries/keys';
 import {
   applyDraftPatchToQuoteDetail,
   buildNextEstimateVersionLabel,
-  patchProjectDetailsCaches,
   patchProjectTasksSnapshot,
   replaceEstimateDetailCache,
   replaceQuoteDetailCache,
@@ -18,6 +17,7 @@ import {
   upsertEstimateDetailCache,
   upsertQuoteDetailCache,
 } from './portalEntities';
+import { patchProjectDetailsCaches } from './projectDetails';
 
 function createQueryClient() {
   return new QueryClient({

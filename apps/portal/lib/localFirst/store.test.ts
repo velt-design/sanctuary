@@ -16,6 +16,7 @@ import {
   localFirstStorageKey,
   resolveLocalFirstId,
   resolveLocalFirstQueueItemConflict,
+  resolveLocalFirstQueueItemSuccess,
   summarizeLocalFirstStoreState,
   writeLocalFirstWorkingCopy,
 } from './store';
@@ -59,6 +60,44 @@ describe('localFirst store', () => {
     const summary = summarizeLocalFirstStoreState(snapshot.state);
     expect(summary.pendingCount).toBe(1);
     expect(summary.queuedCount).toBe(1);
+  });
+
+  it('clears a confirmed working copy only when no newer draft or queued save exists', async () => {
+    await ensureLocalFirstStoreReady();
+    const entityKey = 'project:details:proj_1';
+    const firstDraft = { projectName: 'First' };
+    const newerDraft = { projectName: 'Newer' };
+
+    await writeLocalFirstWorkingCopy({ entityKey, data: firstDraft });
+    const first = await enqueueLocalFirstMutation({
+      entityKey,
+      mutationKey: 'project.details.save',
+      payload: firstDraft,
+    });
+    await writeLocalFirstWorkingCopy({ entityKey, data: newerDraft });
+    await resolveLocalFirstQueueItemSuccess(first.id, { clearWorkingCopyIfMatches: firstDraft });
+
+    expect(getLocalFirstWorkingCopy(entityKey)?.data).toEqual(newerDraft);
+
+    const second = await enqueueLocalFirstMutation({
+      entityKey,
+      mutationKey: 'project.details.save',
+      payload: newerDraft,
+    });
+    const finalDraft = { projectName: 'Final' };
+    const third = await enqueueLocalFirstMutation({
+      entityKey,
+      mutationKey: 'project.details.save',
+      payload: finalDraft,
+    });
+    await resolveLocalFirstQueueItemSuccess(second.id, { clearWorkingCopyIfMatches: newerDraft });
+
+    expect(getLocalFirstWorkingCopy(entityKey)?.data).toEqual(newerDraft);
+
+    await writeLocalFirstWorkingCopy({ entityKey, data: finalDraft });
+    await resolveLocalFirstQueueItemSuccess(third.id, { clearWorkingCopyIfMatches: finalDraft });
+
+    expect(getLocalFirstWorkingCopy(entityKey)).toBeNull();
   });
 
   it('rehydrates persisted state on boot', async () => {

@@ -4,8 +4,11 @@ import PortalSidebarPanel from './PortalSidebarPanel';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const transitionMocks = vi.hoisted(() => ({
+  beginInstantRoute: vi.fn(),
   beginRouteTransition: vi.fn(),
   prefetchQuery: vi.fn(),
+  routerPrefetch: vi.fn(),
+  routerReplace: vi.fn(),
 }));
 
 let mockPathname = '/dashboard';
@@ -21,6 +24,7 @@ function preventDocumentNavigation(event: Event): void {
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
   useSearchParams: () => mockSearchParams,
+  useRouter: () => ({ prefetch: transitionMocks.routerPrefetch, replace: transitionMocks.routerReplace }),
 }));
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
@@ -45,6 +49,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async () => {
   return {
     ...actual,
     usePortalRouteTransition: () => ({
+      beginInstantRoute: transitionMocks.beginInstantRoute,
       beginRouteTransition: transitionMocks.beginRouteTransition,
     }),
   };
@@ -86,8 +91,11 @@ function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement
 
 describe('PortalSidebarPanel', () => {
   beforeEach(() => {
+    transitionMocks.beginInstantRoute.mockReset();
     transitionMocks.beginRouteTransition.mockReset();
     transitionMocks.prefetchQuery.mockReset();
+    transitionMocks.routerPrefetch.mockReset();
+    transitionMocks.routerReplace.mockReset();
     mockPathname = '/dashboard';
     mockSearchParams = new URLSearchParams();
     mockRole = 'staff';
@@ -159,11 +167,9 @@ describe('PortalSidebarPanel', () => {
       );
     });
 
-    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
-      href: '/projects',
-      label: 'Projects',
-      source: 'sidebar-panel',
-    });
+    expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/projects', { scroll: false });
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('projects-index');
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
     expect(buttonByLabel(rendered.container, 'Collapse Projects').getAttribute('aria-expanded')).toBe('true');
 
     rendered.unmount();
@@ -179,11 +185,9 @@ describe('PortalSidebarPanel', () => {
       );
     });
 
-    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
-      href: '/projects',
-      label: 'Projects',
-      source: 'sidebar-rail',
-    });
+    expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/projects', { scroll: false });
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('projects-index');
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
 
     rendered.unmount();
   });

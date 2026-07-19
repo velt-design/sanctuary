@@ -1,312 +1,103 @@
-import type { ReactNode } from 'react';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ContactsIndexClient from './ContactsIndexClient';
-import { qk } from '@/lib/queries/keys';
-import type { Contact } from '@/lib/types/contact';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
-const toastError = vi.fn();
-const toastSuccess = vi.fn();
-const toastInfo = vi.fn();
-const useQueryMock = vi.fn();
-const invalidateQueries = vi.fn();
-const apiJsonMock = vi.fn();
-const parseContactsCsvMock = vi.fn();
-const planContactsImportMock = vi.fn();
-const upsertContactCachesMock = vi.fn();
-const queryClientMock = {
-  invalidateQueries,
+const retry = vi.fn();
+const finishInstantRoute = vi.fn();
+const useContactsIndexData = vi.fn();
+const contact = {
+  id: 'ct_1',
+  displayName: 'Alex Mason',
+  email: 'alex@example.com',
+  phone: '021',
+  createdAt: '2026-04-03T00:00:00.000Z',
+  updatedAt: '2026-04-03T00:00:00.000Z',
 };
 
 vi.mock('next/link', () => ({
-  default: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
-
-vi.mock('@/components/ui/toast/ToastProvider', () => ({
-  useToast: () => ({
-    error: toastError,
-    success: toastSuccess,
-    info: toastInfo,
-  }),
-}));
-
-vi.mock('@/components/ui/modal/Modal', () => ({
-  default: ({ children, open }: { children: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
-}));
-
-vi.mock('@/lib/repo/apiClient', () => ({
-  apiJson: (...args: unknown[]) => apiJsonMock(...args),
-}));
-
-vi.mock('@/lib/import/contactsCsv', () => ({
-  parseContactsCsv: (...args: unknown[]) => parseContactsCsvMock(...args),
-  planContactsImport: (...args: unknown[]) => planContactsImportMock(...args),
-}));
-
-vi.mock('@/lib/localFirst/portalEntities', () => ({
-  upsertContactCaches: (...args: unknown[]) => upsertContactCachesMock(...args),
-}));
-
 vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'host',
   supabaseRuntimeUrl: () => 'https://host.supabase.co',
 }));
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({ finishInstantRoute }),
+}));
+vi.mock('./ContactsImportAction', () => ({
+  default: () => <button type="button">Import CSV</button>,
+}));
+vi.mock('./useContactsIndexData', () => ({
+  useContactsIndexData: (...args: unknown[]) => useContactsIndexData(...args),
+}));
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>();
+function indexResult(
+  state: 'pending' | 'cached' | 'fresh' | 'refresh-failed' | 'unavailable',
+  rows = state === 'pending' || state === 'unavailable' ? [] : [contact],
+) {
   return {
-    ...actual,
-    useQuery: (...args: unknown[]) => useQueryMock(...args),
-    useQueryClient: () => queryClientMock,
+    state,
+    data: state === 'pending' || state === 'unavailable' ? undefined : {
+      contacts: { rows, totalCount: rows.length, truncated: false },
+      generatedAt: state === 'fresh' ? 'fresh' : 'cached',
+    },
+    error: state === 'refresh-failed' ? new Error('offline') : null,
+    retry,
+    backgroundReady: state === 'fresh',
   };
-});
-
-const initialContacts: Contact[] = [
-  {
-    id: 'ct_1',
-    displayName: 'Alex Mason',
-    email: '',
-    phone: '',
-    createdAt: '2026-04-03T00:00:00.000Z',
-    updatedAt: '2026-04-03T00:00:00.000Z',
-  },
-];
+}
 
 describe('ContactsIndexClient', () => {
   beforeEach(() => {
-    toastError.mockReset();
-    toastSuccess.mockReset();
-    toastInfo.mockReset();
-    useQueryMock.mockReset();
-    invalidateQueries.mockReset();
-    apiJsonMock.mockReset();
-    parseContactsCsvMock.mockReset();
-    planContactsImportMock.mockReset();
-    upsertContactCachesMock.mockReset();
-    useQueryMock.mockImplementation((options: { initialData?: unknown }) => ({
-      data: options.initialData,
-      error: null,
-    }));
-    parseContactsCsvMock.mockReturnValue({
-      headerRowNumber: 1,
-      warnings: [],
-      rows: [
-        { sourceRowNumber: 2, displayName: 'New Contact', email: 'new@example.com', phone: '022' },
-        { sourceRowNumber: 3, displayName: 'Alex Mason', email: 'filled@example.com', phone: '021' },
-      ],
-    });
-    planContactsImportMock.mockReturnValue({
-      stats: { create: 1, merge: 1, skip: 0, invalid: 0 },
-      decisions: [
-        { action: 'create', row: { sourceRowNumber: 2, displayName: 'New Contact', email: 'new@example.com', phone: '022' } },
-        {
-          action: 'merge',
-          row: { sourceRowNumber: 3, displayName: 'Alex Mason', email: 'filled@example.com', phone: '021' },
-          match: { existingId: 'ct_1' },
-        },
-      ],
-    });
-    apiJsonMock.mockReset();
+    retry.mockReset();
+    finishInstantRoute.mockReset();
+    useContactsIndexData.mockReset();
+    useContactsIndexData.mockReturnValue(indexResult('fresh'));
   });
 
-  afterEach(() => {
-    document.body.innerHTML = '';
-  });
+  afterEach(() => { document.body.innerHTML = ''; });
 
-  it('seeds the contacts query from server data and renders the list immediately', () => {
-    const rendered = renderIntoDocument(<ContactsIndexClient initialContacts={initialContacts} />);
-
-    expect(useQueryMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: qk.contacts.list('host'),
-        initialData: initialContacts,
-      }),
-    );
+  it('renders fresh contacts and dismisses the instant pending frame', () => {
+    const rendered = renderIntoDocument(<ContactsIndexClient />);
+    expect(rendered.container.querySelector('[data-contacts-index-state="fresh"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Alex Mason');
-    expect(rendered.container.querySelector('table')).not.toBeNull();
-    expect(rendered.container.textContent).not.toContain('Search contacts');
-
+    expect(rendered.container.textContent).not.toContain('Updating contacts');
+    expect(finishInstantRoute).toHaveBeenCalledWith('contacts-index');
     rendered.unmount();
   });
 
-  it('still surfaces refresh failures when seeded data exists', () => {
-    useQueryMock.mockReturnValue({
-      data: initialContacts,
-      error: new Error('Refresh failed'),
-    });
+  it.each(['pending', 'cached'] as const)('shows a truthful updating state for %s data', (state) => {
+    useContactsIndexData.mockReturnValue(indexResult(state));
+    const rendered = renderIntoDocument(<ContactsIndexClient />);
+    expect(rendered.container.textContent).toContain(state === 'pending' ? 'Updating contacts...' : 'Updating...');
+    expect(rendered.container.textContent).not.toContain('No contacts found.');
+    rendered.unmount();
+  });
 
-    const rendered = renderIntoDocument(<ContactsIndexClient initialContacts={initialContacts} />);
-
+  it('retains cached rows and offers Retry after a refresh failure', () => {
+    useContactsIndexData.mockReturnValue(indexResult('refresh-failed'));
+    const rendered = renderIntoDocument(<ContactsIndexClient />);
     expect(rendered.container.textContent).toContain('Alex Mason');
-    expect(toastError).toHaveBeenCalledWith("Couldn't refresh contacts (showing last saved).");
-
+    expect(rendered.container.textContent).toContain('Could not refresh contacts');
+    const retryButton = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Retry');
+    act(() => retryButton?.click());
+    expect(retry).toHaveBeenCalled();
     rendered.unmount();
   });
 
-  it('renders import preview rows without React key warnings', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const rendered = renderIntoDocument(<ContactsIndexClient initialContacts={initialContacts} />);
-
-    const fileInput = rendered.container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = {
-      name: 'contacts.csv',
-      text: vi.fn().mockResolvedValue('name,email,phone'),
-    };
-
-    await act(async () => {
-      Object.defineProperty(fileInput, 'files', {
-        configurable: true,
-        value: [file],
-      });
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Each child in a list should have a unique "key" prop.'));
-
-    consoleErrorSpy.mockRestore();
+  it('hides cached content when access ends', () => {
+    useContactsIndexData.mockReturnValue(indexResult('unavailable'));
+    const rendered = renderIntoDocument(<ContactsIndexClient />);
+    expect(rendered.container.textContent).toContain('Contacts unavailable');
+    expect(rendered.container.textContent).not.toContain('Alex Mason');
     rendered.unmount();
   });
 
-  it('routes import create and merge writes through the contacts API, upserts returned contacts, and invalidates the scoped contacts query', async () => {
-    apiJsonMock
-      .mockResolvedValueOnce({
-        contact: {
-          id: 'ct_2',
-          displayName: 'New Contact',
-          email: 'new@example.com',
-          phone: '022',
-          createdAt: '2026-04-07T00:00:00.000Z',
-          updatedAt: '2026-04-07T00:00:00.000Z',
-        },
-      })
-      .mockResolvedValueOnce({
-        contact: {
-          id: 'ct_1',
-          displayName: 'Alex Mason',
-          email: 'filled@example.com',
-          phone: '021',
-          createdAt: '2026-04-03T00:00:00.000Z',
-          updatedAt: '2026-04-07T00:00:00.000Z',
-        },
-      });
-
-    const rendered = renderIntoDocument(<ContactsIndexClient initialContacts={initialContacts} />);
-
-    const fileInput = rendered.container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = {
-      name: 'contacts.csv',
-      text: vi.fn().mockResolvedValue('name,email,phone'),
-    };
-
-    await act(async () => {
-      Object.defineProperty(fileInput, 'files', {
-        configurable: true,
-        value: [file],
-      });
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    const confirmButton = Array.from(rendered.container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Confirm import'),
-    ) as HTMLButtonElement;
-    expect(confirmButton).toBeTruthy();
-
-    await act(async () => {
-      confirmButton.click();
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(apiJsonMock).toHaveBeenNthCalledWith(
-      1,
-      '/api/contacts',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({
-          displayName: 'New Contact',
-          email: 'new@example.com',
-          phone: '022',
-        }),
-      }),
-    );
-    expect(apiJsonMock).toHaveBeenNthCalledWith(
-      2,
-      '/api/contacts/ct_1',
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify({
-          email: 'filled@example.com',
-          phone: '021',
-        }),
-      }),
-    );
-    expect(upsertContactCachesMock).toHaveBeenNthCalledWith(
-      1,
-      queryClientMock,
-      'host',
-      expect.objectContaining({
-        id: 'ct_2',
-        displayName: 'New Contact',
-      }),
-    );
-    expect(upsertContactCachesMock).toHaveBeenNthCalledWith(
-      2,
-      queryClientMock,
-      'host',
-      expect.objectContaining({
-        id: 'ct_1',
-        email: 'filled@example.com',
-        phone: '021',
-      }),
-    );
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.contacts.list('host') });
-    expect(toastSuccess).toHaveBeenCalledWith('Imported contacts: 1 created, 1 merged.');
-
-    rendered.unmount();
-  });
-
-  it('keeps the parsed import plan open on API failure and shows the error', async () => {
-    apiJsonMock.mockRejectedValueOnce(new Error('Import exploded'));
-
-    const rendered = renderIntoDocument(<ContactsIndexClient initialContacts={initialContacts} />);
-
-    const fileInput = rendered.container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = {
-      name: 'contacts.csv',
-      text: vi.fn().mockResolvedValue('name,email,phone'),
-    };
-
-    await act(async () => {
-      Object.defineProperty(fileInput, 'files', {
-        configurable: true,
-        value: [file],
-      });
-      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    const confirmButton = Array.from(rendered.container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Confirm import'),
-    ) as HTMLButtonElement;
-
-    await act(async () => {
-      confirmButton.click();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(rendered.container.textContent).toContain('Import contacts');
-    expect(rendered.container.textContent).toContain('Import exploded');
-    expect(toastError).toHaveBeenCalledWith('Import exploded');
-    expect(invalidateQueries).not.toHaveBeenCalled();
-
+  it('shows the genuine empty state only after a successful fresh response', () => {
+    useContactsIndexData.mockReturnValue(indexResult('fresh', []));
+    const rendered = renderIntoDocument(<ContactsIndexClient />);
+    expect(rendered.container.textContent).toContain('No contacts found.');
     rendered.unmount();
   });
 });

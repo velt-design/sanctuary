@@ -196,13 +196,44 @@ npm run test:portal:performance:fixture
 
 `npm run portal:auth-runtime` is the authenticated runtime-readiness preflight for smoke and performance gates. It runs after `portal:auth-env`, signs in through the existing Playwright setup flow, verifies the session is not redirected to `/login` or `/access-status`, checks dashboard/projects/contacts/schedule shell access, confirms schedule readiness, and requires at least one project visible to the test account. `npm run test:portal:smoke`, `npm run test:portal:performance`, and broad `npm run portal:doctor` run it before their deeper authenticated assertions.
 
-`npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Contacts, and Schedule; warm Dashboard to Projects, Projects to project, browser back, and project tab navigation; and Schedule/Calculator interactions. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Portal Performance CI runs the authenticated suite five times, rejects missing journeys, and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
+`npm run test:portal:performance` writes a schema-version-2 journey artifact. It measures cold Dashboard, Projects, Project Detail, Contacts, and Schedule; warm Dashboard to Projects, Dashboard to Contacts, Projects to project, browser back, and project tab navigation; and Schedule/Calculator interactions. The cold Project Detail journey discovers a real project in a separate authenticated context, then opens the canonical detail URL in a new context with no project-list or persisted-query cache so PROJECT-01 has a truthful cold-read signal. Each journey separates visible feedback, useful content, and background-settled time, and records same-origin requests/transfer, long tasks, and blocking overlays. Dashboard-to-Projects and Dashboard-to-Contacts feedback ends when the canonical index URL reaches the browser, useful content requires that index's heading, controls, truthful list region, and state marker, and background completion requires its fresh authenticated index response. Project-opening background completion still requires both the fresh snapshot and active tab workflow. Portal Performance CI builds once and runs all five authenticated repetitions against `next start`; development compilation time must never be recorded as product latency. CI rejects missing journeys and publishes p50/p75/p95. Product targets stay visible separately from regression ceilings so noisy baselines cannot redefine the product goal.
+
+Wave 2 reversible-write coverage starts with `apps/portal/app/staff/projects/projectsIndexMutations.test.ts`, `ProjectsIndexClient.test.tsx`, and `apps/portal/lib/queries/projectCache.test.ts`. These tests use an intentionally unresolved request to prove cache/UI feedback occurs before network completion, then cover field-specific rollback, active/archived/all membership and count restoration, and separate QueryClients for user isolation. Server-confirmed success remains distinct from optimistic feedback; destructive delete and customer-facing side effects are outside the optimistic contract.
+
+Ordinary authenticated route changes must keep the current surface usable, show the thin portal progress bar immediately, and apply `aria-busy` only to the clicked control. Full-page Blueprint loading remains for cold route/authentication boundaries. `npm run test:portal:shell` covers the shared transition owner and navigation controls; authenticated routing smoke verifies Schedule view changes never show the blocking overlay.
+
+The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms, and are enforced against the five-run p75 aggregate. Existing cold-route and Schedule-toggle ceilings remain per-run and were not changed.
+
+Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mode authenticated runs from Portal Quality run `29671978619`. Project opening recorded 41/44/45 ms feedback p50/p75/p95, 58/60/60 ms useful-content p50/p75/p95, and 2286/2290/2956 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. The resulting locked regression ceiling is 100 ms feedback and 500 ms useful content, matching the product target.
+
+Wave 1 Slice 2 replaced the Dashboard-to-Projects row with exactly five production-mode authenticated runs from Portal Quality run `29675363201`. The journey recorded 43/44/44 ms feedback p50/p75/p95, 75/76/99 ms useful-content p50/p75/p95, and 2243/2277/2311 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
+
+Wave 1 Slice 3 replaced Dashboard-to-Contacts with exactly five production-mode authenticated runs from Portal Quality run `29678858906`. The journey recorded 33/35/35 ms feedback p50/p75/p95, 50/52/53 ms useful-content p50/p75/p95, and 3053/3080/3096 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
+
+Wave 1 completion run `29687042640` recorded exactly five current-head production repetitions. The isolated pre-Slice-1 comparison run `29681955081` measured cold Project Detail useful-content p75 at 2,454 ms, making the unchanged 10% guard 2,699 ms. Current-head cold Project Detail measured 1,664/1,666/1,680 ms useful content p50/p75/p95: the small authenticated direct-link summary makes the real project header and tabs useful first, while complete-snapshot background settlement remains separately measured at 2,667/2,726/2,727 ms. All five project runs had no blocking overlay and no observed long task. The same current-head run measured calculator visible feedback at 40/47/58 ms and fresh-result completion at 924/939/942 ms. Fixture-safe workbench evidence measured object selection at 86/119 ms feedback/useful and Plan-to-3D at 117/122 ms, with no request, overlay, or long task in either interaction.
+
+| Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
+| --- | ---: | ---: | :---: | ---: |
+| Dashboard cold | 806/807/871 ms | 816/817/881 ms | Miss | Existing cold ceiling unchanged |
+| Projects cold | 749/766/779 ms | 758/777/788 ms | Miss | Existing cold ceiling unchanged |
+| Project Detail cold | 781/785/797 ms | 1664/1666/1680 ms | 10% guard met | Existing cold ceiling unchanged; 2699 ms comparison guard |
+| Contacts cold | 687/708/726 ms | 698/714/742 ms | Miss | Existing cold ceiling unchanged |
+| Schedule cold | 737/758/760 ms | 1106/1125/1135 ms | Miss | Existing cold ceiling unchanged |
+| Dashboard to Projects | 37/37/38 ms | 56/58/59 ms | Met | 100/500 ms |
+| Dashboard to Contacts | 38/39/41 ms | 57/59/63 ms | Met | 100/500 ms |
+| Projects to project | 35/38/39 ms | 48/49/51 ms | Met | 100/500 ms |
+| Project back to Projects | 5/6/6 ms | 21/25/25 ms | Met | 100/500 ms |
+| Project Details tab | 38/40/53 ms | 41/49/60 ms | Met | 250/500 ms |
+| Schedule unscheduled toggle | 137/137/139 ms | 140/141/142 ms | Regression met | Existing 1200/1200 ms ceiling unchanged |
+| Calculator current result | 40/47/58 ms | 924/939/942 ms | Feedback met | 700/2950 ms |
 
 `npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
 
-`npm run test:portal:performance:fixture` measures workbench object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. It requires no authenticated project data and produces its own artifact.
+`npm run test:portal:performance:fixture` runs credential-free interaction gates. The workbench journey measures object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. The project-mutation route mounts the production Projects-index controller, Project/Contact Detail local-first controllers, and manual project-task toggle at `/qa/projects-index-mutation-fixture`. It intercepts sample requests and proves visible update/Done/checkbox feedback completes within 100 ms while deliberately 750 ms persistence responses continue in the background. Mutation feedback is timestamped inside Chromium by observing the real visible DOM state; Playwright command/IPC latency is not counted as product feedback. Paired rejection checks prove index rollback/error visibility, both detail editors' confirmed-value rollback with retained reviewable drafts, and task-specific rollback plus Retry. The route binds only a synthetic fixture owner, clears its local-first state, and uses no durable/customer record IDs. The gates produce separate schema-v2 artifacts at `artifacts/portal-workbench-performance.json` and `artifacts/portal-project-mutation-performance.json`.
 
-After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Project Detail, Calculator, and Design Workbench. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
+After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
+
+Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. Activity remains the default workflow but now joins responsive Details and the other workflows as a truthful local lazy boundary; the project frame and tabs stay initial. The Estimate drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
 `npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
 
@@ -253,7 +284,7 @@ Skipped browser cases are intentional and should stay explained in the test outp
 - In the `portal-fixture` project, the auth-backed project discovery smoke is skipped unless `PORTAL_DRAWING_URL` is set; that project-backed coverage belongs to `portal-chromium`.
 - In authenticated project-backed runs, a selected project with no drawing geometry may skip the browser feel pass; this is data-dependent and should not hide fixture-route coverage.
 
-When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate and uses isolated Next dev output so a normal `npm run dev:portal` server can keep running on port `3001`. The fixture harness defaults to `http://127.0.0.1:3011`; if that port is occupied, choose another fixture port:
+When Playwright starts the portal dev server itself, it enables `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1` and `ENABLE_PORTAL_QA_FIXTURES=1` for the no-auth fixture gates and uses isolated Next dev output so a normal `npm run dev:portal` server can keep running on port `3001`. The fixture harness defaults to `http://127.0.0.1:3011`; if that port is occupied, choose another fixture port:
 
 ```powershell
 $env:PORTAL_PLAYWRIGHT_PORT='3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_PLAYWRIGHT_PORT
@@ -263,13 +294,13 @@ If `PORTAL_BASE_URL` points at an already-running portal server, that server mus
 
 ```powershell
 # Terminal A: start the manual fixture server. Use PORTAL_PLAYWRIGHT_DIST_DIR only when another portal Next dev server is already running from apps/portal.
-$env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES='1'; $env:PORTAL_PLAYWRIGHT_DIST_DIR='.next/playwright-fixture-manual'; npm --prefix apps/portal run dev:playwright -- -p 3021
+$env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES='1'; $env:ENABLE_PORTAL_QA_FIXTURES='1'; $env:PORTAL_PLAYWRIGHT_DIST_DIR='.next/playwright-fixture-manual'; npm --prefix apps/portal run dev:playwright -- -p 3021
 
 # Terminal B: point the browser gate at that server.
 $env:PORTAL_BASE_URL='http://127.0.0.1:3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_BASE_URL
 
 # Terminal A after stopping the manual server.
-Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
+Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\ENABLE_PORTAL_QA_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
 ```
 
 ## Schedule QA Gate

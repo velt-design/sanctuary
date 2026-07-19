@@ -1,286 +1,66 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Contact } from '@/lib/types/contact';
+import { useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import HeaderActions from '@/components/layout/HeaderActions';
+import PageHeader from '@/components/layout/PageHeader';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import PageHeader from '@/components/layout/PageHeader';
-import HeaderActions from '@/components/layout/HeaderActions';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { contactDetailQueryOptions } from '@/lib/queries/contacts';
-import { projectsByContactQueryOptions } from '@/lib/queries/projects';
-import { qk } from '@/lib/queries/keys';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
-import { apiJson } from '@/lib/repo/apiClient';
-import {
-  upsertContactCaches,
-  type PortalContactDraft,
-} from '@/lib/localFirst/portalEntities';
+import { contactDetailQueryOptions } from '@/lib/queries/contacts';
+import { qk } from '@/lib/queries/keys';
+import { projectsByContactQueryOptions } from '@/lib/queries/projects';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import type { Contact } from '@/lib/types/contact';
+import type { Project } from '@/lib/types/project';
+import { isValidOptionalContactEmail, useContactDetailsDraft } from './useContactDetailsDraft';
 
-const AUTOSAVE_DELAY_MS = 700;
+type ContactDetailsViewProps = {
+  contact: Contact;
+  hostKey: string;
+  loadError: string | null;
+  projects: Project[];
+  projectsLoaded: boolean;
+  projectsError: boolean;
+};
 
-function toDraft(contact: Contact): PortalContactDraft {
-  return {
-    displayName: contact.displayName,
-    email: contact.email,
-    phone: contact.phone,
-  };
-}
-
-function normalizeDraft(draft: PortalContactDraft): PortalContactDraft {
-  return {
-    displayName: draft.displayName.trim(),
-    email: draft.email.trim(),
-    phone: draft.phone.trim(),
-  };
-}
-
-function isValidOptionalEmail(email: string): boolean {
-  if (!email.trim()) return true;
-  return email.includes('@');
-}
-
-function sameDraft(a: PortalContactDraft, b: PortalContactDraft): boolean {
-  return JSON.stringify(normalizeDraft(a)) === JSON.stringify(normalizeDraft(b));
-}
-
-function saveLabel(args: { dirty: boolean; isSaving: boolean; lastSavedAt: string | null }): string | null {
-  if (args.isSaving) return 'Saving…';
-  if (args.dirty) return 'Unsaved edits';
-  if (args.lastSavedAt) return 'Saved';
-  return null;
-}
-
-function buildContactUpdateRequest(contactId: string, draft: PortalContactDraft) {
-  return {
-    path: `/api/contacts/${encodeURIComponent(contactId)}`,
-    body: JSON.stringify(normalizeDraft(draft)),
-  };
-}
-
-const EMPTY_CONTACT_DRAFT: PortalContactDraft = { displayName: '', email: '', phone: '' };
-
-export default function ContactDetailClient({ contactId }: { contactId: string }) {
-  const toast = useToast();
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<PortalContactDraft>(EMPTY_CONTACT_DRAFT);
-  const [savedDraft, setSavedDraft] = useState<PortalContactDraft>(EMPTY_CONTACT_DRAFT);
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const draftRef = useRef(draft);
-  const inFlightSerializedRef = useRef<string | null>(null);
-  const savePromiseRef = useRef<Promise<boolean> | null>(null);
-
-  const queryClient = useQueryClient();
-  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-
-  const cachedContacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
-  const cachedContact = useMemo(
-    () => (Array.isArray(cachedContacts) ? cachedContacts.find((c) => c.id === contactId) ?? null : null),
-    [cachedContacts, contactId],
-  );
-
+export function ContactDetailsView({
+  contact,
+  hostKey,
+  loadError,
+  projects,
+  projectsLoaded,
+  projectsError,
+}: ContactDetailsViewProps) {
   const {
-    data: contact,
-    error: contactError,
-  } = useQuery({
-    ...contactDetailQueryOptions(host, contactId),
-    initialData: cachedContact ?? undefined,
-  });
-
-  const { data: projectsData, error: projectsError } = useQuery(projectsByContactQueryOptions(host, contactId));
-  const projects = projectsData ?? [];
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
-
-  useEffect(() => {
-    if (!contactError) return;
-    const msg = contactError instanceof Error ? contactError.message : 'Failed to load contact.';
-    setError(msg);
-    toast.error(msg);
-  }, [contactError, toast]);
-
-  useEffect(() => {
-    if (!projectsError) return;
-    const msg = projectsError instanceof Error ? projectsError.message : 'Failed to load projects.';
-    toast.error(msg);
-  }, [projectsError, toast]);
-
-  useEffect(() => {
-    const nextSavedDraft = contact ? normalizeDraft(toDraft(contact)) : EMPTY_CONTACT_DRAFT;
-    setSavedDraft(nextSavedDraft);
-    if (!isEditing) {
-      setDraft(nextSavedDraft);
-    }
-  }, [contact, isEditing]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null && typeof window !== 'undefined') {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const canSave = useMemo(() => {
-    if (!draft.displayName.trim()) return false;
-    if (!isValidOptionalEmail(draft.email)) return false;
-    return true;
-  }, [draft]);
-
-  const dirty = useMemo(() => !sameDraft(draft, savedDraft), [draft, savedDraft]);
-
-  const flushDraft = useCallback(async () => {
-    if (!contact) return false;
-    const nextDraft = normalizeDraft(draftRef.current);
-    if (!nextDraft.displayName.trim()) return false;
-    if (!isValidOptionalEmail(nextDraft.email)) return false;
-
-    const serialized = JSON.stringify(nextDraft);
-    const savedSerialized = JSON.stringify(savedDraft);
-    if (serialized === savedSerialized) {
-      return true;
-    }
-
-    if (inFlightSerializedRef.current === serialized && savePromiseRef.current) {
-      return savePromiseRef.current;
-    }
-
-    const previousContact = contact;
-    const request = buildContactUpdateRequest(contactId, nextDraft);
-
-    upsertContactCaches(queryClient, host, {
-      ...contact,
-      displayName: nextDraft.displayName,
-      email: nextDraft.email,
-      phone: nextDraft.phone,
-      updatedAt: new Date().toISOString(),
-    });
-
-    setError(null);
-    setIsSaving(true);
-
-    const savePromise = apiJson<{ contact: Contact }>(request.path, {
-      method: 'PATCH',
-      body: request.body,
-    })
-      .then((res) => {
-        if (!res.contact) throw new Error('Contact not saved');
-        upsertContactCaches(queryClient, host, res.contact);
-        setSavedDraft(nextDraft);
-        setLastSavedAt(new Date().toISOString());
-        return true;
-      })
-      .catch((err) => {
-        upsertContactCaches(queryClient, host, previousContact);
-        const msg = err instanceof Error ? err.message : 'Failed to update contact';
-        setError(msg);
-        throw err;
-      })
-      .finally(() => {
-        setIsSaving(false);
-        if (inFlightSerializedRef.current === serialized) {
-          inFlightSerializedRef.current = null;
-          savePromiseRef.current = null;
-        }
-      });
-
-    inFlightSerializedRef.current = serialized;
-    savePromiseRef.current = savePromise;
-    return savePromise;
-  }, [contact, contactId, host, queryClient, savedDraft]);
-
-  useEffect(() => {
-    if (!isEditing || !dirty || !canSave) return;
-    if (timerRef.current !== null && typeof window !== 'undefined') {
-      window.clearTimeout(timerRef.current);
-    }
-    timerRef.current = window.setTimeout(() => {
-      void flushDraft().catch(() => undefined);
-    }, AUTOSAVE_DELAY_MS);
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, [canSave, dirty, flushDraft, isEditing]);
-
-  const updateDraftField = useCallback((field: keyof PortalContactDraft, value: string) => {
-    setError(null);
-    setDraft((prev) => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleDone = async () => {
-    if (!canSave) return;
-    try {
-      await flushDraft();
-      setIsEditing(false);
-    } catch {
-      // Error state is already set in flushDraft.
-    }
-  };
-
-  const handleReset = () => {
-    if (isSaving) return;
-    setError(null);
-    setDraft(savedDraft);
-    setIsEditing(false);
-  };
-
-  if (typeof contact === 'undefined') {
-    return (
-      <main className={styles.page}>
-        <PageHeader
-          title="Contact"
-          right={
-            <HeaderActions>
-              <Link className={styles.buttonSecondary} href="/staff/contacts">
-                Contacts
-              </Link>
-            </HeaderActions>
-          }
-        />
-        <p className={styles.note}>Loading contact details…</p>
-      </main>
-    );
-  }
-
-  if (!contact) {
-    return (
-      <main className={styles.page}>
-        <PageHeader
-          title="Contact"
-          right={
-            <HeaderActions>
-              <Link className={styles.buttonSecondary} href="/staff/contacts">
-                Contacts
-              </Link>
-            </HeaderActions>
-          }
-        />
-        <p className={styles.note}>This contact doesn’t exist in the portal database.</p>
-      </main>
-    );
-  }
-
-  const statusText = saveLabel({ dirty, isSaving, lastSavedAt });
-  const displayed = isEditing ? draft : savedDraft;
+    canRetry,
+    canSave,
+    displayed,
+    draft,
+    error,
+    finishEditing,
+    isEditing,
+    isSaving,
+    resetEditing,
+    retry,
+    reviewLocalDraft,
+    saveCurrentDraft,
+    setIsEditing,
+    statusText,
+    updateDraftField,
+  } = useContactDetailsDraft(contact, hostKey);
 
   return (
     <main className={styles.page}>
       <PageHeader
-        title={contact.displayName}
+        title={displayed.displayName || contact.displayName}
         right={
           <HeaderActions>
-            <Link className={styles.buttonSecondary} href="/staff/contacts">
+            <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
               Contacts
-            </Link>
+            </PortalIndexLink>
             <Link className={styles.button} href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>
               Create Project
             </Link>
@@ -289,7 +69,7 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
       />
       <div className="mt-1 mb-3 text-xs text-zinc-500">Contact ID: {contact.id}</div>
 
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {loadError ? <p className={styles.error}>{loadError}</p> : null}
 
       <section className={styles.section} aria-label="Contact info">
         <div className={styles.sectionHeader}>
@@ -298,38 +78,37 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
             {statusText ? <span className={styles.note}>{statusText}</span> : null}
             {isEditing ? (
               <>
-                <button
-                  type="button"
-                  className={styles.button}
-                  disabled={!canSave || isSaving}
-                  onClick={handleDone}
-                >
-                  {isSaving ? 'Saving…' : 'Done'}
+                <button type="button" className={styles.button} disabled={!canSave} onClick={finishEditing}>
+                  Done
                 </button>
-                <button
-                  type="button"
-                  className={styles.buttonSecondary}
-                  disabled={isSaving}
-                  onClick={handleReset}
-                >
+                <button type="button" className={styles.buttonSecondary} disabled={isSaving} onClick={resetEditing}>
                   Reset
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  setError(null);
-                  setIsEditing(true);
-                }}
-              >
+              <button type="button" className={styles.buttonSecondary} onClick={() => setIsEditing(true)}>
                 Edit
               </button>
             )}
           </div>
         </div>
         <div className={styles.sectionBody}>
+          {error ? (
+            <div className={styles.field} role="status">
+              <p className={styles.error}>{error}</p>
+              {canRetry ? (
+                <div className={styles.actions}>
+                  <button type="button" className={styles.buttonSecondary} onClick={() => void retry()}>
+                    Retry now
+                  </button>
+                  <button type="button" className={styles.buttonSecondary} onClick={reviewLocalDraft}>
+                    Review changes
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <tbody>
@@ -338,10 +117,11 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                   <td>
                     {isEditing ? (
                       <input
+                        aria-label="Contact name"
                         className={styles.inlineInput}
                         value={draft.displayName}
-                        onChange={(e) => updateDraftField('displayName', e.target.value)}
-                        onBlur={() => void flushDraft().catch(() => undefined)}
+                        onChange={(event) => updateDraftField('displayName', event.target.value)}
+                        onBlur={saveCurrentDraft}
                         required
                       />
                     ) : (
@@ -354,15 +134,18 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                   <td>
                     {isEditing ? (
                       <input
+                        aria-label="Contact email"
                         className={styles.inlineInput}
                         value={draft.email}
-                        onChange={(e) => updateDraftField('email', e.target.value)}
-                        onBlur={() => void flushDraft().catch(() => undefined)}
+                        onChange={(event) => updateDraftField('email', event.target.value)}
+                        onBlur={saveCurrentDraft}
                       />
                     ) : (
                       displayed.email || '—'
                     )}
-                    {isEditing && !isValidOptionalEmail(draft.email) ? <p className={styles.error}>Email must include "@".</p> : null}
+                    {isEditing && !isValidOptionalContactEmail(draft.email) ? (
+                      <p className={styles.error}>Email must include &quot;@&quot;.</p>
+                    ) : null}
                   </td>
                 </tr>
                 <tr>
@@ -370,10 +153,11 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                   <td>
                     {isEditing ? (
                       <input
+                        aria-label="Contact phone"
                         className={styles.inlineInput}
                         value={draft.phone}
-                        onChange={(e) => updateDraftField('phone', e.target.value)}
-                        onBlur={() => void flushDraft().catch(() => undefined)}
+                        onChange={(event) => updateDraftField('phone', event.target.value)}
+                        onBlur={saveCurrentDraft}
                       />
                     ) : (
                       displayed.phone || '—'
@@ -399,8 +183,8 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
           <h2 className={styles.sectionTitle}>Projects</h2>
         </div>
         <div className={styles.sectionBody}>
-          {typeof projectsData === 'undefined' ? (
-            <p className={styles.note}>Loading projects…</p>
+          {!projectsLoaded ? (
+            <p className={styles.note}>Loading projects...</p>
           ) : projects.length ? (
             <div className={styles.tableWrap}>
               <table className={styles.table}>
@@ -413,13 +197,13 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.projectName ?? p.name ?? '—'}</td>
-                      <td className={styles.muted}>{p.region ?? '—'}</td>
-                      <td className={styles.muted}>{formatPortalDateTime(p.createdAt)}</td>
+                  {projects.map((project) => (
+                    <tr key={project.id}>
+                      <td>{project.projectName ?? project.name ?? '—'}</td>
+                      <td className={styles.muted}>{project.region ?? '—'}</td>
+                      <td className={styles.muted}>{formatPortalDateTime(project.createdAt)}</td>
                       <td>
-                        <Link className={styles.link} href={`/staff/projects/${encodeURIComponent(p.id)}`}>
+                        <Link className={styles.link} href={`/staff/projects/${encodeURIComponent(project.id)}`}>
                           Open
                         </Link>
                       </td>
@@ -434,5 +218,78 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
         </div>
       </section>
     </main>
+  );
+}
+
+export default function ContactDetailClient({ contactId }: { contactId: string }) {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const cachedContacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
+  const cachedContact = useMemo(
+    () => (Array.isArray(cachedContacts) ? cachedContacts.find((contact) => contact.id === contactId) ?? null : null),
+    [cachedContacts, contactId],
+  );
+  const contactQuery = useQuery({
+    ...contactDetailQueryOptions(host, contactId),
+    initialData: cachedContact ?? undefined,
+  });
+  const projectsQuery = useQuery(projectsByContactQueryOptions(host, contactId));
+
+  useEffect(() => {
+    if (!contactQuery.error) return;
+    toast.error(contactQuery.error instanceof Error ? contactQuery.error.message : 'Failed to load contact.');
+  }, [contactQuery.error, toast]);
+
+  useEffect(() => {
+    if (!projectsQuery.error) return;
+    toast.error(projectsQuery.error instanceof Error ? projectsQuery.error.message : 'Failed to load projects.');
+  }, [projectsQuery.error, toast]);
+
+  if (typeof contactQuery.data === 'undefined') {
+    return (
+      <main className={styles.page}>
+        <PageHeader
+          title="Contact"
+          right={
+            <HeaderActions>
+              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
+                Contacts
+              </PortalIndexLink>
+            </HeaderActions>
+          }
+        />
+        <p className={styles.note}>Loading contact details...</p>
+      </main>
+    );
+  }
+
+  if (!contactQuery.data) {
+    return (
+      <main className={styles.page}>
+        <PageHeader
+          title="Contact"
+          right={
+            <HeaderActions>
+              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
+                Contacts
+              </PortalIndexLink>
+            </HeaderActions>
+          }
+        />
+        <p className={styles.note}>This contact does not exist in the portal database.</p>
+      </main>
+    );
+  }
+
+  return (
+    <ContactDetailsView
+      contact={contactQuery.data}
+      hostKey={host}
+      loadError={contactQuery.error instanceof Error ? contactQuery.error.message : null}
+      projects={projectsQuery.data ?? []}
+      projectsLoaded={typeof projectsQuery.data !== 'undefined'}
+      projectsError={Boolean(projectsQuery.error)}
+    />
   );
 }

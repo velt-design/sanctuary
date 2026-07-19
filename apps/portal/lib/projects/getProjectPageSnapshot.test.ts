@@ -9,7 +9,7 @@ vi.mock('@/lib/api/routeDiagnostics', () => ({
 
 type QueryResult = { data: any; error: any };
 
-function createQuery(result: QueryResult) {
+function createQuery(result: QueryResult | Promise<QueryResult>) {
   const query: any = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
@@ -25,8 +25,16 @@ function createQuery(result: QueryResult) {
   return query;
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 const fakeAuth = {
-  auth: { getUser: async () => ({ data: { user: { id: 'auth-user-1' } }, error: null }) },
+  auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'auth-user-1' } }, error: null })) },
 };
 
 describe('getProjectPageSnapshot', () => {
@@ -34,48 +42,59 @@ describe('getProjectPageSnapshot', () => {
     vi.resetModules();
     fromMock.mockReset();
     logPortalServerError.mockReset();
+    fakeAuth.auth.getUser.mockClear();
   });
 
   it('returns a snapshot without scheduling invoice retries during read', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     const contactId = '22222222-2222-4222-8222-222222222222';
-    const responses: Record<string, QueryResult> = {
-      projects: {
-        data: {
-          id: projectId,
-          name: 'Alpha Project',
-          contact_id: contactId,
-          pipeline_stage: 'NEW',
-          site_address: '123 Test St',
-        },
-        error: null,
-      },
-      contacts: {
-        data: {
+    const projectQuery = createQuery({
+      data: {
+        id: projectId,
+        name: 'Alpha Project',
+        contact_id: contactId,
+        contact: {
           id: contactId,
           name: 'Casey Contact',
           email: 'casey@example.com',
           phone: '021',
         },
-        error: null,
+        pipeline_stage: 'NEW',
+        site_address: '123 Test St',
       },
-      site_visit_events: { data: null, error: null },
-      estimates: { data: [], error: null },
-      schedule_items: { data: [], error: null },
-      quote_versions: { data: [], error: null },
-      deposit_invoices: { data: { id: 'inv_1' }, error: null },
-      project_task_checks: { data: [], error: null },
-      email_outbox: { data: [], error: null },
-      audit_events: { data: [], error: null },
-      job_pack_generations: { data: null, error: null },
-      project_notes: { data: [], error: null },
-    };
-
-    fromMock.mockImplementation((table: string) => {
-      const result = responses[table];
-      if (!result) throw new Error(`Unexpected table ${table}`);
-      return createQuery(result);
+      error: null,
     });
+    const relatedQuery = createQuery({
+      data: {
+        siteVisits: [],
+        estimates: [],
+        scheduleItems: [],
+        quotes: [{ acceptedVersions: [{ id: 'quote_version_1', status: 'ACCEPTED' }] }],
+        openInvoices: [{ id: 'inv_1', status: 'OPEN' }],
+        manualChecks: [],
+        emails: [{
+          id: 'email_1',
+          subject: 'Estimate ready',
+          to_email: 'casey@example.com',
+          status: 'SENT',
+          sent_at: '2026-07-19T00:00:00.000Z',
+          created_at: '2026-07-19T00:00:00.000Z',
+          email_type: 'estimate',
+        }],
+        jobPacks: [{ id: 'job_pack_1' }],
+        notes: [{
+          id: 'note_1',
+          body: 'Known note',
+          author_id: 'auth-user-1',
+          author_email: 'staff@example.com',
+          created_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:00:00.000Z',
+        }],
+      },
+      error: null,
+    });
+
+    fromMock.mockReturnValueOnce(projectQuery).mockReturnValueOnce(relatedQuery);
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -87,6 +106,7 @@ describe('getProjectPageSnapshot', () => {
         startedAt: performance.now(),
       },
       { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
     );
 
     expect(snapshot).toMatchObject({
@@ -99,46 +119,138 @@ describe('getProjectPageSnapshot', () => {
         contactEmail: 'casey@example.com',
         contactPhone: '021',
         siteAddress: '123 Test St',
+        hasJobPacks: true,
       },
       pipeline: {
         stage: 'new',
       },
     });
     expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
+    expect(snapshot?.emails).toHaveLength(1);
+    expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
+    expect(snapshot?.activity).toHaveLength(1);
+    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
+    expect(relatedQuery.eq).toHaveBeenCalledWith('quotes.acceptedVersions.status', 'ACCEPTED');
+    expect(relatedQuery.eq).toHaveBeenCalledWith('openInvoices.status', 'OPEN');
+    expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
+    expect(relatedQuery.limit).toHaveBeenCalledWith(50, { referencedTable: 'notes' });
+    expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
 
-  it('tolerates subordinate query failures and logs them through structured diagnostics', async () => {
+  it('builds a direct-link summary from one auth-bound project/contact read', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
-    const responses: Record<string, QueryResult> = {
-      projects: {
-        data: {
-          id: projectId,
-          name: 'Alpha Project',
-          pipeline_stage: 'NEW',
+    const contactId = '22222222-2222-4222-8222-222222222222';
+    fromMock.mockReturnValueOnce(createQuery({
+      data: {
+        id: projectId,
+        name: 'Direct Project',
+        contact_id: contactId,
+        contact: {
+          id: contactId,
+          name: 'Direct Contact',
+          email: 'direct@example.com',
+          phone: '022',
         },
-        error: null,
+        pipeline_stage: 'QUOTING',
+        site_address: '5 Direct Road',
       },
-      site_visit_events: { data: null, error: null },
-      estimates: { data: [], error: null },
-      schedule_items: { data: [], error: null },
-      quote_versions: { data: [], error: null },
-      deposit_invoices: { data: null, error: null },
-      project_task_checks: { data: [], error: null },
-      email_outbox: { data: null, error: { message: 'outbox unavailable' } },
-      audit_events: { data: [], error: null },
-      job_pack_generations: { data: null, error: null },
-      project_notes: { data: [], error: null },
-    };
+      error: null,
+    }));
 
-    fromMock.mockImplementation((table: string) => {
-      const result = responses[table];
-      if (!result) throw new Error(`Unexpected table ${table}`);
-      return createQuery(result);
+    const { getProjectPageSummary } = await import('./getProjectPageSnapshot');
+    const summary = await getProjectPageSummary(
+      `proj_${projectId}`,
+      undefined,
+      { from: fromMock, ...fakeAuth } as any,
+    );
+
+    expect(summary).toMatchObject({
+      project: {
+        id: `proj_${projectId}`,
+        name: 'Direct Project',
+        contactId: `ct_${contactId}`,
+        contactName: 'Direct Contact',
+        siteAddress: '5 Direct Road',
+      },
+      pipeline: { stage: 'quoting' },
+      tasks: { stage: 'quoting', items: [] },
+      activity: [],
+      emails: [],
+      notes: [],
     });
+    expect(fromMock).toHaveBeenCalledOnce();
+    expect(fromMock).toHaveBeenCalledWith('projects');
+    expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
+  });
+
+  it('starts the project and embedded-related reads without waiting for either result', async () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    const projectResult = deferred<QueryResult>();
+    const relatedResult = deferred<QueryResult>();
+
+    fromMock
+      .mockReturnValueOnce(createQuery(projectResult.promise))
+      .mockReturnValueOnce(createQuery(relatedResult.promise));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
-    const snapshot = await getProjectPageSnapshot(
+    const pendingSnapshot = getProjectPageSnapshot(
+      `proj_${projectId}`,
+      undefined,
+      { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
+    );
+
+    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
+
+    projectResult.resolve({
+      data: {
+        id: projectId,
+        name: 'Concurrent Project',
+        pipeline_stage: 'NEW',
+        contact: null,
+      },
+      error: null,
+    });
+    relatedResult.resolve({
+      data: {
+        siteVisits: [],
+        estimates: [],
+        scheduleItems: [],
+        quotes: [],
+        openInvoices: [],
+        manualChecks: [],
+        emails: [],
+        jobPacks: [],
+        notes: [],
+      },
+      error: null,
+    });
+
+    await expect(pendingSnapshot).resolves.toMatchObject({
+      project: { id: `proj_${projectId}`, name: 'Concurrent Project' },
+    });
+  });
+
+  it('rejects an incomplete embedded related read and logs diagnostics', async () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    const relatedError = { message: 'related snapshot unavailable' };
+
+    fromMock.mockReturnValueOnce(createQuery({
+      data: {
+        id: projectId,
+        name: 'Alpha Project',
+        pipeline_stage: 'NEW',
+      },
+      error: null,
+    })).mockReturnValueOnce(createQuery({ data: null, error: relatedError }));
+
+    const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
+    const snapshot = getProjectPageSnapshot(
       `proj_${projectId}`,
       {
         route: '/api/projects/[projectId]/snapshot',
@@ -147,13 +259,11 @@ describe('getProjectPageSnapshot', () => {
         startedAt: performance.now(),
       },
       { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
     );
 
-    expect(snapshot?.project).toMatchObject({
-      id: `proj_${projectId}`,
-      name: 'Alpha Project',
-      stage: 'new',
-    });
+    await expect(snapshot).rejects.toThrow('Failed to load complete project snapshot');
+    expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).toHaveBeenCalledWith(
       expect.objectContaining({
         route: '/api/projects/[projectId]/snapshot',
@@ -162,9 +272,9 @@ describe('getProjectPageSnapshot', () => {
       }),
       expect.objectContaining({
         event: 'project_snapshot.query_failed',
-        message: 'email_outbox query failed',
-        error: responses.email_outbox.error,
-        extra: { query: 'email_outbox' },
+        message: 'project related snapshot query failed',
+        error: relatedError,
+        extra: { query: 'projects+relations' },
       }),
     );
   });

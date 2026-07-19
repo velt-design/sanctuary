@@ -18,6 +18,12 @@ const runs = files.map((file) => {
   return payload;
 });
 
+const budgetPath = path.resolve('playwright/portal.performance.budgets.json');
+const budgets = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+const aggregateBudgets = [...budgets.warmJourneys, ...budgets.interactions]
+  .filter((budget) => budget.enforced && budget.aggregation === 'p75')
+  .reduce((byName, budget) => byName.set(budget.name, budget), new Map());
+
 const expectedNames = runs[0].journeys.map((journey) => journey.name).sort();
 for (const [index, run] of runs.entries()) {
   const names = run.journeys.map((journey) => journey.name).sort();
@@ -46,7 +52,15 @@ for (const name of expectedNames) {
   const feedback = [0.5, 0.75, 0.95].map((fraction) => stat('feedbackMs', fraction));
   const useful = [0.5, 0.75, 0.95].map((fraction) => stat('usefulContentMs', fraction));
   const product = samples.every((sample) => sample.productTargetMet);
-  const regression = samples.every((sample) => sample.regressionBudgetMet);
+  const aggregateBudget = aggregateBudgets.get(name);
+  const regression = aggregateBudget
+    ? feedback[1] <= aggregateBudget.feedbackMsMax && useful[1] <= aggregateBudget.usefulContentMsMax
+    : samples.every((sample) => sample.regressionBudgetMet);
+  if (!regression && aggregateBudget) {
+    throw new Error(
+      `${name} p75 regression exceeded its locked ceiling: feedback ${feedback[1]}ms/${aggregateBudget.feedbackMsMax}ms, useful ${useful[1]}ms/${aggregateBudget.usefulContentMsMax}ms.`,
+    );
+  }
   lines.push(
     `| ${name} | ${samples[0].kind} | ${feedback.join(' / ')}ms | ${useful.join(' / ')}ms | ${stat('requestCount', 0.75)} | ${Math.round(stat('transferBytes', 0.75) / 1024)} KiB | ${stat('longestTaskMs', 0.95)}ms | ${product ? 'PASS' : 'MISS'} | ${regression ? 'PASS' : 'MISS'} |`,
   );

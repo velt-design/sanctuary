@@ -1,6 +1,6 @@
 'use client';
 
-import type { ProjectPageSnapshot } from '@/lib/projects/types';
+import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { PIPELINE_STAGE_LABELS } from '@/lib/projects/pipelineDefinition';
 import ProjectHeader from './ProjectHeader';
 import ProjectPageShell from './ProjectPageShell';
@@ -14,9 +14,13 @@ function cx(...values: Array<string | false | null | undefined>): string {
 
 export default function ProjectPageFrame({
   snapshot,
+  snapshotContentReady = true,
+  snapshotState = 'fresh',
   tab,
 }: {
   snapshot: ProjectPageSnapshot;
+  snapshotContentReady?: boolean;
+  snapshotState?: ProjectSnapshotLoadState;
   tab: string;
 }) {
   const {
@@ -83,7 +87,12 @@ export default function ProjectPageFrame({
       </div>
 
       <div className={cx(styles.pageFrameBody, isDesktopLayout && styles.pageFrameBodyDesktop)}>
-        <ProjectPageShell snapshot={snapshot} tab={tab} />
+        <ProjectPageShell
+          snapshot={snapshot}
+          snapshotContentReady={snapshotContentReady}
+          snapshotState={snapshotState}
+          tab={tab}
+        />
       </div>
     </div>
   );

@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { Contact } from '@/lib/types/contact';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
@@ -11,16 +10,13 @@ import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { contactsListQueryOptions } from '@/lib/queries/contacts';
-import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
+import { useQueryClient } from '@tanstack/react-query';
 import { ProjectRowTooltip, useProjectRowTooltip } from './ProjectRowTooltip';
-import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import { correctProjectStage, deleteProject } from '@/lib/repo/projectsRepo';
+import { deleteProject } from '@/lib/repo/projectsRepo';
 import {
   PIPELINE_STAGE_LABELS,
   normalizePipelineStageKey,
@@ -28,17 +24,26 @@ import {
   stageKeyToStatus,
   type PipelineStageKey,
 } from '@/lib/projects/pipelineDefinition';
-import { patchProjectListItem } from '@/lib/queries/projectCache';
+import {
+  invalidateProjectsIndexCaches,
+  removeProjectListItem,
+} from '@/lib/queries/projectCache';
+import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpenPreload';
+import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
   filterProjectsForIndex,
   parseProjectsIndexFilters,
+  todayYmd,
   type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
+import { useProjectsIndexData } from './useProjectsIndexData';
+import { useProjectsIndexMutations } from './useProjectsIndexMutations';
+import type { ProjectIndexEditableField } from './projectsIndexMutations';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 
-type EditableField = 'name' | 'phone' | 'address';
-type EditingState = { id: string; field: EditableField; value: string } | null;
+type EditingState = { id: string; field: ProjectIndexEditableField; value: string } | null;
 type StatusConfirmState = {
   projectId: string;
   current: PipelineStageKey;
@@ -54,69 +59,46 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
 }
 
 export default function ProjectsIndexClient({
-  initialProjects,
-  // PR-PG1 (2026-06-16): server-side row counts. `null` when the server fetch
-  // didn't request a count (older callers / fallback paths) — banner stays
-  // hidden in that case.
-  initialProjectsTotalCount = null,
-  // PR-PG1c (2026-06-16): chunked-fetch truncation signal. True when the
-  // server fetch hit `MAX_LIST_FETCH_ROWS` before exhausting the table.
-  initialProjectsTruncated = false,
-  initialContacts,
-  initialContactsTotalCount = null,
-  initialContactsTruncated = false,
   initialFilters,
   initialTodayYmd,
 }: {
-  initialProjects: Project[];
-  initialProjectsTotalCount?: number | null;
-  initialProjectsTruncated?: boolean;
-  initialContacts: Contact[];
-  initialContactsTotalCount?: number | null;
-  initialContactsTruncated?: boolean;
-  initialFilters: ProjectsIndexFilters;
-  initialTodayYmd: string;
+  initialFilters?: ProjectsIndexFilters;
+  initialTodayYmd?: string;
 }) {
   const router = useRouter();
+  const { finishInstantRoute } = usePortalRouteTransition();
+  const { openProject } = useProjectInstantOpen();
   const searchParams = useSearchParams();
   const toast = useToast();
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
-  const [query, setQuery] = useState(initialFilters.query);
-  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFilters.statusFilter);
-  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFilters.dueFilter);
-  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFilters.archiveFilter);
+  const initialFiltersRef = useRef(initialFilters ?? parseProjectsIndexFilters(searchParams));
+  const currentTodayYmd = initialTodayYmd ?? todayYmd();
+  const [query, setQuery] = useState(initialFiltersRef.current.query);
+  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFiltersRef.current.statusFilter);
+  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFiltersRef.current.dueFilter);
+  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
-  const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null);
   const { visibleInfo, onRowEnter: handleRowMouseEnter, onRowLeave: handleRowMouseLeave } = useProjectRowTooltip();
   const [editing, setEditing] = useState<EditingState>(null);
-  const [savingCellKey, setSavingCellKey] = useState<string | null>(null);
-  const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<StatusConfirmState>(null);
   const [statusConfirmText, setStatusConfirmText] = useState('');
   const [statusReason, setStatusReason] = useState('');
-  const [statusBusy, setStatusBusy] = useState(false);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const queryClient = useQueryClient();
-  const prefetchedSnapshotsRef = useRef(new Set<string>());
+  const projectMutations = useProjectsIndexMutations(host);
+  const projectsIndex = useProjectsIndexData(host, archiveFilter);
+  const projects = projectsIndex.data?.projects.rows ?? [];
+  const contacts = projectsIndex.data?.contacts.rows ?? [];
 
-  const includeArchived = archiveFilter !== 'active';
-  const { data: projectsData, error: projectsError } = useQuery({
-    ...projectsListQueryOptions(host, { includeArchived }),
-    initialData: initialProjects,
-  });
-  const { data: contactsData, error: contactsError } = useQuery({
-    ...contactsListQueryOptions(host),
-    initialData: initialContacts,
-  });
-
-  const projects = projectsData ?? [];
-  const contacts = contactsData ?? [];
+  useEffect(() => {
+    finishInstantRoute('projects-index');
+  }, [finishInstantRoute, searchParams]);
 
   useEffect(() => {
     const nextFilters = parseProjectsIndexFilters(searchParams);
@@ -125,26 +107,6 @@ export default function ProjectsIndexClient({
     setDueFilter(nextFilters.dueFilter);
     setArchiveFilter(nextFilters.archiveFilter);
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!projectsError) return;
-    if (projects.length) {
-      toast.error("Couldn't refresh projects (showing last saved).");
-      return;
-    }
-    const msg = projectsError instanceof Error ? projectsError.message : 'Failed to load projects.';
-    toast.error(msg);
-  }, [projects.length, projectsError, toast]);
-
-  useEffect(() => {
-    if (!contactsError) return;
-    if (contacts.length) {
-      toast.error("Couldn't refresh contacts (showing last saved).");
-      return;
-    }
-    const msg = contactsError instanceof Error ? contactsError.message : 'Failed to load contacts.';
-    toast.error(msg);
-  }, [contacts.length, contactsError, toast]);
 
   useEffect(() => {
     const t = searchParams.get('toast');
@@ -168,23 +130,16 @@ export default function ProjectsIndexClient({
         dueFilter,
         archiveFilter,
       },
-      initialTodayYmd,
+      currentTodayYmd,
     );
-  }, [archiveFilter, contactsById, dueFilter, initialTodayYmd, projects, query, statusFilter]);
+  }, [archiveFilter, contactsById, currentTodayYmd, dueFilter, projects, query, statusFilter]);
 
-  const prefetchProjectSnapshot = (projectId: string) => {
-    const token = `${host}:${projectId}`;
-    if (prefetchedSnapshotsRef.current.has(token)) return;
-    prefetchedSnapshotsRef.current.add(token);
-    void queryClient.prefetchQuery(projectPageSnapshotQueryOptions(host, projectId));
-  };
-
-  useEffect(() => {
-    if (!filteredProjects.length) return;
-    for (const project of filteredProjects.slice(0, 3)) {
-      prefetchProjectSnapshot(project.id);
-    }
-  }, [filteredProjects]);
+  const prepareProjectOpen = useCallback(
+    (projectId: string) => {
+      void preloadProjectOpen(queryClient, router, host, projectId);
+    },
+    [host, queryClient, router],
+  );
 
   const closeDeleteModal = () => {
     if (isDeleteBusy) return;
@@ -193,29 +148,16 @@ export default function ProjectsIndexClient({
     setDeleteReason('');
   };
 
-  const cellKey = (id: string, field: EditableField) => `${id}:${field}`;
-
-  const beginEdit = useCallback((project: Project, field: EditableField, currentValue: string) => {
-    if (savingCellKey) return;
+  const beginEdit = useCallback((project: Project, field: ProjectIndexEditableField, currentValue: string) => {
+    if (projectMutations.isCellPending(project.id, field)) return;
     setEditing({ id: project.id, field, value: currentValue });
-  }, [savingCellKey]);
+  }, [projectMutations]);
 
   const cancelEdit = useCallback(() => {
     setEditing(null);
   }, []);
 
-  const patchContactPhoneInCache = useCallback(
-    (contactId: string, nextPhone: string) => {
-      const queryKey = qk.contacts.list(host);
-      queryClient.setQueryData<Contact[] | undefined>(queryKey, (current) => {
-        if (!Array.isArray(current)) return current;
-        return current.map((c) => (c.id === contactId ? { ...c, phone: nextPhone } : c));
-      });
-    },
-    [host, queryClient],
-  );
-
-  const commitEdit = useCallback(async () => {
+  const commitEdit = useCallback(() => {
     if (!editing) return;
     const project = projects.find((p) => p.id === editing.id);
     if (!project) {
@@ -225,7 +167,6 @@ export default function ProjectsIndexClient({
 
     const trimmed = editing.value.trim();
     const field = editing.field;
-    const projectId = editing.id;
 
     if (field === 'name' && !trimmed) {
       toast.error('Project name is required.');
@@ -251,46 +192,10 @@ export default function ProjectsIndexClient({
       return;
     }
 
-    const key = cellKey(projectId, field);
-    setSavingCellKey(key);
-
-    const body: Record<string, unknown> = {};
-    if (field === 'name') body.project = { projectName: trimmed };
-    else if (field === 'address') body.project = { siteAddress: trimmed };
-    else if (field === 'phone') body.contact = { phone: trimmed };
-
-    try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/details`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => null);
-        const msg = typeof errBody?.error === 'string' ? errBody.error : 'Failed to save change.';
-        throw new Error(msg);
-      }
-
-      if (field === 'name') {
-        patchProjectListItem(queryClient, host, projectId, (p) => ({ ...p, projectName: trimmed, name: trimmed }));
-      } else if (field === 'address') {
-        patchProjectListItem(queryClient, host, projectId, (p) => ({ ...p, siteAddress: trimmed, address: trimmed }));
-      } else if (field === 'phone' && project.contactId) {
-        patchContactPhoneInCache(project.contactId, trimmed);
-      }
-
-      await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
-      if (field === 'phone') {
-        await queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) });
-      }
-      setEditing(null);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save change.';
-      toast.error(msg);
-    } finally {
-      setSavingCellKey(null);
-    }
-  }, [contactsById, editing, host, patchContactPhoneInCache, projects, queryClient, toast]);
+    const contact = project.contactId ? contactsById.get(project.contactId) ?? null : null;
+    void projectMutations.saveInlineEdit({ project, contact, field, value: trimmed });
+    setEditing(null);
+  }, [contactsById, editing, projectMutations, projects, toast]);
 
   const handleEditKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -307,31 +212,12 @@ export default function ProjectsIndexClient({
   );
 
   const applyStageCorrection = useCallback(
-    async (projectId: string, nextStage: PipelineStageKey, label: string, reasonText: string | null) => {
-      setSavingStatusId(projectId);
-      try {
-        const result = await correctProjectStage(projectId, stageKeyToStatus(nextStage), {
-          reason: reasonText,
-        });
-        if (result.rollback) {
-          toast.success(`Stage corrected to ${label}. Reset ${result.resetManualTaskCount} manual checkmark(s).`);
-        } else {
-          toast.success(`Stage corrected to ${label}.`);
-        }
-        patchProjectListItem(queryClient, host, projectId, (p) => ({
-          ...p,
-          status: stageKeyToStatus(nextStage),
-        }));
-        await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to update stage.';
-        toast.error(msg);
-        throw err;
-      } finally {
-        setSavingStatusId(null);
-      }
+    (projectId: string, nextStage: PipelineStageKey, label: string, reasonText: string | null) => {
+      const project = projects.find((entry) => entry.id === projectId);
+      if (!project) return;
+      void projectMutations.correctStage(project, { projectId, nextStage, reason: reasonText }, label);
     },
-    [host, queryClient, toast],
+    [projectMutations, projects],
   );
 
   const handleStatusChange = useCallback(
@@ -359,7 +245,6 @@ export default function ProjectsIndexClient({
   );
 
   const closeStatusConfirm = () => {
-    if (statusBusy) return;
     setStatusConfirm(null);
     setStatusConfirmText('');
     setStatusReason('');
@@ -371,31 +256,9 @@ export default function ProjectsIndexClient({
         PROJECT_STATUS_ORDER.indexOf(stageKeyToStatus(statusConfirm.current) as ProjectStatus),
   );
 
-  const toggleArchive = async (project: Project) => {
-    if (archiveBusyId) return;
-    const willArchive = !project.isArchived;
-    setArchiveBusyId(project.id);
-    try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(project.id)}/details`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          project: { archivedAt: willArchive ? new Date().toISOString() : null },
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const msg = typeof body?.error === 'string' ? body.error : willArchive ? 'Failed to archive project' : 'Failed to unarchive project';
-        throw new Error(msg);
-      }
-      toast.success(willArchive ? 'Project archived.' : 'Project restored.');
-      await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update archive state';
-      toast.error(msg);
-    } finally {
-      setArchiveBusyId(null);
-    }
+  const toggleArchive = (project: Project) => {
+    if (projectMutations.isArchivePending(project.id)) return;
+    void projectMutations.setArchived(project, !project.isArchived);
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
@@ -409,7 +272,11 @@ export default function ProjectsIndexClient({
     : '';
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      data-projects-index-state={projectsIndex.state}
+      data-projects-index-background-ready={projectsIndex.backgroundReady ? 'true' : 'false'}
+    >
       <PageHeader
         title="Projects"
         right={
@@ -428,18 +295,18 @@ export default function ProjectsIndexClient({
       />
 
       <ListCountBanner
-        totalCount={initialProjectsTotalCount}
+        totalCount={projectsIndex.data?.projects.totalCount ?? null}
         visibleCount={projects.length}
         entityLabelSingular="project"
         entityLabelPlural="projects"
-        truncated={initialProjectsTruncated}
+        truncated={projectsIndex.data?.projects.truncated ?? false}
       />
       <ListCountBanner
-        totalCount={initialContactsTotalCount}
+        totalCount={projectsIndex.data?.contacts.totalCount ?? null}
         visibleCount={contacts.length}
         entityLabelSingular="contact"
         entityLabelPlural="contacts"
-        truncated={initialContactsTruncated}
+        truncated={projectsIndex.data?.contacts.truncated ?? false}
       />
 
       <div className={styles.stack}>
@@ -508,9 +375,19 @@ export default function ProjectsIndexClient({
         <section className={styles.section} aria-label="Projects list">
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>All Projects</h2>
-            <span className={styles.muted} suppressHydrationWarning>
-              {filteredProjects.length} shown
-            </span>
+            <div className={styles.muted} suppressHydrationWarning>
+              {projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? 'Updating…' : null}
+              {projectsIndex.state === 'fresh' ? `${filteredProjects.length} shown` : null}
+              {projectsIndex.state === 'unavailable' ? 'Access unavailable' : null}
+              {projectsIndex.state === 'refresh-failed' ? (
+                <>
+                  {projects.length ? 'Refresh failed · ' : null}
+                  <button type="button" className={styles.link} onClick={() => void projectsIndex.retry()}>
+                    Retry
+                  </button>
+                </>
+              ) : null}
+            </div>
           </div>
           <div className={styles.sectionBody}>
             {filteredProjects.length ? (
@@ -533,19 +410,18 @@ export default function ProjectsIndexClient({
                       const nameValue = (p.projectName ?? p.name ?? '').trim();
                       const phoneValue = (contact?.phone ?? (p as { phone?: string }).phone ?? '').trim();
                       const addressValue = (p.siteAddress ?? p.address ?? '').trim();
-                      const isArchiveBusy = archiveBusyId === p.id;
-                      const isStatusBusyRow = savingStatusId === p.id;
+                      const isArchiveBusy = projectMutations.isArchivePending(p.id);
+                      const isStatusBusyRow = projectMutations.isStagePending(p.id);
                       const phoneEditable = Boolean(p.contactId);
 
                       const renderEditable = (
-                        field: EditableField,
+                        field: ProjectIndexEditableField,
                         currentValue: string,
                         placeholder: string,
                         editable: boolean,
                       ) => {
-                        const key = cellKey(p.id, field);
                         const isEditing = editing?.id === p.id && editing.field === field;
-                        const isSavingCell = savingCellKey === key;
+                        const isSavingCell = projectMutations.isCellPending(p.id, field);
 
                         if (isEditing) {
                           return (
@@ -581,9 +457,8 @@ export default function ProjectsIndexClient({
                             }}
                             onKeyDown={(e) => e.stopPropagation()}
                           >
-                            {isSavingCell ? 'Saving…' : currentValue || (
-                              <span className={styles.muted}>{placeholder}</span>
-                            )}
+                            {currentValue || <span className={styles.muted}>{placeholder}</span>}
+                            {isSavingCell ? <span className={styles.syncStatus}>Saving…</span> : null}
                           </button>
                         );
                       };
@@ -594,17 +469,23 @@ export default function ProjectsIndexClient({
                           className={styles.rowClickable}
                           tabIndex={0}
                           onClick={() => {
-                            prefetchProjectSnapshot(p.id);
-                            router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
+                            prepareProjectOpen(p.id);
+                            openProject(p.id);
                           }}
                           onMouseEnter={(e) => {
-                            prefetchProjectSnapshot(p.id);
+                            prepareProjectOpen(p.id);
                             handleRowMouseEnter(p.id, e);
                           }}
                           onMouseLeave={() => handleRowMouseLeave()}
-                          onFocus={() => prefetchProjectSnapshot(p.id)}
+                          onFocus={() => prepareProjectOpen(p.id)}
+                          onPointerDown={() => prepareProjectOpen(p.id)}
+                          onTouchStart={() => prepareProjectOpen(p.id)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              prepareProjectOpen(p.id);
+                              openProject(p.id);
+                            }
                           }}
                         >
                           <td>{renderEditable('name', nameValue, 'Project name', true)}</td>
@@ -651,8 +532,19 @@ export default function ProjectsIndexClient({
                             <div className={styles.rowActions}>
                               <Link
                                 className={styles.link}
-                                href={`/staff/projects/${encodeURIComponent(p.id)}`}
-                                onClick={(e) => e.stopPropagation()}
+                                href={projectDetailHref(p.id)}
+                                prefetch={false}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                                  e.preventDefault();
+                                  prepareProjectOpen(p.id);
+                                  openProject(p.id);
+                                }}
+                                onFocus={() => prepareProjectOpen(p.id)}
+                                onMouseEnter={() => prepareProjectOpen(p.id)}
+                                onPointerDown={() => prepareProjectOpen(p.id)}
+                                onTouchStart={() => prepareProjectOpen(p.id)}
                               >
                                 Open
                               </Link>
@@ -662,7 +554,7 @@ export default function ProjectsIndexClient({
                                 disabled={isArchiveBusy}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void toggleArchive(p);
+                                  toggleArchive(p);
                                 }}
                                 onKeyDown={(e) => e.stopPropagation()}
                               >
@@ -699,6 +591,17 @@ export default function ProjectsIndexClient({
                   </tbody>
                 </table>
               </div>
+            ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
+              <p className={styles.note}>Updating projects…</p>
+            ) : projectsIndex.state === 'unavailable' ? (
+              <p className={styles.note}>Your account cannot access the Projects list.</p>
+            ) : projectsIndex.state === 'refresh-failed' ? (
+              <p className={styles.note}>
+                Projects could not be loaded.{' '}
+                <button type="button" className={styles.link} onClick={() => void projectsIndex.retry()}>
+                  Retry
+                </button>
+              </p>
             ) : (
               <p className={styles.note}>
                 {projects.length ? 'No projects match this filter.' : 'No projects yet. Click “New Project” to create one.'}
@@ -776,7 +679,8 @@ export default function ProjectsIndexClient({
                     setDeleteTarget(null);
                     setDeleteConfirmText('');
                     setDeleteReason('');
-                    await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+                    removeProjectListItem(queryClient, host, deleteTarget.id);
+                    await invalidateProjectsIndexCaches(queryClient, host);
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Failed to delete project';
                     toast.error(msg);
@@ -805,33 +709,25 @@ export default function ProjectsIndexClient({
               <button
                 type="button"
                 className={PIPELINE_MODAL_ACTION_CLASSES.primary}
-                disabled={statusBusy || (isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET')}
+                disabled={isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET'}
                 onClick={() => {
-                  if (!statusConfirm || statusBusy) return;
-                  setStatusBusy(true);
-                  void applyStageCorrection(
+                  if (!statusConfirm) return;
+                  applyStageCorrection(
                     statusConfirm.projectId,
                     statusConfirm.next,
                     statusConfirm.label,
                     statusReason.trim() || null,
-                  )
-                    .then(() => {
-                      setStatusConfirm(null);
-                      setStatusConfirmText('');
-                      setStatusReason('');
-                    })
-                    .catch(() => {
-                      // toast surfaced by applyStageCorrection
-                    })
-                    .finally(() => setStatusBusy(false));
+                  );
+                  setStatusConfirm(null);
+                  setStatusConfirmText('');
+                  setStatusReason('');
                 }}
               >
-                {statusBusy ? 'Applying…' : `Move to ${statusConfirm.label}`}
+                {`Move to ${statusConfirm.label}`}
               </button>
               <button
                 type="button"
                 className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
-                disabled={statusBusy}
                 onClick={closeStatusConfirm}
               >
                 Cancel

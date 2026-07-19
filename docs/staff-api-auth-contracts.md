@@ -5,6 +5,9 @@ This doc is the current-state reference for staff, admin, and public-token route
 ## Route Families
 
 - Staff workflow routes live mainly under `apps/portal/app/api/staff/v1` plus older staff-owned routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, `apps/portal/app/api/estimates`, and `apps/portal/app/api/quotes`.
+- `GET /api/staff/v1/projects/index?archive=active|archived|all` is the staff-authenticated Projects-list read model. It uses `requireStaffContext()`, returns project/contact row-count and truncation metadata with diagnostics, and is always `private, no-store`.
+- `GET /api/staff/v1/projects/[projectId]/summary` is the staff-authenticated direct-link shell read. It returns only the RLS-visible project/contact summary needed to make the header and tabs useful while the existing complete snapshot query continues; it is always `private, no-store`.
+- `GET /api/staff/v1/contacts/index` is the staff-authenticated Contacts-list read model. It uses `requireStaffContext()` and the canonical paginated contact loader, returns row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - Admin routes live under `apps/portal/app/api/admin` and must enforce admin role checks.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/api/quotes`.
 - Public invoice routes live under `apps/marketing/app/invoice/[invoiceId]` and `apps/marketing/app/api/invoices`.
@@ -27,6 +30,10 @@ Admin routes should use helpers from `apps/portal/lib/api/adminApi.ts`:
 - Admin-only failures should distinguish `401 Unauthorized` from `403 Forbidden`.
 
 Do not add ad hoc session checks to new staff/admin routes when a helper already exists.
+
+Nested server layouts and pages share one request-scoped portal-access lookup through React `cache()`. That lookup performs one verified `auth.getUser()` call and one `portal_users` role lookup for the render, but it is never stored in a process-wide or cross-request cache. API requests independently reverify access and continue to use auth-bound Supabase clients, so request memoisation cannot cross users or weaken RLS.
+
+Verified-claims auth was measured as an alternative. In the current fresh-server CI shape, the JWKS/auth cold path made every cold route slower, so the boundary remains one request-scoped `getUser()` plus the database role lookup until a cold-safe claims strategy is proven. Do not trade server verification for browser claims or a process-global private cache.
 
 ## Supabase Client Boundaries
 
@@ -61,6 +68,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Use `logPortalServerError()` or `logPortalServerWarn()` for route-owned server logs.
 - Keep response bodies stable and small: success payloads should return the resource or `{ ok: true }`; errors should return `{ error: string }` plus documented extra fields such as conflict codes.
 - Validate JSON with `parseJsonBody()` before reading request payload fields.
+- Complete project snapshots reject an errored subordinate relationship read. Network or database failure must remain a refresh failure with Retry, not a fresh response containing misleading empty workflow arrays.
 - Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
 
 ## Route Ownership

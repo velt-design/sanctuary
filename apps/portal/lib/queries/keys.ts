@@ -6,12 +6,18 @@ export const qk = {
   },
   contacts: {
     list: (host: string) => ['contacts', host, 'list'] as const,
+    index: (scope: string) => ['contacts', scope, 'index'] as const,
+    indexPrefix: (scope: string) => ['contacts', scope, 'index'] as const,
     detail: (host: string, id: string) => ['contacts', host, 'detail', id] as const,
   },
   projects: {
     list: (host: string, scope: 'active' | 'all' = 'active') => ['projects', host, 'list', scope] as const,
     listPrefix: (host: string) => ['projects', host, 'list'] as const,
+    index: (host: string, archive: 'active' | 'archived' | 'all') =>
+      ['projects', host, 'index', archive] as const,
+    indexPrefix: (host: string) => ['projects', host, 'index'] as const,
     detail: (host: string, id: string) => ['projects', host, 'detail', id] as const,
+    summary: (host: string, id: string) => ['projects', host, 'summary', id] as const,
     snapshot: (host: string, id: string) => ['projects', host, 'snapshot', id] as const,
     byContact: (host: string, contactId: string) => ['projects', host, 'byContact', contactId] as const,
     tooltipSummary: (host: string, id: string) => ['projects', host, 'tooltipSummary', id] as const,

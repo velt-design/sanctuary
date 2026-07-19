@@ -304,6 +304,15 @@
   display: grid;
 }
 
+.viewportLoading {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  color: rgba(var(--portal-text-rgb), 0.64);
+  font-size: var(--portal-font-sm);
+  font-weight: 700;
+}
+
 @media (max-width: 1120px) {
   .workbench {
     gap: var(--portal-density-6);

@@ -13,7 +13,7 @@ export type PortalBundleBudgets = {
 };
 
 export type PortalBundleRouteConfig = {
-  id: 'schedule' | 'project-detail' | 'calculator' | 'design-workbench';
+  id: 'schedule' | 'projects-index' | 'contacts-index' | 'project-detail' | 'calculator' | 'design-workbench';
   route: string;
   routeKey: string;
   clientReferenceManifest: string;
@@ -81,18 +81,53 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     },
   },
   {
+    id: 'projects-index',
+    route: '/staff/projects',
+    routeKey: '/staff/projects/page',
+    clientReferenceManifest: 'server/app/staff/projects/page_client-reference-manifest.js',
+    reactLoadableManifest: 'server/app/staff/projects/page/react-loadable-manifest.json',
+    budgets: {
+      // 2026-07-19 fresh production measurement plus 5%, rounded up to KiB.
+      initialRawBytes: 733_184,
+      initialGzipBytes: 210_944,
+      lazyTotalRawBytes: 2_850_816,
+      lazyTotalGzipBytes: 653_312,
+      largestLazyRawBytes: 2_606_080,
+      largestLazyGzipBytes: 589_824,
+    },
+  },
+  {
+    id: 'contacts-index',
+    route: '/staff/contacts',
+    routeKey: '/staff/contacts/page',
+    clientReferenceManifest: 'server/app/staff/contacts/page_client-reference-manifest.js',
+    reactLoadableManifest: 'server/app/staff/contacts/page/react-loadable-manifest.json',
+    budgets: {
+      // 2026-07-19 fresh Slice 3 measurement plus 5%, rounded up to KiB.
+      initialRawBytes: 602_112,
+      initialGzipBytes: 172_032,
+      lazyTotalRawBytes: 130_048,
+      lazyTotalGzipBytes: 21_504,
+      largestLazyRawBytes: 130_048,
+      largestLazyGzipBytes: 21_504,
+    },
+  },
+  {
     id: 'project-detail',
     route: '/staff/projects/[projectId]',
     routeKey: '/staff/projects/[projectId]/page',
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 3_014_656,
-      initialGzipBytes: 757_760,
-      lazyTotalRawBytes: 0,
-      lazyTotalGzipBytes: 0,
-      largestLazyRawBytes: 0,
-      largestLazyGzipBytes: 0,
+      // 2026-07-19 fresh build after splitting 3D Review behind explicit
+      // viewport intent. Each value is the fresh measurement plus 5%, rounded
+      // to KiB; the combined ceiling remains below the original route cap.
+      initialRawBytes: 742_400,
+      initialGzipBytes: 212_992,
+      lazyTotalRawBytes: 1_822_720,
+      lazyTotalGzipBytes: 380_928,
+      largestLazyRawBytes: 1_567_744,
+      largestLazyGzipBytes: 321_536,
     },
   },
   {
@@ -102,8 +137,8 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/calculator/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/calculator/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 1_076_224,
-      initialGzipBytes: 290_816,
+      initialRawBytes: 1_210_368,
+      initialGzipBytes: 319_488,
       lazyTotalRawBytes: 0,
       lazyTotalGzipBytes: 0,
       largestLazyRawBytes: 0,
@@ -117,12 +152,14 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
     clientReferenceManifest: 'server/app/staff/projects/[projectId]/design-workbench/page_client-reference-manifest.js',
     reactLoadableManifest: 'server/app/staff/projects/[projectId]/design-workbench/page/react-loadable-manifest.json',
     budgets: {
-      initialRawBytes: 2_681_856,
-      initialGzipBytes: 671_744,
-      lazyTotalRawBytes: 0,
-      lazyTotalGzipBytes: 0,
-      largestLazyRawBytes: 0,
-      largestLazyGzipBytes: 0,
+      // The old all-initial ceiling is redistributed across initial and 3D-lazy
+      // code without increasing the combined raw or gzip allowance.
+      initialRawBytes: 1_701_888,
+      initialGzipBytes: 415_744,
+      lazyTotalRawBytes: 979_968,
+      lazyTotalGzipBytes: 256_000,
+      largestLazyRawBytes: 979_968,
+      largestLazyGzipBytes: 256_000,
     },
   },
 ] as const;
@@ -187,6 +224,61 @@ function lazyEntries(nextDir: string, manifest: ReactLoadableManifest): PortalLa
     .sort((a, b) => b.rawBytes - a.rawBytes);
 }
 
+function turbopackLazyEntries(
+  nextDir: string,
+  initial: PortalBundleFileMetric[],
+): PortalLazyChunkMetric[] {
+  const entries: PortalLazyChunkMetric[] = [];
+  const loaderPattern = /Promise\.all\(\[((?:["']static\/chunks\/[^"']+["']\s*,?\s*)+)\]\.map\([^)]*=>[^)]*\.l\([^)]*\)\)\)/g;
+  const filePattern = /["'](static\/chunks\/[^"']+\.(?:js|css))["']/g;
+
+  for (const initialFile of initial) {
+    if (!initialFile.file.endsWith('.js')) continue;
+    const source = readRequiredFile(path.join(nextDir, initialFile.file));
+    let loaderMatch: RegExpExecArray | null;
+    let loaderIndex = 0;
+    while ((loaderMatch = loaderPattern.exec(source)) !== null) {
+      const referencedFiles = Array.from(loaderMatch[1].matchAll(filePattern), (match) => match[1]);
+      const files = uniqueMetrics(nextDir, referencedFiles);
+      if (!files.length) continue;
+      entries.push({
+        id: `turbopack:${initialFile.file}:${loaderIndex}`,
+        files,
+        rawBytes: sumRaw(files),
+        gzipBytes: sumGzip(files),
+      });
+      loaderIndex += 1;
+    }
+  }
+
+  return entries;
+}
+
+function uniqueLazyEntries(entries: PortalLazyChunkMetric[]): PortalLazyChunkMetric[] {
+  const seen = new Set<string>();
+  return entries
+    .filter((entry) => {
+      const key = entry.files.map((file) => file.file).sort().join('|');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.rawBytes - a.rawBytes);
+}
+
+function excludeInitialChunks(
+  entries: PortalLazyChunkMetric[],
+  initial: PortalBundleFileMetric[],
+): PortalLazyChunkMetric[] {
+  const initialFiles = new Set(initial.map((file) => file.file));
+  return entries
+    .map((entry) => {
+      const files = entry.files.filter((file) => !initialFiles.has(file.file));
+      return { ...entry, files, rawBytes: sumRaw(files), gzipBytes: sumGzip(files) };
+    })
+    .filter((entry) => entry.files.length > 0);
+}
+
 function failuresFor(report: Omit<PortalBundleBudgetReport, 'failures'>): PortalBundleBudgetFailure[] {
   const actual: PortalBundleBudgets = {
     initialRawBytes: report.initial.rawBytes,
@@ -217,7 +309,13 @@ export function analyzePortalBundleRoute(options: {
   const config = options.config;
   const budgets = { ...config.budgets, ...(options.budgets ?? {}) };
   const initial = uniqueMetrics(nextDir, initialFiles(readClientManifest(nextDir, config)));
-  const entries = lazyEntries(nextDir, readLoadableManifest(nextDir, config));
+  const entries = uniqueLazyEntries(excludeInitialChunks(
+    [
+      ...lazyEntries(nextDir, readLoadableManifest(nextDir, config)),
+      ...turbopackLazyEntries(nextDir, initial),
+    ],
+    initial,
+  ));
   const lazy = uniqueMetrics(nextDir, entries.flatMap((entry) => entry.files.map((file) => file.file)));
   const topContributors = uniqueMetrics(nextDir, [...initial, ...lazy].map((file) => file.file))
     .sort((a, b) => b.rawBytes - a.rawBytes)

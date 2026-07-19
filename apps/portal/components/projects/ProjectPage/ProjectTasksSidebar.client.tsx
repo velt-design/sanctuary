@@ -14,14 +14,24 @@ import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { patchProjectTasksSnapshot } from '@/lib/localFirst/portalEntities';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import {
+  restoreManualTask,
+  withManualTaskCompletion,
+  type ProjectTaskItem,
+} from './projectTaskMutationState';
 
-type TaskItem = ProjectPageSnapshot['tasks']['items'][number];
+type TaskItem = ProjectTaskItem;
 
 type TaskMutationResponse = {
   ok?: boolean;
   taskKey?: string;
   completed?: boolean;
   stageMoved?: { fromStage: string; toStage: string };
+};
+
+type TaskSaveFailure = {
+  completed: boolean;
+  message: string;
 };
 
 const AUTO_ADVANCE_MANUAL_TASKS = new Set(['confirm_schedule', 'invoice_paid']);
@@ -49,9 +59,11 @@ export default function ProjectTasksSidebarClient({
   const queryClient = useQueryClient();
   const toast = useToast();
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
-  const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<TaskItem[]>(tasks.items);
-  const [pendingTaskSaves, setPendingTaskSaves] = useState(0);
+  const itemsRef = useRef<TaskItem[]>(tasks.items);
+  const [pendingTaskKeys, setPendingTaskKeys] = useState<Set<string>>(() => new Set());
+  const pendingTaskKeysRef = useRef<Set<string>>(new Set());
+  const [taskSaveFailures, setTaskSaveFailures] = useState<Record<string, TaskSaveFailure>>({});
   const [stageModalOpen, setStageModalOpen] = useState(false);
   const [stageModalError, setStageModalError] = useState<string | null>(null);
   const [stageModalBusy, setStageModalBusy] = useState(false);
@@ -66,6 +78,8 @@ export default function ProjectTasksSidebarClient({
   const pendingRefresh = useRef(false);
 
   useEffect(() => {
+    if (pendingTaskKeysRef.current.size > 0) return;
+    itemsRef.current = tasks.items;
     setItems(tasks.items);
   }, [tasks.items]);
 
@@ -158,6 +172,9 @@ export default function ProjectTasksSidebarClient({
   };
 
   const toggleManualTask = async (taskKey: string, completed: boolean) => {
+    if (pendingTaskKeysRef.current.has(taskKey)) return;
+    const previousTask = itemsRef.current.find((item) => item.key === taskKey);
+    if (!previousTask) return;
     const isAutoAdvanceCompletion = completed && AUTO_ADVANCE_MANUAL_TASKS.has(taskKey);
 
     if (isAutoAdvanceCompletion) {
@@ -165,11 +182,14 @@ export default function ProjectTasksSidebarClient({
     } else {
       setStageCompleteIntent(projectId, stageKey);
     }
-    setError(null);
-    const previous = items;
-    const nextItems = items.map((item) =>
-      item.key === taskKey ? { ...item, isDone: completed, isManualDone: completed } : item,
-    );
+    setTaskSaveFailures((current) => {
+      if (!current[taskKey]) return current;
+      const next = { ...current };
+      delete next[taskKey];
+      return next;
+    });
+    const nextItems = withManualTaskCompletion(itemsRef.current, taskKey, completed);
+    itemsRef.current = nextItems;
     setItems(nextItems);
     patchProjectTasksSnapshot(queryClient, hostKey, projectId, nextItems);
     const nextOpenCount = nextItems.filter(isOpenTask).length;
@@ -183,8 +203,11 @@ export default function ProjectTasksSidebarClient({
       setConfirmArchive(false);
     }
 
+    const nextPendingTaskKeys = new Set(pendingTaskKeysRef.current).add(taskKey);
+    pendingTaskKeysRef.current = nextPendingTaskKeys;
+    setPendingTaskKeys(nextPendingTaskKeys);
+
     try {
-      setPendingTaskSaves((count) => count + 1);
       const response = await apiJson<TaskMutationResponse>(`/api/projects/${encodeURIComponent(projectId)}/tasks`, {
         method: 'POST',
         body: JSON.stringify({
@@ -202,8 +225,10 @@ export default function ProjectTasksSidebarClient({
       pendingRefresh.current = false;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update task';
-      setItems(previous);
-      patchProjectTasksSnapshot(queryClient, hostKey, projectId, previous);
+      const rolledBackItems = restoreManualTask(itemsRef.current, previousTask);
+      itemsRef.current = rolledBackItems;
+      setItems(rolledBackItems);
+      patchProjectTasksSnapshot(queryClient, hostKey, projectId, rolledBackItems);
       if (shouldOpenStageModal) {
         setStageModalOpen(true);
         setStageModalError(msg);
@@ -213,9 +238,19 @@ export default function ProjectTasksSidebarClient({
       setPendingAction(null);
       setPendingDate('');
       pendingRefresh.current = false;
-      setError(msg);
+      setTaskSaveFailures((current) => ({
+        ...current,
+        [taskKey]: { completed, message: msg },
+      }));
+      void invalidateProjectReadCaches(queryClient, hostKey, projectId, {
+        includeProjectDetail: false,
+        includeProjectsList: false,
+      });
     } finally {
-      setPendingTaskSaves((count) => Math.max(0, count - 1));
+      const remainingPendingTaskKeys = new Set(pendingTaskKeysRef.current);
+      remainingPendingTaskKeys.delete(taskKey);
+      pendingTaskKeysRef.current = remainingPendingTaskKeys;
+      setPendingTaskKeys(remainingPendingTaskKeys);
     }
   };
 
@@ -355,7 +390,7 @@ export default function ProjectTasksSidebarClient({
   const stageDescription = `No open tasks for ${stageLabel}.`;
   const isTierStep = stageModalStep === 'siteVisitTier';
   const taskSyncLabel =
-    pendingTaskSaves > 0 ? 'Saving task changes…' : null;
+    pendingTaskKeys.size > 0 ? 'Saving task changes…' : null;
 
   return (
     <>
@@ -366,7 +401,23 @@ export default function ProjectTasksSidebarClient({
         </div>
         <div className={legacy.sectionBody}>
           <p className={legacy.muted}>Stage: {stageLabel}</p>
-          {error ? <p className={legacy.error}>{error}</p> : null}
+          {Object.entries(taskSaveFailures).map(([taskKey, failure]) => {
+            const taskLabel = items.find((item) => item.key === taskKey)?.label ?? 'task';
+            return (
+              <div key={taskKey} className={legacy.actions} role="status">
+                <p className={legacy.error}>{failure.message}</p>
+                <button
+                  type="button"
+                  className={legacy.buttonSecondary}
+                  disabled={pendingTaskKeys.has(taskKey)}
+                  aria-label={`Retry ${taskLabel}`}
+                  onClick={() => void toggleManualTask(taskKey, failure.completed)}
+                >
+                  Retry
+                </button>
+              </div>
+            );
+          })}
           {taskSyncLabel ? <p className={legacy.note}>{taskSyncLabel}</p> : null}
 
           {visibleTasks.length ? (
@@ -375,7 +426,8 @@ export default function ProjectTasksSidebarClient({
                 const isManual = task.kind === 'manual';
                 const isDone = isCompleted(task);
                 const isLocked = Boolean(task.isLocked) && !isDone;
-                const isInteractive = isManual && !isLocked;
+                const isSavingTask = pendingTaskKeys.has(task.key);
+                const isInteractive = isManual && !isLocked && !isSavingTask;
                 const toggleNext = () => toggleManualTask(task.key, !(task.isManualDone ?? task.isDone));
                 const handleRowClick = (event: MouseEvent<HTMLDivElement>) => {
                   const target = event.target as HTMLElement | null;
@@ -389,7 +441,7 @@ export default function ProjectTasksSidebarClient({
                     key={task.key}
                     className={legacy.taskRow}
                     style={rowStyle}
-                    aria-disabled={isLocked || undefined}
+                    aria-disabled={isLocked || isSavingTask || undefined}
                     role={isInteractive ? 'button' : undefined}
                     tabIndex={isInteractive ? 0 : undefined}
                     onClick={isInteractive ? handleRowClick : undefined}
@@ -409,6 +461,7 @@ export default function ProjectTasksSidebarClient({
                         <input
                           type="checkbox"
                           checked={Boolean(task.isManualDone ?? task.isDone)}
+                          disabled={isSavingTask}
                           onChange={(event) => {
                             event.stopPropagation();
                             toggleNext();
@@ -422,7 +475,9 @@ export default function ProjectTasksSidebarClient({
                     )}
 
                     <div className={legacy.rowActions}>
-                      {isDone ? (
+                      {isSavingTask ? (
+                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>Saving…</span>
+                      ) : isDone ? (
                         <span className={`${legacy.statusPill} ${legacy.statusPillPaid}`}>Done</span>
                       ) : isLocked ? (
                         <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>Pending</span>

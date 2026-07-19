@@ -6,6 +6,7 @@ const DEFAULT_PORTAL_PLAYWRIGHT_DIST_DIR = '.next/playwright-fixture';
 const port = Number.parseInt(process.env.PORTAL_PLAYWRIGHT_PORT ?? String(DEFAULT_PORTAL_PLAYWRIGHT_PORT), 10);
 const baseURL = process.env.PORTAL_BASE_URL?.trim() || `http://127.0.0.1:${port}`;
 const portalPlaywrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim() || DEFAULT_PORTAL_PLAYWRIGHT_DIST_DIR;
+const useProductionPortal = process.env.PORTAL_PLAYWRIGHT_PRODUCTION === '1';
 
 export default defineConfig({
   testDir: './playwright',
@@ -29,10 +30,13 @@ export default defineConfig({
   webServer: process.env.PORTAL_BASE_URL
     ? undefined
     : {
-        command: `npm --prefix apps/portal run dev:playwright -- -p ${port}`,
+        command: useProductionPortal
+          ? `npm --prefix apps/portal run start -- -p ${port}`
+          : `npm --prefix apps/portal run dev:playwright -- -p ${port}`,
         env: {
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
-          PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir,
+          ENABLE_PORTAL_QA_FIXTURES: '1',
+          ...(useProductionPortal ? {} : { PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir }),
         },
         url: baseURL,
         reuseExistingServer: false,
@@ -53,7 +57,7 @@ export default defineConfig({
     },
     {
       name: 'portal-fixture',
-      testMatch: /portal\.(drawing-workbench|workbench-snapshot|workbench-fixture|workbench-performance)\.spec\.ts/,
+      testMatch: /portal\.(drawing-workbench|workbench-snapshot|workbench-fixture|workbench-performance|project-mutation-performance)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 1000 },

@@ -10,7 +10,7 @@ import {
   buildFixtureWorkbenchActions,
 } from './fixtureWorkbenchActionStubs';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { useDrawingWorkbenchStore } from '@/lib/drawings/state/useDrawingWorkbenchStore';
 import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
 import {
   buildPortalPageDebugExport,
@@ -78,19 +78,15 @@ export default function DesignWorkbenchFixtureClient({
     Record<string, Geometry3DViewportState>
   >({});
   const [hoveredObjectRef, setHoveredObjectRef] = useState<WorkbenchObjectRef | null>(null);
-  const store = useMemo(
-    () =>
-      buildDrawingWorkbenchStore({
-        draft: fixture.draft,
-        ui,
-        geometryIdentity: {
-          projectId: resolvedProjectId,
-          estimateId: fixture.estimate.id,
-          designRequestId: fixture.request.id,
-        },
-      }),
-    [fixture.draft, fixture.estimate.id, fixture.request.id, resolvedProjectId, ui],
-  );
+  const { store } = useDrawingWorkbenchStore({
+    draft: fixture.draft,
+    ui,
+    geometryIdentity: {
+      projectId: resolvedProjectId,
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+    },
+  });
   useEffect(() => {
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});

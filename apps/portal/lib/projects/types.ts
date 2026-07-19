@@ -88,3 +88,10 @@ export type ProjectPageSnapshotResponse = {
   snapshot: ProjectPageSnapshot;
   generatedAt: string;
 };
+
+export type ProjectSnapshotLoadState =
+  | 'pending'
+  | 'summary'
+  | 'fresh'
+  | 'refresh-failed'
+  | 'unavailable';

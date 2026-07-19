@@ -62,7 +62,7 @@ The post-breakaway workbench is object-first and intentionally strict:
 - Snapshot-only calculator designs are unsupported or empty in the live workbench. They are not synthesized into object-first geometry at runtime.
 - **New house forms are rectangle compositions; legacy free-form forms are read-only.** See [`docs/house-composition-vision.md`](house-composition-vision.md). PR-COMP1 ships the geometry primitives; subsequent phases land the workbench data model and the rectangle-tool UX.
 
-The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact.
+The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact. Runtime clients memoize a `DrawingWorkbenchSolvedBase` by draft/project identity and derive selection, visibility, and viewport UI from that base. UI-only changes must reuse the solved-model identity; a persisted draft or geometry-identity change creates the next solve.
 
 ## Runtime Boundaries
 
@@ -124,6 +124,8 @@ The workbench has two primary render surfaces:
 - `Geometry3DViewport`: the read/select 3D surface. It must not own drag handlers, gizmos, or commit paths.
 
 Both surfaces must read from the solved geometry spine. If Plan and 3D disagree, investigate the first failing artifact/geometry/status stage before changing paint order or styling.
+
+Plan and Sheet remain immediately available workbench surfaces. The Three-based 3D viewport is a separate loading boundary and preloads only from exact `3D Review` hover, focus, touch, or pointer intent; entering 3D without a completed preload shows a truthful local loading state. This changes code delivery only and does not create a second geometry source or alter either viewport's props.
 
 The live canvas Plan surface reports `data-plan-render-source="geometry-canvas"`. Fixture browser coverage treats that diagnostic value as the current canvas contract; `geometry` remains the separate SVG calculator-drawing value.
 

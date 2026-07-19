@@ -1,10 +1,10 @@
-import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import type { PipelineCounts } from '@/lib/dashboard/types';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { statusHref } from '@/lib/dashboard/links';
 import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/projects/pipelineDefinition';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 
 export default function PipelineCountsCard({ counts }: { counts: PipelineCounts }) {
   const normalized = toCanonicalStageCounts(counts);
@@ -36,14 +36,14 @@ export default function PipelineCountsCard({ counts }: { counts: PipelineCounts 
             {PIPELINE_STAGES.map((stage) => {
               const count = normalized[stage.key] ?? 0;
               return (
-                <Link
+                <ProjectsIndexLink
                   key={stage.key}
                   className={`${dash.pipelineCell} ${count > 0 ? dash.pipelineCellActive : ''}`}
                   href={statusHref(stage.key)}
                 >
                   <span className={dash.pipelineLabel}>{stage.label}</span>
                   <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{count}</span>
-                </Link>
+                </ProjectsIndexLink>
               );
             })}
           </div>

@@ -5,9 +5,13 @@ The portal uses local-first primitives for heavy staff editing flows where routi
 ## Core Files
 
 - `apps/portal/lib/localFirst/store.ts`: IndexedDB-backed persisted state, working copies, aliases, queue state.
+- `apps/portal/lib/localFirst/storeEntityTransitions.ts`: conditional working-copy completion and explicit entity retry transitions.
+- `apps/portal/lib/localFirst/storeSummary.ts`: runtime save/sign-out summaries derived from persisted state.
 - `apps/portal/lib/localFirst/queue.ts`: mutation handler registry and queue processing.
 - `apps/portal/lib/localFirst/runtime.ts`: runtime bootstrap.
 - `apps/portal/lib/localFirst/portalEntities.ts`: portal entity keys, mutation keys, optimistic cache patch helpers, payload shapes.
+- `apps/portal/lib/localFirst/contactDetails.ts`: Contact Detail draft ownership, stable entity keys, and coherent contact-cache patches.
+- `apps/portal/lib/localFirst/projectDetails.ts`: Project Detail draft ownership, stable entity keys, and query-cache patches.
 - `apps/portal/components/sync/LocalFirstRuntime.tsx`: starts runtime in the app.
 - `apps/portal/components/sync/LocalFirstPortalMutations.tsx`: registers portal mutation handlers.
 
@@ -23,6 +27,8 @@ Sign-out is immediate when there is no retained work. Queued, offline, conflicte
 
 Current portal local-first mutations:
 
+- `portal.project.details.update`
+- `portal.contact.details.update`
 - `portal.estimate.create`
 - `portal.estimate.update`
 - `portal.designRequest.create`
@@ -79,6 +85,7 @@ For table/RPC ownership, write paths, access boundaries, and migration sources u
 - Quotes tab draft creation/update.
 - Design request creation.
 - Contact/project cache patching around create/detail workflows.
+- Project Details full-draft autosave, ordered retry, terminal rollback, and reviewable rejected working copies.
 - Activity tab project notes (create/update/soft-delete).
 
 Spreadsheet surfaces use their own optimistic editing helpers and should stay aligned with local-first UX expectations.
