@@ -18,6 +18,6 @@ describe('infill geometry clipboard', () => {
 
     expect(patch).not.toHaveProperty('support');
     expect(merged.shape).toMatchObject({ widthM: '2.4', heightM: '2.1' });
-    expect(merged.support.edgeConfirmations).toEqual({ top: 'yes', bottom: 'unsure', left: 'unsure', right: 'unsure' });
+    expect(merged.support.edgeConfirmations).toEqual({ top: 'yes', bottom: 'no', left: 'no', right: 'no' });
   });
 });

@@ -77,19 +77,24 @@ async function attachCalculatorScreenshot(page: Page, testInfo: TestInfo, name: 
 
 test.describe.configure({ mode: 'serial' });
 
-test('authenticated calculator resolves and displays automatic choices', async ({ page }, testInfo) => {
-  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-automatic-selection' }, async () => {
+test('authenticated calculator makes system choices explicit on the supports stage', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-explicit-system-selection' }, async () => {
     const dialog = await openCustomInfill(page, 1600);
-    await dialog.getByText('Change automatic choices', { exact: true }).click();
-    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('auto');
-    await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('auto');
+    await expect(dialog.getByText('Change automatic choices', { exact: true })).toHaveCount(0);
+    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveCount(0);
     await expect(dialog.getByText('Required field.', { exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
     await expect(dialog.getByText('Enter the required opening measurements to continue.', { exact: true })).toBeVisible();
     await setNumber(dialog, 'Width (m)', '1.2');
     await setNumber(dialog, 'Height (m)', '1');
     await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
-    await openResults(dialog);
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+
+    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('sheet_panels');
+    await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('vertical');
+    await expect(dialog.getByLabel('Panel material', { exact: true }).getByRole('option')).toHaveCount(2);
+    await expect(dialog.getByLabel('Joiner direction', { exact: true }).getByRole('option')).toHaveCount(2);
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await expect(dialog.getByText('Panel material', { exact: true }).locator('..')).toContainText('Sheet panels');
     await expect(dialog.getByText('Joiner direction', { exact: true }).locator('..')).toContainText('Vertical');
@@ -166,11 +171,6 @@ test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, 
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-sheet-accuracy' }, async () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const dialog = await openCustomInfill(page, 1600);
-    await dialog.getByText('Change automatic choices', { exact: true }).click();
-    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('auto');
-    await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('auto');
-    await dialog.getByLabel('Panel material', { exact: true }).selectOption('sheet_panels');
-    await dialog.getByLabel('Joiner direction', { exact: true }).selectOption('vertical');
     await setNumber(dialog, 'Width (m)', '2.4');
     await setNumber(dialog, 'Height (m)', '2.1');
     await openResults(dialog);
@@ -219,12 +219,13 @@ test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, 
 test('authenticated calculator shows kerf-safe 3m x 1m strip purchasing at 1024px', async ({ page }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-strip-accuracy-1024' }, async () => {
     const dialog = await openCustomInfill(page, 1024);
-    await dialog.getByText('Change automatic choices', { exact: true }).click();
-    await dialog.getByLabel('Panel material', { exact: true }).selectOption('strip_620');
-    await dialog.getByLabel('Joiner direction', { exact: true }).selectOption('horizontal');
     await setNumber(dialog, 'Width (m)', '3');
     await setNumber(dialog, 'Height (m)', '1');
-    await openResults(dialog, true);
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await dialog.getByLabel('Panel material', { exact: true }).selectOption('strip_620');
+    await dialog.getByLabel('Joiner direction', { exact: true }).selectOption('horizontal');
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(dialog.getByRole('heading', { name: 'Pieces to cut', exact: true })).toBeVisible();
 
     const pieces = dialog.getByRole('table', { name: 'Pieces to cut · Infill cut list estimate' });
     const purchases = dialog.getByRole('table', { name: 'Materials to purchase · Infill cut list estimate' });
@@ -271,7 +272,7 @@ test('authenticated calculator shows kerf-safe 3m x 1m strip purchasing at 1024p
   });
 });
 
-test('authenticated calculator blocks unmanufacturable stock and routes the fix to Opening', async ({ page }, testInfo) => {
+test('authenticated calculator blocks unmanufacturable stock and routes material fixes to Existing supports', async ({ page }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-stock-blocker' }, async () => {
     const dialog = await openCustomInfill(page, 1600);
     await setNumber(dialog, 'Width (m)', '7');
@@ -282,7 +283,7 @@ test('authenticated calculator blocks unmanufacturable stock and routes the fix 
     await expect(dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
-    await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
+    await expect(dialog.getByRole('button', { name: /^2 Existing supports$/ })).toHaveAttribute('aria-current', 'step');
     await expect(dialog.getByLabel('Panel material', { exact: true })).toBeFocused();
   });
 });
@@ -315,7 +316,7 @@ test('authenticated calculator routes invalid partial-edge rafter matching to Ex
   });
 });
 
-test('authenticated calculator confirms uncertain supports with compact mobile progression at 768px', async ({ page }, testInfo) => {
+test('authenticated calculator uses explicit Yes or No supports with compact mobile progression at 768px', async ({ page }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-support-confirmation-768' }, async () => {
     const dialog = await openCustomInfill(page, 768);
     await expect(dialog.getByText('Step 1 of 3 — Opening', { exact: true })).toBeVisible();
@@ -329,12 +330,15 @@ test('authenticated calculator confirms uncertain supports with compact mobile p
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await expect(dialog.getByText('Step 2 of 3 — Existing supports', { exact: true })).toBeVisible();
+    await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('sheet_panels');
+    await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('vertical');
     const topEdge = dialog.getByRole('group', { name: 'Top edge', exact: true });
-    await expect(topEdge.getByLabel('Not sure — include a support', { exact: true })).toBeChecked();
-    await topEdge.getByLabel('Yes, a fixing member exists', { exact: true }).check();
+    await expect(topEdge.getByLabel('No — add a support', { exact: true })).toBeChecked();
+    await expect(topEdge.getByRole('radio')).toHaveCount(2);
+    await topEdge.getByLabel('Yes', { exact: true }).check();
     await expect(dialog.getByRole('img', { name: /labelled top, bottom, left and right edges/i })).toBeVisible();
     await expect(dialog.getByText('New support included', { exact: true })).toBeVisible();
-    await expect(dialog.getByText('The purchase plan includes 3 new 50×50 supports. Unconfirmed edges: bottom, left and right.', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('The purchase plan includes 3 new 50×50 supports.', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await expect(dialog.getByText('Step 3 of 3 — Results', { exact: true })).toBeVisible();

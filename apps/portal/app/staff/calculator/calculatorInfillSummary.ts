@@ -1,27 +1,13 @@
 import type { InfillLineItem } from '@/lib/types/calculator';
-import {
-  INFILL_SHEET_MAX_RUN_M,
-  INFILL_SHEET_MAX_SHORT_SIDE_M,
-  INFILL_STRIP_MAX_RUN_M,
-  INFILL_STRIP_MAX_SHORT_SIDE_M,
-  acrylicSourceLabel,
-  maxRunForAcrylicSource,
-  type InfillUiEstimate,
-} from './calculatorInfillUi';
+import type { InfillUiEstimate } from './calculatorInfillUi';
 
 type InfillSummaryUiState = {
   estimate: Pick<
     InfillUiEstimate,
-    | 'acrylicSourceAutoSwitched'
     | 'acrylicSourceUsed'
     | 'estimatedMullionsTotal'
-    | 'internalJoinerLinesEach'
     | 'maxCentreM'
-    | 'panelCountEach'
     | 'panelCountTotal'
-    | 'preferredAcrylicSource'
-    | 'runSideM'
-    | 'sheetAreaEachM2'
   >;
 };
 
@@ -47,13 +33,6 @@ type CalculatorInfillSummary = {
   line3: string | null;
   text: string;
   chips: InfillSummaryChip[];
-};
-
-type SelectedInfillSummaryCopy = {
-  selectedDraftGhostLine: string | null;
-  infillRunConstraintLine: string;
-  infillSpacingConstraintLine: string;
-  selectedAutoSwitchInlineHint: string | null;
 };
 
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
@@ -139,43 +118,5 @@ export function buildCalculatorInfillSummary(
     line3,
     text,
     chips,
-  };
-}
-
-export function buildSelectedInfillSummaryCopy({
-  selectedInfillEstimate,
-  selectedInfillIsDraft,
-  selectedLastValidEstimate,
-}: {
-  selectedInfillEstimate: InfillUiEstimate | null;
-  selectedInfillIsDraft: boolean;
-  selectedLastValidEstimate: InfillUiEstimate | null;
-}): SelectedInfillSummaryCopy {
-  const selectedDraftGhostLine =
-    selectedInfillIsDraft && selectedLastValidEstimate
-      ? `Last valid: ${selectedLastValidEstimate.panelCountEach} panels each, ${selectedLastValidEstimate.internalJoinerLinesEach} internal joiners, ${formatMaybeNumber(
-          selectedLastValidEstimate.sheetAreaEachM2,
-          2,
-        )}m2 area each.`
-      : null;
-
-  const infillRunConstraintLine = `Max run: ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m (sheet), ${formatMaybeNumber(INFILL_STRIP_MAX_RUN_M, 2)}m (strips).`;
-  const infillSpacingConstraintLine = `Max bay spacing: ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m (sheet), ${formatMaybeNumber(
-    INFILL_STRIP_MAX_SHORT_SIDE_M,
-    2,
-  )}m (strips).`;
-  const selectedAutoSwitchInlineHint =
-    selectedInfillEstimate?.acrylicSourceAutoSwitched && selectedInfillEstimate
-      ? `Will auto-switch to ${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)} because run ${formatMaybeNumber(
-          selectedInfillEstimate.runSideM,
-          2,
-        )}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(selectedInfillEstimate.preferredAcrylicSource), 2)}m.`
-      : null;
-
-  return {
-    selectedDraftGhostLine,
-    infillRunConstraintLine,
-    infillSpacingConstraintLine,
-    selectedAutoSwitchInlineHint,
   };
 }

@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { InfillSupportInput } from '@/lib/types/calculator';
 import {
-  getUnsureEdges,
+  explicitInfillSelectionPatch,
   inferEdgeConfirmations,
-  makeUnsureEdgeConfirmations,
+  makeNoEdgeConfirmations,
+  normalizeEdgeConfirmations,
   resolveSupportConfirmations,
-  supportConfirmationSummary,
   updateEdgeConfirmation,
 } from './infillSupportPresentation';
+import { makeDefaultInfillItem } from './calculatorInputs';
 
 const legacySupport = (overrides: Partial<InfillSupportInput> = {}): InfillSupportInput => ({
   hasTop: true,
@@ -32,7 +33,11 @@ describe('infill support confirmation presentation', () => {
     });
   });
 
-  it('resolves no and unsure conservatively while yes keeps the existing member', () => {
+  it('maps legacy unsure answers to No while preserving the conservative costing value', () => {
+    expect(normalizeEdgeConfirmations(
+      { top: 'yes', bottom: 'no', left: 'unsure', right: 'yes' },
+      legacySupport(),
+    )).toEqual({ top: 'yes', bottom: 'no', left: 'no', right: 'yes' });
     const support = resolveSupportConfirmations({
       ...legacySupport(),
       edgeConfirmations: { top: 'yes', bottom: 'no', left: 'unsure', right: 'yes' },
@@ -42,21 +47,26 @@ describe('infill support confirmation presentation', () => {
 
   it('updates one edge without losing other confirmations or internal support settings', () => {
     const support = updateEdgeConfirmation(
-      { ...legacySupport(), edgeConfirmations: makeUnsureEdgeConfirmations(), internalSupportMode: 'center' },
+      { ...legacySupport(), edgeConfirmations: makeNoEdgeConfirmations(), internalSupportMode: 'center' },
       'top',
       'yes',
     );
-    expect(support.edgeConfirmations).toEqual({ top: 'yes', bottom: 'unsure', left: 'unsure', right: 'unsure' });
+    expect(support.edgeConfirmations).toEqual({ top: 'yes', bottom: 'no', left: 'no', right: 'no' });
     expect(support).toMatchObject({ hasTop: true, hasBottom: false, hasLeft: false, hasRight: false, internalSupportMode: 'center' });
   });
 
-  it('explains uncertain edges as included supports rather than warnings', () => {
-    const support = updateEdgeConfirmation(
-      { ...legacySupport(), edgeConfirmations: makeUnsureEdgeConfirmations() },
-      'top',
-      'yes',
-    );
-    expect(getUnsureEdges(support)).toEqual(['bottom', 'left', 'right']);
-    expect(supportConfirmationSummary(support)).toBe('Unconfirmed edges: bottom, left and right.');
+  it('pins legacy automatic selections to the current resolved choices', () => {
+    const item = makeDefaultInfillItem({ acrylicSource: 'auto', panelOrientation: 'auto' });
+    expect(explicitInfillSelectionPatch(item, 'strip_620', 'horizontal')).toEqual({
+      acrylicSource: 'strip_620',
+      panelOrientation: 'horizontal',
+      targetPanelWidthM: '0.64',
+      maxPanelWidthM: '0.64',
+    });
+    expect(explicitInfillSelectionPatch(
+      makeDefaultInfillItem({ acrylicSource: 'sheet_panels', panelOrientation: 'vertical' }),
+      'strip_620',
+      'horizontal',
+    )).toBeNull();
   });
 });

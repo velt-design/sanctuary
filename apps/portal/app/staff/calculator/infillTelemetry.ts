@@ -9,7 +9,6 @@ type InfillTelemetryEventName =
   | 'infill_paste_geometry'
   | 'infill_delete'
   | 'infill_undo_delete'
-  | 'infill_auto_switch_triggered'
   | 'infill_warning_clicked'
   | 'infill_resolve_mode_open'
   | 'infill_resolve_apply_fix'

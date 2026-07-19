@@ -56,21 +56,25 @@ describe('calculator input defaults and normalization', () => {
     expect(module.infills).toEqual({ items: [] });
   });
 
-  it('defaults new infills to automatic material and direction while preserving saved manual choices', () => {
-    const automatic = normalizeInfillsStateForUi({ items: [{ id: 'new' }] }).items[0];
+  it('defaults new infills to explicit material, direction and No support answers while preserving saved choices', () => {
+    const defaults = normalizeInfillsStateForUi({ items: [{ id: 'new' }] }).items[0];
     const manual = normalizeInfillsStateForUi({
       items: [{ id: 'saved', acrylicSource: 'strip_620', panelOrientation: 'horizontal' }],
     }).items[0];
+    const legacyAutomatic = normalizeInfillsStateForUi({
+      items: [{ id: 'legacy-auto', acrylicSource: 'auto', panelOrientation: 'auto' }],
+    }).items[0];
 
-    expect(automatic).toMatchObject({ acrylicSource: 'auto', panelOrientation: 'auto' });
-    expect(automatic.support).toMatchObject({
+    expect(defaults).toMatchObject({ acrylicSource: 'sheet_panels', panelOrientation: 'vertical' });
+    expect(defaults.support).toMatchObject({
       hasTop: false,
       hasBottom: false,
       hasLeft: false,
       hasRight: false,
-      edgeConfirmations: { top: 'unsure', bottom: 'unsure', left: 'unsure', right: 'unsure' },
+      edgeConfirmations: { top: 'no', bottom: 'no', left: 'no', right: 'no' },
     });
     expect(manual).toMatchObject({ acrylicSource: 'strip_620', panelOrientation: 'horizontal' });
+    expect(legacyAutomatic).toMatchObject({ acrylicSource: 'auto', panelOrientation: 'auto' });
   });
 
   it('infers confirmations from legacy saved support booleans without repricing them', () => {
@@ -90,7 +94,7 @@ describe('calculator input defaults and normalization', () => {
     });
   });
 
-  it('preserves confirmation metadata when an infill is duplicated through the input factory', () => {
+  it('normalizes legacy unsure metadata to No when an infill is duplicated through the input factory', () => {
     const source = normalizeInfillsStateForUi({
       items: [{
         id: 'source',
@@ -105,19 +109,20 @@ describe('calculator input defaults and normalization', () => {
     }).items[0];
     const duplicate = normalizeInfillsStateForUi({ items: [{ ...source, id: 'copy' }] }).items[0];
 
+    expect(source.support.edgeConfirmations).toEqual({ top: 'yes', bottom: 'no', left: 'no', right: 'no' });
     expect(duplicate.support.edgeConfirmations).toEqual(source.support.edgeConfirmations);
     expect(duplicate.support).toMatchObject({ hasTop: true, hasBottom: false, hasLeft: false, hasRight: false });
   });
 
-  it('uses automatic choices for every new infill preset', () => {
+  it('uses explicit choices for every new infill preset', () => {
     const module = makeDefaultModule('pergola-a');
     const presets = ['front', 'house', 'side', 'gable_triangles', 'wall_panel', 'custom'] as const;
 
     for (const preset of presets) {
       expect(buildInfillItemsForPreset(module, preset).every((item) => (
-        item.acrylicSource === 'auto'
-        && item.panelOrientation === 'auto'
-        && Object.values(item.support.edgeConfirmations ?? {}).every((confirmation) => confirmation === 'unsure')
+        item.acrylicSource === 'sheet_panels'
+        && item.panelOrientation === 'vertical'
+        && Object.values(item.support.edgeConfirmations ?? {}).every((confirmation) => confirmation === 'no')
       ))).toBe(true);
     }
     expect(buildInfillItemsForPreset(module, 'custom')[0]?.shape).toMatchObject({ widthM: '', heightM: '' });

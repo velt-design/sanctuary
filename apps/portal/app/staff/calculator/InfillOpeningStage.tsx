@@ -4,7 +4,6 @@ import type {
   InfillLineItem,
   InfillMonoSlopeAnchorInput,
   InfillMonoSlopeModeInput,
-  InfillResolvedAcrylicSourceInput,
 } from '@/lib/types/calculator';
 import FieldTile from './FieldTile';
 import InfillShapeTemplatePicker from './InfillShapeTemplatePicker';
@@ -17,7 +16,7 @@ import {
 } from './infillOpeningTemplates';
 
 type OpeningErrors = Partial<Record<
-  'acrylicSource' | 'qty' | 'widthM' | 'heightM' | 'heightLowM' | 'heightHighM' | 'slopeDeg' | 'bottomOffsetM',
+  'qty' | 'widthM' | 'heightM' | 'heightLowM' | 'heightHighM' | 'slopeDeg' | 'bottomOffsetM',
   string
 >>;
 
@@ -25,18 +24,10 @@ type InfillOpeningStageProps = {
   item: InfillLineItem;
   domIdBase: string;
   errors: OpeningErrors;
-  automaticChoicesOpen: boolean;
-  automaticSwitchHint?: string | null;
-  runConstraintLine?: string;
-  acrylicAutoSwitched: boolean;
-  resolvedAcrylicSource: InfillResolvedAcrylicSourceInput;
-  resolvedAcrylicLabel: string;
   preview: ReactNode;
   getDraftValue: (field: InfillDraftFieldKey) => string;
-  onAutomaticChoicesToggle: (open: boolean) => void;
   onItemChange: (patch: Partial<InfillLineItem>) => void;
   onLocationChange: (location: InfillLineItem['location']) => void;
-  onAcrylicPreferenceChange: (source: InfillLineItem['acrylicSource']) => void;
   onShapeTemplateChange: (template: InfillOpeningTemplate) => void;
   onDraftChange: (field: InfillDraftFieldKey, value: string) => void;
   onDraftCommit: (field: InfillDraftFieldKey, value: string) => void;
@@ -57,18 +48,10 @@ export default function InfillOpeningStage({
   item,
   domIdBase,
   errors,
-  automaticChoicesOpen,
-  automaticSwitchHint,
-  runConstraintLine,
-  acrylicAutoSwitched,
-  resolvedAcrylicSource,
-  resolvedAcrylicLabel,
   preview,
   getDraftValue,
-  onAutomaticChoicesToggle,
   onItemChange,
   onLocationChange,
-  onAcrylicPreferenceChange,
   onShapeTemplateChange,
   onDraftChange,
   onDraftCommit,
@@ -257,50 +240,6 @@ export default function InfillOpeningStage({
             <FieldTile id={`${domIdBase}-qty`} label="Quantity" type="number" value={item.qty} onChange={(value) => onItemChange({ qty: String(value) })} error={errors.qty} />
           </div>
 
-          <details
-            className={`${styles.infillAutomaticChoices} ${styles.span12}`}
-            open={automaticChoicesOpen}
-            onToggle={(event) => onAutomaticChoicesToggle(event.currentTarget.open)}
-          >
-            <summary>Change automatic choices</summary>
-            <p>The calculator chooses the option needing the fewest extra supports, then the least stock and waste.</p>
-            <div className={styles.infillAutomaticChoicesGrid}>
-              <div>
-                <FieldTile
-                  id={`${domIdBase}-acrylic`}
-                  label="Panel material"
-                  type="select"
-                  value={item.acrylicSource}
-                  onChange={(value) => onAcrylicPreferenceChange(value as InfillLineItem['acrylicSource'])}
-                  options={[
-                    { label: 'Automatic (recommended)', value: 'auto' },
-                    { label: 'Sheet panels', value: 'sheet_panels' },
-                    { label: '620 strips', value: 'strip_620' },
-                  ]}
-                  helperText={automaticSwitchHint ?? runConstraintLine}
-                  error={errors.acrylicSource}
-                />
-                {acrylicAutoSwitched ? (
-                  <button type="button" className={styles.infillInlineAction} onClick={() => onAcrylicPreferenceChange(resolvedAcrylicSource)}>
-                    {`Use ${resolvedAcrylicLabel} as the preference`}
-                  </button>
-                ) : null}
-              </div>
-              <FieldTile
-                id={`${domIdBase}-joiner-direction`}
-                label="Joiner direction"
-                type="select"
-                value={item.panelOrientation}
-                onChange={(value) => onItemChange({ panelOrientation: value as InfillLineItem['panelOrientation'] })}
-                options={[
-                  { label: 'Automatic (recommended)', value: 'auto' },
-                  { label: 'Vertical joiners', value: 'vertical' },
-                  { label: 'Horizontal joiners', value: 'horizontal' },
-                ]}
-                helperText="Automatic chooses the direction needing the fewest joiners and new supports."
-              />
-            </div>
-          </details>
         </div>
       </section>
       <aside className={styles.infillGuidedPreview} aria-label="Opening preview">{preview}</aside>

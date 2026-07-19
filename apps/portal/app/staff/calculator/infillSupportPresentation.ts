@@ -1,17 +1,21 @@
 import type {
   InfillEdge,
-  InfillEdgeConfirmation,
   InfillEdgeConfirmations,
+  InfillLineItem,
+  InfillResolvedAcrylicSourceInput,
   InfillSupportInput,
 } from '@/lib/types/calculator';
 
 export const INFILL_EDGES: InfillEdge[] = ['top', 'bottom', 'left', 'right'];
+export type InfillEdgeAnswer = 'yes' | 'no';
+type InfillEdgeAnswers = Record<InfillEdge, InfillEdgeAnswer>;
+export type InfillResolvedPanelOrientation = Exclude<InfillLineItem['panelOrientation'], 'auto'>;
 
-export function makeUnsureEdgeConfirmations(): InfillEdgeConfirmations {
-  return { top: 'unsure', bottom: 'unsure', left: 'unsure', right: 'unsure' };
+export function makeNoEdgeConfirmations(): InfillEdgeConfirmations {
+  return { top: 'no', bottom: 'no', left: 'no', right: 'no' };
 }
 
-export function inferEdgeConfirmations(support: Pick<InfillSupportInput, 'hasTop' | 'hasBottom' | 'hasLeft' | 'hasRight'>): InfillEdgeConfirmations {
+export function inferEdgeConfirmations(support: Pick<InfillSupportInput, 'hasTop' | 'hasBottom' | 'hasLeft' | 'hasRight'>): InfillEdgeAnswers {
   return {
     top: support.hasTop ? 'yes' : 'no',
     bottom: support.hasBottom ? 'yes' : 'no',
@@ -20,8 +24,10 @@ export function inferEdgeConfirmations(support: Pick<InfillSupportInput, 'hasTop
   };
 }
 
-function isEdgeConfirmation(value: unknown): value is InfillEdgeConfirmation {
-  return value === 'yes' || value === 'no' || value === 'unsure';
+function normalizeEdgeAnswer(value: unknown, fallback: InfillEdgeAnswer): InfillEdgeAnswer {
+  if (value === 'yes') return 'yes';
+  if (value === 'no' || value === 'unsure') return 'no';
+  return fallback;
 }
 
 export function normalizeEdgeConfirmations(
@@ -32,10 +38,10 @@ export function normalizeEdgeConfirmations(
   if (!value || typeof value !== 'object') return inferred;
   const candidate = value as Partial<Record<InfillEdge, unknown>>;
   return {
-    top: isEdgeConfirmation(candidate.top) ? candidate.top : inferred.top,
-    bottom: isEdgeConfirmation(candidate.bottom) ? candidate.bottom : inferred.bottom,
-    left: isEdgeConfirmation(candidate.left) ? candidate.left : inferred.left,
-    right: isEdgeConfirmation(candidate.right) ? candidate.right : inferred.right,
+    top: normalizeEdgeAnswer(candidate.top, inferred.top),
+    bottom: normalizeEdgeAnswer(candidate.bottom, inferred.bottom),
+    left: normalizeEdgeAnswer(candidate.left, inferred.left),
+    right: normalizeEdgeAnswer(candidate.right, inferred.right),
   };
 }
 
@@ -54,7 +60,7 @@ export function resolveSupportConfirmations(support: InfillSupportInput): Infill
 export function updateEdgeConfirmation(
   support: InfillSupportInput,
   edge: InfillEdge,
-  confirmation: InfillEdgeConfirmation,
+  confirmation: InfillEdgeAnswer,
 ): InfillSupportInput {
   const current = normalizeEdgeConfirmations(support.edgeConfirmations, support);
   return resolveSupportConfirmations({
@@ -63,24 +69,18 @@ export function updateEdgeConfirmation(
   });
 }
 
-export function getUnsureEdges(support: InfillSupportInput, edges: InfillEdge[] = INFILL_EDGES): InfillEdge[] {
-  const resolved = normalizeEdgeConfirmations(support.edgeConfirmations, support);
-  return edges.filter((edge) => resolved[edge] === 'unsure');
-}
-
-export function supportConfirmationSummary(support: InfillSupportInput, edges: InfillEdge[] = INFILL_EDGES): string | null {
-  const unsureEdges = getUnsureEdges(support, edges);
-  if (!unsureEdges.length) return null;
-  const labels = unsureEdges.map((edge) => edge[0].toUpperCase() + edge.slice(1));
-  const edgeList = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;
-  return `Unconfirmed ${unsureEdges.length === 1 ? 'edge' : 'edges'}: ${edgeList.toLowerCase()}.`;
-}
-
-export function supportPlanningSummary(
-  additionalSupportSummary: string,
-  support: InfillSupportInput,
-  edges: InfillEdge[] = INFILL_EDGES,
-): string {
-  const confirmationSummary = supportConfirmationSummary(support, edges);
-  return confirmationSummary ? `${additionalSupportSummary} ${confirmationSummary}` : additionalSupportSummary;
+export function explicitInfillSelectionPatch(
+  item: InfillLineItem,
+  resolvedAcrylicSource: InfillResolvedAcrylicSourceInput,
+  resolvedPanelOrientation: InfillResolvedPanelOrientation,
+): Partial<InfillLineItem> | null {
+  const acrylicSource = item.acrylicSource === 'auto' ? resolvedAcrylicSource : item.acrylicSource;
+  const panelOrientation = item.panelOrientation === 'auto' ? resolvedPanelOrientation : item.panelOrientation;
+  if (acrylicSource === item.acrylicSource && panelOrientation === item.panelOrientation) return null;
+  const targetPanelWidthM = acrylicSource === 'strip_620' ? '0.64' : '1.2';
+  return {
+    acrylicSource,
+    panelOrientation,
+    ...(item.acrylicSource === 'auto' ? { targetPanelWidthM, maxPanelWidthM: targetPanelWidthM } : {}),
+  };
 }

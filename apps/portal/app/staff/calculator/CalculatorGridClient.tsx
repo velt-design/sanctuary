@@ -169,12 +169,9 @@ import {
   locationLabel,
   maxCentreForAcrylicSource,
   parseInfillsForPayload,
-  type InfillUiEstimate,
 } from './calculatorInfillUi';
-import {
-  buildCalculatorInfillSummary,
-  buildSelectedInfillSummaryCopy,
-} from './calculatorInfillSummary';
+import { buildCalculatorInfillSummary } from './calculatorInfillSummary';
+import { explicitInfillSelectionPatch } from './infillSupportPresentation';
 import {
   FLASHING_BAND_OPTIONS,
   FLASHING_PURPOSE_OPTIONS,
@@ -1707,7 +1704,6 @@ export default function CalculatorGridClient({
   const [infillDeleteTargetId, setInfillDeleteTargetId] = useState<string | null>(null);
   const [deletedInfill, setDeletedInfill] = useState<InfillDeletedState | null>(null);
   const [infillDuplicateOpen, setInfillDuplicateOpen] = useState(false);
-  const [infillAutomaticChoicesOpen, setInfillAutomaticChoicesOpen] = useState(false);
   const [infillCostDetailsOpen, setInfillCostDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
@@ -1718,8 +1714,6 @@ export default function CalculatorGridClient({
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
   const infillRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const infillListContainerRef = useRef<HTMLDivElement | null>(null);
-  const lastValidInfillEstimateRef = useRef<Record<string, InfillUiEstimate>>({});
-  const infillAutoSwitchByIdRef = useRef<Record<string, InfillLineItem['acrylicSource']>>({});
   const infillLastSelectionEventRef = useRef<string | null>(null);
   const infillModalOpenTrackedRef = useRef(false);
   const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
@@ -2310,39 +2304,6 @@ export default function CalculatorGridClient({
     [activeModule.lengthM, infillsState.items, roofRafterSpacingEstimate.spacingM, infillDraftById],
   );
 
-  useEffect(() => {
-    const next = { ...lastValidInfillEstimateRef.current };
-    let changed = false;
-    for (const item of infillsState.items) {
-      const ui = infillUiById.get(item.id);
-      if (!ui) continue;
-      if (ui.status === 'valid') {
-        next[item.id] = ui.estimate;
-        changed = true;
-      }
-    }
-    if (changed) lastValidInfillEstimateRef.current = next;
-  }, [infillsState.items, infillUiById]);
-
-  useEffect(() => {
-    const next: Record<string, InfillLineItem['acrylicSource']> = {};
-    for (const item of infillsState.items) {
-      const used = infillUiById.get(item.id)?.estimate.acrylicSourceUsed ?? item.acrylicSource;
-      const previous = infillAutoSwitchByIdRef.current[item.id];
-      if (previous && previous !== used) {
-        trackInfillEvent('infill_auto_switch_triggered', {
-          infill_id: item.id,
-          location: item.location,
-          shape: item.shape.type,
-          previous_used: previous,
-          current_used: used,
-        });
-      }
-      next[item.id] = used;
-    }
-    infillAutoSwitchByIdRef.current = next;
-  }, [infillUiById, infillsState.items]);
-
   const selectedInfill = useMemo(
     () => (selectedInfillId ? infillsState.items.find((item) => item.id === selectedInfillId) ?? infillsState.items[0] ?? null : infillsState.items[0] ?? null),
     [infillsState.items, selectedInfillId],
@@ -2618,19 +2579,6 @@ export default function CalculatorGridClient({
       acrossSideM={selectedInfillEstimate.acrossSideM}
     />
   ) : null;
-  const selectedLastValidEstimate = selectedInfill ? lastValidInfillEstimateRef.current[selectedInfill.id] ?? null : null;
-  const {
-    infillRunConstraintLine,
-    selectedAutoSwitchInlineHint,
-  } = useMemo(
-    () =>
-      buildSelectedInfillSummaryCopy({
-        selectedInfillEstimate,
-        selectedInfillIsDraft,
-        selectedLastValidEstimate,
-      }),
-    [selectedInfillEstimate, selectedInfillIsDraft, selectedLastValidEstimate],
-  );
   const { hasClipboard: infillHasClipboard, copyGeometry: copyInfillGeometry, pasteGeometry: pasteInfillGeometry } = useInfillClipboard();
 
   const setInfillAcrylicPreference = (infillId: string, source: InfillLineItem['acrylicSource']) => {
@@ -2640,6 +2588,18 @@ export default function CalculatorGridClient({
       targetPanelWidthM: targetWidth,
       maxPanelWidthM: targetWidth,
     });
+  };
+
+  const handleInfillStageChange = (nextStage: InfillConfiguratorStage) => {
+    if (nextStage !== 'opening' && selectedInfill && selectedInfillEstimate) {
+      const explicitPatch = explicitInfillSelectionPatch(
+        selectedInfill,
+        selectedInfillEstimate.acrylicSourceUsed,
+        selectedInfillEstimate.panelOrientationUsed,
+      );
+      if (explicitPatch) setInfillItem(selectedInfill.id, explicitPatch);
+    }
+    setInfillStage(nextStage);
   };
 
   const handleCopyInfillGeometry = async () => {
@@ -2681,10 +2641,7 @@ export default function CalculatorGridClient({
   const jumpToInfillWarningTarget = (warning: InfillWarningItem) => {
     if (!selectedInfill) return;
     const targetStage = stageForInfillWarning(warning);
-    if (targetStage === 'opening' && warning.target.fieldKey === 'acrylic') {
-      setInfillAutomaticChoicesOpen(true);
-    }
-    setInfillStage(targetStage);
+    handleInfillStageChange(targetStage);
     trackInfillEvent('infill_warning_clicked', {
       infill_id: selectedInfill.id,
       warning_id: warning.id,
@@ -2767,7 +2724,6 @@ export default function CalculatorGridClient({
       warnings: selectedComputedWarnings.length,
     });
     setInfillsOpen(false);
-    setInfillAutomaticChoicesOpen(false);
     setInfillCostDetailsOpen(false);
   };
 
@@ -4367,7 +4323,7 @@ export default function CalculatorGridClient({
           stage={infillStage}
           openingComplete={selectedOpeningComplete}
           blockerCount={selectedCriticalWarnings.length}
-          onStageChange={setInfillStage}
+          onStageChange={handleInfillStageChange}
           editorHeader={selectedInfill ? (
             <InfillEditorHeader
               items={infillsState.items}
@@ -4420,18 +4376,10 @@ export default function CalculatorGridClient({
                         item={selectedInfill}
                         domIdBase={selectedInfillDomIdBase}
                         errors={selectedInfillValidation.errors}
-                        automaticChoicesOpen={infillAutomaticChoicesOpen}
-                        automaticSwitchHint={selectedAutoSwitchInlineHint}
-                        runConstraintLine={infillRunConstraintLine}
-                        acrylicAutoSwitched={selectedInfillEstimate.acrylicSourceAutoSwitched}
-                        resolvedAcrylicSource={selectedInfillEstimate.acrylicSourceUsed}
-                        resolvedAcrylicLabel={acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}
                         preview={selectedInfillPreview}
                         getDraftValue={(field) => getInfillDraftValue(selectedInfill, field)}
-                        onAutomaticChoicesToggle={setInfillAutomaticChoicesOpen}
                         onItemChange={(patch) => setInfillItem(selectedInfill.id, patch)}
                         onLocationChange={(location) => setInfillLocation(selectedInfill.id, location)}
-                        onAcrylicPreferenceChange={(source) => setInfillAcrylicPreference(selectedInfill.id, source)}
                         onShapeTemplateChange={(template) => {
                           const nextShape = applyInfillOpeningTemplate(selectedInfill.shape, template);
                           if (nextShape === selectedInfill.shape) return;
@@ -4484,8 +4432,13 @@ export default function CalculatorGridClient({
                         domIdBase={selectedInfillDomIdBase}
                         canOfferRafterMatching={selectedCanOfferRafterMatching}
                         internalPositionsError={selectedInfillValidation.errors.internalSupportPositionsM}
+                        acrylicSourceError={selectedInfillValidation.errors.acrylicSource}
                         additionalSupportSummary={addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}
+                        acrylicSource={selectedInfill.acrylicSource === 'auto' ? selectedInfillEstimate.acrylicSourceUsed : selectedInfill.acrylicSource}
+                        panelOrientation={selectedInfill.panelOrientation === 'auto' ? selectedInfillEstimate.panelOrientationUsed : selectedInfill.panelOrientation}
                         preview={selectedInfillPreview}
+                        onAcrylicSourceChange={(source) => setInfillAcrylicPreference(selectedInfill.id, source)}
+                        onPanelOrientationChange={(panelOrientation) => setInfillItem(selectedInfill.id, { panelOrientation })}
                         onSupportChange={(support) => setInfillItem(selectedInfill.id, { support })}
                         onInternalModeChange={(nextMode) => {
                           setInfillItem(selectedInfill.id, {

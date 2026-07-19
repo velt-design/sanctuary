@@ -72,13 +72,13 @@ describe('infill configurator presentation', () => {
     expect(infillResultStatus(state).title).toBe('Cannot manufacture');
   });
 
-  it('routes stock-fit blockers back to the opening stage', () => {
+  it('routes stock-fit blockers to the supports stage where material is selected', () => {
     const state = resolveInfillUiState(makeInfill({
       shape: { type: 'rect', widthM: '7', heightM: '7', bottomOffsetM: '0' },
     }), 0.9);
     const blocker = state.warnings.find((warning) => warning.severity === 'error');
 
     expect(blocker).toBeDefined();
-    expect(stageForInfillWarning(blocker!)).toBe('opening');
+    expect(stageForInfillWarning(blocker!)).toBe('supports');
   });
 });

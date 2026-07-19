@@ -9,7 +9,7 @@ export const INFILL_CONFIGURATOR_STAGES: Array<{ id: InfillConfiguratorStage; la
 ];
 
 export function stageForInfillWarning(warning: InfillWarningItem): InfillConfiguratorStage {
-  return warning.target.section === 'supports' ? 'supports' : 'opening';
+  return warning.target.section === 'supports' || warning.target.fieldKey === 'acrylic' ? 'supports' : 'opening';
 }
 
 export function canVisitInfillStage(stage: InfillConfiguratorStage, openingComplete: boolean): boolean {

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InfillLineItem } from '@/lib/types/calculator';
 import { estimateInfillUi, type InfillUiEstimate } from './calculatorInfillUi';
-import {
-  buildCalculatorInfillSummary,
-  buildSelectedInfillSummaryCopy,
-} from './calculatorInfillSummary';
+import { buildCalculatorInfillSummary } from './calculatorInfillSummary';
 
 function makeBaseInfill(overrides?: Partial<InfillLineItem>): InfillLineItem {
   const base: InfillLineItem = {
@@ -126,47 +123,4 @@ describe('calculator infill summary helpers', () => {
     expect(summary.usedSpacingSummary).toBe('0.64m to 1.20m');
   });
 
-  it('builds selected-infill copy for draft state and auto-switch constraints', () => {
-    const lastValidEstimate = estimateInfillUi(makeBaseInfill(), 0.9);
-    const selectedInfillEstimate = estimateInfillUi(
-      makeBaseInfill({
-        shape: {
-          type: 'rect',
-          widthM: '2.4',
-          heightM: '3.4',
-          bottomOffsetM: '0',
-        },
-      }),
-      0.9,
-    );
-
-    const copy = buildSelectedInfillSummaryCopy({
-      selectedInfillEstimate,
-      selectedInfillIsDraft: true,
-      selectedLastValidEstimate: lastValidEstimate,
-    });
-
-    expect(copy.selectedDraftGhostLine).toBe(
-      `Last valid: ${lastValidEstimate.panelCountEach} panels each, ${lastValidEstimate.internalJoinerLinesEach} internal joiners, ${lastValidEstimate.sheetAreaEachM2.toFixed(
-        2,
-      )}m2 area each.`,
-    );
-    expect(copy.infillRunConstraintLine).toBe('Max run: 3.05m (sheet), 6.00m (strips).');
-    expect(copy.infillSpacingConstraintLine).toBe('Max bay spacing: 1.20m (sheet), 0.64m (strips).');
-    expect(copy.selectedAutoSwitchInlineHint).toBe('Will auto-switch to 620 strips because run 3.40m exceeds 3.05m.');
-  });
-
-  it('omits draft and auto-switch copy for valid unchanged estimates', () => {
-    const selectedInfillEstimate = estimateInfillUi(makeBaseInfill(), 0.9);
-    const copy = buildSelectedInfillSummaryCopy({
-      selectedInfillEstimate,
-      selectedInfillIsDraft: false,
-      selectedLastValidEstimate: null,
-    });
-
-    expect(copy.selectedDraftGhostLine).toBeNull();
-    expect(copy.selectedAutoSwitchInlineHint).toBeNull();
-    expect(copy.infillRunConstraintLine).toBe('Max run: 3.05m (sheet), 6.00m (strips).');
-    expect(copy.infillSpacingConstraintLine).toBe('Max bay spacing: 1.20m (sheet), 0.64m (strips).');
-  });
 });

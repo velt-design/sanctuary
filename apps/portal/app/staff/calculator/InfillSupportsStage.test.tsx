@@ -11,16 +11,22 @@ afterEach(() => {
 });
 
 describe('InfillSupportsStage', () => {
-  it('shows explicit accessible choices and maps unsure to a planned support', () => {
+  it('shows explicit system selections and only Yes or No edge choices', () => {
     const item = makeDefaultInfillItem();
     const onSupportChange = vi.fn();
+    const onAcrylicSourceChange = vi.fn();
+    const onPanelOrientationChange = vi.fn();
     const { container, unmount } = renderIntoDocument(
       <InfillSupportsStage
         item={item}
         domIdBase="infill-test"
         canOfferRafterMatching={false}
         additionalSupportSummary="4 new supports are included."
+        acrylicSource="sheet_panels"
+        panelOrientation="vertical"
         preview={<div>Support diagram</div>}
+        onAcrylicSourceChange={onAcrylicSourceChange}
+        onPanelOrientationChange={onPanelOrientationChange}
         onSupportChange={onSupportChange}
         onInternalModeChange={vi.fn()}
         onCustomPositionsChange={vi.fn()}
@@ -28,10 +34,27 @@ describe('InfillSupportsStage', () => {
     );
 
     expect(container.querySelectorAll('fieldset')).toHaveLength(4);
-    expect(container.querySelectorAll('input[value="unsure"]:checked')).toHaveLength(4);
-    expect(container.textContent).toContain('Not sure — include a support');
-    expect(container.textContent).toContain('4 new supports are included. Unconfirmed edges: top, bottom, left and right.');
+    expect(container.querySelectorAll('input[value="no"]:checked')).toHaveLength(4);
+    expect(container.querySelectorAll('input[value="unsure"]')).toHaveLength(0);
+    expect(container.textContent).not.toContain('Not sure');
+    expect(container.textContent).toContain('Panel material');
+    expect(container.textContent).toContain('Joiner direction');
+    expect(container.textContent).toContain('4 new supports are included.');
     expect(container.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+
+    const material = container.querySelector('#infill-test-acrylic');
+    const direction = container.querySelector('#infill-test-joiner-direction');
+    if (!(material instanceof HTMLSelectElement) || !(direction instanceof HTMLSelectElement)) {
+      throw new Error('Missing explicit system selections.');
+    }
+    act(() => {
+      material.value = 'strip_620';
+      material.dispatchEvent(new Event('change', { bubbles: true }));
+      direction.value = 'horizontal';
+      direction.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(onAcrylicSourceChange).toHaveBeenCalledWith('strip_620');
+    expect(onPanelOrientationChange).toHaveBeenCalledWith('horizontal');
 
     const topYes = container.querySelector('input[name="infill-test-support-top-choice"][value="yes"]');
     if (!(topYes instanceof HTMLInputElement)) throw new Error('Missing top-edge yes choice.');
@@ -39,7 +62,7 @@ describe('InfillSupportsStage', () => {
     expect(onSupportChange).toHaveBeenCalledWith(expect.objectContaining({
       hasTop: true,
       hasBottom: false,
-      edgeConfirmations: expect.objectContaining({ top: 'yes', bottom: 'unsure' }),
+      edgeConfirmations: expect.objectContaining({ top: 'yes', bottom: 'no' }),
     }));
 
     unmount();
@@ -61,7 +84,11 @@ describe('InfillSupportsStage', () => {
         domIdBase="triangle-supports"
         canOfferRafterMatching={false}
         additionalSupportSummary="3 new supports are included."
+        acrylicSource="sheet_panels"
+        panelOrientation="vertical"
         preview={<div>Triangle support diagram</div>}
+        onAcrylicSourceChange={vi.fn()}
+        onPanelOrientationChange={vi.fn()}
         onSupportChange={vi.fn()}
         onInternalModeChange={vi.fn()}
         onCustomPositionsChange={vi.fn()}
@@ -72,8 +99,7 @@ describe('InfillSupportsStage', () => {
     expect(container.querySelector('input[name="triangle-supports-support-left-choice"]')).toBeNull();
     expect(container.textContent).toContain('Triangle point');
     expect(container.textContent).toContain('no fixing edge or support required');
-    expect(container.textContent).toContain('3 new supports are included. Unconfirmed edges: top, bottom and right.');
-    expect(container.textContent).not.toContain('top, bottom, left and right');
+    expect(container.textContent).toContain('3 new supports are included.');
 
     unmount();
   });

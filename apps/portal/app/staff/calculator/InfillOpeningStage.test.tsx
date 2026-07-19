@@ -17,16 +17,10 @@ describe('InfillOpeningStage', () => {
         item={item}
         domIdBase="infill-opening"
         errors={{}}
-        automaticChoicesOpen={false}
-        acrylicAutoSwitched={false}
-        resolvedAcrylicSource="sheet_panels"
-        resolvedAcrylicLabel="Sheet panels"
         preview={<div>Opening diagram</div>}
         getDraftValue={(field) => field === 'widthM' ? '1' : '1'}
-        onAutomaticChoicesToggle={vi.fn()}
         onItemChange={vi.fn()}
         onLocationChange={vi.fn()}
-        onAcrylicPreferenceChange={vi.fn()}
         onShapeTemplateChange={vi.fn()}
         onDraftChange={vi.fn()}
         onDraftCommit={vi.fn()}
@@ -46,6 +40,9 @@ describe('InfillOpeningStage', () => {
     expect(container.querySelector('[id$="shape-type"]')).toBeNull();
     expect(content).toContain('Bottom installation height');
     expect(content).toContain('does not change its cut size');
+    expect(content).not.toContain('Change automatic choices');
+    expect(content).not.toContain('Panel material');
+    expect(content).not.toContain('Joiner direction');
 
     unmount();
   });
@@ -68,16 +65,10 @@ describe('InfillOpeningStage', () => {
         item={item}
         domIdBase="triangle-opening"
         errors={{}}
-        automaticChoicesOpen={false}
-        acrylicAutoSwitched={false}
-        resolvedAcrylicSource="sheet_panels"
-        resolvedAcrylicLabel="Sheet panels"
         preview={<div>Triangle diagram</div>}
         getDraftValue={(field) => field === 'widthM' ? '2' : field === 'heightHighM' ? '1.5' : '0'}
-        onAutomaticChoicesToggle={vi.fn()}
         onItemChange={vi.fn()}
         onLocationChange={vi.fn()}
-        onAcrylicPreferenceChange={vi.fn()}
         onShapeTemplateChange={vi.fn()}
         onDraftChange={vi.fn()}
         onDraftCommit={vi.fn()}
@@ -105,16 +96,10 @@ describe('InfillOpeningStage', () => {
         item={item}
         domIdBase="calm-opening"
         errors={{ widthM: 'Required field.', heightM: 'Required field.' }}
-        automaticChoicesOpen={false}
-        acrylicAutoSwitched={false}
-        resolvedAcrylicSource="sheet_panels"
-        resolvedAcrylicLabel="Sheet panels"
         preview={<div>Opening diagram</div>}
         getDraftValue={() => ''}
-        onAutomaticChoicesToggle={vi.fn()}
         onItemChange={vi.fn()}
         onLocationChange={vi.fn()}
-        onAcrylicPreferenceChange={vi.fn()}
         onShapeTemplateChange={vi.fn()}
         onDraftChange={vi.fn()}
         onDraftCommit={onDraftCommit}

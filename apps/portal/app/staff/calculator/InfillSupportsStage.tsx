@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 
-import type { InfillEdge, InfillEdgeConfirmation, InfillLineItem } from '@/lib/types/calculator';
+import type { InfillEdge, InfillLineItem, InfillResolvedAcrylicSourceInput } from '@/lib/types/calculator';
 import FieldTile from './FieldTile';
 import styles from './CalculatorGrid.module.css';
 import { getTrianglePointSide } from './infillOpeningTemplates';
 import {
   INFILL_EDGES,
+  type InfillEdgeAnswer,
+  type InfillResolvedPanelOrientation,
   normalizeEdgeConfirmations,
-  supportPlanningSummary,
   updateEdgeConfirmation,
 } from './infillSupportPresentation';
 
@@ -18,10 +19,9 @@ const edgeLabels: Record<InfillEdge, string> = {
   right: 'Right edge',
 };
 
-const confirmationOptions: Array<{ value: InfillEdgeConfirmation; label: string }> = [
-  { value: 'yes', label: 'Yes, a fixing member exists' },
-  { value: 'no', label: 'No, add a support' },
-  { value: 'unsure', label: 'Not sure — include a support' },
+const confirmationOptions: Array<{ value: InfillEdgeAnswer; label: string }> = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No — add a support' },
 ];
 
 type InfillSupportsStageProps = {
@@ -29,8 +29,13 @@ type InfillSupportsStageProps = {
   domIdBase: string;
   canOfferRafterMatching: boolean;
   internalPositionsError?: string;
+  acrylicSourceError?: string;
   additionalSupportSummary: string;
+  acrylicSource: InfillResolvedAcrylicSourceInput;
+  panelOrientation: InfillResolvedPanelOrientation;
   preview: ReactNode;
+  onAcrylicSourceChange: (source: InfillResolvedAcrylicSourceInput) => void;
+  onPanelOrientationChange: (orientation: InfillResolvedPanelOrientation) => void;
   onSupportChange: (support: InfillLineItem['support']) => void;
   onInternalModeChange: (mode: NonNullable<InfillLineItem['support']['internalSupportMode']>) => void;
   onCustomPositionsChange: (positions: string[]) => void;
@@ -41,25 +46,56 @@ export default function InfillSupportsStage({
   domIdBase,
   canOfferRafterMatching,
   internalPositionsError,
+  acrylicSourceError,
   additionalSupportSummary,
+  acrylicSource,
+  panelOrientation,
   preview,
+  onAcrylicSourceChange,
+  onPanelOrientationChange,
   onSupportChange,
   onInternalModeChange,
   onCustomPositionsChange,
 }: InfillSupportsStageProps) {
   const confirmations = normalizeEdgeConfirmations(item.support.edgeConfirmations, item.support);
   const trianglePointSide = getTrianglePointSide(item.shape);
-  const activeEdges = INFILL_EDGES.filter((edge) => edge !== trianglePointSide);
-  const planningSummary = supportPlanningSummary(additionalSupportSummary, item.support, activeEdges);
   const internalMode = item.support.internalSupportMode ?? 'none';
 
   return (
     <div className={styles.infillGuidedStageGrid}>
       <section className={`${styles.infillSection} ${styles.infillSectionSecondary}`} aria-labelledby="infill-supports-heading">
         <div className={styles.infillStageHeading}>
-          <h3 id="infill-supports-heading">Confirm existing fixing members</h3>
-          <p>Check each labelled edge. If a member is missing or uncertain, the purchase list safely includes a new 50×50 support.</p>
+          <h3 id="infill-supports-heading">Choose the system and confirm supports</h3>
+          <p>Select the panel material and joiner direction, then answer Yes or No for each labelled edge.</p>
         </div>
+
+        <div className={styles.infillSupportSystemGrid}>
+          <FieldTile
+            id={`${domIdBase}-acrylic`}
+            label="Panel material"
+            type="select"
+            value={acrylicSource}
+            onChange={(value) => onAcrylicSourceChange(value as InfillResolvedAcrylicSourceInput)}
+            options={[
+              { label: 'Sheet panels', value: 'sheet_panels' },
+              { label: '620 strips', value: 'strip_620' },
+            ]}
+            error={acrylicSourceError}
+          />
+          <FieldTile
+            id={`${domIdBase}-joiner-direction`}
+            label="Joiner direction"
+            type="select"
+            value={panelOrientation}
+            onChange={(value) => onPanelOrientationChange(value as InfillResolvedPanelOrientation)}
+            options={[
+              { label: 'Vertical joiners', value: 'vertical' },
+              { label: 'Horizontal joiners', value: 'horizontal' },
+            ]}
+          />
+        </div>
+
+        <p className={styles.infillSupportPrompt}>Does an existing fixing member run along each edge?</p>
 
         <div className={styles.infillEdgeConfirmationGrid}>
           {INFILL_EDGES.map((edge) => edge === trianglePointSide ? (
@@ -123,7 +159,7 @@ export default function InfillSupportsStage({
           ) : null}
         </div>
 
-        <p className={styles.infillSupportResult} aria-live="polite">{planningSummary}</p>
+        <p className={styles.infillSupportResult} aria-live="polite">{additionalSupportSummary}</p>
       </section>
       <aside className={styles.infillGuidedPreview} aria-label="Support preview">{preview}</aside>
     </div>
