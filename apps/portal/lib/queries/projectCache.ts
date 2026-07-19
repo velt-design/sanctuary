@@ -57,9 +57,9 @@ export function getProjectSnapshotPlaceholderFromCaches(
   host: string,
   projectId: string,
 ): ProjectPageSnapshotResponse | undefined {
-  const activeProjects = queryClient.getQueryData<Project[]>(qk.projects.list(host, 'active'));
-  const allProjects = queryClient.getQueryData<Project[]>(qk.projects.list(host, 'all'));
-  const project = [...(activeProjects ?? []), ...(allProjects ?? [])].find((entry) => entry.id === projectId);
+  const project = (['active', 'all'] as const)
+    .flatMap((scope) => queryClient.getQueryData<Project[]>(qk.projects.list(host, scope)) ?? [])
+    .find((entry) => entry.id === projectId);
   if (!project) return undefined;
 
   const contacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));

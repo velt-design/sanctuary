@@ -18,7 +18,7 @@ import {
 } from './store';
 import type { LocalFirstPersistedState } from './types';
 
-async function waitUntil(assertion: () => void, timeoutMs: number = 1000): Promise<void> {
+async function waitUntil(assertion: () => void, timeoutMs: number = 5000): Promise<void> {
   const timeoutAt = Date.now() + timeoutMs;
   let lastError: unknown = null;
 

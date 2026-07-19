@@ -140,6 +140,23 @@ describe('ProjectSnapshotPageClient', () => {
     rendered.unmount();
   });
 
+  it('keeps the cached summary visible when the browser is offline', () => {
+    useQueryMock.mockReturnValue({
+      data: summaryResponse,
+      error: new TypeError('Failed to fetch'),
+      isPlaceholderData: true,
+      refetch: refetchMock,
+    });
+
+    const rendered = renderClient();
+
+    expect(rendered.container.querySelector('[data-project-snapshot-state="refresh-failed"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Cached Project');
+    expect(rendered.container.textContent).toContain('last known details');
+
+    rendered.unmount();
+  });
+
   it.each([401, 403, 404])('hides cached project data after an access-ending %s response', (status) => {
     useQueryMock.mockReturnValue({
       data: summaryResponse,

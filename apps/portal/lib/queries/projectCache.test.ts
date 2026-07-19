@@ -54,13 +54,18 @@ describe('projectCache helpers', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.estimates.metaByProject('host', 'proj_123') });
   });
 
-  it.each(['active', 'all'] as const)('builds a summary from the %s project cache and enriches it from contacts', (scope) => {
+  it.each([
+    ['active', 'active', false],
+    ['archived', 'all', true],
+    ['all', 'all', false],
+  ] as const)('builds a summary from the %s project view cache and enriches it from contacts', (_view, scope, isArchived) => {
     const values = new Map<string, unknown>([
       [JSON.stringify(qk.projects.list('host', scope)), [{
         id: 'proj_123',
         contactId: 'ct_1',
         projectName: 'Beach House',
         status: 'QUOTING',
+        isArchived,
         createdAt: '2026-03-01T00:00:00.000Z',
         updatedAt: '2026-03-02T00:00:00.000Z',
       }]],
