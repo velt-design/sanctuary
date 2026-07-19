@@ -96,6 +96,11 @@ export type DrawingWorkbenchStore = {
   };
 };
 
+type DrawingWorkbenchSolvedBase = {
+  projectModel: WorkbenchProjectModel;
+  solvedModel: WorkbenchSolvedModel;
+};
+
 function objectFirstDraftFromEstimateDraft(
   draft: EstimateDrawingDraft | null | undefined,
 ): unknown {
@@ -142,18 +147,36 @@ function activeTrustIssuesForObjectState(input: {
   return issues;
 }
 
-export function buildDrawingWorkbenchStore(input: {
+type DrawingWorkbenchSolveInput = {
   draft?: EstimateDrawingDraft | null;
-  ui: DrawingWorkbenchUiState;
   geometryIdentity?: WorkbenchGeometryIdentity | null;
   projectModel?: WorkbenchProjectModel | null;
-}): DrawingWorkbenchStore {
+};
+
+export function buildDrawingWorkbenchSolvedBase(
+  input: DrawingWorkbenchSolveInput,
+): DrawingWorkbenchSolvedBase {
   const projectModel =
     input.projectModel ??
     buildWorkbenchProjectModelFromObjectFirstDraft(
       objectFirstDraftFromEstimateDraft(input.draft) as Partial<ObjectFirstWorkbenchDraftVNext> | null,
     ) ??
     EMPTY_WORKBENCH_PROJECT_MODEL;
+  return {
+    projectModel,
+    solvedModel: buildWorkbenchSolvedModel({
+      geometryIdentity: input.geometryIdentity,
+      projectModel,
+    }),
+  };
+}
+
+export function buildDrawingWorkbenchStore(input: DrawingWorkbenchSolveInput & {
+  ui: DrawingWorkbenchUiState;
+  solvedBase?: DrawingWorkbenchSolvedBase;
+}): DrawingWorkbenchStore {
+  const solvedBase = input.solvedBase ?? buildDrawingWorkbenchSolvedBase(input);
+  const projectModel = solvedBase.projectModel;
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const objectFirstDecks = projectModel.decks;
   const objectFirstOpenings = projectModel.openings;
@@ -165,10 +188,7 @@ export function buildDrawingWorkbenchStore(input: {
     openingIds: objectFirstOpenings.map((opening) => opening.id),
   });
 
-  const solvedModel = buildWorkbenchSolvedModel({
-    geometryIdentity: input.geometryIdentity,
-    projectModel,
-  });
+  const solvedModel = solvedBase.solvedModel;
   const solvedProject = buildWorkbenchSolvedProject({
     solvedModel,
     activePergolaId: ui.activePergolaId,

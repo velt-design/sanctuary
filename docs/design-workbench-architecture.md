@@ -62,7 +62,7 @@ The post-breakaway workbench is object-first and intentionally strict:
 - Snapshot-only calculator designs are unsupported or empty in the live workbench. They are not synthesized into object-first geometry at runtime.
 - **New house forms are rectangle compositions; legacy free-form forms are read-only.** See [`docs/house-composition-vision.md`](house-composition-vision.md). PR-COMP1 ships the geometry primitives; subsequent phases land the workbench data model and the rectangle-tool UX.
 
-The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact.
+The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact. Runtime clients memoize a `DrawingWorkbenchSolvedBase` by draft/project identity and derive selection, visibility, and viewport UI from that base. UI-only changes must reuse the solved-model identity; a persisted draft or geometry-identity change creates the next solve.
 
 ## Runtime Boundaries
 

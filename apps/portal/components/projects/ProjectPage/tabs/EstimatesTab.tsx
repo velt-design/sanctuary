@@ -74,7 +74,7 @@ import { discardLocalFirstEntityQueue, listAliasedLocalFirstEntityKeys, writeLoc
 import {
   createDrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { useDrawingWorkbenchStore } from '@/lib/drawings/state/useDrawingWorkbenchStore';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -812,14 +812,10 @@ export default function EstimatesTab({
     const specs = getModuleSpecs(drawingDetail?.calculatorSnapshot ?? null);
     return specs.map((spec, idx) => formatModuleLine(spec, idx));
   }, [drawingDetail?.calculatorSnapshot]);
-  const drawingWorkbenchStore = useMemo(
-    () =>
-      buildDrawingWorkbenchStore({
-        draft: drawingDraft,
-        ui: drawingWorkbenchUi,
-      }),
-    [drawingDraft, drawingWorkbenchUi],
-  );
+  const { store: drawingWorkbenchStore } = useDrawingWorkbenchStore({
+    draft: drawingDraft,
+    ui: drawingWorkbenchUi,
+  });
   const salesPerson = selectedMeta?.createdBy ?? null;
   const drawingModuleIndex = 0;
   const activeDrawingModuleInput = useMemo(() => {

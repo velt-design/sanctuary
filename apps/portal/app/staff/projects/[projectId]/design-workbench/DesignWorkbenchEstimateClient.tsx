@@ -7,6 +7,7 @@ import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPerg
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { useDrawingWorkbenchStore } from '@/lib/drawings/state/useDrawingWorkbenchStore';
 import {
   areDrawingWorkbenchVisibilityStatesEqual,
   buildDrawingWorkbenchObjectSelectionState,
@@ -170,18 +171,11 @@ export default function DesignWorkbenchEstimateClient({
     [effectiveDrawingDraft, effectiveDrawingDraftSignature, lastSavedDraftSignature],
   );
 
-  const store = useMemo(
-    () =>
-      buildDrawingWorkbenchStore({
-        draft: effectiveDrawingDraft,
-        ui,
-        geometryIdentity: {
-          projectId: estimate.projectId,
-          estimateId: estimate.id,
-        },
-      }),
-    [effectiveDrawingDraft, estimate.id, estimate.projectId, ui],
-  );
+  const { solvedBase, store } = useDrawingWorkbenchStore({
+    draft: effectiveDrawingDraft,
+    ui,
+    geometryIdentity: { projectId: estimate.projectId, estimateId: estimate.id },
+  });
 
   // PR-WB-VIEWPORT-PERSIST (2026-06-19): the previous version of
   // this effect reset viewport transforms (pan/zoom) on every
@@ -233,8 +227,8 @@ export default function DesignWorkbenchEstimateClient({
 
   useEffect(() => {
     const draftStore = buildDrawingWorkbenchStore({
-      draft: effectiveDrawingDraft,
       ui: createDrawingWorkbenchUiState(),
+      solvedBase,
     });
     setUi((current) => {
       const activeRef = current.activeObjectRef;
@@ -272,7 +266,7 @@ export default function DesignWorkbenchEstimateClient({
         }),
       };
     });
-  }, [effectiveDrawingDraft]);
+  }, [solvedBase]);
 
   useEffect(() => {
     if (hasUnsavedWorkbenchDraft && draftSaveState.status === 'saved') {
