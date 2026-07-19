@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 type ProjectInstantNavigationValue = {
   showProject: (href: string, view: ReactNode) => void;
@@ -20,6 +20,7 @@ const ProjectInstantNavigationContext = createContext<ProjectInstantNavigationVa
 
 export default function ProjectInstantNavigationProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [instantView, setInstantView] = useState<ReactNode | null>(null);
   const [restoreList, setRestoreList] = useState(false);
   const listViewRef = useRef<ReactNode | null>(null);
@@ -31,8 +32,9 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   const showProject = useCallback((href: string, view: ReactNode) => {
     setRestoreList(false);
     setInstantView(view);
-    window.history.pushState(null, '', href);
-  }, []);
+    window.history.pushState(null, '', `${href}?tab=activity`);
+    router.replace(href, { scroll: false });
+  }, [router]);
 
   useEffect(() => {
     const handlePopState = () => {
