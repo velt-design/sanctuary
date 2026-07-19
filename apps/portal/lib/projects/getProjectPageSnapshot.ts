@@ -223,43 +223,15 @@ export async function getProjectPageSnapshot(
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
 
-  const { data: projectRow, error: projectError } = await client
-    .from('projects')
-    .select('*')
-    .eq('id', projectUuid)
-    .maybeSingle();
-
-  if (projectError || !projectRow) return null;
-
-  const normalizedStage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
-  const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
-  const contactIdRaw = pickString(projectRow.contact_id, projectRow.contactId);
-  const contactUuid = contactIdRaw ? safeUuidFromAppId(contactIdRaw, 'ct') : null;
-  const projectIdOut = (() => {
-    const raw = String(projectRow.id ?? projectId);
-    if (raw.startsWith('proj_')) return raw;
-    if (isUuid(raw)) return appIdFromUuid('proj', raw);
-    return projectId;
-  })();
-  const projectName = pickString(projectRow.projectName, projectRow.project_name, projectRow.name, 'Project') ?? 'Project';
-  const siteAddress = pickString(projectRow.site_address, projectRow.siteAddress, projectRow.address);
-  const region = pickString(projectRow.region);
-  const quoteRef = pickString(projectRow.quote_ref, projectRow.quoteRef);
-  const nextActionDate = pickString(
-    projectRow.next_action_date,
-    projectRow.nextActionDate,
-    projectRow.follow_up_date,
-    projectRow.followUpDate,
-  );
-
-  const currentUserId = authenticatedUserId === undefined
-    ? (await client.auth.getUser())?.data?.user?.id ?? null
-    : authenticatedUserId;
-
-  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes, notesRes] = await Promise.all([
-    contactUuid
-      ? client.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+  // Every read below is scoped by the same project id and auth-bound RLS
+  // client, so start them together. The contact relation is included with the
+  // project row to avoid a second dependent database round trip.
+  const [projectRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes, notesRes] = await Promise.all([
+    client
+      .from('projects')
+      .select('*,contact:contacts(*)')
+      .eq('id', projectUuid)
+      .maybeSingle(),
     client
       .from('site_visit_events')
       .select('id,status,scheduled_start')
@@ -313,6 +285,34 @@ export async function getProjectPageSnapshot(
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT),
   ]);
 
+  const projectRow = projectRes?.data ?? null;
+  if (projectRes?.error || !projectRow) return null;
+
+  const normalizedStage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
+  const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
+  const contactIdRaw = pickString(projectRow.contact_id, projectRow.contactId);
+  const contactUuid = contactIdRaw ? safeUuidFromAppId(contactIdRaw, 'ct') : null;
+  const projectIdOut = (() => {
+    const raw = String(projectRow.id ?? projectId);
+    if (raw.startsWith('proj_')) return raw;
+    if (isUuid(raw)) return appIdFromUuid('proj', raw);
+    return projectId;
+  })();
+  const projectName = pickString(projectRow.projectName, projectRow.project_name, projectRow.name, 'Project') ?? 'Project';
+  const siteAddress = pickString(projectRow.site_address, projectRow.siteAddress, projectRow.address);
+  const region = pickString(projectRow.region);
+  const quoteRef = pickString(projectRow.quote_ref, projectRow.quoteRef);
+  const nextActionDate = pickString(
+    projectRow.next_action_date,
+    projectRow.nextActionDate,
+    projectRow.follow_up_date,
+    projectRow.followUpDate,
+  );
+
+  const currentUserId = authenticatedUserId === undefined
+    ? (await client.auth.getUser())?.data?.user?.id ?? null
+    : authenticatedUserId;
+
   if (emailRes?.error) {
     logSnapshotError(diagnostics, 'email_outbox query failed', emailRes.error, 'email_outbox');
   }
@@ -344,7 +344,8 @@ export async function getProjectPageSnapshot(
     logSnapshotError(diagnostics, 'project_notes query failed', notesRes.error, 'project_notes');
   }
 
-  const contact = contactRes?.data ?? null;
+  const contactRaw = projectRow.contact;
+  const contact = Array.isArray(contactRaw) ? contactRaw[0] ?? null : contactRaw ?? null;
   const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
   const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
   const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);

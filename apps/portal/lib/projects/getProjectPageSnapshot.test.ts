@@ -9,7 +9,7 @@ vi.mock('@/lib/api/routeDiagnostics', () => ({
 
 type QueryResult = { data: any; error: any };
 
-function createQuery(result: QueryResult) {
+function createQuery(result: QueryResult | Promise<QueryResult>) {
   const query: any = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
@@ -23,6 +23,14 @@ function createQuery(result: QueryResult) {
     },
   };
   return query;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }
 
 const fakeAuth = {
@@ -46,17 +54,14 @@ describe('getProjectPageSnapshot', () => {
           id: projectId,
           name: 'Alpha Project',
           contact_id: contactId,
+          contact: {
+            id: contactId,
+            name: 'Casey Contact',
+            email: 'casey@example.com',
+            phone: '021',
+          },
           pipeline_stage: 'NEW',
           site_address: '123 Test St',
-        },
-        error: null,
-      },
-      contacts: {
-        data: {
-          id: contactId,
-          name: 'Casey Contact',
-          email: 'casey@example.com',
-          phone: '021',
         },
         error: null,
       },
@@ -107,8 +112,45 @@ describe('getProjectPageSnapshot', () => {
       },
     });
     expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
+    expect(fromMock).not.toHaveBeenCalledWith('contacts');
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
+  });
+
+  it('starts project-scoped reads without waiting for the project row', async () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    const projectResult = deferred<QueryResult>();
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'projects') return createQuery(projectResult.promise);
+      return createQuery({ data: [], error: null });
+    });
+
+    const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
+    const pendingSnapshot = getProjectPageSnapshot(
+      `proj_${projectId}`,
+      undefined,
+      { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
+    );
+
+    expect(fromMock).toHaveBeenCalledWith('projects');
+    expect(fromMock).toHaveBeenCalledWith('project_notes');
+    expect(fromMock).not.toHaveBeenCalledWith('contacts');
+
+    projectResult.resolve({
+      data: {
+        id: projectId,
+        name: 'Concurrent Project',
+        pipeline_stage: 'NEW',
+        contact: null,
+      },
+      error: null,
+    });
+
+    await expect(pendingSnapshot).resolves.toMatchObject({
+      project: { id: `proj_${projectId}`, name: 'Concurrent Project' },
+    });
   });
 
   it('tolerates subordinate query failures and logs them through structured diagnostics', async () => {
