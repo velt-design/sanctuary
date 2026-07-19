@@ -12,11 +12,15 @@ import {
 } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import BlueprintLoadingScreen from './BlueprintLoadingScreen';
+import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
 
 const SHOW_DELAY_MS = 160;
 const MIN_VISIBLE_MS = 450;
 const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
+const MAX_INSTANT_ROUTE_MS = 8000;
+
+type PortalInstantRoute = 'projects-index';
 
 type PortalRouteTransitionInput = {
   href: string;
@@ -27,6 +31,9 @@ type PortalRouteTransitionInput = {
 
 type PortalRouteTransitionContextValue = {
   beginRouteTransition: (input: PortalRouteTransitionInput) => void;
+  beginInstantRoute: (route: PortalInstantRoute) => void;
+  finishInstantRoute: (route: PortalInstantRoute) => void;
+  instantRoute: PortalInstantRoute | null;
 };
 
 type RouteTransitionClickEvent = {
@@ -41,6 +48,9 @@ type RouteTransitionClickEvent = {
 
 const PortalRouteTransitionContext = createContext<PortalRouteTransitionContextValue>({
   beginRouteTransition: () => {},
+  beginInstantRoute: () => {},
+  finishInstantRoute: () => {},
+  instantRoute: null,
 });
 
 function routeKeyFor(pathname: string | null, searchParams: { toString(): string }): string {
@@ -99,11 +109,13 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   const showTimerRef = useRef<number | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   const maxTimerRef = useRef<number | null>(null);
+  const instantRouteTimerRef = useRef<number | null>(null);
   const visibleAtRef = useRef(0);
   const activeRef = useRef(false);
   const visibleRef = useRef(false);
   const [visible, setVisible] = useState(false);
   const [ariaLabel, setAriaLabel] = useState(DEFAULT_MESSAGE);
+  const [instantRoute, setInstantRoute] = useState<PortalInstantRoute | null>(null);
 
   const clearTimer = useCallback((timerRef: { current: number | null }) => {
     if (timerRef.current === null) return;
@@ -188,6 +200,26 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     [clearTimer, finishRouteTransition, setVisibleValue],
   );
 
+  const finishInstantRoute = useCallback(
+    (route: PortalInstantRoute) => {
+      setInstantRoute((current) => (current === route ? null : current));
+      clearTimer(instantRouteTimerRef);
+    },
+    [clearTimer],
+  );
+
+  const beginInstantRoute = useCallback(
+    (route: PortalInstantRoute) => {
+      clearTimer(instantRouteTimerRef);
+      setInstantRoute(route);
+      instantRouteTimerRef.current = window.setTimeout(() => {
+        instantRouteTimerRef.current = null;
+        setInstantRoute((current) => (current === route ? null : current));
+      }, MAX_INSTANT_ROUTE_MS);
+    },
+    [clearTimer],
+  );
+
   useEffect(() => {
     const previousRouteKey = previousRouteKeyRef.current;
     previousRouteKeyRef.current = routeKey;
@@ -201,15 +233,28 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
       clearTimer(showTimerRef);
       clearTimer(hideTimerRef);
       clearTimer(maxTimerRef);
+      clearTimer(instantRouteTimerRef);
     },
     [clearTimer],
   );
 
+  useEffect(() => {
+    const handlePopState = () => {
+      clearTimer(instantRouteTimerRef);
+      setInstantRoute(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [clearTimer]);
+
   const value = useMemo(
     () => ({
       beginRouteTransition,
+      beginInstantRoute,
+      finishInstantRoute,
+      instantRoute,
     }),
-    [beginRouteTransition],
+    [beginInstantRoute, beginRouteTransition, finishInstantRoute, instantRoute],
   );
 
   return (
@@ -219,5 +264,22 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
         <BlueprintLoadingScreen variant="overlay" message={DEFAULT_MESSAGE} ariaLabel={ariaLabel} />
       ) : null}
     </PortalRouteTransitionContext.Provider>
+  );
+}
+
+export function PortalInstantRouteContent({ children }: { children: ReactNode }) {
+  const { instantRoute } = usePortalRouteTransition();
+
+  return (
+    <>
+      {instantRoute === 'projects-index' ? <ProjectsIndexPendingFrame /> : null}
+      <div
+        style={{ display: instantRoute ? 'none' : 'contents' }}
+        aria-hidden={instantRoute ? 'true' : undefined}
+        data-portal-route-content="true"
+      >
+        {children}
+      </div>
+    </>
   );
 }

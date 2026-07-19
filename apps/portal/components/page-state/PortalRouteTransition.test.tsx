@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  PortalInstantRouteContent,
   PortalRouteTransitionProvider,
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
@@ -22,6 +23,16 @@ function Trigger({ href, show }: { href: string; show?: 'delayed' | 'immediate' 
     <button type="button" onClick={() => beginRouteTransition({ href, label: 'Projects', source: 'test', show })}>
       Start
     </button>
+  );
+}
+
+function InstantRouteTrigger() {
+  const { beginInstantRoute, finishInstantRoute } = usePortalRouteTransition();
+  return (
+    <div>
+      <button type="button" onClick={() => beginInstantRoute('projects-index')}>Open projects</button>
+      <button type="button" onClick={() => finishInstantRoute('projects-index')}>Projects mounted</button>
+    </div>
   );
 }
 
@@ -137,6 +148,32 @@ describe('PortalRouteTransitionProvider', () => {
       vi.advanceTimersByTime(1);
     });
     expect(rendered.container.textContent).not.toContain('Preparing workspace...');
+
+    rendered.unmount();
+  });
+
+  it('shows the useful Projects frame synchronously and reveals mounted route content afterward', () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <InstantRouteTrigger />
+        <PortalInstantRouteContent>
+          <div data-testid="route-content">Dashboard content</div>
+        </PortalInstantRouteContent>
+      </PortalRouteTransitionProvider>,
+    );
+    const buttons = rendered.container.querySelectorAll('button');
+
+    act(() => buttons[0]?.click());
+
+    expect(rendered.container.querySelector('[data-projects-index-state="pending"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(rendered.container.textContent).toContain('Updating projects');
+
+    act(() => buttons[1]?.click());
+
+    expect(rendered.container.querySelector('[data-projects-index-state="pending"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
+    expect(rendered.container.textContent).toContain('Dashboard content');
 
     rendered.unmount();
   });

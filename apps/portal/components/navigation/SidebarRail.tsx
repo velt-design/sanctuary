@@ -17,7 +17,11 @@ import {
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
-import { openProjectsIndexInstantly, preloadProjectsIndex } from '@/lib/queries/projectsIndexNavigation';
+import {
+  openProjectsIndexInstantly,
+  preloadProjectsIndex,
+  projectsIndexTarget,
+} from '@/lib/queries/projectsIndexNavigation';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -54,7 +58,7 @@ export default function SidebarRail({
   const router = useRouter();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
-  const { beginRouteTransition } = usePortalRouteTransition();
+  const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const today = useMemo(() => todayYmd(), []);
@@ -79,7 +83,10 @@ export default function SidebarRail({
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
-      if (openProjectsIndexInstantly(event, router, href)) return;
+      if (projectsIndexTarget(href)) {
+        beginInstantRoute('projects-index');
+        if (openProjectsIndexInstantly(event, router, href)) return;
+      }
 
       beginRouteTransition({
         href,
@@ -87,7 +94,7 @@ export default function SidebarRail({
         source: 'sidebar-rail',
       });
     },
-    [beginRouteTransition, router],
+    [beginInstantRoute, beginRouteTransition, router],
   );
 
   return (

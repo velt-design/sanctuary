@@ -17,7 +17,11 @@ import {
 import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
 import { todayYmd } from '@/lib/scheduling/date';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import { openProjectsIndexInstantly, preloadProjectsIndex } from '@/lib/queries/projectsIndexNavigation';
+import {
+  openProjectsIndexInstantly,
+  preloadProjectsIndex,
+  projectsIndexTarget,
+} from '@/lib/queries/projectsIndexNavigation';
 import styles from './PortalSidebarPanel.module.css';
 
 type PinnedOpenParentState = {
@@ -120,7 +124,7 @@ export default function PortalSidebarPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { email, role } = usePortalSession();
-  const { beginRouteTransition } = usePortalRouteTransition();
+  const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
   const queryClient = useQueryClient();
   const [hashValue, setHashValue] = useState('');
   const [openParentState, setOpenParentState] = useState<PinnedOpenParentState | null>(null);
@@ -169,10 +173,13 @@ export default function PortalSidebarPanel() {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
-      if (openProjectsIndexInstantly(event, router, href)) return;
+      if (projectsIndexTarget(href)) {
+        beginInstantRoute('projects-index');
+        if (openProjectsIndexInstantly(event, router, href)) return;
+      }
       beginRouteTransition({ href, label, source: 'sidebar-panel' });
     },
-    [beginRouteTransition, router],
+    [beginInstantRoute, beginRouteTransition, router],
   );
 
   const handleChevronClick = useCallback(
@@ -209,10 +216,13 @@ export default function PortalSidebarPanel() {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
-      if (openProjectsIndexInstantly(event, router, href)) return;
+      if (projectsIndexTarget(href)) {
+        beginInstantRoute('projects-index');
+        if (openProjectsIndexInstantly(event, router, href)) return;
+      }
       beginRouteTransition({ href, label, source: 'sidebar-rail' });
     },
-    [beginRouteTransition, router],
+    [beginInstantRoute, beginRouteTransition, router],
   );
 
   return (

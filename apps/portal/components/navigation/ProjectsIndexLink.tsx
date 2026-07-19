@@ -4,7 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ComponentProps } from 'react';
-import { openProjectsIndexInstantly, preloadProjectsIndex } from '@/lib/queries/projectsIndexNavigation';
+import {
+  openProjectsIndexInstantly,
+  preloadProjectsIndex,
+  projectsIndexTarget,
+} from '@/lib/queries/projectsIndexNavigation';
+import {
+  shouldHandleRouteTransitionClick,
+  usePortalRouteTransition,
+} from '@/components/page-state/PortalRouteTransition';
 
 type ProjectsIndexLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & { href: string };
 
@@ -20,6 +28,7 @@ export default function ProjectsIndexLink({
 }: ProjectsIndexLinkProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { beginInstantRoute } = usePortalRouteTransition();
   const prepare = () => preloadProjectsIndex(queryClient, router, href);
 
   return (
@@ -29,7 +38,10 @@ export default function ProjectsIndexLink({
       prefetch={prefetch}
       onClick={(event) => {
         onClick?.(event);
-        if (!event.defaultPrevented) openProjectsIndexInstantly(event, router, href);
+        if (event.defaultPrevented) return;
+        if (!shouldHandleRouteTransitionClick(event) || !projectsIndexTarget(href)) return;
+        beginInstantRoute('projects-index');
+        openProjectsIndexInstantly(event, router, href);
       }}
       onFocus={(event) => {
         onFocus?.(event);

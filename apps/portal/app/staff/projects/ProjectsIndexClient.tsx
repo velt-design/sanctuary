@@ -41,6 +41,7 @@ import {
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
 import { useProjectsIndexData } from './useProjectsIndexData';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 
 type EditableField = 'name' | 'phone' | 'address';
 type EditingState = { id: string; field: EditableField; value: string } | null;
@@ -66,6 +67,7 @@ export default function ProjectsIndexClient({
   initialTodayYmd?: string;
 }) {
   const router = useRouter();
+  const { finishInstantRoute } = usePortalRouteTransition();
   const { openProject } = useProjectInstantOpen();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -97,6 +99,10 @@ export default function ProjectsIndexClient({
   const projectsIndex = useProjectsIndexData(host, archiveFilter);
   const projects = projectsIndex.data?.projects.rows ?? [];
   const contacts = projectsIndex.data?.contacts.rows ?? [];
+
+  useEffect(() => {
+    finishInstantRoute('projects-index');
+  }, [finishInstantRoute, searchParams]);
 
   useEffect(() => {
     const nextFilters = parseProjectsIndexFilters(searchParams);

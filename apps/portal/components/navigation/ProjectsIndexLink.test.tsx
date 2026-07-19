@@ -8,6 +8,7 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 const routerPrefetch = vi.fn();
 const routerReplace = vi.fn();
 const prefetchQuery = vi.fn();
+const beginInstantRoute = vi.fn();
 
 vi.mock('next/link', () => ({
   default: ({ children, prefetch: _prefetch, ...props }: any) => <a {...props}>{children}</a>,
@@ -30,11 +31,20 @@ vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'tenant',
 }));
 
+vi.mock('@/components/page-state/PortalRouteTransition', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/page-state/PortalRouteTransition')>();
+  return {
+    ...actual,
+    usePortalRouteTransition: () => ({ beginInstantRoute }),
+  };
+});
+
 describe('ProjectsIndexLink', () => {
   beforeEach(() => {
     routerPrefetch.mockReset();
     routerReplace.mockReset();
     prefetchQuery.mockReset();
+    beginInstantRoute.mockReset();
     window.history.replaceState(null, '', '/dashboard');
   });
 
@@ -65,6 +75,7 @@ describe('ProjectsIndexLink', () => {
 
     expect(window.location.pathname).toBe('/staff/projects');
     expect(window.location.search).toContain('__portal_opening=projects-index');
+    expect(beginInstantRoute).toHaveBeenCalledWith('projects-index');
     expect(routerReplace).toHaveBeenCalledWith('/staff/projects?status=NEW', { scroll: false });
     rendered.unmount();
   });
@@ -78,6 +89,7 @@ describe('ProjectsIndexLink', () => {
     act(() => link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
 
     expect(routerReplace).not.toHaveBeenCalled();
+    expect(beginInstantRoute).not.toHaveBeenCalled();
     rendered.unmount();
   });
 });

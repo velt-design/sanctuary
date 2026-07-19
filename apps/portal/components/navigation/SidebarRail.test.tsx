@@ -3,6 +3,7 @@ import SidebarRail from './SidebarRail';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const transitionMocks = vi.hoisted(() => ({
+  beginInstantRoute: vi.fn(),
   beginRouteTransition: vi.fn(),
   prefetchQuery: vi.fn(),
   routerPrefetch: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async () => {
   return {
     ...actual,
     usePortalRouteTransition: () => ({
+      beginInstantRoute: transitionMocks.beginInstantRoute,
       beginRouteTransition: transitionMocks.beginRouteTransition,
     }),
   };
@@ -53,6 +55,7 @@ function linkByLabel(container: HTMLElement, label: string): HTMLAnchorElement {
 
 describe('SidebarRail', () => {
   beforeEach(() => {
+    transitionMocks.beginInstantRoute.mockReset();
     transitionMocks.beginRouteTransition.mockReset();
     transitionMocks.prefetchQuery.mockReset();
     transitionMocks.routerPrefetch.mockReset();
@@ -77,6 +80,7 @@ describe('SidebarRail', () => {
 
     expect(window.location.pathname).toBe('/staff/projects');
     expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/projects', { scroll: false });
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('projects-index');
     expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
 
     rendered.unmount();
