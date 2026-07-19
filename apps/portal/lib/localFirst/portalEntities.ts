@@ -18,6 +18,7 @@ type AnyRecord = Record<string, unknown>;
 
 export const PORTAL_LOCAL_FIRST_MUTATIONS = {
   projectDetailsUpdate: 'portal.project.details.update',
+  contactDetailsUpdate: 'portal.contact.details.update',
   estimateCreate: 'portal.estimate.create',
   estimateUpdate: 'portal.estimate.update',
   designRequestCreate: 'portal.designRequest.create',
@@ -108,12 +109,6 @@ export type PortalProjectNoteUpdateMutationPayload = {
 export type PortalProjectNoteDeleteMutationPayload = {
   noteId: string;
   projectId: string;
-};
-
-export type PortalContactDraft = {
-  displayName: string;
-  email: string;
-  phone: string;
 };
 
 function makeLocalToken(): string {

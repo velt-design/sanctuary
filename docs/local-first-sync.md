@@ -10,6 +10,7 @@ The portal uses local-first primitives for heavy staff editing flows where routi
 - `apps/portal/lib/localFirst/queue.ts`: mutation handler registry and queue processing.
 - `apps/portal/lib/localFirst/runtime.ts`: runtime bootstrap.
 - `apps/portal/lib/localFirst/portalEntities.ts`: portal entity keys, mutation keys, optimistic cache patch helpers, payload shapes.
+- `apps/portal/lib/localFirst/contactDetails.ts`: Contact Detail draft ownership, stable entity keys, and coherent contact-cache patches.
 - `apps/portal/lib/localFirst/projectDetails.ts`: Project Detail draft ownership, stable entity keys, and query-cache patches.
 - `apps/portal/components/sync/LocalFirstRuntime.tsx`: starts runtime in the app.
 - `apps/portal/components/sync/LocalFirstPortalMutations.tsx`: registers portal mutation handlers.
@@ -27,6 +28,7 @@ Sign-out is immediate when there is no retained work. Queued, offline, conflicte
 Current portal local-first mutations:
 
 - `portal.project.details.update`
+- `portal.contact.details.update`
 - `portal.estimate.create`
 - `portal.estimate.update`
 - `portal.designRequest.create`

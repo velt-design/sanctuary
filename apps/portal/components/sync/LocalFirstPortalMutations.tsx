@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiJson, ApiError } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { qk } from '@/lib/queries/keys';
+import { invalidateContactsIndexCaches } from '@/lib/queries/contactsIndex';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { enqueueAndProcessLocalFirstMutation, registerLocalFirstMutationHandler } from '@/lib/localFirst/queue';
 import {
@@ -24,9 +25,13 @@ import {
   replaceEstimateDetailCache,
   replaceProjectNoteInSnapshot,
   replaceQuoteDetailCache,
+  upsertContactCaches,
   upsertEstimateDetailCache,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
+import {
+  type PortalContactDetailsUpdateMutationPayload,
+} from '@/lib/localFirst/contactDetails';
 import {
   patchProjectDetailsCaches,
   type PortalProjectDetailsUpdateMutationPayload,
@@ -35,6 +40,7 @@ import { registerLocalFirstIdAlias, resolveLocalFirstId } from '@/lib/localFirst
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { ProjectNote } from '@/lib/projects/types';
 import type { QuoteVersionDetail } from '@/lib/quotes/types';
+import type { Contact } from '@/lib/types/contact';
 
 function isEstimateConflict(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 409;
@@ -71,6 +77,9 @@ function isProjectDetailsTerminalError(error: unknown): error is ApiError {
 function isAccessEndingProjectDetailsError(error: ApiError): boolean {
   return error.status === 401 || error.status === 403 || error.status === 404;
 }
+
+const isContactDetailsTerminalError = isProjectDetailsTerminalError;
+const isAccessEndingContactDetailsError = isAccessEndingProjectDetailsError;
 
 export default function LocalFirstPortalMutations() {
   const queryClient = useQueryClient();
@@ -113,6 +122,46 @@ export default function LocalFirstPortalMutations() {
             });
             if (isAccessEndingProjectDetailsError(error)) {
               await invalidateProjectReadCaches(queryClient, hostKey, payload.projectId);
+            }
+            return {
+              kind: 'conflict',
+              message: error.message,
+              serverSnapshot: error.body,
+              clientSnapshot: payload.draft,
+            } as const;
+          }
+          throw error;
+        }
+      },
+    );
+
+    const unregisterContactDetailsUpdate = registerLocalFirstMutationHandler(
+      PORTAL_LOCAL_FIRST_MUTATIONS.contactDetailsUpdate,
+      async (item) => {
+        const payload = item.payload as PortalContactDetailsUpdateMutationPayload;
+        try {
+          const response = await apiJson<{ contact: Contact }>(
+            `/api/contacts/${encodeURIComponent(payload.contactId)}`,
+            {
+              method: 'PATCH',
+              body: JSON.stringify(payload.draft),
+              skipSaveTracking: true,
+            },
+          );
+          if (!response.contact) throw new Error('Contact not saved');
+          upsertContactCaches(queryClient, hostKey, response.contact);
+          return {
+            kind: 'success',
+            clearWorkingCopyIfMatches: payload.draft,
+          } as const;
+        } catch (error) {
+          if (isContactDetailsTerminalError(error)) {
+            upsertContactCaches(queryClient, hostKey, payload.previousContact);
+            if (isAccessEndingContactDetailsError(error)) {
+              await Promise.allSettled([
+                queryClient.invalidateQueries({ queryKey: qk.contacts.detail(hostKey, payload.contactId) }),
+                invalidateContactsIndexCaches(queryClient, hostKey),
+              ]);
             }
             return {
               kind: 'conflict',
@@ -492,6 +541,7 @@ export default function LocalFirstPortalMutations() {
 
     return () => {
       unregisterProjectDetailsUpdate();
+      unregisterContactDetailsUpdate();
       unregisterEstimateCreate();
       unregisterEstimateUpdate();
       unregisterDesignRequestCreate();

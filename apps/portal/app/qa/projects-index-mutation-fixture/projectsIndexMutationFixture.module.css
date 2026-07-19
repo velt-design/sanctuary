@@ -40,6 +40,17 @@
   color: var(--portal-text-muted);
 }
 
+.embeddedPage {
+  overflow: hidden;
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius-md);
+}
+
+.embeddedPage > main {
+  min-height: 0;
+  padding: 18px;
+}
+
 .projectRow {
   display: flex;
   align-items: center;

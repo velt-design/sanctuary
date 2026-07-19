@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/repo/apiClient';
 
 const mocks = vi.hoisted(() => ({
   enqueueAndProcessLocalFirstMutation: vi.fn(),
+  invalidateContactsIndexCaches: vi.fn(),
   invalidateProjectReadCaches: vi.fn(),
   queryClient: {
     invalidateQueries: vi.fn(),
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   resolveLocalFirstId: vi.fn((value: string) => value),
   apiJson: vi.fn(),
   patchProjectDetailsCaches: vi.fn(),
+  upsertContactCaches: vi.fn(),
 }));
 
 type RegisteredHandler = (item: { payload: unknown }) => Promise<unknown>;
@@ -61,6 +63,18 @@ vi.mock('@/lib/localFirst/store', () => ({
   registerLocalFirstIdAlias: mocks.registerLocalFirstIdAlias,
   resolveLocalFirstId: mocks.resolveLocalFirstId,
 }));
+
+vi.mock('@/lib/queries/contactsIndex', () => ({
+  invalidateContactsIndexCaches: mocks.invalidateContactsIndexCaches,
+}));
+
+vi.mock('@/lib/localFirst/portalEntities', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/localFirst/portalEntities')>();
+  return {
+    ...actual,
+    upsertContactCaches: mocks.upsertContactCaches,
+  };
+});
 
 vi.mock('@/lib/localFirst/projectDetails', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/localFirst/projectDetails')>();
@@ -133,6 +147,7 @@ function renderAndGetHandler(mutationKey: string): { handler: RegisteredHandler;
 describe('LocalFirstPortalMutations', () => {
   beforeEach(() => {
     mocks.enqueueAndProcessLocalFirstMutation.mockReset();
+    mocks.invalidateContactsIndexCaches.mockReset().mockResolvedValue(undefined);
     mocks.invalidateProjectReadCaches.mockReset();
     mocks.queryClient.invalidateQueries.mockReset();
     mocks.queryClient.removeQueries.mockReset();
@@ -144,6 +159,7 @@ describe('LocalFirstPortalMutations', () => {
     mocks.resolveLocalFirstId.mockImplementation((value: string) => value);
     mocks.apiJson.mockReset();
     mocks.patchProjectDetailsCaches.mockReset();
+    mocks.upsertContactCaches.mockReset();
   });
 
   afterEach(() => {
@@ -158,6 +174,7 @@ describe('LocalFirstPortalMutations', () => {
     expect(registeredKeys).toEqual(
       expect.arrayContaining([
         'portal.project.details.update',
+        'portal.contact.details.update',
         'portal.estimate.create',
         'portal.estimate.update',
         'portal.designRequest.create',
@@ -170,9 +187,78 @@ describe('LocalFirstPortalMutations', () => {
       ]),
     );
     expect(registeredKeys).not.toContain('portal.project.tasks.toggle');
-    expect(registeredKeys).not.toContain('portal.contact.update');
 
     rendered.unmount();
+  });
+
+  it('persists contact details through the local-first handler and accepts the server contact', async () => {
+    const draft = {
+      displayName: 'Updated Taylor',
+      email: 'updated@example.com',
+      phone: '0211111111',
+    };
+    const serverContact = {
+      id: 'ct_1',
+      ...draft,
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-20T00:00:00.000Z',
+    };
+    mocks.apiJson.mockResolvedValueOnce({ contact: serverContact });
+    const { handler, unmount } = renderAndGetHandler('portal.contact.details.update');
+
+    const result = await handler({
+      payload: {
+        contactId: 'ct_1',
+        draft,
+        previousContact: { ...serverContact, displayName: 'Taylor' },
+      },
+    });
+
+    expect(result).toEqual({ kind: 'success', clearWorkingCopyIfMatches: draft });
+    expect(mocks.apiJson).toHaveBeenCalledWith(
+      '/api/contacts/ct_1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify(draft),
+        skipSaveTracking: true,
+      }),
+    );
+    expect(mocks.upsertContactCaches).toHaveBeenCalledWith(mocks.queryClient, 'host', serverContact);
+    unmount();
+  });
+
+  it('rolls contact details back and retains the rejected draft on terminal errors', async () => {
+    const body = { error: 'Contact details are no longer writable.' };
+    const draft = {
+      displayName: 'Rejected Taylor',
+      email: 'rejected@example.com',
+      phone: '0219999999',
+    };
+    const previousContact = {
+      id: 'ct_1',
+      displayName: 'Taylor',
+      email: 'taylor@example.com',
+      phone: '0210000000',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      updatedAt: '2026-07-02T00:00:00.000Z',
+    };
+    mocks.apiJson.mockRejectedValueOnce(apiError('Contact details are no longer writable.', 403, body));
+    const { handler, unmount } = renderAndGetHandler('portal.contact.details.update');
+
+    const result = await handler({ payload: { contactId: 'ct_1', draft, previousContact } });
+
+    expect(result).toEqual({
+      kind: 'conflict',
+      message: 'Contact details are no longer writable.',
+      serverSnapshot: body,
+      clientSnapshot: draft,
+    });
+    expect(mocks.upsertContactCaches).toHaveBeenCalledWith(mocks.queryClient, 'host', previousContact);
+    expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['contacts', 'host', 'detail', 'ct_1'],
+    });
+    expect(mocks.invalidateContactsIndexCaches).toHaveBeenCalledWith(mocks.queryClient, 'host');
+    unmount();
   });
 
   it('persists project details through the local-first handler and clears only the matching draft', async () => {
