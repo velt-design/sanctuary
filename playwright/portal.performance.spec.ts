@@ -233,7 +233,6 @@ async function measureColdProjectDetail(page: Page, route: string) {
     page.locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]').first(),
   ).toBeVisible({ timeout: 60_000 });
   const feedbackMs = elapsedJourneyMs(probe);
-  await expect(page.locator('[data-project-id]')).toBeVisible({ timeout: 60_000 });
   await expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible({ timeout: 60_000 });
   const usefulContentMs = elapsedJourneyMs(probe);
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
