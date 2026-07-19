@@ -239,8 +239,11 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   await measureWarmJourney(
     page,
     'dashboard-to-projects',
-    () => page.getByRole('link', { name: 'Projects', exact: true }).first().click(),
-    () => page.waitForURL(/\/projects(?:\?|$)/),
+    () => page.getByRole('link', { name: 'Projects', exact: true }).first().dispatchEvent('click'),
+    () => Promise.race([
+      page.waitForURL(/\/projects(?:\?|$)/),
+      page.locator('[aria-label="Page loading"]').waitFor({ state: 'visible' }),
+    ]),
     () => expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible(),
   );
 

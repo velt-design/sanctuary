@@ -200,6 +200,8 @@ npm run test:portal:performance:fixture
 
 The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms, and are enforced against the five-run p75 aggregate. Existing cold-route and Schedule-toggle ceilings remain per-run and were not changed.
 
+Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mode authenticated runs from Portal Quality run `29671152531`. Project opening recorded 41/45/68 ms feedback p50/p75/p95, 413/418/441 ms useful-content p50/p75/p95, and 1636/1659/2281 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. The resulting locked regression ceiling is 100 ms feedback and 550 ms useful content; the product target remains 100/500 ms.
+
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |
 | Dashboard cold | 1708/1710/1753 ms | 1722/1727/1768 ms | Miss | Existing cold ceiling unchanged |
@@ -207,9 +209,9 @@ The initial authenticated baseline was locked on 2026-07-19 from exactly five CI
 | Contacts cold | 1424/2106/2461 ms | 1448/2122/2471 ms | Miss | Existing cold ceiling unchanged |
 | Schedule cold | 1553/2687/3194 ms | 2506/3633/4125 ms | Miss | Existing cold ceiling unchanged |
 | Dashboard to Projects | 790/791/841 ms | 1703/1729/1763 ms | Miss | 950/2100 ms |
-| Projects to project | 5824/5996/6600 ms | 7728/7899/8511 ms | Miss | 7200/9500 ms |
-| Project back to Projects | 17/18/25 ms | 145/164/181 ms | Miss | 100/500 ms |
-| Project Details tab | 106/112/120 ms | 132/133/143 ms | Met | 250/500 ms |
+| Projects to project | 41/45/68 ms | 413/418/441 ms | Met | 100/550 ms |
+| Project back to Projects | 4/4/5 ms | 14/15/17 ms | Met | 100/500 ms |
+| Project Details tab | 44/45/45 ms | 51/52/57 ms | Met | 250/500 ms |
 | Schedule unscheduled toggle | 59/73/80 ms | 66/85/87 ms | Met | Existing 1200/1200 ms ceiling unchanged |
 | Calculator current result | 541/550/560 ms | 2428/2440/2497 ms | Miss | 700/2950 ms |
 
@@ -218,6 +220,8 @@ The initial authenticated baseline was locked on 2026-07-19 from exactly five CI
 `npm run test:portal:performance:fixture` measures workbench object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. It requires no authenticated project data and produces its own artifact.
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
+
+The Slice 1 analyser correction exposed that Project Detail's old 3,014,656 raw / 757,760 gzip ceiling had counted zero lazy bytes. The honest fresh-build measurement is 661,832 raw / 191,398 gzip initial plus 2,720,112 raw / 623,328 gzip lazy (3,381,944 raw / 814,726 gzip combined). Most deferred bytes belong to the existing Estimates drawing/workbench dependency. The per-boundary regression budgets remain blocking, but the old combined cap is not yet restored; do not hide those bytes or weaken the analyser. Reducing that existing Estimate/workbench dependency requires its own scoped lane because this slice does not change calculator, geometry, costing, or Workbench behaviour.
 
 `npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
 

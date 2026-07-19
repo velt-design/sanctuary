@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-07-18.
+Last updated: 2026-07-19.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -48,14 +48,14 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
-This snapshot records the most recent known production-readiness state from the portal review and follow-up checks, with calculator browser coverage and docs-health refreshed on 2026-07-18. Re-run the listed commands before treating any item as current after new work lands. If a row is older than the current work, treat it as a last known signal, not live truth, until the relevant command or manual check is repeated.
+This snapshot records the most recent known production-readiness state from the portal review and follow-up checks, with project-opening performance refreshed on 2026-07-19. Re-run the listed commands before treating any item as current after new work lands. If a row is older than the current work, treat it as a last known signal, not live truth, until the relevant command or manual check is repeated.
 
 | Area | Status | Last Known Signal | Next Action |
 | --- | --- | --- | --- |
-| Portal tests | Green | `npm run portal:doctor:quick` passed on 2026-07-18 with 253 files/1,460 tests plus 11 intentional skips. The focused shell and projects suites also passed with 19 files/47 tests and 51 files/251 tests. | Keep the service-role owner explicit and rerun quick doctor after shared auth, persistence, or API changes. |
+| Portal tests | Green | `npm run portal:doctor:quick` passed locally on 2026-07-19 with 265 files/1,524 tests plus 11 intentional skips. The focused projects suite passed with 56 files/275 tests, and the shell suite passed with 19 files/47 tests. | Keep the service-role owner explicit and rerun quick doctor after shared auth, persistence, or API changes. |
 | Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
-| Portal route bundle budgets | Green | The reusable analyzer covers Schedule, Project Detail, Calculator, and Design Workbench. Portal Quality passed all four routes from one fresh 2026-07-19 production build. Schedule retains its original ceilings; Calculator now has its one-time post-lane baseline plus 5%, rounded to KiB. | Preserve the current limits and ratchet them downward after optimisation; never increase them automatically. |
-| Portal performance evidence | Green | Portal Performance CI completed exactly five authenticated schema-v2 runs on 2026-07-19 with no skipped journeys. The p50/p75/p95 evidence is recorded in `testing-and-qa.md`; new regression ceilings are locked at `max(product target, p75 x 1.2)`, rounded up to 50 ms, while cold-route ceilings remain unchanged. | Use the product-target misses as Wave 1 optimisation priorities and only ratchet regression ceilings downward. |
+| Portal route bundle budgets | Yellow | The reusable analyser passes Schedule, Project Detail, Calculator, and Design Workbench from one fresh build and now detects Turbopack lazy groups honestly. Project Detail is 661,832/191,398 raw/gzip initial and 2,720,112/623,328 lazy; its 3,381,944/814,726 combined total exceeds the old 3,014,656/757,760 cap because that old baseline incorrectly recorded zero lazy bytes. | Keep the honest per-boundary gates blocking. Reduce the existing Estimates drawing/workbench dependency in a separately authorised lane; do not hide lazy bytes or increase budgets automatically. |
+| Portal performance evidence | Green | Portal Performance CI completed exactly five authenticated production-mode runs on 2026-07-19 with no skipped journeys. Project opening achieved p75 45 ms feedback and 418 ms useful content, with no blocking overlay or long task; evidence is in `testing-and-qa.md` and the ceiling ratchets to 100/550 ms. | Keep the project target green, use remaining product-target misses as later Wave 1 priorities, and only ratchet regression ceilings downward. |
 | Portal Web Vitals | Green | Identifier-free first-party ingestion, admin p75/p95 summaries, route sanitisation tests, RLS/grants, and the 30-day `pg_cron` migration are implemented. On staging, the named daily cron job was present, the cleanup removed a 31-day fixture, retained a recent fixture, and the remaining fixture was then removed. | Promote the verified forward migration through the normal production deployment path and keep the 30-day job monitored. |
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities after patching Next.js to 16.2.10 and overriding transitive `ws` to 8.21.1. Portal Quality runs `npm run audit:security` as a blocking pull-request gate, with Governance Monthly retaining the broader audit sweep. | Keep audit visible through `portal:doctor`, Portal Quality, and governance checks. |
 | Security and data boundaries | Green | Boundary sweep passed: `npm run audit:security`, `npm run browser:supabase`, `npm run service-role:report`, `npm run root:compat`, `npm run architecture:changed`, `npx vitest run apps/portal/lib/supabaseClient.boundaries.test.ts`, `npm run test:portal -- apps/portal/lib/api apps/portal/app/api`, `npm run test:portal:quotes`, `npm run test:portal:schedule`, and `npm run test:marketing`. Browser Supabase and service-role reports showed no new growth or changed violations; marketing public-token coverage now has 9 files and 37 tests passing. | Keep changed-file guards in handoffs; manual staff workflow and public-token browser QA still require valid credentials and compatible data. |
@@ -127,7 +127,7 @@ This snapshot records the most recent known production-readiness state from the 
 ### Performance And UX
 
 - [ ] Schedule page meets bundle and route timing budgets.
-- [ ] Project list and project detail pages meet route timing budgets.
+- [x] Project list and project detail pages meet route timing budgets.
 - [ ] Contacts list meets route timing budgets.
 - [ ] Heavy views are lazy-split by actual workflow boundaries.
 - [ ] Board, Gantt, Site Visits, design workbench, and spreadsheet surfaces remain responsive under realistic data volume.
@@ -258,6 +258,12 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-07-19
+
+- Made routine project opening immediate from the signed-in user's cached project/contact summary, refreshed the canonical snapshot quietly, split tabs into intent-preloaded workflow boundaries, restored instant browser Back, and changed internal Projects navigation to `/staff/projects`.
+- Locked five-run production evidence at p75 45 ms URL feedback and 418 ms useful content, with no overlay or long task; the project-opening regression ceiling is now 100/550 ms. Independent project/contact list reads start concurrently, while the root Projects route can stream its non-blocking pending shell.
+- Corrected Turbopack lazy accounting. The current per-boundary gate passes, but the honest Project Detail combined total exceeds the obsolete zero-lazy cap because the existing Estimates drawing/workbench dependency is outside this slice; the tracker remains Yellow for that separate reduction.
 
 ### 2026-07-18
 

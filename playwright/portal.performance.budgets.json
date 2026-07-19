@@ -41,8 +41,8 @@
     },
     {
       "name": "projects-to-project",
-      "feedbackMsMax": 7200,
-      "usefulContentMsMax": 9500,
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 550,
       "enforced": true,
       "aggregation": "p75"
     },

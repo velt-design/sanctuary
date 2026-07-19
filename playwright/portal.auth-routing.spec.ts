@@ -144,19 +144,16 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible({ timeout: 60_000 });
   });
 
-  test('shows the project detail frame on first load without waiting on the snapshot api route', async ({ page }) => {
+  test('opens the cached project frame without waiting on the snapshot api route', async ({ page }) => {
     const gate = await delayNetworkResponse(page, '**/api/projects/*/snapshot');
 
     await page.goto('/staff/projects');
     const firstProjectLink = page.locator('a[href^="/staff/projects/proj_"]').first();
     await expect(firstProjectLink).toBeVisible({ timeout: 60_000 });
-    const href = await firstProjectLink.getAttribute('href');
-    if (!href) throw new Error('Expected a project link on the projects index.');
-
-    await page.goto(`${href}?tab=quotes`);
+    await firstProjectLink.dispatchEvent('click');
 
     await expect(page.locator('[data-project-page-frame="true"]')).toBeVisible({ timeout: 60_000 });
-    await expect(page.locator('[data-project-active-tab="quotes"]')).toBeVisible();
+    await expect(page.locator('[data-project-active-tab="activity"]')).toBeVisible();
 
     await gate.resolve();
   });
