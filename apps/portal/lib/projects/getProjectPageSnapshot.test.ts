@@ -190,7 +190,7 @@ describe('getProjectPageSnapshot', () => {
     });
   });
 
-  it('keeps the project visible when the embedded related read fails and logs diagnostics', async () => {
+  it('rejects an incomplete embedded related read and logs diagnostics', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     const relatedError = { message: 'related snapshot unavailable' };
 
@@ -204,7 +204,7 @@ describe('getProjectPageSnapshot', () => {
     })).mockReturnValueOnce(createQuery({ data: null, error: relatedError }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
-    const snapshot = await getProjectPageSnapshot(
+    const snapshot = getProjectPageSnapshot(
       `proj_${projectId}`,
       {
         route: '/api/projects/[projectId]/snapshot',
@@ -216,11 +216,7 @@ describe('getProjectPageSnapshot', () => {
       'auth-user-1',
     );
 
-    expect(snapshot?.project).toMatchObject({
-      id: `proj_${projectId}`,
-      name: 'Alpha Project',
-      stage: 'new',
-    });
+    await expect(snapshot).rejects.toThrow('Failed to load complete project snapshot');
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -186,7 +186,15 @@ export async function getProjectPageSnapshot(
   ]);
 
   const projectRow = projectRes?.data ?? null;
-  if (projectRes?.error || !projectRow) return null;
+  if (projectRes?.error) {
+    logSnapshotError(diagnostics, 'project query failed', projectRes.error, 'projects');
+    throw new Error('Failed to load project snapshot');
+  }
+  if (!projectRow) return null;
+  if (relatedRes?.error) {
+    logSnapshotError(diagnostics, 'project related snapshot query failed', relatedRes.error, 'projects+relations');
+    throw new Error('Failed to load complete project snapshot');
+  }
 
   const normalizedStage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
   const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
@@ -213,16 +221,12 @@ export async function getProjectPageSnapshot(
     ? (await client.auth.getUser())?.data?.user?.id ?? null
     : authenticatedUserId;
 
-  if (relatedRes?.error) {
-    logSnapshotError(diagnostics, 'project related snapshot query failed', relatedRes.error, 'projects+relations');
-  }
-
   const contactRaw = projectRow.contact;
   const contact = Array.isArray(contactRaw) ? contactRaw[0] ?? null : contactRaw ?? null;
   const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
   const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
   const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
-  const relatedRow = relatedRes?.error ? null : relatedRes?.data ?? null;
+  const relatedRow = relatedRes?.data ?? null;
   const emailRows = relationRows(relatedRow?.emails);
   const emails = emailRows.map(mapEmail);
   const outboxActivity = emailRows
