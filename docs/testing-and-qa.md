@@ -208,19 +208,22 @@ Wave 1 Slice 2 replaced the Dashboard-to-Projects row with exactly five producti
 
 Wave 1 Slice 3 replaced Dashboard-to-Contacts with exactly five production-mode authenticated runs from Portal Quality run `29678858906`. The journey recorded 33/35/35 ms feedback p50/p75/p95, 50/52/53 ms useful-content p50/p75/p95, and 3053/3080/3096 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
 
+Wave 1 completion run `29682571695` recorded exactly five current-head production repetitions. The isolated pre-Slice-1 comparison run `29681955081` measured cold Project Detail useful-content p75 at 2,454 ms, making the locked 10% guard 2,699 ms. Current-head cold Project Detail measured 2,744/2,749/2,975 ms useful content p50/p75/p95, so it remains 50 ms above that guard and must not be marked complete or have its ceiling raised. The same current-head run measured calculator visible feedback at 35/36/36 ms and fresh-result completion at 1,907/1,909/1,909 ms. Fixture-safe workbench evidence measured object selection at 87/126 ms feedback/useful and Plan-to-3D at 93/97 ms, with no request, overlay, or long task in either interaction.
+
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |
-| Dashboard cold | 1708/1710/1753 ms | 1722/1727/1768 ms | Miss | Existing cold ceiling unchanged |
-| Projects cold | 1397/1399/3004 ms | 1407/1414/3013 ms | Miss | Existing cold ceiling unchanged |
-| Contacts cold | 1424/2106/2461 ms | 1448/2122/2471 ms | Miss | Existing cold ceiling unchanged |
-| Schedule cold | 1553/2687/3194 ms | 2506/3633/4125 ms | Miss | Existing cold ceiling unchanged |
-| Dashboard to Projects | 43/44/44 ms | 75/76/99 ms | Met | 100/500 ms |
-| Dashboard to Contacts | 33/35/35 ms | 50/52/53 ms | Met | 100/500 ms |
-| Projects to project | 41/44/45 ms | 58/60/60 ms | Met | 100/500 ms |
-| Project back to Projects | 5/5/6 ms | 16/18/20 ms | Met | 100/500 ms |
-| Project Details tab | 52/55/72 ms | 56/64/79 ms | Met | 250/500 ms |
-| Schedule unscheduled toggle | 59/73/80 ms | 66/85/87 ms | Met | Existing 1200/1200 ms ceiling unchanged |
-| Calculator current result | 541/550/560 ms | 2428/2440/2497 ms | Miss | 700/2950 ms |
+| Dashboard cold | 883/894/1042 ms | 989/1043/1050 ms | Miss | Existing cold ceiling unchanged |
+| Projects cold | 818/827/846 ms | 830/835/865 ms | Miss | Existing cold ceiling unchanged |
+| Project Detail cold | 857/860/1089 ms | 2744/2749/2975 ms | 10% guard missed | Existing cold ceiling unchanged; 2699 ms comparison guard |
+| Contacts cold | 754/755/767 ms | 764/765/776 ms | Miss | Existing cold ceiling unchanged |
+| Schedule cold | 784/806/830 ms | 1666/1674/1702 ms | Miss | Existing cold ceiling unchanged |
+| Dashboard to Projects | 39/41/43 ms | 65/67/70 ms | Met | 100/500 ms |
+| Dashboard to Contacts | 37/38/38 ms | 59/62/62 ms | Met | 100/500 ms |
+| Projects to project | 31/32/34 ms | 47/47/49 ms | Met | 100/500 ms |
+| Project back to Projects | 5/5/6 ms | 19/20/20 ms | Met | 100/500 ms |
+| Project Details tab | 40/40/49 ms | 49/49/54 ms | Met | 250/500 ms |
+| Schedule unscheduled toggle | 131/132/133 ms | 134/135/136 ms | Regression met | Existing 1200/1200 ms ceiling unchanged |
+| Calculator current result | 35/36/36 ms | 1907/1909/1909 ms | Feedback met | 700/2950 ms |
 
 `npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
 
