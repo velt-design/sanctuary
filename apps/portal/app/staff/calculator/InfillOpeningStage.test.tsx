@@ -93,6 +93,10 @@ describe('InfillOpeningStage', () => {
 
     expect(container.textContent).toContain('Peak height (m)');
     expect(container.textContent).toContain('High side');
+    expect(container.textContent).toContain('High on left');
+    expect(container.textContent).toContain('High on right');
+    const directionFieldset = container.querySelector('input[name="triangle-opening-triangle-high-side"]')?.closest('fieldset');
+    expect(directionFieldset?.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(2);
     expect(container.textContent).not.toContain('Describe the sloping top');
     expect(container.querySelector('input[value="right"]:checked')).not.toBeNull();
 
@@ -100,6 +104,48 @@ describe('InfillOpeningStage', () => {
     if (!(left instanceof HTMLInputElement)) throw new Error('Missing triangle high-side choice.');
     act(() => left.click());
     expect(onTriangleHighSideChange).toHaveBeenCalledWith('left');
+
+    unmount();
+  });
+
+  it('keeps untouched blank required fields calm until they are blurred', () => {
+    const item = makeDefaultInfillItem();
+    const onDraftCommit = vi.fn();
+    const { container, unmount } = renderIntoDocument(
+      <InfillOpeningStage
+        item={item}
+        domIdBase="calm-opening"
+        errors={{ widthM: 'Required field.', heightM: 'Required field.' }}
+        automaticChoicesOpen={false}
+        acrylicAutoSwitched={false}
+        resolvedAcrylicSource="sheet_panels"
+        resolvedAcrylicLabel="Sheet panels"
+        preview={<div>Opening diagram</div>}
+        getDraftValue={() => ''}
+        onAutomaticChoicesToggle={vi.fn()}
+        onItemChange={vi.fn()}
+        onLocationChange={vi.fn()}
+        onAcrylicPreferenceChange={vi.fn()}
+        onShapeTemplateChange={vi.fn()}
+        onTriangleHighSideChange={vi.fn()}
+        onDraftChange={vi.fn()}
+        onDraftCommit={onDraftCommit}
+        onMonoModeChange={vi.fn()}
+        onMonoAnchorChange={vi.fn()}
+        onMonoSlopeChange={vi.fn()}
+        onBottomOffsetChange={vi.fn()}
+      />,
+    );
+
+    expect(container.textContent).not.toContain('Required field.');
+    const width = container.querySelector('#calm-opening-shape-width');
+    if (!(width instanceof HTMLInputElement)) throw new Error('Missing width input.');
+    act(() => {
+      width.focus();
+      width.blur();
+    });
+    expect(container.textContent).toContain('Required field.');
+    expect(onDraftCommit).toHaveBeenCalledWith('widthM', '');
 
     unmount();
   });

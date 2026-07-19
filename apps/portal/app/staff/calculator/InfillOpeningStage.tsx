@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import type {
   InfillLineItem,
@@ -53,6 +53,8 @@ function formatMaybeNumber(value: number | null, digits = 3): string {
   return value.toFixed(digits).replace(/\.?0+$/, '');
 }
 
+type InfillOpeningTouchedField = InfillDraftFieldKey | 'slopeDeg';
+
 export default function InfillOpeningStage({
   item,
   domIdBase,
@@ -78,6 +80,7 @@ export default function InfillOpeningStage({
   onMonoSlopeChange,
   onBottomOffsetChange,
 }: InfillOpeningStageProps) {
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<InfillOpeningTouchedField, true>>>({});
   const monoShape = item.shape.type === 'mono_slope' ? item.shape : null;
   const monoResolved = monoShape ? resolveMonoSlopeShape(monoShape) : null;
   const openingTemplate = inferInfillOpeningTemplate(item.shape);
@@ -89,20 +92,46 @@ export default function InfillOpeningStage({
     ? monoResolved.slopeAnchor === 'right' ? monoResolved.leftHeightM : monoResolved.rightHeightM
     : null;
 
-  const numberField = (field: InfillDraftFieldKey, label: string, error?: string) => (
-    <div className={styles.span4}>
-      <FieldTile
-        id={`${domIdBase}-shape-${field === 'widthM' ? 'width' : field === 'heightM' ? 'height' : field === 'heightLowM' ? 'low' : 'high'}`}
-        label={label}
-        type="number"
-        value={getDraftValue(field)}
-        onChange={(value) => onDraftChange(field, String(value))}
-        onBlur={(value) => onDraftCommit(field, String(value))}
-        onEnter={(value) => onDraftCommit(field, String(value))}
-        error={error}
-      />
-    </div>
-  );
+  useEffect(() => {
+    setTouchedFields({});
+  }, [item.id]);
+
+  const markFieldTouched = (field: InfillOpeningTouchedField) => {
+    setTouchedFields((previous) => (previous[field] ? previous : { ...previous, [field]: true }));
+  };
+
+  const visibleOpeningError = (
+    field: InfillOpeningTouchedField,
+    rawValue: string,
+    error?: string,
+  ): string | undefined => {
+    if (!error) return undefined;
+    return rawValue.trim() === '' && !touchedFields[field] ? undefined : error;
+  };
+
+  const numberField = (field: InfillDraftFieldKey, label: string, error?: string) => {
+    const rawValue = getDraftValue(field);
+    return (
+      <div className={styles.span4}>
+        <FieldTile
+          id={`${domIdBase}-shape-${field === 'widthM' ? 'width' : field === 'heightM' ? 'height' : field === 'heightLowM' ? 'low' : 'high'}`}
+          label={label}
+          type="number"
+          value={rawValue}
+          onChange={(value) => onDraftChange(field, String(value))}
+          onBlur={(value) => {
+            markFieldTouched(field);
+            onDraftCommit(field, String(value));
+          }}
+          onEnter={(value) => {
+            markFieldTouched(field);
+            onDraftCommit(field, String(value));
+          }}
+          error={visibleOpeningError(field, rawValue, error)}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className={styles.infillGuidedStageGrid}>
@@ -163,7 +192,10 @@ export default function InfillOpeningStage({
                           checked={triangleHighSide === side}
                           onChange={() => onTriangleHighSideChange(side)}
                         />
-                        <span>{side === 'left' ? 'Left' : 'Right'}</span>
+                        <svg viewBox="0 0 36 22" aria-hidden="true">
+                          <polygon points={side === 'left' ? '3,19 33,19 3,3' : '3,19 33,19 33,3'} />
+                        </svg>
+                        <span>{side === 'left' ? 'High on left' : 'High on right'}</span>
                       </label>
                     ))}
                   </div>
@@ -207,7 +239,9 @@ export default function InfillOpeningStage({
                       type="number"
                       value={monoShape.slopeDeg ?? ''}
                       onChange={(value) => onMonoSlopeChange(String(value))}
-                      error={errors.slopeDeg}
+                      onBlur={() => markFieldTouched('slopeDeg')}
+                      onEnter={() => markFieldTouched('slopeDeg')}
+                      error={visibleOpeningError('slopeDeg', monoShape.slopeDeg ?? '', errors.slopeDeg)}
                       helperText="Positive degrees. The opposite edge height is calculated automatically."
                     />
                   </div>

@@ -1004,6 +1004,26 @@
   box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.14);
 }
 
+.infillShapeTemplateSelected {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  background: rgb(var(--accentRgb));
+  color: var(--portal-text-inverse);
+  padding: 3px 7px;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.infillShapeTemplateSelected > span {
+  font-size: 10px;
+}
+
 .infillShapeTemplateCard:has(input:focus-visible) {
   outline: none;
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
@@ -1086,6 +1106,21 @@
   text-align: center;
   font-size: 12px;
   cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.infillTriangleSideFieldset label svg {
+  width: 32px;
+  height: 20px;
+}
+
+.infillTriangleSideFieldset label polygon {
+  fill: rgba(var(--accentRgb), 0.08);
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
 }
 
 .infillTriangleSideFieldset label:has(input:checked) {
@@ -1140,18 +1175,9 @@
 .infillSupportResult {
   margin: 0 12px 12px;
   border-radius: 10px;
-  background: rgba(21, 128, 61, 0.08);
-  color: rgba(25, 91, 55, 0.95);
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.infillSupportUncertainResult {
-  margin: 0 12px 8px;
-  border-radius: 10px;
-  background: rgba(180, 83, 9, 0.08);
-  color: rgba(120, 53, 15, 0.96);
+  border: 1px solid rgba(var(--accentRgb), 0.16);
+  background: rgba(var(--accentRgb), 0.055);
+  color: rgba(var(--portal-text-rgb), 0.8);
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -1965,6 +1991,30 @@
   border-top: none;
 }
 
+.infillCutListPrimaryCell {
+  display: grid;
+  gap: 2px;
+}
+
+.infillCutListPrimaryCell strong {
+  font-weight: 650;
+}
+
+.infillCutListPrimaryCell small {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.infillCutListMobileLabel {
+  display: none;
+  color: rgba(var(--portal-text-rgb), 0.58);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 .infillPresetCardGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -2024,6 +2074,11 @@
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.infillExportMenu.infillExportMenu {
+  z-index: 5200;
+  min-width: 180px;
 }
 
 .infillPreviewPanel {
@@ -2646,6 +2701,58 @@
 
   .infillShapeTemplateIcon {
     height: 58px;
+  }
+
+  .infillShapeTemplateSelected {
+    top: 6px;
+    right: 6px;
+  }
+
+  .infillCutListHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .infillCutListActions {
+    width: 100%;
+  }
+
+  .infillCutListActions > :first-child {
+    flex: 1 1 auto;
+  }
+
+  .infillCutListHead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .infillCutListRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 11px 12px;
+  }
+
+  .infillCutListQuantityCell {
+    text-align: right;
+  }
+
+  .infillCutListMeasurementCell,
+  .infillCutListDetailCell {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(105px, 0.45fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .infillCutListMobileLabel {
+    display: block;
   }
 }
 

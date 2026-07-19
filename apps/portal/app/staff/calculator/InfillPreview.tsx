@@ -170,6 +170,7 @@ export default function InfillPreview({
   const supportDiagramLabel = trianglePointSide
     ? `Triangular infill support diagram with labelled top, bottom and ${trianglePointSide === 'left' ? 'right' : 'left'} edges and a ${trianglePointSide} point`
     : 'Infill support diagram with labelled top, bottom, left and right edges';
+  const showOpeningGeometryOnly = mode === 'opening';
 
   return (
     <div className={styles.infillPreviewCard}>
@@ -186,11 +187,11 @@ export default function InfillPreview({
           </linearGradient>
         </defs>
 
-        {canonicalPanelPoints.length ? canonicalPanelPoints.map((panel) => (
+        {!showOpeningGeometryOnly && canonicalPanelPoints.length ? canonicalPanelPoints.map((panel) => (
           <polygon key={panel.id} points={panel.points} className={styles.infillPreviewPanel} fill="url(#infill-preview-fill)" />
         )) : <polygon points={polygonPoints} className={styles.infillPreviewShape} fill="url(#infill-preview-fill)" />}
 
-        {previewJoiners.map((line) => (
+        {!showOpeningGeometryOnly ? previewJoiners.map((line) => (
           <line
             key={line.key}
             x1={line.x1}
@@ -199,9 +200,9 @@ export default function InfillPreview({
             y2={line.y2}
             className={line.unsupported ? styles.infillPreviewJoinerUnsupported : styles.infillPreviewJoiner}
           />
-        ))}
+        )) : null}
 
-        {previewJoiners
+        {!showOpeningGeometryOnly ? previewJoiners
           .filter((line) => !line.unsupported)
           .map((line) => (
             <line
@@ -212,16 +213,20 @@ export default function InfillPreview({
               y2={line.y2}
               className={styles.infillPreviewSupportMarker}
             />
-          ))}
+          )) : null}
 
-        <line x1={leftX} y1={leftTopY} x2={rightX} y2={rightTopY} className={supports.hasTop ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
-        <line x1={leftX} y1={bottomY} x2={rightX} y2={bottomY} className={supports.hasBottom ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
-        {trianglePointSide !== 'left' ? <line x1={leftX} y1={leftTopY} x2={leftX} y2={bottomY} className={supports.hasLeft ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} /> : null}
-        {trianglePointSide !== 'right' ? <line x1={rightX} y1={rightTopY} x2={rightX} y2={bottomY} className={supports.hasRight ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} /> : null}
+        {!showOpeningGeometryOnly ? (
+          <>
+            <line x1={leftX} y1={leftTopY} x2={rightX} y2={rightTopY} className={supports.hasTop ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
+            <line x1={leftX} y1={bottomY} x2={rightX} y2={bottomY} className={supports.hasBottom ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
+            {trianglePointSide !== 'left' ? <line x1={leftX} y1={leftTopY} x2={leftX} y2={bottomY} className={supports.hasLeft ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} /> : null}
+            {trianglePointSide !== 'right' ? <line x1={rightX} y1={rightTopY} x2={rightX} y2={bottomY} className={supports.hasRight ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} /> : null}
+          </>
+        ) : null}
 
-        {boundarySupportTicks.map((tick) => (
+        {!showOpeningGeometryOnly ? boundarySupportTicks.map((tick) => (
           <circle key={tick.key} cx={tick.x} cy={tick.y} r={1.2} className={tick.supported ? styles.infillPreviewSupportDot : styles.infillPreviewSupportDotMissing} />
-        ))}
+        )) : null}
 
         {mode === 'supports' ? (
           <>
@@ -261,11 +266,13 @@ export default function InfillPreview({
             </text>
           </>
         )}
-        {bayLabelNodes}
+        {!showOpeningGeometryOnly ? bayLabelNodes : null}
       </svg>
 
       <div className={styles.infillPreviewLegend}>
-        {mode === 'supports' ? (
+        {mode === 'opening' ? (
+          <span>Finished opening</span>
+        ) : mode === 'supports' ? (
           <>
             <span><i className={styles.infillPreviewLegendExisting} />Existing fixing member</span>
             <span><i className={styles.infillPreviewLegendNew} />New support included</span>

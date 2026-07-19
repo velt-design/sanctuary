@@ -95,4 +95,27 @@ describe('InfillPreview canonical panels', () => {
 
     unmount();
   });
+
+  it('keeps the Opening preview neutral and free of support or cutting-plan marks', () => {
+    const { container, unmount } = renderIntoDocument(
+      <InfillPreview
+        {...common}
+        mode="opening"
+        supports={{ ...support, hasBottom: false }}
+        shape={{ type: 'rect', widthM: '2', heightM: '1', bottomOffsetM: '0' }}
+        panelPolygons={[{ id: 'panel-1', points: [{ x_m: 0, y_m: 0 }, { x_m: 1, y_m: 0 }, { x_m: 1, y_m: 1 }, { x_m: 0, y_m: 1 }] }]}
+        joinerLines={[{ positionM: 1, supported: false }]}
+        unsupportedJoinerIndicesEach={[1]}
+      />,
+    );
+
+    expect(container.querySelectorAll('svg > polygon')).toHaveLength(1);
+    expect(container.querySelectorAll('svg > line')).toHaveLength(0);
+    expect(container.querySelectorAll('svg > circle')).toHaveLength(0);
+    expect(container.textContent).toContain('Finished opening');
+    expect(container.textContent).not.toContain('Cutting layout');
+    expect(container.textContent).not.toContain('New support included');
+
+    unmount();
+  });
 });

@@ -93,7 +93,11 @@ export default function InfillConfiguratorDialog({
         </div>
 
         <div className={styles.infillDrawerFooter}>
-          <span className={styles.infillDrawerFooterNote}>Changes save automatically to this calculator draft.</span>
+          <span className={styles.infillDrawerFooterNote} role="status">
+            {stage === 'opening' && !openingComplete
+              ? 'Enter the required opening measurements to continue.'
+              : 'Changes save automatically to this calculator draft.'}
+          </span>
           <div className={styles.infillGuidedFooterActions}>
             {previous ? (
               <button type="button" className={styles.infillSecondaryButton} onClick={() => onStageChange(previous)}>Back</button>

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import styles from './CalculatorGrid.module.css';
 import type { CutListRow, InfillComputeStatus } from './infillCompute';
+import { buildInfillCutListDisplayRows } from './infillCutListPresentation';
 
 function formatLengthValue(lengthM?: number | { min: number; max: number }): string {
   if (lengthM === undefined) return '-';
@@ -91,32 +93,40 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
     return <p className={styles.infillComputedNote}>No cut list rows yet.</p>;
   }
 
-  const pieceRows = rows.filter((row) => row.group === 'piece');
-  const purchaseRows = rows.filter((row) => row.group === 'purchase');
+  const pieceRows = buildInfillCutListDisplayRows(rows, 'piece');
+  const purchaseRows = buildInfillCutListDisplayRows(rows, 'purchase');
 
-  const renderRows = (groupRows: CutListRow[], title: string) => (
+  const renderRows = (
+    groupRows: ReturnType<typeof buildInfillCutListDisplayRows>,
+    title: string,
+    headings: { primary: string; measurement: string; detail: string },
+  ) => (
     <section>
       <h4 className={styles.infillComputedTitle}>{title}</h4>
       <div className={styles.infillCutListTable} role="table" aria-label={`${title} · Infill cut list estimate`}>
         <div className={styles.infillCutListHead} role="row">
-          <span role="columnheader">Part</span>
+          <span role="columnheader">{headings.primary}</span>
           <span role="columnheader">Qty</span>
-          <span role="columnheader">Cut length</span>
-          <span role="columnheader">Details</span>
+          <span role="columnheader">{headings.measurement}</span>
+          <span role="columnheader">{headings.detail}</span>
         </div>
-        {groupRows.map((row, idx) => (
+        {groupRows.map(({ row, description, measurement, detail }, idx) => (
           <div key={`${row.pieceId ?? row.part}-${idx}`} className={styles.infillCutListRow} role="row">
-            <span role="cell">{row.part}</span>
-            <span role="cell">{row.qty}</span>
-            <span role="cell">{formatLengthValue(row.lengthM)}</span>
-            <span role="cell">
-              {[
-                row.finishedWidthM === undefined || row.finishedHeightM === undefined
-                  ? null
-                  : `${row.finishedWidthM.toFixed(3)}m × ${row.finishedHeightM.toFixed(3)}m`,
-                row.allocatedStock,
-                row.notes,
-              ].filter(Boolean).join(' · ') || '-'}
+            <span className={styles.infillCutListPrimaryCell} role="cell">
+              <strong>{row.part}</strong>
+              {description ? <small>{description}</small> : null}
+            </span>
+            <span className={styles.infillCutListQuantityCell} role="cell">
+              <span className={styles.infillCutListMobileLabel}>Qty</span>
+              {row.qty}
+            </span>
+            <span className={styles.infillCutListMeasurementCell} role="cell">
+              <span className={styles.infillCutListMobileLabel}>{headings.measurement}</span>
+              {measurement}
+            </span>
+            <span className={styles.infillCutListDetailCell} role="cell">
+              <span className={styles.infillCutListMobileLabel}>{headings.detail}</span>
+              {detail}
             </span>
           </div>
         ))}
@@ -129,15 +139,41 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
       <div className={styles.infillCutListHeader}>
         <p className={styles.infillComputedNote}>Your cutting and purchase list.</p>
         <div className={styles.infillCutListActions}>
-          <button type="button" className={styles.infillPrimaryButton} onClick={downloadCsv}>Download CSV</button>
-          <button type="button" className={styles.infillIconButton} onClick={copyCsv}>Copy CSV</button>
+          <button
+            type="button"
+            className={styles.infillPrimaryButton}
+            aria-label="Download cutting list as CSV"
+            onClick={downloadCsv}
+          >
+            Download cutting list
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className={styles.infillIconButton}>More</button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={6} className={styles.infillExportMenu}>
+              <DropdownMenuItem onSelect={() => void copyCsv()}>Copy cutting list</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {pieceRows.length ? renderRows(pieceRows, 'Pieces to cut') : null}
-      {purchaseRows.length ? renderRows(purchaseRows, 'Materials to purchase') : null}
+      {pieceRows.length
+        ? renderRows(pieceRows, 'Pieces to cut', {
+            primary: 'Part',
+            measurement: 'Finished size or cut length',
+            detail: 'Allocated stock',
+          })
+        : null}
+      {purchaseRows.length
+        ? renderRows(purchaseRows, 'Materials to purchase', {
+            primary: 'Material',
+            measurement: 'Stock size',
+            detail: 'Planned use and waste',
+          })
+        : null}
 
-      {copyMessage ? <p className={styles.infillComputedNote}>{copyMessage}</p> : null}
+      {copyMessage ? <p className={styles.infillComputedNote} aria-live="polite">{copyMessage}</p> : null}
     </div>
   );
 }

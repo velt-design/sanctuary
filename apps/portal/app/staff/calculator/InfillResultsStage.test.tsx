@@ -68,8 +68,12 @@ describe('InfillResultsStage', () => {
     expect(document.querySelector('details')?.hasAttribute('open')).toBe(false);
     expect(content).toContain('Acrylic panel 1');
     expect(content).toContain('Plexi sheet 3050 x 2030');
-    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Download CSV'))).toBe(true);
-    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Copy CSV'))).toBe(true);
+    expect(content).toContain('Finished size or cut length');
+    expect(content).toContain('Allocated stock');
+    expect(content).toContain('Stock size');
+    expect(content).toContain('Planned use and waste');
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.getAttribute('aria-label') === 'Download cutting list as CSV')).toBe(true);
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('More'))).toBe(true);
 
     unmount();
   });
@@ -98,8 +102,7 @@ describe('InfillResultsStage', () => {
     if (!(fixButton instanceof HTMLButtonElement)) throw new Error('Missing blocker action.');
     act(() => fixButton.click());
     expect(onFixBlocker).toHaveBeenCalledWith(blocker);
-    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Download CSV'))).toBe(false);
-    expect(Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.includes('Copy CSV'))).toBe(false);
+    expect(Array.from(document.querySelectorAll('button')).some((button) => button.getAttribute('aria-label') === 'Download cutting list as CSV')).toBe(false);
 
     unmount();
   });

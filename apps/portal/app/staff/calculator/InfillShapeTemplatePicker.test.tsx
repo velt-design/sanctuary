@@ -21,6 +21,7 @@ describe('InfillShapeTemplatePicker', () => {
     expect(container.textContent).toContain('One side higher than the other');
     expect(container.textContent).toContain('Tapers to a point on one side');
     expect(container.querySelector('input[value="rectangle"]:checked')).not.toBeNull();
+    expect(container.textContent?.match(/Selected/g)).toHaveLength(1);
 
     const triangle = container.querySelector('input[value="triangle"]');
     if (!(triangle instanceof HTMLInputElement)) throw new Error('Missing triangle template.');
@@ -30,4 +31,3 @@ describe('InfillShapeTemplatePicker', () => {
     unmount();
   });
 });
-

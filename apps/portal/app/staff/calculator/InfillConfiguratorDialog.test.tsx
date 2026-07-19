@@ -34,9 +34,11 @@ describe('InfillConfiguratorDialog', () => {
     expect(document.body.textContent).toContain('Step 1 of 3 — Opening');
     expect(buttonNamed('2Existing supports').disabled).toBe(true);
     expect(buttonNamed('Continue').disabled).toBe(true);
+    expect(document.body.textContent).toContain('Enter the required opening measurements to continue.');
 
     rerender(<InfillConfiguratorDialog {...common} stage="opening" openingComplete />);
     expect(buttonNamed('Continue').disabled).toBe(false);
+    expect(document.body.textContent).toContain('Changes save automatically to this calculator draft.');
     act(() => buttonNamed('Continue').click());
     expect(onStageChange).toHaveBeenCalledWith('supports');
 

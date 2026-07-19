@@ -30,7 +30,8 @@ describe('InfillSupportsStage', () => {
     expect(container.querySelectorAll('fieldset')).toHaveLength(4);
     expect(container.querySelectorAll('input[value="unsure"]:checked')).toHaveLength(4);
     expect(container.textContent).toContain('Not sure — include a support');
-    expect(container.textContent).toContain('Top, Bottom, Left and Right edges were not confirmed');
+    expect(container.textContent).toContain('4 new supports are included. Unconfirmed edges: top, bottom, left and right.');
+    expect(container.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
 
     const topYes = container.querySelector('input[name="infill-test-support-top-choice"][value="yes"]');
     if (!(topYes instanceof HTMLInputElement)) throw new Error('Missing top-edge yes choice.');
@@ -71,8 +72,8 @@ describe('InfillSupportsStage', () => {
     expect(container.querySelector('input[name="triangle-supports-support-left-choice"]')).toBeNull();
     expect(container.textContent).toContain('Triangle point');
     expect(container.textContent).toContain('no fixing edge or support required');
-    expect(container.textContent).toContain('Top, Bottom and Right edges were not confirmed');
-    expect(container.textContent).not.toContain('Top, Bottom, Left and Right edges were not confirmed');
+    expect(container.textContent).toContain('3 new supports are included. Unconfirmed edges: top, bottom and right.');
+    expect(container.textContent).not.toContain('top, bottom, left and right');
 
     unmount();
   });

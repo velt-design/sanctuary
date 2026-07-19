@@ -46,6 +46,7 @@ export default function InfillShapeTemplatePicker({
       <div className={styles.infillShapeTemplateGrid}>
         {templates.map((template) => {
           const id = `${domIdBase}-shape-template-${template.value}`;
+          const selected = value === template.value;
           return (
             <label key={template.value} htmlFor={id} className={styles.infillShapeTemplateCard}>
               <input
@@ -53,9 +54,14 @@ export default function InfillShapeTemplatePicker({
                 type="radio"
                 name={`${domIdBase}-shape-template`}
                 value={template.value}
-                checked={value === template.value}
+                checked={selected}
                 onChange={() => onChange(template.value)}
               />
+              {selected ? (
+                <span className={styles.infillShapeTemplateSelected} aria-hidden="true">
+                  <span>✓</span> Selected
+                </span>
+              ) : null}
               <svg viewBox="0 0 96 56" aria-hidden="true" className={styles.infillShapeTemplateIcon}>
                 <polygon points={template.points} />
                 <line x1="10" y1="45" x2="86" y2="45" />
@@ -71,4 +77,3 @@ export default function InfillShapeTemplatePicker({
     </fieldset>
   );
 }
-

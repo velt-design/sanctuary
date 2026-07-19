@@ -7,7 +7,7 @@ import { getTrianglePointSide } from './infillOpeningTemplates';
 import {
   INFILL_EDGES,
   normalizeEdgeConfirmations,
-  supportConfirmationSummary,
+  supportPlanningSummary,
   updateEdgeConfirmation,
 } from './infillSupportPresentation';
 
@@ -50,7 +50,7 @@ export default function InfillSupportsStage({
   const confirmations = normalizeEdgeConfirmations(item.support.edgeConfirmations, item.support);
   const trianglePointSide = getTrianglePointSide(item.shape);
   const activeEdges = INFILL_EDGES.filter((edge) => edge !== trianglePointSide);
-  const uncertainSummary = supportConfirmationSummary(item.support, activeEdges);
+  const planningSummary = supportPlanningSummary(additionalSupportSummary, item.support, activeEdges);
   const internalMode = item.support.internalSupportMode ?? 'none';
 
   return (
@@ -123,8 +123,7 @@ export default function InfillSupportsStage({
           ) : null}
         </div>
 
-        {uncertainSummary ? <p className={styles.infillSupportUncertainResult}>{uncertainSummary}</p> : null}
-        <p className={styles.infillSupportResult}>{additionalSupportSummary}</p>
+        <p className={styles.infillSupportResult} aria-live="polite">{planningSummary}</p>
       </section>
       <aside className={styles.infillGuidedPreview} aria-label="Support preview">{preview}</aside>
     </div>

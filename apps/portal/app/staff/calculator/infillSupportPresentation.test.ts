@@ -57,6 +57,6 @@ describe('infill support confirmation presentation', () => {
       'yes',
     );
     expect(getUnsureEdges(support)).toEqual(['bottom', 'left', 'right']);
-    expect(supportConfirmationSummary(support)).toBe('Bottom, Left and Right edges were not confirmed, so a new support is included.');
+    expect(supportConfirmationSummary(support)).toBe('Unconfirmed edges: bottom, left and right.');
   });
 });

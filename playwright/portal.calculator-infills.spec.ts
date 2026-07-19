@@ -23,7 +23,12 @@ async function setNumber(dialog: Locator, label: string, value: string): Promise
 }
 
 async function advanceToResults(dialog: Locator, useKeyboard = false): Promise<void> {
-  await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
+  const openingStep = dialog.getByRole('button', { name: /^1 Opening$/ });
+  if (await openingStep.count()) {
+    await expect(openingStep).toHaveAttribute('aria-current', 'step');
+  } else {
+    await expect(dialog.getByText('Step 1 of 3 — Opening', { exact: true })).toBeVisible();
+  }
   const firstContinue = dialog.getByRole('button', { name: 'Continue', exact: true });
   if (useKeyboard) {
     await firstContinue.focus();
@@ -31,7 +36,12 @@ async function advanceToResults(dialog: Locator, useKeyboard = false): Promise<v
   } else {
     await firstContinue.click();
   }
-  await expect(dialog.getByRole('button', { name: /^2 Existing supports$/ })).toHaveAttribute('aria-current', 'step');
+  const supportsStep = dialog.getByRole('button', { name: /^2 Existing supports$/ });
+  if (await supportsStep.count()) {
+    await expect(supportsStep).toHaveAttribute('aria-current', 'step');
+  } else {
+    await expect(dialog.getByText('Step 2 of 3 — Existing supports', { exact: true })).toBeVisible();
+  }
   const secondContinue = dialog.getByRole('button', { name: 'Continue', exact: true });
   if (useKeyboard) {
     await secondContinue.focus();
@@ -39,7 +49,17 @@ async function advanceToResults(dialog: Locator, useKeyboard = false): Promise<v
   } else {
     await secondContinue.click();
   }
-  await expect(dialog.getByRole('button', { name: /^3 Results/ })).toHaveAttribute('aria-current', 'step');
+  const resultsStep = dialog.getByRole('button', { name: /^3 Results/ });
+  if (await resultsStep.count()) {
+    await expect(resultsStep).toHaveAttribute('aria-current', 'step');
+  } else {
+    await expect(dialog.getByText('Step 3 of 3 — Results', { exact: true })).toBeVisible();
+  }
+}
+
+async function copyCuttingList(page: Page, dialog: Locator): Promise<void> {
+  await dialog.getByRole('button', { name: 'More', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Copy cutting list', exact: true }).click();
 }
 
 async function openResults(dialog: Locator, useKeyboard = false): Promise<void> {
@@ -63,7 +83,9 @@ test('authenticated calculator resolves and displays automatic choices', async (
     await dialog.getByText('Change automatic choices', { exact: true }).click();
     await expect(dialog.getByLabel('Panel material', { exact: true })).toHaveValue('auto');
     await expect(dialog.getByLabel('Joiner direction', { exact: true })).toHaveValue('auto');
+    await expect(dialog.getByText('Required field.', { exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+    await expect(dialog.getByText('Enter the required opening measurements to continue.', { exact: true })).toBeVisible();
     await setNumber(dialog, 'Width (m)', '1.2');
     await setNumber(dialog, 'Height (m)', '1');
     await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
@@ -86,6 +108,7 @@ test('authenticated calculator uses visual templates and produces a true triangl
     await expect(rectangle).toBeChecked();
     await expect(slopingTop).not.toBeChecked();
     await expect(triangle).not.toBeChecked();
+    await expect(rectangle.locator('..')).toContainText('Selected');
     const cardBoxes = await Promise.all([
       rectangle.locator('..').boundingBox(),
       slopingTop.locator('..').boundingBox(),
@@ -102,10 +125,10 @@ test('authenticated calculator uses visual templates and produces a true triangl
     await triangle.locator('..').click();
     await expect(triangle).toBeChecked();
     await expect(dialog.getByLabel('Peak height (m)', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('radio', { name: 'Right', exact: true })).toBeChecked();
+    await expect(dialog.getByRole('radio', { name: 'High on right', exact: true })).toBeChecked();
     await setNumber(dialog, 'Width (m)', '1');
     await setNumber(dialog, 'Peak height (m)', '1');
-    await dialog.getByRole('radio', { name: 'Left', exact: true }).locator('..').click();
+    await dialog.getByRole('radio', { name: 'High on left', exact: true }).locator('..').click();
 
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(dialog.getByRole('group', { name: 'Right edge', exact: true })).toHaveCount(0);
@@ -113,19 +136,19 @@ test('authenticated calculator uses visual templates and produces a true triangl
     await expect(dialog.getByRole('img', { name: /right point/i })).toBeVisible();
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
-    await expect(dialog.getByText('Ready', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Ready for cutting and ordering', { exact: true })).toBeVisible();
     const pieces = dialog.getByRole('table', { name: /Pieces to cut/ });
-    await expect(pieces.getByRole('row').filter({ hasText: 'Acrylic panel 1' })).toContainText('triangle');
+    await expect(pieces.getByRole('row').filter({ hasText: 'Acrylic panel 1' })).toContainText('Triangle');
     await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Top/ })).toHaveCount(1);
     await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Bottom/ })).toHaveCount(1);
     await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Left/ })).toHaveCount(1);
     await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Right/ })).toHaveCount(0);
 
-    await dialog.getByRole('button', { name: 'Copy CSV', exact: true }).click();
+    await copyCuttingList(page, dialog);
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Pieces to cut,panel,triangle,Acrylic panel 1');
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toContain(',joiner_right,');
     const downloadPromise = page.waitForEvent('download');
-    await dialog.getByRole('button', { name: 'Download CSV', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true }).click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
     expect(downloadPath).not.toBeNull();
@@ -168,11 +191,11 @@ test('authenticated calculator shows exact 2.4m x 2.1m sheet pieces, purchases, 
     await expect(sheetRow).toContainText('2');
     await expect(sheetRow).toContainText('3.050m');
 
-    await dialog.getByRole('button', { name: 'Copy CSV', exact: true }).click();
+    await copyCuttingList(page, dialog);
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Pieces to cut,panel,rectangle,Acrylic panel 1,1,2.100m,1.200m,2.100m');
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Materials to purchase,stock,acrylic_sheet,Plexi sheet 3050 × 2030,2,3.050m,2.030m');
     const downloadPromise = page.waitForEvent('download');
-    await dialog.getByRole('button', { name: 'Download CSV', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('infill-cutting-and-purchase-list.csv');
     const downloadPath = await download.path();
@@ -256,8 +279,8 @@ test('authenticated calculator blocks unmanufacturable stock and routes the fix 
     await advanceToResults(dialog);
 
     await expect(dialog.getByText('Cannot manufacture', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Download CSV', exact: true })).toHaveCount(0);
-    await expect(dialog.getByRole('button', { name: 'Copy CSV', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'More', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
     await expect(dialog.getByRole('button', { name: /^1 Opening$/ })).toHaveAttribute('aria-current', 'step');
     await expect(dialog.getByLabel('Panel material', { exact: true })).toBeFocused();
@@ -280,15 +303,15 @@ test('authenticated calculator routes invalid partial-edge rafter matching to Ex
     await expect(dialog).toContainText('Roof-rafter matching only works on a full front or house edge. Choose explicit positions.');
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(dialog.getByText('Cannot manufacture', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Download CSV', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true })).toHaveCount(0);
 
     await dialog.getByRole('button', { name: /Fix details$/ }).first().click();
     await expect(dialog.getByRole('button', { name: /^2 Existing supports$/ })).toHaveAttribute('aria-current', 'step');
     await expect(dialog.getByLabel('Existing internal supports', { exact: true })).toBeFocused();
     await dialog.getByLabel('Existing internal supports', { exact: true }).selectOption('none');
     await dialog.getByRole('button', { name: /^3 Results/ }).click();
-    await expect(dialog.getByText('Ready', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Download CSV', exact: true })).toBeVisible();
+    await expect(dialog.getByText('Ready for cutting and ordering', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true })).toBeVisible();
   });
 });
 
@@ -311,6 +334,7 @@ test('authenticated calculator confirms uncertain supports with compact mobile p
     await topEdge.getByLabel('Yes, a fixing member exists', { exact: true }).check();
     await expect(dialog.getByRole('img', { name: /labelled top, bottom, left and right edges/i })).toBeVisible();
     await expect(dialog.getByText('New support included', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('The purchase plan includes 3 new 50×50 supports. Unconfirmed edges: bottom, left and right.', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await expect(dialog.getByText('Step 3 of 3 — Results', { exact: true })).toBeVisible();
@@ -318,5 +342,39 @@ test('authenticated calculator confirms uncertain supports with compact mobile p
     const dimensions = await dialog.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
     await attachCalculatorScreenshot(page, testInfo, 'infill-support-confirmation-768.png');
+  });
+});
+
+test('authenticated calculator keeps Opening calm and Results readable at 480px', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-calm-results-480' }, async () => {
+    const dialog = await openCustomInfill(page, 480);
+    await expect(dialog.getByText('Required field.', { exact: true })).toHaveCount(0);
+    await expect(dialog.getByText('Enter the required opening measurements to continue.', { exact: true })).toBeVisible();
+
+    const width = dialog.getByLabel('Width (m)', { exact: true });
+    await width.focus();
+    await width.press('Tab');
+    await expect(dialog.getByText('Required field.', { exact: true })).toHaveCount(1);
+
+    await setNumber(dialog, 'Width (m)', '1.2');
+    await setNumber(dialog, 'Height (m)', '1');
+    await expect(dialog.getByText('Finished opening', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Cutting layout', { exact: true })).toHaveCount(0);
+    await openResults(dialog);
+
+    const pieces = dialog.getByRole('table', { name: /Pieces to cut/ });
+    await expect(pieces.getByRole('columnheader', { name: 'Finished size or cut length', exact: true })).toHaveCount(1);
+    await expect(pieces.getByRole('columnheader', { name: 'Allocated stock', exact: true })).toHaveCount(1);
+    const firstPiece = pieces.getByRole('row').filter({ hasText: 'Acrylic panel 1' });
+    await expect(firstPiece).toContainText('1.200m × 1.000m');
+    await expect(firstPiece).toContainText('Stock');
+    const rowDimensions = await firstPiece.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+    expect(rowDimensions.scrollWidth).toBeLessThanOrEqual(rowDimensions.clientWidth + 1);
+    await expect(dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'More', exact: true })).toBeVisible();
+
+    const dimensions = await dialog.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    await attachCalculatorScreenshot(page, testInfo, 'infill-calm-results-480.png');
   });
 });

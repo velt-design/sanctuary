@@ -61,13 +61,13 @@ export function infillResultStatus(ui: InfillUiState): {
   }
   return {
     tone: 'ready',
-    title: 'Ready',
-    message: 'The pieces and purchase plan below are ready to use.',
+    title: 'Ready for cutting and ordering',
+    message: 'Use the finished-piece and purchase lists below for fabrication.',
   };
 }
 
 export function addedSupportSummary(count: number): string {
-  if (count <= 0) return 'No additional 50×50 supports are required.';
-  if (count === 1) return '1 additional 50×50 support is included in the purchase plan.';
-  return `${count} additional 50×50 supports are included in the purchase plan.`;
+  if (count <= 0) return 'No new 50×50 supports are required.';
+  if (count === 1) return 'The purchase plan includes 1 new 50×50 support.';
+  return `The purchase plan includes ${count} new 50×50 supports.`;
 }

@@ -55,8 +55,8 @@ describe('infill configurator presentation', () => {
     const state = resolveInfillUiState(makeInfill({ support: { hasBottom: false } as InfillLineItem['support'] }), 0.9);
 
     expect(state.warnings).toEqual([]);
-    expect(addedSupportSummary(state.estimate.estimatedMullionsTotal)).toContain('included in the purchase plan');
-    expect(infillResultStatus(state).title).toBe('Ready');
+    expect(addedSupportSummary(state.estimate.estimatedMullionsTotal)).toContain('The purchase plan includes');
+    expect(infillResultStatus(state).title).toBe('Ready for cutting and ordering');
   });
 
   it('routes critical takeoff errors back to the support stage', () => {
