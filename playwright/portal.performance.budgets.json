@@ -19,6 +19,12 @@
       "contentVisibleMsMax": 7000
     },
     {
+      "name": "project-detail-cold",
+      "route": "/staff/projects/[projectId]",
+      "shellVisibleMsMax": 3500,
+      "contentVisibleMsMax": 7000
+    },
+    {
       "name": "contacts-cold",
       "route": "/staff/contacts",
       "shellVisibleMsMax": 4000,
