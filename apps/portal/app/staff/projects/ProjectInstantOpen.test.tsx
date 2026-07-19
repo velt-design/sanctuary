@@ -3,12 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 
-const refresh = vi.fn();
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh }),
-}));
-
 vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<unknown>) => {
     void loader;
@@ -25,7 +19,6 @@ function InstantOpenHarness() {
 
 describe('useProjectInstantOpen', () => {
   beforeEach(() => {
-    refresh.mockReset();
     window.history.replaceState(null, '', '/staff/projects');
   });
 
@@ -37,7 +30,6 @@ describe('useProjectInstantOpen', () => {
     });
 
     expect(window.location.pathname).toBe('/staff/projects/proj_1');
-    expect(refresh).toHaveBeenCalledOnce();
     expect(rendered.container.querySelector('[data-testid="optimistic-project"]')?.getAttribute('data-project-id'))
       .toBe('proj_1');
     expect(rendered.container.querySelector('[data-testid="optimistic-project"]')?.getAttribute('data-tab'))

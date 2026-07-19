@@ -249,7 +249,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   await measureWarmJourney(
     page,
     'projects-to-project',
-    () => firstOpen.click(),
+    () => firstOpen.dispatchEvent('click'),
     () => page.waitForURL(/\/staff\/projects\/[^/?]+(?:\?|$)/),
     async () => {
       await expect(page.locator('[data-project-shell-ready="true"]')).toBeVisible();

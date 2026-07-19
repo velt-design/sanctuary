@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import ProjectDetailLoading from './[projectId]/loading';
 import { projectDetailHref } from '@/lib/queries/projectOpenPreload';
 
@@ -19,15 +18,13 @@ export function useProjectInstantOpen(): {
   instantProject: ReactNode | null;
   openProject: (projectId: string) => void;
 } {
-  const router = useRouter();
   const [projectId, setProjectId] = useState<string | null>(null);
 
   const openProject = useCallback((nextProjectId: string) => {
     const href = projectDetailHref(nextProjectId);
     setProjectId(nextProjectId);
     window.history.pushState(null, '', href);
-    router.refresh();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
