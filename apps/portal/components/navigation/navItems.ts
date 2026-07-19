@@ -26,7 +26,7 @@ export const NAV_ITEMS = [
   {
     key: 'contacts',
     label: 'Contacts',
-    href: '/contacts',
+    href: '/staff/contacts',
     Icon: Users,
     adminOnly: false,
     children: [

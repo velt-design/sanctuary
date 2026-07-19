@@ -86,6 +86,21 @@ describe('SidebarRail', () => {
     rendered.unmount();
   });
 
+  it('opens canonical Contacts instantly without starting the blocking route transition', () => {
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+
+    linkByLabel(rendered.container, 'Contacts').dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(window.location.pathname).toBe('/staff/contacts');
+    expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/contacts', { scroll: false });
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('contacts-index');
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
   it('does not start a loading transition for current-page icon clicks', () => {
     const rendered = renderIntoDocument(<SidebarRail role="staff" />);
 
