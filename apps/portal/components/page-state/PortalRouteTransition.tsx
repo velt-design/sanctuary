@@ -11,12 +11,10 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import BlueprintLoadingScreen from './BlueprintLoadingScreen';
+import PortalNavigationProgress from './PortalNavigationProgress';
 import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
 import ContactsIndexPendingFrame from './ContactsIndexPendingFrame';
 
-const SHOW_DELAY_MS = 160;
-const MIN_VISIBLE_MS = 450;
 const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
 const MAX_INSTANT_ROUTE_MS = 8000;
@@ -27,7 +25,7 @@ type PortalRouteTransitionInput = {
   href: string;
   label?: string;
   source?: string;
-  show?: 'delayed' | 'immediate';
+  control?: HTMLElement | null;
 };
 
 type PortalRouteTransitionContextValue = {
@@ -107,13 +105,10 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   const searchParams = useSearchParams();
   const routeKey = useMemo(() => routeKeyFor(pathname, searchParams), [pathname, searchParams]);
   const previousRouteKeyRef = useRef<string | null>(null);
-  const showTimerRef = useRef<number | null>(null);
-  const hideTimerRef = useRef<number | null>(null);
   const maxTimerRef = useRef<number | null>(null);
   const instantRouteTimerRef = useRef<number | null>(null);
-  const visibleAtRef = useRef(0);
+  const busyControlRef = useRef<{ element: HTMLElement; previousAriaBusy: string | null } | null>(null);
   const activeRef = useRef(false);
-  const visibleRef = useRef(false);
   const [visible, setVisible] = useState(false);
   const [ariaLabel, setAriaLabel] = useState(DEFAULT_MESSAGE);
   const [instantRoute, setInstantRoute] = useState<PortalInstantRoute | null>(null);
@@ -124,81 +119,57 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     timerRef.current = null;
   }, []);
 
-  const setVisibleValue = useCallback((next: boolean) => {
-    visibleRef.current = next;
-    setVisible(next);
+  const clearBusyControl = useCallback(() => {
+    const busyControl = busyControlRef.current;
+    busyControlRef.current = null;
+    if (!busyControl) return;
+
+    delete busyControl.element.dataset.portalRoutePending;
+    if (busyControl.previousAriaBusy === null) {
+      busyControl.element.removeAttribute('aria-busy');
+    } else {
+      busyControl.element.setAttribute('aria-busy', busyControl.previousAriaBusy);
+    }
   }, []);
 
-  const hideNow = useCallback(() => {
-    clearTimer(hideTimerRef);
-    setVisibleValue(false);
-  }, [clearTimer, setVisibleValue]);
-
-  const finishRouteTransition = useCallback(
-    ({ force = false }: { force?: boolean } = {}) => {
-      activeRef.current = false;
-      clearTimer(showTimerRef);
-      clearTimer(maxTimerRef);
-
-      if (!visibleRef.current) {
-        hideNow();
-        return;
-      }
-
-      if (force) {
-        hideNow();
-        return;
-      }
-
-      const elapsedMs = window.performance.now() - visibleAtRef.current;
-      const remainingMs = Math.max(MIN_VISIBLE_MS - elapsedMs, 0);
-      if (remainingMs === 0) {
-        hideNow();
-        return;
-      }
-
-      clearTimer(hideTimerRef);
-      hideTimerRef.current = window.setTimeout(() => {
-        hideTimerRef.current = null;
-        hideNow();
-      }, remainingMs);
+  const markBusyControl = useCallback(
+    (control: HTMLElement | null | undefined) => {
+      clearBusyControl();
+      if (!control) return;
+      busyControlRef.current = {
+        element: control,
+        previousAriaBusy: control.getAttribute('aria-busy'),
+      };
+      control.dataset.portalRoutePending = 'true';
+      control.setAttribute('aria-busy', 'true');
     },
-    [clearTimer, hideNow],
+    [clearBusyControl],
   );
+
+  const finishRouteTransition = useCallback(() => {
+    activeRef.current = false;
+    clearTimer(maxTimerRef);
+    clearBusyControl();
+    setVisible(false);
+  }, [clearBusyControl, clearTimer]);
 
   const beginRouteTransition = useCallback(
     (input: PortalRouteTransitionInput) => {
       if (typeof window === 'undefined') return;
       if (!shouldStartRouteTransitionForHref(input.href)) return;
-      const showMode = input.show ?? 'delayed';
 
       activeRef.current = true;
       setAriaLabel(input.label ? `Preparing ${input.label}` : DEFAULT_MESSAGE);
-      clearTimer(showTimerRef);
-      clearTimer(hideTimerRef);
       clearTimer(maxTimerRef);
+      markBusyControl(input.control);
+      setVisible(true);
 
       maxTimerRef.current = window.setTimeout(() => {
         maxTimerRef.current = null;
-        finishRouteTransition({ force: true });
+        finishRouteTransition();
       }, MAX_TRANSITION_MS);
-
-      if (showMode === 'immediate') {
-        visibleAtRef.current = window.performance.now();
-        if (!visibleRef.current) setVisibleValue(true);
-        return;
-      }
-
-      if (visibleRef.current) return;
-
-      showTimerRef.current = window.setTimeout(() => {
-        showTimerRef.current = null;
-        if (!activeRef.current) return;
-        visibleAtRef.current = window.performance.now();
-        setVisibleValue(true);
-      }, SHOW_DELAY_MS);
     },
-    [clearTimer, finishRouteTransition, setVisibleValue],
+    [clearTimer, finishRouteTransition, markBusyControl],
   );
 
   const finishInstantRoute = useCallback(
@@ -225,18 +196,17 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     const previousRouteKey = previousRouteKeyRef.current;
     previousRouteKeyRef.current = routeKey;
     if (!previousRouteKey || previousRouteKey === routeKey) return;
-    if (!activeRef.current && !visibleRef.current) return;
+    if (!activeRef.current) return;
     finishRouteTransition();
   }, [finishRouteTransition, routeKey]);
 
   useEffect(
     () => () => {
-      clearTimer(showTimerRef);
-      clearTimer(hideTimerRef);
       clearTimer(maxTimerRef);
       clearTimer(instantRouteTimerRef);
+      clearBusyControl();
     },
-    [clearTimer],
+    [clearBusyControl, clearTimer],
   );
 
   useEffect(() => {
@@ -261,9 +231,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   return (
     <PortalRouteTransitionContext.Provider value={value}>
       {children}
-      {visible ? (
-        <BlueprintLoadingScreen variant="overlay" message={DEFAULT_MESSAGE} ariaLabel={ariaLabel} />
-      ) : null}
+      {visible ? <PortalNavigationProgress ariaLabel={ariaLabel} /> : null}
     </PortalRouteTransitionContext.Provider>
   );
 }

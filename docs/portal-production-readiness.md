@@ -77,7 +77,7 @@ This table maps the original Instant Portal plan to the integrated Wave 0 and Wa
 
 | Item | Status | Evidence and remaining work |
 | --- | --- | --- |
-| NAV-01 | Yellow | Projects and Contacts replace the blocking overlay with immediate truthful route content, but other ordinary portal navigation still uses the delayed full-screen `BlueprintLoadingScreen`; the shared thin progress/control-busy contract remains. |
+| NAV-01 | Green | Ordinary portal navigation now keeps the current surface usable, shows a thin immediate progress bar, and marks only the clicked link or Schedule view button busy. Projects and Contacts retain their richer truthful pending frames; full-page Blueprint loading remains restricted to cold route/auth boundaries. Shared transition, sidebar, Schedule, and authenticated no-overlay coverage enforce the contract. |
 | AUTH-01 | Yellow | Staff/admin helpers are explicit, but `getPortalSession()` repeats access and `auth.getUser()` work inside a request. Request-scoped memoisation is not implemented and requires the planned auth-architecture review before editing. |
 | READ-01 | Green | Project and contact lists have canonical staff API/query owners, auth-bound server clients, paginated loaders, concurrent independent reads, diagnostics, and browser-Supabase boundary coverage. |
 | READ-02 | Yellow | Projects and Contacts are cache-first with truthful pending/cached/fresh/failure states. Dashboard still awaits `getDashboardData()` in its page route and renders server data rather than the existing user-owned query cache. |

@@ -178,7 +178,7 @@ export default function PortalSidebarPanel() {
         beginInstantRoute(indexTarget.route);
         if (openPortalIndexInstantly(event, router, href)) return;
       }
-      beginRouteTransition({ href, label, source: 'sidebar-panel' });
+      beginRouteTransition({ href, label, source: 'sidebar-panel', control: event.currentTarget });
     },
     [beginInstantRoute, beginRouteTransition, router],
   );
@@ -222,7 +222,7 @@ export default function PortalSidebarPanel() {
         beginInstantRoute(indexTarget.route);
         if (openPortalIndexInstantly(event, router, href)) return;
       }
-      beginRouteTransition({ href, label, source: 'sidebar-rail' });
+      beginRouteTransition({ href, label, source: 'sidebar-rail', control: event.currentTarget });
     },
     [beginInstantRoute, beginRouteTransition, router],
   );

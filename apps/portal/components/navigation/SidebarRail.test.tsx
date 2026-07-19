@@ -112,4 +112,22 @@ describe('SidebarRail', () => {
 
     rendered.unmount();
   });
+
+  it('starts ordinary navigation progress on only the clicked control', () => {
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+    const scheduleLink = linkByLabel(rendered.container, 'Schedule');
+
+    scheduleLink.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/schedule',
+      label: 'Schedule',
+      source: 'sidebar-rail',
+      control: scheduleLink,
+    });
+
+    rendered.unmount();
+  });
 });

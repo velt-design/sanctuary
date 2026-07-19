@@ -16,11 +16,17 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
-function Trigger({ href, show }: { href: string; show?: 'delayed' | 'immediate' }) {
+function Trigger({ href, initiallyBusy = false }: { href: string; initiallyBusy?: boolean }) {
   const { beginRouteTransition } = usePortalRouteTransition();
 
   return (
-    <button type="button" onClick={() => beginRouteTransition({ href, label: 'Projects', source: 'test', show })}>
+    <button
+      type="button"
+      aria-busy={initiallyBusy || undefined}
+      onClick={(event) =>
+        beginRouteTransition({ href, label: 'Projects', source: 'test', control: event.currentTarget })
+      }
+    >
       Start
     </button>
   );
@@ -61,23 +67,23 @@ describe('PortalRouteTransitionProvider', () => {
     vi.useRealTimers();
   });
 
-  it('delays the blueprint overlay and keeps it briefly visible after the route changes', () => {
+  it('shows non-blocking progress immediately and marks only the clicked control busy', () => {
     const rendered = renderIntoDocument(
       <PortalRouteTransitionProvider>
         <Trigger href="/staff/projects" />
+        <button type="button">Other action</button>
       </PortalRouteTransitionProvider>,
     );
+    const buttons = rendered.container.querySelectorAll('button');
 
     act(() => {
-      rendered.container.querySelector('button')?.click();
-      vi.advanceTimersByTime(159);
+      buttons[0]?.click();
     });
-    expect(rendered.container.textContent).not.toContain('Preparing workspace...');
-
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(rendered.container.textContent).toContain('Preparing workspace...');
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Page loading"]')).toBeNull();
+    expect(buttons[0]?.getAttribute('aria-busy')).toBe('true');
+    expect(buttons[0]?.getAttribute('data-portal-route-pending')).toBe('true');
+    expect(buttons[1]?.getAttribute('aria-busy')).toBeNull();
 
     mockPathname = '/staff/projects';
     window.history.replaceState({}, '', '/staff/projects');
@@ -87,20 +93,14 @@ describe('PortalRouteTransitionProvider', () => {
       </PortalRouteTransitionProvider>,
     );
 
-    act(() => {
-      vi.advanceTimersByTime(449);
-    });
-    expect(rendered.container.textContent).toContain('Preparing workspace...');
-
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(rendered.container.textContent).not.toContain('Preparing workspace...');
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).toBeNull();
+    expect(buttons[0]?.getAttribute('aria-busy')).toBeNull();
+    expect(buttons[0]?.getAttribute('data-portal-route-pending')).toBeNull();
 
     rendered.unmount();
   });
 
-  it('cancels the delayed overlay when navigation completes quickly', () => {
+  it('clears progress and the clicked control if a transition never completes', () => {
     const rendered = renderIntoDocument(
       <PortalRouteTransitionProvider>
         <Trigger href="/staff/projects" />
@@ -109,55 +109,38 @@ describe('PortalRouteTransitionProvider', () => {
 
     act(() => {
       rendered.container.querySelector('button')?.click();
-      vi.advanceTimersByTime(80);
+      vi.advanceTimersByTime(8000);
     });
-
-    mockPathname = '/staff/projects';
-    window.history.replaceState({}, '', '/staff/projects');
-    rendered.rerender(
-      <PortalRouteTransitionProvider>
-        <Trigger href="/staff/projects" />
-      </PortalRouteTransitionProvider>,
-    );
-
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(rendered.container.textContent).not.toContain('Preparing workspace...');
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).toBeNull();
+    expect(rendered.container.querySelector('button')?.getAttribute('aria-busy')).toBeNull();
 
     rendered.unmount();
   });
 
-  it('shows the blueprint overlay immediately when requested', () => {
+  it('restores a clicked control existing busy state after navigation', () => {
     const rendered = renderIntoDocument(
       <PortalRouteTransitionProvider>
-        <Trigger href="/staff/schedule?view=gantt" show="immediate" />
+        <Trigger href="/staff/schedule?view=gantt" initiallyBusy />
       </PortalRouteTransitionProvider>,
     );
 
     act(() => {
       rendered.container.querySelector('button')?.click();
     });
-    expect(rendered.container.textContent).toContain('Preparing workspace...');
+    expect(rendered.container.querySelector('button')?.getAttribute('aria-busy')).toBe('true');
 
     mockPathname = '/staff/schedule';
     mockSearchParams = new URLSearchParams('view=gantt');
     window.history.replaceState({}, '', '/staff/schedule?view=gantt');
     rendered.rerender(
       <PortalRouteTransitionProvider>
-        <Trigger href="/staff/schedule?view=gantt" show="immediate" />
+        <Trigger href="/staff/schedule?view=gantt" initiallyBusy />
       </PortalRouteTransitionProvider>,
     );
 
-    act(() => {
-      vi.advanceTimersByTime(449);
-    });
-    expect(rendered.container.textContent).toContain('Preparing workspace...');
-
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(rendered.container.textContent).not.toContain('Preparing workspace...');
+    expect(rendered.container.querySelector('[data-portal-route-progress="true"]')).toBeNull();
+    expect(rendered.container.querySelector('button')?.getAttribute('aria-busy')).toBe('true');
+    expect(rendered.container.querySelector('button')?.getAttribute('data-portal-route-pending')).toBeNull();
 
     rendered.unmount();
   });

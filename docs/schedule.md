@@ -68,6 +68,8 @@ Schedule is one of the heaviest portal surfaces. Watch:
 
 Action dialogs are part of the main Schedule client bundle so staff get immediate modal feedback. Board, Gantt, legacy fallback, diagnostics, and Site Visits keep their existing lazy/view boundaries.
 
+Board, Gantt, and Site Visits route changes use the shared non-blocking portal progress bar and mark only the selected view button busy. They must not replace the usable Schedule surface with the full-page loading overlay; full-page loading remains a cold-route/auth boundary only.
+
 Use:
 
 ```bash

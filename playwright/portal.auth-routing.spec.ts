@@ -180,6 +180,19 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
   });
 
+  test('switches schedule views without a blocking route overlay', async ({ page }) => {
+    await page.goto('/staff/schedule');
+    await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });
+
+    const gantt = page.getByRole('button', { name: 'Gantt', exact: true });
+    await expect(gantt).toBeVisible();
+    await gantt.click();
+
+    await expect(page.locator('[aria-label="Page loading"]')).toHaveCount(0);
+    await expect(page).toHaveURL((url) => url.pathname === '/staff/schedule' && url.searchParams.get('view') === 'gantt');
+    await expect(gantt).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('verifies the full schedule schema readiness contract through the authenticated app surface', async ({ page }) => {
     await page.goto('/staff/schedule');
     await expect(page.getByRole('heading', { name: 'Schedule', exact: true })).toBeVisible({ timeout: 60_000 });

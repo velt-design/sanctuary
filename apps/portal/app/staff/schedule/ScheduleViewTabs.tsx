@@ -9,17 +9,17 @@ export default function ScheduleViewTabs({
   onChange,
 }: {
   view: ScheduleView;
-  onChange: (next: ScheduleView) => void;
+  onChange: (next: ScheduleView, control: HTMLButtonElement) => void;
 }) {
   return (
     <>
-      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'board'} onClick={() => onChange('board')}>
+      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'board'} onClick={(event) => onChange('board', event.currentTarget)}>
         Board
       </button>
-      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'gantt'} onClick={() => onChange('gantt')}>
+      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'gantt'} onClick={(event) => onChange('gantt', event.currentTarget)}>
         Gantt
       </button>
-      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'site_visits'} onClick={() => onChange('site_visits')}>
+      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'site_visits'} onClick={(event) => onChange('site_visits', event.currentTarget)}>
         Site visits
       </button>
     </>

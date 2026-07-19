@@ -646,7 +646,7 @@ describe('ScheduleClient', () => {
       href: '/staff/schedule?view=gantt',
       label: 'Gantt',
       source: 'schedule-view',
-      show: 'immediate',
+      control: ganttButton,
     });
     expect(routerReplace).toHaveBeenCalledWith('/staff/schedule?view=gantt');
     expect(fetchScheduleGantt).not.toHaveBeenCalled();

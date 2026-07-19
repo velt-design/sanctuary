@@ -1,0 +1,40 @@
+.progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 110;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  background: rgba(var(--portal-accent-rgb), 0.16);
+}
+
+.bar {
+  display: block;
+  width: 42%;
+  height: 100%;
+  background: var(--portal-accent);
+  box-shadow: 0 0 12px rgba(var(--portal-accent-rgb), 0.45);
+  animation: portalNavigationProgress 900ms ease-in-out infinite;
+}
+
+:global([data-portal-route-pending='true']) {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+@keyframes portalNavigationProgress {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    width: 100%;
+    animation: none;
+  }
+}

@@ -93,6 +93,7 @@ export default function SidebarRail({
         href,
         label,
         source: 'sidebar-rail',
+        control: event.currentTarget,
       });
     },
     [beginInstantRoute, beginRouteTransition, router],
