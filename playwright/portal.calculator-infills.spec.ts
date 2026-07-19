@@ -125,15 +125,15 @@ test('authenticated calculator uses visual templates and produces a true triangl
     await triangle.locator('..').click();
     await expect(triangle).toBeChecked();
     await expect(dialog.getByLabel('Peak height (m)', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('radio', { name: 'High on right', exact: true })).toBeChecked();
+    await expect(dialog.getByText('High side', { exact: true })).toHaveCount(0);
     await setNumber(dialog, 'Width (m)', '1');
     await setNumber(dialog, 'Peak height (m)', '1');
-    await dialog.getByRole('radio', { name: 'High on left', exact: true }).locator('..').click();
+    await attachCalculatorScreenshot(page, testInfo, 'infill-triangle-opening-768.png');
 
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
-    await expect(dialog.getByRole('group', { name: 'Right edge', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('group', { name: 'Left edge', exact: true })).toHaveCount(0);
     await expect(dialog.getByText(/Triangle point.*no fixing edge or support required/i)).toBeVisible();
-    await expect(dialog.getByRole('img', { name: /right point/i })).toBeVisible();
+    await expect(dialog.getByRole('img', { name: /left point/i })).toBeVisible();
     await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
 
     await expect(dialog.getByText('Ready for cutting and ordering', { exact: true })).toBeVisible();
@@ -141,12 +141,12 @@ test('authenticated calculator uses visual templates and produces a true triangl
     await expect(pieces.getByRole('row').filter({ hasText: 'Acrylic panel 1' })).toContainText('Triangle');
     await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Top/ })).toHaveCount(1);
     await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Bottom/ })).toHaveCount(1);
-    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Left/ })).toHaveCount(1);
-    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Right/ })).toHaveCount(0);
+    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Left/ })).toHaveCount(0);
+    await expect(pieces.getByRole('row').filter({ hasText: /Joiner.*Right/ })).toHaveCount(1);
 
     await copyCuttingList(page, dialog);
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Pieces to cut,panel,triangle,Acrylic panel 1');
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toContain(',joiner_right,');
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).not.toContain(',joiner_left,');
     const downloadPromise = page.waitForEvent('download');
     await dialog.getByRole('button', { name: 'Download cutting list as CSV', exact: true }).click();
     const download = await downloadPromise;
@@ -154,7 +154,7 @@ test('authenticated calculator uses visual templates and produces a true triangl
     expect(downloadPath).not.toBeNull();
     const downloadedCsv = await readFile(downloadPath as string, 'utf8');
     expect(downloadedCsv).toContain('Pieces to cut,panel,triangle,Acrylic panel 1');
-    expect(downloadedCsv).not.toContain(',joiner_right,');
+    expect(downloadedCsv).not.toContain(',joiner_left,');
 
     const dimensions = await dialog.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);

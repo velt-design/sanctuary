@@ -28,7 +28,6 @@ describe('InfillOpeningStage', () => {
         onLocationChange={vi.fn()}
         onAcrylicPreferenceChange={vi.fn()}
         onShapeTemplateChange={vi.fn()}
-        onTriangleHighSideChange={vi.fn()}
         onDraftChange={vi.fn()}
         onDraftCommit={vi.fn()}
         onMonoModeChange={vi.fn()}
@@ -51,7 +50,7 @@ describe('InfillOpeningStage', () => {
     unmount();
   });
 
-  it('shows peak height and high-side choices for a true triangle', () => {
+  it('shows only the dimensions needed for a true triangle', () => {
     const item = makeDefaultInfillItem({
       shape: {
         type: 'mono_slope',
@@ -64,7 +63,6 @@ describe('InfillOpeningStage', () => {
         slopeAnchor: 'left',
       },
     });
-    const onTriangleHighSideChange = vi.fn();
     const { container, unmount } = renderIntoDocument(
       <InfillOpeningStage
         item={item}
@@ -81,7 +79,6 @@ describe('InfillOpeningStage', () => {
         onLocationChange={vi.fn()}
         onAcrylicPreferenceChange={vi.fn()}
         onShapeTemplateChange={vi.fn()}
-        onTriangleHighSideChange={onTriangleHighSideChange}
         onDraftChange={vi.fn()}
         onDraftCommit={vi.fn()}
         onMonoModeChange={vi.fn()}
@@ -92,18 +89,10 @@ describe('InfillOpeningStage', () => {
     );
 
     expect(container.textContent).toContain('Peak height (m)');
-    expect(container.textContent).toContain('High side');
-    expect(container.textContent).toContain('High on left');
-    expect(container.textContent).toContain('High on right');
-    const directionFieldset = container.querySelector('input[name="triangle-opening-triangle-high-side"]')?.closest('fieldset');
-    expect(directionFieldset?.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(2);
+    expect(container.textContent).not.toContain('High side');
+    expect(container.textContent).not.toContain('High on left');
+    expect(container.textContent).not.toContain('High on right');
     expect(container.textContent).not.toContain('Describe the sloping top');
-    expect(container.querySelector('input[value="right"]:checked')).not.toBeNull();
-
-    const left = container.querySelector('input[name="triangle-opening-triangle-high-side"][value="left"]');
-    if (!(left instanceof HTMLInputElement)) throw new Error('Missing triangle high-side choice.');
-    act(() => left.click());
-    expect(onTriangleHighSideChange).toHaveBeenCalledWith('left');
 
     unmount();
   });
@@ -127,7 +116,6 @@ describe('InfillOpeningStage', () => {
         onLocationChange={vi.fn()}
         onAcrylicPreferenceChange={vi.fn()}
         onShapeTemplateChange={vi.fn()}
-        onTriangleHighSideChange={vi.fn()}
         onDraftChange={vi.fn()}
         onDraftCommit={onDraftCommit}
         onMonoModeChange={vi.fn()}

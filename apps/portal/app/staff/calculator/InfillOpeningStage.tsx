@@ -14,7 +14,6 @@ import {
   getTriangleHighSide,
   inferInfillOpeningTemplate,
   type InfillOpeningTemplate,
-  type InfillTriangleHighSide,
 } from './infillOpeningTemplates';
 
 type OpeningErrors = Partial<Record<
@@ -39,7 +38,6 @@ type InfillOpeningStageProps = {
   onLocationChange: (location: InfillLineItem['location']) => void;
   onAcrylicPreferenceChange: (source: InfillLineItem['acrylicSource']) => void;
   onShapeTemplateChange: (template: InfillOpeningTemplate) => void;
-  onTriangleHighSideChange: (side: InfillTriangleHighSide) => void;
   onDraftChange: (field: InfillDraftFieldKey, value: string) => void;
   onDraftCommit: (field: InfillDraftFieldKey, value: string) => void;
   onMonoModeChange: (mode: InfillMonoSlopeModeInput) => void;
@@ -72,7 +70,6 @@ export default function InfillOpeningStage({
   onLocationChange,
   onAcrylicPreferenceChange,
   onShapeTemplateChange,
-  onTriangleHighSideChange,
   onDraftChange,
   onDraftCommit,
   onMonoModeChange,
@@ -179,28 +176,6 @@ export default function InfillOpeningStage({
                 'Peak height (m)',
                 triangleHighSide === 'left' ? errors.heightLowM : errors.heightHighM,
               )}
-              <div className={styles.span4}>
-                <fieldset className={styles.infillTriangleSideFieldset}>
-                  <legend>High side</legend>
-                  <div>
-                    {(['left', 'right'] as const).map((side) => (
-                      <label key={side}>
-                        <input
-                          type="radio"
-                          name={`${domIdBase}-triangle-high-side`}
-                          value={side}
-                          checked={triangleHighSide === side}
-                          onChange={() => onTriangleHighSideChange(side)}
-                        />
-                        <svg viewBox="0 0 36 22" aria-hidden="true">
-                          <polygon points={side === 'left' ? '3,19 33,19 3,3' : '3,19 33,19 33,3'} />
-                        </svg>
-                        <span>{side === 'left' ? 'High on left' : 'High on right'}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-              </div>
             </>
           ) : monoShape && monoResolved ? (
             <>

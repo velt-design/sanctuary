@@ -48,7 +48,7 @@ import InfillEditorHeader from './InfillEditorHeader';
 import InfillOpeningStage from './InfillOpeningStage';
 import InfillResultsStage from './InfillResultsStage';
 import InfillSupportsStage from './InfillSupportsStage';
-import { applyInfillOpeningTemplate, setTriangleHighSide, syncInfillMonoSlopeDraft } from './infillOpeningTemplates';
+import { applyInfillOpeningTemplate, syncInfillMonoSlopeDraft } from './infillOpeningTemplates';
 import {
   addedSupportSummary,
   canOfferRafterMatching,
@@ -4474,11 +4474,6 @@ export default function CalculatorGridClient({
                             return next;
                           });
                           setInfillItem(selectedInfill.id, { shape: nextShape });
-                        }}
-                        onTriangleHighSideChange={(side) => {
-                          setInfillItem(selectedInfill.id, {
-                            shape: setTriangleHighSide(selectedInfill.shape, side),
-                          });
                         }}
                         onDraftChange={(field, value) => updateRequiredShapeField(selectedInfill, field, value)}
                         onDraftCommit={(field, value) => commitRequiredShapeField(selectedInfill, field, value)}
