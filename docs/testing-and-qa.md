@@ -200,7 +200,7 @@ npm run test:portal:performance:fixture
 
 The initial authenticated baseline was locked on 2026-07-19 from exactly five CI runs. New regression ceilings use `max(product target, p75 x 1.2)`, rounded up to 50 ms, and are enforced against the five-run p75 aggregate. Existing cold-route and Schedule-toggle ceilings remain per-run and were not changed.
 
-Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mode authenticated runs from Portal Quality run `29671152531`. Project opening recorded 41/45/68 ms feedback p50/p75/p95, 413/418/441 ms useful-content p50/p75/p95, and 1636/1659/2281 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. The resulting locked regression ceiling is 100 ms feedback and 550 ms useful content; the product target remains 100/500 ms.
+Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mode authenticated runs from Portal Quality run `29671978619`. Project opening recorded 41/44/45 ms feedback p50/p75/p95, 58/60/60 ms useful-content p50/p75/p95, and 2286/2290/2956 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. The resulting locked regression ceiling is 100 ms feedback and 500 ms useful content, matching the product target.
 
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |
@@ -209,9 +209,9 @@ Wave 1 Slice 1 replaced the project-opening rows with exactly five production-mo
 | Contacts cold | 1424/2106/2461 ms | 1448/2122/2471 ms | Miss | Existing cold ceiling unchanged |
 | Schedule cold | 1553/2687/3194 ms | 2506/3633/4125 ms | Miss | Existing cold ceiling unchanged |
 | Dashboard to Projects | 790/791/841 ms | 1703/1729/1763 ms | Miss | 950/2100 ms |
-| Projects to project | 41/45/68 ms | 413/418/441 ms | Met | 100/550 ms |
-| Project back to Projects | 4/4/5 ms | 14/15/17 ms | Met | 100/500 ms |
-| Project Details tab | 44/45/45 ms | 51/52/57 ms | Met | 250/500 ms |
+| Projects to project | 41/44/45 ms | 58/60/60 ms | Met | 100/500 ms |
+| Project back to Projects | 5/5/6 ms | 16/18/20 ms | Met | 100/500 ms |
+| Project Details tab | 52/55/72 ms | 56/64/79 ms | Met | 250/500 ms |
 | Schedule unscheduled toggle | 59/73/80 ms | 66/85/87 ms | Met | Existing 1200/1200 ms ceiling unchanged |
 | Calculator current result | 541/550/560 ms | 2428/2440/2497 ms | Miss | 700/2950 ms |
 
