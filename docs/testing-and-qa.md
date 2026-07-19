@@ -208,22 +208,22 @@ Wave 1 Slice 2 replaced the Dashboard-to-Projects row with exactly five producti
 
 Wave 1 Slice 3 replaced Dashboard-to-Contacts with exactly five production-mode authenticated runs from Portal Quality run `29678858906`. The journey recorded 33/35/35 ms feedback p50/p75/p95, 50/52/53 ms useful-content p50/p75/p95, and 3053/3080/3096 ms background-settled p50/p75/p95. All five runs had no blocking overlay and no observed long task. Applying the ratchet formula keeps the locked ceiling at the 100/500 ms product target.
 
-Wave 1 completion run `29682571695` recorded exactly five current-head production repetitions. The isolated pre-Slice-1 comparison run `29681955081` measured cold Project Detail useful-content p75 at 2,454 ms, making the locked 10% guard 2,699 ms. Current-head cold Project Detail measured 2,744/2,749/2,975 ms useful content p50/p75/p95, so it remains 50 ms above that guard and must not be marked complete or have its ceiling raised. The same current-head run measured calculator visible feedback at 35/36/36 ms and fresh-result completion at 1,907/1,909/1,909 ms. Fixture-safe workbench evidence measured object selection at 87/126 ms feedback/useful and Plan-to-3D at 93/97 ms, with no request, overlay, or long task in either interaction.
+Wave 1 completion run `29687042640` recorded exactly five current-head production repetitions. The isolated pre-Slice-1 comparison run `29681955081` measured cold Project Detail useful-content p75 at 2,454 ms, making the unchanged 10% guard 2,699 ms. Current-head cold Project Detail measured 1,664/1,666/1,680 ms useful content p50/p75/p95: the small authenticated direct-link summary makes the real project header and tabs useful first, while complete-snapshot background settlement remains separately measured at 2,667/2,726/2,727 ms. All five project runs had no blocking overlay and no observed long task. The same current-head run measured calculator visible feedback at 40/47/58 ms and fresh-result completion at 924/939/942 ms. Fixture-safe workbench evidence measured object selection at 86/119 ms feedback/useful and Plan-to-3D at 117/122 ms, with no request, overlay, or long task in either interaction.
 
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
 | --- | ---: | ---: | :---: | ---: |
-| Dashboard cold | 883/894/1042 ms | 989/1043/1050 ms | Miss | Existing cold ceiling unchanged |
-| Projects cold | 818/827/846 ms | 830/835/865 ms | Miss | Existing cold ceiling unchanged |
-| Project Detail cold | 857/860/1089 ms | 2744/2749/2975 ms | 10% guard missed | Existing cold ceiling unchanged; 2699 ms comparison guard |
-| Contacts cold | 754/755/767 ms | 764/765/776 ms | Miss | Existing cold ceiling unchanged |
-| Schedule cold | 784/806/830 ms | 1666/1674/1702 ms | Miss | Existing cold ceiling unchanged |
-| Dashboard to Projects | 39/41/43 ms | 65/67/70 ms | Met | 100/500 ms |
-| Dashboard to Contacts | 37/38/38 ms | 59/62/62 ms | Met | 100/500 ms |
-| Projects to project | 31/32/34 ms | 47/47/49 ms | Met | 100/500 ms |
-| Project back to Projects | 5/5/6 ms | 19/20/20 ms | Met | 100/500 ms |
-| Project Details tab | 40/40/49 ms | 49/49/54 ms | Met | 250/500 ms |
-| Schedule unscheduled toggle | 131/132/133 ms | 134/135/136 ms | Regression met | Existing 1200/1200 ms ceiling unchanged |
-| Calculator current result | 35/36/36 ms | 1907/1909/1909 ms | Feedback met | 700/2950 ms |
+| Dashboard cold | 806/807/871 ms | 816/817/881 ms | Miss | Existing cold ceiling unchanged |
+| Projects cold | 749/766/779 ms | 758/777/788 ms | Miss | Existing cold ceiling unchanged |
+| Project Detail cold | 781/785/797 ms | 1664/1666/1680 ms | 10% guard met | Existing cold ceiling unchanged; 2699 ms comparison guard |
+| Contacts cold | 687/708/726 ms | 698/714/742 ms | Miss | Existing cold ceiling unchanged |
+| Schedule cold | 737/758/760 ms | 1106/1125/1135 ms | Miss | Existing cold ceiling unchanged |
+| Dashboard to Projects | 37/37/38 ms | 56/58/59 ms | Met | 100/500 ms |
+| Dashboard to Contacts | 38/39/41 ms | 57/59/63 ms | Met | 100/500 ms |
+| Projects to project | 35/38/39 ms | 48/49/51 ms | Met | 100/500 ms |
+| Project back to Projects | 5/6/6 ms | 21/25/25 ms | Met | 100/500 ms |
+| Project Details tab | 38/40/53 ms | 41/49/60 ms | Met | 250/500 ms |
+| Schedule unscheduled toggle | 137/137/139 ms | 140/141/142 ms | Regression met | Existing 1200/1200 ms ceiling unchanged |
+| Calculator current result | 40/47/58 ms | 924/939/942 ms | Feedback met | 700/2950 ms |
 
 `npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
 
@@ -231,7 +231,7 @@ Wave 1 completion run `29682571695` recorded exactly five current-head productio
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
-Project Detail now measures 706,975 raw / 202,658 gzip bytes initial plus 1,735,477 raw / 362,010 gzip lazy (2,442,452 raw / 564,668 gzip combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. Activity is initial; the responsive Details panel and the other project workflows are separate boundaries. The Estimate drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures 1,620,486 raw / 395,102 gzip initial plus 965,476 raw / 253,044 gzip lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
+Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. Activity remains the default workflow but now joins responsive Details and the other workflows as a truthful local lazy boundary; the project frame and tabs stay initial. The Estimate drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
 `npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
 
