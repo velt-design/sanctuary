@@ -297,6 +297,25 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     expect(previewWidth).toBeLessThanOrEqual(441);
     await expect(page.getByRole('region', { name: 'Current customer price' })).toBeHidden();
 
+    const internalValues = page
+      .getByRole('region', { name: 'Pricing preview' })
+      .getByText('Internal costing', { exact: true })
+      .locator('..')
+      .locator('dd');
+    await expect(internalValues).toHaveCount(7);
+    const internalValuePresentation = await internalValues.evaluateAll((elements) =>
+      elements.map((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return {
+          lineCount: new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size,
+          whiteSpace: window.getComputedStyle(element).whiteSpace,
+        };
+      }),
+    );
+    expect(internalValuePresentation.every((value) => value.whiteSpace === 'nowrap')).toBe(true);
+    expect(internalValuePresentation.every((value) => value.lineCount === 1)).toBe(true);
+
     const impact = page.getByRole('region', { name: 'Price impact' });
     const resetBox = await impact.getByRole('button', { name: 'Reset baseline', exact: true }).boundingBox();
     const impactBox = await impact.boundingBox();
