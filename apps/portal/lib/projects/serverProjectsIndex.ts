@@ -122,34 +122,34 @@ export async function loadProjectsIndexData(
     return ordered.range(from, to);
   };
 
-  let projectsResult: ChunkedListFetchResult<Record<string, unknown>>;
-  try {
-    projectsResult = await fetchAllPages<Record<string, unknown>>(buildProjectsPage);
-  } catch (err) {
-    if (missingColumnFromError(err) === 'archived_at') {
-      // archived_at column absent → no archived projects can exist.
-      projectsResult =
-        archiveFilter === 'archived'
+  const projectsPromise = (async (): Promise<ChunkedListFetchResult<Record<string, unknown>>> => {
+    try {
+      return await fetchAllPages<Record<string, unknown>>(buildProjectsPage);
+    } catch (err) {
+      if (missingColumnFromError(err) === 'archived_at') {
+        // archived_at column absent: no archived projects can exist.
+        return archiveFilter === 'archived'
           ? { rows: [], totalCount: 0, truncated: false }
-          : await fetchAllPages<Record<string, unknown>>((from, to) =>
+          : fetchAllPages<Record<string, unknown>>((from, to) =>
               client
                 .from('projects')
                 .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false })
                 .range(from, to),
             );
-    } else {
+      }
       throw err;
     }
-  }
+  })();
 
-  const contactsResult = await fetchAllPages<Record<string, unknown>>((from, to) =>
+  const contactsPromise = fetchAllPages<Record<string, unknown>>((from, to) =>
     client
       .from('contacts')
       .select('*', { count: 'exact' })
       .order('name', { ascending: true })
       .range(from, to),
   );
+  const [projectsResult, contactsResult] = await Promise.all([projectsPromise, contactsPromise]);
 
   return {
     projects: {
