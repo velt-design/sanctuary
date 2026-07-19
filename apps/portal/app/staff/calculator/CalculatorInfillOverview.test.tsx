@@ -50,10 +50,7 @@ describe('CalculatorInfillOverview', () => {
       <CalculatorInfillTile
         hasInfills={false}
         summaryLine1="0 infills added"
-        summaryChips={[
-          { key: 'front', label: 'Front', count: 0 },
-          { key: 'side', label: 'Side', count: 0 },
-        ]}
+        summaryChips={[]}
         systemSummary="Not configured"
         totals={{ panels: 0, mullions: 0 }}
         presets={presets}
@@ -67,6 +64,8 @@ describe('CalculatorInfillOverview', () => {
     expect(markup).toContain('Add infill');
     expect(markup).toContain('Use preset');
     expect(markup).toContain('Edit infills');
+    expect(markup).not.toContain('Front 0');
+    expect(markup).not.toContain('Side 0');
   });
 
   it('renders populated tile summary metrics', () => {
@@ -90,7 +89,7 @@ describe('CalculatorInfillOverview', () => {
     expect(markup).toContain('2 infills added');
     expect(markup).toContain('Mixed systems');
     expect(markup).toContain('Panels</span><strong>5</strong>');
-    expect(markup).toContain('Frames</span><strong>3</strong>');
+    expect(markup).toContain('New supports</span><strong>3</strong>');
     expect(markup).toContain('Presets');
   });
 
@@ -146,7 +145,7 @@ describe('CalculatorInfillOverview', () => {
         rafterSpacingM={0.9}
         summaryLine1="2 infills added"
         summaryLine2="Front 1 · Side 1 · Gable 0"
-        summaryLine3="System: Mixed systems · Panels: 7 · Frames: 4"
+        summaryLine3="System: Mixed systems · Panels: 7 · New supports: 4"
         hasInfills
         presets={presets}
         onAddCustom={noop}

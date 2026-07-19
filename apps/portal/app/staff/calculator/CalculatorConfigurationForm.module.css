@@ -1,0 +1,161 @@
+.form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  container: calculator-configuration / inline-size;
+}
+
+.section {
+  min-width: 0;
+  padding: 15px;
+}
+
+.sectionSheet {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.085);
+  border-radius: 14px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.9);
+}
+
+.sectionQuiet + .sectionQuiet {
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.075);
+}
+
+.sectionCard {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.11);
+  border-radius: 14px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  box-shadow: 0 7px 18px rgba(var(--portal-text-rgb), 0.04);
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  color: rgba(var(--portal-text-rgb), 0.72);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.sectionCompact {
+  padding-block: 11px;
+}
+
+.sectionCompact .sectionTitle {
+  margin-bottom: 9px;
+}
+
+.sectionCompact .fieldGrid {
+  gap-block: 8px;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px 18px;
+  align-items: start;
+}
+
+.fieldSlot {
+  min-width: 0;
+  align-self: start;
+}
+
+.fieldSlotWide,
+.fieldSlotFull {
+  grid-column: 1 / -1;
+}
+
+:global([data-field-tile-appearance='configuration']) {
+  min-height: 0;
+  height: auto;
+  justify-content: flex-start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+:global([data-field-tile-appearance='configuration']:focus-within) {
+  outline: none;
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+  min-height: 34px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.35;
+  color: rgba(var(--portal-text-rgb), 0.78);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.sectionCard :global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+  min-height: 16px;
+}
+
+.sectionCompact :global([data-field-tile-appearance='configuration'] [data-field-part='control']) {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
+  min-height: 40px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 12px;
+  padding: 0 12px;
+  background: var(--portal-bg-surface);
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='helper']),
+:global([data-field-tile-appearance='configuration'] [data-field-part='error']) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+@container calculator-configuration (min-width: 360px) {
+  .fieldGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fieldSlotWide {
+    grid-column: span 2;
+  }
+}
+
+@container calculator-configuration (min-width: 560px) {
+  .fieldGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fieldSlotFull {
+    grid-column: 1 / -1;
+  }
+}
+
+@container calculator-page (max-width: 779px) {
+  .fieldGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container calculator-page (max-width: 559px) {
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .section {
+    padding: 13px;
+  }
+
+  :global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+    min-height: 16px;
+  }
+
+  .fieldSlotWide,
+  .fieldSlotFull {
+    grid-column: 1 / -1;
+  }
+}

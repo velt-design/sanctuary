@@ -22,6 +22,22 @@
   overflow: auto;
   min-height: 0;
   container-type: inline-size;
+  container-name: calculator-page;
+}
+
+@media (max-width: 1119px) {
+  .previewPage {
+    scroll-padding-top: 180px;
+  }
+
+  .previewPage :is(
+      [data-calculator-field],
+      [data-calculator-configuration-section],
+      [data-pricing-summary-variant],
+      [data-calculator-module-launcher]
+    ) {
+    scroll-margin-top: 180px;
+  }
 }
 
 .previewFrame {
@@ -191,18 +207,6 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-}
-
-.roofDiagram {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.roofDiagram svg {
-  width: min(240px, 100%);
-  height: auto;
 }
 
 .drawerOverlay {
@@ -703,6 +707,53 @@
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
+.blindsEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.blindCard,
+.blindTotalsCard {
+  padding: 12px;
+}
+
+.blindCardHeader,
+.blindCardActions,
+.blindTotalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.blindCardActions {
+  justify-content: flex-end;
+}
+
+.blindFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.blindAddAction {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.blindAddButton {
+  min-width: 124px;
+}
+
+.blindTotalsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .infillTileSummary {
   display: grid;
   gap: 2px;
@@ -814,6 +865,18 @@
   border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
+.infillStageCompact {
+  display: none;
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border: 1px solid rgba(var(--accentRgb), 0.28);
+  border-radius: 10px;
+  background: rgba(var(--accentRgb), 0.07);
+  color: rgba(var(--portal-text-rgb), 0.82);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .infillStageButton {
   width: 100%;
   border: 1px solid rgba(var(--portal-text-rgb), 0.12);
@@ -891,6 +954,127 @@
   color: rgba(var(--portal-text-rgb), 0.68);
 }
 
+.infillShapeTemplateFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.infillShapeTemplateFieldset > legend {
+  padding: 0;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.infillShapeTemplateFieldset > p {
+  margin: 4px 0 9px;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+}
+
+.infillShapeTemplateGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.infillShapeTemplateCard {
+  position: relative;
+  min-width: 0;
+  min-height: 116px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
+  background: var(--portal-bg-surface);
+  padding: 9px;
+  display: grid;
+  grid-template-rows: 62px auto;
+  gap: 7px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.infillShapeTemplateCard:hover {
+  border-color: rgba(var(--accentRgb), 0.3);
+}
+
+.infillShapeTemplateCard:has(input:checked) {
+  border-color: rgba(var(--accentRgb), 0.54);
+  background: rgba(var(--accentRgb), 0.07);
+  box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.14);
+}
+
+.infillShapeTemplateSelected {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  background: rgb(var(--accentRgb));
+  color: var(--portal-text-inverse);
+  padding: 3px 7px;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.infillShapeTemplateSelected > span {
+  font-size: 10px;
+}
+
+.infillShapeTemplateCard:has(input:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
+.infillShapeTemplateCard > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.infillShapeTemplateIcon {
+  width: 100%;
+  height: 62px;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.infillShapeTemplateIcon polygon {
+  fill: rgba(var(--accentRgb), 0.09);
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.infillShapeTemplateIcon line {
+  stroke: rgba(var(--portal-text-rgb), 0.22);
+  stroke-width: 1.5;
+}
+
+.infillShapeTemplateCard:has(input:checked) .infillShapeTemplateIcon {
+  color: rgb(var(--accentRgb));
+}
+
+.infillShapeTemplateCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.infillShapeTemplateCopy strong {
+  font-size: 12px;
+}
+
+.infillShapeTemplateCopy small {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
 .infillGuidedPreview {
   position: sticky;
   top: 0;
@@ -926,11 +1110,82 @@
 .infillSupportResult {
   margin: 0 12px 12px;
   border-radius: 10px;
-  background: rgba(21, 128, 61, 0.08);
-  color: rgba(25, 91, 55, 0.95);
+  border: 1px solid rgba(var(--accentRgb), 0.16);
+  background: rgba(var(--accentRgb), 0.055);
+  color: rgba(var(--portal-text-rgb), 0.8);
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 600;
+}
+
+.infillEdgeConfirmationGrid {
+  padding: 8px 12px 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.infillEdgeConfirmationGroup {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 11px;
+  background: var(--portal-bg-surface);
+}
+
+.infillEdgeConfirmationGroup legend {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.infillEdgeConfirmationGroup > p {
+  margin: 7px 0 0;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 11px;
+}
+
+.infillTrianglePointNotice {
+  min-width: 0;
+  padding: 12px;
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.16);
+  border-radius: 11px;
+  background: rgba(var(--portal-text-rgb), 0.025);
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.infillTrianglePointNotice strong {
+  font-size: 12px;
+}
+
+.infillTrianglePointNotice span {
+  color: rgba(var(--portal-text-rgb), 0.64);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.infillEdgeConfirmationOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 5px 3px;
+  color: rgba(var(--portal-text-rgb), 0.78);
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.infillEdgeConfirmationOption input {
+  margin: 1px 0 0;
+  accent-color: rgb(var(--accentRgb));
+}
+
+.infillEdgeConfirmationOption:has(input:focus-visible) {
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillResultsStage {
@@ -949,9 +1204,22 @@
   padding: 0;
 }
 
-.infillResultsStage .infillPreviewCard {
-  width: min(420px, 100%);
+.infillResultsProductionSummary,
+.infillResultsDiagram {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.infillResultsDiagram .infillPreviewCard {
+  width: min(360px, 100%);
   justify-self: center;
+}
+
+@media (max-width: 1200px) {
+  .infillResultsDiagram .infillPreviewSvg {
+    max-height: 260px;
+  }
 }
 
 @media (min-width: 1201px) {
@@ -960,18 +1228,26 @@
     align-items: start;
   }
 
-  .infillResultsStage .infillPreviewCard {
+  .infillResultsProductionSummary {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .infillResultsDiagram {
     grid-column: 1;
     grid-row: 1 / span 2;
   }
 
-  .infillResultsStage .infillChosenSystem,
-  .infillResultsStage .infillComputedNote {
-    grid-column: 2;
+  .infillResultsDiagram .infillPreviewCard {
+    width: min(420px, 100%);
   }
 
-  .infillResultsStage .infillCostDetails,
   .infillResultsStage .infillCutList {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .infillResultsStage .infillCostDetails {
     grid-column: 1 / -1;
   }
 }
@@ -1650,6 +1926,30 @@
   border-top: none;
 }
 
+.infillCutListPrimaryCell {
+  display: grid;
+  gap: 2px;
+}
+
+.infillCutListPrimaryCell strong {
+  font-weight: 650;
+}
+
+.infillCutListPrimaryCell small {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.infillCutListMobileLabel {
+  display: none;
+  color: rgba(var(--portal-text-rgb), 0.58);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 .infillPresetCardGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1703,6 +2003,19 @@
   stroke-width: 1.1;
 }
 
+.infillCutListActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.infillExportMenu.infillExportMenu {
+  z-index: 5200;
+  min-width: 180px;
+}
+
 .infillPreviewPanel {
   stroke: rgba(var(--portal-text-rgb), 0.28);
   stroke-width: 0.8;
@@ -1754,13 +2067,42 @@
   font-size: 2.1px;
 }
 
+.infillPreviewEdgeLabel {
+  fill: rgba(var(--portal-text-rgb), 0.88);
+  font-size: 2.6px;
+  font-weight: 750;
+}
+
 .infillPreviewLegend {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   font-size: 11px;
   color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.infillPreviewLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.infillPreviewLegend i {
+  width: 18px;
+  height: 0;
+  border-top: 2px solid rgba(var(--portal-text-rgb), 0.72);
+}
+
+.infillPreviewLegend .infillPreviewLegendNew {
+  border-top-color: rgba(180, 35, 24, 0.8);
+  border-top-style: dashed;
+}
+
+.infillPreviewLegend .infillPreviewLegendInternal {
+  border-top-color: #b42318;
+  border-top-style: dashed;
 }
 
 .infillPreviewPlaceholder {
@@ -2225,20 +2567,40 @@
   }
 
   .infillEditorHeader {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
   }
 
   .infillEditorActions {
-    justify-content: flex-start;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
 
   .infillStageNav {
-    grid-template-columns: 1fr;
+    display: none;
   }
 
-  .infillStageButton {
-    padding: 7px 9px;
+  .infillStageCompact {
+    display: block;
+  }
+
+  .infillEditorTitle,
+  .infillEditorSubtitle {
+    display: none;
+  }
+
+  .infillMobileSelectLabel {
+    margin-top: 0;
+  }
+
+  .infillMobileSelect {
+    width: 100%;
+  }
+
+  .infillEdgeConfirmationGrid {
+    grid-template-columns: 1fr;
   }
 
   .infillAutomaticChoicesGrid,
@@ -2260,6 +2622,75 @@
   }
 }
 
+@media (max-width: 600px) {
+  .infillShapeTemplateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .infillShapeTemplateCard {
+    min-height: 86px;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    align-items: center;
+  }
+
+  .infillShapeTemplateIcon {
+    height: 58px;
+  }
+
+  .infillShapeTemplateSelected {
+    top: 6px;
+    right: 6px;
+  }
+
+  .infillCutListHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .infillCutListActions {
+    width: 100%;
+  }
+
+  .infillCutListActions > :first-child {
+    flex: 1 1 auto;
+  }
+
+  .infillCutListHead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .infillCutListRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    padding: 11px 12px;
+  }
+
+  .infillCutListQuantityCell {
+    text-align: right;
+  }
+
+  .infillCutListMeasurementCell,
+  .infillCutListDetailCell {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(105px, 0.45fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .infillCutListMobileLabel {
+    display: block;
+  }
+}
+
 .leftCol {
   display: grid;
   gap: 12px;
@@ -2278,12 +2709,6 @@
   gap: 12px;
   min-width: 0;
   align-items: start;
-}
-
-.configurationFields {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
 }
 
 .leftCol,
@@ -4063,24 +4488,6 @@
   color: var(--mv-chip-text);
 }
 
-.previewFieldGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(164px, 1fr));
-  gap: 10px;
-}
-
-.previewFieldGrid .tile {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.09);
-  border-radius: 11px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.82);
-  height: auto;
-}
-
-.previewFieldGrid .tile:focus-within {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
-}
-
 .previewSummary {
   display: grid;
   gap: 12px;
@@ -4090,98 +4497,6 @@
 .rightColStale > .previewDetails {
   opacity: 0.66;
   transition: opacity 160ms ease;
-}
-
-.impactHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.impactReset {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 999px;
-  background: rgba(var(--portal-text-rgb), 0.02);
-  color: inherit;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.impactReset:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
-}
-
-.impactGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-}
-
-.impactStat {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 10px;
-  background: rgba(var(--portal-text-rgb), 0.02);
-  padding: 8px 10px;
-  display: grid;
-  gap: 2px;
-}
-
-.impactStat span {
-  font-size: 11px;
-  color: rgba(var(--portal-text-rgb), 0.58);
-}
-
-.impactStat strong {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.impactDrivers {
-  margin-top: 10px;
-  display: grid;
-  gap: 10px;
-}
-
-.impactDriversTitle {
-  margin-bottom: 6px;
-  font-size: 11px;
-  color: rgba(var(--portal-text-rgb), 0.62);
-}
-
-.impactList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 6px;
-}
-
-.impactRow {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 10px;
-  background: var(--portal-bg-surface);
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.impactRowLabel {
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 0;
-}
-
-.impactRowDelta {
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
 }
 
 .statusHeader {
@@ -4607,8 +4922,7 @@
     max-width: 100%;
   }
 
-  .moduleViewsHeader,
-  .impactHeader {
+  .moduleViewsHeader {
     flex-direction: column;
     align-items: stretch;
   }

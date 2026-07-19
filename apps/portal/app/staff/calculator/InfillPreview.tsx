@@ -3,8 +3,10 @@ import type { InfillLineItem } from '@/lib/types/calculator';
 import styles from './CalculatorGrid.module.css';
 import { resolveMonoSlopeShape } from './infillCompute';
 import type { InfillComputeStatus, InfillJoinerLine, InfillResolvedOrientation } from './infillCompute';
+import { getTrianglePointSide } from './infillOpeningTemplates';
 
 type InfillPreviewProps = {
+  mode?: 'opening' | 'supports' | 'results';
   status: InfillComputeStatus;
   shape: InfillLineItem['shape'];
   orientationUsed: InfillResolvedOrientation;
@@ -15,9 +17,7 @@ type InfillPreviewProps = {
   bayBoundariesM: number[];
   bayWidthsM: number[];
   joinerLines: InfillJoinerLine[];
-  runSideM: number;
   acrossSideM: number;
-  centreLimitM: number;
 };
 
 function clamp01(n: number): number {
@@ -31,6 +31,7 @@ function toM(value: string): number {
 }
 
 export default function InfillPreview({
+  mode = 'results',
   status,
   shape,
   orientationUsed,
@@ -41,9 +42,7 @@ export default function InfillPreview({
   bayBoundariesM,
   bayWidthsM,
   joinerLines,
-  runSideM,
   acrossSideM,
-  centreLimitM,
 }: InfillPreviewProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -97,8 +96,13 @@ export default function InfillPreview({
 
   const leftTopY = bottomY - shapeHeight * clamp01(leftM / maxHeightM);
   const rightTopY = bottomY - shapeHeight * clamp01(rightM / maxHeightM);
+  const trianglePointSide = getTrianglePointSide(shape);
 
-  const polygonPoints = `${leftX},${bottomY} ${rightX},${bottomY} ${rightX},${rightTopY} ${leftX},${leftTopY}`;
+  const polygonPoints = trianglePointSide === 'left'
+    ? `${leftX},${bottomY} ${rightX},${bottomY} ${rightX},${rightTopY}`
+    : trianglePointSide === 'right'
+      ? `${leftX},${bottomY} ${rightX},${bottomY} ${leftX},${leftTopY}`
+      : `${leftX},${bottomY} ${rightX},${bottomY} ${rightX},${rightTopY} ${leftX},${leftTopY}`;
   const canonicalPanelPoints = panelPolygons.map((panel) => ({
     id: panel.id,
     points: panel.points
@@ -161,14 +165,19 @@ export default function InfillPreview({
     { key: 'bottom', x: (leftX + rightX) / 2, y: bottomY, supported: supports.hasBottom },
     { key: 'left', x: leftX, y: (leftTopY + bottomY) / 2, supported: supports.hasLeft },
     { key: 'right', x: rightX, y: (rightTopY + bottomY) / 2, supported: supports.hasRight },
-  ];
+  ].filter((tick) => tick.key !== trianglePointSide);
+
+  const supportDiagramLabel = trianglePointSide
+    ? `Triangular infill support diagram with labelled top, bottom and ${trianglePointSide === 'left' ? 'right' : 'left'} edges and a ${trianglePointSide} point`
+    : 'Infill support diagram with labelled top, bottom, left and right edges';
+  const showOpeningGeometryOnly = mode === 'opening';
 
   return (
     <div className={styles.infillPreviewCard}>
       <svg
         viewBox="0 0 100 100"
         role="img"
-        aria-label="Infill layout preview"
+        aria-label={mode === 'supports' ? supportDiagramLabel : 'Infill layout preview'}
         className={isSwapping ? `${styles.infillPreviewSvg} ${styles.infillPreviewSvgSwap}` : styles.infillPreviewSvg}
       >
         <defs>
@@ -178,11 +187,11 @@ export default function InfillPreview({
           </linearGradient>
         </defs>
 
-        {canonicalPanelPoints.length ? canonicalPanelPoints.map((panel) => (
+        {!showOpeningGeometryOnly && canonicalPanelPoints.length ? canonicalPanelPoints.map((panel) => (
           <polygon key={panel.id} points={panel.points} className={styles.infillPreviewPanel} fill="url(#infill-preview-fill)" />
         )) : <polygon points={polygonPoints} className={styles.infillPreviewShape} fill="url(#infill-preview-fill)" />}
 
-        {previewJoiners.map((line) => (
+        {!showOpeningGeometryOnly ? previewJoiners.map((line) => (
           <line
             key={line.key}
             x1={line.x1}
@@ -191,9 +200,9 @@ export default function InfillPreview({
             y2={line.y2}
             className={line.unsupported ? styles.infillPreviewJoinerUnsupported : styles.infillPreviewJoiner}
           />
-        ))}
+        )) : null}
 
-        {previewJoiners
+        {!showOpeningGeometryOnly ? previewJoiners
           .filter((line) => !line.unsupported)
           .map((line) => (
             <line
@@ -204,16 +213,33 @@ export default function InfillPreview({
               y2={line.y2}
               className={styles.infillPreviewSupportMarker}
             />
-          ))}
+          )) : null}
 
-        <line x1={leftX} y1={leftTopY} x2={rightX} y2={rightTopY} className={supports.hasTop ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
-        <line x1={leftX} y1={bottomY} x2={rightX} y2={bottomY} className={supports.hasBottom ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
-        <line x1={leftX} y1={leftTopY} x2={leftX} y2={bottomY} className={supports.hasLeft ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
-        <line x1={rightX} y1={rightTopY} x2={rightX} y2={bottomY} className={supports.hasRight ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
+        {!showOpeningGeometryOnly ? (
+          <>
+            <line x1={leftX} y1={leftTopY} x2={rightX} y2={rightTopY} className={supports.hasTop ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
+            <line x1={leftX} y1={bottomY} x2={rightX} y2={bottomY} className={supports.hasBottom ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} />
+            {trianglePointSide !== 'left' ? <line x1={leftX} y1={leftTopY} x2={leftX} y2={bottomY} className={supports.hasLeft ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} /> : null}
+            {trianglePointSide !== 'right' ? <line x1={rightX} y1={rightTopY} x2={rightX} y2={bottomY} className={supports.hasRight ? styles.infillPreviewEdge : styles.infillPreviewEdgeMissing} /> : null}
+          </>
+        ) : null}
 
-        {boundarySupportTicks.map((tick) => (
+        {!showOpeningGeometryOnly ? boundarySupportTicks.map((tick) => (
           <circle key={tick.key} cx={tick.x} cy={tick.y} r={1.2} className={tick.supported ? styles.infillPreviewSupportDot : styles.infillPreviewSupportDotMissing} />
-        ))}
+        )) : null}
+
+        {mode === 'supports' ? (
+          <>
+            <text x={(leftX + rightX) / 2} y={Math.min(leftTopY, rightTopY) - 3} className={styles.infillPreviewEdgeLabel} textAnchor="middle">Top</text>
+            <text x={(leftX + rightX) / 2} y={bottomY + 5} className={styles.infillPreviewEdgeLabel} textAnchor="middle">Bottom</text>
+            {trianglePointSide === 'left'
+              ? <text x={leftX - 3} y={bottomY - 2} className={styles.infillPreviewEdgeLabel} textAnchor="end">Point</text>
+              : <text x={leftX - 3} y={(leftTopY + bottomY) / 2} className={styles.infillPreviewEdgeLabel} textAnchor="end">Left</text>}
+            {trianglePointSide === 'right'
+              ? <text x={rightX + 3} y={bottomY - 2} className={styles.infillPreviewEdgeLabel}>Point</text>
+              : <text x={rightX + 3} y={(rightTopY + bottomY) / 2} className={styles.infillPreviewEdgeLabel}>Right</text>}
+          </>
+        ) : null}
 
         <text x={(leftX + rightX) / 2} y={96} className={styles.infillPreviewLabel} textAnchor="middle">
           {`${toM(shape.widthM).toFixed(2)}m width`}
@@ -221,6 +247,14 @@ export default function InfillPreview({
         {shape.type === 'rect' ? (
           <text x={7} y={((leftTopY + bottomY) / 2).toFixed(2)} className={styles.infillPreviewLabel} textAnchor="start">
             {`${toM(shape.heightM).toFixed(2)}m height`}
+          </text>
+        ) : trianglePointSide ? (
+          <text
+            x={trianglePointSide === 'left' ? rightX - 14 : leftX + 2}
+            y={Math.min(leftTopY, rightTopY) - 2}
+            className={styles.infillPreviewLabelMinor}
+          >
+            {`peak ${Math.max(leftM, rightM).toFixed(2)}m`}
           </text>
         ) : (
           <>
@@ -232,18 +266,24 @@ export default function InfillPreview({
             </text>
           </>
         )}
-        <text x={rightX} y={16} className={styles.infillPreviewLabelMinor} textAnchor="end">
-          {`centre ${centreLimitM.toFixed(2)}m`}
-        </text>
-        <text x={leftX} y={16} className={styles.infillPreviewLabelMinor}>
-          {`run ${runSideM.toFixed(2)}m / across ${acrossSideM.toFixed(2)}m`}
-        </text>
-        {bayLabelNodes}
+        {!showOpeningGeometryOnly ? bayLabelNodes : null}
       </svg>
 
       <div className={styles.infillPreviewLegend}>
-        <span>Preview</span>
-        <span>{orientationUsed === 'vertical' ? 'Vertical joiners' : 'Horizontal joiners'}</span>
+        {mode === 'opening' ? (
+          <span>Finished opening</span>
+        ) : mode === 'supports' ? (
+          <>
+            <span><i className={styles.infillPreviewLegendExisting} />Existing fixing member</span>
+            <span><i className={styles.infillPreviewLegendNew} />New support included</span>
+            <span><i className={styles.infillPreviewLegendInternal} />Internal joiner needing support</span>
+          </>
+        ) : (
+          <>
+            <span>Cutting layout</span>
+            <span>{orientationUsed === 'vertical' ? 'Vertical joiners' : 'Horizontal joiners'}</span>
+          </>
+        )}
       </div>
     </div>
   );

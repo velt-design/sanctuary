@@ -155,7 +155,11 @@ export default function CalculatorModuleNavigator({
                         </button>
 
                         {item.isActive ? (
-                          <div className={styles.moduleActions} aria-label={`Actions for ${item.label}`}>
+                          <div
+                            className={styles.moduleActions}
+                            aria-label={`Actions for ${item.label}`}
+                            data-module-actions="compact"
+                          >
                             <button type="button" onClick={() => duplicateModule(item.moduleIndex, closeAfter)}>Duplicate</button>
                             <button
                               type="button"
@@ -217,6 +221,7 @@ export default function CalculatorModuleNavigator({
       <button
         type="button"
         className={styles.mobileLauncher}
+        data-calculator-module-launcher
         onClick={() => setMobileOpen(true)}
         aria-haspopup="dialog"
       >

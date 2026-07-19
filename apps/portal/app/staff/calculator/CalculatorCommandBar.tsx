@@ -42,7 +42,7 @@ export default function CalculatorCommandBar({
   const freshnessLabel = calculatorResultFreshnessLabel(resultFreshness);
 
   return (
-    <header className={styles.commandBar}>
+    <header className={styles.commandBar} data-calculator-command-bar>
       <div className={styles.commandBarIdentity}>
         <div>
           <h1 className={styles.commandBarTitle}>Calculator</h1>
@@ -59,7 +59,7 @@ export default function CalculatorCommandBar({
         </div>
       </div>
 
-      <div className={styles.commandBarActions}>
+      <div className={styles.commandBarActions} data-calculator-command-actions>
         <span
           className={
             blockerCount > 0 || resultFreshness !== 'current'
@@ -86,10 +86,11 @@ export default function CalculatorCommandBar({
           ))}
         </div>
 
-        <button type="button" className={styles.commandBarSave} onClick={onSave} disabled={saveDisabled}>
-          {saveLabel}
-        </button>
       </div>
+
+      <button type="button" className={styles.commandBarSave} onClick={onSave} disabled={saveDisabled}>
+        {saveLabel}
+      </button>
       {saveError ? <p className={styles.commandBarError}>{saveError}</p> : null}
     </header>
   );

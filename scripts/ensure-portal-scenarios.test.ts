@@ -4,10 +4,12 @@ import { calculateSiteCostV1 } from '@sp/costing';
 import {
   buildCalculatorScenarioInputs,
   buildGuidedCalculatorScenarioInputs,
+  buildPortalScenarioInputs,
   readPortalScenarioConfig,
   redactPortalScenarioSecrets,
   stableScenarioUuid,
 } from './ensure-portal-scenarios';
+import { CALCULATOR_MULTI_MODULE_SCENARIO_REVISION } from '../playwright/support/portalScenarioRegistry';
 import { isCalculatorInputsV2 } from '../apps/portal/lib/types/calculator';
 import { buildSiteInputsFromCalculatorInputs } from '../apps/portal/lib/estimates/costingPayload';
 
@@ -64,7 +66,12 @@ describe('readPortalScenarioConfig', () => {
   it('defaults prefix and seeded scenarios', () => {
     const config = readPortalScenarioConfig(validEnv);
     expect(config.scenarioPrefix).toBe('agent');
-    expect(config.scenarios).toEqual(['project-with-estimate', 'quote-ready', 'workbench-multi-object']);
+    expect(config.scenarios).toEqual([
+      'project-with-estimate',
+      'calculator-multi-module',
+      'quote-ready',
+      'workbench-multi-object',
+    ]);
   });
 
   it('accepts a comma-separated scenario subset', () => {
@@ -151,5 +158,19 @@ describe('buildCalculatorScenarioInputs', () => {
     expect(costingInputs.pergolas).toHaveLength(2);
     expect(costingInputs.pergolas.map((pergola) => pergola.modules.length)).toEqual([2, 1]);
     expect(() => calculateSiteCostV1(costingInputs)).not.toThrow();
+    expect(CALCULATOR_MULTI_MODULE_SCENARIO_REVISION).toBe('calculator-multi-module-v1');
+  });
+
+  it('rebuilds only the dedicated calculator scenario with the canonical multi-module inputs', () => {
+    const first = buildPortalScenarioInputs('calculator-multi-module', '[Agent Scenario] Calculator Multi Module');
+    const second = buildPortalScenarioInputs('calculator-multi-module', '[Agent Scenario] Calculator Multi Module');
+    const general = buildPortalScenarioInputs('project-with-estimate', '[Agent Scenario] Project With Estimate');
+
+    expect(first).toEqual(second);
+    expect(first).not.toBe(second);
+    expect(first.modules).toHaveLength(3);
+    expect(first.pergolas).toHaveLength(2);
+    expect(general.modules).toHaveLength(1);
+    expect(general.pergolas).toHaveLength(1);
   });
 });

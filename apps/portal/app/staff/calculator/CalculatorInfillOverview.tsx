@@ -114,13 +114,15 @@ export function CalculatorInfillTile({
             ? 'Review configured infills, add new ones, or adjust the panel layout for this module.'
             : 'Add infills to close exposed sides or gable ends for more shelter and weather protection.'}
         </p>
-        <div className={styles.infillTilePillRow}>
-          {summaryChips.map((chip) => (
-            <span key={chip.key} className={styles.infillChip}>
-              {chip.label} {chip.count}
-            </span>
-          ))}
-        </div>
+        {summaryChips.length ? (
+          <div className={styles.infillTilePillRow}>
+            {summaryChips.map((chip) => (
+              <span key={chip.key} className={styles.infillChip}>
+                {chip.label} {chip.count}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {hasInfills ? (
           <div className={styles.infillTileMetricRow}>
             <div className={styles.infillTileMetric}>
@@ -132,7 +134,7 @@ export function CalculatorInfillTile({
               <strong>{totals.panels}</strong>
             </div>
             <div className={styles.infillTileMetric}>
-              <span className={styles.infillTileMetricLabel}>Frames</span>
+              <span className={styles.infillTileMetricLabel}>New supports</span>
               <strong>{totals.mullions}</strong>
             </div>
           </div>
@@ -278,7 +280,7 @@ function InfillListRows({
             : `${styles.infillChip} ${styles.infillChipSuccess}`;
         const rowDetailLine =
           estimate.estimatedMullionsTotal > 0
-            ? `Panels ${estimate.panelCountTotal} | Frames ${estimate.estimatedMullionsTotal}`
+            ? `Panels ${estimate.panelCountTotal} | New supports ${estimate.estimatedMullionsTotal}`
             : `Panels ${estimate.panelCountTotal}`;
 
         return (

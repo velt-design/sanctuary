@@ -63,7 +63,50 @@ describe('calculator input defaults and normalization', () => {
     }).items[0];
 
     expect(automatic).toMatchObject({ acrylicSource: 'auto', panelOrientation: 'auto' });
+    expect(automatic.support).toMatchObject({
+      hasTop: false,
+      hasBottom: false,
+      hasLeft: false,
+      hasRight: false,
+      edgeConfirmations: { top: 'unsure', bottom: 'unsure', left: 'unsure', right: 'unsure' },
+    });
     expect(manual).toMatchObject({ acrylicSource: 'strip_620', panelOrientation: 'horizontal' });
+  });
+
+  it('infers confirmations from legacy saved support booleans without repricing them', () => {
+    const saved = normalizeInfillsStateForUi({
+      items: [{
+        id: 'legacy-supports',
+        support: { hasTop: true, hasBottom: false, hasLeft: true, hasRight: false },
+      }],
+    }).items[0];
+
+    expect(saved.support).toMatchObject({
+      hasTop: true,
+      hasBottom: false,
+      hasLeft: true,
+      hasRight: false,
+      edgeConfirmations: { top: 'yes', bottom: 'no', left: 'yes', right: 'no' },
+    });
+  });
+
+  it('preserves confirmation metadata when an infill is duplicated through the input factory', () => {
+    const source = normalizeInfillsStateForUi({
+      items: [{
+        id: 'source',
+        support: {
+          hasTop: true,
+          hasBottom: false,
+          hasLeft: false,
+          hasRight: false,
+          edgeConfirmations: { top: 'yes', bottom: 'no', left: 'unsure', right: 'unsure' },
+        },
+      }],
+    }).items[0];
+    const duplicate = normalizeInfillsStateForUi({ items: [{ ...source, id: 'copy' }] }).items[0];
+
+    expect(duplicate.support.edgeConfirmations).toEqual(source.support.edgeConfirmations);
+    expect(duplicate.support).toMatchObject({ hasTop: true, hasBottom: false, hasLeft: false, hasRight: false });
   });
 
   it('uses automatic choices for every new infill preset', () => {
@@ -71,7 +114,11 @@ describe('calculator input defaults and normalization', () => {
     const presets = ['front', 'house', 'side', 'gable_triangles', 'wall_panel', 'custom'] as const;
 
     for (const preset of presets) {
-      expect(buildInfillItemsForPreset(module, preset).every((item) => item.acrylicSource === 'auto' && item.panelOrientation === 'auto')).toBe(true);
+      expect(buildInfillItemsForPreset(module, preset).every((item) => (
+        item.acrylicSource === 'auto'
+        && item.panelOrientation === 'auto'
+        && Object.values(item.support.edgeConfirmations ?? {}).every((confirmation) => confirmation === 'unsure')
+      ))).toBe(true);
     }
     expect(buildInfillItemsForPreset(module, 'custom')[0]?.shape).toMatchObject({ widthM: '', heightM: '' });
   });

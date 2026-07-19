@@ -7,7 +7,8 @@ import {
 import { calculateStaffCustomerPriceFromCostEx } from '@/lib/quotes/pricing';
 import styles from './CalculatorPricingSummary.module.css';
 
-type CalculatorPricingSummaryProps = {
+export type CalculatorPricingSummaryProps = {
+  variant?: 'full' | 'compact';
   resultFreshness: CalculatorResultFreshness;
   issuesCount: number;
   onOpenIssues: () => void;
@@ -28,6 +29,16 @@ function formatMoney(value: number | undefined): string {
   return `$${value.toFixed(2)}`;
 }
 
+const customerPriceNumberFormatter = new Intl.NumberFormat('en-NZ', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+function formatCustomerPrice(value: number | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return `$${customerPriceNumberFormatter.format(Math.round(value))}`;
+}
+
 function formatNumber(value: number | undefined, digits = 2): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return value.toFixed(digits);
@@ -35,7 +46,7 @@ function formatNumber(value: number | undefined, digits = 2): string {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className={styles.metric}>
+    <div className={styles.metric} data-pricing-metric>
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
@@ -43,6 +54,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export default function CalculatorPricingSummary({
+  variant = 'full',
   resultFreshness,
   issuesCount,
   onOpenIssues,
@@ -62,11 +74,35 @@ export default function CalculatorPricingSummary({
   const customerPriceLabel = isLastValid
     ? 'Last valid customer price (inc GST)'
     : 'Customer price (inc GST)';
+  const hasBlindPricing = [blindCustomerPriceExGst, blindCustomerPriceIncGst].some(
+    (value) => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) >= 0.005,
+  );
+
+  if (variant === 'compact') {
+    return (
+      <section
+        className={isLastValid ? `${styles.compactSummary} ${styles.compactSummaryStale}` : styles.compactSummary}
+        aria-label="Current customer price"
+        data-pricing-summary-variant="compact"
+        data-result-freshness={resultFreshness}
+      >
+        <div className={styles.compactPrice}>
+          <span className={styles.compactLabel}>{customerPriceLabel}</span>
+          <strong className={styles.compactValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
+        </div>
+        <div className={styles.compactMeta}>
+          <span>Ex GST {formatCustomerPrice(customerPrice?.exGst)}</span>
+          <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
       className={isLastValid ? `${styles.summary} ${styles.summaryStale}` : styles.summary}
       aria-label="Pricing preview"
+      data-pricing-summary-variant="full"
       data-result-freshness={resultFreshness}
     >
       <header className={styles.header}>
@@ -83,14 +119,14 @@ export default function CalculatorPricingSummary({
 
       <div className={styles.hero}>
         <span className={styles.heroLabel}>{customerPriceLabel}</span>
-        <strong className={styles.heroValue}>{formatMoney(customerPrice?.incGst)}</strong>
-        <span className={styles.heroEx}>Customer price (ex GST) {formatMoney(customerPrice?.exGst)}</span>
+        <strong className={styles.heroValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
+        <span className={styles.heroEx}>Customer price (ex GST) {formatCustomerPrice(customerPrice?.exGst)}</span>
         <span className={styles.heroExplanation}>1.25× internal true cost · pergola only</span>
       </div>
 
       <div className={styles.internalSection}>
         <h3>Internal costing</h3>
-        <dl className={styles.internalGrid}>
+        <dl className={styles.internalGrid} data-pricing-metric-layout="inline">
           <Metric label="True cost (ex GST)" value={formatMoney(internalTrueCostExGst)} />
           <Metric label="True cost (inc GST)" value={formatMoney(internalTrueCostIncGst)} />
           <Metric label="Materials" value={formatMoney(materialsExGst)} />
@@ -103,12 +139,20 @@ export default function CalculatorPricingSummary({
 
       <div className={styles.addonsSection}>
         <h3>Customer quote add-ons</h3>
-        <dl className={styles.addonsGrid}>
-          <Metric label="Blind customer price (ex GST)" value={formatMoney(blindCustomerPriceExGst)} />
-          <Metric label="Blind customer price (inc GST)" value={formatMoney(blindCustomerPriceIncGst)} />
-          <Metric label="Infills" value={hasInfills ? 'Configured (see BOM)' : 'Not configured'} />
-        </dl>
-        <p>Blind prices are added during quote creation and are excluded from pergola true cost.</p>
+        {hasBlindPricing || hasInfills ? (
+          <dl className={styles.addonsGrid} data-pricing-metric-layout="inline">
+            {hasBlindPricing ? (
+              <>
+                <Metric label="Blind customer price (ex GST)" value={formatMoney(blindCustomerPriceExGst)} />
+                <Metric label="Blind customer price (inc GST)" value={formatMoney(blindCustomerPriceIncGst)} />
+              </>
+            ) : null}
+            {hasInfills ? <Metric label="Infills" value="Configured (see BOM)" /> : null}
+          </dl>
+        ) : (
+          <p className={styles.addonsEmpty}>No customer-priced add-ons configured.</p>
+        )}
+        {hasBlindPricing ? <p>Blind prices are added during quote creation and are excluded from pergola true cost.</p> : null}
       </div>
     </section>
   );

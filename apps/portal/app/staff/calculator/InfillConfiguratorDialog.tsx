@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import Modal from '@/components/ui/modal/Modal';
 import styles from './CalculatorGrid.module.css';
 import {
@@ -32,9 +32,14 @@ export default function InfillConfiguratorDialog({
   children,
   notice,
 }: InfillConfiguratorDialogProps) {
+  const guidedBodyRef = useRef<HTMLDivElement>(null);
   const stageIndex = INFILL_CONFIGURATOR_STAGES.findIndex((entry) => entry.id === stage);
   const previous = stageIndex > 0 ? INFILL_CONFIGURATOR_STAGES[stageIndex - 1]?.id : null;
   const next = stageIndex < INFILL_CONFIGURATOR_STAGES.length - 1 ? INFILL_CONFIGURATOR_STAGES[stageIndex + 1]?.id : null;
+
+  useEffect(() => {
+    if (guidedBodyRef.current) guidedBodyRef.current.scrollTop = 0;
+  }, [stage]);
 
   return (
     <Modal
@@ -80,12 +85,19 @@ export default function InfillConfiguratorDialog({
                 );
               })}
             </ol>
-            <div className={styles.infillGuidedBody} aria-live="polite">{children}</div>
+            <p className={styles.infillStageCompact} aria-live="polite">
+              {`Step ${stageIndex + 1} of ${INFILL_CONFIGURATOR_STAGES.length} — ${INFILL_CONFIGURATOR_STAGES[stageIndex]?.label ?? 'Opening'}${stage === 'results' && blockerCount > 0 ? ` (${blockerCount} to fix)` : ''}`}
+            </p>
+            <div ref={guidedBodyRef} className={styles.infillGuidedBody} aria-live="polite">{children}</div>
           </section>
         </div>
 
         <div className={styles.infillDrawerFooter}>
-          <span className={styles.infillDrawerFooterNote}>Changes save automatically to this calculator draft.</span>
+          <span className={styles.infillDrawerFooterNote} role="status">
+            {stage === 'opening' && !openingComplete
+              ? 'Enter the required opening measurements to continue.'
+              : 'Changes save automatically to this calculator draft.'}
+          </span>
           <div className={styles.infillGuidedFooterActions}>
             {previous ? (
               <button type="button" className={styles.infillSecondaryButton} onClick={() => onStageChange(previous)}>Back</button>

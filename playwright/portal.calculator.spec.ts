@@ -2,24 +2,104 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { openPortalPage, withPortalBrowserEvidence } from './support/portalAgent';
 import {
-  getPortalScenarioState,
+  CALCULATOR_MULTI_MODULE_SCENARIO_REVISION,
   loadPortalScenarioState,
 } from './support/portalScenarioRegistry';
 
 const scenarioState = loadPortalScenarioState();
-const scenario = getPortalScenarioState(scenarioState, 'project-with-estimate');
+const scenario = scenarioState.scenarios['calculator-multi-module'];
+if (!scenario || scenario.fixtureRevision !== CALCULATOR_MULTI_MODULE_SCENARIO_REVISION) {
+  throw new Error(
+    'The dedicated calculator fixture is missing or stale. Run npm run portal:calculator-ui:provision with an explicit local or staging target.',
+  );
+}
 const projectId = scenario.projectId as string;
 const estimateId = scenario.estimateId as string;
 const calculatorRoute = `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(estimateId)}`;
+const previewSplitStorageKey = 'sanctuary-portal:calculator:previewRightWidthPx:v2';
+
+async function clearPreviewSplitPreference(page: Page) {
+  await page.addInitScript((storageKey) => window.localStorage.removeItem(storageKey), previewSplitStorageKey);
+}
 
 async function openCalculator(page: Page) {
   await openPortalPage(page, calculatorRoute, { heading: 'Calculator' });
   await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.getByText('3 modules across 2 pergolas', { exact: true }).first(),
+    'The dedicated calculator fixture has drifted. Run npm run portal:calculator-ui:provision to reconcile it.',
+  ).toHaveText('3 modules across 2 pergolas');
 }
 
 async function expectLocalDraftProtected(page: Page) {
   await expect(page.getByText('Saved locally', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Browser draft only — use Save to update the estimate.', { exact: true })).toBeVisible();
+}
+
+async function expectStructureColumnCount(page: Page, expectedColumns: number) {
+  const fieldGrid = page.locator(
+    '[data-calculator-configuration-section="structure"] [data-calculator-field-grid]',
+  );
+  await expect(fieldGrid).toBeVisible();
+  const firstRowColumnCount = await fieldGrid.locator(':scope > [data-calculator-field]').evaluateAll((elements) => {
+    const boxes = elements.map((element) => element.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0);
+    const firstRowTop = Math.min(...boxes.map((box) => box.top));
+    return boxes.filter((box) => Math.abs(box.top - firstRowTop) < 4).length;
+  });
+  expect(firstRowColumnCount).toBe(expectedColumns);
+}
+
+async function expectSmallVisualCorrections(page: Page) {
+  await expect(page.locator('[data-calculator-field="roofOrientation"]')).toHaveCount(0);
+  await expect(page.getByLabel('Roof orientation diagram')).toHaveCount(0);
+
+  const blinds = page.locator('[data-calculator-configuration-section="blinds"]');
+  const infills = page.locator('[data-calculator-configuration-section="infills"]');
+  await expect(blinds).toBeVisible();
+  await expect(infills).toBeVisible();
+  await expect(blinds.locator('[data-calculator-field="blindsList"]')).toHaveCount(1);
+  await expect(infills.locator('[data-calculator-field="infillsEditor"]')).toHaveCount(1);
+  expect(
+    await blinds.evaluate((element) =>
+      element.nextElementSibling?.getAttribute('data-calculator-configuration-section'),
+    ),
+  ).toBe('infills');
+
+  const pricing = page.getByRole('region', { name: 'Pricing preview' });
+  await expect(pricing.locator('strong').first()).toHaveText(/^\$\d{1,3}(?:,\d{3})*$/);
+  await expect(pricing.getByText(/^Customer price \(ex GST\)/)).toHaveText(
+    /^Customer price \(ex GST\) \$\d{1,3}(?:,\d{3})*$/,
+  );
+}
+
+async function expectVisualRefinementSurfaces(page: Page) {
+  await expect(page.locator('[data-section-surface="card"]')).toHaveCount(2);
+  await expect(page.locator('[data-calculator-configuration-sheet]')).toHaveCount(2);
+  await expect(page.locator('[data-module-actions="compact"]')).toHaveCount(1);
+  await expect(
+    page.locator('[data-calculator-configuration-form] [data-field-part="helper"]'),
+  ).toHaveCount(0);
+
+  const toggleHeight = await page.locator('[data-field-part="toggle"]').first().evaluate(
+    (element) => Math.round(element.getBoundingClientRect().height),
+  );
+  const inputHeight = await page.getByLabel('Roof material', { exact: true }).evaluate(
+    (element) => Math.round(element.getBoundingClientRect().height),
+  );
+  expect(Math.abs(toggleHeight - inputHeight)).toBeLessThanOrEqual(1);
+}
+
+async function expectPreviewHierarchy(page: Page, expectModuleViewInViewport: boolean) {
+  const order = await page
+    .locator(
+      '[aria-label="Pricing preview"], [aria-label="Module views"], [aria-label="Price impact"], [aria-label="Quote status"]',
+    )
+    .evaluateAll((elements) => elements.map((element) => element.getAttribute('aria-label')));
+  expect(order).toEqual(['Pricing preview', 'Module views', 'Price impact', 'Quote status']);
+
+  if (expectModuleViewInViewport) {
+    await expect(page.getByRole('region', { name: 'Module views' })).toBeInViewport();
+  }
 }
 
 function escapeRegExp(value: string): string {
@@ -48,19 +128,32 @@ test.describe.configure({ mode: 'serial' });
 test('calculator command bar loads a current seeded draft at 1600px', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
     await openCalculator(page);
     await expect(page.getByText(scenario.labels.projectName).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Basic', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
     await expectLocalDraftProtected(page);
+    await expectSmallVisualCorrections(page);
+    await expectVisualRefinementSurfaces(page);
+    await expectPreviewHierarchy(page, true);
     await expect(page.getByRole('navigation', { name: 'Pergolas and modules' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Current customer price' })).toBeHidden();
+    await expect(page.locator('[data-calculator-configuration-section="context"]')).toHaveAttribute('data-section-density', 'compact');
+    const previewWidth = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate(
+      (element) => element.getBoundingClientRect().width,
+    );
+    expect(previewWidth).toBeGreaterThanOrEqual(479);
+    expect(previewWidth).toBeLessThanOrEqual(481);
+    await expectStructureColumnCount(page, 3);
     await expect(moduleNavigatorButton(page, 'Pergola 1 · Module 1')).toHaveAttribute('aria-current', 'true');
     await expect(page.getByText('Pergola 2 · Module 1', { exact: true }).first()).toBeVisible();
     const pricing = page.getByRole('region', { name: 'Pricing preview' });
     await expect(pricing.getByText('Customer price (inc GST)', { exact: true })).toBeVisible();
     await expect(pricing.getByText('1.25× internal true cost · pergola only', { exact: true })).toBeVisible();
     await expect(pricing.getByText('Internal costing', { exact: true })).toBeVisible();
-    await expect(pricing.getByText('Blind customer price (ex GST)', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('No customer-priced add-ons configured.', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('Blind customer price (ex GST)', { exact: true })).toHaveCount(0);
 
     const customerInc = parseCurrency(await pricing.locator('strong').first().innerText());
     const internalEx = parseCurrency(
@@ -68,7 +161,9 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     );
     const expectedCustomerEx = Math.round(internalEx * 1.25 * 100) / 100;
     const expectedCustomerInc = Math.round(expectedCustomerEx * 1.15 * 100) / 100;
-    expect(customerInc).toBe(expectedCustomerInc);
+    const customerEx = parseCurrency(await pricing.getByText(/^Customer price \(ex GST\)/).innerText());
+    expect(customerEx).toBe(Math.round(expectedCustomerEx));
+    expect(customerInc).toBe(Math.round(expectedCustomerInc));
   });
 });
 
@@ -169,13 +264,62 @@ test('editing save always shows stored versus live costing without creating a qu
 test('calculator preview does not clip horizontally at 1366px', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1366, height: 900 });
+    await clearPreviewSplitPreference(page);
     await openCalculator(page);
     await expectLocalDraftProtected(page);
-    const dimensions = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate((element) => ({
-      clientWidth: element.clientWidth,
-      scrollWidth: element.scrollWidth,
-    }));
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    await expectSmallVisualCorrections(page);
+    await expectVisualRefinementSurfaces(page);
+    await expectPreviewHierarchy(page, true);
+    const dimensions = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate((element) => {
+      const boundary = element.getBoundingClientRect().right;
+      return {
+        clientWidth: element.clientWidth,
+        offsetWidth: element.offsetWidth,
+        scrollWidth: element.scrollWidth,
+        overflowing: Array.from(element.querySelectorAll<HTMLElement>('*'))
+          .filter((child) => child.getBoundingClientRect().right > boundary + 2)
+          .slice(0, 10)
+          .map((child) => ({
+            className: child.className,
+            clientWidth: child.clientWidth,
+            scrollWidth: child.scrollWidth,
+            right: Math.round(child.getBoundingClientRect().right),
+          })),
+      };
+    });
+    expect(dimensions.overflowing).toEqual([]);
+    // A stable vertical scrollbar gutter reduces clientWidth without creating horizontal clipping.
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.offsetWidth + 2);
+    const previewWidth = await page.getByRole('complementary', { name: 'Preview outputs' }).evaluate(
+      (element) => element.getBoundingClientRect().width,
+    );
+    expect(previewWidth).toBeGreaterThanOrEqual(439);
+    expect(previewWidth).toBeLessThanOrEqual(441);
+    await expect(page.getByRole('region', { name: 'Current customer price' })).toBeHidden();
+
+    const internalValues = page
+      .getByRole('region', { name: 'Pricing preview' })
+      .getByText('Internal costing', { exact: true })
+      .locator('..')
+      .locator('dd');
+    await expect(internalValues).toHaveCount(7);
+    const internalValuePresentation = await internalValues.evaluateAll((elements) =>
+      elements.map((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return {
+          lineCount: new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))).size,
+          whiteSpace: window.getComputedStyle(element).whiteSpace,
+        };
+      }),
+    );
+    expect(internalValuePresentation.every((value) => value.whiteSpace === 'nowrap')).toBe(true);
+    expect(internalValuePresentation.every((value) => value.lineCount === 1)).toBe(true);
+
+    const impact = page.getByRole('region', { name: 'Price impact' });
+    const resetBox = await impact.getByRole('button', { name: 'Reset baseline', exact: true }).boundingBox();
+    const impactBox = await impact.boundingBox();
+    expect(resetBox?.width ?? 0).toBeLessThan((impactBox?.width ?? 0) / 2);
 
     const houseConnectionBox = await page.getByLabel('House connection', { exact: true }).boundingBox();
     const postConnectionBox = await page.getByLabel('Post connection', { exact: true }).boundingBox();
@@ -183,6 +327,7 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     expect(postConnectionBox).not.toBeNull();
     expect(Math.abs((houseConnectionBox?.y ?? 0) - (postConnectionBox?.y ?? 0))).toBeLessThan(4);
     expect(postConnectionBox?.x ?? 0).toBeGreaterThan((houseConnectionBox?.x ?? 0) + (houseConnectionBox?.width ?? 0));
+    await expectStructureColumnCount(page, 2);
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
@@ -198,16 +343,61 @@ for (const width of [1024, 768]) {
   test(`calculator uses reachable page scrolling at ${width}px`, async ({ page }, testInfo) => {
     await withCalculatorEvidence(page, testInfo, async () => {
       await page.setViewportSize({ width, height: 768 });
+      await clearPreviewSplitPreference(page);
       await openCalculator(page);
       await expectLocalDraftProtected(page);
+      await expectSmallVisualCorrections(page);
+      await expectVisualRefinementSurfaces(page);
+      await expectPreviewHierarchy(page, false);
+      await expectStructureColumnCount(page, width === 1024 ? 3 : 2);
       await expect(page.getByRole('button', { name: /^Pergola 1 · Module 1/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeInViewport();
+      const compactPricing = page.getByRole('region', { name: 'Current customer price' });
+      const fullPricing = page.getByRole('region', { name: 'Pricing preview' });
+      await expect(compactPricing).toBeVisible();
+      const compactBox = await compactPricing.boundingBox();
+      expect(compactBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(768);
+      expect((compactBox?.y ?? 0) + (compactBox?.height ?? 0)).toBeLessThanOrEqual(768);
+      expect(parseCurrency(await compactPricing.locator('strong').innerText())).toBe(
+        parseCurrency(await fullPricing.locator('strong').first().innerText()),
+      );
+
+      const addBlind = page.getByRole('button', { name: 'Add blind', exact: true });
+      await expect(addBlind).toHaveCSS('text-transform', 'none');
+      await expect(page.getByText('Front 0', { exact: true })).toHaveCount(0);
+
+      if (width === 768) {
+        const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
+        const originalLength = await roofLength.inputValue();
+        await roofLength.fill('');
+        await expect(compactPricing.getByText('Last valid customer price (inc GST)', { exact: true })).toBeVisible();
+        await expect(compactPricing.locator('strong')).toHaveText(/^\$\d{1,3}(?:,\d{3})*$/);
+        expect(parseCurrency(await compactPricing.locator('strong').innerText())).toBe(
+          parseCurrency(await fullPricing.locator('strong').first().innerText()),
+        );
+        await fullPricing.getByRole('button', { name: 'Errors (1)', exact: true }).click();
+        const issueDialog = page.getByRole('dialog', { name: 'Issues' });
+        await issueDialog.getByRole('button', { name: /Pergola 1 .* Module 1 .* Roof Length/ }).click();
+        await expect(roofLength).toBeFocused();
+        await expect
+          .poll(async () => {
+            const commandBarBox = await page.locator('[data-calculator-command-bar]').boundingBox();
+            const focusedFieldBox = await roofLength.boundingBox();
+            return (focusedFieldBox?.y ?? Number.NEGATIVE_INFINITY)
+              - ((commandBarBox?.y ?? 0) + (commandBarBox?.height ?? 0));
+          })
+          .toBeGreaterThanOrEqual(0);
+        await roofLength.fill(originalLength);
+        await expect(compactPricing.getByText('Live', { exact: true })).toBeVisible({ timeout: 60_000 });
+      }
+
       const main = page.locator('main').first();
       const before = await main.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight }));
       expect(before.scrollHeight).toBeGreaterThan(before.clientHeight);
       await main.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
       await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
       await expect(page.getByRole('complementary', { name: 'Preview outputs' })).toBeVisible();
-      const previewDimensions = await page.getByRole('region', { name: 'Pricing preview' }).evaluate((element) => ({
+      const previewDimensions = await fullPricing.evaluate((element) => ({
         clientWidth: element.clientWidth,
         scrollWidth: element.scrollWidth,
       }));
@@ -225,10 +415,11 @@ test('invalid edits retain but relabel the last valid result and block save', as
     await page.setViewportSize({ width: 1600, height: 1000 });
     await openCalculator(page);
     await moduleNavigatorButton(page, 'Pergola 2 · Module 1').click();
+    const pricing = page.getByRole('region', { name: 'Pricing preview' });
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
     await roofLength.fill('');
-    await expect(page.getByText('Last valid result — fix inputs', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Last valid customer price (inc GST)', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('Last valid result — fix inputs', { exact: true })).toBeVisible();
+    await expect(pricing.getByText('Last valid customer price (inc GST)', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeDisabled();
     await expect(moduleNavigatorButton(page, 'Pergola 2 · Module 1')).toContainText('1 issue');
     await page.getByRole('button', { name: 'Errors (1)', exact: true }).click();
@@ -237,7 +428,7 @@ test('invalid edits retain but relabel the last valid result and block save', as
     await issueDialog.getByRole('button', { name: /Pergola 2 · Module 1 · Roof Length/ }).click();
     await expect(roofLength).toBeFocused();
     await roofLength.fill('6');
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(pricing.getByText('Live', { exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeEnabled();
   });
 });

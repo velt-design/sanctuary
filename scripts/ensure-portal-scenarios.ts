@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
+  CALCULATOR_MULTI_MODULE_SCENARIO_REVISION,
   PORTAL_SCENARIO_STATE_PATH,
   seededPortalScenarios,
   type PortalScenarioId,
@@ -308,6 +309,16 @@ export function buildGuidedCalculatorScenarioInputs(projectName: string): Calcul
   return guided;
 }
 
+export function buildPortalScenarioInputs(
+  scenarioId: PortalScenarioId,
+  projectName: string,
+  quoteRef = '',
+): CalculatorInputs {
+  return scenarioId === 'calculator-multi-module'
+    ? buildGuidedCalculatorScenarioInputs(projectName)
+    : buildCalculatorScenarioInputs(projectName, quoteRef);
+}
+
 async function seedProjectScenario(
   supabase: SupabaseClient,
   config: PortalScenarioConfig,
@@ -350,6 +361,8 @@ async function seedProjectScenario(
     summary_json: {
       title: `${projectName} estimate`,
       scenarioId,
+      fixtureRevision:
+        scenarioId === 'calculator-multi-module' ? CALCULATOR_MULTI_MODULE_SCENARIO_REVISION : undefined,
       totals: {
         materials_ex_gst: 12000,
         install_payout_ex_gst: 5500,
@@ -359,13 +372,11 @@ async function seedProjectScenario(
       },
     },
     internal_notes: `Seeded ${scenarioId} estimate.`,
-    inputs:
-      scenarioId === 'project-with-estimate'
-        ? buildGuidedCalculatorScenarioInputs(projectName)
-        : buildCalculatorScenarioInputs(
-            projectName,
-            scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : '',
-          ),
+    inputs: buildPortalScenarioInputs(
+      scenarioId,
+      projectName,
+      scenarioId === 'quote-ready' ? `${config.scenarioPrefix.toUpperCase()}-QUOTE-READY` : '',
+    ),
     outputs: buildEstimateOutputs(projectName, contactName),
     warnings: [],
     updated_at: new Date().toISOString(),
@@ -373,6 +384,8 @@ async function seedProjectScenario(
 
   const state: PortalScenarioStateRecord = {
     scenarioId,
+    fixtureRevision:
+      scenarioId === 'calculator-multi-module' ? CALCULATOR_MULTI_MODULE_SCENARIO_REVISION : undefined,
     contactId: appId('ct', contactUuid),
     projectId: appId('proj', projectUuid),
     estimateId: appId('est', estimateUuid),

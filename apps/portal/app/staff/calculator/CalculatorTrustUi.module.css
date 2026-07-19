@@ -18,6 +18,10 @@
   min-width: 0;
 }
 
+.commandBarIdentity {
+  flex: 1 1 auto;
+}
+
 .commandBarTitle {
   margin: 0;
   font-size: 18px;
@@ -112,7 +116,6 @@
   color: rgba(var(--portal-text-rgb), 0.64);
   font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
   cursor: pointer;
 }
 
@@ -343,31 +346,60 @@
   }
 
   .commandBarActions {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     flex-wrap: wrap;
   }
 }
 
-@container (max-width: 700px) {
+@container (max-width: 779px) {
+  .commandBar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: flex-start;
+  }
+
+  .commandBarIdentity,
+  .commandBarIdentity > div {
+    display: contents;
+  }
+
+  .commandBarTitle {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
   .commandBarMeta {
-    flex-wrap: wrap;
-    white-space: normal;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .commandBarActions {
-    justify-content: flex-start;
+    grid-column: 1 / -1;
+    grid-row: 4;
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
   }
 
-  .commandBarStatusReady,
-  .commandBarStatusBlocked {
-    order: 3;
+  .commandBarSave {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    min-width: 92px;
   }
 
   .commandBarDraftStatus,
   .commandBarDraftStatusError {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    align-items: baseline;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 3px 7px;
+    margin-top: 0;
   }
 
   .commandBarDraftStatusHelp {

@@ -5,6 +5,7 @@ import type { PortalRouteCatalogEntry } from './portalRouteCatalog';
 
 export type PortalScenarioId =
   | 'project-with-estimate'
+  | 'calculator-multi-module'
   | 'quote-ready'
   | 'workbench-multi-object'
   | 'schedule-board-basic'
@@ -24,6 +25,7 @@ interface PortalScenarioDefinition {
 
 export interface PortalScenarioStateRecord {
   scenarioId: PortalScenarioId;
+  fixtureRevision?: string;
   contactId?: string;
   projectId?: string;
   estimateId?: string;
@@ -44,6 +46,7 @@ export interface PortalScenarioStateFile {
 }
 
 export const PORTAL_SCENARIO_STATE_PATH = path.resolve(process.cwd(), 'playwright/.auth/portal-scenarios.json');
+export const CALCULATOR_MULTI_MODULE_SCENARIO_REVISION = 'calculator-multi-module-v1';
 
 export const portalScenarioRegistry = [
   {
@@ -53,6 +56,14 @@ export const portalScenarioRegistry = [
     ownerDocs: ['docs/projects-contacts-estimates-calculator.md'],
     expectedRecords: ['contacts', 'projects', 'estimates'],
     notes: 'Deterministic contact, project, and draft estimate for project and estimate route smoke.',
+  },
+  {
+    id: 'calculator-multi-module',
+    status: 'seeded',
+    requiredRole: 'staff',
+    ownerDocs: ['docs/projects-contacts-estimates-calculator.md'],
+    expectedRecords: ['contacts', 'projects', 'estimates'],
+    notes: 'Dedicated three-module, two-pergola calculator trust-suite fixture; reconciled on every provisioning run.',
   },
   {
     id: 'quote-ready',

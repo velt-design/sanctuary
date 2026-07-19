@@ -9,6 +9,7 @@ import type {
   CalculatorPergola,
   InfillLineItem,
 } from '@/lib/types/calculator';
+import { inferEdgeConfirmations, makeUnsureEdgeConfirmations, resolveSupportConfirmations } from './infillSupportPresentation';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
@@ -273,10 +274,11 @@ export function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): Infi
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
     support: {
-      hasTop: true,
-      hasBottom: true,
-      hasLeft: true,
-      hasRight: true,
+      hasTop: false,
+      hasBottom: false,
+      hasLeft: false,
+      hasRight: false,
+      edgeConfirmations: makeUnsureEdgeConfirmations(),
       internalSupportMode: 'none',
       internalSupportPositionsM: [],
     },
@@ -288,11 +290,27 @@ export function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): Infi
     },
   };
   if (!overrides) return base;
+  const mergedSupport = { ...base.support, ...(overrides.support ?? {}) };
+  const legacySupportFallback = overrides.support
+    ? {
+        hasTop: overrides.support.hasTop !== false,
+        hasBottom: overrides.support.hasBottom !== false,
+        hasLeft: overrides.support.hasLeft !== false,
+        hasRight: overrides.support.hasRight !== false,
+      }
+    : mergedSupport;
+  const normalizedSupport = overrides.support
+    ? resolveSupportConfirmations({
+        ...mergedSupport,
+        ...legacySupportFallback,
+        edgeConfirmations: overrides.support.edgeConfirmations ?? inferEdgeConfirmations(legacySupportFallback),
+      })
+    : mergedSupport;
   return {
     ...base,
     ...overrides,
     panelOrientation: normalizePanelOrientation(overrides.panelOrientation ?? base.panelOrientation),
-    support: { ...base.support, ...(overrides.support ?? {}) },
+    support: normalizedSupport,
     shape:
       overrides.shape?.type === 'mono_slope'
         ? {
@@ -345,10 +363,11 @@ export function buildInfillPreset(module: CalculatorModuleInputs, location: Infi
         bottomOffsetM: '0',
       },
       support: {
-        hasTop: true,
-        hasBottom: true,
-        hasLeft: true,
-        hasRight: true,
+        hasTop: false,
+        hasBottom: false,
+        hasLeft: false,
+        hasRight: false,
+        edgeConfirmations: makeUnsureEdgeConfirmations(),
         internalSupportMode: 'match_roof_rafters',
         internalSupportPositionsM: [],
       },
@@ -371,10 +390,11 @@ export function buildInfillPreset(module: CalculatorModuleInputs, location: Infi
         slopeAnchor: 'right',
       },
       support: {
-        hasTop: true,
-        hasBottom: true,
-        hasLeft: true,
-        hasRight: true,
+        hasTop: false,
+        hasBottom: false,
+        hasLeft: false,
+        hasRight: false,
+        edgeConfirmations: makeUnsureEdgeConfirmations(),
         internalSupportMode: 'none',
         internalSupportPositionsM: [],
       },
@@ -385,10 +405,11 @@ export function buildInfillPreset(module: CalculatorModuleInputs, location: Infi
     location,
     widthMode: 'target_width',
     support: {
-      hasTop: true,
-      hasBottom: true,
-      hasLeft: true,
-      hasRight: true,
+      hasTop: false,
+      hasBottom: false,
+      hasLeft: false,
+      hasRight: false,
+      edgeConfirmations: makeUnsureEdgeConfirmations(),
       internalSupportMode: 'none',
       internalSupportPositionsM: [],
     },
@@ -409,10 +430,11 @@ function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineIte
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
     support: {
-      hasTop: true,
-      hasBottom: true,
-      hasLeft: true,
-      hasRight: true,
+      hasTop: false,
+      hasBottom: false,
+      hasLeft: false,
+      hasRight: false,
+      edgeConfirmations: makeUnsureEdgeConfirmations(),
       internalSupportMode: 'none',
       internalSupportPositionsM: [],
     },
@@ -436,10 +458,11 @@ function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineIte
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
     support: {
-      hasTop: true,
-      hasBottom: true,
-      hasLeft: true,
-      hasRight: true,
+      hasTop: false,
+      hasBottom: false,
+      hasLeft: false,
+      hasRight: false,
+      edgeConfirmations: makeUnsureEdgeConfirmations(),
       internalSupportMode: 'none',
       internalSupportPositionsM: [],
     },
@@ -512,10 +535,11 @@ export function buildInfillItemsForPreset(module: CalculatorModuleInputs, preset
           bottomOffsetM: '0',
         },
         support: {
-          hasTop: true,
-          hasBottom: true,
-          hasLeft: true,
-          hasRight: true,
+          hasTop: false,
+          hasBottom: false,
+          hasLeft: false,
+          hasRight: false,
+          edgeConfirmations: makeUnsureEdgeConfirmations(),
           internalSupportMode: 'none',
           internalSupportPositionsM: [],
         },
