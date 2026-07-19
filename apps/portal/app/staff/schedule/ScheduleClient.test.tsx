@@ -757,9 +757,14 @@ describe('ScheduleClient', () => {
       unscheduledJobs: [],
     };
     const boardSnapshot = boardMutationSnapshot();
+    let resolveBoardSnapshot!: (snapshot: ScheduleV2Snapshot) => void;
+    const boardSnapshotPromise = new Promise<ScheduleV2Snapshot>((resolve) => {
+      resolveBoardSnapshot = resolve;
+    });
+    scheduleSnapshotQueryFn.mockImplementation(() => boardSnapshotPromise);
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
-      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(boardSnapshot),
+      queryFn: scheduleSnapshotQueryFn,
       staleTime: 30_000,
     }));
     const queryClient = new QueryClient({
@@ -791,6 +796,13 @@ describe('ScheduleClient', () => {
     expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
 
     await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolveBoardSnapshot(boardSnapshot);
+      await boardSnapshotPromise;
       await Promise.resolve();
       await Promise.resolve();
     });

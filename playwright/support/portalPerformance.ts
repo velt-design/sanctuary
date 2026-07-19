@@ -31,11 +31,23 @@ type JourneyProbe = {
   onRequest: (request: Request) => void;
 };
 
+type PortalVisualFeedbackState = 'visible' | 'hidden' | 'checked' | 'disabled';
+
+type PortalVisualFeedbackCondition = {
+  selector: string;
+  state: PortalVisualFeedbackState;
+};
+
 declare global {
   interface Window {
     __portalPerformanceProbe?: {
       blockingOverlaySeen: boolean;
       longTasks: number[];
+    };
+    __portalVisualFeedbackProbe?: {
+      startedAt: number;
+      completedAt: number | null;
+      observer?: MutationObserver;
     };
   }
 }
@@ -109,6 +121,62 @@ export async function beginPortalJourney(page: Page, options?: { cold?: boolean 
     requests,
     onRequest,
   };
+}
+
+export async function beginPortalVisualFeedback(
+  page: Page,
+  condition: PortalVisualFeedbackCondition,
+): Promise<void> {
+  await page.evaluate(({ selector, state }) => {
+    window.__portalVisualFeedbackProbe?.observer?.disconnect();
+    const probe = {
+      startedAt: performance.now(),
+      completedAt: null as number | null,
+      observer: undefined as MutationObserver | undefined,
+    };
+    window.__portalVisualFeedbackProbe = probe;
+
+    const conditionMet = () => {
+      const element = document.querySelector(selector);
+      if (state === 'hidden') return !element;
+      if (!(element instanceof HTMLElement)) return false;
+      if (state === 'checked') return element instanceof HTMLInputElement && element.checked;
+      if (state === 'disabled') {
+        return (
+          (element instanceof HTMLButtonElement || element instanceof HTMLInputElement) &&
+          element.disabled
+        );
+      }
+      const style = getComputedStyle(element);
+      return !element.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+
+    const captureFeedback = () => {
+      if (probe.completedAt !== null || !conditionMet()) return;
+      probe.completedAt = performance.now();
+      probe.observer?.disconnect();
+    };
+    probe.observer = new MutationObserver(captureFeedback);
+    probe.observer.observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    requestAnimationFrame(captureFeedback);
+  }, condition);
+}
+
+export async function portalVisualFeedbackMs(page: Page, timeoutMs = 5_000): Promise<number> {
+  await page.waitForFunction(
+    () => window.__portalVisualFeedbackProbe?.completedAt !== null,
+    undefined,
+    { timeout: timeoutMs },
+  );
+  return page.evaluate(() => {
+    const probe = window.__portalVisualFeedbackProbe;
+    if (!probe || probe.completedAt === null) throw new Error('Portal visual feedback was not captured.');
+    return Math.round(probe.completedAt - probe.startedAt);
+  });
 }
 
 export function elapsedJourneyMs(probe: JourneyProbe): number {

@@ -3,10 +3,12 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import {
   beginPortalJourney,
+  beginPortalVisualFeedback,
   elapsedJourneyMs,
   finishPortalJourney,
   installPortalPerformanceProbe,
   portalPerformanceBuildId,
+  portalVisualFeedbackMs,
   type PortalPerformanceJourney,
   type PortalPerformanceRun,
 } from './support/portalPerformance';
@@ -45,10 +47,14 @@ test('records immediate project feedback separately from deliberately slow persi
     (candidate) => candidate.url().includes('/api/projects/fixture-project/details') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await beginPortalVisualFeedback(page, {
+    selector: '[data-fixture-project-saving="true"]',
+    state: 'visible',
+  });
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('[data-fixture-project-name="true"]')).toHaveText('Instant Fixture Project');
   await expect(page.locator('[data-fixture-project-saving="true"]')).toBeVisible();
-  const feedbackMs = elapsedJourneyMs(probe);
+  const feedbackMs = await portalVisualFeedbackMs(page);
   const usefulContentMs = feedbackMs;
 
   await response;
@@ -95,10 +101,14 @@ test('records Project Details Done feedback separately from its local-first save
     (candidate) => candidate.url().includes('/api/projects/fixture-project/details') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await beginPortalVisualFeedback(page, {
+    selector: '[data-project-details-mutation-fixture="ready"] input[aria-label="Project name"]',
+    state: 'hidden',
+  });
   await fixture.getByRole('button', { name: 'Done' }).click();
   await expect(fixture.getByLabel('Project name')).toBeHidden();
   await expect(fixture.getByText('Instant Detail Project', { exact: true })).toBeVisible();
-  const feedbackMs = elapsedJourneyMs(probe);
+  const feedbackMs = await portalVisualFeedbackMs(page);
   const usefulContentMs = feedbackMs;
 
   await response;
@@ -154,10 +164,14 @@ test('records Contact Details Done feedback separately from its local-first save
     (candidate) => candidate.url().includes('/api/contacts/fixture-contact') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await beginPortalVisualFeedback(page, {
+    selector: '[data-contact-details-mutation-fixture="ready"] input[aria-label="Contact name"]',
+    state: 'hidden',
+  });
   await fixture.getByRole('button', { name: 'Done' }).click();
   await expect(fixture.getByLabel('Contact name')).toBeHidden();
   await expect(fixture.getByRole('heading', { name: 'Instant Fixture Contact' })).toBeVisible();
-  const feedbackMs = elapsedJourneyMs(probe);
+  const feedbackMs = await portalVisualFeedbackMs(page);
   const usefulContentMs = feedbackMs;
 
   await response;
@@ -203,8 +217,12 @@ test('records project-task feedback separately from its background save', async 
     (candidate) => candidate.url().includes('/api/projects/fixture-project/tasks') && candidate.status() === 200,
   );
   const probe = await beginPortalJourney(page);
+  await beginPortalVisualFeedback(page, {
+    selector: '[data-project-task-mutation-fixture="ready"] input[type="checkbox"]',
+    state: 'disabled',
+  });
   await checkbox.check();
-  const feedbackMs = elapsedJourneyMs(probe);
+  const feedbackMs = await portalVisualFeedbackMs(page);
   const usefulContentMs = feedbackMs;
   await expect(checkbox).toBeChecked();
   await expect(checkbox).toBeDisabled();
