@@ -1,6 +1,6 @@
 import 'server-only';
 
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProjectNote } from '@/lib/projects/types';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import {
@@ -13,6 +13,12 @@ export const PROJECT_NOTES_DEFAULT_LIMIT = 50;
 export const PROJECT_NOTES_MAX_LIMIT = 200;
 
 const NOTE_COLUMNS = 'id,project_id,author_id,author_email,author_display_name,body,created_at,updated_at,deleted_at';
+
+type ProjectNoteActor = {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+};
 
 function projectUuidFromAppId(projectId: string): string | null {
   try {
@@ -52,7 +58,7 @@ export async function listProjectNotes(
 export async function createProjectNote(
   client: SupabaseClient,
   projectAppId: string,
-  user: User,
+  user: ProjectNoteActor,
   body: string,
 ): Promise<
   | { note: ProjectNote }
@@ -94,7 +100,7 @@ export async function createProjectNote(
 export async function updateProjectNote(
   client: SupabaseClient,
   noteId: string,
-  user: User,
+  user: ProjectNoteActor,
   body: string,
 ): Promise<
   | { note: ProjectNote }
@@ -122,7 +128,7 @@ export async function updateProjectNote(
 export async function softDeleteProjectNote(
   client: SupabaseClient,
   noteId: string,
-  user: User,
+  user: ProjectNoteActor,
 ): Promise<
   | { ok: true }
   | { error: 'note_not_found' | 'permission_denied' | 'delete_failed' }
