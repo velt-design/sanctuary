@@ -220,6 +220,7 @@ import {
   calculatorResultFreshnessLabel,
   deriveCalculatorResultFreshness,
 } from './calculatorResultFreshness';
+import { useCalculatorCostingRequest } from './useCalculatorCostingRequest';
 
 type MaterialsExplainApiResponse = {
   output: {
@@ -1675,10 +1676,15 @@ export default function CalculatorGridClient({
   }, [requestPayload, activeModuleIndex, moduleRoutes]);
   const materialsDebugAvailable = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_COSTING_DEBUG_ENABLED === '1';
 
-  const [result, setResult] = useState<SiteOutputV1 | null>(null);
-  const [lastSuccessfulRequestPayloadJson, setLastSuccessfulRequestPayloadJson] = useState<string | null>(null);
-  const [engineError, setEngineError] = useState<string | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
+  const {
+    result,
+    lastSuccessfulRequestPayloadJson,
+    engineError,
+    isCalculating,
+  } = useCalculatorCostingRequest({
+    readyToCalculate,
+    requestPayloadJson,
+  });
   const [materialsDebugEnabled, setMaterialsDebugEnabled] = useState(false);
   const [materialsDebugDetail, setMaterialsDebugDetail] = useState<'summary' | 'full'>('summary');
   const [materialsDebugFocusLineIndex, setMaterialsDebugFocusLineIndex] = useState<number | null>(null);
@@ -1839,44 +1845,6 @@ export default function CalculatorGridClient({
       window.clearTimeout(timeoutId);
     };
   }, [deletedInfill]);
-
-  useEffect(() => {
-    if (!readyToCalculate) {
-      setEngineError(null);
-      setIsCalculating(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const t = window.setTimeout(async () => {
-      setIsCalculating(true);
-      setEngineError(null);
-
-      try {
-        const res = await fetch('/api/staff/costing/v1/job', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: requestPayloadJson,
-          signal: controller.signal,
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(String(json?.error ?? 'Costing failed'));
-        setResult(json as SiteOutputV1);
-        setLastSuccessfulRequestPayloadJson(requestPayloadJson);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        const msg = err instanceof Error ? err.message : 'Costing failed';
-        setEngineError(msg);
-      } finally {
-        if (!controller.signal.aborted) setIsCalculating(false);
-      }
-    }, 200);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(t);
-    };
-  }, [readyToCalculate, requestPayloadJson]);
 
   useEffect(() => {
     setMaterialsDebugFocusLineIndex(null);
