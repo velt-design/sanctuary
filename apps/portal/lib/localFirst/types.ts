@@ -77,6 +77,7 @@ type LocalFirstMutationSuccessResult<TData = unknown> = {
   lastSyncedAt?: string;
   confirmedWorkingCopy?: TData;
   clearWorkingCopy?: boolean;
+  clearWorkingCopyIfMatches?: unknown;
 };
 
 type LocalFirstMutationRetryResult = {

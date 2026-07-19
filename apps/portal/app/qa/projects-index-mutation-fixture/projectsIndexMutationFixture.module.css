@@ -5,8 +5,14 @@
   padding: 32px;
 }
 
+.stack {
+  display: grid;
+  width: min(760px, 100%);
+  gap: 24px;
+}
+
 .card {
-  width: min(680px, 100%);
+  width: 100%;
   padding: 28px;
   border: 1px solid var(--portal-border);
   border-radius: var(--portal-radius-xl);

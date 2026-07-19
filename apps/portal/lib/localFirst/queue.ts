@@ -9,6 +9,7 @@ import {
   markLocalFirstPendingEntitiesQueued,
   markLocalFirstQueueItemSyncing,
   requeueSyncingLocalFirstItems,
+  retryLocalFirstEntityQueue,
   resolveLocalFirstQueueItemConflict,
   resolveLocalFirstQueueItemRetry,
   resolveLocalFirstQueueItemSuccess,
@@ -70,6 +71,7 @@ async function processHandlerResult(item: LocalFirstQueueItem, result: LocalFirs
       lastSyncedAt: result?.lastSyncedAt,
       confirmedWorkingCopy: result?.confirmedWorkingCopy,
       clearWorkingCopy: result?.clearWorkingCopy,
+      clearWorkingCopyIfMatches: result?.clearWorkingCopyIfMatches,
     });
     return 'continue';
   }
@@ -222,6 +224,20 @@ export async function enqueueAndProcessLocalFirstMutation<TPayload>(input: {
     void processLocalFirstEntityQueue(item.entityKey);
   }
   return item;
+}
+
+export async function retryLocalFirstEntityMutation(entityKey: LocalFirstEntityKey): Promise<boolean> {
+  const existingTimer = retryTimers.get(entityKey);
+  if (typeof existingTimer === 'number' && typeof window !== 'undefined') {
+    window.clearTimeout(existingTimer);
+    retryTimers.delete(entityKey);
+  }
+
+  const ready = await retryLocalFirstEntityQueue(entityKey);
+  if (ready && runtimeStarted) {
+    void processLocalFirstEntityQueue(entityKey);
+  }
+  return ready;
 }
 
 export function __resetLocalFirstQueueForTests(): void {

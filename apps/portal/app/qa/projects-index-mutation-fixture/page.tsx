@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import ProjectsIndexMutationFixtureClient from './ProjectsIndexMutationFixtureClient';
+import ProjectDetailsMutationFixtureClient from './ProjectDetailsMutationFixtureClient';
 import styles from './projectsIndexMutationFixture.module.css';
 
 function arePortalQaFixturesEnabled(): boolean {
@@ -13,7 +14,10 @@ export default function ProjectsIndexMutationFixturePage() {
 
   return (
     <main className={styles.page} data-portal-qa-fixture="projects-index-mutation">
-      <ProjectsIndexMutationFixtureClient />
+      <div className={styles.stack}>
+        <ProjectsIndexMutationFixtureClient />
+        <ProjectDetailsMutationFixtureClient />
+      </div>
     </main>
   );
 }

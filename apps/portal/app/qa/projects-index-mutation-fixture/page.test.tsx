@@ -14,6 +14,10 @@ vi.mock('./ProjectsIndexMutationFixtureClient', () => ({
   default: () => <div data-project-mutation-fixture="ready">Mutation fixture</div>,
 }));
 
+vi.mock('./ProjectDetailsMutationFixtureClient', () => ({
+  default: () => <div data-project-details-mutation-fixture="ready">Detail mutation fixture</div>,
+}));
+
 describe('ProjectsIndexMutationFixturePage', () => {
   beforeEach(() => {
     delete process.env.ENABLE_PORTAL_QA_FIXTURES;
@@ -44,5 +48,6 @@ describe('ProjectsIndexMutationFixturePage', () => {
 
     expect(markup).toContain('data-portal-qa-fixture="projects-index-mutation"');
     expect(markup).toContain('data-project-mutation-fixture="ready"');
+    expect(markup).toContain('data-project-details-mutation-fixture="ready"');
   });
 });

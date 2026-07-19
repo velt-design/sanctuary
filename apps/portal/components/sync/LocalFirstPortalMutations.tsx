@@ -27,6 +27,10 @@ import {
   upsertEstimateDetailCache,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
+import {
+  patchProjectDetailsCaches,
+  type PortalProjectDetailsUpdateMutationPayload,
+} from '@/lib/localFirst/projectDetails';
 import { registerLocalFirstIdAlias, resolveLocalFirstId } from '@/lib/localFirst/store';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { ProjectNote } from '@/lib/projects/types';
@@ -52,11 +56,76 @@ function isDesignRequestTerminalError(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 400 || error.status === 403 || error.status === 404 || error.status === 409 || error.status === 423 || error.status === 501);
 }
 
+function isProjectDetailsTerminalError(error: unknown): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    (error.status === 400 ||
+      error.status === 401 ||
+      error.status === 403 ||
+      error.status === 404 ||
+      error.status === 409 ||
+      error.status === 423)
+  );
+}
+
+function isAccessEndingProjectDetailsError(error: ApiError): boolean {
+  return error.status === 401 || error.status === 403 || error.status === 404;
+}
+
 export default function LocalFirstPortalMutations() {
   const queryClient = useQueryClient();
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   useEffect(() => {
+    const unregisterProjectDetailsUpdate = registerLocalFirstMutationHandler(
+      PORTAL_LOCAL_FIRST_MUTATIONS.projectDetailsUpdate,
+      async (item) => {
+        const payload = item.payload as PortalProjectDetailsUpdateMutationPayload;
+        try {
+          await apiJson(`/api/projects/${encodeURIComponent(payload.projectId)}/details`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              project: {
+                name: payload.draft.projectName,
+                siteAddress: payload.draft.siteAddress,
+                region: payload.draft.region,
+                quoteRef: payload.draft.quoteRef,
+                nextActionDate: payload.draft.nextActionDate,
+              },
+              contact: {
+                name: payload.draft.contactName,
+                email: payload.draft.contactEmail,
+                phone: payload.draft.contactPhone,
+              },
+              contactId: payload.contactId,
+            }),
+            skipSaveTracking: true,
+          });
+          await invalidateProjectReadCaches(queryClient, hostKey, payload.projectId);
+          return {
+            kind: 'success',
+            clearWorkingCopyIfMatches: payload.draft,
+          } as const;
+        } catch (error) {
+          if (isProjectDetailsTerminalError(error)) {
+            patchProjectDetailsCaches(queryClient, hostKey, payload.projectId, payload.previousDraft, {
+              contactId: payload.contactId,
+            });
+            if (isAccessEndingProjectDetailsError(error)) {
+              await invalidateProjectReadCaches(queryClient, hostKey, payload.projectId);
+            }
+            return {
+              kind: 'conflict',
+              message: error.message,
+              serverSnapshot: error.body,
+              clientSnapshot: payload.draft,
+            } as const;
+          }
+          throw error;
+        }
+      },
+    );
+
     const unregisterEstimateCreate = registerLocalFirstMutationHandler(
       PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
       async (item) => {
@@ -422,6 +491,7 @@ export default function LocalFirstPortalMutations() {
     );
 
     return () => {
+      unregisterProjectDetailsUpdate();
       unregisterEstimateCreate();
       unregisterEstimateUpdate();
       unregisterDesignRequestCreate();

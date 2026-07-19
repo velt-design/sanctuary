@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   registerLocalFirstMutationHandler: vi.fn(),
   resolveLocalFirstId: vi.fn((value: string) => value),
   apiJson: vi.fn(),
+  patchProjectDetailsCaches: vi.fn(),
 }));
 
 type RegisteredHandler = (item: { payload: unknown }) => Promise<unknown>;
@@ -60,6 +61,14 @@ vi.mock('@/lib/localFirst/store', () => ({
   registerLocalFirstIdAlias: mocks.registerLocalFirstIdAlias,
   resolveLocalFirstId: mocks.resolveLocalFirstId,
 }));
+
+vi.mock('@/lib/localFirst/projectDetails', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/localFirst/projectDetails')>();
+  return {
+    ...actual,
+    patchProjectDetailsCaches: mocks.patchProjectDetailsCaches,
+  };
+});
 
 function apiError(message: string, status: number, body: unknown): ApiError {
   return new ApiError(message, { status, body });
@@ -134,19 +143,21 @@ describe('LocalFirstPortalMutations', () => {
     mocks.resolveLocalFirstId.mockReset();
     mocks.resolveLocalFirstId.mockImplementation((value: string) => value);
     mocks.apiJson.mockReset();
+    mocks.patchProjectDetailsCaches.mockReset();
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('registers only the heavy-editor local-first handlers', () => {
+  it('registers the owned portal local-first handlers', () => {
     const rendered = renderIntoDocument(<LocalFirstPortalMutations />);
 
     const registeredKeys = mocks.registerLocalFirstMutationHandler.mock.calls.map(([key]) => key);
 
     expect(registeredKeys).toEqual(
       expect.arrayContaining([
+        'portal.project.details.update',
         'portal.estimate.create',
         'portal.estimate.update',
         'portal.designRequest.create',
@@ -158,11 +169,81 @@ describe('LocalFirstPortalMutations', () => {
         'portal.project.note.delete',
       ]),
     );
-    expect(registeredKeys).not.toContain('portal.project.details.update');
     expect(registeredKeys).not.toContain('portal.project.tasks.toggle');
     expect(registeredKeys).not.toContain('portal.contact.update');
 
     rendered.unmount();
+  });
+
+  it('persists project details through the local-first handler and clears only the matching draft', async () => {
+    mocks.apiJson.mockResolvedValueOnce({ project: {}, contact: {} });
+    mocks.invalidateProjectReadCaches.mockResolvedValueOnce(undefined);
+    const { handler, unmount } = renderAndGetHandler('portal.project.details.update');
+    const draft = {
+      contactName: 'Taylor',
+      contactEmail: 'taylor@example.com',
+      contactPhone: '0210000000',
+      projectName: 'Updated project',
+      siteAddress: '2 Example St',
+      region: 'North',
+      quoteRef: 'Q-2',
+      nextActionDate: '2026-07-21',
+    };
+
+    const result = await handler({
+      payload: {
+        projectId: 'proj_1',
+        contactId: 'ct_1',
+        draft,
+        previousDraft: { ...draft, projectName: 'Original project' },
+      },
+    });
+
+    expect(result).toEqual({ kind: 'success', clearWorkingCopyIfMatches: draft });
+    expect(mocks.apiJson).toHaveBeenCalledWith(
+      '/api/projects/proj_1/details',
+      expect.objectContaining({ method: 'PATCH', skipSaveTracking: true }),
+    );
+    expect(JSON.parse(mocks.apiJson.mock.calls[0]?.[1]?.body as string)).toMatchObject({
+      project: { name: 'Updated project', siteAddress: '2 Example St' },
+      contact: { name: 'Taylor', email: 'taylor@example.com' },
+      contactId: 'ct_1',
+    });
+    expect(mocks.invalidateProjectReadCaches).toHaveBeenCalledWith(mocks.queryClient, 'host', 'proj_1');
+    unmount();
+  });
+
+  it('rolls project details back and retains the rejected draft on terminal errors', async () => {
+    const body = { error: 'Project details are no longer writable.' };
+    mocks.apiJson.mockRejectedValueOnce(apiError('Project details are no longer writable.', 403, body));
+    const { handler, unmount } = renderAndGetHandler('portal.project.details.update');
+    const previousDraft = {
+      contactName: 'Taylor',
+      contactEmail: 'taylor@example.com',
+      contactPhone: '0210000000',
+      projectName: 'Original project',
+      siteAddress: '1 Example St',
+      region: 'North',
+      quoteRef: 'Q-1',
+      nextActionDate: '2026-07-20',
+    };
+    const draft = { ...previousDraft, projectName: 'Rejected project' };
+
+    const result = await handler({
+      payload: { projectId: 'proj_1', contactId: 'ct_1', draft, previousDraft },
+    });
+
+    expect(result).toEqual({
+      kind: 'conflict',
+      message: 'Project details are no longer writable.',
+      serverSnapshot: body,
+      clientSnapshot: draft,
+    });
+    expect(mocks.patchProjectDetailsCaches).toHaveBeenCalledWith(mocks.queryClient, 'host', 'proj_1', previousDraft, {
+      contactId: 'ct_1',
+    });
+    expect(mocks.invalidateProjectReadCaches).toHaveBeenCalledWith(mocks.queryClient, 'host', 'proj_1');
+    unmount();
   });
 
   it('retries estimate updates until a provisional estimate id has a durable alias', async () => {

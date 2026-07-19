@@ -8,10 +8,14 @@ import type {
   LocalFirstPersistedState,
   LocalFirstQueueItem,
   LocalFirstStoreSnapshot,
-  LocalFirstStoreSummary,
   LocalFirstWriteWorkingCopyInput,
   LocalFirstWorkingCopy,
 } from './types';
+import {
+  applySuccessfulWorkingCopyTransition,
+  prepareEntityQueueForRetry,
+} from './storeEntityTransitions';
+export { summarizeLocalFirstStoreState } from './storeSummary';
 
 const LOCAL_FIRST_STORAGE_KEY_PREFIX = 'sanctuary-portal-local-first:v2:';
 
@@ -432,52 +436,6 @@ async function mutateLocalFirstState<T>(recipe: (draft: LocalFirstPersistedState
   return operation;
 }
 
-export function summarizeLocalFirstStoreState(state: LocalFirstPersistedState): LocalFirstStoreSummary {
-  let queuedCount = 0;
-  let syncingCount = 0;
-
-  for (const item of state.queue) {
-    if (item.status === 'syncing') syncingCount += 1;
-    else if (item.status === 'queued') queuedCount += 1;
-  }
-
-  let conflictCount = 0;
-  let errorCount = 0;
-  let offlineCount = 0;
-  let lastSyncedAt: string | undefined;
-  let issueMessage: string | undefined;
-  let issueUpdatedAt: string | undefined;
-
-  for (const entityState of Object.values(state.entityStates)) {
-    lastSyncedAt = maxIso(lastSyncedAt, entityState.lastSyncedAt);
-    if (entityState.status === 'conflict') conflictCount += 1;
-    if (entityState.status === 'error') errorCount += 1;
-    if (entityState.status === 'offline') offlineCount += 1;
-
-    if (
-      entityState.lastError &&
-      (entityState.status === 'conflict' || entityState.status === 'error' || entityState.status === 'offline') &&
-      (!issueUpdatedAt || entityState.updatedAt > issueUpdatedAt)
-    ) {
-      issueUpdatedAt = entityState.updatedAt;
-      issueMessage = entityState.lastError;
-    }
-  }
-
-  return {
-    queuedCount,
-    syncingCount,
-    conflictCount,
-    errorCount,
-    offlineCount,
-    entityCount: Object.keys(state.entityStates).length,
-    workingCopyCount: Object.keys(state.workingCopies).length,
-    pendingCount: queuedCount + syncingCount,
-    lastSyncedAt,
-    issueMessage,
-  };
-}
-
 export async function writeLocalFirstWorkingCopy<TData>(
   input: LocalFirstWriteWorkingCopyInput<TData>,
 ): Promise<LocalFirstWorkingCopy<TData>> {
@@ -622,6 +580,7 @@ export async function resolveLocalFirstQueueItemSuccess(
     lastSyncedAt?: string;
     confirmedWorkingCopy?: unknown;
     clearWorkingCopy?: boolean;
+    clearWorkingCopyIfMatches?: unknown;
   } = {},
 ): Promise<void> {
   await mutateLocalFirstState((draft) => {
@@ -632,17 +591,10 @@ export async function resolveLocalFirstQueueItemSuccess(
 
     delete draft.conflicts[item.entityKey];
 
-    if (options.clearWorkingCopy) {
-      delete draft.workingCopies[item.entityKey];
-    } else if (options.confirmedWorkingCopy !== undefined) {
-      draft.workingCopies[item.entityKey] = {
-        entityKey: item.entityKey,
-        data: options.confirmedWorkingCopy,
-        updatedAt: isoNow(),
-      };
-    }
-
     const pendingCount = pendingCountForEntity(draft, item.entityKey);
+
+    applySuccessfulWorkingCopyTransition(draft, item.entityKey, pendingCount, options, isoNow());
+
     updateEntityState(draft, item.entityKey, {
       status: pendingCount > 0 ? nextEntityStatusForPendingItems(draft, item.entityKey, 'queued') : 'synced',
       lastSyncedAt: options.lastSyncedAt ?? isoNow(),
@@ -724,6 +676,20 @@ export async function discardLocalFirstEntityQueue(entityKey: LocalFirstEntityKe
       lastError: undefined,
       nextRetryAt: undefined,
     });
+  });
+}
+
+export async function retryLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Promise<boolean> {
+  return mutateLocalFirstState((draft) => {
+    const now = isoNow();
+    if (!prepareEntityQueueForRetry(draft, entityKey, now)) return false;
+    updateEntityState(draft, entityKey, {
+      status: 'queued',
+      lastError: undefined,
+      nextRetryAt: undefined,
+      conflictId: undefined,
+    });
+    return true;
   });
 }
 

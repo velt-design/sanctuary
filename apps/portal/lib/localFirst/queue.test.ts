@@ -3,6 +3,7 @@ import {
   __resetLocalFirstQueueForTests,
   enqueueAndProcessLocalFirstMutation,
   registerLocalFirstMutationHandler,
+  retryLocalFirstEntityMutation,
   startLocalFirstQueueRuntime,
   stopLocalFirstQueueRuntime,
 } from './queue';
@@ -94,6 +95,36 @@ describe('localFirst queue', () => {
       expect(getLocalFirstEntitySyncState('quote:7').status).toBe('conflict');
       expect(getLocalFirstConflictState('quote:7')?.message).toBe('Quote changed on the server.');
     });
+  });
+
+  it('allows a visible conflicted mutation to be retried immediately', async () => {
+    let attempts = 0;
+    registerLocalFirstMutationHandler('project.details.save', async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return { kind: 'conflict', message: 'Project changed on the server.' } as const;
+      }
+      return { kind: 'success' } as const;
+    });
+
+    await startLocalFirstQueueRuntime();
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: 'project:details:proj_1',
+      mutationKey: 'project.details.save',
+      payload: { projectName: 'Updated' },
+    });
+
+    await waitUntil(() => {
+      expect(getLocalFirstEntitySyncState('project:details:proj_1').status).toBe('conflict');
+    });
+
+    await retryLocalFirstEntityMutation('project:details:proj_1');
+
+    await waitUntil(() => {
+      expect(getLocalFirstEntitySyncState('project:details:proj_1').status).toBe('synced');
+      expect(getLocalFirstStoreSnapshot().state.queue).toHaveLength(0);
+    });
+    expect(attempts).toBe(2);
   });
 
   it('retries dependent mutations until a local id alias resolves', async () => {
