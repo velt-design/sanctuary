@@ -140,6 +140,52 @@ describe('getProjectPageSnapshot', () => {
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
 
+  it('builds a direct-link summary from one auth-bound project/contact read', async () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    const contactId = '22222222-2222-4222-8222-222222222222';
+    fromMock.mockReturnValueOnce(createQuery({
+      data: {
+        id: projectId,
+        name: 'Direct Project',
+        contact_id: contactId,
+        contact: {
+          id: contactId,
+          name: 'Direct Contact',
+          email: 'direct@example.com',
+          phone: '022',
+        },
+        pipeline_stage: 'QUOTING',
+        site_address: '5 Direct Road',
+      },
+      error: null,
+    }));
+
+    const { getProjectPageSummary } = await import('./getProjectPageSnapshot');
+    const summary = await getProjectPageSummary(
+      `proj_${projectId}`,
+      undefined,
+      { from: fromMock, ...fakeAuth } as any,
+    );
+
+    expect(summary).toMatchObject({
+      project: {
+        id: `proj_${projectId}`,
+        name: 'Direct Project',
+        contactId: `ct_${contactId}`,
+        contactName: 'Direct Contact',
+        siteAddress: '5 Direct Road',
+      },
+      pipeline: { stage: 'quoting' },
+      tasks: { stage: 'quoting', items: [] },
+      activity: [],
+      emails: [],
+      notes: [],
+    });
+    expect(fromMock).toHaveBeenCalledOnce();
+    expect(fromMock).toHaveBeenCalledWith('projects');
+    expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
+  });
+
   it('starts the project and embedded-related reads without waiting for either result', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     const projectResult = deferred<QueryResult>();

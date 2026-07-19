@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { contactsListQueryOptions } from './contacts';
 import { dashboardDataQueryOptions } from './dashboard';
 import { estimateMetasByProjectQueryOptions } from './projectEstimates';
-import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from './projects';
+import { qk } from './keys';
+import { projectPageSnapshotQueryOptions, projectPageSummaryQueryOptions, projectsListQueryOptions } from './projects';
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from './quotes';
 
 describe('query option budgets', () => {
@@ -17,6 +18,9 @@ describe('query option budgets', () => {
   it('applies project-shell and quote/estimate budgets', () => {
     expect(projectPageSnapshotQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 5);
     expect(projectPageSnapshotQueryOptions('host', 'proj_1').gcTime).toBe(1000 * 60 * 60 * 24);
+    expect(projectPageSummaryQueryOptions('host', 'proj_1').queryKey).toEqual(qk.projects.summary('host', 'proj_1'));
+    expect(projectPageSummaryQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 5);
+    expect(projectPageSummaryQueryOptions('host', 'proj_1').gcTime).toBe(1000 * 60 * 60 * 24);
 
     expect(estimateMetasByProjectQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 10);
     expect(quoteVersionsByProjectQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 10);

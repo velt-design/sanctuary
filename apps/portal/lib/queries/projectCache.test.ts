@@ -52,6 +52,7 @@ describe('projectCache helpers', () => {
       { includeQuotes: true, includeEstimates: true },
     );
 
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.summary('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.snapshot('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.detail('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.listPrefix('host') });

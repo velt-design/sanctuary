@@ -146,6 +146,89 @@ function relationRows(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
 }
 
+function mapProjectSummary(projectRow: any, fallbackProjectId: string): {
+  project: ProjectPageSnapshot['project'];
+  stage: ProjectPageSnapshot['pipeline']['stage'];
+  nextActionDate: string | null;
+} {
+  const normalizedStage = normalizeProjectStatus(
+    projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW',
+  ).status;
+  const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
+  const contactIdRaw = pickString(projectRow.contact_id, projectRow.contactId);
+  const contactUuid = contactIdRaw ? safeUuidFromAppId(contactIdRaw, 'ct') : null;
+  const projectId = (() => {
+    const raw = String(projectRow.id ?? fallbackProjectId);
+    if (raw.startsWith('proj_')) return raw;
+    if (isUuid(raw)) return appIdFromUuid('proj', raw);
+    return fallbackProjectId;
+  })();
+  const contactRaw = projectRow.contact;
+  const contact = Array.isArray(contactRaw) ? contactRaw[0] ?? null : contactRaw ?? null;
+  const name = pickString(projectRow.projectName, projectRow.project_name, projectRow.name, 'Project') ?? 'Project';
+  const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
+  const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
+  const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
+  const siteAddress = pickString(projectRow.site_address, projectRow.siteAddress, projectRow.address);
+  const region = pickString(projectRow.region);
+  const quoteRef = pickString(projectRow.quote_ref, projectRow.quoteRef);
+  const nextActionDate = pickString(
+    projectRow.next_action_date,
+    projectRow.nextActionDate,
+    projectRow.follow_up_date,
+    projectRow.followUpDate,
+  );
+
+  return {
+    project: {
+      id: projectId,
+      name,
+      stage,
+      ...(contactUuid ? { contactId: appIdFromUuid('ct', contactUuid) } : null),
+      ...(contactName ? { contactName } : null),
+      ...(contactEmail ? { contactEmail } : null),
+      ...(contactPhone ? { contactPhone } : null),
+      ...(siteAddress ? { siteAddress } : null),
+      ...(region ? { region } : null),
+      ...(quoteRef ? { quoteRef } : null),
+      ...(nextActionDate ? { nextActionDate } : null),
+    },
+    stage,
+    nextActionDate,
+  };
+}
+
+export async function getProjectPageSummary(
+  projectId: string,
+  diagnostics?: PortalServerLogContext,
+  supabase?: SupabaseClient,
+): Promise<ProjectPageSnapshot | null> {
+  const client = supabase ?? (await getSupabaseServerAuth());
+  const projectUuid = safeUuidFromAppId(projectId, 'proj');
+  if (!projectUuid) return null;
+
+  const projectRes = await client
+    .from('projects')
+    .select('*,contact:contacts(*)')
+    .eq('id', projectUuid)
+    .maybeSingle();
+  if (projectRes?.error) {
+    logSnapshotError(diagnostics, 'project summary query failed', projectRes.error, 'projects');
+    throw new Error('Failed to load project summary');
+  }
+  if (!projectRes?.data) return null;
+
+  const summary = mapProjectSummary(projectRes.data, projectId);
+  return {
+    project: summary.project,
+    pipeline: { stage: summary.stage },
+    tasks: { stage: summary.stage, items: [] },
+    activity: [],
+    emails: [],
+    notes: [],
+  };
+}
+
 export async function getProjectPageSnapshot(
   projectId: string,
   diagnostics?: PortalServerLogContext,
@@ -196,36 +279,15 @@ export async function getProjectPageSnapshot(
     throw new Error('Failed to load complete project snapshot');
   }
 
-  const normalizedStage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
-  const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
-  const contactIdRaw = pickString(projectRow.contact_id, projectRow.contactId);
-  const contactUuid = contactIdRaw ? safeUuidFromAppId(contactIdRaw, 'ct') : null;
-  const projectIdOut = (() => {
-    const raw = String(projectRow.id ?? projectId);
-    if (raw.startsWith('proj_')) return raw;
-    if (isUuid(raw)) return appIdFromUuid('proj', raw);
-    return projectId;
-  })();
-  const projectName = pickString(projectRow.projectName, projectRow.project_name, projectRow.name, 'Project') ?? 'Project';
-  const siteAddress = pickString(projectRow.site_address, projectRow.siteAddress, projectRow.address);
-  const region = pickString(projectRow.region);
-  const quoteRef = pickString(projectRow.quote_ref, projectRow.quoteRef);
-  const nextActionDate = pickString(
-    projectRow.next_action_date,
-    projectRow.nextActionDate,
-    projectRow.follow_up_date,
-    projectRow.followUpDate,
-  );
+  const summary = mapProjectSummary(projectRow, projectId);
+  const stage = summary.stage;
+  const projectIdOut = summary.project.id;
+  const nextActionDate = summary.nextActionDate;
 
   const currentUserId = authenticatedUserId === undefined
     ? (await client.auth.getUser())?.data?.user?.id ?? null
     : authenticatedUserId;
 
-  const contactRaw = projectRow.contact;
-  const contact = Array.isArray(contactRaw) ? contactRaw[0] ?? null : contactRaw ?? null;
-  const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
-  const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
-  const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
   const relatedRow = relatedRes?.data ?? null;
   const emailRows = relationRows(relatedRow?.emails);
   const emails = emailRows.map(mapEmail);
@@ -273,17 +335,7 @@ export async function getProjectPageSnapshot(
 
   return {
     project: {
-      id: projectIdOut,
-      name: projectName,
-      stage: finalStage,
-      ...(contactUuid ? { contactId: appIdFromUuid('ct', contactUuid) } : null),
-      ...(contactName ? { contactName } : null),
-      ...(contactEmail ? { contactEmail } : null),
-      ...(contactPhone ? { contactPhone } : null),
-      ...(siteAddress ? { siteAddress } : null),
-      ...(region ? { region } : null),
-      ...(quoteRef ? { quoteRef } : null),
-      ...(nextActionDate ? { nextActionDate } : null),
+      ...summary.project,
       ...(hasJobPacks ? { hasJobPacks } : null),
     },
     pipeline: {

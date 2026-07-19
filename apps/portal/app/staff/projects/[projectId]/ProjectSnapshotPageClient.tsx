@@ -11,7 +11,7 @@ import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { ApiError } from '@/lib/repo/apiClient';
 import { getProjectSnapshotPlaceholderFromCaches } from '@/lib/queries/projectCache';
-import { projectPageSnapshotQueryOptions } from '@/lib/queries/projects';
+import { projectPageSnapshotQueryOptions, projectPageSummaryQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 export default function ProjectSnapshotPageClient({
@@ -27,31 +27,47 @@ export default function ProjectSnapshotPageClient({
 }) {
   const queryClient = useQueryClient();
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const summary = useMemo(
+  const cachedSummary = useMemo(
     () => getProjectSnapshotPlaceholderFromCaches(queryClient, host, projectId),
     [host, projectId, queryClient],
   );
 
-  const snapshotQuery = useQuery({
-    ...projectPageSnapshotQueryOptions(host, projectId),
-    placeholderData: summary,
+  const summaryQuery = useQuery({
+    ...projectPageSummaryQueryOptions(host, projectId),
+    enabled: !cachedSummary,
   });
 
-  const status = snapshotQuery.error instanceof ApiError ? snapshotQuery.error.status : null;
-  const accessUnavailable = status === 401 || status === 403 || status === 404;
+  const snapshotQuery = useQuery({
+    ...projectPageSnapshotQueryOptions(host, projectId),
+    placeholderData: cachedSummary ?? summaryQuery.data,
+  });
+
+  const snapshotStatus = snapshotQuery.error instanceof ApiError ? snapshotQuery.error.status : null;
+  const summaryStatus = summaryQuery.error instanceof ApiError ? summaryQuery.error.status : null;
+  const snapshotContentReady = Boolean(snapshotQuery.data && !snapshotQuery.isPlaceholderData);
+  const accessUnavailable = !snapshotContentReady && [snapshotStatus, summaryStatus]
+    .some((status) => status === 401 || status === 403 || status === 404);
+  const knownSummary = cachedSummary
+    ?? summaryQuery.data
+    ?? (snapshotQuery.isPlaceholderData ? snapshotQuery.data : undefined);
   const snapshot = accessUnavailable
     ? null
-    : snapshotQuery.data?.snapshot ?? summary?.snapshot ?? null;
-  const snapshotContentReady = Boolean(snapshotQuery.data && !snapshotQuery.isPlaceholderData);
+    : snapshotContentReady
+      ? snapshotQuery.data?.snapshot ?? null
+      : knownSummary?.snapshot ?? null;
   const loadState: ProjectSnapshotLoadState = accessUnavailable
     ? 'unavailable'
     : snapshotQuery.error
       ? 'refresh-failed'
-      : !snapshot
-        ? 'pending'
-        : snapshotQuery.isPlaceholderData
+      : snapshotContentReady
+        ? 'fresh'
+        : snapshot
           ? 'summary'
-          : 'fresh';
+          : 'pending';
+  const retry = () => {
+    void snapshotQuery.refetch();
+    if (!cachedSummary) void summaryQuery.refetch();
+  };
   const debugExport = useMemo<PortalPageDebugExport | null>(() => {
     if (!debugExportEnabled || loadState !== 'fresh' || !snapshot) return null;
 
@@ -100,7 +116,7 @@ export default function ProjectSnapshotPageClient({
     const unavailable = loadState === 'unavailable';
     const title = pending
       ? 'Opening project…'
-      : unavailable && (status === 401 || status === 403)
+      : unavailable && (snapshotStatus === 401 || snapshotStatus === 403 || summaryStatus === 401 || summaryStatus === 403)
         ? 'Project access unavailable'
         : unavailable
           ? 'Project unavailable'
@@ -118,7 +134,7 @@ export default function ProjectSnapshotPageClient({
             <h1 className={styles.title}>{title}</h1>
             <p className={styles.subtitle} role={pending ? 'status' : undefined}>{message}</p>
             {!pending && !unavailable ? (
-              <button type="button" className={styles.refreshButton} onClick={() => void snapshotQuery.refetch()}>
+              <button type="button" className={styles.refreshButton} onClick={retry}>
                 Retry
               </button>
             ) : null}
@@ -146,7 +162,7 @@ export default function ProjectSnapshotPageClient({
       {loadState === 'refresh-failed' ? (
         <div className={styles.backgroundStatus} role="status">
           Couldn&apos;t refresh this project. Showing the last known details.
-          <button type="button" className={styles.inlineRetryButton} onClick={() => void snapshotQuery.refetch()}>
+          <button type="button" className={styles.inlineRetryButton} onClick={retry}>
             Retry
           </button>
         </div>

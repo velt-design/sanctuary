@@ -178,6 +178,7 @@ export async function invalidateProjectReadCaches(
   const includeProjectsList = opts?.includeProjectsList ?? true;
 
   await Promise.allSettled([
+    queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, projectId) }),
     queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
     includeProjectDetail ? queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }) : Promise.resolve(),

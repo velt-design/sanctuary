@@ -63,6 +63,32 @@ const summaryResponse = {
   generatedAt: '2026-07-19T00:00:00.000Z',
 };
 
+type QueryState = {
+  data?: any;
+  error: unknown;
+  isPlaceholderData: boolean;
+  refetch: typeof refetchMock;
+};
+
+const pendingQuery = (): QueryState => ({
+  data: undefined,
+  error: null,
+  isPlaceholderData: false,
+  refetch: refetchMock,
+});
+
+function mockProjectQueries({
+  snapshot,
+  summary = pendingQuery(),
+}: {
+  snapshot: QueryState;
+  summary?: QueryState;
+}) {
+  useQueryMock.mockImplementation((options: { queryKey?: readonly unknown[] }) =>
+    options.queryKey?.[2] === 'summary' ? summary : snapshot,
+  );
+}
+
 function renderClient() {
   return renderIntoDocument(
     <ProjectSnapshotPageClient
@@ -87,11 +113,13 @@ describe('ProjectSnapshotPageClient', () => {
   });
 
   it('opens immediately from the cached project summary while fresh data loads', () => {
-    useQueryMock.mockReturnValue({
-      data: summaryResponse,
-      error: null,
-      isPlaceholderData: true,
-      refetch: refetchMock,
+    mockProjectQueries({
+      snapshot: {
+        data: summaryResponse,
+        error: null,
+        isPlaceholderData: true,
+        refetch: refetchMock,
+      },
     });
 
     const rendered = renderClient();
@@ -107,11 +135,13 @@ describe('ProjectSnapshotPageClient', () => {
   });
 
   it('marks the background work complete only for a full snapshot', () => {
-    useQueryMock.mockReturnValue({
-      data: { snapshot: fullSnapshot, generatedAt: '2026-07-19T00:00:01.000Z' },
-      error: null,
-      isPlaceholderData: false,
-      refetch: refetchMock,
+    mockProjectQueries({
+      snapshot: {
+        data: { snapshot: fullSnapshot, generatedAt: '2026-07-19T00:00:01.000Z' },
+        error: null,
+        isPlaceholderData: false,
+        refetch: refetchMock,
+      },
     });
 
     const rendered = renderClient();
@@ -124,11 +154,13 @@ describe('ProjectSnapshotPageClient', () => {
   });
 
   it('keeps known summary data visible after a refresh failure and offers retry', () => {
-    useQueryMock.mockReturnValue({
-      data: summaryResponse,
-      error: new ApiError('Failed', { status: 500, body: null }),
-      isPlaceholderData: true,
-      refetch: refetchMock,
+    mockProjectQueries({
+      snapshot: {
+        data: summaryResponse,
+        error: new ApiError('Failed', { status: 500, body: null }),
+        isPlaceholderData: true,
+        refetch: refetchMock,
+      },
     });
 
     const rendered = renderClient();
@@ -145,11 +177,13 @@ describe('ProjectSnapshotPageClient', () => {
   });
 
   it('keeps the cached summary visible when the browser is offline', () => {
-    useQueryMock.mockReturnValue({
-      data: summaryResponse,
-      error: new TypeError('Failed to fetch'),
-      isPlaceholderData: true,
-      refetch: refetchMock,
+    mockProjectQueries({
+      snapshot: {
+        data: summaryResponse,
+        error: new TypeError('Failed to fetch'),
+        isPlaceholderData: true,
+        refetch: refetchMock,
+      },
     });
 
     const rendered = renderClient();
@@ -162,11 +196,13 @@ describe('ProjectSnapshotPageClient', () => {
   });
 
   it.each([401, 403, 404])('hides cached project data after an access-ending %s response', (status) => {
-    useQueryMock.mockReturnValue({
-      data: summaryResponse,
-      error: new ApiError('Unavailable', { status, body: null }),
-      isPlaceholderData: true,
-      refetch: refetchMock,
+    mockProjectQueries({
+      snapshot: {
+        data: summaryResponse,
+        error: new ApiError('Unavailable', { status, body: null }),
+        isPlaceholderData: true,
+        refetch: refetchMock,
+      },
     });
 
     const rendered = renderClient();
@@ -180,18 +216,55 @@ describe('ProjectSnapshotPageClient', () => {
 
   it('uses a non-blocking pending shell for a direct link without cache', () => {
     placeholderMock.mockReturnValue(undefined);
-    useQueryMock.mockReturnValue({
-      data: undefined,
-      error: null,
-      isPlaceholderData: false,
-      refetch: refetchMock,
-    });
+    mockProjectQueries({ snapshot: pendingQuery() });
 
     const rendered = renderClient();
 
     expect(rendered.container.querySelector('[data-project-snapshot-state="pending"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Opening project');
     expect(rendered.container.textContent).not.toContain('Project unavailable');
+
+    rendered.unmount();
+  });
+
+  it('promotes an authenticated direct-link summary while the full snapshot continues', () => {
+    placeholderMock.mockReturnValue(undefined);
+    mockProjectQueries({
+      summary: {
+        data: summaryResponse,
+        error: null,
+        isPlaceholderData: false,
+        refetch: refetchMock,
+      },
+      snapshot: pendingQuery(),
+    });
+
+    const rendered = renderClient();
+
+    expect(rendered.container.querySelector('[data-project-shell-ready="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-project-snapshot-state="summary"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Cached Project');
+    expect(rendered.container.querySelector('[data-content-ready="false"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
+  it.each([401, 403, 404])('hides direct-link summary data after a summary access-ending %s', (status) => {
+    placeholderMock.mockReturnValue(undefined);
+    mockProjectQueries({
+      summary: {
+        data: undefined,
+        error: new ApiError('Unavailable', { status, body: null }),
+        isPlaceholderData: false,
+        refetch: refetchMock,
+      },
+      snapshot: pendingQuery(),
+    });
+
+    const rendered = renderClient();
+
+    expect(rendered.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
+    expect(rendered.container.textContent).not.toContain('Cached Project');
 
     rendered.unmount();
   });
