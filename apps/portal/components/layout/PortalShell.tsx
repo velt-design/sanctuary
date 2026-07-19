@@ -31,12 +31,22 @@ function isFixtureWorkbenchRoutePath(
   return pathname === '/staff/projects/fixture-roof/design-workbench' && Boolean(searchParams?.get('fixture')?.trim());
 }
 
+function isPortalQaFixtureRoutePath(
+  pathname: string | null,
+  searchParams: { get(name: string): string | null } | null,
+): boolean {
+  return (
+    isFixtureWorkbenchRoutePath(pathname, searchParams) ||
+    pathname === '/qa/projects-index-mutation-fixture'
+  );
+}
+
 function isPublicRoutePath(pathname: string | null, searchParams: { get(name: string): string | null } | null): boolean {
   return Boolean(
     pathname &&
       (pathname.startsWith('/login') ||
         pathname.startsWith('/access-status') ||
-        isFixtureWorkbenchRoutePath(pathname, searchParams)),
+        isPortalQaFixtureRoutePath(pathname, searchParams)),
   );
 }
 

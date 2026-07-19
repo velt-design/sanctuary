@@ -1,0 +1,125 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 32px;
+}
+
+.card {
+  width: min(680px, 100%);
+  padding: 28px;
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius-xl);
+  background: var(--portal-bg-surface);
+  box-shadow: var(--portal-shadow-card);
+}
+
+.eyebrow,
+.label,
+.status {
+  color: var(--portal-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.heading {
+  margin: 6px 0 0;
+  font-size: 28px;
+}
+
+.explanation {
+  margin: 10px 0 24px;
+  color: var(--portal-text-muted);
+}
+
+.projectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius-md);
+  background: var(--portal-bg-elevated);
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.projectName {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--portal-text);
+  cursor: text;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.projectName [data-fixture-project-saving='true'] {
+  color: var(--portal-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor input,
+.editor button {
+  min-height: 38px;
+  border: 1px solid var(--portal-border);
+  border-radius: var(--portal-radius-sm);
+  background: var(--portal-bg-surface);
+  color: var(--portal-text);
+  font: inherit;
+}
+
+.editor input {
+  min-width: 260px;
+  padding: 8px 10px;
+}
+
+.editor button {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px;
+  }
+
+  .projectRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .editor input {
+    min-width: 100%;
+  }
+}

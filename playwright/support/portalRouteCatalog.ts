@@ -269,6 +269,18 @@ export const portalRouteCatalog = [
     debugExportStatus: 'exported',
     notes: 'Hidden fixture route gated by ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES.',
   },
+  {
+    id: 'qa-projects-index-mutation-fixture',
+    category: 'diagnostic',
+    routePattern: '/qa/projects-index-mutation-fixture',
+    requiredRole: 'fixture',
+    ownerDoc: 'docs/projects-contacts-estimates-calculator.md',
+    expectedShell: 'fixture-shell',
+    dataRequirement: 'fixture_flag',
+    smokeStatus: 'fixture-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Data-free mutation timing route gated by ENABLE_PORTAL_QA_FIXTURES.',
+  },
 ] as const satisfies readonly PortalRouteCatalogEntry[];
 
 export const agentAccessSmokeRoutes = portalRouteCatalog.filter(

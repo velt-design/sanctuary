@@ -93,7 +93,7 @@ Wave 2 applies the same truthful-feedback rule to routine writes. Reversible sta
 
 | Item | Status | Evidence and remaining work |
 | --- | --- | --- |
-| W2-MEASURE-01 | Yellow | Focused deferred-request tests prove feedback precedes network completion for the Projects index. Add a fixture-safe browser interaction journey before locking the Wave 2 regression contract. |
+| W2-MEASURE-01 | Green | The data-free `/qa/projects-index-mutation-fixture` mounts the production mutation controller and holds persistence open in Chromium. Current local evidence records 38 ms feedback/useful content versus 798 ms background completion, one request, zero long tasks, and no blocking overlay. The rejection journey proves the visible value rolls back and the error remains visible. Portal Quality now uploads this schema-v2 artifact beside the workbench artifact. |
 | W2-PROJECT-INDEX-01 | Green | Name, phone, address, silent stage corrections, archive, and restore patch the current user's caches immediately, retain a small syncing marker, reconcile in the background, and roll back the affected value/scope on failure. Active/archived/all membership and known counts move together. Hard delete remains server-confirmed. |
 | W2-PROJECT-DETAIL-01 | Yellow | Project details already patch caches before autosave and roll back on failure, but Done still waits for the current request and the flow lacks the Wave 2 browser measurement/retry contract. |
 | W2-CONTACT-DETAIL-01 | Yellow | Contact details already patch caches before autosave and roll back on failure, but Done still waits for the current request and the flow lacks the Wave 2 browser measurement/retry contract. |

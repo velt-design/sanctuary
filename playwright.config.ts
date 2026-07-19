@@ -35,6 +35,7 @@ export default defineConfig({
           : `npm --prefix apps/portal run dev:playwright -- -p ${port}`,
         env: {
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
+          ENABLE_PORTAL_QA_FIXTURES: '1',
           ...(useProductionPortal ? {} : { PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir }),
         },
         url: baseURL,
@@ -56,7 +57,7 @@ export default defineConfig({
     },
     {
       name: 'portal-fixture',
-      testMatch: /portal\.(drawing-workbench|workbench-snapshot|workbench-fixture|workbench-performance)\.spec\.ts/,
+      testMatch: /portal\.(drawing-workbench|workbench-snapshot|workbench-fixture|workbench-performance|project-mutation-performance)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 1000 },

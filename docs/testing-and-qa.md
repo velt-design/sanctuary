@@ -229,7 +229,7 @@ Wave 1 completion run `29687042640` recorded exactly five current-head productio
 
 `npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
 
-`npm run test:portal:performance:fixture` measures workbench object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. It requires no authenticated project data and produces its own artifact.
+`npm run test:portal:performance:fixture` runs two credential-free interaction gates. The workbench journey measures object selection and Plan-to-3D feedback against `/qa/design-workbench-fixture`. The project-mutation journey mounts the production Projects-index mutation controller at `/qa/projects-index-mutation-fixture`, intercepts its sample-project request, and proves the visible cache update completes within 100 ms while a deliberately 750 ms persistence response continues in the background. A second rejection check proves rollback and visible error handling. The routes use baked sample data only and produce separate schema-v2 artifacts at `artifacts/portal-workbench-performance.json` and `artifacts/portal-project-mutation-performance.json`.
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
@@ -284,7 +284,7 @@ Skipped browser cases are intentional and should stay explained in the test outp
 - In the `portal-fixture` project, the auth-backed project discovery smoke is skipped unless `PORTAL_DRAWING_URL` is set; that project-backed coverage belongs to `portal-chromium`.
 - In authenticated project-backed runs, a selected project with no drawing geometry may skip the browser feel pass; this is data-dependent and should not hide fixture-route coverage.
 
-When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate and uses isolated Next dev output so a normal `npm run dev:portal` server can keep running on port `3001`. The fixture harness defaults to `http://127.0.0.1:3011`; if that port is occupied, choose another fixture port:
+When Playwright starts the portal dev server itself, it enables `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1` and `ENABLE_PORTAL_QA_FIXTURES=1` for the no-auth fixture gates and uses isolated Next dev output so a normal `npm run dev:portal` server can keep running on port `3001`. The fixture harness defaults to `http://127.0.0.1:3011`; if that port is occupied, choose another fixture port:
 
 ```powershell
 $env:PORTAL_PLAYWRIGHT_PORT='3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_PLAYWRIGHT_PORT
@@ -294,13 +294,13 @@ If `PORTAL_BASE_URL` points at an already-running portal server, that server mus
 
 ```powershell
 # Terminal A: start the manual fixture server. Use PORTAL_PLAYWRIGHT_DIST_DIR only when another portal Next dev server is already running from apps/portal.
-$env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES='1'; $env:PORTAL_PLAYWRIGHT_DIST_DIR='.next/playwright-fixture-manual'; npm --prefix apps/portal run dev:playwright -- -p 3021
+$env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES='1'; $env:ENABLE_PORTAL_QA_FIXTURES='1'; $env:PORTAL_PLAYWRIGHT_DIST_DIR='.next/playwright-fixture-manual'; npm --prefix apps/portal run dev:playwright -- -p 3021
 
 # Terminal B: point the browser gate at that server.
 $env:PORTAL_BASE_URL='http://127.0.0.1:3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_BASE_URL
 
 # Terminal A after stopping the manual server.
-Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
+Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\ENABLE_PORTAL_QA_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
 ```
 
 ## Schedule QA Gate

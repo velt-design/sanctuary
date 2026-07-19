@@ -107,16 +107,18 @@ jobs:
       - name: Portal fixture browser smoke
         run: npm run test:portal:browser
 
-      - name: Fixture-safe workbench performance
+      - name: Fixture-safe interaction performance
         if: always()
         run: npm run test:portal:performance:fixture
 
-      - name: Upload workbench performance artifact
+      - name: Upload fixture performance artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: portal-workbench-performance
-          path: artifacts/portal-workbench-performance.json
+          name: portal-fixture-performance
+          path: |
+            artifacts/portal-workbench-performance.json
+            artifacts/portal-project-mutation-performance.json
           if-no-files-found: warn
 
       - name: Authenticated browser gate prerequisites

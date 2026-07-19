@@ -5,9 +5,12 @@ const ROOT = process.cwd();
 const DEFAULT_PORT = 3011;
 const port = Number.parseInt(process.env.PORTAL_PLAYWRIGHT_PORT ?? String(DEFAULT_PORT), 10);
 const baseUrl = process.env.PORTAL_BASE_URL?.trim() || '';
-const fixturePath = '/staff/projects/fixture-roof/design-workbench?fixture=mono-standard';
+const fixturePaths = [
+  '/staff/projects/fixture-roof/design-workbench?fixture=mono-standard',
+  '/qa/projects-index-mutation-fixture',
+];
 const requiredFixtureFlags =
-  'Required fixture flag: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.';
+  'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1 and ENABLE_PORTAL_QA_FIXTURES=1.';
 const manualSecondServerHint =
   'PORTAL_PLAYWRIGHT_DIST_DIR is only needed when you manually start a second Next dev server beside normal port 3001.';
 
@@ -142,40 +145,42 @@ async function checkLocalServerSlot() {
 }
 
 async function checkRemoteFixtureServer(targetBaseUrl) {
-  const url = new URL(fixturePath, targetBaseUrl);
-  let response;
-  try {
-    response = await fetch(url, {
-      redirect: 'manual',
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch (error) {
-    fail([
-      `Could not reach PORTAL_BASE_URL fixture route: ${url.toString()}`,
-      `Original error: ${String(error)}`,
-      ...externalFixtureServerLines(),
-    ]);
-  }
+  for (const fixturePath of fixturePaths) {
+    const url = new URL(fixturePath, targetBaseUrl);
+    let response;
+    try {
+      response = await fetch(url, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (error) {
+      fail([
+        `Could not reach PORTAL_BASE_URL fixture route: ${url.toString()}`,
+        `Original error: ${String(error)}`,
+        ...externalFixtureServerLines(),
+      ]);
+    }
 
-  const location = response.headers.get('location') ?? '';
-  if (response.status >= 300 && response.status < 400 && /\/login|access-status/i.test(location)) {
-    fail([
-      `PORTAL_BASE_URL redirects the fixture route to ${location || 'an auth route'}.`,
-      'Fixture flags are missing or this server is auth-gating fixtures.',
-      ...externalFixtureServerLines(),
-    ]);
-  }
+    const location = response.headers.get('location') ?? '';
+    if (response.status >= 300 && response.status < 400 && /\/login|access-status/i.test(location)) {
+      fail([
+        `PORTAL_BASE_URL redirects the fixture route to ${location || 'an auth route'}.`,
+        'Fixture flags are missing or this server is auth-gating fixtures.',
+        ...externalFixtureServerLines(),
+      ]);
+    }
 
-  const text = await response.text();
-  if (!response.ok || /staff login|\/login|access-status/i.test(text)) {
-    fail([
-      `PORTAL_BASE_URL did not expose the no-auth fixture route (${response.status} ${response.statusText}).`,
-      'Fixture flags are missing or this server is auth-gating fixtures.',
-      ...externalFixtureServerLines(),
-    ]);
-  }
+    const body = await response.text();
+    if (!response.ok || /staff login|\/login|access-status/i.test(body)) {
+      fail([
+        `PORTAL_BASE_URL did not expose the no-auth fixture route ${url.pathname} (${response.status} ${response.statusText}).`,
+        'Fixture flags are missing or this server is auth-gating fixtures.',
+        ...externalFixtureServerLines(),
+      ]);
+    }
 
-  console.log(`portal-fixture-env: ok (${url.toString()} is reachable without auth)`);
+    console.log(`portal-fixture-env: ok (${url.toString()} is reachable without auth)`);
+  }
 }
 
 if (baseUrl) {

@@ -36,6 +36,7 @@ GTM migration note: the coded GA4 loader remains active while the GTM container 
 - Never commit secrets or env files.
 - Keep service-role Supabase access server-only.
 - Use portal auth helpers for staff/admin API routes.
+- No-auth QA routes must be disabled by default, render baked sample data only, and must not initiate domain/customer-table reads. The project-mutation timing fixture requires `ENABLE_PORTAL_QA_FIXTURES=1`; its intercepted sample request must never contain a customer or durable record ID.
 - Keep public quote and invoice flows token-bound.
 - Keep automation, email outbox, and audit side effects aligned with `docs/automation-email-audit.md`.
 - Run production dependency audits for governance checks.

@@ -73,7 +73,7 @@
     "test:portal:smoke": "npm run portal:auth-runtime && npx playwright test playwright/portal.auth-routing.spec.ts --project=portal-chromium",
     "test:portal:performance": "npm run portal:auth-runtime && npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
     "test:portal:performance:capture": "npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
-    "test:portal:performance:fixture": "npm run portal:fixture-env && npx playwright test playwright/portal.workbench-performance.spec.ts --project=portal-fixture --workers=1",
+    "test:portal:performance:fixture": "npm run portal:fixture-env && npx playwright test playwright/portal.workbench-performance.spec.ts playwright/portal.project-mutation-performance.spec.ts --project=portal-fixture --workers=1",
     "test:watch": "vitest",
     "images:optimize": "node scripts/optimize-images.js",
     "videos:optimize": "node scripts/optimize-videos.mjs",
