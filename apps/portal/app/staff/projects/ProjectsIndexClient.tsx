@@ -30,7 +30,7 @@ import {
 } from '@/lib/projects/pipelineDefinition';
 import { patchProjectListItem } from '@/lib/queries/projectCache';
 import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpenPreload';
-import { preloadProjectInstantView, useProjectInstantOpen } from './ProjectInstantOpen';
+import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
   filterProjectsForIndex,
@@ -177,7 +177,6 @@ export default function ProjectsIndexClient({
   const prepareProjectOpen = useCallback(
     (projectId: string) => {
       void preloadProjectOpen(queryClient, router, host, projectId);
-      void preloadProjectInstantView();
     },
     [host, queryClient, router],
   );

@@ -6,13 +6,10 @@ import ProjectInstantNavigationProvider from './ProjectInstantNavigation';
 
 const replace = vi.fn();
 
-vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<unknown>) => {
-    void loader;
-    return ({ projectId, tab }: { projectId: string; tab: string }) => (
-      <div data-testid="optimistic-project" data-project-id={projectId} data-tab={tab} />
-    );
-  },
+vi.mock('./[projectId]/ProjectSnapshotPageClient', () => ({
+  default: ({ projectId, tab }: { projectId: string; tab: string }) => (
+    <div data-testid="optimistic-project" data-project-id={projectId} data-tab={tab} />
+  ),
 }));
 
 vi.mock('next/navigation', () => ({
