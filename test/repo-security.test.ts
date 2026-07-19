@@ -8,6 +8,8 @@ const PRIVATE_KEY_PATTERNS = [
   new RegExp(['BEGIN RSA', 'PRIVATE KEY'].join(' ')),
   new RegExp(['BEGIN EC', 'PRIVATE KEY'].join(' ')),
   new RegExp(['BEGIN DSA', 'PRIVATE KEY'].join(' ')),
+  new RegExp(['BEGIN', 'PRIVATE KEY'].join(' ')),
+  new RegExp(['BEGIN ENCRYPTED', 'PRIVATE KEY'].join(' ')),
   new RegExp(['PuTTY-User', 'Key-File-'].join('-')),
 ] as const;
 
@@ -46,8 +48,19 @@ const REQUIRED_RLS_TABLES = [
   'portal_user_theme_presets',
 ] as const;
 
+const BACKGROUND_JOB_RLS_TABLES = [
+  'background_job_kinds',
+  'background_jobs',
+  'background_job_effects',
+  'background_job_events',
+  'background_workers',
+] as const;
+
 function trackedFiles(): string[] {
-  return execFileSync('git', ['ls-files', '-z'], { cwd: process.cwd(), encoding: 'utf8' })
+  return execFileSync('git', ['ls-files', '-z'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  })
     .split('\0')
     .filter(Boolean);
 }
@@ -69,7 +82,7 @@ describe('repo security hardening', () => {
     }
 
     expect(offenders).toEqual([]);
-  });
+  }, 15_000);
 
   it('does not keep blanket anon/authenticated SQL grants in tracked schema files', () => {
     const sqlFiles = trackedFiles().filter((relativePath) => relativePath.endsWith('.sql'));
@@ -98,5 +111,27 @@ describe('repo security hardening', () => {
     for (const table of REQUIRED_RLS_TABLES) {
       expect(source, table).toContain(`'${table}'`);
     }
+  });
+
+  it('keeps the Wave 3 forward migration responsible for service-only job data', () => {
+    const migrationPath = 'supabase/migrations/20260720_000001_background_job_foundation.sql';
+    const source = readTrackedFile(migrationPath);
+
+    for (const table of BACKGROUND_JOB_RLS_TABLES) {
+      expect(source, table).toMatch(new RegExp(`alter table public\\.${table} enable row level security`, 'i'));
+      expect(source, table).toMatch(
+        new RegExp(`revoke all on table public\\.${table} from public, anon, authenticated`, 'i'),
+      );
+      expect(source, table).toMatch(
+        new RegExp(`revoke all on table public\\.${table} from [^;]*\\bservice_role\\b`, 'i'),
+      );
+    }
+
+    expect(source).toMatch(/create table private\.background_job_payloads/i);
+    expect(source).toMatch(/alter table private\.background_job_payloads enable row level security/i);
+    expect(source).toMatch(
+      /revoke all on table private\.background_job_payloads from public, anon, authenticated, service_role/i,
+    );
+    expect(source).toMatch(/revoke all on schema pgmq from public, anon, authenticated/i);
   });
 });

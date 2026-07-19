@@ -35,6 +35,7 @@ Read this file first, then follow links into `docs/README.md`. For non-trivial o
 - `apps/portal`: staff portal, authenticated project workflow, estimates, quotes, invoices, schedule, running jobs, design list, job packs, admin.
 - `packages/costing`: only source of truth for costing engine and base config.
 - `packages/geometry`: only source of truth for geometry solving and 3D/profile assets.
+- `packages/jobs`: only source of truth for durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transitions.
 - `packages/quote-format`: shared quote display/formatting.
 - `packages/theme`: shared theme exports.
 - `supabase`: ordered migrations and legacy baseline SQL snapshots.
@@ -48,6 +49,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 
 - Costing imports must come from `@sp/costing`; do not copy engine/config logic into apps.
 - Geometry imports should use `@sp/geometry` or portal drawing adapters; keep compatibility paths explicit.
+- Durable background-job kinds and transition policy must come from `@sp/jobs`. JOB-01 is foundation-only until later worker and workflow checkpoints land; do not infer an enabled producer, handler, or rollout from the registry or migrations.
 - Portal staff/admin APIs should use auth-bound server clients and `requireStaffSession` or `requireAdminSession`.
 - Service-role Supabase access is reserved for server-owned flows, admin tooling, imports, public token flows, and automation.
 - Browser UI should use API/query/local-first layers rather than direct Supabase table reads.

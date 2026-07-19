@@ -1,0 +1,65 @@
+name: Background Jobs
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/background-jobs.yml"
+      - "apps/worker/**"
+      - "packages/jobs/**"
+      - "scripts/test-background-jobs-db.mjs"
+      - "supabase/migrations/*background_job*.sql"
+      - "supabase/tests/background_jobs*.sql"
+      - "test/background-jobs-migration.test.ts"
+      - "test/repo-security.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "knip.json"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/background-jobs.yml"
+      - "apps/worker/**"
+      - "packages/jobs/**"
+      - "scripts/test-background-jobs-db.mjs"
+      - "supabase/migrations/*background_job*.sql"
+      - "supabase/tests/background_jobs*.sql"
+      - "test/background-jobs-migration.test.ts"
+      - "test/repo-security.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "knip.json"
+  workflow_dispatch:
+
+jobs:
+  background-jobs:
+    name: Background jobs contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Jobs package typecheck
+        run: npx tsc -p packages/jobs/tsconfig.typecheck.json --noEmit --incremental false
+
+      - name: Job contracts and security boundaries
+        run: npm run test:jobs
+
+      - name: Isolated logged-PGMQ database contract
+        run: npm run test:jobs:db

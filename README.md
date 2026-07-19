@@ -8,12 +8,13 @@ Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, 
 - `apps/portal`: staff portal Next.js app on port `3001`.
 - `packages/costing`: canonical costing engine and pricing config.
 - `packages/geometry`: canonical pergola and house geometry solvers.
+- `packages/jobs`: canonical durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transitions.
 - `packages/quote-format`: shared quote formatting helpers.
 - `packages/theme`: shared theme tokens.
 - `supabase`: baseline SQL and ordered migrations.
 - `scripts`: maintenance, import, optimization, invite, and audit scripts.
 - `playwright`: authenticated portal browser and performance smoke tests.
-- `.github`: CI workflows for portal quality, Lighthouse, and governance.
+- `.github`: CI workflows for portal quality, Background Jobs contracts, Lighthouse, and governance.
 
 Other root-level directories are active repo territory:
 

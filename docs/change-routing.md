@@ -22,6 +22,7 @@ Use it for non-trivial portal work, cross-app work, schema/API changes, side eff
 | Portal workflow behavior changes | Owning feature doc and `docs/platform-workflow.md` if the cross-workflow sequence changes | `docs/decision-log.md` | Focused feature tests plus manual QA if UI or side effects changed. |
 | Staff/admin/public-token route changes | `docs/staff-api-auth-contracts.md` and owning feature doc | `docs/supabase-schema-map.md` when tables/RPCs are touched | Route tests, auth failure states, diagnostics/error shape checks. |
 | Supabase table, RPC, RLS, grant, or migration changes | `docs/supabase-schema-map.md`, owning feature doc, and `docs/environment-auth-supabase.md` if setup/readiness changes | `docs/staff-api-auth-contracts.md` | Ordered migration review, access boundary checks, focused route/domain tests. |
+| Durable background-job kind, queue, payload, worker lifecycle, lease, effect checkpoint, rollout, or repair changes | `docs/supabase-schema-map.md` and `docs/target-architecture.md` | `docs/security-privacy-quality.md`, `docs/environment-auth-supabase.md`, `docs/testing-and-qa.md`, and the owning workflow doc when a producer or handler changes | `npm run test:jobs`; before rollout, run the disposable Docker-backed `npm run test:jobs:db` contract and record the result. |
 | Local-first mutation, queue, alias, or lock behavior changes | `docs/local-first-sync.md` and owning workflow doc | `docs/projects-contacts-estimates-calculator.md` for estimate flows | Local-first tests plus pending/failed/conflict/lock manual checks. |
 | Quote, invoice, PDF, email, token, artifact, or job-pack side effects change | `docs/quotes-invoices-job-packs.md` | `docs/staff-api-auth-contracts.md`, `docs/supabase-schema-map.md`, `docs/automation-email-audit.md` | Side-effect tests and public token invalid/expired/failure states. |
 | Automation, email outbox, audit, follow-up, task, or site-visit notification behavior changes | `docs/automation-email-audit.md` | `docs/projects-contacts-estimates-calculator.md`, `docs/security-privacy-quality.md`, `docs/supabase-schema-map.md` | Idempotency, outbox status, audit event, and notification failure checks. |
@@ -53,6 +54,7 @@ If a path pattern is intentionally kept for a legacy or future surface and does 
 | `apps/portal/app/api/staff/v1/running-jobs/**`, `apps/portal/app/staff/projects/running-jobs/**`, `apps/portal/lib/runningJobs/**`, `scripts/import-running-jobs-legacy.ts` | `docs/running-jobs.md` | Keep manual, schedule-owned, and estimate-derived fields separate. |
 | `apps/portal/components/drawings/**`, `apps/portal/lib/drawings/**`, `apps/portal/app/staff/projects/**/design-workbench/**`, `playwright/portal.drawing-workbench.spec.ts` | `docs/design-workbench-architecture.md`, `docs/parallel-work-guardrails.md` | Keep object-first model authoritative and compatibility bridges visible. |
 | `packages/geometry/**` | `docs/costing-and-geometry.md` | If workbench render/plan output changes, also check `docs/design-workbench-architecture.md`. |
+| `packages/jobs/**`, `scripts/test-background-jobs-db.mjs`, `supabase/tests/background_jobs*.sql`, `test/background-jobs-migration.test.ts`, `.github/workflows/background-jobs.yml` | `docs/supabase-schema-map.md`, `docs/target-architecture.md`, `docs/security-privacy-quality.md`, `docs/testing-and-qa.md` | Keep the queue message minimal, frozen input private, service-role RPC access explicit, and every worker-owned payload read/lifecycle mutation lease-fenced. JOB-01 is foundation-only until later jobs wire producers, handlers, and rollout. |
 | `packages/costing/**`, `apps/portal/lib/costing/**`, `apps/portal/app/api/admin/**/cost*`, `apps/portal/app/pricebook/**` | `docs/costing-and-geometry.md` | Costing engine truth stays in `packages/costing`; portal tables store overrides. |
 | `supabase/migrations/**`, `supabase/*.sql` | `docs/supabase-schema-map.md`, `docs/environment-auth-supabase.md` | Add forward migrations; treat root SQL as setup/snapshot unless a doc says otherwise. |
 | `apps/marketing/components/*Analytics*`, `apps/marketing/components/*Pixel*`, `apps/marketing/app/runtime-*`, `apps/marketing/app/api/security/**`, Lighthouse/audit scripts | `docs/security-privacy-quality.md` | Keep consent category, purpose, owner, and privacy behavior aligned. |
@@ -75,6 +77,14 @@ If a path pattern is intentionally kept for a legacy or future surface and does 
 3. Keep side effects in the owning domain helper or route family.
 4. Update the owner doc when behavior or failure states change.
 5. Test unauthenticated, wrong-role, invalid payload, and success states when relevant.
+
+### Adding Or Changing A Durable Background Job
+
+1. Change the kind, retry/rollout policy, or transition contract in `packages/jobs` before adding workflow-specific callers.
+2. Keep PGMQ messages to `jobId` and `contractVersion`; frozen execution input belongs in the private payload row created atomically with the ledger and queue message.
+3. Route enqueue, claim, payload read, progress, effect, completion, retry, cancellation, and repair through the service-role-only RPC boundary. Every protected payload read and worker-owned lifecycle/effect mutation must carry the current worker ID and random lease token; administrative cancellation, retry, recovery, and repair remain separate service-role RPC boundaries.
+4. Preserve append-only state history. Keep domain-owned handler milestones separate from external effect checkpoints; do not infer completion from queue disappearance or provider dispatch alone.
+5. Run `npm run test:jobs`. Before any worker or workflow rollout, run `npm run test:jobs:db`, which executes the rollback-wrapped SQL contract in a disposable logged-PGMQ container; static SQL assertions are not a substitute.
 
 ### Adding Or Changing A Side Effect
 

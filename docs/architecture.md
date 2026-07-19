@@ -10,12 +10,13 @@ For the north-star structure this repo is converging toward, read `docs/target-a
 - `apps/portal`: authenticated staff portal, admin surfaces, project workflow, estimates, quotes, invoices, schedule, design list, running jobs, job packs, imports, pricebook.
 - `packages/costing`: canonical costing engine and base config, imported as `@sp/costing`.
 - `packages/geometry`: canonical geometry solvers and viewer helpers, imported as `@sp/geometry`.
+- `packages/jobs`: shared durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transition rules, imported as `@sp/jobs`.
 - `packages/quote-format`: quote formatting utilities shared by portal and marketing.
 - `packages/theme`: shared theme exports.
 - `supabase`: SQL snapshots plus ordered migrations.
 - `scripts`: operational scripts for imports, invites, media optimization, audits, and generated geometry assets.
 - `playwright`: portal browser test harness.
-- `.github`: CI workflows for portal quality, docs health, Lighthouse, and governance.
+- `.github`: CI workflows for portal quality, Background Jobs contracts, docs health, Lighthouse, and governance.
 
 Root-level directories outside `apps` and `packages` are still active unless proven otherwise:
 
@@ -38,6 +39,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 
 - Costing logic and config live in `packages/costing`.
 - Geometry solving lives in `packages/geometry`; portal drawing code adapts it for UI and persistence.
+- Durable background-job kinds and transition policy live in `packages/jobs`; the Supabase ledger, private payload store, and logged PGMQ queue own persistence. JOB-01 does not yet provide a worker runtime or migrate any workflow producer.
 - Pipeline stages and task definitions live in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Staff portal roles are `admin` and `staff`, resolved from `portal_users`.
 - Design List and Running Jobs read and write through staff APIs, not direct UI table writes.
@@ -50,6 +52,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 ## CI
 
 - `.github/workflows/portal-quality.yml`: repository typecheck, portal Vitest, portal build, authenticated smoke, and performance report.
+- `.github/workflows/background-jobs.yml`: `@sp/jobs` typecheck and contract tests plus the isolated logged-PGMQ database contract.
 - `.github/workflows/docs-health.yml`: scheduled and manual docs guard, mojibake, docs impact advisory, and readiness aging report.
 - `.github/workflows/lighthouse.yml`: scheduled and PR Lighthouse guardrails for marketing.
 - `.github/workflows/governance-monthly.yml`: marketing tests, production dependency audit, Lighthouse mobile and desktop.

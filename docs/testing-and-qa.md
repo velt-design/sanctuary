@@ -6,6 +6,7 @@ Use the smallest test that covers the risk. Run broader suites when touching sha
 
 - Use `## Common Commands` for routine repo, portal, focused, and operational scripts.
 - Use `## Docs-Only Checks` when changing docs, agent guidance, or docs tooling.
+- Use `## Background-Job Contract Tests` for JOB-01 package, migration, security, and isolated PGMQ database checks.
 - Use `## Portal Browser Tests` and `## Drawing Fixture Route` for Playwright/auth/drawing smoke expectations.
 - Use `## Schedule QA Gate` for Schedule V2 readiness and focused schedule checks.
 - Use `## CI` to confirm which workflows enforce or report each gate.
@@ -23,6 +24,9 @@ npm run dev:marketing
 npm run dev:portal
 npm run test
 npm run test:marketing
+npm run test:jobs
+npm run test:jobs:db-contract
+npm run test:jobs:db
 npm run test:portal
 npm run build:marketing
 npm run build:portal
@@ -151,6 +155,20 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 `npm run docs:readiness` is an advisory report for `docs/portal-production-readiness.md`. It summarizes tracker age, status counts, at-risk rows, and unchecked checklist counts, but it does not verify readiness by itself.
 
+## Background-Job Contract Tests
+
+JOB-01 has three distinct verification layers:
+
+- `npm run test:jobs` runs the `@sp/jobs` contract/state-machine tests, static migration contract assertions, and repository security-boundary tests. On 2026-07-20 it passed locally with 3 files and 25 tests.
+- `npm run test:jobs:db-contract` runs only `test/background-jobs-migration.test.ts`. Despite the name, it inspects SQL text and the checked-in SQL test shape; it does not connect to Postgres or execute a migration.
+- `npm run test:jobs:db` is the live database contract. `scripts/test-background-jobs-db.mjs` starts a disposable `ghcr.io/pgmq/pg18-pgmq:v1.10.0` container by default, waits for Postgres, applies `supabase/tests/background_jobs_bootstrap.sql`, applies the four JOB-01 migrations in order, executes the rollback-wrapped `supabase/tests/background_jobs.sql`, and removes the container. `BACKGROUND_JOBS_DB_IMAGE` may override the image intentionally.
+
+The database bootstrap creates only the test roles plus minimal `auth.users` and `public.projects` prerequisites. It is not a production migration and does not validate the repository's full historical migration chain, which is not independently bootstrappable from an empty database. Never run the SQL contract against a shared local, staging, or production database.
+
+As of 2026-07-20, `docker`, `psql`, and the Supabase CLI were unavailable on this workstation. The static/unit command passed. `npm run test:jobs:db` was attempted and failed at its Docker readiness check with `spawnSync docker ENOENT`; no container started and no SQL executed. The dedicated `.github/workflows/background-jobs.yml` workflow runs both `npm run test:jobs` and the Docker-backed contract for relevant pull requests, `main` pushes, and manual dispatch; only a successful workflow run is live database evidence.
+
+The database contract checks the logged queue and unlogged-name fail-closed rule, minimal message, atomic intent-stable enqueue (including two concurrent database clients), private payload RLS boundary, competing claims, random lease fencing, heartbeat extension, strict transitions, cancellation fencing, bounded-argument NULL rejection, terminal queue archive, missing-message audit/repair, and browser-role revokes. Static tests cannot prove those runtime behaviours by themselves.
+
 ## Portal Browser Tests
 
 Required env:
@@ -213,7 +231,7 @@ Wave 1 Slice 3 replaced Dashboard-to-Contacts with exactly five production-mode 
 Wave 1 completion run `29687042640` recorded exactly five current-head production repetitions. The isolated pre-Slice-1 comparison run `29681955081` measured cold Project Detail useful-content p75 at 2,454 ms, making the unchanged 10% guard 2,699 ms. Current-head cold Project Detail measured 1,664/1,666/1,680 ms useful content p50/p75/p95: the small authenticated direct-link summary makes the real project header and tabs useful first, while complete-snapshot background settlement remains separately measured at 2,667/2,726/2,727 ms. All five project runs had no blocking overlay and no observed long task. The same current-head run measured calculator visible feedback at 40/47/58 ms and fresh-result completion at 924/939/942 ms. Fixture-safe workbench evidence measured object selection at 86/119 ms feedback/useful and Plan-to-3D at 117/122 ms, with no request, overlay, or long task in either interaction.
 
 | Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
-| --- | ---: | ---: | :---: | ---: |
+| --------------------------- | -------------------: | -----------------: | :------------: | --------------------------------------------------------: |
 | Dashboard cold | 806/807/871 ms | 816/817/881 ms | Miss | Existing cold ceiling unchanged |
 | Projects cold | 749/766/779 ms | 758/777/788 ms | Miss | Existing cold ceiling unchanged |
 | Project Detail cold | 781/785/797 ms | 1664/1666/1680 ms | 10% guard met | Existing cold ceiling unchanged; 2699 ms comparison guard |
@@ -371,6 +389,7 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
+- Background Jobs runs `npm run test:jobs` and `npm run test:jobs:db` in a dedicated workflow when job package, worker, migration, SQL harness, repository-security test, package manifest, or workflow configuration files change. A configured workflow without a successful run is not a green database signal; this doc does not claim the check is required by branch protection.
 - Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, general route bundle budgets, production security audit, fixture browser/performance smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
 - Portal Performance Report runs five authenticated journey repetitions as a separate blocking job, rejects missing schema-v2 journeys, publishes p50/p75/p95, and uploads the `portal-performance-baseline` artifacts. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.

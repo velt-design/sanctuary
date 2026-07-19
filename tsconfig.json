@@ -28,6 +28,9 @@
       "@sp/geometry/*": [
         "./packages/geometry/src/*"
       ],
+      "@sp/jobs": [
+        "./packages/jobs/src/index.ts"
+      ],
       "@sp/theme": [
         "./packages/theme/src/index.ts"
       ],

@@ -11,6 +11,7 @@ Use this before changing schema, RLS, grants, route Supabase access, RPC command
 - Start with `## Global Rules` before changing schema, RLS, grants, RPCs, or Supabase clients.
 - Use the domain table sections to route changed tables/RPCs to owner docs and write paths.
 - Use `## Schedule, Site Visits, And Running Jobs` for Schedule V2 and running-job storage boundaries.
+- Use `## Durable Background Jobs` for the logged PGMQ queue, ledger, protected payload, worker RPCs, and rollout boundary.
 - Use `## Marketing, Automation, And Supporting Tables` for enquiry, email, audit, and support tables.
 - Finish with `## Verification` to choose migration, access, and route checks.
 
@@ -189,6 +190,66 @@ Migration source:
 - `supabase/migrations/20260307_000001_portal_theme_settings.sql`, `20260308_000002_portal_theme_user_presets.sql`, and `20260318_000001_portal_theme_stone_olive_default.sql`.
 - `supabase/costing_overrides.sql`, `supabase/migrations/20260326_000001_install_driver_curve_overrides.sql`, and security hardening.
 
+## Durable Background Jobs
+
+Owner docs: this schema map owns the current database boundary; `docs/target-architecture.md` owns the long-term worker path, while `docs/security-privacy-quality.md`, `docs/environment-auth-supabase.md`, and `docs/testing-and-qa.md` own security, setup, and verification. Each business job kind still belongs to its existing workflow doc until a later task migrates that producer and handler.
+
+Current scope:
+
+- JOB-01 is a foundation only. No app producer, worker runtime, or workflow handler consumes it yet; current quote, invoice, job-pack, automation, and email paths remain unchanged.
+- The shared `@sp/jobs` registry declares versioned policy for `deposit_invoice_prepare_and_send`, `quote_send`, `quote_resend`, `job_pack_generate`, `automation_event`, and `email_outbox_deliver`, with every default rollout mode still `legacy`.
+- Registry policy keeps `requiredHandlerCheckpoints` for domain-owned freeze/stage/business-finalisation milestones separate from `requiredEffectCheckpoints`, which names only external `background_job_effects.effect_kind` checkpoints such as email dispatch. Those external kinds are mirrored in `background_job_kinds.required_effect_kinds`; `background_job_complete` rejects success until every required kind has a durable `finalised` checkpoint.
+- JOB-02 through JOB-08 remain pending. The presence of kinds, tables, or RPCs is not rollout evidence.
+
+Queue, tables, and history:
+
+- Logged PGMQ queue: `portal_background_jobs`. Its message contract is exactly a UUID-string `jobId` plus a positive-integer `contractVersion`; the queue is only a wake-up pointer. Migration fails closed if that canonical name already belongs to an unlogged queue.
+- Policy and durable state: `background_job_kinds`, `background_jobs`.
+- Frozen protected input: `private.background_job_payloads`. Rows are immutable and direct access is revoked, including from `service_role`.
+- External-effect checkpoints and provider identity: `background_job_effects`, with strict effect-state transitions, one stable effect key per job, and unique non-null provider message and idempotency identities. Same-identity failed work may re-enter dispatch; uncertain work may re-enter dispatch only inside its live idempotency window.
+- Append-only state/effect audit history: `background_job_events`. Event content is immutable; only database foreign-key cleanup may clear the nullable job or actor reference.
+- Worker liveness and drain/health state: `background_workers`.
+
+Service-role RPC boundary:
+
+- Enqueue: `background_job_enqueue_staff`, `background_job_enqueue_system`. The `staff` name records user attribution; it is still executable only by `service_role`, not by the browser `authenticated` role.
+- Claim and lease: `background_jobs_claim`, `background_job_read_payload`, `background_job_heartbeat`, `background_worker_heartbeat`.
+- Lifecycle and effects: `background_job_record_progress`, `background_job_record_effect_checkpoint`, `background_job_complete`, `background_job_schedule_retry`, `background_job_mark_needs_attention`, `background_job_mark_permanent_failure`, `background_job_request_cancellation`, `background_job_acknowledge_cancellation`, `background_job_release_lease`, `background_job_manual_retry`.
+- Recovery and inspection: `background_jobs_recover_expired_leases`, `background_jobs_reconcile`, `background_jobs_queue_health`, `background_job_get_safe`, `background_jobs_list_safe`, `background_job_event_history_safe`.
+
+Primary write path:
+
+- One security-definer enqueue transaction validates the registered kind/version, rollout owner, stable intent key, and frozen input. A transaction-level advisory lock serialises concurrent first-enqueue calls for the same kind/intent. PostgreSQL computes the canonical SHA-256 from normalized `jsonb`, persists it as `input_hash`, then creates or reuses the ledger row, inserts the private payload, sends the minimal logged queue message, stores the canonical message ID, and appends the enqueue event. Callers do not supply or claim a matching hash because JavaScript serialization is not PostgreSQL `jsonb` canonicalization; `inputHash` is durable output/identity evidence.
+- Workers use the granted RPCs only. Claim creates a random per-claim lease token; payload reads and every worker lifecycle/effect mutation require the same worker ID and current unexpired token.
+- Generic progress cannot enter `dispatching`. Provider dispatch goes through the effect-checkpoint RPC with frozen provider/idempotency identity and a live expiry; expired in-flight dispatch becomes `uncertain`, and unresolved or attempt-exhausted uncertainty moves to `needs_attention` rather than blind redispatch.
+- Retry, cancellation, expired-lease recovery, orphan/duplicate repair, canonical message archive, and terminal business status remain explicit RPC state transitions. A cancellation request fences retry/failure/attention/release mutations until the current worker acknowledges it, and reconciliation durably records a missing canonical message before repair. Queue visibility or archive alone is not business completion.
+- Automatic retry is blocked for raw `dispatch_started`, provider-accepted/finalised work, exhausted attempts/windows, and uncertainty whose provider idempotency window would expire by the planned delay.
+
+Primary read path:
+
+- Future server/admin surfaces should use the safe inspection RPCs, not direct tables. No JOB-01 browser or portal UI read path exists.
+- Workers receive the minimal claim record first and may retrieve frozen execution input only through `background_job_read_payload` while they own the lease.
+
+Access rule:
+
+- RLS is enabled on every public job table, and public/anonymous/authenticated table and function access is revoked. Browser roles also have no PGMQ schema access.
+- Direct service-role job-table, PGMQ, and private-schema access is revoked. Explicitly granted security-definer RPCs are the service-role capability boundary.
+- Safe JSON fields reject common secret/recipient/content keys and oversized values. Sensitive payloads must never be copied into queue messages, safe status/result, event detail, effect metadata, logs, or public props.
+
+Migration and test source:
+
+- `supabase/migrations/20260720_000001_background_job_foundation.sql`: PGMQ queue, enums, policy seed, ledger, private payload, effects, events, workers, transition guards, RLS, and revokes.
+- `supabase/migrations/20260720_000002_background_job_enqueue_claim.sql`: atomic enqueue, canonical queue message, claim, payload read, application heartbeat, and worker heartbeat.
+- `supabase/migrations/20260720_000003_background_job_lifecycle.sql`: progress, effect checkpoints, completion, retry, attention/failure, cancellation, lease release, and manual retry.
+- `supabase/migrations/20260720_000004_background_job_reconciliation.sql`: expired-lease recovery, queue reconciliation/repair, health, and safe inspection.
+- `supabase/tests/background_jobs_bootstrap.sql` creates only the disposable auth/projects/role prerequisites needed by the isolated contract; it is test support, not a production migration.
+- `supabase/tests/background_jobs.sql` is the rollback-wrapped executable database contract. `npm run test:jobs` covers TypeScript plus static SQL/security assertions; `npm run test:jobs:db` is the Docker-backed real-PGMQ harness.
+
+Verification status:
+
+- `npm run test:jobs` passed locally on 2026-07-20 with 3 files and 25 tests.
+- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no container started and no SQL executed. The dedicated Background Jobs workflow is configured to run it in CI; do not mark JOB-01 database-verified or rollout-ready until that workflow reports success.
+
 ## Portal Performance Telemetry
 
 Owner docs: `docs/security-privacy-quality.md` and `docs/testing-and-qa.md`.
@@ -267,7 +328,11 @@ Focused checks:
 
 ```bash
 rg -n "table_or_rpc_name" supabase apps docs
+npm run test:jobs
+npm run test:jobs:db
 npm run text:mojibake
 ```
+
+`npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus JOB-01 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
 
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.

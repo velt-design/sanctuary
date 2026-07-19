@@ -38,6 +38,20 @@ object-first design intent
   -> estimates / quotes / invoices / job packs
 ```
 
+Long-running server work should converge on a second explicit path:
+
+```text
+server-owned workflow intent
+  -> stable intent key plus frozen versioned payload
+  -> atomic service-role enqueue RPC
+  -> durable ledger plus private payload plus logged minimal PGMQ message
+  -> worker claim with a random application lease token
+  -> lease-fenced progress, effect checkpoints, retry, and finalisation RPCs
+  -> owning workflow state and safe staff-visible status
+```
+
+The queue is a wake-up pointer, not the job record or payload store. `packages/jobs` owns shared kinds and transition policy; Supabase owns durable state, protected input, leases, append-only events, and effect checkpoints. JOB-01 establishes that foundation only. It does not supply a worker runtime, migrate existing quote/invoice/job-pack/email/automation producers, or authorise rollout.
+
 Workbench must not own pricing policy. Costing must not solve geometry. Portal may orchestrate, adapt, persist, and show status, but it must not duplicate package truth. `CommercialDesignInputV1` is allowed as the costing boundary and migration comparison contract, not as a parallel geometry model.
 
 ## Target Workspace Shape
@@ -67,6 +81,11 @@ Portal may adapt package output for UI and persistence. It must not fork package
 `packages/geometry` owns physical geometry truth:
 
 - geometry solving, validation, normalization, one solved physical geometry spine, physical quantity/takeoff hooks, top projection, section/plan/viewer models derived from that spine, house/deck/opening/roof physical contracts, and generated profile assets.
+
+`packages/jobs` owns durable background-job contract truth:
+
+- versioned job kinds, safe queue and status contracts, retry/timeout/rollout policy, idempotency strategy, and allowed state/effect transitions.
+- it does not own database persistence, business-workflow handlers, provider clients, or worker process lifecycle.
 
 `packages/quote-format` owns shared customer-facing quote wording and formatting.
 
@@ -120,6 +139,8 @@ Design List and Running Jobs spreadsheet edits go through their staff APIs and s
 
 Quote, invoice, PDF, email, public-token, generated-artifact, and job-pack side effects go through their owning server/domain helpers.
 
+Durable background-job callers go through server-owned enqueue helpers and service-role RPCs. Browser code never reads PGMQ, private payloads, or job tables directly. Until a later migration task explicitly moves a workflow, the current owning synchronous/legacy helper remains authoritative.
+
 The first browser data-access visibility gate is `npm run browser:supabase`, with `npm run browser:supabase:changed` for handoffs that touch browser-facing Supabase access. This report is advisory; `npm run cache:forbid` remains the narrower hard guard for invalid portal UI table access.
 
 ## Auth And Security Target
@@ -127,6 +148,8 @@ The first browser data-access visibility gate is `npm run browser:supabase`, wit
 Staff routes use staff auth helpers. Admin routes use admin auth helpers. Public quote and invoice routes are token-bound and hash-checked.
 
 Service-role access is server-only and must stay allowlisted. Valid service-role uses are admin tooling, imports, automation, public-token verification, server-owned side effects, and explicit RLS bypasses documented by the owning feature.
+
+Background-job access is a narrower service-role boundary: direct job-table, PGMQ, and private-schema access stays revoked from browser roles and `service_role`; workers use only the granted security-definer RPCs. Protected payload reads and worker-owned lifecycle/effect writes require both worker identity and the current random lease token; cancellation, manual retry, recovery, and repair use separate administrative RPCs.
 
 Never expose raw tokens, token hashes, service-role keys, broad file access, or private artifacts to client components, browser bundles, generated documents, public payloads, or logs.
 
@@ -145,6 +168,8 @@ When app code needs a domain behavior change:
 Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, and rendering, but geometry-ready plan, sheet, section, interaction, and 3D semantics must remain views of the same solved geometry. Calculator-era plan models, object overlays, and sheet renderers may be presentation, edit-support, or compatibility layers; they must not become competing geometry owners.
 
 Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
+
+Durable background-job kinds and transition policy must come from `@sp/jobs`. Apps and workers may supply handlers and workflow adapters, but they must not fork the kind registry, queue-message schema, status machine, effect-state machine, or rollout vocabulary.
 
 ## Target Areas
 
@@ -218,6 +243,17 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 - Next direction: keep side-effect boundary coverage current and add or keep public-token browser/manual smoke visible once safe seeded token data exists.
 - Canonical docs: `docs/quotes-invoices-job-packs.md`, `docs/automation-email-audit.md`, `docs/security-privacy-quality.md`.
 
+### Durable Background Jobs And Workers
+
+- Lane label: `durable-jobs`.
+- North star: long-running server work is crash-recoverable, idempotent, observable, privacy-safe, and rolled out without changing business ownership accidentally.
+- Source of truth: `packages/jobs` for kinds and transition policy; the logged `portal_background_jobs` PGMQ queue, `background_jobs` ledger, private payload table, event/effect history, worker records, and service-role RPCs for durable persistence and lifecycle.
+- Allowed paths: a server-owned workflow creates one stable intent and frozen input through an atomic enqueue RPC; workers claim a minimal queue message, read protected payload and perform worker-owned lifecycle/effect mutations only with the current lease token, checkpoint external effects before/following provider calls, and finalise the owning business workflow through its domain helper. Domain handler milestones stay separate from provider-effect checkpoints. Administrative cancellation, manual retry, recovery, and repair remain separate service-role RPCs.
+- Forbidden shortcuts: sensitive or business payloads in PGMQ, browser or authenticated-role queue/table access, direct service-role table mutation, unfenced worker writes, queue deletion treated as business completion, duplicate effect dispatch without a checkpoint, or enabling a worker because foundation migrations merely exist.
+- Primary gates: `npm run test:jobs`, `npm run typecheck`, repo security tests, and the Docker-backed `npm run test:jobs:db` contract that executes the rollback-wrapped SQL on a disposable PGMQ-capable database before rollout.
+- Next direction: JOB-01 remains foundation-only until its migrations execute successfully in the isolated database harness and deployment readiness is reviewed. JOB-02 through JOB-08 are still pending; none should be inferred from the shared registry or migration names.
+- Canonical docs: `docs/supabase-schema-map.md`, `docs/environment-auth-supabase.md`, `docs/security-privacy-quality.md`, `docs/testing-and-qa.md`, and `docs/portal-production-readiness.md`.
+
 ### Schedule V2 And Site Visits
 
 - Lane label: `schedule-v2`.
@@ -266,7 +302,7 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 
 - Lane label: `package-truth`.
 - North star: packages own reusable domain truth; apps orchestrate and adapt that truth for workflows and UI.
-- Source of truth: `packages/costing`, `packages/geometry`, `packages/quote-format`, `packages/theme`, and package public exports.
+- Source of truth: `packages/costing`, `packages/geometry`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
 - Allowed paths: behavior changes start in the owning package, then app adapters and integration tests are updated.
 - Forbidden shortcuts: TypeScript-only package aliases without declared dependencies, app-local forks of package rules, or private package internals used as stable APIs.
 - Primary gates: package tests, `npm run packages:guard`, app integration tests for changed adapters, and `npm run typecheck`.
