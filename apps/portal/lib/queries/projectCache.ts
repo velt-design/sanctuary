@@ -16,6 +16,38 @@ function cloneProject(project: Project): Project {
   return { ...project };
 }
 
+function sortProjects(projects: Project[]): Project[] {
+  return projects
+    .slice()
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+}
+
+function withProjectMembership(
+  rows: Project[],
+  project: Project,
+  belongs: boolean,
+): { rows: Project[]; countDelta: number } {
+  const existingIndex = rows.findIndex((entry) => entry.id === project.id);
+  if (!belongs) {
+    return existingIndex >= 0
+      ? { rows: rows.filter((entry) => entry.id !== project.id), countDelta: -1 }
+      : { rows, countDelta: 0 };
+  }
+
+  if (existingIndex >= 0) {
+    return {
+      rows: rows.map((entry) => (entry.id === project.id ? cloneProject(project) : entry)),
+      countDelta: 0,
+    };
+  }
+
+  return { rows: sortProjects([...rows, cloneProject(project)]), countDelta: 1 };
+}
+
+function adjustKnownCount(totalCount: number | null, delta: number): number | null {
+  return totalCount === null || delta === 0 ? totalCount : Math.max(0, totalCount + delta);
+}
+
 export function buildProjectSnapshotPlaceholder(
   project: Project,
   contact?: Contact | null,
@@ -115,6 +147,41 @@ export function patchProjectListItem(
         ? current.projects.rows.map((project) => (project.id === projectId ? nextProject : project))
         : current.projects.rows.filter((project) => project.id !== projectId);
       return { ...current, projects: { ...current.projects, rows } };
+    });
+  }
+}
+
+/**
+ * Inserts or replaces one project across every canonical/index cache and moves
+ * it between active/archived scopes. This is the reversible owner used by
+ * optimistic archive changes and provisional project creation.
+ */
+export function upsertProjectListItem(
+  queryClient: QueryClient,
+  host: string,
+  project: Project,
+) {
+  for (const scope of ['active', 'all'] as const) {
+    queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host, scope), (current) => {
+      if (!Array.isArray(current)) return current;
+      const belongs = scope === 'all' || !project.isArchived;
+      return withProjectMembership(current, project, belongs).rows;
+    });
+  }
+
+  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
+    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) => {
+      if (!current) return current;
+      const belongs = archive === 'all' || (archive === 'active' ? !project.isArchived : Boolean(project.isArchived));
+      const next = withProjectMembership(current.projects.rows, project, belongs);
+      return {
+        ...current,
+        projects: {
+          ...current.projects,
+          rows: next.rows,
+          totalCount: adjustKnownCount(current.projects.totalCount, next.countDelta),
+        },
+      };
     });
   }
 }

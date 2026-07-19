@@ -6,6 +6,7 @@ import {
   patchContactListItem,
   patchProjectListItem,
   removeProjectListItem,
+  upsertProjectListItem,
 } from './projectCache';
 import { qk } from './keys';
 import { QueryClient } from '@tanstack/react-query';
@@ -146,5 +147,43 @@ describe('projectCache helpers', () => {
     removeProjectListItem(client, 'host', 'proj_1');
     expect(client.getQueryData<any[]>(qk.projects.list('host', 'all'))).toEqual([]);
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'all'))?.projects.rows).toEqual([]);
+  });
+
+  it('moves an upserted project between archive scopes and keeps known counts reversible', () => {
+    const client = new QueryClient();
+    const project = {
+      id: 'proj_1',
+      projectName: 'Original',
+      status: 'NEW',
+      isArchived: false,
+      createdAt: '2026-07-19T00:00:00.000Z',
+    } as any;
+    const response = (archive: ProjectsIndexResponse['archive'], rows: any[], totalCount: number): ProjectsIndexResponse => ({
+      archive,
+      projects: { rows, totalCount, truncated: false },
+      contacts: { rows: [], totalCount: 0, truncated: false },
+      generatedAt: '2026-07-19T00:00:00.000Z',
+    });
+
+    client.setQueryData(qk.projects.list('host', 'active'), [project]);
+    client.setQueryData(qk.projects.list('host', 'all'), [project]);
+    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'), response('active', [project], 1));
+    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived'), response('archived', [], 0));
+    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'all'), response('all', [project], 1));
+
+    upsertProjectListItem(client, 'host', { ...project, isArchived: true });
+
+    expect(client.getQueryData<any[]>(qk.projects.list('host', 'active'))).toEqual([]);
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.projects)
+      .toMatchObject({ rows: [], totalCount: 0 });
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived'))?.projects)
+      .toMatchObject({ rows: [expect.objectContaining({ id: 'proj_1', isArchived: true })], totalCount: 1 });
+
+    upsertProjectListItem(client, 'host', { ...project, projectName: 'Still current', isArchived: false });
+
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.projects)
+      .toMatchObject({ rows: [expect.objectContaining({ projectName: 'Still current', isArchived: false })], totalCount: 1 });
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived'))?.projects)
+      .toMatchObject({ rows: [], totalCount: 0 });
   });
 });

@@ -87,6 +87,20 @@ This table maps the original Instant Portal plan to the integrated Wave 0 and Wa
 | CALC-01 | Green | `useCalculatorCostingRequest` owns debounce, abort, newest-result protection, last-valid continuity, and errors without moving costing authority into the browser. Current-head five-run feedback is 40/47/58 ms p50/p75/p95, fresh result is 924/939/942 ms, and no overlay or long task was observed. Focused calculator coverage passed. |
 | WB-01 | Green | Workbench clients memoize one solved base by draft/project identity; selection, visibility, and viewport changes reuse that solved-model object while draft changes still solve. Focused coverage proves identity reuse. Fixture evidence remains request-free and overlay-free; selection measured 86/119 ms feedback/useful and Plan-to-3D 117/122 ms on the latest single run, both within regression budgets, with no long task. |
 
+## Wave 2 Instant Write Status
+
+Wave 2 applies the same truthful-feedback rule to routine writes. Reversible staff changes may update the authenticated user's query/local-first state immediately and reconcile through the owning API in the background. Validation, permission, conflict, and server failures must remain visible and restore only the affected optimistic state. Hard delete, money state, email delivery, public-token actions, and other irreversible/customer-facing side effects remain server-confirmed.
+
+| Item | Status | Evidence and remaining work |
+| --- | --- | --- |
+| W2-MEASURE-01 | Yellow | Focused deferred-request tests prove feedback precedes network completion for the Projects index. Add a fixture-safe browser interaction journey before locking the Wave 2 regression contract. |
+| W2-PROJECT-INDEX-01 | Green | Name, phone, address, silent stage corrections, archive, and restore patch the current user's caches immediately, retain a small syncing marker, reconcile in the background, and roll back the affected value/scope on failure. Active/archived/all membership and known counts move together. Hard delete remains server-confirmed. |
+| W2-PROJECT-DETAIL-01 | Yellow | Project details already patch caches before autosave and roll back on failure, but Done still waits for the current request and the flow lacks the Wave 2 browser measurement/retry contract. |
+| W2-CONTACT-DETAIL-01 | Yellow | Contact details already patch caches before autosave and roll back on failure, but Done still waits for the current request and the flow lacks the Wave 2 browser measurement/retry contract. |
+| W2-CREATE-01 | Yellow | Contact and project creation still wait for durable server IDs before navigation. Define provisional-ID/alias and reload behavior before making either create path local-first; do not fake a durable detail URL. |
+| W2-TASK-01 | Yellow | Manual project task toggles patch the snapshot immediately and roll back on failure. Complete focused concurrency/retry evidence before marking the workflow complete. |
+| W2-SIDE-EFFECT-BOUNDARY | Green | Hard delete, sends, accepts/declines, invoice state, public tokens, job packs, and Schedule RPC commands remain outside optimistic success. They may expose immediate pending feedback but must not claim completion before the server confirms it. |
+
 ## Production-Grade Checklist
 
 ### Quality Gates

@@ -16,7 +16,7 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import Modal from '@/components/ui/modal/Modal';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import { correctProjectStage, deleteProject } from '@/lib/repo/projectsRepo';
+import { deleteProject } from '@/lib/repo/projectsRepo';
 import {
   PIPELINE_STAGE_LABELS,
   normalizePipelineStageKey,
@@ -26,8 +26,6 @@ import {
 } from '@/lib/projects/pipelineDefinition';
 import {
   invalidateProjectsIndexCaches,
-  patchContactListItem,
-  patchProjectListItem,
   removeProjectListItem,
 } from '@/lib/queries/projectCache';
 import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpenPreload';
@@ -41,10 +39,11 @@ import {
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
 import { useProjectsIndexData } from './useProjectsIndexData';
+import { useProjectsIndexMutations } from './useProjectsIndexMutations';
+import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 
-type EditableField = 'name' | 'phone' | 'address';
-type EditingState = { id: string; field: EditableField; value: string } | null;
+type EditingState = { id: string; field: ProjectIndexEditableField; value: string } | null;
 type StatusConfirmState = {
   projectId: string;
   current: PipelineStageKey;
@@ -83,19 +82,16 @@ export default function ProjectsIndexClient({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
-  const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null);
   const { visibleInfo, onRowEnter: handleRowMouseEnter, onRowLeave: handleRowMouseLeave } = useProjectRowTooltip();
   const [editing, setEditing] = useState<EditingState>(null);
-  const [savingCellKey, setSavingCellKey] = useState<string | null>(null);
-  const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<StatusConfirmState>(null);
   const [statusConfirmText, setStatusConfirmText] = useState('');
   const [statusReason, setStatusReason] = useState('');
-  const [statusBusy, setStatusBusy] = useState(false);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const queryClient = useQueryClient();
+  const projectMutations = useProjectsIndexMutations(host);
   const projectsIndex = useProjectsIndexData(host, archiveFilter);
   const projects = projectsIndex.data?.projects.rows ?? [];
   const contacts = projectsIndex.data?.contacts.rows ?? [];
@@ -152,25 +148,16 @@ export default function ProjectsIndexClient({
     setDeleteReason('');
   };
 
-  const cellKey = (id: string, field: EditableField) => `${id}:${field}`;
-
-  const beginEdit = useCallback((project: Project, field: EditableField, currentValue: string) => {
-    if (savingCellKey) return;
+  const beginEdit = useCallback((project: Project, field: ProjectIndexEditableField, currentValue: string) => {
+    if (projectMutations.isCellPending(project.id, field)) return;
     setEditing({ id: project.id, field, value: currentValue });
-  }, [savingCellKey]);
+  }, [projectMutations]);
 
   const cancelEdit = useCallback(() => {
     setEditing(null);
   }, []);
 
-  const patchContactPhoneInCache = useCallback(
-    (contactId: string, nextPhone: string) => {
-      patchContactListItem(queryClient, host, contactId, (contact) => ({ ...contact, phone: nextPhone }));
-    },
-    [host, queryClient],
-  );
-
-  const commitEdit = useCallback(async () => {
+  const commitEdit = useCallback(() => {
     if (!editing) return;
     const project = projects.find((p) => p.id === editing.id);
     if (!project) {
@@ -180,7 +167,6 @@ export default function ProjectsIndexClient({
 
     const trimmed = editing.value.trim();
     const field = editing.field;
-    const projectId = editing.id;
 
     if (field === 'name' && !trimmed) {
       toast.error('Project name is required.');
@@ -206,43 +192,10 @@ export default function ProjectsIndexClient({
       return;
     }
 
-    const key = cellKey(projectId, field);
-    setSavingCellKey(key);
-
-    const body: Record<string, unknown> = {};
-    if (field === 'name') body.project = { projectName: trimmed };
-    else if (field === 'address') body.project = { siteAddress: trimmed };
-    else if (field === 'phone') body.contact = { phone: trimmed };
-
-    try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/details`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => null);
-        const msg = typeof errBody?.error === 'string' ? errBody.error : 'Failed to save change.';
-        throw new Error(msg);
-      }
-
-      if (field === 'name') {
-        patchProjectListItem(queryClient, host, projectId, (p) => ({ ...p, projectName: trimmed, name: trimmed }));
-      } else if (field === 'address') {
-        patchProjectListItem(queryClient, host, projectId, (p) => ({ ...p, siteAddress: trimmed, address: trimmed }));
-      } else if (field === 'phone' && project.contactId) {
-        patchContactPhoneInCache(project.contactId, trimmed);
-      }
-
-      await invalidateProjectsIndexCaches(queryClient, host, { includeContacts: field === 'phone' });
-      setEditing(null);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save change.';
-      toast.error(msg);
-    } finally {
-      setSavingCellKey(null);
-    }
-  }, [contactsById, editing, host, patchContactPhoneInCache, projects, queryClient, toast]);
+    const contact = project.contactId ? contactsById.get(project.contactId) ?? null : null;
+    void projectMutations.saveInlineEdit({ project, contact, field, value: trimmed });
+    setEditing(null);
+  }, [contactsById, editing, projectMutations, projects, toast]);
 
   const handleEditKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -259,31 +212,12 @@ export default function ProjectsIndexClient({
   );
 
   const applyStageCorrection = useCallback(
-    async (projectId: string, nextStage: PipelineStageKey, label: string, reasonText: string | null) => {
-      setSavingStatusId(projectId);
-      try {
-        const result = await correctProjectStage(projectId, stageKeyToStatus(nextStage), {
-          reason: reasonText,
-        });
-        if (result.rollback) {
-          toast.success(`Stage corrected to ${label}. Reset ${result.resetManualTaskCount} manual checkmark(s).`);
-        } else {
-          toast.success(`Stage corrected to ${label}.`);
-        }
-        patchProjectListItem(queryClient, host, projectId, (p) => ({
-          ...p,
-          status: stageKeyToStatus(nextStage),
-        }));
-        await invalidateProjectsIndexCaches(queryClient, host);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to update stage.';
-        toast.error(msg);
-        throw err;
-      } finally {
-        setSavingStatusId(null);
-      }
+    (projectId: string, nextStage: PipelineStageKey, label: string, reasonText: string | null) => {
+      const project = projects.find((entry) => entry.id === projectId);
+      if (!project) return;
+      void projectMutations.correctStage(project, { projectId, nextStage, reason: reasonText }, label);
     },
-    [host, queryClient, toast],
+    [projectMutations, projects],
   );
 
   const handleStatusChange = useCallback(
@@ -311,7 +245,6 @@ export default function ProjectsIndexClient({
   );
 
   const closeStatusConfirm = () => {
-    if (statusBusy) return;
     setStatusConfirm(null);
     setStatusConfirmText('');
     setStatusReason('');
@@ -323,35 +256,9 @@ export default function ProjectsIndexClient({
         PROJECT_STATUS_ORDER.indexOf(stageKeyToStatus(statusConfirm.current) as ProjectStatus),
   );
 
-  const toggleArchive = async (project: Project) => {
-    if (archiveBusyId) return;
-    const willArchive = !project.isArchived;
-    setArchiveBusyId(project.id);
-    try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(project.id)}/details`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          project: { archivedAt: willArchive ? new Date().toISOString() : null },
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const msg = typeof body?.error === 'string' ? body.error : willArchive ? 'Failed to archive project' : 'Failed to unarchive project';
-        throw new Error(msg);
-      }
-      toast.success(willArchive ? 'Project archived.' : 'Project restored.');
-      patchProjectListItem(queryClient, host, project.id, (current) => ({
-        ...current,
-        isArchived: willArchive,
-      }));
-      await invalidateProjectsIndexCaches(queryClient, host);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update archive state';
-      toast.error(msg);
-    } finally {
-      setArchiveBusyId(null);
-    }
+  const toggleArchive = (project: Project) => {
+    if (projectMutations.isArchivePending(project.id)) return;
+    void projectMutations.setArchived(project, !project.isArchived);
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
@@ -503,19 +410,18 @@ export default function ProjectsIndexClient({
                       const nameValue = (p.projectName ?? p.name ?? '').trim();
                       const phoneValue = (contact?.phone ?? (p as { phone?: string }).phone ?? '').trim();
                       const addressValue = (p.siteAddress ?? p.address ?? '').trim();
-                      const isArchiveBusy = archiveBusyId === p.id;
-                      const isStatusBusyRow = savingStatusId === p.id;
+                      const isArchiveBusy = projectMutations.isArchivePending(p.id);
+                      const isStatusBusyRow = projectMutations.isStagePending(p.id);
                       const phoneEditable = Boolean(p.contactId);
 
                       const renderEditable = (
-                        field: EditableField,
+                        field: ProjectIndexEditableField,
                         currentValue: string,
                         placeholder: string,
                         editable: boolean,
                       ) => {
-                        const key = cellKey(p.id, field);
                         const isEditing = editing?.id === p.id && editing.field === field;
-                        const isSavingCell = savingCellKey === key;
+                        const isSavingCell = projectMutations.isCellPending(p.id, field);
 
                         if (isEditing) {
                           return (
@@ -551,9 +457,8 @@ export default function ProjectsIndexClient({
                             }}
                             onKeyDown={(e) => e.stopPropagation()}
                           >
-                            {isSavingCell ? 'Saving…' : currentValue || (
-                              <span className={styles.muted}>{placeholder}</span>
-                            )}
+                            {currentValue || <span className={styles.muted}>{placeholder}</span>}
+                            {isSavingCell ? <span className={styles.syncStatus}>Saving…</span> : null}
                           </button>
                         );
                       };
@@ -649,7 +554,7 @@ export default function ProjectsIndexClient({
                                 disabled={isArchiveBusy}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void toggleArchive(p);
+                                  toggleArchive(p);
                                 }}
                                 onKeyDown={(e) => e.stopPropagation()}
                               >
@@ -804,33 +709,25 @@ export default function ProjectsIndexClient({
               <button
                 type="button"
                 className={PIPELINE_MODAL_ACTION_CLASSES.primary}
-                disabled={statusBusy || (isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET')}
+                disabled={isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET'}
                 onClick={() => {
-                  if (!statusConfirm || statusBusy) return;
-                  setStatusBusy(true);
-                  void applyStageCorrection(
+                  if (!statusConfirm) return;
+                  applyStageCorrection(
                     statusConfirm.projectId,
                     statusConfirm.next,
                     statusConfirm.label,
                     statusReason.trim() || null,
-                  )
-                    .then(() => {
-                      setStatusConfirm(null);
-                      setStatusConfirmText('');
-                      setStatusReason('');
-                    })
-                    .catch(() => {
-                      // toast surfaced by applyStageCorrection
-                    })
-                    .finally(() => setStatusBusy(false));
+                  );
+                  setStatusConfirm(null);
+                  setStatusConfirmText('');
+                  setStatusReason('');
                 }}
               >
-                {statusBusy ? 'Applying…' : `Move to ${statusConfirm.label}`}
+                {`Move to ${statusConfirm.label}`}
               </button>
               <button
                 type="button"
                 className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
-                disabled={statusBusy}
                 onClick={closeStatusConfirm}
               >
                 Cancel

@@ -20,7 +20,16 @@ const toastError = vi.fn();
 const toastSuccess = vi.fn();
 const toastInfo = vi.fn();
 const useQueryMock = vi.fn();
+const apiJsonMock = vi.fn();
 const mockSearchParams = new URLSearchParams('q=deck&status=sent&due=today');
+
+function changeInputValue(target: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  if (!setter) throw new Error('Missing input value setter');
+  setter.call(target, value);
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+  target.dispatchEvent(new Event('change', { bubbles: true }));
+}
 
 vi.mock('next/link', () => ({
   default: ({ children, prefetch: _prefetch, ...props }: { children?: ReactNode; prefetch?: boolean } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
@@ -46,6 +55,14 @@ vi.mock('@/components/ui/toast/ToastProvider', () => ({
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
   usePortalSession: () => ({ role: 'admin' }),
 }));
+
+vi.mock('@/lib/repo/apiClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/repo/apiClient')>();
+  return {
+    ...actual,
+    apiJson: (...args: unknown[]) => apiJsonMock(...args),
+  };
+});
 
 vi.mock('@/components/ui/modal/Modal', () => ({
   default: ({ children, open }: { children: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
@@ -108,6 +125,8 @@ describe('ProjectsIndexClient', () => {
     toastError.mockReset();
     toastSuccess.mockReset();
     toastInfo.mockReset();
+    apiJsonMock.mockReset();
+    apiJsonMock.mockResolvedValue({});
     useQueryMock.mockReset();
     useQueryMock.mockImplementation(() => ({
       data: {
@@ -353,6 +372,50 @@ describe('ProjectsIndexClient', () => {
     expect(prefetch).toHaveBeenCalledWith('/staff/projects/proj_1');
     expect(prefetchQuery).toHaveBeenCalled();
     expect(openProject).toHaveBeenCalledWith('proj_1');
+
+    rendered.unmount();
+  });
+
+  it('closes an inline editor immediately and shows background save state before the request settles', async () => {
+    let resolveRequest: ((value: unknown) => void) | null = null;
+    apiJsonMock.mockReturnValue(new Promise((resolve) => {
+      resolveRequest = resolve;
+    }));
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+    const nameButton = Array.from(rendered.container.querySelectorAll('tbody button')).find(
+      (button) => button.textContent?.trim() === 'Deck Build',
+    );
+
+    await act(async () => {
+      nameButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const editor = rendered.container.querySelector('tbody input[type="text"]') as HTMLInputElement;
+
+    await act(async () => {
+      changeInputValue(editor, 'Instant Deck');
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('tbody input[type="text"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Saving…');
+    expect(apiJsonMock).toHaveBeenCalledWith(
+      '/api/projects/proj_1/details',
+      expect.objectContaining({ method: 'PATCH' }),
+    );
+    expect(setQueryData).toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRequest?.({});
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(rendered.container.textContent).not.toContain('Saving…');
 
     rendered.unmount();
   });
