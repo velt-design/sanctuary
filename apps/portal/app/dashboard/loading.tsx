@@ -1,5 +1,5 @@
-import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
+import DashboardPendingView from './DashboardPendingView';
 
 export default function Loading() {
-  return <BlueprintLoadingScreen />;
+  return <DashboardPendingView />;
 }

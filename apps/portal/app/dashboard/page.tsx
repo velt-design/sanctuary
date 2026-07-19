@@ -1,7 +1,4 @@
 import DashboardClient from './DashboardClient';
-import DashboardView from './DashboardView';
-import { requireStaffPageAccess } from '@/lib/auth';
-import { getDashboardData } from '@/lib/dashboard/getDashboardData';
 import { parseDashboardQueueMode } from '@/lib/dashboard/queueMode';
 
 export const dynamic = 'force-dynamic';
@@ -20,13 +17,5 @@ export default async function DashboardPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const queueMode = parseDashboardQueueMode(readFirst(resolvedSearchParams?.queue));
-  const session = await requireStaffPageAccess('/dashboard');
-  const data = await getDashboardData({ queueMode, userId: session.user.id });
-
-  return (
-    <>
-      <DashboardClient queueMode={queueMode} initialData={data} />
-      <DashboardView data={data} />
-    </>
-  );
+  return <DashboardClient queueMode={queueMode} />;
 }
