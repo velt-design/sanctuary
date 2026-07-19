@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 import {
   beginPortalJourney,
   elapsedJourneyMs,
@@ -121,6 +121,64 @@ async function measureColdRoute(page: Page, name: string, ready: () => Locator) 
   ).toBeLessThanOrEqual(budget.contentVisibleMsMax);
 }
 
+async function discoverFirstProjectDetailRoute(browser: Browser, authenticatedPage: Page): Promise<string> {
+  const storageState = await authenticatedPage.context().storageState();
+  const discoveryContext = await browser.newContext({ storageState });
+  try {
+    const discoveryPage = await discoveryContext.newPage();
+    await discoveryPage.goto('/staff/projects');
+    const openLink = await firstProjectOpenLink(discoveryPage);
+    const href = await openLink.getAttribute('href');
+    expect(href, 'The authenticated performance account needs an active project for the cold detail journey.').toBeTruthy();
+    const segments = new URL(String(href), discoveryPage.url()).pathname.split('/').filter(Boolean);
+    const projectId = segments.at(-1);
+    expect(projectId, 'The authenticated performance account needs an active project for the cold detail journey.').toBeTruthy();
+    return `/staff/projects/${encodeURIComponent(String(projectId))}`;
+  } finally {
+    await discoveryContext.close();
+  }
+}
+
+async function measureColdProjectDetail(page: Page, route: string) {
+  const budget = routeBudget('project-detail-cold');
+  const probe = await beginPortalJourney(page, { cold: true });
+
+  await page.goto(route);
+  await expect(
+    page.locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]').first(),
+  ).toBeVisible({ timeout: 60_000 });
+  const feedbackMs = elapsedJourneyMs(probe);
+  await expect(page.locator('[data-project-shell-ready="true"]')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible({ timeout: 60_000 });
+  const usefulContentMs = elapsedJourneyMs(probe);
+  await expect(page.locator('[data-project-background-ready="true"]')).toBeVisible({ timeout: 60_000 });
+  const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
+
+  const regressionBudgetMet = feedbackMs <= budget.shellVisibleMsMax && usefulContentMs <= budget.contentVisibleMsMax;
+  const journey = await finishPortalJourney(page, probe, {
+    name: budget.name,
+    kind: 'cold-route',
+    feedbackMs,
+    usefulContentMs,
+    backgroundSettledMs,
+    productTargetMet: feedbackMs <= budgets.productTargets.feedbackMsMax,
+    regressionBudgetMet,
+  });
+  journey.productTargetMet =
+    journey.productTargetMet &&
+    journey.longestTaskMs <= budgets.productTargets.longestTaskMsMax &&
+    !journey.blockingOverlaySeen;
+  recordJourney(journey);
+
+  expect(feedbackMs, `${budget.route} shell visible ${feedbackMs}ms exceeded ${budget.shellVisibleMsMax}ms`).toBeLessThanOrEqual(
+    budget.shellVisibleMsMax,
+  );
+  expect(
+    usefulContentMs,
+    `${budget.route} content visible ${usefulContentMs}ms exceeded ${budget.contentVisibleMsMax}ms`,
+  ).toBeLessThanOrEqual(budget.contentVisibleMsMax);
+}
+
 async function measureWarmJourney(
   page: Page,
   name: string,
@@ -217,7 +275,17 @@ test.beforeEach(async ({ page }) => {
   await installPortalPerformanceProbe(page);
 });
 
-test('captures cold portal route metrics', async ({ page }) => {
+test('captures cold portal route metrics', async ({ browser, page }) => {
+  const projectRoute = await discoverFirstProjectDetailRoute(browser, page);
+  const coldProjectContext = await browser.newContext({ storageState: await page.context().storageState() });
+  try {
+    const coldProjectPage = await coldProjectContext.newPage();
+    await installPortalPerformanceProbe(coldProjectPage);
+    await measureColdProjectDetail(coldProjectPage, projectRoute);
+  } finally {
+    await coldProjectContext.close();
+  }
+
   await measureColdRoute(page, 'dashboard-cold', () =>
     page.getByRole('heading', { name: 'Dashboard', exact: true }),
   );

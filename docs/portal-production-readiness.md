@@ -71,6 +71,22 @@ This snapshot records the most recent known production-readiness state from the 
 | Design workbench | Green | Focused object-first helper coverage passed on 2026-05-21; the current state-lane anchors include `apps/portal/lib/drawings/state/objectFirstWorkbenchFixtures.test.ts`, `apps/portal/lib/drawings/state/objectWorkbenchStatusModelRoofValidation.test.ts`, and `apps/portal/lib/drawings/state/projectPergolaViewerScene.test.ts`. The broader last-known signal remains `npm run test:portal:workbench` on 2026-05-04 with 58 Vitest files and 589 tests, followed by the no-auth browser fixture pass. | Keep manual edit/save/reload, pricing-source rollout, and high-risk visual QA in release checks with authenticated staff data; rerun the full workbench and browser gates before treating this as release-complete. |
 | Geometry/costing migration | Yellow | The workbench has a solved geometry artifact, a package-owned `GeometryQuantityTakeoff` derived from `Assembly3D`, and shadow `workbench_solved` commercial payload coverage that maps that takeoff. Baked fixture parity and representative saved estimate snapshot parity now compare `calculator_compat` and `workbench_solved`, with drift classified as authored intent, solved geometry, physical takeoff, or commercial mapping; live estimate and quote pricing still use the calculator costing path. | Keep the commercial path shadow-only, extend geometry takeoff buckets as solver support grows, and retire compatibility only after manual workbench QA and parity are stable. |
 
+## Wave 1 Instant Portal Status
+
+This table maps the original Instant Portal plan to the integrated Wave 0 and Wave 1 stack. Green means the stated outcome has code, focused tests, and current performance or bundle evidence; Yellow names the exact remaining work.
+
+| Item | Status | Evidence and remaining work |
+| --- | --- | --- |
+| NAV-01 | Yellow | Projects and Contacts replace the blocking overlay with immediate truthful route content, but other ordinary portal navigation still uses the delayed full-screen `BlueprintLoadingScreen`; the shared thin progress/control-busy contract remains. |
+| AUTH-01 | Yellow | Staff/admin helpers are explicit, but `getPortalSession()` repeats access and `auth.getUser()` work inside a request. Request-scoped memoisation is not implemented and requires the planned auth-architecture review before editing. |
+| READ-01 | Green | Project and contact lists have canonical staff API/query owners, auth-bound server clients, paginated loaders, concurrent independent reads, diagnostics, and browser-Supabase boundary coverage. |
+| READ-02 | Yellow | Projects and Contacts are cache-first with truthful pending/cached/fresh/failure states. Dashboard still awaits `getDashboardData()` in its page route and renders server data rather than the existing user-owned query cache. |
+| PROJECT-01 | Yellow | Warm project opening is green at 44 ms feedback / 60 ms useful-content p75 with one canonical snapshot query and intent-only prefetch. A new isolated cold Project Detail journey now closes the missing measurement contract; five-run evidence and the 10% regression lock are pending. |
+| PROJECT-02 | Yellow | Emails, Estimates, Quotes, Invoices, and Job Packs are intent-preloaded lazy code/data boundaries with truthful snapshot-dependent states. Activity is still a dynamic boundary rather than the initial lightweight workflow, while the responsive Details tab reuses an eagerly imported sidebar; both differ from the original contract and need a focused bundle/test pass. |
+| BUNDLE-01 | Yellow | The fresh integrated build passes every per-boundary gate, but Project Detail is still 3,428,901 raw / 822,398 gzip bytes combined, above the preserved 3,014,656 / 757,760 cap. The largest lazy workflow is 2,529,431 raw / 568,047 gzip and still contains the existing Estimates drawing/workbench dependency. |
+| CALC-01 | Yellow | Obsolete costing requests are aborted and one optional comparison fan-out is parallel, but request lifecycle remains inline in `CalculatorGridClient.tsx`, independent configuration reads have no dedicated controller, and the last five-run evidence predates the current calculator head. |
+| WB-01 | Yellow | Fixture selection/view-switch timing is measured and Plan rendering avoids selection/hover model rebuilds, but `buildDrawingWorkbenchStore()` still rebuilds the solved model whenever persisted UI selection, visibility, or viewport state changes. |
+
 ## Production-Grade Checklist
 
 ### Quality Gates
