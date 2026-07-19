@@ -13,6 +13,7 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation';
 import BlueprintLoadingScreen from './BlueprintLoadingScreen';
 import ProjectsIndexPendingFrame from './ProjectsIndexPendingFrame';
+import ContactsIndexPendingFrame from './ContactsIndexPendingFrame';
 
 const SHOW_DELAY_MS = 160;
 const MIN_VISIBLE_MS = 450;
@@ -20,7 +21,7 @@ const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
 const MAX_INSTANT_ROUTE_MS = 8000;
 
-type PortalInstantRoute = 'projects-index';
+export type PortalInstantRoute = 'projects-index' | 'contacts-index';
 
 type PortalRouteTransitionInput = {
   href: string;
@@ -273,6 +274,7 @@ export function PortalInstantRouteContent({ children }: { children: ReactNode })
   return (
     <>
       {instantRoute === 'projects-index' ? <ProjectsIndexPendingFrame /> : null}
+      {instantRoute === 'contacts-index' ? <ContactsIndexPendingFrame /> : null}
       <div
         style={{ display: instantRoute ? 'none' : 'contents' }}
         aria-hidden={instantRoute ? 'true' : undefined}

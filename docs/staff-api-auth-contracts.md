@@ -6,6 +6,7 @@ This doc is the current-state reference for staff, admin, and public-token route
 
 - Staff workflow routes live mainly under `apps/portal/app/api/staff/v1` plus older staff-owned routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, `apps/portal/app/api/estimates`, and `apps/portal/app/api/quotes`.
 - `GET /api/staff/v1/projects/index?archive=active|archived|all` is the staff-authenticated Projects-list read model. It uses `requireStaffContext()`, returns project/contact row-count and truncation metadata with diagnostics, and is always `private, no-store`.
+- `GET /api/staff/v1/contacts/index` is the staff-authenticated Contacts-list read model. It uses `requireStaffContext()` and the canonical paginated contact loader, returns row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - Admin routes live under `apps/portal/app/api/admin` and must enforce admin role checks.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/api/quotes`.
 - Public invoice routes live under `apps/marketing/app/invoice/[invoiceId]` and `apps/marketing/app/api/invoices`.

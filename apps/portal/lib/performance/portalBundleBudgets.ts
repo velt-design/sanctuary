@@ -13,7 +13,7 @@ export type PortalBundleBudgets = {
 };
 
 export type PortalBundleRouteConfig = {
-  id: 'schedule' | 'projects-index' | 'project-detail' | 'calculator' | 'design-workbench';
+  id: 'schedule' | 'projects-index' | 'contacts-index' | 'project-detail' | 'calculator' | 'design-workbench';
   route: string;
   routeKey: string;
   clientReferenceManifest: string;
@@ -94,6 +94,22 @@ export const PORTAL_BUNDLE_ROUTES: readonly PortalBundleRouteConfig[] = [
       lazyTotalGzipBytes: 653_312,
       largestLazyRawBytes: 2_606_080,
       largestLazyGzipBytes: 589_824,
+    },
+  },
+  {
+    id: 'contacts-index',
+    route: '/staff/contacts',
+    routeKey: '/staff/contacts/page',
+    clientReferenceManifest: 'server/app/staff/contacts/page_client-reference-manifest.js',
+    reactLoadableManifest: 'server/app/staff/contacts/page/react-loadable-manifest.json',
+    budgets: {
+      // 2026-07-19 fresh Slice 3 measurement plus 5%, rounded up to KiB.
+      initialRawBytes: 602_112,
+      initialGzipBytes: 172_032,
+      lazyTotalRawBytes: 130_048,
+      lazyTotalGzipBytes: 21_504,
+      largestLazyRawBytes: 130_048,
+      largestLazyGzipBytes: 21_504,
     },
   },
   {

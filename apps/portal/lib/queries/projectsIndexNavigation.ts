@@ -1,8 +1,10 @@
-import type { QueryClient } from '@tanstack/react-query';
-import { shouldHandleRouteTransitionClick } from '@/components/page-state/PortalRouteTransition';
-import { projectsIndexQueryOptions, type ProjectsIndexArchiveFilter } from './projectsIndex';
-
-const PROJECTS_INDEX_OPENING_PARAM = '__portal_opening';
+import type { ProjectsIndexArchiveFilter } from './projectsIndex';
+import {
+  openPortalIndexInstantly,
+  portalIndexOpeningHref,
+  portalIndexTarget,
+  projectsArchiveFromPortalIndexTarget,
+} from './portalIndexNavigation';
 
 type ProjectsIndexClickEvent = {
   defaultPrevented: boolean;
@@ -16,43 +18,21 @@ type ProjectsIndexClickEvent = {
 };
 
 type ProjectsIndexRouter = {
-  prefetch(href: string): void;
   replace(href: string, options?: { scroll?: boolean }): void;
 };
 
 export function projectsIndexTarget(href: string, base?: string | URL): URL | null {
-  try {
-    const current = base ?? (typeof window !== 'undefined' ? window.location.href : 'http://localhost');
-    const url = new URL(href, current);
-    const currentOrigin = new URL(current).origin;
-    if (url.origin !== currentOrigin || url.pathname !== '/staff/projects') return null;
-    return url;
-  } catch {
-    return null;
-  }
+  const target = portalIndexTarget(href, base);
+  return target?.route === 'projects-index' ? target.url : null;
 }
 
 export function projectsIndexArchiveFromHref(href: string, base?: string | URL): ProjectsIndexArchiveFilter {
-  const raw = projectsIndexTarget(href, base)?.searchParams.get('archive')?.trim().toLowerCase();
-  return raw === 'archived' || raw === 'all' ? raw : 'active';
+  const target = portalIndexTarget(href, base);
+  return target?.route === 'projects-index' ? projectsArchiveFromPortalIndexTarget(target) : 'active';
 }
 
 export function projectsIndexOpeningHref(href: string, base?: string | URL): string | null {
-  const url = projectsIndexTarget(href, base);
-  if (!url) return null;
-  url.searchParams.set(PROJECTS_INDEX_OPENING_PARAM, 'projects-index');
-  return `${url.pathname}${url.search}${url.hash}`;
-}
-
-export function preloadProjectsIndex(
-  queryClient: QueryClient,
-  router: Pick<ProjectsIndexRouter, 'prefetch'>,
-  href: string,
-): boolean {
-  if (!projectsIndexTarget(href)) return false;
-  router.prefetch(href);
-  void queryClient.prefetchQuery(projectsIndexQueryOptions(projectsIndexArchiveFromHref(href)));
-  return true;
+  return projectsIndexTarget(href, base) ? portalIndexOpeningHref(href, base) : null;
 }
 
 export function openProjectsIndexInstantly(
@@ -60,10 +40,5 @@ export function openProjectsIndexInstantly(
   router: Pick<ProjectsIndexRouter, 'replace'>,
   href: string,
 ): boolean {
-  const openingHref = projectsIndexOpeningHref(href);
-  if (!openingHref || !shouldHandleRouteTransitionClick(event)) return false;
-  event.preventDefault();
-  window.history.pushState(null, '', openingHref);
-  router.replace(href, { scroll: false });
-  return true;
+  return openPortalIndexInstantly(event, router, href) === 'projects-index';
 }

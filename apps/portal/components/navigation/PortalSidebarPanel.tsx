@@ -18,10 +18,10 @@ import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
 import { todayYmd } from '@/lib/scheduling/date';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import {
-  openProjectsIndexInstantly,
-  preloadProjectsIndex,
-  projectsIndexTarget,
-} from '@/lib/queries/projectsIndexNavigation';
+  openPortalIndexInstantly,
+  portalIndexTarget,
+  preloadPortalIndex,
+} from '@/lib/queries/portalIndexNavigation';
 import styles from './PortalSidebarPanel.module.css';
 
 type PinnedOpenParentState = {
@@ -173,9 +173,10 @@ export default function PortalSidebarPanel() {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
-      if (projectsIndexTarget(href)) {
-        beginInstantRoute('projects-index');
-        if (openProjectsIndexInstantly(event, router, href)) return;
+      const indexTarget = portalIndexTarget(href);
+      if (indexTarget) {
+        beginInstantRoute(indexTarget.route);
+        if (openPortalIndexInstantly(event, router, href)) return;
       }
       beginRouteTransition({ href, label, source: 'sidebar-panel' });
     },
@@ -199,8 +200,8 @@ export default function PortalSidebarPanel() {
 
   const prefetchFor = useCallback(
     (key: string, href: string) => {
-      if (key === 'projects' || href.startsWith('/staff/projects?')) {
-        preloadProjectsIndex(queryClient, router, href);
+      if (portalIndexTarget(href)) {
+        preloadPortalIndex(queryClient, router, href);
         return;
       }
       if (key !== 'schedule') return;
@@ -216,9 +217,10 @@ export default function PortalSidebarPanel() {
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
-      if (projectsIndexTarget(href)) {
-        beginInstantRoute('projects-index');
-        if (openProjectsIndexInstantly(event, router, href)) return;
+      const indexTarget = portalIndexTarget(href);
+      if (indexTarget) {
+        beginInstantRoute(indexTarget.route);
+        if (openPortalIndexInstantly(event, router, href)) return;
       }
       beginRouteTransition({ href, label, source: 'sidebar-rail' });
     },
@@ -247,7 +249,7 @@ export default function PortalSidebarPanel() {
                 <div className={cx(styles.parentRow, isParentCurrent && styles.parentRowBubbled)}>
                   <Link
                     href={item.href}
-                    prefetch={item.key === 'projects' ? false : undefined}
+                    prefetch={portalIndexTarget(item.href) ? false : undefined}
                     aria-label={item.label}
                     aria-current={isParentCurrent ? 'page' : undefined}
                     className={cx(styles.iconButton, isParentCurrent && styles.iconButtonActive)}
@@ -269,7 +271,7 @@ export default function PortalSidebarPanel() {
                   <div className={styles.parentHeader}>
                     <Link
                       href={item.href}
-                      prefetch={item.key === 'projects' ? false : undefined}
+                      prefetch={portalIndexTarget(item.href) ? false : undefined}
                       aria-current={isParentCurrent ? 'page' : undefined}
                       className={styles.parentLink}
                       onClick={(event) => handleNavLinkClick(event, item.href, item.label)}
@@ -306,7 +308,7 @@ export default function PortalSidebarPanel() {
                           <Link
                             key={child.key}
                             href={child.href}
-                            prefetch={child.href === '/staff/projects' ? false : undefined}
+                            prefetch={portalIndexTarget(child.href) ? false : undefined}
                             aria-current={childActive ? 'page' : undefined}
                             className={cx(styles.childRow, childActive && styles.childRowActive)}
                             onClick={(event) => handleNavLinkClick(event, child.href, child.label)}

@@ -16,7 +16,7 @@ This doc is the current-state reference for the core staff portal workflow befor
 - Project pages: `/staff/projects`, `/staff/projects/new`, `/staff/projects/[projectId]`.
 - Calculator page: `/staff/calculator`.
 - Project estimate surfaces: `/staff/projects/[projectId]?tab=estimates`, `/staff/projects/[projectId]/estimate/[estimateId]`, and `/staff/projects/[projectId]/design-workbench`.
-- Contact APIs: `apps/portal/app/api/contacts`.
+- Contact APIs: `apps/portal/app/api/contacts` and the Contacts-list read model at `apps/portal/app/api/staff/v1/contacts/index`.
 - Project APIs: `apps/portal/app/api/projects` and action routes under `apps/portal/app/api/staff/v1/projects`.
 - Estimate APIs: `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`.
 - Route/auth contracts: `docs/staff-api-auth-contracts.md`.
@@ -33,6 +33,8 @@ For table/RPC ownership, write paths, access boundaries, and migration sources, 
 Contacts and projects are staff-owned portal records. Marketing lead capture can create upstream enquiry data, but staff workflow state belongs in the portal.
 
 - Contact create/update routes write `contacts` and return mapped contact shapes.
+- The Contacts index renders its heading, actions, search, and truthful list region before any database read. `GET /api/staff/v1/contacts/index` then loads the complete paginated contact list through the authenticated staff API and the user-owned QueryClient. The client has explicit `pending`, `cached`, `fresh`, `refresh-failed`, and `unavailable` states: known rows remain visible during refresh or network/server failure, while `401`/`403` hides them, and an empty state requires a fresh successful response.
+- Contacts-index links update `/staff/contacts` immediately without the global route overlay and preload route/data only from hover, focus, touch, or pointer-down. The generic portal-index navigation owner preserves Projects filters, modified clicks, new tabs, and browser Back. Fresh contact results seed the canonical contact list and every cached Projects-index contact segment; contact create/edit/import cache updates use the same central helper. CSV import is a route-owned lazy workflow boundary whose code preloads on intent.
 - Project create/detail routes write and read `projects`.
 - The persistent portal content boundary renders the real header, actions, filters, and truthful "Updating projects" list frame synchronously on an ordinary Projects-index click, while keeping the sidebar available; the matching route loading boundary uses the same frame for direct route transitions. The page entrypoint does not await request search params or data; its client controller reads the current filters and date, then dismisses the pending frame after mounting. One authenticated React Query request to `GET /api/staff/v1/projects/index` loads the selected active/archived/all project scope and complete contact list concurrently through the existing paginated server loader.
 - Projects-index reads have five states: `pending`, `cached`, `fresh`, `refresh-failed`, and `unavailable`. Known rows remain visible during background refresh and network/server failure, while `401`/`403` hides them. An empty state is truthful only after a fresh successful response, and archive scopes never borrow active-only rows.

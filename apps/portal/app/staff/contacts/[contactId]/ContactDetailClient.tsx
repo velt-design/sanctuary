@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
@@ -240,9 +241,9 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
           title="Contact"
           right={
             <HeaderActions>
-              <Link className={styles.buttonSecondary} href="/staff/contacts">
+              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
                 Contacts
-              </Link>
+              </PortalIndexLink>
             </HeaderActions>
           }
         />
@@ -258,9 +259,9 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
           title="Contact"
           right={
             <HeaderActions>
-              <Link className={styles.buttonSecondary} href="/staff/contacts">
+              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
                 Contacts
-              </Link>
+              </PortalIndexLink>
             </HeaderActions>
           }
         />
@@ -278,9 +279,9 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
         title={contact.displayName}
         right={
           <HeaderActions>
-            <Link className={styles.buttonSecondary} href="/staff/contacts">
+            <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
               Contacts
-            </Link>
+            </PortalIndexLink>
             <Link className={styles.button} href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>
               Create Project
             </Link>

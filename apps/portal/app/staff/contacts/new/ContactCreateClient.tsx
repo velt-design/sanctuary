@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,9 +42,9 @@ export default function ContactCreateClient() {
         title="New Contact"
         right={
           <HeaderActions>
-            <Link className={styles.buttonSecondary} href="/staff/contacts">
+            <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
               Contacts
-            </Link>
+            </PortalIndexLink>
           </HeaderActions>
         }
       />
@@ -106,9 +106,9 @@ export default function ContactCreateClient() {
               <button className={styles.button} type="submit" disabled={!canSubmit}>
                 {busy ? 'Creating...' : 'Create Contact'}
               </button>
-              <Link className={styles.buttonSecondary} href="/staff/contacts">
+              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
                 Cancel
-              </Link>
+              </PortalIndexLink>
             </div>
           </form>
 

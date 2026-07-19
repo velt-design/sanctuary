@@ -294,6 +294,27 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   );
 });
 
+test('captures warm Contacts navigation', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 60_000 });
+  const contactsNavLink = page.getByRole('link', { name: 'Contacts', exact: true }).first();
+  await contactsNavLink.hover();
+
+  await measureWarmJourney(
+    page,
+    'dashboard-to-contacts',
+    () => contactsNavLink.dispatchEvent('click'),
+    () => page.waitForURL(/\/staff\/contacts(?:\?|$)/),
+    async () => {
+      await expect(page.getByRole('heading', { name: 'Contacts', exact: true })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Search contacts' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Contacts list' })).toBeVisible();
+      await expect(page.locator('[data-contacts-index-state]')).toBeVisible();
+    },
+    () => expect(page.locator('[data-contacts-index-background-ready="true"]')).toBeVisible({ timeout: 60_000 }),
+  );
+});
+
 test('captures schedule and calculator interaction metrics', async ({ page }) => {
   await page.goto('/staff/schedule');
   const toggle = page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ });

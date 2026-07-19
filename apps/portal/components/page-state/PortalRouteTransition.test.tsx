@@ -36,6 +36,16 @@ function InstantRouteTrigger() {
   );
 }
 
+function ContactsInstantRouteTrigger() {
+  const { beginInstantRoute, finishInstantRoute } = usePortalRouteTransition();
+  return (
+    <div>
+      <button type="button" onClick={() => beginInstantRoute('contacts-index')}>Open contacts</button>
+      <button type="button" onClick={() => finishInstantRoute('contacts-index')}>Contacts mounted</button>
+    </div>
+  );
+}
+
 describe('PortalRouteTransitionProvider', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -175,6 +185,24 @@ describe('PortalRouteTransitionProvider', () => {
     expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBeNull();
     expect(rendered.container.textContent).toContain('Dashboard content');
 
+    rendered.unmount();
+  });
+
+  it('shows the useful Contacts frame synchronously and reveals mounted content afterward', () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <ContactsInstantRouteTrigger />
+        <PortalInstantRouteContent><div>Dashboard content</div></PortalInstantRouteContent>
+      </PortalRouteTransitionProvider>,
+    );
+    const buttons = rendered.container.querySelectorAll('button');
+    act(() => buttons[0]?.click());
+    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Updating contacts');
+    expect(rendered.container.querySelector('[data-portal-route-content]')?.getAttribute('aria-hidden')).toBe('true');
+    act(() => buttons[1]?.click());
+    expect(rendered.container.querySelector('[data-contacts-index-state="pending"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Dashboard content');
     rendered.unmount();
   });
 });

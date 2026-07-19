@@ -6,6 +6,8 @@ export const qk = {
   },
   contacts: {
     list: (host: string) => ['contacts', host, 'list'] as const,
+    index: (scope: string) => ['contacts', scope, 'index'] as const,
+    indexPrefix: (scope: string) => ['contacts', scope, 'index'] as const,
     detail: (host: string, id: string) => ['contacts', host, 'detail', id] as const,
   },
   projects: {

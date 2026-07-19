@@ -3,6 +3,7 @@ import type { ProjectPageSnapshot, ProjectPageSnapshotResponse } from '@/lib/pro
 import { qk } from './keys';
 import type { Project } from '@/lib/types/project';
 import type { Contact } from '@/lib/types/contact';
+import { patchContactAcrossIndexCaches } from './contactsIndex';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import {
@@ -124,18 +125,7 @@ export function patchContactListItem(
   contactId: string,
   updater: (contact: Contact) => Contact,
 ) {
-  const patchRows = (current: Contact[] | undefined) => {
-    if (!Array.isArray(current)) return current;
-    return current.map((contact) => (contact.id === contactId ? { ...updater(contact) } : contact));
-  };
-  queryClient.setQueryData<Contact[] | undefined>(qk.contacts.list(host), patchRows);
-  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
-    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) =>
-      current
-        ? { ...current, contacts: { ...current.contacts, rows: patchRows(current.contacts.rows) ?? [] } }
-        : current,
-    );
-  }
+  patchContactAcrossIndexCaches(queryClient, host, contactId, updater);
 }
 
 export function removeProjectListItem(queryClient: QueryClient, host: string, projectId: string) {

@@ -18,7 +18,7 @@ function changeValue(target: HTMLInputElement | null, value: string) {
   target.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-vi.mock('next/link', () => ({
+vi.mock('@/components/navigation/PortalIndexLink', () => ({
   default: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
 }));
 

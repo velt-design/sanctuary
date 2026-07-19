@@ -40,6 +40,13 @@
       "aggregation": "p75"
     },
     {
+      "name": "dashboard-to-contacts",
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
+    },
+    {
       "name": "projects-to-project",
       "feedbackMsMax": 100,
       "usefulContentMsMax": 500,

@@ -18,10 +18,10 @@ import {
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
 import {
-  openProjectsIndexInstantly,
-  preloadProjectsIndex,
-  projectsIndexTarget,
-} from '@/lib/queries/projectsIndexNavigation';
+  openPortalIndexInstantly,
+  portalIndexTarget,
+  preloadPortalIndex,
+} from '@/lib/queries/portalIndexNavigation';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -66,8 +66,8 @@ export default function SidebarRail({
 
   const prefetchFor = useCallback(
     (key: string, href: string) => {
-      if (key === 'projects') {
-        preloadProjectsIndex(queryClient, router, href);
+      if (portalIndexTarget(href)) {
+        preloadPortalIndex(queryClient, router, href);
         return;
       }
       if (key !== 'schedule') return;
@@ -83,9 +83,10 @@ export default function SidebarRail({
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
-      if (projectsIndexTarget(href)) {
-        beginInstantRoute('projects-index');
-        if (openProjectsIndexInstantly(event, router, href)) return;
+      const indexTarget = portalIndexTarget(href);
+      if (indexTarget) {
+        beginInstantRoute(indexTarget.route);
+        if (openPortalIndexInstantly(event, router, href)) return;
       }
 
       beginRouteTransition({
@@ -113,7 +114,7 @@ export default function SidebarRail({
               <Link
                 key={key}
                 href={href}
-                prefetch={key === 'projects' ? false : undefined}
+                prefetch={portalIndexTarget(href) ? false : undefined}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}
