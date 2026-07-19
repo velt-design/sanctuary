@@ -1,4 +1,4 @@
-import { act, useState } from 'react';
+import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { useProjectInstantOpen } from './ProjectInstantOpen';
@@ -43,19 +43,6 @@ function renderHarness() {
   );
 }
 
-function SettledRouteHarness() {
-  const [underlyingRoute, setUnderlyingRoute] = useState<'list' | 'project'>('list');
-  return (
-    <ProjectInstantNavigationProvider>
-      {underlyingRoute === 'list' ? (
-        <InstantOpenHarness onOpened={() => setUnderlyingRoute('project')} />
-      ) : (
-        <div>Underlying project route</div>
-      )}
-    </ProjectInstantNavigationProvider>
-  );
-}
-
 describe('useProjectInstantOpen', () => {
   beforeEach(() => {
     replace.mockReset();
@@ -80,8 +67,8 @@ describe('useProjectInstantOpen', () => {
     rendered.unmount();
   });
 
-  it('restores the projects list when browser back returns after the underlying route settles', () => {
-    const rendered = renderIntoDocument(<SettledRouteHarness />);
+  it('clears the instant project when browser back returns to the projects list', () => {
+    const rendered = renderHarness();
     act(() => rendered.container.querySelector('button')?.click());
 
     expect(rendered.container.textContent).not.toContain('Open project');

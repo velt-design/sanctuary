@@ -37,7 +37,7 @@ function isParentActive(pathname: string, href: string) {
   if (pathname === href || pathname.startsWith(`${href}/`)) return true;
 
   const aliases: Record<string, string[]> = {
-    '/projects': ['/staff/projects'],
+    '/staff/projects': ['/projects'],
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule'],
     '/imports': ['/admin/imports'],

@@ -6,11 +6,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 type ProjectInstantNavigationValue = {
   showProject: (href: string, view: ReactNode) => void;
@@ -19,18 +18,10 @@ type ProjectInstantNavigationValue = {
 const ProjectInstantNavigationContext = createContext<ProjectInstantNavigationValue | null>(null);
 
 export default function ProjectInstantNavigationProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
   const [instantView, setInstantView] = useState<ReactNode | null>(null);
-  const [restoreList, setRestoreList] = useState(false);
-  const listViewRef = useRef<ReactNode | null>(null);
-
-  if (pathname === '/staff/projects' && !instantView && !restoreList) {
-    listViewRef.current = children;
-  }
 
   const showProject = useCallback((href: string, view: ReactNode) => {
-    setRestoreList(false);
     setInstantView(view);
     window.history.pushState(null, '', `${href}?tab=activity`);
     router.replace(href, { scroll: false });
@@ -40,9 +31,6 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
     const handlePopState = () => {
       if (window.location.pathname === '/staff/projects') {
         setInstantView(null);
-        setRestoreList(true);
-      } else {
-        setRestoreList(false);
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -53,7 +41,7 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
 
   return (
     <ProjectInstantNavigationContext.Provider value={value}>
-      {instantView ?? (restoreList && listViewRef.current ? listViewRef.current : children)}
+      {instantView ?? children}
     </ProjectInstantNavigationContext.Provider>
   );
 }

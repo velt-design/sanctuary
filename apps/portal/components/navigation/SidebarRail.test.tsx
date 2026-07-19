@@ -71,7 +71,7 @@ describe('SidebarRail', () => {
     );
 
     expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
-      href: '/projects',
+      href: '/staff/projects',
       label: 'Projects',
       source: 'sidebar-rail',
     });
