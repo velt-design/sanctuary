@@ -61,6 +61,7 @@ Project rows preload the route and existing full-snapshot query on hover, keyboa
 
 - Pipeline stages and task definitions live in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Manual task completion is stored in `project_task_checks`.
+- Manual task toggles update the visible task and project snapshot cache immediately, but only the affected checkbox is disabled while its authenticated API request is pending. Separate tasks may save concurrently. If one request fails, only that task is restored; other successful task state is preserved, the protected snapshot is refreshed, and the failed desired value remains available through a per-task Retry action. Tasks that can advance pipeline state still report completion/automation only from the server response.
 - Action tasks link into owned workflows such as site visits, estimates, schedule, invoices, and job packs.
 - Snapshot readiness comes from portal data such as booked site visits, generated estimates, accepted quotes, open deposit invoices, scheduled install items, and generated job packs.
 - Stage action routes under `apps/portal/app/api/staff/v1/projects/[projectId]/action` own staff workflow side effects.

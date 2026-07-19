@@ -3,6 +3,7 @@ import ProjectsIndexMutationFixtureClient from './ProjectsIndexMutationFixtureCl
 import ProjectDetailsMutationFixtureClient from './ProjectDetailsMutationFixtureClient';
 import ContactDetailsMutationFixtureClient from './ContactDetailsMutationFixtureClient';
 import FixtureLocalFirstBoundary from './FixtureLocalFirstBoundary';
+import ProjectTaskMutationFixtureClient from './ProjectTaskMutationFixtureClient';
 import styles from './projectsIndexMutationFixture.module.css';
 
 function arePortalQaFixturesEnabled(): boolean {
@@ -21,6 +22,7 @@ export default function ProjectsIndexMutationFixturePage() {
         <FixtureLocalFirstBoundary>
           <ProjectDetailsMutationFixtureClient />
           <ContactDetailsMutationFixtureClient />
+          <ProjectTaskMutationFixtureClient />
         </FixtureLocalFirstBoundary>
       </div>
     </main>

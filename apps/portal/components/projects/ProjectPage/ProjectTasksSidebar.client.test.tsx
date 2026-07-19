@@ -56,6 +56,15 @@ const tasks: ProjectPageSnapshot['tasks'] = {
   ],
 };
 
+const concurrentTasks: ProjectPageSnapshot['tasks'] = {
+  stage: 'scheduled',
+  items: [
+    { key: 'order_materials', label: 'First manual', kind: 'manual', isDone: false, isManualDone: false },
+    { key: 'roofing_ordered', label: 'Second manual', kind: 'manual', isDone: false, isManualDone: false },
+    { key: 'job_complete', label: 'Remaining task', kind: 'manual', isDone: false, isManualDone: false },
+  ],
+};
+
 function click(target: Element | null) {
   if (!target) throw new Error('Missing click target');
   act(() => {
@@ -114,6 +123,81 @@ describe('ProjectTasksSidebarClient', () => {
 
     expect(rendered.container.textContent).toContain('Task save failed');
     expect(patchProjectTasksSnapshotMock).toHaveBeenLastCalledWith({}, 'host', 'proj_1', tasks.items);
+
+    rendered.unmount();
+  });
+
+  it('rolls back only the failed task when separate task saves overlap', async () => {
+    let rejectFirst: (error: Error) => void = () => undefined;
+    let resolveSecond: (value: { ok: boolean }) => void = () => undefined;
+    apiJsonMock.mockImplementation((_path: string, init: { body?: string }) => {
+      const taskKey = JSON.parse(init.body ?? '{}').taskKey;
+      if (taskKey === 'order_materials') {
+        return new Promise((_resolve, reject) => {
+          rejectFirst = reject;
+        });
+      }
+      return new Promise((resolve) => {
+        resolveSecond = resolve;
+      });
+    });
+    const rendered = renderIntoDocument(
+      <ProjectTasksSidebarClient projectId="proj_1" tasks={concurrentTasks} />,
+    );
+    const checkboxes = rendered.container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+
+    click(checkboxes[0]);
+    click(checkboxes[1]);
+    expect(checkboxes[0]?.checked).toBe(true);
+    expect(checkboxes[1]?.checked).toBe(true);
+
+    await act(async () => {
+      resolveSecond({ ok: true });
+      await Promise.resolve();
+      rejectFirst(new Error('First task failed'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const settledCheckboxes = rendered.container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+    expect(settledCheckboxes[0]?.checked).toBe(false);
+    expect(settledCheckboxes[1]?.checked).toBe(true);
+    expect(rendered.container.textContent).toContain('First task failed');
+    expect(patchProjectTasksSnapshotMock).toHaveBeenLastCalledWith(
+      {},
+      'host',
+      'proj_1',
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'order_materials', isDone: false }),
+        expect.objectContaining({ key: 'roofing_ordered', isDone: true }),
+      ]),
+    );
+
+    rendered.unmount();
+  });
+
+  it('offers an explicit retry after rolling back a rejected task', async () => {
+    apiJsonMock
+      .mockRejectedValueOnce(new Error('Task save failed'))
+      .mockResolvedValueOnce({ ok: true });
+    const rendered = renderIntoDocument(<ProjectTasksSidebarClient projectId="proj_1" tasks={tasks} />);
+
+    click(rendered.container.querySelector('input[type="checkbox"]'));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect((rendered.container.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+
+    click(rendered.container.querySelector('button[aria-label="Retry Confirm schedule"]'));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(apiJsonMock).toHaveBeenCalledTimes(2);
+    expect((rendered.container.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
+    expect(rendered.container.textContent).not.toContain('Task save failed');
 
     rendered.unmount();
   });
