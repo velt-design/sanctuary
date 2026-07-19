@@ -2,12 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 
-function createQuery(result: { data: any; error: any; count?: number | null }) {
+function createQueryFromPromise(resolved: Promise<{ data: any; error: any; count?: number | null }>) {
   // PR-PG1 (2026-06-16): `.range()` is the new terminal call after PostgREST
   // gets `.order(...)`. The mock chain now resolves at `.range()`, not at
   // `.order()`. `count` defaults to `null` to match Supabase's
   // `count: 'exact'` response shape when caller didn't ask for a count.
-  const resolved = Promise.resolve({ count: null, ...result });
   const query: any = {
     select: vi.fn(() => query),
     is: vi.fn(() => query),
@@ -20,6 +19,10 @@ function createQuery(result: { data: any; error: any; count?: number | null }) {
     then: (onFulfilled: any, onRejected: any) => resolved.then(onFulfilled, onRejected),
   };
   return query;
+}
+
+function createQuery(result: { data: any; error: any; count?: number | null }) {
+  return createQueryFromPromise(Promise.resolve({ count: null, ...result }));
 }
 
 describe('loadProjectsIndexData', () => {
@@ -98,6 +101,36 @@ describe('loadProjectsIndexData', () => {
         totalCount: null,
         truncated: false,
       },
+    });
+  });
+
+  it('starts independent project and contact reads together', async () => {
+    let resolveProjects!: (value: { data: any[]; error: null; count: number }) => void;
+    let resolveContacts!: (value: { data: any[]; error: null; count: number }) => void;
+    const projectsResult = new Promise<{ data: any[]; error: null; count: number }>((resolve) => {
+      resolveProjects = resolve;
+    });
+    const contactsResult = new Promise<{ data: any[]; error: null; count: number }>((resolve) => {
+      resolveContacts = resolve;
+    });
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'projects') return createQueryFromPromise(projectsResult);
+      if (table === 'contacts') return createQueryFromPromise(contactsResult);
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const { loadProjectsIndexData } = await import('./serverProjectsIndex');
+    const loading = loadProjectsIndexData({ from: fromMock } as any);
+
+    expect(fromMock).toHaveBeenCalledWith('projects');
+    expect(fromMock).toHaveBeenCalledWith('contacts');
+
+    resolveProjects({ data: [], error: null, count: 0 });
+    resolveContacts({ data: [], error: null, count: 0 });
+    await expect(loading).resolves.toEqual({
+      projects: { rows: [], totalCount: 0, truncated: false },
+      contacts: { rows: [], totalCount: 0, truncated: false },
     });
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import { NAV_ITEMS } from './navItems';
@@ -17,6 +17,11 @@ import {
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
+import {
+  openPortalIndexInstantly,
+  portalIndexTarget,
+  preloadPortalIndex,
+} from '@/lib/queries/portalIndexNavigation';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -27,7 +32,7 @@ function isActive(pathname: string, href: string) {
   if (pathname === href || pathname.startsWith(`${href}/`)) return true;
 
   const aliases: Record<string, string[]> = {
-    '/projects': ['/staff/projects'],
+    '/staff/projects': ['/projects'],
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule'],
     '/imports': ['/admin/imports'],
@@ -50,37 +55,48 @@ export default function SidebarRail({
   panelVisible?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
-  const { beginRouteTransition } = usePortalRouteTransition();
+  const { beginInstantRoute, beginRouteTransition } = usePortalRouteTransition();
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const today = useMemo(() => todayYmd(), []);
   const prefetchedRef = useRef(new Set<string>());
 
   const prefetchFor = useCallback(
-    (key: string) => {
+    (key: string, href: string) => {
+      if (portalIndexTarget(href)) {
+        preloadPortalIndex(queryClient, router, href);
+        return;
+      }
       if (key !== 'schedule') return;
       const token = `${key}:${hostKey}:${today}`;
       if (prefetchedRef.current.has(token)) return;
       prefetchedRef.current.add(token);
       void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
     },
-    [hostKey, queryClient, today],
+    [hostKey, queryClient, router, today],
   );
 
   const handleNavClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
       if (!shouldHandleRouteTransitionClick(event)) return;
       if (!shouldStartRouteTransitionForHref(href)) return;
+      const indexTarget = portalIndexTarget(href);
+      if (indexTarget) {
+        beginInstantRoute(indexTarget.route);
+        if (openPortalIndexInstantly(event, router, href)) return;
+      }
 
       beginRouteTransition({
         href,
         label,
         source: 'sidebar-rail',
+        control: event.currentTarget,
       });
     },
-    [beginRouteTransition],
+    [beginInstantRoute, beginRouteTransition, router],
   );
 
   return (
@@ -99,13 +115,16 @@ export default function SidebarRail({
               <Link
                 key={key}
                 href={href}
+                prefetch={portalIndexTarget(href) ? false : undefined}
                 aria-label={label}
                 aria-current={active ? 'page' : undefined}
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}
                 data-nav-key={key}
                 onClick={(event) => handleNavClick(event, href, label)}
-                onMouseEnter={() => prefetchFor(key)}
-                onFocus={() => prefetchFor(key)}
+                onMouseEnter={() => prefetchFor(key, href)}
+                onFocus={() => prefetchFor(key, href)}
+                onPointerDown={() => prefetchFor(key, href)}
+                onTouchStart={() => prefetchFor(key, href)}
               >
                 {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
                 <Icon

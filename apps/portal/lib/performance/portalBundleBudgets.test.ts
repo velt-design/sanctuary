@@ -63,6 +63,31 @@ describe('portal route bundle budgets', () => {
     expect(budgetAtFivePercent(2_048)).toBe(3_072);
   });
 
+  it('finds Turbopack lazy loader groups when the loadable manifest is empty', () => {
+    const { nextDir, config } = fixture();
+    config.budgets = {
+      initialRawBytes: 1_000,
+      initialGzipBytes: 1_000,
+      lazyTotalRawBytes: 1_000,
+      lazyTotalGzipBytes: 1_000,
+      largestLazyRawBytes: 1_000,
+      largestLazyGzipBytes: 1_000,
+    };
+    write(path.join(nextDir, config.reactLoadableManifest), '{}');
+    write(
+      path.join(nextDir, 'static/a.js'),
+      'e.v(t=>Promise.all(["static/chunks/lazy-a.css","static/chunks/lazy-a.js"].map(t=>e.l(t))).then(()=>t(1)))',
+    );
+    write(path.join(nextDir, 'static/chunks/lazy-a.css'), Buffer.alloc(12, 3));
+    write(path.join(nextDir, 'static/chunks/lazy-a.js'), Buffer.alloc(18, 4));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.lazy.entries).toHaveLength(1);
+    expect(report.lazy.rawBytes).toBe(30);
+    expect(report.lazy.largestEntry?.rawBytes).toBe(30);
+  });
+
   it('reports changed manifest paths with the fresh-build recovery command', () => {
     const { nextDir, config } = fixture();
     config.clientReferenceManifest = 'server/app/staff/example/moved.js';

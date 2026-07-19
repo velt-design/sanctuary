@@ -3,6 +3,10 @@ import { dispatchKeyboard, dispatchPointer, installDomGeometryMock, renderIntoDo
 import ProjectPageFrame from './ProjectPageFrame';
 import { PROJECT_PAGE_HEADER_LAYOUT_STORAGE_KEY } from './useProjectHeaderLayout';
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),

@@ -3,6 +3,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import DashboardView from './DashboardView';
 import type { DashboardData } from '@/lib/dashboard/types';
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 vi.mock('./_components/DashboardTasksCard.client', () => ({
   default: (props: { initialTasks: Array<{ title: string; completedAt?: string | null }> }) => (
     <section aria-label="Tasks">
@@ -128,5 +132,25 @@ describe('DashboardView', () => {
     expect(markup).not.toContain('Work Queue');
     expect(markup).not.toContain('Install schedule');
     expect(markup).not.toContain('Site visits');
+  });
+
+  it('marks cached data as updating without hiding it', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} state="cached" />);
+
+    expect(markup).toContain('data-dashboard-state="cached"');
+    expect(markup).toContain('data-dashboard-background-ready="false"');
+    expect(markup).toContain('Updating...');
+    expect(markup).toContain('Beach House');
+  });
+
+  it('keeps known data and offers Retry after a refresh failure', () => {
+    const markup = renderToStaticMarkup(
+      <DashboardView data={data} state="refresh-failed" onRetry={() => undefined} />,
+    );
+
+    expect(markup).toContain('data-dashboard-state="refresh-failed"');
+    expect(markup).toContain('Showing the last saved information');
+    expect(markup).toContain('Retry');
+    expect(markup).toContain('Beach House');
   });
 });

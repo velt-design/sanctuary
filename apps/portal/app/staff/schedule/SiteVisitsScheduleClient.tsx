@@ -34,12 +34,12 @@ export default function SiteVisitsScheduleClient() {
   const { beginRouteTransition } = usePortalRouteTransition();
   const [, startUiTransition] = useTransition();
 
-  const setScheduleView = (next: ScheduleView) => {
+  const setScheduleView = (next: ScheduleView, control: HTMLButtonElement) => {
     if (next === 'site_visits') return;
     const qs = new URLSearchParams(searchParams.toString());
     qs.set('view', scheduleViewParam(next));
     const href = `/staff/schedule?${qs.toString()}`;
-    beginRouteTransition({ href, label: scheduleViewLabel(next), source: 'schedule-view', show: 'immediate' });
+    beginRouteTransition({ href, label: scheduleViewLabel(next), source: 'schedule-view', control });
     startUiTransition(() => {
       router.replace(href);
     });

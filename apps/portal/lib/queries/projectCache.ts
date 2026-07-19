@@ -2,14 +2,24 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot, ProjectPageSnapshotResponse } from '@/lib/projects/types';
 import { qk } from './keys';
 import type { Project } from '@/lib/types/project';
+import type { Contact } from '@/lib/types/contact';
+import { patchContactAcrossIndexCaches } from './contactsIndex';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import {
+  PROJECTS_INDEX_QUERY_SCOPE,
+  type ProjectsIndexArchiveFilter,
+  type ProjectsIndexResponse,
+} from './projectsIndex';
 
 function cloneProject(project: Project): Project {
   return { ...project };
 }
 
-export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSnapshotResponse {
+export function buildProjectSnapshotPlaceholder(
+  project: Project,
+  contact?: Contact | null,
+): ProjectPageSnapshotResponse {
   const normalized = normalizeProjectStatus(project.status ?? 'NEW');
   const stage = normalizePipelineStageKey(normalized.status) ?? 'new';
   const snapshot: ProjectPageSnapshot = {
@@ -18,7 +28,11 @@ export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSn
       name: project.projectName ?? project.name ?? 'Project',
       stage,
       ...(project.contactId ? { contactId: project.contactId } : {}),
-      ...(project.clientName ? { contactName: project.clientName } : {}),
+      ...(contact?.displayName ?? project.clientName
+        ? { contactName: contact?.displayName ?? project.clientName }
+        : {}),
+      ...(contact?.email ? { contactEmail: contact.email } : {}),
+      ...(contact?.phone ? { contactPhone: contact.phone } : {}),
       ...(project.region ? { region: project.region } : {}),
       ...(project.quoteRef ? { quoteRef: project.quoteRef } : {}),
       ...(project.siteAddress ?? project.address ? { siteAddress: project.siteAddress ?? project.address ?? undefined } : {}),
@@ -44,6 +58,21 @@ export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSn
   };
 }
 
+export function getProjectSnapshotPlaceholderFromCaches(
+  queryClient: QueryClient,
+  host: string,
+  projectId: string,
+): ProjectPageSnapshotResponse | undefined {
+  const project = (['active', 'all'] as const)
+    .flatMap((scope) => queryClient.getQueryData<Project[]>(qk.projects.list(host, scope)) ?? [])
+    .find((entry) => entry.id === projectId);
+  if (!project) return undefined;
+
+  const contacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
+  const contact = project.contactId ? contacts?.find((entry) => entry.id === project.contactId) : undefined;
+  return buildProjectSnapshotPlaceholder(project, contact);
+}
+
 export function patchProjectSnapshot(
   queryClient: QueryClient,
   host: string,
@@ -59,16 +88,79 @@ export function patchProjectListItem(
   projectId: string,
   updater: (project: Project) => Project,
 ) {
-  queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host), (current) => {
+  const patchRows = (current: Project[] | undefined, scope: 'active' | 'all') => {
     if (!Array.isArray(current)) return current;
-    let changed = false;
-    const next = current.map((project) => {
-      if (project.id !== projectId) return project;
-      changed = true;
-      return cloneProject(updater(project));
+    const existing = current.find((project) => project.id === projectId);
+    if (!existing) return current;
+    const nextProject = cloneProject(updater(existing));
+    if (scope === 'active' && nextProject.isArchived) {
+      return current.filter((project) => project.id !== projectId);
+    }
+    return current.map((project) => (project.id === projectId ? nextProject : project));
+  };
+
+  for (const scope of ['active', 'all'] as const) {
+    queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host, scope), (current) => patchRows(current, scope));
+  }
+
+  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
+    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) => {
+      if (!current) return current;
+      const existing = current.projects.rows.find((project) => project.id === projectId);
+      if (!existing) return current;
+      const nextProject = cloneProject(updater(existing));
+      const belongs =
+        archive === 'all' || (archive === 'active' ? !nextProject.isArchived : Boolean(nextProject.isArchived));
+      const rows = belongs
+        ? current.projects.rows.map((project) => (project.id === projectId ? nextProject : project))
+        : current.projects.rows.filter((project) => project.id !== projectId);
+      return { ...current, projects: { ...current.projects, rows } };
     });
-    return changed ? next : current;
-  });
+  }
+}
+
+export function patchContactListItem(
+  queryClient: QueryClient,
+  host: string,
+  contactId: string,
+  updater: (contact: Contact) => Contact,
+) {
+  patchContactAcrossIndexCaches(queryClient, host, contactId, updater);
+}
+
+export function removeProjectListItem(queryClient: QueryClient, host: string, projectId: string) {
+  for (const scope of ['active', 'all'] as const) {
+    queryClient.setQueryData<Project[] | undefined>(qk.projects.list(host, scope), (current) =>
+      Array.isArray(current) ? current.filter((project) => project.id !== projectId) : current,
+    );
+  }
+  for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
+    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) =>
+      current
+        ? {
+            ...current,
+            projects: {
+              ...current.projects,
+              rows: current.projects.rows.filter((project) => project.id !== projectId),
+            },
+          }
+        : current,
+    );
+  }
+}
+
+export async function invalidateProjectsIndexCaches(
+  queryClient: QueryClient,
+  host: string,
+  options?: { includeContacts?: boolean },
+) {
+  await Promise.allSettled([
+    queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }),
+    queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }),
+    options?.includeContacts
+      ? queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) })
+      : Promise.resolve(),
+  ]);
 }
 
 export async function invalidateProjectReadCaches(
@@ -86,9 +178,11 @@ export async function invalidateProjectReadCaches(
   const includeProjectsList = opts?.includeProjectsList ?? true;
 
   await Promise.allSettled([
+    queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, projectId) }),
     queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
     includeProjectDetail ? queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }) : Promise.resolve(),
+    includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }) : Promise.resolve(),
     opts?.includeQuotes ? queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(host, projectId) }) : Promise.resolve(),
     opts?.includeEstimates ? queryClient.invalidateQueries({ queryKey: qk.estimates.metaByProject(host, projectId) }) : Promise.resolve(),
   ]);

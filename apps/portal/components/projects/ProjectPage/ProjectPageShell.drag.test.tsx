@@ -3,8 +3,8 @@ import { dispatchKeyboard, installDomGeometryMock, renderIntoDocument, setProjec
 import ProjectPageShell from './ProjectPageShell';
 import { PROJECT_PANEL_LAYOUT_STORAGE_KEY } from './useProjectPanelSlots';
 
-vi.mock('./ProjectDetailsSidebar', () => ({
-  default: () => <section data-testid="mock-details-panel">Details panel</section>,
+vi.mock('./projectDetailsModule', () => ({
+  LazyProjectDetailsSidebar: () => <section data-testid="mock-details-panel">Details panel</section>,
 }));
 
 vi.mock('./ProjectMainTabs', () => ({

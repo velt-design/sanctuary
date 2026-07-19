@@ -1,5 +1,5 @@
-import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
+import ContactsIndexPendingFrame from '@/components/page-state/ContactsIndexPendingFrame';
 
 export default function Loading() {
-  return <BlueprintLoadingScreen />;
+  return <ContactsIndexPendingFrame />;
 }

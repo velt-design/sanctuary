@@ -3,8 +3,11 @@ import SidebarRail from './SidebarRail';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const transitionMocks = vi.hoisted(() => ({
+  beginInstantRoute: vi.fn(),
   beginRouteTransition: vi.fn(),
   prefetchQuery: vi.fn(),
+  routerPrefetch: vi.fn(),
+  routerReplace: vi.fn(),
 }));
 
 let mockPathname = '/dashboard';
@@ -17,6 +20,7 @@ function preventDocumentNavigation(event: Event): void {
 
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
+  useRouter: () => ({ prefetch: transitionMocks.routerPrefetch, replace: transitionMocks.routerReplace }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -37,6 +41,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async () => {
   return {
     ...actual,
     usePortalRouteTransition: () => ({
+      beginInstantRoute: transitionMocks.beginInstantRoute,
       beginRouteTransition: transitionMocks.beginRouteTransition,
     }),
   };
@@ -50,8 +55,11 @@ function linkByLabel(container: HTMLElement, label: string): HTMLAnchorElement {
 
 describe('SidebarRail', () => {
   beforeEach(() => {
+    transitionMocks.beginInstantRoute.mockReset();
     transitionMocks.beginRouteTransition.mockReset();
     transitionMocks.prefetchQuery.mockReset();
+    transitionMocks.routerPrefetch.mockReset();
+    transitionMocks.routerReplace.mockReset();
     mockPathname = '/dashboard';
     window.history.replaceState({}, '', '/dashboard');
     document.addEventListener('click', preventDocumentNavigation);
@@ -63,18 +71,32 @@ describe('SidebarRail', () => {
     window.history.replaceState({}, '', '/');
   });
 
-  it('starts route transitions from icon clicks', () => {
+  it('opens Projects instantly without starting the blocking route transition', () => {
     const rendered = renderIntoDocument(<SidebarRail role="staff" />);
 
     linkByLabel(rendered.container, 'Projects').dispatchEvent(
       new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
     );
 
-    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
-      href: '/projects',
-      label: 'Projects',
-      source: 'sidebar-rail',
-    });
+    expect(window.location.pathname).toBe('/staff/projects');
+    expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/projects', { scroll: false });
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('projects-index');
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('opens canonical Contacts instantly without starting the blocking route transition', () => {
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+
+    linkByLabel(rendered.container, 'Contacts').dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(window.location.pathname).toBe('/staff/contacts');
+    expect(transitionMocks.routerReplace).toHaveBeenCalledWith('/staff/contacts', { scroll: false });
+    expect(transitionMocks.beginInstantRoute).toHaveBeenCalledWith('contacts-index');
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
@@ -87,6 +109,24 @@ describe('SidebarRail', () => {
     );
 
     expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('starts ordinary navigation progress on only the clicked control', () => {
+    const rendered = renderIntoDocument(<SidebarRail role="staff" />);
+    const scheduleLink = linkByLabel(rendered.container, 'Schedule');
+
+    scheduleLink.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+    );
+
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/schedule',
+      label: 'Schedule',
+      source: 'sidebar-rail',
+      control: scheduleLink,
+    });
 
     rendered.unmount();
   });

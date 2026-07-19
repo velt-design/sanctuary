@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
@@ -64,9 +65,9 @@ export default function ProjectHeader({
 
         {!isCompact ? (
           <div className={styles.mastheadActions}>
-            <Link href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
+            <ProjectsIndexLink href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
               Projects
-            </Link>
+            </ProjectsIndexLink>
             <Link
               href={`/staff/projects/${encodeURIComponent(project.id)}/design-workbench`}
               className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}

@@ -11,7 +11,10 @@ import {
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { buildAccessStatusHref, buildLoginHref, currentRequestPathWithSearch, toAccessStatusQueryState } from '@/lib/portalAccess';
-import { PortalRouteTransitionProvider } from '@/components/page-state/PortalRouteTransition';
+import {
+  PortalInstantRouteContent,
+  PortalRouteTransitionProvider,
+} from '@/components/page-state/PortalRouteTransition';
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
@@ -129,7 +132,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
           )}
           data-portal-content-sidebar-mode={sidebarMode}
         >
-          {children}
+          <PortalInstantRouteContent>{children}</PortalInstantRouteContent>
         </div>
       </div>
     </PortalRouteTransitionProvider>

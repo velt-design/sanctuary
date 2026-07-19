@@ -358,14 +358,14 @@ export default function ScheduleLegacyFallbackClient({
     projectsRef.current = projects;
   }, [projects]);
 
-  const setScheduleView = (next: ScheduleView) => {
+  const setScheduleView = (next: ScheduleView, control: HTMLButtonElement) => {
     if (next === view) return;
     const qs = new URLSearchParams(searchParams.toString());
     const viewParam = next === 'site_visits' ? 'site-visits' : next;
     qs.set('view', viewParam);
     const href = `/staff/schedule?${qs.toString()}`;
     const label = next === 'site_visits' ? 'Site visits' : next === 'gantt' ? 'Gantt' : 'Board';
-    beginRouteTransition({ href, label, source: 'schedule-view', show: 'immediate' });
+    beginRouteTransition({ href, label, source: 'schedule-view', control });
     startUiTransition(() => {
       router.replace(href);
       if (next !== 'site_visits') setView(next);

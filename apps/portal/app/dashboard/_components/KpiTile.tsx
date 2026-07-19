@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import dash from '../dashboard.module.css';
 
 export default function KpiTile({
@@ -21,9 +22,15 @@ export default function KpiTile({
   );
 
   return href ? (
-    <Link className={dash.kpiTile} href={href}>
-      {content}
-    </Link>
+    href.startsWith('/staff/projects') ? (
+      <ProjectsIndexLink className={dash.kpiTile} href={href}>
+        {content}
+      </ProjectsIndexLink>
+    ) : (
+      <Link className={dash.kpiTile} href={href}>
+        {content}
+      </Link>
+    )
   ) : (
     <div className={dash.kpiTile}>{content}</div>
   );

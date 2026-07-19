@@ -1,15 +1,14 @@
-import Link from 'next/link';
+import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
-import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
-const VALID_TABS = new Set(['estimates', 'quotes', 'job-packs', 'emails']);
+const VALID_TABS = new Set(['activity', 'estimates', 'quotes', 'job-packs', 'emails']);
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw && VALID_TABS.has(raw)) return raw;
-  return 'estimates';
+  return 'activity';
 }
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -38,26 +37,9 @@ export default async function ProjectDetailPage({
           <div className={styles.surfaceInner}>
             <h1 className={styles.title}>Project unavailable</h1>
             <p className={styles.subtitle}>Invalid project id.</p>
-            <Link href="/staff/projects" className={styles.backLink}>
+            <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
               Back to Projects
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  const snapshot = await getProjectPageSnapshot(projectId);
-  if (!snapshot) {
-    return (
-      <main className={styles.page}>
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
-            <h1 className={styles.title}>Project unavailable</h1>
-            <p className={styles.subtitle}>We could not load this project. It may have been deleted, or access is temporarily unavailable.</p>
-            <Link href="/staff/projects" className={styles.backLink}>
-              Back to Projects
-            </Link>
+            </ProjectsIndexLink>
           </div>
         </section>
       </main>
@@ -69,7 +51,6 @@ export default async function ProjectDetailPage({
       projectId={projectId}
       tab={tab}
       estimateId={estimateId}
-      initialSnapshot={snapshot}
       debugExportEnabled={isPortalPageDebugExportEnabled()}
     />
   );

@@ -13,7 +13,7 @@ export const NAV_ITEMS = [
   {
     key: 'projects',
     label: 'Projects',
-    href: '/projects',
+    href: '/staff/projects',
     Icon: Hammer,
     adminOnly: false,
     children: [
@@ -26,7 +26,7 @@ export const NAV_ITEMS = [
   {
     key: 'contacts',
     label: 'Contacts',
-    href: '/contacts',
+    href: '/staff/contacts',
     Icon: Users,
     adminOnly: false,
     children: [

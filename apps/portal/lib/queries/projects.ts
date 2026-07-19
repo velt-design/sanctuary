@@ -21,6 +21,12 @@ async function fetchProjectPageSnapshot(projectId: string): Promise<ProjectPageS
   return apiJson<ProjectPageSnapshotResponse>(`/api/projects/${encodeURIComponent(projectId)}/snapshot`);
 }
 
+async function fetchProjectPageSummary(projectId: string): Promise<ProjectPageSnapshotResponse> {
+  return apiJson<ProjectPageSnapshotResponse>(
+    `/api/staff/v1/projects/${encodeURIComponent(projectId)}/summary`,
+  );
+}
+
 export const projectsListQueryOptions = (host: string, options?: { includeArchived?: boolean }) => {
   const scope = options?.includeArchived ? 'all' : 'active';
   return queryOptions({
@@ -35,6 +41,14 @@ export const projectPageSnapshotQueryOptions = (host: string, projectId: string)
   queryOptions({
     queryKey: qk.projects.snapshot(host, projectId),
     queryFn: () => fetchProjectPageSnapshot(projectId),
+    staleTime: FIVE_MINUTES,
+    gcTime: ONE_DAY,
+  });
+
+export const projectPageSummaryQueryOptions = (host: string, projectId: string) =>
+  queryOptions({
+    queryKey: qk.projects.summary(host, projectId),
+    queryFn: () => fetchProjectPageSummary(projectId),
     staleTime: FIVE_MINUTES,
     gcTime: ONE_DAY,
   });

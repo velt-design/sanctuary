@@ -19,6 +19,12 @@
       "contentVisibleMsMax": 7000
     },
     {
+      "name": "project-detail-cold",
+      "route": "/staff/projects/[projectId]",
+      "shellVisibleMsMax": 3500,
+      "contentVisibleMsMax": 7000
+    },
+    {
       "name": "contacts-cold",
       "route": "/staff/contacts",
       "shellVisibleMsMax": 4000,
@@ -34,31 +40,42 @@
   "warmJourneys": [
     {
       "name": "dashboard-to-projects",
-      "feedbackMsMax": 3500,
-      "usefulContentMsMax": 7000,
-      "enforced": false
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
+    },
+    {
+      "name": "dashboard-to-contacts",
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
     },
     {
       "name": "projects-to-project",
-      "feedbackMsMax": 3500,
-      "usefulContentMsMax": 7000,
-      "enforced": false
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
     },
     {
       "name": "project-back-to-projects",
-      "feedbackMsMax": 3500,
-      "usefulContentMsMax": 7000,
-      "enforced": false
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
     }
   ],
   "interactions": [
     {
       "name": "project-tab-details",
       "route": "/staff/projects/[projectId]",
-      "feedbackMsMax": 1200,
-      "usefulContentMsMax": 2000,
+      "feedbackMsMax": 250,
+      "usefulContentMsMax": 500,
       "productFeedbackMsMax": 250,
-      "enforced": false
+      "enforced": true,
+      "aggregation": "p75"
     },
     {
       "name": "schedule-unscheduled-panel-toggle",
@@ -70,9 +87,10 @@
     {
       "name": "calculator-input-current-result",
       "route": "/staff/calculator",
-      "feedbackMsMax": 1200,
-      "usefulContentMsMax": 5000,
-      "enforced": false
+      "feedbackMsMax": 700,
+      "usefulContentMsMax": 2950,
+      "enforced": true,
+      "aggregation": "p75"
     }
   ]
 }

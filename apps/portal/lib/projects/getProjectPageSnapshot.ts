@@ -16,6 +16,19 @@ import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnap
 
 const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
 
+const PROJECT_RELATED_SNAPSHOT_SELECT = `
+  id,
+  siteVisits:site_visit_events(id,status,scheduled_start),
+  estimates(id),
+  scheduleItems:schedule_items(id,start_date),
+  quotes(id,acceptedVersions:quote_versions(id,status)),
+  openInvoices:deposit_invoices(id,status),
+  manualChecks:project_task_checks(task_key),
+  emails:email_outbox(id,subject,to_email,status,sent_at,created_at,email_type),
+  jobPacks:job_pack_generations(id),
+  notes:project_notes(id,body,author_id,author_email,author_display_name,created_at,updated_at,deleted_at)
+`;
+
 function mapProjectNote(row: any, currentUserId: string | null): ProjectNote | null {
   const id = typeof row?.id === 'string' ? row.id : null;
   const body = typeof row?.body === 'string' ? row.body : null;
@@ -90,10 +103,6 @@ function mapEmail(row: any): ProjectEmailLog {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
 function mapOutboxToActivity(row: any): ProjectActivityItem | null {
   const at =
     typeof row?.sent_at === 'string'
@@ -121,86 +130,6 @@ function mapOutboxToActivity(row: any): ProjectActivityItem | null {
   };
 }
 
-function mapAuditToActivity(row: any): ProjectActivityItem | null {
-  const at = typeof row?.created_at === 'string' ? row.created_at : '';
-  if (!at) return null;
-
-  const typeRaw = typeof row?.type === 'string' ? row.type : 'note';
-  const payload = isRecord(row?.payload) ? (row.payload as Record<string, unknown>) : {};
-
-  if (typeRaw === 'email_sent' || typeRaw === 'email_failed') {
-    const title = typeRaw === 'email_failed' ? 'Email failed' : 'Email sent';
-    const to = typeof payload.to === 'string' ? payload.to : '';
-    const subject = typeof payload.subject === 'string' ? payload.subject : '';
-    return {
-      id: String(row?.id ?? ''),
-      at,
-      type: 'email_sent',
-      title,
-      detail: [to ? `To: ${to}` : '', subject].filter(Boolean).join(' — ') || undefined,
-    };
-  }
-
-  if (typeRaw === 'dashboard.next_action_note') {
-    const note = typeof payload.note === 'string' ? payload.note : '';
-    return {
-      id: String(row?.id ?? ''),
-      at,
-      type: 'note',
-      title: 'Note added',
-      detail: note || undefined,
-    };
-  }
-
-  if (typeRaw.startsWith('quote.')) {
-    const toList = Array.isArray(payload.to) ? payload.to : typeof payload.to === 'string' ? [payload.to] : [];
-    const toDetail = toList.length ? `To: ${toList.join(', ')}` : undefined;
-
-    switch (typeRaw) {
-      case 'quote.created':
-        return { id: String(row?.id ?? ''), at, type: 'quote_created', title: 'Quote created' };
-      case 'quote.sent':
-        return { id: String(row?.id ?? ''), at, type: 'quote_sent', title: 'Quote sent', detail: toDetail };
-      case 'quote.resent':
-        return { id: String(row?.id ?? ''), at, type: 'quote_resent', title: 'Quote resent', detail: toDetail };
-      case 'quote.revised':
-        return { id: String(row?.id ?? ''), at, type: 'quote_revised', title: 'Quote revised' };
-      case 'quote.accepted':
-        return { id: String(row?.id ?? ''), at, type: 'quote_accepted', title: 'Quote accepted' };
-      case 'quote.declined':
-        return { id: String(row?.id ?? ''), at, type: 'quote_declined', title: 'Quote declined' };
-      case 'quote.deleted':
-        return { id: String(row?.id ?? ''), at, type: 'quote_deleted', title: 'Quote deleted' };
-      default:
-        break;
-    }
-  }
-
-  if (typeRaw.startsWith('invoice.')) {
-    switch (typeRaw) {
-      case 'invoice.created':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice created' };
-      case 'invoice.sent':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice sent' };
-      case 'invoice.voided':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice voided' };
-      case 'invoice.send_failed':
-      case 'invoice.send_failed_final':
-        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice send failed' };
-      default:
-        break;
-    }
-  }
-
-  return {
-    id: String(row?.id ?? ''),
-    at,
-    type: 'note',
-    title: typeRaw,
-    detail: undefined,
-  };
-}
-
 function logSnapshotError(context: PortalServerLogContext | undefined, message: string, error: unknown, query?: string) {
   logPortalServerError(
     context ?? { route: 'project_snapshot', method: 'GET' },
@@ -213,34 +142,33 @@ function logSnapshotError(context: PortalServerLogContext | undefined, message: 
   );
 }
 
-export async function getProjectPageSnapshot(
-  projectId: string,
-  diagnostics?: PortalServerLogContext,
-  supabase?: SupabaseClient,
-): Promise<ProjectPageSnapshot | null> {
-  const client = supabase ?? (await getSupabaseServerAuth());
-  const projectUuid = safeUuidFromAppId(projectId, 'proj');
-  if (!projectUuid) return null;
+function relationRows(value: unknown): any[] {
+  return Array.isArray(value) ? value : [];
+}
 
-  const { data: projectRow, error: projectError } = await client
-    .from('projects')
-    .select('*')
-    .eq('id', projectUuid)
-    .maybeSingle();
-
-  if (projectError || !projectRow) return null;
-
-  const normalizedStage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
+function mapProjectSummary(projectRow: any, fallbackProjectId: string): {
+  project: ProjectPageSnapshot['project'];
+  stage: ProjectPageSnapshot['pipeline']['stage'];
+  nextActionDate: string | null;
+} {
+  const normalizedStage = normalizeProjectStatus(
+    projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW',
+  ).status;
   const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
   const contactIdRaw = pickString(projectRow.contact_id, projectRow.contactId);
   const contactUuid = contactIdRaw ? safeUuidFromAppId(contactIdRaw, 'ct') : null;
-  const projectIdOut = (() => {
-    const raw = String(projectRow.id ?? projectId);
+  const projectId = (() => {
+    const raw = String(projectRow.id ?? fallbackProjectId);
     if (raw.startsWith('proj_')) return raw;
     if (isUuid(raw)) return appIdFromUuid('proj', raw);
-    return projectId;
+    return fallbackProjectId;
   })();
-  const projectName = pickString(projectRow.projectName, projectRow.project_name, projectRow.name, 'Project') ?? 'Project';
+  const contactRaw = projectRow.contact;
+  const contact = Array.isArray(contactRaw) ? contactRaw[0] ?? null : contactRaw ?? null;
+  const name = pickString(projectRow.projectName, projectRow.project_name, projectRow.name, 'Project') ?? 'Project';
+  const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
+  const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
+  const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
   const siteAddress = pickString(projectRow.site_address, projectRow.siteAddress, projectRow.address);
   const region = pickString(projectRow.region);
   const quoteRef = pickString(projectRow.quote_ref, projectRow.quoteRef);
@@ -251,127 +179,138 @@ export async function getProjectPageSnapshot(
     projectRow.followUpDate,
   );
 
-  const userRes = await client.auth.getUser();
-  const currentUserId = userRes?.data?.user?.id ?? null;
+  return {
+    project: {
+      id: projectId,
+      name,
+      stage,
+      ...(contactUuid ? { contactId: appIdFromUuid('ct', contactUuid) } : null),
+      ...(contactName ? { contactName } : null),
+      ...(contactEmail ? { contactEmail } : null),
+      ...(contactPhone ? { contactPhone } : null),
+      ...(siteAddress ? { siteAddress } : null),
+      ...(region ? { region } : null),
+      ...(quoteRef ? { quoteRef } : null),
+      ...(nextActionDate ? { nextActionDate } : null),
+    },
+    stage,
+    nextActionDate,
+  };
+}
 
-  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes, notesRes] = await Promise.all([
-    contactUuid
-      ? client.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+export async function getProjectPageSummary(
+  projectId: string,
+  diagnostics?: PortalServerLogContext,
+  supabase?: SupabaseClient,
+): Promise<ProjectPageSnapshot | null> {
+  const client = supabase ?? (await getSupabaseServerAuth());
+  const projectUuid = safeUuidFromAppId(projectId, 'proj');
+  if (!projectUuid) return null;
+
+  const projectRes = await client
+    .from('projects')
+    .select('*,contact:contacts(*)')
+    .eq('id', projectUuid)
+    .maybeSingle();
+  if (projectRes?.error) {
+    logSnapshotError(diagnostics, 'project summary query failed', projectRes.error, 'projects');
+    throw new Error('Failed to load project summary');
+  }
+  if (!projectRes?.data) return null;
+
+  const summary = mapProjectSummary(projectRes.data, projectId);
+  return {
+    project: summary.project,
+    pipeline: { stage: summary.stage },
+    tasks: { stage: summary.stage, items: [] },
+    activity: [],
+    emails: [],
+    notes: [],
+  };
+}
+
+export async function getProjectPageSnapshot(
+  projectId: string,
+  diagnostics?: PortalServerLogContext,
+  supabase?: SupabaseClient,
+  authenticatedUserId?: string | null,
+): Promise<ProjectPageSnapshot | null> {
+  const client = supabase ?? (await getSupabaseServerAuth());
+  const projectUuid = safeUuidFromAppId(projectId, 'proj');
+  if (!projectUuid) return null;
+
+  // Keep the access-defining project row independent so an optional related
+  // read failure cannot hide a project the user may access. All subordinate
+  // rows are embedded through their declared foreign keys in one PostgREST
+  // request, avoiding a browser-open path with many HTTP round trips while
+  // retaining auth-bound RLS on every relation.
+  const [projectRes, relatedRes] = await Promise.all([
     client
-      .from('site_visit_events')
-      .select('id,status,scheduled_start')
-      .eq('project_id', projectUuid)
+      .from('projects')
+      .select('*,contact:contacts(*)')
+      .eq('id', projectUuid)
       .maybeSingle(),
     client
-      .from('estimates')
-      .select('id')
-      .eq('project_id', projectUuid)
-      .limit(1),
-    client
-      .from('schedule_items')
-      .select('id,start_date')
-      .eq('project_id', projectUuid)
-      .limit(1),
-    client
-      .from('quote_versions')
-      .select('id, quotes!inner(project_id)')
-      .eq('status', 'ACCEPTED')
-      .eq('quotes.project_id', projectUuid)
-      .limit(1),
-    client
-      .from('deposit_invoices')
-      .select('id')
-      .eq('project_id', projectUuid)
-      .eq('status', 'OPEN')
-      .limit(1)
+      .from('projects')
+      .select(PROJECT_RELATED_SNAPSHOT_SELECT)
+      .eq('id', projectUuid)
+      .eq('quotes.acceptedVersions.status', 'ACCEPTED')
+      .eq('openInvoices.status', 'OPEN')
+      .is('notes.deleted_at', null)
+      .order('created_at', { referencedTable: 'emails', ascending: false })
+      .order('created_at', { referencedTable: 'notes', ascending: false })
+      .limit(1, { referencedTable: 'siteVisits' })
+      .limit(1, { referencedTable: 'estimates' })
+      .limit(1, { referencedTable: 'scheduleItems' })
+      .limit(1, { referencedTable: 'openInvoices' })
+      .limit(1, { referencedTable: 'jobPacks' })
+      .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
       .maybeSingle(),
-    client
-      .from('project_task_checks')
-      .select('task_key')
-      .eq('project_id', projectUuid),
-    client
-      .from('email_outbox')
-      .select('id,subject,to_email,status,sent_at,created_at,email_type')
-      .eq('project_id', projectUuid)
-      .order('created_at', { ascending: false }),
-    client
-      .from('audit_events')
-      .select('id,type,payload,created_at')
-      .eq('project_id', projectUuid)
-      .order('created_at', { ascending: false })
-      .limit(50),
-    client.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
-    client
-      .from('project_notes')
-      .select('id,body,author_id,author_email,author_display_name,created_at,updated_at')
-      .eq('project_id', projectUuid)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(PROJECT_NOTES_SNAPSHOT_LIMIT),
   ]);
 
-  if (emailRes?.error) {
-    logSnapshotError(diagnostics, 'email_outbox query failed', emailRes.error, 'email_outbox');
+  const projectRow = projectRes?.data ?? null;
+  if (projectRes?.error) {
+    logSnapshotError(diagnostics, 'project query failed', projectRes.error, 'projects');
+    throw new Error('Failed to load project snapshot');
   }
-  if (auditRes?.error) {
-    logSnapshotError(diagnostics, 'audit_events query failed', auditRes.error, 'audit_events');
-  }
-  if (siteVisitRes?.error) {
-    logSnapshotError(diagnostics, 'site_visit_events query failed', siteVisitRes.error, 'site_visit_events');
-  }
-  if (estimateRes?.error) {
-    logSnapshotError(diagnostics, 'estimates query failed', estimateRes.error, 'estimates');
-  }
-  if (scheduleRes?.error) {
-    logSnapshotError(diagnostics, 'schedule_items query failed', scheduleRes.error, 'schedule_items');
-  }
-  if (acceptedQuoteRes?.error) {
-    logSnapshotError(diagnostics, 'accepted quote query failed', acceptedQuoteRes.error, 'quote_versions');
-  }
-  if (openInvoiceRes?.error) {
-    logSnapshotError(diagnostics, 'open deposit invoice query failed', openInvoiceRes.error, 'deposit_invoices');
-  }
-  if (manualRes?.error) {
-    logSnapshotError(diagnostics, 'project_task_checks query failed', manualRes.error, 'project_task_checks');
-  }
-  if (jobPackRes?.error) {
-    logSnapshotError(diagnostics, 'job_pack_generations query failed', jobPackRes.error, 'job_pack_generations');
-  }
-  if (notesRes?.error) {
-    logSnapshotError(diagnostics, 'project_notes query failed', notesRes.error, 'project_notes');
+  if (!projectRow) return null;
+  if (relatedRes?.error) {
+    logSnapshotError(diagnostics, 'project related snapshot query failed', relatedRes.error, 'projects+relations');
+    throw new Error('Failed to load complete project snapshot');
   }
 
-  const contact = contactRes?.data ?? null;
-  const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
-  const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
-  const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
-  const emails = (Array.isArray(emailRes?.data) ? emailRes.data : []).map(mapEmail);
-  const outboxActivity = (Array.isArray(emailRes?.data) ? emailRes.data : [])
+  const summary = mapProjectSummary(projectRow, projectId);
+  const stage = summary.stage;
+  const projectIdOut = summary.project.id;
+  const nextActionDate = summary.nextActionDate;
+
+  const currentUserId = authenticatedUserId === undefined
+    ? (await client.auth.getUser())?.data?.user?.id ?? null
+    : authenticatedUserId;
+
+  const relatedRow = relatedRes?.data ?? null;
+  const emailRows = relationRows(relatedRow?.emails);
+  const emails = emailRows.map(mapEmail);
+  const outboxActivity = emailRows
     .map(mapOutboxToActivity)
     .filter(Boolean) as ProjectActivityItem[];
-  const auditActivity = (Array.isArray(auditRes?.data) ? auditRes.data : [])
-    .map(mapAuditToActivity)
-    .filter(Boolean) as ProjectActivityItem[];
+  const activity = outboxActivity.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
-  const activity = [...outboxActivity, ...auditActivity].sort((a, b) => String(b.at).localeCompare(String(a.at)));
-
-  const siteVisitRow = siteVisitRes?.data ?? null;
+  const siteVisitRow = relationRows(relatedRow?.siteVisits)[0] ?? null;
   const siteVisitStatus = typeof (siteVisitRow as any)?.status === 'string' ? String((siteVisitRow as any).status).toUpperCase() : '';
   const hasBookedSiteVisit =
     Boolean((siteVisitRow as any)?.scheduled_start) &&
     ['TENTATIVE', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED'].includes(siteVisitStatus);
 
-  const hasGeneratedCosting = Array.isArray(estimateRes?.data) ? estimateRes.data.length > 0 : Boolean(estimateRes?.data);
-  const hasScheduledInstall = Array.isArray(scheduleRes?.data) ? scheduleRes.data.length > 0 : Boolean(scheduleRes?.data);
-  const hasAcceptedQuote = Array.isArray(acceptedQuoteRes?.data)
-    ? acceptedQuoteRes.data.length > 0
-    : Boolean(acceptedQuoteRes?.data);
-  const hasJobPacks = Boolean(jobPackRes?.data);
-  const hasOpenDepositInvoice = Boolean(openInvoiceRes?.data);
+  const hasGeneratedCosting = relationRows(relatedRow?.estimates).length > 0;
+  const hasScheduledInstall = relationRows(relatedRow?.scheduleItems).length > 0;
+  const hasAcceptedQuote = relationRows(relatedRow?.quotes)
+    .some((quote) => relationRows(quote?.acceptedVersions).length > 0);
+  const hasJobPacks = relationRows(relatedRow?.jobPacks).length > 0;
+  const hasOpenDepositInvoice = relationRows(relatedRow?.openInvoices).length > 0;
 
   const manualCompleted = new Set<TaskKey>();
-  for (const row of Array.isArray(manualRes?.data) ? manualRes.data : []) {
+  for (const row of relationRows(relatedRow?.manualChecks)) {
     const key = typeof (row as any)?.task_key === 'string' ? String((row as any).task_key) : '';
     if (isManualTaskKey(key)) manualCompleted.add(key);
   }
@@ -390,23 +329,13 @@ export async function getProjectPageSnapshot(
   const taskItems = resolveStageTasks(stage, taskContext, manualCompleted);
   const finalStage = stage;
 
-  const notes = (Array.isArray(notesRes?.data) ? notesRes.data : [])
+  const notes = relationRows(relatedRow?.notes)
     .map((row) => mapProjectNote(row, currentUserId))
     .filter((value): value is ProjectNote => value !== null);
 
   return {
     project: {
-      id: projectIdOut,
-      name: projectName,
-      stage: finalStage,
-      ...(contactUuid ? { contactId: appIdFromUuid('ct', contactUuid) } : null),
-      ...(contactName ? { contactName } : null),
-      ...(contactEmail ? { contactEmail } : null),
-      ...(contactPhone ? { contactPhone } : null),
-      ...(siteAddress ? { siteAddress } : null),
-      ...(region ? { region } : null),
-      ...(quoteRef ? { quoteRef } : null),
-      ...(nextActionDate ? { nextActionDate } : null),
+      ...summary.project,
       ...(hasJobPacks ? { hasJobPacks } : null),
     },
     pipeline: {

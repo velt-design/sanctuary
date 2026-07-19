@@ -1,5 +1,5 @@
-import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
+import ProjectsIndexPendingFrame from '@/components/page-state/ProjectsIndexPendingFrame';
 
-export default function Loading() {
-  return <BlueprintLoadingScreen />;
+export default function ProjectsLoading() {
+  return <ProjectsIndexPendingFrame />;
 }

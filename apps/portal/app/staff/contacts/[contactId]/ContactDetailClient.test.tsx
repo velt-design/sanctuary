@@ -1,4 +1,5 @@
 import { act } from 'react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ContactDetailClient from './ContactDetailClient';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
@@ -8,6 +9,10 @@ const apiJsonMock = vi.fn();
 const toastErrorMock = vi.fn();
 const upsertContactCachesMock = vi.fn();
 const getQueryDataMock = vi.fn();
+
+vi.mock('@/components/navigation/PortalIndexLink', () => ({
+  default: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => <a {...props}>{children}</a>,
+}));
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();

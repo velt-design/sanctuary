@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { preloadWorkbenchViewport } from './workbenchViewportModules';
 import styles from './DrawingWorkbench.module.css';
 
 type PrimaryNavId = 'geometry3d' | 'plan' | 'sheet';
@@ -66,6 +67,9 @@ export default function WorkbenchChrome({
         <div className={styles.toggleGroup} role="tablist" aria-label="Drawing workbench mode">
           {PRIMARY_NAV_ITEMS.map((item) => {
             const isActive = active === item.id;
+            const preloadOnIntent = item.viewportMode === 'geometry3d'
+              ? () => void preloadWorkbenchViewport(item.viewportMode)
+              : undefined;
             return (
               <button
                 key={item.id}
@@ -74,6 +78,10 @@ export default function WorkbenchChrome({
                 aria-selected={isActive}
                 data-workbench-nav-id={item.id}
                 className={`${styles.toggleButton} ${isActive ? styles.toggleButtonActive : ''}`}
+                onMouseEnter={preloadOnIntent}
+                onFocus={preloadOnIntent}
+                onPointerDown={preloadOnIntent}
+                onTouchStart={preloadOnIntent}
                 onClick={() => {
                   onViewportModeChange(item.viewportMode);
                 }}

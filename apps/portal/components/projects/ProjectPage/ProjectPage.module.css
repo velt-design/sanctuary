@@ -301,6 +301,53 @@
   padding: 12px;
 }
 
+.backgroundStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 6px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.refreshButton,
+.inlineRetryButton {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  border-radius: 999px;
+  background: rgba(var(--portal-text-rgb), 0.04);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.refreshButton {
+  display: inline-flex;
+  margin-top: 12px;
+  margin-right: 8px;
+  padding: 7px 12px;
+}
+
+.inlineRetryButton {
+  padding: 4px 9px;
+}
+
+.refreshButton:hover,
+.inlineRetryButton:hover {
+  background: rgba(var(--accentRgb), 0.08);
+  border-color: rgba(var(--accentRgb), 0.34);
+}
+
+.tabLoadingState {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .pipeline {
   padding: 10px 12px;
 }

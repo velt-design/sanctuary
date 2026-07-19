@@ -48,6 +48,7 @@ describe('GET /api/dashboard', () => {
     const res = await mod.GET(new Request('http://localhost/api/dashboard'));
 
     expect(res.status).toBe(401);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     await expect(res.json()).resolves.toEqual({ error: 'Unauthorized' });
     expect(getDashboardData).not.toHaveBeenCalled();
   });
@@ -58,11 +59,23 @@ describe('GET /api/dashboard', () => {
 
     expect(getDashboardData).toHaveBeenCalledWith({ queueMode: 'next7', userId: 'user_1' });
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     await expect(res.json()).resolves.toEqual(
       expect.objectContaining({
         updatedAtIso: '2026-04-08T00:00:00.000Z',
         kpis: { actionsDue: 1, newLeads: 2, quotesToSend: 3, installsThisWeek: 4 },
       }),
     );
+  });
+
+  it('returns private no-store errors when the dashboard read fails', async () => {
+    getDashboardData.mockRejectedValueOnce(new Error('Dashboard exploded'));
+
+    const mod = await import('./route');
+    const res = await mod.GET(new Request('http://localhost/api/dashboard'));
+
+    expect(res.status).toBe(500);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+    await expect(res.json()).resolves.toEqual({ error: 'Dashboard exploded' });
   });
 });

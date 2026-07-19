@@ -69,7 +69,11 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Deck Build');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
-    expect(rendered.container.textContent).toContain('3D Preview Error');
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(rendered.container.textContent).toContain('3D Preview Error');
+      });
+    });
     expect(rendered.container.textContent).toContain('No object-first workbench geometry is available.');
     expect(rendered.container.textContent).toContain('No house forms');
     expect(rendered.container.textContent).toContain('No pergolas');

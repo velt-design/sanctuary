@@ -33,6 +33,60 @@
   height: 100%;
 }
 
+.content {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.content > .layout:first-child {
+  grid-row: 1 / -1;
+}
+
+.pendingLayout {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+}
+
+.pendingCard {
+  width: min(720px, 100%);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background: var(--card-bg);
+  padding: 18px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.pendingTitle,
+.pendingDescription {
+  margin: 0;
+}
+
+.pendingTitle {
+  font-size: 16px;
+}
+
+.pendingDescription,
+.refreshStatus {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.refreshStatus {
+  justify-self: end;
+}
+
+.refreshNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);

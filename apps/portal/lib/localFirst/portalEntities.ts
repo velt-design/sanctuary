@@ -4,6 +4,7 @@ import { emptyEstimateEditability } from '../estimates/editability';
 import { buildEstimateSnapshotPayload } from '../estimates/persistence';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '../estimates/types';
 import { qk } from '../queries/keys';
+import { upsertContactAcrossIndexCaches } from '../queries/contactsIndex';
 import { patchProjectListItem, patchProjectSnapshot } from '../queries/projectCache';
 import type { ProjectNote, ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
 import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS, applyDepositPercentToTerms } from '../quotes/defaults';
@@ -654,13 +655,7 @@ export function patchProjectDetailsCaches(
 
 export function upsertContactCaches(queryClient: QueryClient, hostKey: string, contact: Contact) {
   queryClient.setQueryData(qk.contacts.detail(hostKey, contact.id), contact);
-  queryClient.setQueryData<Contact[] | undefined>(qk.contacts.list(hostKey), (currentContacts) => {
-    if (!Array.isArray(currentContacts)) return currentContacts;
-    const next = currentContacts.filter((entry) => entry.id !== contact.id);
-    next.push(contact);
-    next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
-    return next;
-  });
+  upsertContactAcrossIndexCaches(queryClient, hostKey, contact);
 }
 
 export function buildOptimisticProjectNote(args: {

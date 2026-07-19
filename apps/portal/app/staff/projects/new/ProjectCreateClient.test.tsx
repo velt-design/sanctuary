@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectCreateClient from './ProjectCreateClient';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
 
+vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
 const pushMock = vi.fn();
 const toastErrorMock = vi.fn();
 const toastSuccessMock = vi.fn();
