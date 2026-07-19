@@ -8,7 +8,10 @@ describe('ProjectsLoading', () => {
 
     expect(rendered.container.querySelector('[aria-label="Opening projects"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Page loading"]')).toBeNull();
-    expect(rendered.container.textContent).toContain('Opening projects in the background');
+    expect(rendered.container.querySelector('[data-projects-index-state="pending"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Filters"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Projects list"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Updating projects');
 
     rendered.unmount();
   });

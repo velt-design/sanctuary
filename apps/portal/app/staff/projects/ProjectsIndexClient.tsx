@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
@@ -36,6 +36,7 @@ import {
   buildContactsById,
   filterProjectsForIndex,
   parseProjectsIndexFilters,
+  todayYmd,
   type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
@@ -61,8 +62,8 @@ export default function ProjectsIndexClient({
   initialFilters,
   initialTodayYmd,
 }: {
-  initialFilters: ProjectsIndexFilters;
-  initialTodayYmd: string;
+  initialFilters?: ProjectsIndexFilters;
+  initialTodayYmd?: string;
 }) {
   const router = useRouter();
   const { openProject } = useProjectInstantOpen();
@@ -70,10 +71,12 @@ export default function ProjectsIndexClient({
   const toast = useToast();
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
-  const [query, setQuery] = useState(initialFilters.query);
-  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFilters.statusFilter);
-  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFilters.dueFilter);
-  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFilters.archiveFilter);
+  const initialFiltersRef = useRef(initialFilters ?? parseProjectsIndexFilters(searchParams));
+  const currentTodayYmd = initialTodayYmd ?? todayYmd();
+  const [query, setQuery] = useState(initialFiltersRef.current.query);
+  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFiltersRef.current.statusFilter);
+  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFiltersRef.current.dueFilter);
+  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
@@ -125,9 +128,9 @@ export default function ProjectsIndexClient({
         dueFilter,
         archiveFilter,
       },
-      initialTodayYmd,
+      currentTodayYmd,
     );
-  }, [archiveFilter, contactsById, dueFilter, initialTodayYmd, projects, query, statusFilter]);
+  }, [archiveFilter, contactsById, currentTodayYmd, dueFilter, projects, query, statusFilter]);
 
   const prepareProjectOpen = useCallback(
     (projectId: string) => {
