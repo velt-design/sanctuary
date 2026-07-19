@@ -48,39 +48,53 @@ describe('getProjectPageSnapshot', () => {
   it('returns a snapshot without scheduling invoice retries during read', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     const contactId = '22222222-2222-4222-8222-222222222222';
-    const responses: Record<string, QueryResult> = {
-      projects: {
-        data: {
-          id: projectId,
-          name: 'Alpha Project',
-          contact_id: contactId,
-          contact: {
-            id: contactId,
-            name: 'Casey Contact',
-            email: 'casey@example.com',
-            phone: '021',
-          },
-          pipeline_stage: 'NEW',
-          site_address: '123 Test St',
+    const projectQuery = createQuery({
+      data: {
+        id: projectId,
+        name: 'Alpha Project',
+        contact_id: contactId,
+        contact: {
+          id: contactId,
+          name: 'Casey Contact',
+          email: 'casey@example.com',
+          phone: '021',
         },
-        error: null,
+        pipeline_stage: 'NEW',
+        site_address: '123 Test St',
       },
-      site_visit_events: { data: null, error: null },
-      estimates: { data: [], error: null },
-      schedule_items: { data: [], error: null },
-      quote_versions: { data: [], error: null },
-      deposit_invoices: { data: { id: 'inv_1' }, error: null },
-      project_task_checks: { data: [], error: null },
-      email_outbox: { data: [], error: null },
-      job_pack_generations: { data: null, error: null },
-      project_notes: { data: [], error: null },
-    };
-
-    fromMock.mockImplementation((table: string) => {
-      const result = responses[table];
-      if (!result) throw new Error(`Unexpected table ${table}`);
-      return createQuery(result);
+      error: null,
     });
+    const relatedQuery = createQuery({
+      data: {
+        siteVisits: [],
+        estimates: [],
+        scheduleItems: [],
+        quotes: [{ acceptedVersions: [{ id: 'quote_version_1', status: 'ACCEPTED' }] }],
+        openInvoices: [{ id: 'inv_1', status: 'OPEN' }],
+        manualChecks: [],
+        emails: [{
+          id: 'email_1',
+          subject: 'Estimate ready',
+          to_email: 'casey@example.com',
+          status: 'SENT',
+          sent_at: '2026-07-19T00:00:00.000Z',
+          created_at: '2026-07-19T00:00:00.000Z',
+          email_type: 'estimate',
+        }],
+        jobPacks: [{ id: 'job_pack_1' }],
+        notes: [{
+          id: 'note_1',
+          body: 'Known note',
+          author_id: 'auth-user-1',
+          author_email: 'staff@example.com',
+          created_at: '2026-07-19T00:00:00.000Z',
+          updated_at: '2026-07-19T00:00:00.000Z',
+        }],
+      },
+      error: null,
+    });
+
+    fromMock.mockReturnValueOnce(projectQuery).mockReturnValueOnce(relatedQuery);
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -105,26 +119,35 @@ describe('getProjectPageSnapshot', () => {
         contactEmail: 'casey@example.com',
         contactPhone: '021',
         siteAddress: '123 Test St',
+        hasJobPacks: true,
       },
       pipeline: {
         stage: 'new',
       },
     });
     expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
-    expect(fromMock).not.toHaveBeenCalledWith('contacts');
-    expect(fromMock).not.toHaveBeenCalledWith('audit_events');
+    expect(snapshot?.emails).toHaveLength(1);
+    expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
+    expect(snapshot?.activity).toHaveLength(1);
+    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
+    expect(relatedQuery.eq).toHaveBeenCalledWith('quotes.acceptedVersions.status', 'ACCEPTED');
+    expect(relatedQuery.eq).toHaveBeenCalledWith('openInvoices.status', 'OPEN');
+    expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
+    expect(relatedQuery.limit).toHaveBeenCalledWith(50, { referencedTable: 'notes' });
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
 
-  it('starts project-scoped reads without waiting for the project row', async () => {
+  it('starts the project and embedded-related reads without waiting for either result', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     const projectResult = deferred<QueryResult>();
+    const relatedResult = deferred<QueryResult>();
 
-    fromMock.mockImplementation((table: string) => {
-      if (table === 'projects') return createQuery(projectResult.promise);
-      return createQuery({ data: [], error: null });
-    });
+    fromMock
+      .mockReturnValueOnce(createQuery(projectResult.promise))
+      .mockReturnValueOnce(createQuery(relatedResult.promise));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const pendingSnapshot = getProjectPageSnapshot(
@@ -134,10 +157,9 @@ describe('getProjectPageSnapshot', () => {
       'auth-user-1',
     );
 
-    expect(fromMock).toHaveBeenCalledWith('projects');
-    expect(fromMock).toHaveBeenCalledWith('project_notes');
-    expect(fromMock).not.toHaveBeenCalledWith('contacts');
-    expect(fromMock).not.toHaveBeenCalledWith('audit_events');
+    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
 
     projectResult.resolve({
       data: {
@@ -148,39 +170,38 @@ describe('getProjectPageSnapshot', () => {
       },
       error: null,
     });
+    relatedResult.resolve({
+      data: {
+        siteVisits: [],
+        estimates: [],
+        scheduleItems: [],
+        quotes: [],
+        openInvoices: [],
+        manualChecks: [],
+        emails: [],
+        jobPacks: [],
+        notes: [],
+      },
+      error: null,
+    });
 
     await expect(pendingSnapshot).resolves.toMatchObject({
       project: { id: `proj_${projectId}`, name: 'Concurrent Project' },
     });
   });
 
-  it('tolerates subordinate query failures and logs them through structured diagnostics', async () => {
+  it('keeps the project visible when the embedded related read fails and logs diagnostics', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
-    const responses: Record<string, QueryResult> = {
-      projects: {
-        data: {
-          id: projectId,
-          name: 'Alpha Project',
-          pipeline_stage: 'NEW',
-        },
-        error: null,
-      },
-      site_visit_events: { data: null, error: null },
-      estimates: { data: [], error: null },
-      schedule_items: { data: [], error: null },
-      quote_versions: { data: [], error: null },
-      deposit_invoices: { data: null, error: null },
-      project_task_checks: { data: [], error: null },
-      email_outbox: { data: null, error: { message: 'outbox unavailable' } },
-      job_pack_generations: { data: null, error: null },
-      project_notes: { data: [], error: null },
-    };
+    const relatedError = { message: 'related snapshot unavailable' };
 
-    fromMock.mockImplementation((table: string) => {
-      const result = responses[table];
-      if (!result) throw new Error(`Unexpected table ${table}`);
-      return createQuery(result);
-    });
+    fromMock.mockReturnValueOnce(createQuery({
+      data: {
+        id: projectId,
+        name: 'Alpha Project',
+        pipeline_stage: 'NEW',
+      },
+      error: null,
+    })).mockReturnValueOnce(createQuery({ data: null, error: relatedError }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -209,9 +230,9 @@ describe('getProjectPageSnapshot', () => {
       }),
       expect.objectContaining({
         event: 'project_snapshot.query_failed',
-        message: 'email_outbox query failed',
-        error: responses.email_outbox.error,
-        extra: { query: 'email_outbox' },
+        message: 'project related snapshot query failed',
+        error: relatedError,
+        extra: { query: 'projects+relations' },
       }),
     );
   });
