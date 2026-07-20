@@ -378,8 +378,9 @@ begin
 end;
 $$;
 
--- Provider effects can reopen only with the frozen identity, and an unresolved
--- dispatch cannot enter any path that could deliver the side effect again.
+-- Provider effects can reopen only with the frozen identity. An unresolved
+-- dispatch may enter retry only when schedule_retry atomically records the
+-- single started effect as uncertain before releasing the lease.
 do $$
 declare
   v_job public.background_jobs%rowtype;
@@ -409,14 +410,6 @@ begin
   );
 
   begin
-    perform public.background_job_schedule_retry(
-      v_job.id, 'sql-effect-worker-one', v_claim.lease_token, 1, 'PROVIDER_RETRY', 'Known test retry.'
-    );
-    raise exception 'unresolved provider dispatch entered automatic retry';
-  exception when invalid_parameter_value then
-    null;
-  end;
-  begin
     perform public.background_job_mark_permanent_failure(
       v_job.id, 'sql-effect-worker-one', v_claim.lease_token, 'PROVIDER_FAILED', 'Known test failure.'
     );
@@ -425,14 +418,13 @@ begin
     null;
   end;
 
-  perform public.background_job_record_effect_checkpoint(
-    v_job.id, 'sql-effect-worker-one', v_claim.lease_token,
-    'email_dispatch', 'email_dispatch', 'uncertain', repeat('a', 64),
-    'sql-provider', 'sql-test/quote/effect-retry', v_provider_expiry, null, '{}'::jsonb
-  );
   perform public.background_job_schedule_retry(
-    v_job.id, 'sql-effect-worker-one', v_claim.lease_token, 1, 'PROVIDER_UNCERTAIN', 'Retry inside idempotency window.'
+    v_job.id, 'sql-effect-worker-one', v_claim.lease_token, 1, 'PROVIDER_RETRY', 'Known test retry.'
   );
+  if (select status from public.background_jobs where id = v_job.id) <> 'retrying'
+     or (select state from public.background_job_effects where job_id = v_job.id) <> 'uncertain' then
+    raise exception 'unresolved provider dispatch was not atomically classified before retry';
+  end if;
 
   begin
     perform public.background_job_heartbeat(v_job.id, 'sql-effect-worker-one', v_claim.lease_token, 60);
