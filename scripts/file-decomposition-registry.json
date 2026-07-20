@@ -114,6 +114,22 @@
       ]
     },
     {
+      "id": "marketing-enquiry-route",
+      "label": "marketing enquiry route",
+      "status": "current",
+      "ownerArea": "Public enquiry intake and conversion workflow",
+      "pathPatterns": [
+        "apps/marketing/app/api/enquiry/route.ts"
+      ],
+      "whyLarge": "Request validation, indicative estimate preparation, project/contact/enquiry persistence, attachment staging, autoresponder delivery, outbox recording, attribution, and audit fallback still meet in one public route.",
+      "nextSafeExtraction": "Move enquiry persistence and autoresponder/outbox audit orchestration behind named domain owners before JOB-07 migrates accepted delivery work; keep authentication-independent request validation and truthful response shaping in the route.",
+      "focusedTests": [
+        "npm run test:marketing -- apps/marketing/app/api/enquiry/route.test.ts apps/marketing/lib/email",
+        "npm run typecheck",
+        "npm run build:marketing"
+      ]
+    },
+    {
       "id": "marketing-start",
       "label": "marketing start",
       "status": "current",

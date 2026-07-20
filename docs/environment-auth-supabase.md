@@ -7,6 +7,7 @@ This repo uses Supabase for app data and Supabase Auth for the staff portal.
 - Use `## Core Environment Variables` before running local portal, browser, email, Supabase, or operational commands.
 - Use `## Staff Portal Auth` and `## Authenticated Browser Test Account` before auth or Playwright work.
 - Use `## Supabase Setup`, `## Service Role Boundaries`, and `## RLS And Permissions` before schema, service-role, or access-policy changes.
+- Use `## Durable Background-Job Database Setup` before applying or testing JOB-01/JOB-02/JOB-03 migrations or configuring the worker/provider reconciliation boundary.
 - Use `## Troubleshooting` for missing role rows, schema-cache issues, readiness failures, or schedule fallback.
 
 ## Core Environment Variables
@@ -20,6 +21,7 @@ Most local portal work needs:
 Common optional or feature-specific variables:
 
 - `RESEND_API_KEY`
+- `RESEND_WEBHOOK_SECRET` (portal server only; verifies the untouched raw Resend/Svix webhook body at `/api/webhooks/resend` before reconciliation)
 - `EMAIL_FROM`
 - `EMAIL_REPLY_TO`
 - `EMAIL_TO_RESIDENTIAL`
@@ -99,6 +101,24 @@ GET /api/staff/v1/schedule/readiness
 
 The route should return `200` before schedule changes are considered ready.
 
+## Durable Background-Job Database Setup
+
+JOB-01 through JOB-03 add seven ordered forward migrations, `20260720_000001_background_job_foundation.sql` through `20260720_000007_background_job_provider_reconciliation.sql`. They require a Supabase-compatible Postgres target with `pgcrypto`, PGMQ extension support, `auth.users`, and the existing `public.projects` prerequisite. The sixth migration adds lease-fenced runtime timing plus aggregate queue/job and safe worker-health projections. The seventh adds the bounded provider-idempotency contract, private append-only minimal receipts, the service-role-only verified-webhook reconciliation RPC, and a separate lease-fenced local acceptance RPC that quarantines provider message conflicts. None enables a producer, commercial handler, or rollout. Applying files in the repository is not evidence that any local, staging, or production database has received them.
+
+The checked-in executable database contract is `supabase/tests/background_jobs.sql`. `npm run test:jobs:db` uses `scripts/test-background-jobs-db.mjs` to create and remove a disposable logged-PGMQ Postgres container, apply the test-only `supabase/tests/background_jobs_bootstrap.sql`, discover and transactionally apply the seven ordered background-job migrations, and execute the rollback-wrapped contract. Never point the SQL at a shared local, staging, or production database.
+
+The historical ordered migration directory is not currently independently bootstrappable from an empty database, so the background-job database harness must not claim to validate the entire migration history. Its valid scope is the minimal test roles/auth/projects prerequisite schema plus the seven background-job migrations and the rollback-wrapped SQL assertions. The bootstrap file is test support, not a production migration.
+
+As of 2026-07-20, this workstation had no `docker`, `psql`, or Supabase CLI command available. The local `npm run test:jobs:db` attempt therefore stopped at `spawnSync docker ENOENT` before starting a container. Background Jobs [run 29713940507](https://github.com/velt-design/sanctuary/actions/runs/29713940507) supplied the JOB-01/JOB-02 real-database and worker-artifact evidence: contracts and the rollback-wrapped six-migration harness passed against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, and the non-root worker container built successfully. No local, staging, production, or other shared database received these migrations, so deployment review remains separate.
+
+JOB-03 local provider, integration, worker, contract, typecheck, lint, security, and production-build gates pass. Background Jobs [run 29723041212](https://github.com/velt-design/sanctuary/actions/runs/29723041212) passes its seven-migration real-PGMQ matrix and worker artifact/container gates. Configure `RESEND_WEBHOOK_SECRET` only in the portal server secret store; do not put it in public/browser-prefixed env, marketing client config, worker logs, or test fixtures with real credentials. Repository tests use injected/mocked provider transport and signed fixtures only, never a real email delivery.
+
+## Dedicated Background Worker Environment
+
+`apps/worker` is a Node 22 server process. Every database-backed command requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; browser-prefixed Supabase variables are not accepted. The worker defaults to `BACKGROUND_JOBS_WORKER_MODE=dark`, and `active`, `once`, or `drain` additionally requires `BACKGROUND_JOBS_WORKER_ACTIVE_ENABLED=true`. JOB-02 intentionally registers no commercial handlers, so executing modes remain fail-closed until later workflow checkpoints supply complete handler coverage.
+
+The canonical variable list, bounds, health endpoints, container command, and local/hosting runbook live in `apps/worker/README.md`. Preserve its coupled lease-safety rule: heartbeat interval, RPC timeout, abort-settlement grace, and safety margin must fit strictly inside queue visibility. Store the service-role key in the hosting secret store; an optional configured worker ID is only a safe replica prefix because the process appends a per-boot UUID. Use an immutable build label and deploy dark before any producer or rollout change.
+
 ## Service Role Boundaries
 
 Use `SUPABASE_SERVICE_ROLE_KEY` only in server-owned flows:
@@ -107,6 +127,7 @@ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-owned flows:
 - Imports and migration/maintenance scripts.
 - Public token flows for quote or invoice viewing.
 - Background automation and email flows.
+- Durable background-job enqueue, worker lifecycle, safe inspection, provider-webhook reconciliation, and repair RPCs. Direct access to job/PGMQ/private-payload/private-receipt tables is not part of this permission.
 - Server-side operations that intentionally bypass RLS.
 
 Do not expose service-role access to client components.
@@ -126,6 +147,8 @@ When adding tables:
 - Grant only required roles.
 - Add server/API access through the appropriate helper.
 - Update `docs/supabase-schema-map.md` and the owning feature doc.
+
+For JOB-01/JOB-02/JOB-03, the public job tables have RLS enabled with browser-role grants revoked, and direct job-table, PGMQ, private-payload, and private provider-receipt access is revoked from `service_role` as well. The service role reaches the system only through explicitly granted security-definer RPCs, including worker runtime projections, lease-fenced local provider acceptance, and verified-webhook reconciliation; `background_job_enqueue_staff` records staff attribution but is not executable by the authenticated browser role.
 
 ## Troubleshooting
 

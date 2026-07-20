@@ -171,9 +171,12 @@
 }
 
 .metric dt {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow-wrap: normal;
   color: rgba(var(--portal-text-rgb), 0.56);
   font-size: 11px;
+  white-space: normal;
 }
 
 .metric dd {
@@ -184,6 +187,7 @@
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
+  word-break: normal;
 }
 
 .addonsSection {

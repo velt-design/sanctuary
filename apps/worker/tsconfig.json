@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": "../..",
+    "paths": {
+      "@sp/email-provider": ["packages/email-provider/src/index.ts"],
+      "@sp/jobs": ["packages/jobs/src/index.ts"]
+    },
+    "types": ["node", "vitest/globals"],
+    "allowJs": false,
+    "incremental": false,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

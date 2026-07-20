@@ -1,9 +1,9 @@
-import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
 import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
 import { customerEstimateSubject } from '@/lib/sharedEmails';
+import { sendEmail } from '@/lib/email/sendEmail';
 
 import { CustomerResidentialEmail } from '@/emails/templates/customerResidential';
 import { CustomerCommercialEmail } from '@/emails/templates/customerCommercial';
@@ -46,18 +46,16 @@ function buildCustomerEmail(enquiry: EnquiryPayload, callWindowText: string): {
   };
 }
 
-type AutoresponderAttachment = { filename: string; content: string };
+type AutoresponderAttachment = { filename: string; content: string; contentType?: string };
 
 export async function sendCustomerAutoresponder(
   enquiry: EnquiryPayload,
-  options?: { attachments?: AutoresponderAttachment[] },
-) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    throw new Error('RESEND_API_KEY is not set');
-  }
-
-  const resend = new Resend(apiKey);
+  options?: {
+    attachments?: AutoresponderAttachment[];
+    idempotencyKey?: string;
+    signal?: AbortSignal;
+  },
+): Promise<string> {
   const callWindowText = getCallWindowText(enquiry.submittedAt);
   const { subject, emailElement } = buildCustomerEmail(enquiry, callWindowText);
 
@@ -66,7 +64,7 @@ export async function sendCustomerAutoresponder(
 
   const attachments = options?.attachments?.length ? options.attachments : undefined;
 
-  await resend.emails.send({
+  const result = await sendEmail({
     from: FROM,
     to: enquiry.email,
     bcc: [BCC_INBOX],
@@ -75,5 +73,9 @@ export async function sendCustomerAutoresponder(
     html,
     text,
     ...(attachments ? { attachments } : {}),
+    ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+    ...(options?.signal ? { signal: options.signal } : {}),
   });
+
+  return result.providerMessageId;
 }

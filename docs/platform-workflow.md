@@ -98,3 +98,12 @@ Automation supports project actions, follow-ups, project tasks, email outbox rec
 - Email/outbox and audit tables: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `followup_plans`, and `followup_tasks`.
 - Canonical doc: `automation-email-audit.md`.
 - Quote/invoice email side effects remain owned by `quotes-invoices-job-packs.md`.
+
+## Durable Background Work
+
+The durable background system is technical infrastructure and remains separate from the business-facing Running Jobs workflow.
+
+- `packages/jobs` owns job kinds, safe runtime contracts, retry/effect policy, and staff-facing state labels.
+- Supabase owns the logged queue, durable ledger, protected frozen payloads, leases, events, effect checkpoints, worker records, and RPC boundary.
+- `apps/worker` owns generic polling, claim/heartbeat/visibility, bounded concurrency, retry classification, shutdown, reconciliation, safe logs, and health.
+- JOB-02 ships the worker dark by default with no commercial handlers or app producers enabled. Quote, invoice, job-pack, automation, and outbox behavior remains on its existing owner until the named later checkpoint migrates it atomically.

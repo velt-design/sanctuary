@@ -15,6 +15,7 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 - Quote domain helpers: `apps/portal/lib/quotes`.
 - Deposit invoice domain helpers: `apps/portal/lib/invoices`.
 - Transactional email helpers and templates: `apps/portal/lib/emails`.
+- Shared email-provider transport contract: `packages/email-provider` (`@sp/email-provider`).
 - Job-pack domain helpers: `apps/portal/lib/jobPacks` and output helpers in `apps/portal/lib/outputs`.
 - Public quote and invoice viewers: `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/invoice/[invoiceId]`.
 - Public token helpers: `apps/marketing/lib/quotes/publicQuote.ts` and `apps/marketing/lib/invoices/publicInvoice.ts`.
@@ -47,6 +48,10 @@ The project page's Activity tab surfaces a current-design snapshot bar that pick
 - Declining a sent quote marks it declined. Declining an accepted quote also voids the open deposit invoice for the quote.
 
 Do not update quote status or tokens with ad hoc table writes. Use the quote domain helpers and staff/public routes.
+
+JOB-03 changes the transport boundary, not quote ownership. `apps/portal/lib/emails/sendTransactionalEmail.ts` remains a backward-compatible, request-bound adapter for current quote and invoice callers, but now delegates message normalization, timeout/abort behavior, and typed Resend outcomes to `@sp/email-provider`. It exposes only safe error codes/status and a provider message ID; raw provider responses and customer content must not be logged. Deposit-invoice delivery remains authoritative here until JOB-04, and quote send/resend remains authoritative here until JOB-05. The dark worker has no quote or invoice handler, producer, or rollout.
+
+When a later checkpoint moves one of these flows, it must freeze the exact public token and complete message/attachment bytes under one stable job/effect provider key before dispatch. An uncertain delivery may repeat only that same key and request inside the frozen provider window; it must never create a fresh key or token. Provider acceptance, including signed-webhook reconciliation, resumes the idempotent quote/invoice finaliser but is not itself a quote/invoice state transition.
 
 ## Pricing Source Boundary
 
@@ -106,6 +111,8 @@ Focused commands:
 
 ```bash
 npm run portal:side-effects
+npm run test:email-provider
+npm run test:portal -- apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/app/api/webhooks/resend/route.test.ts apps/portal/lib/backgroundJobs/providerWebhookRepository.test.ts
 npm run test:portal -- apps/portal/lib/quotes
 npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/lib/jobPacks
@@ -114,6 +121,8 @@ npm run test:marketing
 ```
 
 Run `npm run portal:side-effects` first for the mechanical baseline. It runs the quote/invoice/job-pack focused tests and the portal build, without authenticated browser flows, database seeding, or real email delivery. The build step runs `npm run portal:build-env` first, so an active portal dev server or Next build lock fails early with a non-destructive manual-stop instruction. Use the narrower commands when iterating inside one owner area.
+
+Provider-package, adapter, and webhook tests use injected/mocked transport and signed fixtures only. A real commercial email, shared database migration, or production webhook is never a repository test prerequisite. JOB-03 local provider, integration, worker, contract, typecheck, lint, security, and production-build gates pass. Background Jobs [run 29723041212](https://github.com/velt-design/sanctuary/actions/runs/29723041212) passes all seven migrations on upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, plus the contracts/integrations and worker artifact/container gates.
 
 Current local signal from 2026-05-03: `npm run portal:side-effects` passed with 8 quote/invoice/job-pack test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated. `npm run test:marketing` also passed with 9 files and 37 tests, including public quote accept/attachment routes, public invoice/source quote PDF routes, and source guards that keep public token comparisons hash-bound.
 

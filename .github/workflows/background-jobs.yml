@@ -1,0 +1,156 @@
+name: Background Jobs
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".dockerignore"
+      - ".github/workflows/background-jobs.yml"
+      - "apps/worker/**"
+      - "apps/portal/app/api/webhooks/resend/**"
+      - "apps/portal/lib/backgroundJobs/providerWebhook*"
+      - "apps/portal/lib/emails/sendTransactionalEmail*"
+      - "apps/marketing/app/api/contact/**"
+      - "apps/marketing/app/api/enquiry/**"
+      - "apps/marketing/lib/email/**"
+      - "packages/email-provider/**"
+      - "packages/jobs/**"
+      - "scripts/service-role-access-report.mjs"
+      - "scripts/test-background-jobs-db.mjs"
+      - "supabase/migrations/*background_job*.sql"
+      - "supabase/tests/background_jobs*.sql"
+      - "test/background-jobs-migration.test.ts"
+      - "test/repo-security.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "knip.json"
+  push:
+    branches:
+      - main
+    paths:
+      - ".dockerignore"
+      - ".github/workflows/background-jobs.yml"
+      - "apps/worker/**"
+      - "apps/portal/app/api/webhooks/resend/**"
+      - "apps/portal/lib/backgroundJobs/providerWebhook*"
+      - "apps/portal/lib/emails/sendTransactionalEmail*"
+      - "apps/marketing/app/api/contact/**"
+      - "apps/marketing/app/api/enquiry/**"
+      - "apps/marketing/lib/email/**"
+      - "packages/email-provider/**"
+      - "packages/jobs/**"
+      - "scripts/service-role-access-report.mjs"
+      - "scripts/test-background-jobs-db.mjs"
+      - "supabase/migrations/*background_job*.sql"
+      - "supabase/tests/background_jobs*.sql"
+      - "test/background-jobs-migration.test.ts"
+      - "test/repo-security.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "knip.json"
+  workflow_dispatch:
+
+jobs:
+  background-job-contracts:
+    name: Background jobs contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Jobs package typecheck
+        run: npx tsc -p packages/jobs/tsconfig.typecheck.json --noEmit --incremental false
+
+      - name: Email provider package typecheck
+        run: npx tsc -p packages/email-provider/tsconfig.typecheck.json --noEmit --incremental false
+
+      - name: Job contracts and security boundaries
+        run: npm run test:jobs
+
+      - name: Email provider application integrations
+        run: npm run test:email-integrations
+
+  worker-runtime:
+    name: Worker runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Worker typecheck
+        run: npm run typecheck:worker
+
+      - name: Worker tests
+        run: npm run test:worker
+
+      - name: Worker and provider lint
+        run: npx eslint apps/worker packages/email-provider packages/jobs
+
+      - name: Worker production build
+        run: npm run build:worker
+
+      - name: Built CLI smoke
+        run: node apps/worker/dist/worker.mjs --help
+
+      - name: Service-role boundary
+        run: npm run service-role:changed:strict
+
+      - name: Worker container build
+        run: docker build --file apps/worker/Dockerfile --tag sanctuary-worker:ci .
+
+  database-contract:
+    name: Database contract (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: upstream-pgmq-pg18
+            image: "ghcr.io/pgmq/pg18-pgmq:v1.10.0"
+            postgres_major: "18"
+            pgmq_version: "1.10.0"
+          - database: supabase-postgres-pg17
+            image: "public.ecr.aws/supabase/postgres:17.6.1.107"
+            postgres_major: "17"
+            pgmq_version: "1.5.1"
+    env:
+      BACKGROUND_JOBS_DB_IMAGE: ${{ matrix.image }}
+      BACKGROUND_JOBS_DB_EXPECTED_POSTGRES_MAJOR: ${{ matrix.postgres_major }}
+      BACKGROUND_JOBS_DB_EXPECTED_PGMQ_VERSION: ${{ matrix.pgmq_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Isolated logged-PGMQ database contract
+        run: npm run test:jobs:db

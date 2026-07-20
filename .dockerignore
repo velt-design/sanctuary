@@ -1,0 +1,16 @@
+.git
+.github
+.codex
+.next
+**/.next
+**/.env*
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/out
+playwright-report
+test-results
+tmp
+*.pem
+*.log

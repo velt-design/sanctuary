@@ -1,19 +1,22 @@
 # Sanctuary
 
-Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, staff portal, and shared business packages.
+Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, staff portal, dedicated background worker, and shared business packages.
 
 ## Workspace Map
 
 - `apps/marketing`: public Next.js marketing site on port `3000`.
 - `apps/portal`: staff portal Next.js app on port `3001`.
+- `apps/worker`: long-running Node 22 background worker with a private health endpoint; through JOB-03 it defaults to dark mode and has no enabled commercial workflow handlers.
 - `packages/costing`: canonical costing engine and pricing config.
+- `packages/email-provider`: canonical Resend transport, frozen-request hashing, idempotency, timeout, and webhook-verification contracts.
 - `packages/geometry`: canonical pergola and house geometry solvers.
+- `packages/jobs`: canonical durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transitions.
 - `packages/quote-format`: shared quote formatting helpers.
 - `packages/theme`: shared theme tokens.
 - `supabase`: baseline SQL and ordered migrations.
 - `scripts`: maintenance, import, optimization, invite, and audit scripts.
 - `playwright`: authenticated portal browser and performance smoke tests.
-- `.github`: CI workflows for portal quality, Lighthouse, and governance.
+- `.github`: CI workflows for portal quality, Background Jobs contracts, Lighthouse, and governance.
 
 Other root-level directories are active repo territory:
 
@@ -37,6 +40,8 @@ At minimum, local portal and marketing work need:
 - `SUPABASE_SERVICE_ROLE_KEY` for server-owned admin tooling, imports, and protected write flows.
 
 Email, tracking, public URL, and Playwright variables are documented in `docs/environment-auth-supabase.md` and `docs/testing-and-qa.md`.
+
+The worker uses `SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY`, never browser-prefixed credentials. Its complete fail-closed environment contract, modes, and local commands live in `apps/worker/README.md`.
 
 ## Docs
 
