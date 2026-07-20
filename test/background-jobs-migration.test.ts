@@ -905,13 +905,19 @@ describe('Wave 3 background-job migrations', () => {
 
   it('repairs missing, archived, or stale queue pointers around set_vt before releasing a lease', () => {
     const visibilityRepair = latestFunctionDefinition(
-      contractHardening,
+      allMigrations,
       'private.background_job_set_visibility_or_repair',
     );
     expect(visibilityRepair).toMatch(
       /from pgmq\.set_vt\('portal_background_jobs', p_message_id, p_delay_seconds\) updated_message/i,
     );
     expect(visibilityRepair).toMatch(/v_message_found := found/i);
+    expect(visibilityRepair).toMatch(
+      /if v_message_found then[\s\S]*?background_job_queue_message_matches\([\s\S]*?v_message\.message/i,
+    );
+    expect(visibilityRepair).not.toMatch(
+      /if v_message_found\s+and[\s\S]*?v_message\.message/i,
+    );
     expect(visibilityRepair).toMatch(
       /private\.background_job_queue_message_matches/i,
     );

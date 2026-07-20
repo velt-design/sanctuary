@@ -158,6 +158,133 @@ as $$
   end;
 $$;
 
+-- Replace the JOB-01 visibility helper forward so a missing/archived message
+-- never dereferences an unassigned record. PL/pgSQL does not guarantee that a
+-- boolean AND will skip its right-hand expression.
+create or replace function private.background_job_set_visibility_or_repair(
+  p_job_id uuid,
+  p_contract_version integer,
+  p_message_id bigint,
+  p_delay_seconds integer,
+  p_worker_id text,
+  p_reason text
+)
+returns bigint
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_job public.background_jobs%rowtype;
+  v_message record;
+  v_existing_message jsonb;
+  v_pointer_found boolean := false;
+  v_pointer_matches boolean := false;
+  v_message_found boolean := false;
+  v_replacement_message_id bigint;
+  v_missing_reason text;
+begin
+  if p_delay_seconds is null or p_delay_seconds not between 0 and 72000 then
+    raise exception 'queue visibility delay must be between 0 seconds and 20 hours'
+      using errcode = '22023';
+  end if;
+  if p_reason is null or not private.background_job_safe_code(p_reason) then
+    raise exception 'invalid queue repair reason' using errcode = '22023';
+  end if;
+
+  select job.*
+  into strict v_job
+  from public.background_jobs job
+  where job.id = p_job_id
+  for update;
+
+  if v_job.contract_version <> p_contract_version
+     or v_job.queue_message_id is distinct from p_message_id then
+    raise exception 'queue visibility request does not match the locked job pointer'
+      using errcode = '55000';
+  end if;
+
+  if p_message_id is not null then
+    select queue_message.message
+    into v_existing_message
+    from pgmq.q_portal_background_jobs queue_message
+    where queue_message.msg_id = p_message_id;
+    v_pointer_found := found;
+    v_pointer_matches := v_pointer_found and private.background_job_queue_message_matches(
+      v_existing_message,
+      p_job_id,
+      p_contract_version
+    );
+  end if;
+
+  if v_pointer_matches then
+    select updated_message.*
+    into v_message
+    from pgmq.set_vt('portal_background_jobs', p_message_id, p_delay_seconds) updated_message;
+    v_message_found := found;
+  end if;
+
+  if v_message_found then
+    if private.background_job_queue_message_matches(
+      v_message.message,
+      p_job_id,
+      p_contract_version
+    ) then
+      return p_message_id;
+    end if;
+  end if;
+
+  v_missing_reason := p_reason || case
+    when v_pointer_found and not v_pointer_matches then '_stale_message'
+    else '_missing_message'
+  end;
+  perform private.background_job_insert_event(
+    v_job.id,
+    p_message_id,
+    'queue_archive_missing',
+    v_job.status,
+    v_job.status,
+    v_job.current_phase,
+    v_job.attempt_count,
+    p_worker_id,
+    null,
+    'QUEUE_MESSAGE_MISSING',
+    jsonb_build_object('reason', v_missing_reason)
+  );
+
+  v_replacement_message_id := private.background_job_send_message(
+    v_job.id,
+    v_job.contract_version,
+    p_delay_seconds
+  );
+
+  update public.background_jobs
+  set queue_message_id = v_replacement_message_id
+  where id = v_job.id
+    and queue_message_id is not distinct from p_message_id;
+
+  if not found then
+    raise exception 'background-job queue pointer changed during repair' using errcode = '40001';
+  end if;
+
+  perform private.background_job_insert_event(
+    v_job.id,
+    v_replacement_message_id,
+    'queue_repaired',
+    v_job.status,
+    v_job.status,
+    v_job.current_phase,
+    v_job.attempt_count,
+    p_worker_id,
+    null,
+    null,
+    jsonb_build_object('reason', v_missing_reason)
+  );
+
+  return v_replacement_message_id;
+end;
+$$;
+
 -- A signed provider acceptance supersedes only classifications that the
 -- acceptance itself proves stale. Identity conflicts and business-finaliser
 -- failures deliberately remain operator-visible.
