@@ -2,7 +2,7 @@
 
 Status: Active evolving roadmap.
 
-Last updated: 2026-06-01.
+Last updated: 2026-07-20.
 
 Purpose: keep the highest-leverage usability work visible as the portal matures from a capable internal tool into a fast, trusted operating system for staff. This doc is intentionally product-facing: it tracks workflow clarity, visual hierarchy, user confidence, and the next UX passes worth doing.
 
@@ -28,7 +28,7 @@ The main UX standard:
 1. **Project Page Command Centre**
    - Goal: make the project page the clearest operational hub.
    - Improve current status, next action, latest note/activity, current design/quote state, and obvious primary actions.
-   - Current PR1: polish the project page Activity/default view first, keeping the current-design snapshot on top, making Activity/project notes the wider left column, moving Tasks into a compact right action rail, and moving Details to a tab on laptop/stacked layouts so the command centre stays visible. A dedicated Next Action card remains deferred.
+   - Stage 1 complete: the activity-key default is now labelled Overview; a strict server-owned card shows exact current design, quote/estimate version, stored customer price, delivery, costing freshness, source failures, and newer-estimate context. Existing customer context, notes, tasks, specialist tabs, and responsive Details remain available. Ownership and a canonical Next Action remain Stage 2 work.
 
 2. **Activity System V2**
    - Goal: turn activity into a useful cross-workflow timeline, not just a note list.
@@ -77,7 +77,7 @@ The main UX standard:
 
 ## Current Sequence
 
-1. Project Page Command Centre polish.
+1. Project Command Centre ownership and canonical next action.
 2. Activity category expansion and timeline clarity.
 3. Dashboard/project task evolution.
 4. Quote/estimate state summary standardisation.

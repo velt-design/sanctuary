@@ -1,10 +1,18 @@
 # Project Operational Command Centre Roadmap
 
 Status: Active programme tracker  
-Current stage: Stage 0 preparation  
+Current stage: Stage 1 complete in the working tree
 Product definition: Complete  
-Implementation: Not started  
-Next action: Run the Stage 0 read-only repository assessment
+Implementation: Stage 1 complete; not published
+Next action: Review Stage 1 evidence, then explicitly approve or revise Stage 2 before implementation
+
+## Index
+
+- [Document hierarchy](#document-hierarchy)
+- [Stage sequence](#stage-sequence)
+- [Stage status](#stage-status)
+- [Operating rules](#operating-rules)
+- [Stage 1 handoff](#stage-1-handoff)
 
 ## Programme purpose
 
@@ -90,7 +98,7 @@ Read-only repository investigation.
 
 #### Status
 
-Next.
+Complete.
 
 ---
 
@@ -125,7 +133,7 @@ Read-only information derived from existing trusted data wherever possible.
 
 #### Status
 
-Not started.
+Complete in the working tree; not published.
 
 ---
 
@@ -309,8 +317,8 @@ Not started.
 | Stage | Status | Current PR | Completion evidence |
 | --- | --- | --- | --- |
 | Product definition | Complete | - | Vision, V1 specification, roadmap, and Stage 0 prompt approved |
-| Stage 0: Repository assessment | Next | - | Architecture content and approved Stage 1 prompt |
-| Stage 1: Read-only shell | Not started | - | - |
+| Stage 0: Repository assessment | Complete | - | Repository-grounded architecture, ownership, boundary, risk, and Stage 1 sequence recorded against baseline `ea1641c6` |
+| Stage 1: Read-only shell | Complete in working tree | Not published | Strict read model/API/query, Overview UI, legacy retirement, deterministic fixtures, focused/project/browser/performance tests, typecheck, lint, isolated production build, and unchanged bundle-budget assertions |
 | Stage 2: Ownership and primary action | Not started | - | - |
 | Stage 3: Lead-to-quote workstreams | Not started | - | - |
 | Stage 4: Communication and timeline | Not started | - | - |
@@ -346,6 +354,20 @@ Not started.
 - No implementation goal may duplicate canonical design, quote, price, communication, or issue state.
 - Do not weaken access, loading, local-first, performance, bundle, or historical-record guarantees to make a stage easier.
 - Stage 0 may recommend splitting an implementation stage, but may not broaden V1.
+
+## Stage 1 handoff
+
+```text
+Stage completed: Stage 1 - Read-only Command Centre shell
+Pull request: None; working-tree implementation only, not published
+Repository baseline: ea1641c6c6647d22603d07b9f980cc3a1dad95fc
+Product behaviour delivered: Overview default label; strict current quote/estimate, source, price, delivery, and costing-freshness read model; existing customer context, notes, tasks, Details, and specialist workflows retained
+Verification completed: selector/loader/route/component/access tests; 322 project tests; 15 browser checks passed with 1 conditional workbench skip; 9 fixture performance checks; repository typecheck and lint; isolated production build; all unchanged bundle budgets; docs, architecture, file, ownership, and strict dead-code reports
+Known limitations: authenticated smoke and production performance could not be rerun locally because PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD were unavailable; the canonical build preflight was correctly blocked by the user's pre-existing port-3001 dev server, so the same production build and budget assertions ran against an isolated Next output directory
+Architecture document updates: Stage 0 repository contract completed and Stage 1 implementation/evidence recorded
+Roadmap updates: Stage 0 and Stage 1 complete; Stage 2 remains unapproved
+Next approved stage: None. Stage 2 requires explicit approval.
+```
 
 ## Stage handoff template
 

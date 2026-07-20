@@ -8,6 +8,7 @@ const baseUrl = process.env.PORTAL_BASE_URL?.trim() || '';
 const fixturePaths = [
   '/staff/projects/fixture-roof/design-workbench?fixture=mono-standard',
   '/qa/projects-index-mutation-fixture',
+  '/qa/project-command-centre-fixture?scenario=standard-estimate',
 ];
 const requiredFixtureFlags =
   'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1 and ENABLE_PORTAL_QA_FIXTURES=1.';

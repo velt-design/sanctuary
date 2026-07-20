@@ -1,0 +1,101 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 0.875rem;
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.activityColumn,
+.tasksColumn {
+  min-width: 0;
+}
+
+.columnHeader,
+.contextCard h2 {
+  color: rgba(var(--portal-text-rgb), 0.72);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.contextCard {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid rgba(var(--portal-border-rgb), 0.82);
+  border-radius: 0.65rem;
+  background: rgba(var(--portal-bg-surface-rgb), 0.86);
+  padding: 0.875rem 1rem;
+}
+
+.contextGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.contextGrid div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.contextGrid dt {
+  color: rgba(var(--portal-text-rgb), 0.55);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.contextGrid dd {
+  color: rgba(var(--portal-text-rgb), 0.85);
+  font-size: 0.84rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.queryState,
+.refreshNotice {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(var(--portal-border-rgb), 0.82);
+  border-radius: 0.65rem;
+  background: rgba(var(--portal-text-rgb), 0.035);
+  color: rgba(var(--portal-text-rgb), 0.68);
+  font-size: 0.84rem;
+  padding: 0.875rem 1rem;
+}
+
+.queryState button,
+.refreshNotice button {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--portal-accent-rgb));
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .layout,
+  .contextGrid {
+    grid-template-columns: 1fr;
+  }
+}

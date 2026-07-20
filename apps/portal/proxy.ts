@@ -14,6 +14,7 @@ const PUBLIC_FILE = /\.(.*)$/;
 const FIXTURE_WORKBENCH_INTERNAL_PATH = '/qa/design-workbench-fixture';
 const FIXTURE_WORKBENCH_STAFF_PATH = '/staff/projects/fixture-roof/design-workbench';
 const PROJECT_MUTATION_FIXTURE_PATH = '/qa/projects-index-mutation-fixture';
+const PROJECT_COMMAND_CENTRE_FIXTURE_PATH = '/qa/project-command-centre-fixture';
 
 type CookieToSet = {
   name: string;
@@ -45,7 +46,11 @@ function isFixtureWorkbenchInternalPath(path: string): boolean {
 }
 
 function isPortalQaFixtureInternalPath(path: string): boolean {
-  return isFixtureWorkbenchInternalPath(path) || path === PROJECT_MUTATION_FIXTURE_PATH;
+  return (
+    isFixtureWorkbenchInternalPath(path) ||
+    path === PROJECT_MUTATION_FIXTURE_PATH ||
+    path === PROJECT_COMMAND_CENTRE_FIXTURE_PATH
+  );
 }
 
 function isStaffFixtureWorkbenchRequest(req: NextRequest): boolean {

@@ -47,4 +47,6 @@ The worker uses `SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY`, never browser-p
 
 Start with `AGENTS.md` for coding-agent guidance, then `docs/README.md` for the canonical docs index.
 
+Project Operational Command Centre work is governed by the product contract in `docs/project-command-centre-v1.md`, the current programme state in `docs/project-command-centre-roadmap.md`, and the repository contract in `docs/project-command-centre-architecture.md`.
+
 The docs are intentionally current-state references plus active guardrails. Historical implementation plans and stale specs should not be reintroduced unless they are rewritten as current references, active operating rules, or explicit decision records.

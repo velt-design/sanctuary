@@ -3,12 +3,17 @@ import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import type { ProjectTabModuleKey } from './projectTabModules';
+import { projectCommandCentreQueryOptions } from '@/lib/queries/projects';
 
 export async function preloadProjectTabData(
   tab: ProjectTabModuleKey,
   context: { host: string; projectId: string; queryClient: QueryClient },
 ): Promise<void> {
   const { host, projectId, queryClient } = context;
+  if (tab === 'activity') {
+    await queryClient.prefetchQuery(projectCommandCentreQueryOptions(host, projectId));
+    return;
+  }
   if (tab === 'estimates' || tab === 'job-packs') {
     await queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(host, projectId));
     return;

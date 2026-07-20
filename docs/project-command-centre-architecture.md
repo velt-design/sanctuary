@@ -1,616 +1,367 @@
 # Project Operational Command Centre Architecture
 
-Status: Stage 0 output template  
-Repository baseline: Not yet verified  
-Implementation status: Not started
+Status: Stage 0 assessment complete; Stage 1 current-state contract implemented in the working tree.
 
-## How to use this document
+Baseline assessed: `ea1641c6c6647d22603d07b9f980cc3a1dad95fc` on 2026-07-20.
 
-This document is populated during Stage 0 after inspecting the actual repository. It records repository-grounded technical ownership and implementation decisions for the approved product contract in `project-command-centre-v1.md`.
+Product authority: `project-command-centre-v1.md`. Programme authority: `project-command-centre-roadmap.md`.
 
-Do not fill gaps with product speculation.
+## How To Use This Document
 
-For every material claim:
-
-- Cite an exact repository path.
-- Name the relevant function, type, route, migration, test, or script where useful.
-- Distinguish verified current behaviour from a recommendation.
-- Record the repository commit or branch inspected.
-- Mark production deployment or data assumptions that cannot be verified from source.
-- State the owning canonical document.
-
-Future implementation goals must update this document when technical ownership, schema, API boundaries, query keys, or component boundaries change.
+- Read sections 3, 4, 10, 11, 14, 16, and 17 before changing the Stage 1 read model or Overview.
+- Read the later-stage ownership, communication, migration, and risk sections before proposing Stage 2 or later work.
+- Treat repository evidence as current-state fact and the V1 specification as product policy.
+- Do not move a later-stage workflow into Stage 1 by extending the read model or card.
+- Keep this document, the roadmap, the project current-state doc, and testing commands aligned when implementation changes.
 
 ## 1. Repository baseline and commit
 
-Record:
+The Stage 0 assessment used clean repository head `ea1641c6c6647d22603d07b9f980cc3a1dad95fc`. Stage 1 was then implemented as a bounded working-tree change.
 
-- Repository.
-- Default branch.
-- Inspected commit SHA.
-- Inspection date.
-- Local checkout path, if used.
-- `git status --short` result.
-- Relevant open pull requests or branches that may affect the plan.
-- Whether code-search results correspond to the inspected commit.
-- Any uncommitted changes deliberately left untouched.
+The project-page architecture at the baseline already had the performance and trust foundations Stage 1 needed:
+
+- A user-owned TanStack Query client.
+- An immediate current-user project/contact summary followed by the complete project snapshot.
+- Five truthful project read states.
+- Access-ending data hiding.
+- A synchronous project frame and lazy workflow tabs.
+- Responsive desktop rails and a narrow-layout `Details` tab.
+- Existing Project Detail bundle and authenticated performance budgets.
+
+Workbench Gate 0 is `N/A`. Stage 1 does not touch drawings, geometry, workbench routes, or costing inputs. It removes the unsafe current-design fallback rather than building on it, and it has no Phase 2 workbench/cost-engine dependency.
 
 ## 2. Repository documentation and change routing
 
-Record the required guidance read before investigation:
+Stage 1 is owned by the staff-workflow-spine lane in `target-architecture.md`.
 
-- `AGENTS.md`.
-- `docs/README.md`.
-- `docs/agent-playbook.md`.
-- `docs/change-routing.md`.
-- `docs/maintainability-principles.md`.
-- `docs/portal-production-readiness.md`.
-- `docs/portal-ux-roadmap.md`.
-- `docs/projects-contacts-estimates-calculator.md`.
-- `docs/quotes-invoices-job-packs.md`.
-- `docs/automation-email-audit.md`.
-- `docs/supabase-schema-map.md`.
-- `docs/staff-api-auth-contracts.md`.
-- `docs/testing-and-qa.md`.
-- Other area-owner docs discovered during investigation.
+Required owner and guardrail docs are:
 
-State:
+- `project-command-centre-v1.md`: product behavior and exclusions.
+- `project-command-centre-roadmap.md`: programme stage and evidence.
+- This document: repository ownership and implementation contract.
+- `projects-contacts-estimates-calculator.md`: project snapshot, project page, estimate locks, and current Overview behavior.
+- `staff-api-auth-contracts.md`: staff API and auth-bound client behavior.
+- `quotes-invoices-job-packs.md`: quote history, totals, and status ownership.
+- `portal-ux-roadmap.md`: staff-facing command-centre priority.
+- `portal-production-readiness.md`: readiness and budget status.
+- `testing-and-qa.md`: commands, fixtures, browser, bundle, smoke, and performance gates.
+- `maintainability-principles.md`, `file-decomposition-and-ownership.md`, and `code-retirement-and-bloat-control.md`: small-owner and retirement rules.
 
-- Which existing canonical docs must be updated in each stage.
-- How the new `docs/product/` documents will be linked from `docs/README.md`.
-- Whether `docs/change-routing.md` needs a Project Command Centre route.
-- Whether the product documents should remain in `docs/product/` or move to the canonical docs root to fit repository conventions.
-- How docs guards and navigation checks will be satisfied.
+`change-routing.md` routes `apps/portal/lib/projects/**`, staff project APIs, Project Page components, and command-centre fixtures/tests to this owner set.
 
 ## 3. Existing project-page architecture
 
-Map:
+The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the internal default tab key `activity`. The staff-facing label is `Overview`; preserving the key keeps URLs, old links, lazy-loading boundaries, and tests compatible.
 
-- Project route entrypoints.
-- Server and client boundaries.
-- Project snapshot query flow.
-- Default tab resolution.
-- Current Activity module.
-- Project frame, header, rails, responsive Details behaviour, and tab lazy boundaries.
-- Current CSS ownership.
-- Existing project-page loading and error components.
-- Existing tests and browser fixtures.
+`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns the header and pipeline. `ProjectPageShell.tsx` owns responsive rails and the narrow-layout Details tab. `ProjectMainTabs.tsx` owns tab URL state and intent preloading.
 
-For each item, identify:
+The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
 
-- Path.
-- Responsibility.
-- Whether it can be reused unchanged.
-- Whether Stage 1 must extract, replace, or extend it.
-- Bundle or maintainability risk.
+Specialist workflows remain separate lazy tabs:
+
+- Designs (`estimates` key).
+- Quotes.
+- Invoices.
+- Job Packs when available.
+- Emails.
+- Details on narrow layouts.
+
+Stage 1 does not add logic to `QuotesTab.tsx` or `EstimatesTab.tsx`.
 
 ## 4. Existing current-design resolution
 
-Inspect and document:
+The baseline browser bar used three client queries and `lib/projects/currentDesign/resolve.ts`. Its quote source lookup could silently fall back to an active or latest unrelated estimate, and quote price formatting could fall back to estimate price. Those behaviors conflicted with the approved V1 contract.
 
-- Current quote selection precedence.
-- Current estimate selection.
-- Quote-to-estimate source linking.
-- Fallback behaviour when a source estimate is missing.
-- Design-summary extraction.
-- Price fallback behaviour.
-- Multiple-module summary.
-- Declined quote treatment.
-- Existing tests.
-- Consumers beyond the project Activity bar.
+Stage 1 retires that resolver, summarizer, and bar. The server-owned selector now lives in `apps/portal/lib/projects/commandCentre/resolve.ts` and applies:
 
-Explicitly answer:
+1. Newest created `ACCEPTED` quote.
+2. Else newest created `SENT` quote.
+3. Else newest created `DRAFT` quote.
+4. Else newest unlocked draft estimate.
+5. Else newest non-archived draft estimate.
+6. Else no current design.
 
-- Where the current resolver must remain unchanged for existing consumers.
-- Whether the Command Centre needs a strict sibling resolver or a safe change to the shared resolver.
-- How to prevent a missing quote source from borrowing another estimate.
-- How quote price and estimate price will remain distinguishable.
-- Which tests prove historical quote accuracy.
+Additional strict rules:
+
+- `DECLINED` is historical and never current.
+- A selected quote may use only `source_estimate_version_id`.
+- A missing exact source produces `Source design unavailable`; no other estimate is borrowed.
+- A selected quote may use only its raw stored `total_inc_gst_cents`.
+- A missing or invalid quote total produces `Price unavailable`; no estimate price is borrowed.
+- Estimate price uses the selected row's stored `summary_json.total`; Stage 1 does not invoke costing.
+- Accepted quote plus a newer unrelated estimate keeps the accepted quote authoritative and reports the newer estimate separately.
+- Multiple accepted quotes select the newest deterministically and emit an integrity warning.
 
 ## 5. Estimate and quote domain ownership
 
-Map:
+Estimate persistence and locks remain owned by `apps/portal/lib/estimates`. Quote status, totals, send history, public tokens, PDFs, email, invoice creation, and job-pack effects remain owned by `apps/portal/lib/quotes` and their specialist routes.
 
-- Estimate tables and types.
-- Estimate version labels.
-- Active-draft semantics.
-- Estimate detail and metadata queries.
-- Estimate pricing freshness and stored-costing semantics.
-- Estimate editability and lock rules.
-- Quote, quote-version, and line-item ownership.
-- Quote source-estimate fields.
-- Quote total storage.
-- Quote send-readiness logic.
-- Quote send, resend, accept, decline, and revision paths.
-- Quote send logs and delivery evidence.
-- Relevant public-token and side-effect boundaries.
+The command centre is a read model only. It reuses `computeEstimateEditability()` to identify the unlocked active draft boundary. It does not change statuses, editability, line items, totals, tokens, source metadata, artifacts, or downstream records.
 
-Identify:
+Estimate design labels reuse quote module formatters. Costing freshness is derived only from stored `outputs.pricing_sync_state`:
 
-- Which values can be shown read-only in Stage 1.
-- Which values require a new Command Centre read model.
-- Which business rules must call existing domain helpers rather than be reimplemented.
+- `current` -> Current costing.
+- `stale` -> Stored costing may be stale.
+- Other retained output -> Stored costing.
+- No usable output -> Costing unavailable.
+
+No costing engine or costing input layer is imported.
 
 ## 6. Existing project snapshot
 
-Document:
+`ProjectPageSnapshot` remains the complete project-detail read model for identity, pipeline, tasks, notes, activity, and emails. Stage 1 does not extend it.
 
-- Snapshot type.
-- Snapshot API route.
-- Summary route.
-- Query keys and options.
-- Placeholder and cache seeding.
-- Authenticated server clients.
-- Relations currently embedded.
-- Relation limits.
-- Freshness and generated timestamp.
-- Current activity, email, note, task, and project fields.
-- Access-ending behaviour.
-- Refresh-failed behaviour.
-- Existing tests.
+The snapshot remains shared with project routes and workbench route context, so putting commercial version arrays or estimate inputs into it would enlarge unrelated reads and weaken its ownership. The command-centre endpoint is therefore a separate read model and query key.
 
-Produce a table:
+The Overview composes:
 
-| Required V1 value | Already in snapshot | Available elsewhere | New read model needed | Notes |
-| --- | --- | --- | --- | --- |
+- Header/project identity from the existing project snapshot/summary.
+- Customer/site/reference context from the existing project snapshot/summary.
+- Current design and commercial facts from the dedicated command-centre response.
+- Notes and stage tasks only after the full project snapshot is ready.
 
-Recommend whether the Overview should:
-
-- Extend the main snapshot.
-- Use separate lazy queries.
-- Use a dedicated Command Centre endpoint.
-- Use a combination.
-
-Justify the recommendation against performance, source ownership, and failure semantics.
+Placeholder task/note arrays never produce a false empty state.
 
 ## 7. Existing ownership fields
 
-Investigate:
+Stage 1 introduces no Sales, Design, or Estimating owner field. No existing field was found that could truthfully serve as canonical multi-role ownership without redefining meaning.
 
-- `sales_owner_id`.
-- `designer_owner_id`.
-- `pm_owner_id`.
-- Design List designer fields.
-- Portal users and staff identity.
-- Any estimating-owner equivalent.
-- Owner UI or APIs.
-- Migration sources.
-- RLS and grants.
-- Production compatibility fallbacks.
-- Current data population.
-
-For each owner concept, record:
-
-| Owner role | Candidate canonical source | Current consumers | Migration status | Data completeness risk | Recommendation |
-| --- | --- | --- | --- | --- | --- |
-
-Explicitly determine:
-
-- Whether legacy owner fields are in ordered migrations or only setup/baseline SQL.
-- Whether they are safe to use in production.
-- Whether Design Owner should derive from a request or remain a project role.
-- The smallest model for Estimating Owner.
-- How owner display names resolve without copying names.
-- Which authenticated API owns assignment.
+Stage 2 must decide schema ownership, role semantics, admin/staff update permissions, backfill, audit, and local-first posture before exposing editable owners. Project creator, note author, quote sender, and task assignee are not ownership substitutes.
 
 ## 8. Existing next-action and task systems
 
-Map separately:
+The project snapshot already resolves stage tasks from `pipelineDefinition.ts` and `project_task_checks`. Those tasks remain visible in Overview and retain their existing mutation owner.
 
-1. Project compatibility next-action fields.
-2. Dashboard next-action actions and helpers.
-3. Stage checklist checks in `project_task_checks`.
-4. Action tasks derived from stage state.
-5. Automation `tasks`.
-6. Quote `followup_tasks`.
-7. Personal `portal_dashboard_tasks`.
-8. Any task or reminder APIs and UI.
-9. Audit events related to actions.
-10. Dashboard work queue.
-
-For each, document:
-
-- Table and fields.
-- API and domain owner.
-- Assignment support.
-- Due-date support.
-- Completion support.
-- Rescheduling support.
-- Idempotency.
-- Current UI consumer.
-- Whether it may be a primary-action source.
-- Whether it must remain excluded.
-
-Produce the recommended canonical primary-action architecture, including:
-
-- Selection versus copied task data.
-- Manual-action support.
-- Source references.
-- Owner resolution.
-- Due-date semantics.
-- Audit history.
-- Completion and reschedule commands.
-- Cache updates.
-- RLS and grants.
-- Migration implications.
-- Backfill or compatibility strategy.
-
-Explicitly prove that the design does not create another general task system.
+Stage 1 does not invent a canonical primary next action. Stage 2 must define server ownership, precedence, override rules, due-date semantics, completion semantics, and interaction with existing stage tasks before adding it.
 
 ## 9. Existing communication and activity sources
 
-Inspect:
+Stage 1 retains project notes and existing snapshot activity capability. It does not merge quote events, outbox events, calls, messages, site visits, audits, or tasks into a new timeline.
 
-- Project notes and RLS.
-- Email outbox.
-- Quote send logs.
-- Estimate or indicative email records.
-- Site-visit communication.
-- Audit events.
-- Quote outcomes.
-- Existing `ProjectActivityItem` types.
-- Current snapshot activity mapping.
-- Emails tab.
-- Dashboard recent activity.
-- Existing event times.
-- Existing preview or body boundaries.
+Current sources remain independently owned:
 
-Recommend:
+- Project notes by the project-note domain and note routes.
+- Email summaries/outbox activity by the project snapshot and email domains.
+- Quote send history by `quote_send_logs` and quote domain helpers.
+- Site visits, audit events, automation, and task history by their existing domains.
 
-- The canonical merged communication and timeline read model.
-- Whether structured call/message metadata should extend `project_notes` or use another existing event record.
-- How historical notes remain compatible.
-- How personal and automated communication are distinguished.
-- How event grouping works.
-- How partial-source failures remain truthful.
-- Which technical events remain hidden.
+Stage 4 owns the future normalized communication/timeline read model.
 
 ## 10. Existing auth and permissions
 
-Document:
+`GET /api/staff/v1/projects/[projectId]/command-centre` uses `requireStaffContext()` and the returned auth-bound Supabase client. RLS remains authoritative. The route does not use service role.
 
-- `portal_users`.
-- Current `admin` and `staff` roles.
-- Staff and admin route helpers.
-- Portal session and client provider.
-- Existing project-note permissions.
-- Existing quote, estimate, and task permissions.
-- Service-role boundaries.
-- Browser direct-write guards.
-- Current user or directory data available for owner selection.
+The response is `private, no-store`, carries standard request diagnostics, returns `401`/`403` from the auth helper, returns `404` only when the authenticated project read is absent, and returns a stable `500` when a bounded subordinate read fails.
 
-Recommend:
-
-- V1 staff permissions.
-- V1 admin permissions.
-- Whether any new capability table is required now.
-- Why a broader role model should or should not wait.
-- RLS and grants for ownership, primary action, structured communication, and approval records.
+No raw tokens, token hashes, internal true cost, margin, service-role data, or oversized estimate inputs leave the endpoint.
 
 ## 11. Existing loading, caching, and local-first model
 
-Map:
+The new query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Designs or Quotes refreshes current commercial state without adding cache logic to those critical tabs.
 
-- Project summary and full-snapshot states.
-- Query keys.
-- Placeholder-data semantics.
-- Cache patching and invalidation.
-- Local-first mutation keys.
-- Working-copy behaviour.
-- Pending, retry, conflict, lock, and unavailable states.
-- Navigation and prefetch boundaries.
-- Project-opening performance markers.
+Overview states are explicit:
 
-For every planned controlled action, identify:
+- Pending without data: updating current design and commercial state.
+- Fresh: current server response.
+- Background refresh: cached facts remain visible with an updating marker.
+- Refresh failure with cached data: last known facts remain visible with Retry.
+- Initial network/server failure: failure state with Retry, never a fake no-design state.
+- `401`/`403`/`404`: no cached commercial or project data is rendered.
 
-- Owning API.
-- Optimistic or local-first behaviour.
-- Pending UI.
-- Rollback.
-- Retry.
-- Conflict handling.
-- Cache updates.
-- Access-ending response behaviour.
+On access-ending command-centre responses, the child reports to `ProjectSnapshotPageClient`, which removes the current user's project, estimate, quote, invoice, and job-pack query families for the host and switches the page to unavailable. Local-first mutation ownership is unchanged.
 
 ## 12. Existing tests and performance gates
 
-List:
+Stage 1 must retain:
 
-- Current-design resolver tests.
-- Current-design summariser tests.
-- Project snapshot tests.
-- Project page tests.
-- Activity and note tests.
-- Task mutation tests.
-- Quote and estimate tests.
-- Dashboard tests.
-- Auth and RLS tests.
-- Browser project-opening fixtures.
-- Authenticated smoke tests.
-- Performance tests.
-- Bundle-budget scripts.
-- Build, typecheck, lint, docs, architecture, and changed-file commands.
+- `npm run test:portal:projects`.
+- Repository typecheck and lint.
+- Portal production build.
+- `npm run portal:bundle-budget` with unchanged Project Detail allowance.
+- `npm run test:portal:browser` for fixture-safe visual/state coverage.
+- Authenticated smoke and performance when credentials and compatible data are available.
+- Docs and architecture changed guards.
 
-For each future stage, identify the exact tests and commands required.
-
-Record current known budgets without changing them.
+The existing authenticated Project Detail journey already measures the active tab workflow before background completion. No latency or bundle budget may be raised to accommodate Stage 1.
 
 ## 13. Canonical V1 data ownership map
 
-Complete this table for every V1 value:
+| V1 fact | Canonical Stage 1 source | Stage 1 behavior |
+| --- | --- | --- |
+| Project identity | Existing project summary/snapshot | Reuse header and customer context |
+| Current quote | `quote_versions` | Strict accepted > sent > draft |
+| Quote source design | `source_estimate_version_id` | Exact match only |
+| Quote customer price | Raw `total_inc_gst_cents` | No fallback |
+| Estimate selection | `estimates` plus quote-derived lock state | Active eligible draft, then latest non-archived |
+| Estimate customer price | Stored `summary_json.total` | No recomputation |
+| Design labels | Selected estimate `inputs.modules` | Largest module plus additional count |
+| Costing freshness | Selected estimate `outputs.pricing_sync_state` | Stored status only |
+| Quote delivery | Selected quote status and send logs | Accepted/sent/failed/draft only |
+| Notes and tasks | Existing project snapshot | Render only when full snapshot is ready |
+| Specialist links | Existing tab routes | Read-only navigation |
 
-| V1 value | Canonical source | Existing helper/query | In current snapshot | New read model | Schema change | Data completeness risk | Prohibited duplicate | Proposed API | Required tests |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-Include at minimum:
-
-- Project identity.
-- Customer identity.
-- Site address.
-- Address verification.
-- Site-visit requirement.
-- Pipeline stage.
-- Sales Owner.
-- Design Owner.
-- Estimating Owner.
-- Current quote.
-- Current source estimate.
-- Design summary.
-- Customer price.
-- Costing freshness.
-- Estimate lock.
-- Quote delivery result.
-- Primary next action.
-- Primary action owner and due date.
-- Workstream states.
-- Latest outbound customer update.
-- Latest customer response.
-- Timeline.
-- Blockers and warnings.
-- Commercial approval.
-- Internal true cost and margin.
+Later-stage owners, action, workstreams, communications, timeline, blockers, and approvals are intentionally absent.
 
 ## 14. Required read models
 
-For each proposed read model, state:
+Stage 1 adds `ProjectCommandCentreResponse` under `lib/projects/commandCentre/types.ts`.
 
-- Product need.
-- Owner.
-- Inputs.
-- Output type.
-- API or server boundary.
-- Cache key.
-- Freshness.
-- Failure semantics.
-- Access semantics.
-- Performance impact.
-- Tests.
-- Stage introduced.
+The payload contains:
 
-Compare alternatives and choose one.
+- `projectId` and `generatedAt`.
+- One `currentDesign` object.
+- Selected source and status presentation.
+- Design availability and bounded design summary.
+- Price source and nullable stored total.
+- Selected estimate identity/version/saved/lock/source/costing facts.
+- Selected quote identity/reference/version/status/timestamps/delivery facts.
+- Optional newer unrelated estimate.
+- Optional declined historical outcome when no quote is current.
+- Explicit integrity/source/price warnings.
+- Existing specialist-tab links.
 
-Potential read models to assess:
-
-- Command Centre summary.
-- Strict current design.
-- Workstream resolver.
-- Issue resolver.
-- Latest communication.
-- Merged timeline.
-- Primary-action candidate resolver.
+The server performs one auth-bound `projects` relation read for estimate metadata, quote versions, and send logs, followed by one exact selected-estimate detail read for `inputs`, `outputs`, and costing trace fields. Only the bounded normalized response reaches the browser.
 
 ## 15. Required migrations
 
-For each potential migration, state:
+Stage 1 requires no migration, backfill, new RLS policy, grant, index, or schema compatibility path.
 
-- Whether it is required.
-- Stage.
-- New or altered table/column.
-- Canonical ownership.
-- Data type and constraints.
-- Indexes.
-- RLS.
-- Grants.
-- Backfill.
-- Compatibility.
-- Rollback posture.
-- Schema map update.
-- Focused tests.
-
-Potential needs to investigate:
-
-- Reliable project owners.
-- Estimating Owner.
-- Primary-action selection or manual action.
-- Address-verification evidence.
-- Site-visit requirement decision.
-- Structured communication metadata.
-- Version-bound commercial approvals.
-
-Do not recommend one broad Command Centre table containing derived state.
+Later stages are expected to need explicit migrations for ownership, structured communications, workstream overrides, issues, and approvals. Each later migration must be forward-only and include RLS/grants, API ownership, backfill/compatibility, rollback, tests, and docs.
 
 ## 16. Required API boundaries
 
-For every controlled action, define:
+Implemented Stage 1 route:
 
-- Route or server action.
-- Auth helper.
-- Request shape.
-- Validation.
-- Domain owner.
-- Response shape.
-- Idempotency.
-- Conflict behaviour.
-- Audit event.
-- Cache patching or invalidation.
-- Tests.
+`GET /api/staff/v1/projects/[projectId]/command-centre`
 
-Actions to assess:
+Contract:
 
-- Assign owner.
-- Select or create primary action.
-- Complete action.
-- Reschedule action.
-- Reassign action.
-- Verify address.
-- Mark site visit not required.
-- Log customer communication.
-- Request approval.
-- Decide approval.
+- Staff-authenticated, auth-bound Supabase only.
+- `private, no-store`.
+- Stable small JSON response.
+- Project access determined by the parent project row under RLS.
+- Any errored bounded relationship or selected-detail read fails the complete response.
+- No side effects.
+- No direct browser Supabase reads.
+
+Existing summary and complete snapshot routes remain unchanged and independent.
 
 ## 17. Component reuse plan
 
-Map proposed components to existing owners.
+Implemented component boundaries:
 
-Include:
+- `OverviewTab.tsx`: query and five-state orchestration plus existing context composition.
+- `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation.
+- `overview/OverviewCustomerContext.tsx`: compact existing customer/site/reference context.
+- Existing `ProjectNotesPanel.client.tsx`: project note/activity column.
+- Existing `ProjectTasksSidebar.client.tsx`: stage-task action rail.
+- Existing Project Header and Details rail/tab: project identity and full details.
 
-- Overview root.
-- Identity header.
-- Critical exception strip.
-- Current design and commercial card.
-- Primary next-action card.
-- Workstream strip.
-- Latest communication card.
-- Timeline.
-- Existing notes presenter.
-- Existing tasks presenter.
-- Existing surface and page-state components.
-- Responsive CSS ownership.
-- Lazy boundaries.
-
-For each component, state:
-
-- Reuse.
-- Extend.
-- Extract.
-- Replace.
-- Retire.
-- Stage.
-
-Respect file-decomposition and bundle boundaries.
+The `activity` module loader now resolves to `OverviewTab`; the old Activity component, three-query snapshot bar, fallback resolver, and summarizer are removed after consumer search proved no remaining code consumer.
 
 ## 18. Test and fixture strategy
 
-Define representative deterministic fixtures for:
+Focused coverage includes:
 
-- New website lead.
-- Standard residential estimate.
-- Multiple estimate versions.
-- Sent revised quote.
-- Accepted quote with newer estimate.
-- Declined quote.
-- Missing quote source estimate.
-- No owner.
-- No primary action.
-- Overdue action.
-- Failed customer email.
+- Pure selector precedence and exact-source tests.
+- Raw server normalization, quote/estimate price ownership, delivery, freshness, missing-source, and complete-read failure tests.
+- Auth route response and failure tests.
+- Query preloading and preserved activity-key tab tests.
+- Overview pending/fresh/stale/failure/access-ending tests.
+- Page-level protected cache clearing tests.
+- Current design/commercial component tests.
+- Environment-gated, customer-data-free fixture route.
+- Browser matrix for a new lead with draft estimate, no current design, standard estimate, multiple estimates, sent revision, accepted quote plus newer estimate, declined quote, missing source, and missing price.
+- 390px no-horizontal-overflow browser check.
 
-For each scenario, map:
+Fixture route: `/qa/project-command-centre-fixture?scenario=...`, enabled only by `ENABLE_PORTAL_QA_FIXTURES=1`.
 
-- Database or in-memory fixture.
-- Unit tests.
-- Component tests.
-- API tests.
-- Browser test.
-- Expected diagnostics.
-- Cleanup or data-safety rules.
+Stage 1 verification completed on 2026-07-20:
 
-Prefer fixture routes or deterministic staging scenarios over customer-data mutation.
+- Strict selector, loader, and route tests passed.
+- Overview, card, preload, fixture, proxy/shell, and access-ending cache-clear tests passed.
+- `npm run test:portal:projects` passed 322 tests across 61 files.
+- `npm run test:portal:browser` passed 15 checks with one conditional workbench test skipped; all nine command-centre scenarios and the 390px check passed.
+- `npm run test:portal:performance:fixture` passed nine checks.
+- Repository typecheck and lint passed, including docs, package, cache, brand, and mojibake guards.
+- An isolated production build generated 64 pages while the user's pre-existing port-3001 dev server remained untouched.
+- The unchanged bundle-budget assertions passed against that isolated build. Project Detail measured 662.8 KiB raw / 190.5 KiB gzip initial and 1,771.0 KiB raw / 371.5 KiB gzip lazy; its largest lazy entry measured 1,526.9 KiB raw / 308.7 KiB gzip.
+- Authenticated smoke and production performance were not rerun because `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD` were unavailable.
 
 ## 19. Recommended PR and goal sequence
 
-For every future unit, provide:
-
-- Stage.
-- Pull request number within the stage.
-- Durable outcome.
-- Exact scope.
-- Explicit exclusions.
-- Dependencies.
-- Repository areas.
-- Schema implications.
-- Verification.
-- Completion criteria.
-- Main risks.
-- Recommended reasoning level.
-
-Stage 0 may split a stage into smaller pull requests when that reduces risk, but it may not broaden V1.
+- Stage 0: repository assessment and architecture record. Complete.
+- Stage 1A: strict selector, normalized read model, staff API, and query. Implemented.
+- Stage 1B: Overview label/module, commercial card, customer context, truthful states, and legacy retirement. Implemented.
+- Stage 1C: deterministic unit/route/component/browser fixtures, docs, bundle/performance verification. Complete in the working tree.
+- Stage 2: ownership plus canonical primary next action. Not approved in Stage 1.
+- Stage 3: workstreams. Not started.
+- Stage 4: communications and timeline. Not started.
+- Stage 5: exceptions and approvals. Not started.
+- Stage 6: final responsive QA, pilot, and rollout. Not started.
 
 ## 20. Technical risks
 
-Record at minimum:
-
-- Current-design fallback affects other consumers.
-- Quote source estimate can be archived or unavailable.
-- Current owner fields may be legacy or undeployed.
-- Next-action data is fragmented.
-- Task duplication.
-- Partial timeline reads.
-- Permission model cannot distinguish business roles.
-- New Overview bundle growth.
-- Project snapshot payload growth.
-- Cache coherence after controlled actions.
-- Stale data shown as current.
-- Historical commercial record mutation.
-- New docs not discoverable by repository guards.
-
-For each risk, include:
-
-- Likelihood.
-- Business consequence.
-- Technical consequence.
-- Mitigation.
-- Stage.
-- Verification.
+- Nested PostgREST relationship naming or RLS drift can fail the complete read. Route tests and live authenticated smoke remain required.
+- Historical rows may contain invalid timestamps, missing totals, or missing source records. Normalization must preserve unknown/unavailable rather than fabricate data.
+- Quote/estimate mutations do not directly update the new endpoint cache. Immediate staleness plus remount/focus refetch is the Stage 1 coherence mechanism; do not add logic to the critical tabs casually.
+- Estimate inputs can be large. The metadata-first plus exact-detail read prevents all historical inputs reaching the browser or being fetched for every estimate.
+- Multiple accepted quotes are an integrity issue. Stage 1 warns but does not mutate history.
+- A future stage could accidentally duplicate task, communication, or issue truth in the command-centre payload. Extend only through an approved owner contract.
 
 ## 21. Confirmed implementation decisions
 
-List only repository-grounded decisions accepted after Stage 0.
-
-Each entry includes:
-
-- Decision.
-- Evidence.
-- Alternatives considered.
-- Reason.
-- Product rule supported.
-- Stage affected.
+- Keep `activity` as the internal/default tab key and label it `Overview`.
+- Keep `ProjectPageSnapshot` unchanged.
+- Use a separate server-owned command-centre read model and query key.
+- Use auth-bound staff access only.
+- Apply accepted > sent > draft and exact source only.
+- Never select declined quotes.
+- Never fall back from quote source or quote price to an estimate.
+- Read stored estimate summary and freshness; do not run costing.
+- Keep existing project identity, notes, tasks, Details, lazy boundaries, and specialist tabs.
+- Clear protected user-owned caches on command-centre access-ending responses.
+- Remove the legacy fallback resolver/summarizer/bar after zero-consumer proof.
+- Make no Stage 1 migration or specialist mutation change.
 
 ## 22. Unresolved technical questions
 
-Include only questions that cannot be resolved from the current repository inspection.
+No unresolved question blocks Stage 1.
 
-Separate:
+Later-stage questions remain deliberately open:
 
-- Repository uncertainty.
-- Production deployment or data uncertainty.
-- Business decision required from Jordan.
-- Decision deferred to a later stage.
+- Exact ownership schema and role vocabulary.
+- Canonical next-action persistence and override semantics.
+- Structured inbound/outbound communication schema.
+- Timeline normalization and pagination.
+- Workstream override and progress storage.
+- Blocker/approval ownership, visibility, and audit.
+- Stage 6 pilot cohort, measurement, and rollback procedure.
 
-Do not ask Jordan to answer a repository question that further inspection can resolve.
+Those questions require their owning stage and must not be answered implicitly by extending Stage 1.
 
 ## 23. Repository evidence index
 
-Provide a concise evidence index:
-
-| Area | Path | Symbol or section | Finding |
-| --- | --- | --- | --- |
-
-This index should let future Codex sessions navigate directly to the owning code and docs without broad rediscovery.
+- Route/default key: `apps/portal/app/staff/projects/[projectId]/page.tsx`.
+- Summary/full page state: `ProjectSnapshotPageClient.tsx`.
+- Frame/shell/responsive details: `ProjectPageFrame.tsx`, `ProjectPageShell.tsx`.
+- Tab labels/lazy module/preload: `ProjectMainTabs.tsx`, `projectTabModules.tsx`, `projectTabDataPreload.ts`.
+- Snapshot owner: `lib/projects/getProjectPageSnapshot.ts`, `lib/projects/types.ts`.
+- Command domain: `lib/projects/commandCentre/**`.
+- Staff API: `app/api/staff/v1/projects/[projectId]/command-centre/**`.
+- Query key/options: `lib/queries/keys.ts`, `lib/queries/projects.ts`.
+- Overview components: `components/projects/ProjectPage/tabs/OverviewTab.tsx`, `tabs/overview/**`.
+- Estimate lock truth: `lib/estimates/editability.ts`.
+- Quote/estimate stored schemas: `supabase/portal_schema.sql` and ordered migrations.
+- Fixture/browser evidence: `app/qa/project-command-centre-fixture/**`, `playwright/portal.command-centre.spec.ts`.
 
 ## 24. Update rules
 
-Future implementation goals must update this architecture document when they change:
-
-- Canonical source.
-- Schema.
-- API boundary.
-- Query key.
-- Cache behaviour.
-- Permission.
-- Component owner.
-- Test owner.
-- Failure semantics.
-- Stage sequence.
-
-Do not turn this document into a chronological diary. Keep it current, and use the repository decision log for reusable lessons and incidents.
+- Update this document when the command-centre response, resolver precedence, auth boundary, cache behavior, component ownership, fixture matrix, or stage sequence changes.
+- Update `project-command-centre-roadmap.md` whenever stage status or completion evidence changes.
+- Update `projects-contacts-estimates-calculator.md` for current project-page behavior.
+- Update `staff-api-auth-contracts.md` when route/auth/response contracts change.
+- Update `testing-and-qa.md` when commands or browser fixtures change.
+- Update `portal-production-readiness.md` and `portal-ux-roadmap.md` when readiness or UX status changes.
+- Do not copy the full V1 product specification into this architecture record.
+- Do not mark a later stage complete from partial or Stage 1 evidence.

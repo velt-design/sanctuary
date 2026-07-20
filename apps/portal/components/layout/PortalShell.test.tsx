@@ -90,6 +90,28 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('renders project command centre QA fixture scenarios without auth redirects or portal chrome', () => {
+    mockPathname = '/qa/project-command-centre-fixture';
+    mockSearchParams = new URLSearchParams('scenario=accepted-newer-estimate');
+    mockSession = {
+      status: 'unauthenticated',
+      email: null,
+      role: null,
+    } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Command centre fixture</div>
+      </PortalShell>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toBe('Command centre fixture');
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).toBeNull();
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
   it('renders protected routes with the pinned shell chrome for authenticated users', () => {
     const rendered = renderIntoDocument(
       <PortalShell>

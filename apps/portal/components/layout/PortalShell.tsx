@@ -37,7 +37,8 @@ function isPortalQaFixtureRoutePath(
 ): boolean {
   return (
     isFixtureWorkbenchRoutePath(pathname, searchParams) ||
-    pathname === '/qa/projects-index-mutation-fixture'
+    pathname === '/qa/projects-index-mutation-fixture' ||
+    pathname === '/qa/project-command-centre-fixture'
   );
 }
 

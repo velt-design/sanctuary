@@ -3,7 +3,12 @@ import { contactsListQueryOptions } from './contacts';
 import { dashboardDataQueryOptions } from './dashboard';
 import { estimateMetasByProjectQueryOptions } from './projectEstimates';
 import { qk } from './keys';
-import { projectPageSnapshotQueryOptions, projectPageSummaryQueryOptions, projectsListQueryOptions } from './projects';
+import {
+  projectCommandCentreQueryOptions,
+  projectPageSnapshotQueryOptions,
+  projectPageSummaryQueryOptions,
+  projectsListQueryOptions,
+} from './projects';
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from './quotes';
 
 describe('query option budgets', () => {
@@ -21,6 +26,11 @@ describe('query option budgets', () => {
     expect(projectPageSummaryQueryOptions('host', 'proj_1').queryKey).toEqual(qk.projects.summary('host', 'proj_1'));
     expect(projectPageSummaryQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 5);
     expect(projectPageSummaryQueryOptions('host', 'proj_1').gcTime).toBe(1000 * 60 * 60 * 24);
+    expect(projectCommandCentreQueryOptions('host', 'proj_1').queryKey)
+      .toEqual(qk.projects.commandCentre('host', 'proj_1'));
+    expect(projectCommandCentreQueryOptions('host', 'proj_1').staleTime).toBe(0);
+    expect(projectCommandCentreQueryOptions('host', 'proj_1').refetchOnMount).toBe('always');
+    expect(projectCommandCentreQueryOptions('host', 'proj_1').gcTime).toBe(1000 * 60 * 60 * 24);
 
     expect(estimateMetasByProjectQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 10);
     expect(quoteVersionsByProjectQueryOptions('host', 'proj_1').staleTime).toBe(1000 * 60 * 10);

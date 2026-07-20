@@ -57,7 +57,7 @@ Keep contact fields, project fields, and estimate snapshot fields distinct. Esti
 
 Project opening has five explicit read states: `pending` for a direct link with no known summary, `summary` while authenticated summary fields are visible, `fresh` after the full snapshot arrives, `refresh-failed` when known data remains visible with Retry, and `unavailable` after a `401`, `403`, or `404` response. Access-ending responses must hide known project data. Debug exports are fresh-snapshot-only. The Projects list includes the lightweight project shell in its normal bundle and gives the rendered instant view to a tiny Projects-layout navigation boundary, which updates browser history and keeps the current-user cached summary visible while the existing authenticated snapshot query completes. On a direct link without list cache, `GET /api/staff/v1/projects/[projectId]/summary` supplies only the RLS-visible project/contact shell; the complete snapshot still refreshes through its existing query and key in parallel. The shell must not be hidden behind an intent-time dynamic import: a brief hover or direct click still needs immediate useful content. Browser Back clears that instant view and lets Next restore its own retained list route; server-rendered React nodes are never treated as a reusable cache. The persistent boundary makes browser Back reliable without importing project-opening code into Design Workbench.
 
-Project rows preload the route and existing full-snapshot query on hover, keyboard focus, touch, or pointer-down. There is no automatic first-three-project fan-out. Activity is the default workflow but is also a real lazy boundary; its local loading state appears only inside the already-usable project frame. Emails, Estimates, Quotes, Invoices, and Job Packs are separate lazy code boundaries; hovering or focusing one preloads its exact code and owned query data. The responsive Details panel is also a shared lazy boundary: desktop loads it when the rail is actually rendered, while the narrow-layout Details tab preloads it from intent. Activity and Emails depend on the full snapshot, so they show `Updating...` during the summary state and never turn placeholder empty arrays into a false empty state.
+Project rows preload the route and existing full-snapshot query on hover, keyboard focus, touch, or pointer-down. There is no automatic first-three-project fan-out. The activity-key Overview is the default workflow and a real lazy boundary; its local loading state appears only inside the already-usable project frame. Emails, Estimates, Quotes, Invoices, and Job Packs are separate lazy code boundaries; hovering or focusing one preloads its exact code and owned query data. The responsive Details panel is also a shared lazy boundary: desktop loads it when the rail is actually rendered, while the narrow-layout Details tab preloads it from intent. Overview can load its independent command-centre read during the summary state, while its notes/tasks region and Emails remain explicitly updating until the full snapshot is ready and never turn placeholder empty arrays into a false empty state.
 
 - Pipeline stages and task definitions live in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Manual task completion is stored in `project_task_checks`.
@@ -65,7 +65,7 @@ Project rows preload the route and existing full-snapshot query on hover, keyboa
 - Action tasks link into owned workflows such as site visits, estimates, schedule, invoices, and job packs.
 - Snapshot readiness comes from portal data such as booked site visits, generated estimates, accepted quotes, open deposit invoices, scheduled install items, and generated job packs.
 - Stage action routes under `apps/portal/app/api/staff/v1/projects/[projectId]/action` own staff workflow side effects.
-- The project page Tasks panel is rendered inside the Activity tab (`ActivityTab.tsx`), not in the side rails. The side rails own the project details panel only.
+- The project page Tasks panel is rendered inside the activity-key Overview (`OverviewTab.tsx`), not in the side rails. The side rails own the project details panel only.
 
 Do not hard-code duplicate pipeline or task rules in components. Update the pipeline definition and snapshot mapping together when task behavior changes.
 
@@ -156,36 +156,42 @@ Estimate editability is derived from related quote versions and send logs.
 
 Do not bypass these rules with ad hoc estimate table writes. Use the estimate routes and domain helpers so lock state, version labels, summaries, and downstream cache invalidation stay aligned.
 
-## Activity Tab And Project Notes
+## Overview And Project Notes
 
-The Activity tab is the project page's default landing tab. It renders a current-design snapshot bar across the top, with two columns underneath:
+`Overview` is the staff-facing default project tab while the internal URL/query key remains `activity` for compatibility. It is a lazy workflow boundary and composes small owners:
 
-- Top: the current-design snapshot bar (`ProjectActivityDesignSnapshotBar`) — a slender summary of the project's current design (size, shape, customer price, status pill).
-- Left: the wider Activity column (`ProjectNotesPanel`), currently an activity-style feed of project notes written by staff/admin. Entries use the same project-note pill, timestamp, note body, and author metadata pattern as dashboard Recent Activity.
-- Right: the compact Tasks panel (`ProjectTasksSidebarClient`), reused inline from the Activity tab. Same data and actions as before, but visually treated as the action rail beside the wider activity feed.
-- Project details render in the desktop project rail when there is enough width. When the shell falls back to the stacked laptop/mobile layout, details move to a dedicated `Details` tab so they do not push the Activity command centre down the page.
+- `ProjectCurrentDesignCommercialCard` reads one normalized, server-owned current-design response.
+- `OverviewCustomerContext` reuses current project/contact summary fields.
+- `ProjectNotesPanel` remains the wider project-note/activity column.
+- `ProjectTasksSidebarClient` remains the compact stage-task action rail.
+- Project details remain in the desktop rail and move to the dedicated `Details` tab on stacked layouts.
 
-### Current-design snapshot precedence
+The project header, full snapshot, responsive Details behavior, specialist tabs, and user-owned QueryClient remain unchanged. Overview may render during the project `summary` state because its commercial request is independent; notes and tasks remain explicitly updating until the complete snapshot is ready.
 
-The snapshot bar names the project's "current design". Precedence is encoded in `apps/portal/lib/projects/currentDesign/resolve.ts`:
+### Overview and current-design precedence
 
-1. Most recent `ACCEPTED` quote.
-2. Else most recent `SENT` quote.
-3. Else most recent `DRAFT` quote.
-4. Else the latest estimate (with status `Quotes declined` if any quote was declined, otherwise `No accepted quote`).
-5. Else empty state.
+The strict selection owner is `apps/portal/lib/projects/commandCentre/resolve.ts`:
 
-`DECLINED` quotes are excluded from precedence. They never become the "current design"; the bar falls through to the next eligible source. A separate boolean flag (`hasDeclinedQuotes`) tells the summarizer whether to show the declined-tinted status pill on the fall-through estimate.
+1. Newest created `ACCEPTED` quote.
+2. Else newest created `SENT` quote.
+3. Else newest created `DRAFT` quote.
+4. Else the newest unlocked draft estimate.
+5. Else the newest non-archived draft estimate.
+6. Else no current design.
 
-### Source of truth rules for the bar
+`DECLINED` quotes are historical outcomes and never become current. A decline may be shown as context only after resolution has fallen through to an estimate.
 
-- **Size** always reads from the source estimate's calculator snapshot (`outputs.snapshot` -> `inputs.modules`), regardless of which quote sourced the price. Quote versions intentionally do not denormalize geometry.
-- **Shape** is `formatModuleStyle` + lowercased `formatModuleRoof` from `apps/portal/lib/quotes/moduleFormatters.ts`. Both formatters are shared with the quote-line-item description path.
-- **Customer price** prefers `quoteVersion.totals.totalIncGstCents` when a quote is chosen, falls back to `estimate.summary.total`, then `Price not available`. Never recompute pricing in the bar; the helpers must not import costing.
-- **Multi-module projects** show the largest module by floor area as the primary, with a `+ N more` suffix when other modules exist.
-- **Empty/partial state**: `Size not set`, `Design details incomplete`, `Price not available` are the standard fallback strings.
+### Source-of-truth rules for Overview
 
-The bar reads from `estimateMetasByProjectQueryOptions`, `quoteVersionsByProjectQueryOptions`, and `estimateDetailQueryOptions` — the same TanStack queries the Quotes/Estimates tabs use. **No new browser Supabase reads.**
+- A quote-backed selection uses only its exact `source_estimate_version_id`. If that row is absent or inaccessible, the response says `Source design unavailable`; no active/latest estimate is substituted.
+- Quote price uses only raw stored `quote_versions.total_inc_gst_cents`. Missing or invalid quote price says `Price unavailable`; estimate price is never substituted.
+- An estimate-led price uses the selected estimate's stored `summary_json.total`. The read model never runs costing.
+- Design labels use the selected estimate's `inputs.modules`, shared quote module formatters, and the largest module by floor area, with `+ N more` for additional modules.
+- Costing labels derive only from stored `outputs.pricing_sync_state` and distinguish current, stored, may-be-stale, and unavailable.
+- Accepted quote plus a newer unrelated estimate keeps the accepted quote/source authoritative and exposes the newer estimate separately.
+- Multiple accepted quotes select the newest deterministically and emit an integrity warning.
+
+`GET /api/staff/v1/projects/[projectId]/command-centre` owns the bounded auth-bound read. `qk.projects.commandCentre(host, projectId)` owns its user-scoped browser cache. The query is immediately stale and refetches when Overview remounts, so returning from a specialist tab refreshes commercial state without adding cache logic to `QuotesTab.tsx` or `EstimatesTab.tsx`. A `401`, `403`, or `404` hides the command centre and project snapshot and clears protected project-domain query families for the current host.
 
 Notes data:
 

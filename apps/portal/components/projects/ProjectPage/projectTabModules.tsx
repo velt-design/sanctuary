@@ -13,7 +13,7 @@ export type ProjectTabModuleKey =
   | 'emails';
 
 const loaders = {
-  activity: () => import('./tabs/ActivityTab'),
+  activity: () => import('./tabs/OverviewTab'),
   estimates: () => import('./tabs/EstimatesTab'),
   quotes: () => import('./tabs/QuotesTab'),
   invoices: () => import('./tabs/InvoicesTab'),
@@ -31,7 +31,7 @@ function loadingState(label: string, key: ProjectTabModuleKey) {
   };
 }
 
-export const ActivityTab = dynamic(loaders.activity, { loading: loadingState('activity', 'activity') });
+export const OverviewTab = dynamic(loaders.activity, { loading: loadingState('overview', 'activity') });
 export const EstimatesTab = dynamic(loaders.estimates, { loading: loadingState('designs', 'estimates') });
 export const QuotesTab = dynamic(loaders.quotes, { loading: loadingState('quotes', 'quotes') });
 export const InvoicesTab = dynamic(loaders.invoices, { loading: loadingState('invoices', 'invoices') });

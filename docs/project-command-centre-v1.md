@@ -1,7 +1,7 @@
 # Project Operational Command Centre V1
 
 Status: Authoritative product contract  
-Programme stage: Product definition complete; implementation not started  
+Programme stage: Product definition complete; Stage 1 implemented in the working tree
 V1 lifecycle scope: Lead received through quote outcome  
 Staff-facing default tab: `Overview`  
 Related documents:
@@ -9,6 +9,16 @@ Related documents:
 - `project-command-centre-vision.md`
 - `project-command-centre-roadmap.md`
 - `project-command-centre-architecture.md` after Stage 0
+
+## Index
+
+- [V1 outcome](#1-v1-outcome)
+- [Scope and users](#2-scope-and-users)
+- [Current design resolution](#7-current-design-resolution)
+- [Commercial resolution](#8-commercial-resolution)
+- [Data ownership and repository mapping](#17-data-ownership-and-repository-mapping)
+- [Acceptance criteria](#20-acceptance-criteria)
+- [Open business decisions](#22-open-business-decisions-for-jordan)
 
 ## 1. V1 outcome
 
@@ -1884,7 +1894,7 @@ Stage 0 must verify every path and schema assumption against the current reposit
 | Site-visit requirement | Explicit canonical evidence | Site-visit workflow | Stage 0 decision |
 | Site-visit state | `site_visit_events` | Project snapshot and Schedule Site Visits | Existing source |
 | Current quote selection | `quote_versions` | Existing quote queries and current-design resolver | Reuse with strict rules |
-| Current design | Exact selected quote source estimate, otherwise selected estimate | `apps/portal/lib/projects/currentDesign/resolve.ts` | Strict resolver required |
+| Current design | Exact selected quote source estimate, otherwise selected estimate | `apps/portal/lib/projects/commandCentre/resolve.ts` | Strict server-owned resolver implemented in Stage 1 |
 | Design summary | Selected estimate snapshot | Current-design summariser and estimate detail query | Existing helper, stricter failure state |
 | Customer price | Selected quote stored total, otherwise selected estimate stored summary | Quote and estimate domain | Reuse without cross-source fallback |
 | Costing freshness | Estimate pricing metadata | Estimate persistence and calculator outcome | Expose read-only |

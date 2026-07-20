@@ -216,11 +216,13 @@ export default function ProjectPageShell({
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
+  onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  onProjectAccessEnding?: (status: number) => void;
 }) {
   const {
     containerRef,
@@ -452,6 +454,7 @@ export default function ProjectPageShell({
             showDetailsTab={!isDesktopLayout}
             tab={tab}
             onActiveTabChange={setActiveTab}
+            onProjectAccessEnding={onProjectAccessEnding}
           />
         </section>
 

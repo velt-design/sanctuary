@@ -7,6 +7,7 @@ import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 const useQueryMock = vi.fn();
 const placeholderMock = vi.fn();
 const refetchMock = vi.fn();
+const removeQueriesMock = vi.fn();
 
 vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
@@ -17,7 +18,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actual,
     useQuery: (...args: unknown[]) => useQueryMock(...args),
-    useQueryClient: () => ({ getQueryData: vi.fn() }),
+    useQueryClient: () => ({ getQueryData: vi.fn(), removeQueries: removeQueriesMock }),
   };
 });
 
@@ -31,13 +32,16 @@ vi.mock('@/lib/supabase/browserClient', () => ({
 }));
 
 vi.mock('@/components/projects/ProjectPage/ProjectPageFrame', () => ({
-  default: ({ snapshot, snapshotContentReady, snapshotState }: any) => (
+  default: ({ snapshot, snapshotContentReady, snapshotState, onProjectAccessEnding }: any) => (
     <div
       data-testid="project-frame"
       data-content-ready={String(snapshotContentReady)}
       data-snapshot-state={snapshotState}
     >
       {snapshot.project.name}
+      <button type="button" data-testid="command-access-ending" onClick={() => onProjectAccessEnding?.(403)}>
+        End command access
+      </button>
     </div>
   ),
 }));
@@ -89,10 +93,10 @@ function mockProjectQueries({
   );
 }
 
-function renderClient() {
+function renderClient(projectId = 'proj_1') {
   return renderIntoDocument(
     <ProjectSnapshotPageClient
-      projectId="proj_1"
+      projectId={projectId}
       tab="estimates"
       estimateId={null}
       debugExportEnabled
@@ -105,6 +109,7 @@ describe('ProjectSnapshotPageClient', () => {
     useQueryMock.mockReset();
     placeholderMock.mockReset();
     refetchMock.mockReset();
+    removeQueriesMock.mockReset();
     placeholderMock.mockReturnValue(summaryResponse);
   });
 
@@ -211,6 +216,55 @@ describe('ProjectSnapshotPageClient', () => {
     expect(rendered.container.textContent).not.toContain('Cached Project');
     expect(rendered.container.querySelector('[data-testid="debug-export"]')).toBeNull();
 
+    rendered.unmount();
+  });
+
+  it('clears protected user-owned caches when the command-centre read ends access', () => {
+    mockProjectQueries({
+      snapshot: {
+        data: { snapshot: fullSnapshot, generatedAt: '2026-07-19T00:00:01.000Z' },
+        error: null,
+        isPlaceholderData: false,
+        refetch: refetchMock,
+      },
+    });
+    const rendered = renderClient();
+    act(() => {
+      (rendered.container.querySelector('[data-testid="command-access-ending"]') as HTMLButtonElement).click();
+    });
+    expect(rendered.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
+    expect(rendered.container.textContent).not.toContain('Fresh Project');
+    expect(removeQueriesMock).toHaveBeenCalledWith({ queryKey: ['projects', 'host'] });
+    expect(removeQueriesMock).toHaveBeenCalledWith({ queryKey: ['estimates', 'host'] });
+    expect(removeQueriesMock).toHaveBeenCalledWith({ queryKey: ['quotes', 'host'] });
+    rendered.unmount();
+  });
+
+  it('scopes a command-centre access-ending state to the affected project', () => {
+    mockProjectQueries({
+      snapshot: {
+        data: { snapshot: fullSnapshot, generatedAt: '2026-07-19T00:00:01.000Z' },
+        error: null,
+        isPlaceholderData: false,
+        refetch: refetchMock,
+      },
+    });
+    const rendered = renderClient();
+    act(() => {
+      (rendered.container.querySelector('[data-testid="command-access-ending"]') as HTMLButtonElement).click();
+    });
+    expect(rendered.container.querySelector('[data-project-snapshot-state="unavailable"]')).not.toBeNull();
+
+    rendered.rerender(
+      <ProjectSnapshotPageClient
+        projectId="proj_2"
+        tab="estimates"
+        estimateId={null}
+        debugExportEnabled
+      />,
+    );
+    expect(rendered.container.querySelector('[data-project-snapshot-state="fresh"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Fresh Project');
     rendered.unmount();
   });
 

@@ -28,6 +28,9 @@ These docs are current-state references and active guardrails for coding agents.
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
+| `project-command-centre-v1.md` | Product contract | You are changing the Project Operational Command Centre product behavior, scope, exclusions, or acceptance criteria. |
+| `project-command-centre-roadmap.md` | Active programme | You need the current Command Centre stage, completion evidence, or next approved stage. |
+| `project-command-centre-architecture.md` | Current architecture | You are changing the Command Centre read model, resolver, API, Overview components, caching, fixtures, or later-stage technical plan. |
 | `repo-health-trends.md` | Advisory dashboard | You are choosing cleanup lanes, reviewing repo health pressure, or checking whether cleanup metrics are trending better or worse. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `target-architecture.md` | Target contract | You need the north-star structure, target area map, target data path, or migration direction before expanding an area. |

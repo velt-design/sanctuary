@@ -57,7 +57,7 @@ export default defineConfig({
     },
     {
       name: 'portal-fixture',
-      testMatch: /portal\.(drawing-workbench|workbench-snapshot|workbench-fixture|workbench-performance|project-mutation-performance)\.spec\.ts/,
+      testMatch: /portal\.(command-centre|drawing-workbench|workbench-snapshot|workbench-fixture|workbench-performance|project-mutation-performance)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 1000 },

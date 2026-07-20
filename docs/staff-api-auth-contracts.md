@@ -7,6 +7,7 @@ This doc is the current-state reference for staff, admin, and public-token route
 - Staff workflow routes live mainly under `apps/portal/app/api/staff/v1` plus older staff-owned routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, `apps/portal/app/api/estimates`, and `apps/portal/app/api/quotes`.
 - `GET /api/staff/v1/projects/index?archive=active|archived|all` is the staff-authenticated Projects-list read model. It uses `requireStaffContext()`, returns project/contact row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - `GET /api/staff/v1/projects/[projectId]/summary` is the staff-authenticated direct-link shell read. It returns only the RLS-visible project/contact summary needed to make the header and tabs useful while the existing complete snapshot query continues; it is always `private, no-store`.
+- `GET /api/staff/v1/projects/[projectId]/command-centre` is the staff-authenticated Project Overview read model. It uses `requireStaffContext()` and the auth-bound client, resolves quote/estimate precedence and exact source/price ownership on the server, returns only bounded normalized facts, and is always `private, no-store`.
 - `GET /api/staff/v1/contacts/index` is the staff-authenticated Contacts-list read model. It uses `requireStaffContext()` and the canonical paginated contact loader, returns row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - Admin routes live under `apps/portal/app/api/admin` and must enforce admin role checks.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/api/quotes`.
@@ -69,6 +70,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Keep response bodies stable and small: success payloads should return the resource or `{ ok: true }`; errors should return `{ error: string }` plus documented extra fields such as conflict codes.
 - Validate JSON with `parseJsonBody()` before reading request payload fields.
 - Complete project snapshots reject an errored subordinate relationship read. Network or database failure must remain a refresh failure with Retry, not a fresh response containing misleading empty workflow arrays.
+- Command-centre reads likewise reject an errored bounded relationship or selected-estimate detail read. Missing exact quote source and missing stored quote price are successful explicit unavailable states, not opportunities to substitute another estimate.
 - Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
 
 ## Route Ownership

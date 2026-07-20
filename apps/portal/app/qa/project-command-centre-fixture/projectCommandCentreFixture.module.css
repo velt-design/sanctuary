@@ -1,0 +1,53 @@
+.page {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-height: 100vh;
+  background: rgb(var(--portal-bg-page-rgb));
+  padding: clamp(1rem, 4vw, 3rem);
+}
+
+.header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.header p,
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  color: rgba(var(--portal-text-rgb), 0.6);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  color: rgb(var(--portal-text-rgb));
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.header nav a {
+  border: 1px solid rgba(var(--portal-border-rgb), 0.9);
+  border-radius: 999px;
+  color: rgba(var(--portal-text-rgb), 0.68);
+  font-size: 0.74rem;
+  padding: 0.3rem 0.55rem;
+  text-decoration: none;
+  text-transform: capitalize;
+}
+
+.header nav a[aria-current='page'] {
+  border-color: rgba(var(--portal-accent-rgb), 0.7);
+  background: rgba(var(--portal-accent-rgb), 0.1);
+  color: rgb(var(--portal-accent-rgb));
+}

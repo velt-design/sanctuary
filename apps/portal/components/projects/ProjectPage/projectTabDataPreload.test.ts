@@ -20,7 +20,7 @@ describe('project tab data preload', () => {
     );
   });
 
-  it('does not fetch tab data for snapshot-owned tabs', async () => {
+  it('preloads the dedicated command-centre read for Overview', async () => {
     const prefetchQuery = vi.fn();
 
     await preloadProjectTabData('activity', {
@@ -29,6 +29,8 @@ describe('project tab data preload', () => {
       queryClient: { prefetchQuery } as any,
     });
 
-    expect(prefetchQuery).not.toHaveBeenCalled();
+    expect(prefetchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: qk.projects.commandCentre('host', 'proj_1') }),
+    );
   });
 });

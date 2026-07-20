@@ -1,7 +1,7 @@
 'use client';
 
 import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PortalDebugExportButton from '@/components/debug/PortalDebugExportButton';
 import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
@@ -26,6 +26,13 @@ export default function ProjectSnapshotPageClient({
   debugExportEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
+  const [commandCentreAccess, setCommandCentreAccess] = useState<{
+    projectId: string;
+    status: number;
+  } | null>(null);
+  const commandCentreAccessStatus = commandCentreAccess?.projectId === projectId
+    ? commandCentreAccess.status
+    : null;
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const cachedSummary = useMemo(
     () => getProjectSnapshotPlaceholderFromCaches(queryClient, host, projectId),
@@ -45,8 +52,18 @@ export default function ProjectSnapshotPageClient({
   const snapshotStatus = snapshotQuery.error instanceof ApiError ? snapshotQuery.error.status : null;
   const summaryStatus = summaryQuery.error instanceof ApiError ? summaryQuery.error.status : null;
   const snapshotContentReady = Boolean(snapshotQuery.data && !snapshotQuery.isPlaceholderData);
-  const accessUnavailable = !snapshotContentReady && [snapshotStatus, summaryStatus]
-    .some((status) => status === 401 || status === 403 || status === 404);
+  const accessUnavailable = commandCentreAccessStatus !== null
+    || (!snapshotContentReady && [snapshotStatus, summaryStatus]
+      .some((status) => status === 401 || status === 403 || status === 404));
+  const handleProjectAccessEnding = useCallback((status: number) => {
+    if (![401, 403, 404].includes(status)) return;
+    queryClient.removeQueries({ queryKey: ['projects', host] });
+    queryClient.removeQueries({ queryKey: ['estimates', host] });
+    queryClient.removeQueries({ queryKey: ['quotes', host] });
+    queryClient.removeQueries({ queryKey: ['invoices', host] });
+    queryClient.removeQueries({ queryKey: ['jobPacks', host] });
+    setCommandCentreAccess({ projectId, status });
+  }, [host, projectId, queryClient]);
   const knownSummary = cachedSummary
     ?? summaryQuery.data
     ?? (snapshotQuery.isPlaceholderData ? snapshotQuery.data : undefined);
@@ -116,7 +133,14 @@ export default function ProjectSnapshotPageClient({
     const unavailable = loadState === 'unavailable';
     const title = pending
       ? 'Opening project…'
-      : unavailable && (snapshotStatus === 401 || snapshotStatus === 403 || summaryStatus === 401 || summaryStatus === 403)
+      : unavailable && (
+          commandCentreAccessStatus === 401
+          || commandCentreAccessStatus === 403
+          || snapshotStatus === 401
+          || snapshotStatus === 403
+          || summaryStatus === 401
+          || summaryStatus === 403
+        )
         ? 'Project access unavailable'
         : unavailable
           ? 'Project unavailable'
@@ -172,6 +196,7 @@ export default function ProjectSnapshotPageClient({
         snapshotContentReady={snapshotContentReady}
         snapshotState={loadState}
         tab={tab}
+        onProjectAccessEnding={handleProjectAccessEnding}
       />
     </main>
   );

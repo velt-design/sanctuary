@@ -22,7 +22,9 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 vi.mock('./projectTabModules', () => ({
-  ActivityTab: () => <div data-testid="activity-tab" />,
+  OverviewTab: ({ snapshotContentReady }: { snapshotContentReady: boolean }) => (
+    <div data-testid="overview-tab" data-snapshot-ready={String(snapshotContentReady)} />
+  ),
   EmailsTab: () => <div data-testid="emails-tab" />,
   EstimatesTab: () => <div data-testid="estimates-tab" />,
   InvoicesTab: () => <div data-testid="invoices-tab" />,
@@ -102,12 +104,12 @@ describe('ProjectMainTabs', () => {
     rendered.unmount();
   });
 
-  it('renders Activity as the first tab in the strip', () => {
+  it('renders Overview as the first tab while preserving the activity key', () => {
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
 
     const tabButtons = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
 
-    expect(tabButtons[0]).toBe('Activity');
+    expect(tabButtons[0]).toBe('Overview');
 
     rendered.unmount();
   });
@@ -129,31 +131,30 @@ describe('ProjectMainTabs', () => {
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="activity" />);
 
     expect(rendered.container.querySelector('[data-testid="details-tab"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="activity-tab"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
 
     rendered.unmount();
   });
 
-  it('coerces the Details tab back to Activity when details are already available in the desktop rail', () => {
+  it('coerces the Details tab back to the activity-key Overview when details are in the desktop rail', () => {
     mockSearchParams = 'tab=details';
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="details" />);
 
-    expect(rendered.container.querySelector('[data-testid="activity-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="overview-tab"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="details-tab"]')).toBeNull();
     expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity');
 
     rendered.unmount();
   });
 
-  it('does not present placeholder activity as an empty activity feed', () => {
+  it('renders Overview during summary state so its independent command read can settle', () => {
     mockSearchParams = 'tab=activity';
     const rendered = renderIntoDocument(
       <ProjectMainTabs snapshot={snapshot} snapshotContentReady={false} snapshotState="summary" tab="activity" />,
     );
 
-    expect(rendered.container.querySelector('[data-project-tab-awaiting-snapshot="activity"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Updating activity in the background');
-    expect(rendered.container.querySelector('[data-testid="activity-tab"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-project-tab-awaiting-snapshot="activity"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="overview-tab"]')?.getAttribute('data-snapshot-ready')).toBe('false');
 
     rendered.unmount();
   });
@@ -176,10 +177,10 @@ describe('ProjectMainTabs', () => {
     rendered.unmount();
   });
 
-  it('preloads the Activity workflow from user intent', () => {
+  it('preloads the Overview workflow through the preserved activity key', () => {
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
     const activity = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
-      (node) => node.textContent?.trim() === 'Activity',
+      (node) => node.textContent?.trim() === 'Overview',
     );
 
     act(() => {

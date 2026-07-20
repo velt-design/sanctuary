@@ -17,11 +17,13 @@ export default function ProjectPageFrame({
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
+  onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  onProjectAccessEnding?: (status: number) => void;
 }) {
   const {
     containerRef,
@@ -92,6 +94,7 @@ export default function ProjectPageFrame({
           snapshotContentReady={snapshotContentReady}
           snapshotState={snapshotState}
           tab={tab}
+          onProjectAccessEnding={onProjectAccessEnding}
         />
       </div>
     </div>

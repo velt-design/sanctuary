@@ -34,7 +34,7 @@ For table/RPC ownership, write paths, access boundaries, and migration sources, 
 
 ## Quote Lifecycle
 
-The project page's Activity tab surfaces a current-design snapshot bar that picks the most relevant quote (accepted > sent > draft, declined excluded) and reads its totals for display. The precedence rules and source-of-truth notes live in `docs/projects-contacts-estimates-calculator.md` under "Current-design snapshot precedence". When changing quote status semantics, accept/decline behaviour, or quote totals, double-check the snapshot bar continues to reflect the right source.
+The project page's Overview surfaces the current design and commercial record through the dedicated server-owned command-centre read model. It selects accepted > sent > draft, excludes declined quotes, uses only the selected quote's exact source estimate, and reads only that quote's raw stored total. The precedence rules and source-of-truth notes live in `docs/projects-contacts-estimates-calculator.md` under "Overview and current-design precedence". When changing quote status semantics, accept/decline behaviour, send logs, or quote totals, double-check that read model continues to reflect the right historical source without estimate fallback.
 
 
 

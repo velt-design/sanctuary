@@ -3,6 +3,7 @@ import { qk } from './keys';
 import { listProjects, listProjectsForContact } from '@/lib/repo/projectsRepo';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { ProjectPageSnapshotResponse } from '@/lib/projects/types';
+import type { ProjectCommandCentreResponse } from '@/lib/projects/commandCentre/types';
 
 type ProjectTooltipSummary = {
   clientName: string | null;
@@ -24,6 +25,12 @@ async function fetchProjectPageSnapshot(projectId: string): Promise<ProjectPageS
 async function fetchProjectPageSummary(projectId: string): Promise<ProjectPageSnapshotResponse> {
   return apiJson<ProjectPageSnapshotResponse>(
     `/api/staff/v1/projects/${encodeURIComponent(projectId)}/summary`,
+  );
+}
+
+async function fetchProjectCommandCentre(projectId: string): Promise<ProjectCommandCentreResponse> {
+  return apiJson<ProjectCommandCentreResponse>(
+    `/api/staff/v1/projects/${encodeURIComponent(projectId)}/command-centre`,
   );
 }
 
@@ -51,6 +58,15 @@ export const projectPageSummaryQueryOptions = (host: string, projectId: string) 
     queryFn: () => fetchProjectPageSummary(projectId),
     staleTime: FIVE_MINUTES,
     gcTime: ONE_DAY,
+  });
+
+export const projectCommandCentreQueryOptions = (host: string, projectId: string) =>
+  queryOptions({
+    queryKey: qk.projects.commandCentre(host, projectId),
+    queryFn: () => fetchProjectCommandCentre(projectId),
+    staleTime: 0,
+    gcTime: ONE_DAY,
+    refetchOnMount: 'always',
   });
 
 export const projectTooltipSummaryQueryOptions = (host: string, projectId: string) =>

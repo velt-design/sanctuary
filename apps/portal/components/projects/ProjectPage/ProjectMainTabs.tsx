@@ -9,7 +9,7 @@ import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import {
-  ActivityTab,
+  OverviewTab,
   EmailsTab,
   EstimatesTab,
   InvoicesTab,
@@ -20,7 +20,7 @@ import {
 } from './projectTabModules';
 
 const BASE_TABS = [
-  { key: 'activity', label: 'Activity' },
+  { key: 'activity', label: 'Overview' },
   { key: 'estimates', label: 'Designs' },
   { key: 'quotes', label: 'Quotes' },
   { key: 'invoices', label: 'Invoices' },
@@ -60,6 +60,7 @@ export default function ProjectMainTabs({
   showDetailsTab = false,
   tab,
   onActiveTabChange,
+  onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
   snapshotContentReady?: boolean;
@@ -67,6 +68,7 @@ export default function ProjectMainTabs({
   showDetailsTab?: boolean;
   tab: string;
   onActiveTabChange?: (tab: TabKey) => void;
+  onProjectAccessEnding?: (status: number) => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -205,11 +207,13 @@ export default function ProjectMainTabs({
         data-project-tab-body={activeTab}
       >
         {activeTab === 'activity' ? (
-          snapshotContentReady ? (
-            <ActivityTab snapshot={snapshot} />
-          ) : (
-            <ProjectSnapshotTabStatus snapshotState={snapshotState} label="activity" />
-          )
+          <OverviewTab
+            snapshot={snapshot}
+            snapshotContentReady={snapshotContentReady}
+            snapshotState={snapshotState}
+            host={hostKey}
+            onAccessEnding={onProjectAccessEnding}
+          />
         ) : null}
         {activeTab === 'details' ? <LazyProjectDetailsSidebar project={snapshot.project} /> : null}
         {activeTab === 'emails' ? (

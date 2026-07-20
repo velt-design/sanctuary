@@ -151,6 +151,18 @@ describe('portal proxy', () => {
     expect(createServerClientMock).not.toHaveBeenCalled();
   });
 
+  it('allows project command centre fixture scenarios to enforce their own server flag without auth', async () => {
+    process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
+
+    const response = await proxy(
+      new NextRequest('https://example.com/qa/project-command-centre-fixture?scenario=accepted-newer-estimate'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
   it('keeps the staff fixture workbench route protected when fixture flags are disabled', async () => {
     setUnauthenticated();
 
