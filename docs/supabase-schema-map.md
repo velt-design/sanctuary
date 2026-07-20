@@ -250,7 +250,7 @@ Migration and test source:
 Verification status:
 
 - `npm run test:jobs` passed locally on 2026-07-20 with 5 files and 86 tests across package contracts, package policy, strict worker wire contracts, static migration contracts, and repository security. `npm run test:worker` passed 9 files and 76 tests, with worker typecheck, build, built CLI, scoped lint, architecture, and security gates also green.
-- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no local container started and no SQL executed. Background Jobs [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) proves only the rollback-wrapped five-migration JOB-01 contract against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1. JOB-02's six-migration matrix and worker-container job remain pending; no shared-environment migration or rollout is implied.
+- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no local container started and no SQL executed. Background Jobs [run 29713940507](https://github.com/velt-design/sanctuary/actions/runs/29713940507) passes the rollback-wrapped six-migration JOB-01/JOB-02 contract against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, plus the worker runtime and non-root container job. No shared-environment migration or rollout is implied.
 
 ## Portal Performance Telemetry
 
