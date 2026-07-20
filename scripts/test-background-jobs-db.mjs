@@ -40,6 +40,10 @@ const readinessTimeoutMs = positiveIntegerEnvironmentValue(
   "BACKGROUND_JOBS_DB_READY_TIMEOUT_MS",
   120_000,
 );
+const readinessStableMs = positiveIntegerEnvironmentValue(
+  "BACKGROUND_JOBS_DB_READY_STABLE_MS",
+  3_000,
+);
 const concurrencyTimeoutMs = positiveIntegerEnvironmentValue(
   "BACKGROUND_JOBS_DB_CONCURRENCY_TIMEOUT_MS",
   30_000,
@@ -204,6 +208,8 @@ function reportResolvedImageId() {
 async function waitForPostgres() {
   const deadline = Date.now() + readinessTimeoutMs;
   let lastReadinessDetail = "";
+  let stablePostmasterStart = "";
+  let stableSinceMs = 0;
   while (Date.now() < deadline) {
     const ready = docker([
       "exec",
@@ -212,12 +218,31 @@ async function waitForPostgres() {
       "--username=postgres",
       "--dbname=postgres",
     ]);
-    if (ready.status === 0) return;
+    if (ready.status === 0) {
+      const postmasterStart = docker([
+        ...psqlDockerArgs({ quiet: true }),
+        "--command",
+        "select pg_postmaster_start_time()::text;",
+      ]);
+      if (postmasterStart.status === 0) {
+        const currentStart = postmasterStart.stdout.trim();
+        if (currentStart && currentStart === stablePostmasterStart) {
+          if (Date.now() - stableSinceMs >= readinessStableMs) return;
+        } else {
+          stablePostmasterStart = currentStart;
+          stableSinceMs = Date.now();
+        }
+        await delay(500);
+        continue;
+      }
+    }
 
     lastReadinessDetail = [ready.stdout, ready.stderr]
       .filter(Boolean)
       .join("\n")
       .trim();
+    stablePostmasterStart = "";
+    stableSinceMs = 0;
     const stoppedDetail = stoppedContainerDetail();
     if (stoppedDetail) throw new Error(stoppedDetail);
     await delay(500);
@@ -528,7 +553,7 @@ for (const [signal, exitCode] of [
 
 async function run() {
   process.stdout.write(
-    `background-jobs-db: image ${image}; readiness timeout ${readinessTimeoutMs}ms\n`,
+    `background-jobs-db: image ${image}; readiness timeout ${readinessTimeoutMs}ms; stable window ${readinessStableMs}ms\n`,
   );
   process.stdout.write(
     `background-jobs-db: discovered ${waveThreeMigrationFiles.length} ordered background-job migration(s)\n`,

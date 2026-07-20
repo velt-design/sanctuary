@@ -352,6 +352,10 @@ begin
   end if;
   perform public.background_job_record_progress(
     v_job.id, 'sql-shadow-reclaim-worker-two', v_claim.lease_token,
+    'running', 'validating_delivery', '{}'::jsonb
+  );
+  perform public.background_job_record_progress(
+    v_job.id, 'sql-shadow-reclaim-worker-two', v_claim.lease_token,
     'finalising', 'shadow_validated', '{}'::jsonb
   );
   perform public.background_job_complete(
