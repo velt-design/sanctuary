@@ -2117,6 +2117,15 @@ begin
     v_effect_hash := repeat(substr('89abcde', v_case, 1), 64);
     v_idempotency_key := format('sql-test/provider-webhook/terminal-race-%s', v_case);
 
+    if v_case = 6 then
+      -- Exercise a previously accepted, cancellation-capable email contract
+      -- without weakening the current quote policy. The job freezes this
+      -- temporary registry value at enqueue and keeps it after restoration.
+      update public.background_job_kinds
+      set cancellation_allowed = true
+      where kind = 'quote_send';
+    end if;
+
     select * into v_job
     from public.background_job_enqueue_system(
       'quote_send',
@@ -2132,6 +2141,16 @@ begin
       'worker',
       'sql-test'
     );
+    if v_case = 6 then
+      update public.background_job_kinds
+      set cancellation_allowed = false
+      where kind = 'quote_send';
+      if not v_job.cancellation_allowed
+         or (select cancellation_allowed from public.background_job_kinds where kind = 'quote_send')
+           is distinct from false then
+        raise exception 'cancellable email fixture did not restore the live registry policy';
+      end if;
+    end if;
     select * into strict v_claim
     from public.background_jobs_claim(v_worker_id, 1, 60);
     if v_claim.job_id <> v_job.id then
