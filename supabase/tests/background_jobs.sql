@@ -1711,34 +1711,14 @@ end;
 $$;
 reset role;
 
-set local role authenticated;
-do $$
-begin
-  begin
-    perform * from public.background_job_read_runtime_context(
-      '00000000-0000-4000-8000-000000000001'::uuid,
-      'sql-authenticated-runtime',
-      '00000000-0000-4000-8000-000000000002'::uuid
-    );
-    raise exception 'authenticated role read worker runtime context';
-  exception when insufficient_privilege then
-    null;
-  end;
-  begin
-    perform * from public.background_jobs_runtime_metrics();
-    raise exception 'authenticated role read aggregate runtime metrics';
-  exception when insufficient_privilege then
-    null;
-  end;
-  begin
-    perform * from public.background_workers_list_safe(10);
-    raise exception 'authenticated role read safe worker list';
-  exception when insufficient_privilege then
-    null;
-  end;
-end;
-$$;
-reset role;
+-- The real-catalog role matrix above verifies that anon/authenticated cannot
+-- execute any background-job RPC, including these three JOB-02 projections.
+-- Do not invoke a revoked function under those roles on the pinned Supabase
+-- Postgres 17 image: supabase/postgres#2112 documents a supautils SIGSEGV in
+-- that exact denial path. Restore call-style denial probes only after an
+-- upgraded supported image passes the focused reproduction on both legs.
+-- https://github.com/supabase/postgres/issues/2112
+-- https://github.com/supabase/supautils/releases/tag/v3.2.2
 
 -- Explicit NULLs fail closed on every bounded worker/list argument, while the
 -- documented reconciliation upper bound remains executable.

@@ -972,13 +972,11 @@ describe('Wave 3 background-job migrations', () => {
     expect(executableRuntimeContract).toMatch(
       /set local role service_role;[\s\S]*service-role lease-fenced worker runtime context was incomplete[\s\S]*service-role safe worker health projection was incomplete[\s\S]*service-role runtime aggregate metrics were incomplete[\s\S]*reset role;/i,
     );
-    for (const marker of [
-      'authenticated role read worker runtime context',
-      'authenticated role read aggregate runtime metrics',
-      'authenticated role read safe worker list',
-    ]) {
-      expect(executableRuntimeContract, `JOB-02 role boundary: ${marker}`).toContain(marker);
-    }
-    expect(executableRuntimeContract).toMatch(/set local role authenticated;[\s\S]*reset role;/i);
+    expect(executableSqlContract).toMatch(
+      /has_function_privilege\('authenticated', routine\.oid, 'execute'\)/i,
+    );
+    expect(executableSqlContract).toContain('browser role can execute a background-job function');
+    expect(executableRuntimeContract).not.toMatch(/set local role authenticated/i);
+    expect(executableRuntimeContract).toContain('supabase/postgres#2112');
   });
 });

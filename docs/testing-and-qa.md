@@ -174,6 +174,8 @@ As of 2026-07-20, `docker`, `psql`, and the Supabase CLI were unavailable on thi
 
 The database contract checks the logged queue and unlogged-name fail-closed rule, minimal message, atomic intent-stable enqueue (including two database clients synchronised by an advisory-lock barrier), private payload and effect-identity read fencing, competing claims, random lease fencing, heartbeat extension, strict state/effect transitions, provider-window and uncertainty recovery, cancellation fencing, bounded-argument NULL rejection, exact terminal archive, missing/stale-message audit and repair, safe inspection projections, and browser/service-role revokes. Static tests cannot prove those runtime behaviours by themselves.
 
+Browser-role denial is verified from the live PostgreSQL privilege catalog for every `background_*` function, including an exact service-role allowlist. Do not replace that check with caught calls to revoked functions while the compatibility matrix pins Supabase Postgres `17.6.1.107`: [supabase/postgres#2112](https://github.com/supabase/postgres/issues/2112) records a `supautils` SIGSEGV on that denial path. A targeted fix appears in [supautils v3.2.2](https://github.com/supabase/supautils/releases/tag/v3.2.2), but version presence alone is not evidence; reconsider call-style probes only after an upgraded supported image passes the focused reproduction on both matrix legs. The workaround changes only the test mechanism, not grants or RLS.
+
 ## Portal Browser Tests
 
 Required env:
