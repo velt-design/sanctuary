@@ -110,12 +110,16 @@ function requireSuccess(result, label) {
   );
 }
 
-function psqlDockerArgs({ quiet = false, singleTransaction = false } = {}) {
+function psqlDockerArgs({
+  quiet = false,
+  singleTransaction = false,
+  username = "postgres",
+} = {}) {
   const psqlArgs = [
     "psql",
     "--no-psqlrc",
     "--set=ON_ERROR_STOP=1",
-    "--username=postgres",
+    `--username=${username}`,
     "--dbname=postgres",
   ];
   if (quiet) psqlArgs.push("--quiet", "--tuples-only", "--no-align");
@@ -315,14 +319,34 @@ function verifyPgmqVersion() {
   process.stdout.write(`background-jobs-db: PGMQ ${pgmqVersion}\n`);
 }
 
-function applySql(relativePath, { singleTransaction = false } = {}) {
+function resolveBootstrapRole() {
+  return queryScalar(
+    `select case
+      when exists (
+        select 1
+        from pg_catalog.pg_roles
+        where rolname = 'supabase_admin'
+          and rolsuper
+      ) then 'supabase_admin'
+      else 'postgres'
+    end;`,
+    "Test bootstrap role query",
+  );
+}
+
+function applySql(
+  relativePath,
+  { singleTransaction = false, username = "postgres" } = {},
+) {
   const sql = readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-  const result = docker(psqlDockerArgs({ singleTransaction }), { input: sql });
+  const result = docker(psqlDockerArgs({ singleTransaction, username }), {
+    input: sql,
+  });
   requireSuccess(result, relativePath);
   process.stdout.write(
     `background-jobs-db: applied ${relativePath}${
       singleTransaction ? " atomically" : ""
-    }\n`,
+    } as ${username}\n`,
   );
 }
 
@@ -579,7 +603,10 @@ async function run() {
 
   await waitForPostgres();
   verifyPostgresVersion();
-  applySql(bootstrapSqlFile, { singleTransaction: true });
+  applySql(bootstrapSqlFile, {
+    singleTransaction: true,
+    username: resolveBootstrapRole(),
+  });
   for (const migration of waveThreeMigrationFiles) {
     applySql(migration, { singleTransaction: true });
   }

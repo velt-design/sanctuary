@@ -27,3 +27,8 @@ create table if not exists public.projects (
   id uuid primary key
 );
 
+-- The Supabase Postgres image deliberately owns auth with its internal admin
+-- role. The isolated harness may therefore create these two stub relations as
+-- supabase_admin, but all migrations and assertions still execute as postgres.
+grant all privileges on table auth.users to postgres;
+grant all privileges on table public.projects to postgres;

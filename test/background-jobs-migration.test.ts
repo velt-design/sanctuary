@@ -821,6 +821,8 @@ describe('Wave 3 background-job migrations', () => {
     expect(databaseHarness).toMatch(/wait_event = 'advisory'/i);
     expect(databaseHarness).toMatch(/pg_postmaster_start_time\(\)/i);
     expect(databaseHarness).toMatch(/BACKGROUND_JOBS_DB_READY_STABLE_MS/i);
+    expect(databaseHarness).toMatch(/rolname = 'supabase_admin'/i);
+    expect(databaseHarness).toMatch(/username: resolveBootstrapRole\(\)/i);
     expect(databaseHarness).toMatch(/p_priority => 100::smallint/i);
     expect(databaseHarness).toMatch(/LEDGER_COUNT=/i);
   });
