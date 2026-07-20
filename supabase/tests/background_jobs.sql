@@ -1519,6 +1519,7 @@ declare
   v_queue_message jsonb;
   v_receipt_count integer;
   v_queue_failure_observed boolean := false;
+  v_recovered_count integer;
 begin
   -- The callback may race the worker immediately after the provider accepted
   -- the request. Acceptance must update the durable effect but must not fence
@@ -1713,7 +1714,12 @@ begin
   update public.background_jobs
   set lease_expires_at = now() - interval '1 second'
   where id = v_live_job.id;
-  if public.background_jobs_recover_expired_leases('sql-provider-finalised-recovery', 100) < 1
+  -- Keep the mutating recovery call in its own statement. Sibling subqueries
+  -- in one PL/pgSQL expression are not an ordered post-mutation snapshot.
+  v_recovered_count := public.background_jobs_recover_expired_leases(
+    'sql-provider-finalised-recovery', 100
+  );
+  if v_recovered_count < 1
      or (select status from public.background_jobs where id = v_live_job.id) <> 'provider_accepted'
      or (select lease_token from public.background_jobs where id = v_live_job.id) is not null
      or (select state from public.background_job_effects where id = v_live_effect_id) <> 'finalised' then
