@@ -771,6 +771,18 @@ describe('Wave 3 background-job migrations', () => {
     expect(contractHardening).toMatch(
       /grant execute on function public\.background_job_event_history_safe\(uuid, integer\) to service_role/i,
     );
+    for (const helper of [
+      'background_job_transition_allowed',
+      'background_job_effect_transition_allowed',
+      'background_job_effect_kind_array_valid',
+      'background_jobs_before_update',
+      'background_job_effects_before_update',
+      'background_job_events_append_only',
+    ]) {
+      expect(contractHardening).toMatch(
+        new RegExp(`revoke all on function public\\.${helper}\\([\\s\\S]*?from service_role`, 'i'),
+      );
+    }
   });
 
   it('ships executable isolated-database assertions in addition to static migration checks', () => {

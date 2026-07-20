@@ -2842,6 +2842,25 @@ revoke all on function public.background_job_safe_json(jsonb)
 revoke all on function public.background_job_safe_summary(text, jsonb)
   from public, anon, authenticated, service_role;
 
+-- Supabase grants service_role EXECUTE on new public functions through its
+-- project-wide default privileges. Remove that inherited capability from
+-- constraint/trigger helpers; worker access remains the explicit RPC allowlist
+-- granted below and in the preceding migrations.
+revoke all on function public.background_job_transition_allowed(
+  public.background_job_status, public.background_job_status
+) from service_role;
+revoke all on function public.background_job_effect_transition_allowed(
+  public.background_job_effect_state, public.background_job_effect_state
+) from service_role;
+revoke all on function public.background_job_effect_kind_array_valid(text[])
+  from service_role;
+revoke all on function public.background_jobs_before_update()
+  from service_role;
+revoke all on function public.background_job_effects_before_update()
+  from service_role;
+revoke all on function public.background_job_events_append_only()
+  from service_role;
+
 revoke all on function public.background_job_get_safe(uuid)
   from public, anon, authenticated;
 grant execute on function public.background_job_get_safe(uuid) to service_role;
