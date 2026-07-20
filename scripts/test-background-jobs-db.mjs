@@ -110,16 +110,12 @@ function requireSuccess(result, label) {
   );
 }
 
-function psqlDockerArgs({
-  quiet = false,
-  singleTransaction = false,
-  username = "postgres",
-} = {}) {
+function psqlDockerArgs({ quiet = false, singleTransaction = false } = {}) {
   const psqlArgs = [
     "psql",
     "--no-psqlrc",
     "--set=ON_ERROR_STOP=1",
-    `--username=${username}`,
+    "--username=postgres",
     "--dbname=postgres",
   ];
   if (quiet) psqlArgs.push("--quiet", "--tuples-only", "--no-align");
@@ -219,6 +215,7 @@ async function waitForPostgres() {
       "exec",
       containerName,
       "pg_isready",
+      "--host=127.0.0.1",
       "--username=postgres",
       "--dbname=postgres",
     ]);
@@ -319,34 +316,14 @@ function verifyPgmqVersion() {
   process.stdout.write(`background-jobs-db: PGMQ ${pgmqVersion}\n`);
 }
 
-function resolveBootstrapRole() {
-  return queryScalar(
-    `select case
-      when exists (
-        select 1
-        from pg_catalog.pg_roles
-        where rolname = 'supabase_admin'
-          and rolsuper
-      ) then 'supabase_admin'
-      else 'postgres'
-    end;`,
-    "Test bootstrap role query",
-  );
-}
-
-function applySql(
-  relativePath,
-  { singleTransaction = false, username = "postgres" } = {},
-) {
+function applySql(relativePath, { singleTransaction = false } = {}) {
   const sql = readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-  const result = docker(psqlDockerArgs({ singleTransaction, username }), {
-    input: sql,
-  });
+  const result = docker(psqlDockerArgs({ singleTransaction }), { input: sql });
   requireSuccess(result, relativePath);
   process.stdout.write(
     `background-jobs-db: applied ${relativePath}${
       singleTransaction ? " atomically" : ""
-    } as ${username}\n`,
+    }\n`,
   );
 }
 
@@ -603,10 +580,7 @@ async function run() {
 
   await waitForPostgres();
   verifyPostgresVersion();
-  applySql(bootstrapSqlFile, {
-    singleTransaction: true,
-    username: resolveBootstrapRole(),
-  });
+  applySql(bootstrapSqlFile, { singleTransaction: true });
   for (const migration of waveThreeMigrationFiles) {
     applySql(migration, { singleTransaction: true });
   }

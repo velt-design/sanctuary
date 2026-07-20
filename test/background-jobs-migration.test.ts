@@ -39,6 +39,10 @@ const executableSqlContract = readFileSync(
   path.join(process.cwd(), 'supabase/tests/background_jobs.sql'),
   'utf8',
 );
+const databaseBootstrap = readFileSync(
+  path.join(process.cwd(), 'supabase/tests/background_jobs_bootstrap.sql'),
+  'utf8',
+);
 const databaseHarness = readFileSync(
   path.join(process.cwd(), 'scripts/test-background-jobs-db.mjs'),
   'utf8',
@@ -820,9 +824,9 @@ describe('Wave 3 background-job migrations', () => {
     expect(databaseHarness).toMatch(/wait_event_type = 'Lock'/i);
     expect(databaseHarness).toMatch(/wait_event = 'advisory'/i);
     expect(databaseHarness).toMatch(/pg_postmaster_start_time\(\)/i);
+    expect(databaseHarness).toMatch(/pg_isready[\s\S]*--host=127\.0\.0\.1/i);
     expect(databaseHarness).toMatch(/BACKGROUND_JOBS_DB_READY_STABLE_MS/i);
-    expect(databaseHarness).toMatch(/rolname = 'supabase_admin'/i);
-    expect(databaseHarness).toMatch(/username: resolveBootstrapRole\(\)/i);
+    expect(databaseBootstrap).toMatch(/to_regclass\('auth\.users'\) is null/i);
     expect(databaseHarness).toMatch(/p_priority => 100::smallint/i);
     expect(databaseHarness).toMatch(/LEDGER_COUNT=/i);
   });

@@ -19,16 +19,16 @@ $$;
 
 create schema if not exists auth;
 
-create table if not exists auth.users (
-  id uuid primary key
-);
+-- CREATE TABLE IF NOT EXISTS still checks CREATE on the schema before it can
+-- report that the Supabase image's protected relation already exists.
+do $$
+begin
+  if to_regclass('auth.users') is null then
+    execute 'create table auth.users (id uuid primary key)';
+  end if;
+end;
+$$;
 
 create table if not exists public.projects (
   id uuid primary key
 );
-
--- The Supabase Postgres image deliberately owns auth with its internal admin
--- role. The isolated harness may therefore create these two stub relations as
--- supabase_admin, but all migrations and assertions still execute as postgres.
-grant all privileges on table auth.users to postgres;
-grant all privileges on table public.projects to postgres;
