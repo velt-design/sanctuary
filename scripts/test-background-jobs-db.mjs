@@ -15,6 +15,14 @@ const waveThreeMigrationFilePattern =
 const concurrentIntentKey = "sql-harness/concurrent-enqueue";
 const clientAApplicationName = "sanctuary_background_jobs_client_a";
 const clientBApplicationName = "sanctuary_background_jobs_client_b";
+const providerCollisionIntentA = "sql-harness/provider-collision-a";
+const providerCollisionIntentB = "sql-harness/provider-collision-b";
+const providerCollisionWorkerA = "sql-provider-collision-a";
+const providerCollisionWorkerB = "sql-provider-collision-b";
+const providerCollisionClientA = "sanctuary_provider_collision_a";
+const providerCollisionClientAReady = "sanctuary_provider_collision_a_ready";
+const providerCollisionClientB = "sanctuary_provider_collision_b";
+const providerCollisionMessageId = "resend-message-concurrent-collision";
 const jobIdMarker =
   /JOB_ID=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
@@ -47,6 +55,15 @@ const readinessStableMs = positiveIntegerEnvironmentValue(
 const concurrencyTimeoutMs = positiveIntegerEnvironmentValue(
   "BACKGROUND_JOBS_DB_CONCURRENCY_TIMEOUT_MS",
   30_000,
+);
+if (concurrencyTimeoutMs > 600_000) {
+  throw new Error(
+    "BACKGROUND_JOBS_DB_CONCURRENCY_TIMEOUT_MS must not exceed 600000ms.",
+  );
+}
+const providerCollisionLeaseSeconds = Math.max(
+  60,
+  Math.ceil((concurrencyTimeoutMs + 30_000) / 1_000),
 );
 const expectedPostgresMajor = optionalEnvironmentValue(
   "BACKGROUND_JOBS_DB_EXPECTED_POSTGRES_MAJOR",
@@ -510,6 +527,330 @@ $cleanup$;`,
   );
 }
 
+function providerCollisionSetupSql() {
+  return `
+do $provider_collision_setup$
+declare
+  v_index integer;
+  v_job public.background_jobs%rowtype;
+  v_claim record;
+  v_worker_id text;
+  v_intent_key text;
+  v_payload_hash text;
+  v_provider_expiry timestamptz := now() + interval '1 hour';
+begin
+  for v_index in 1..2 loop
+    v_worker_id := case
+      when v_index = 1 then '${providerCollisionWorkerA}'
+      else '${providerCollisionWorkerB}'
+    end;
+    v_intent_key := case
+      when v_index = 1 then '${providerCollisionIntentA}'
+      else '${providerCollisionIntentB}'
+    end;
+    v_payload_hash := repeat(case when v_index = 1 then 'a' else 'b' end, 64);
+
+    select * into strict v_job
+    from public.background_job_enqueue_system(
+      p_kind => 'quote_send',
+      p_contract_version => 1,
+      p_subject_type => 'quote',
+      p_subject_id => format('provider_collision_%s', v_index),
+      p_project_id => null::uuid,
+      p_priority => 100::smallint,
+      p_intent_key => v_intent_key,
+      p_payload => '{}'::jsonb,
+      p_not_before => now(),
+      p_rollout_mode => 'worker_enabled'::public.background_job_rollout_mode,
+      p_execution_owner => 'worker'::public.background_job_execution_owner,
+      p_rollout_cohort => 'sql-harness'
+    );
+    select * into strict v_claim
+    from public.background_jobs_claim(
+      v_worker_id,
+      1,
+      ${providerCollisionLeaseSeconds}
+    );
+    if v_claim.job_id <> v_job.id then
+      raise exception 'provider-collision setup claimed an unexpected job';
+    end if;
+
+    perform public.background_job_record_progress(
+      v_job.id,
+      v_worker_id,
+      v_claim.lease_token,
+      'running',
+      'preparing_delivery',
+      '{}'::jsonb
+    );
+    perform public.background_job_record_effect_checkpoint(
+      v_job.id,
+      v_worker_id,
+      v_claim.lease_token,
+      'email_dispatch',
+      'email_dispatch',
+      'prepared',
+      v_payload_hash,
+      'resend',
+      v_intent_key,
+      v_provider_expiry,
+      null,
+      '{}'::jsonb
+    );
+    perform public.background_job_record_effect_checkpoint(
+      v_job.id,
+      v_worker_id,
+      v_claim.lease_token,
+      'email_dispatch',
+      'email_dispatch',
+      'dispatch_started',
+      v_payload_hash,
+      'resend',
+      v_intent_key,
+      v_provider_expiry,
+      null,
+      '{}'::jsonb
+    );
+  end loop;
+end;
+$provider_collision_setup$;
+`;
+}
+
+function providerCollisionClientSql({
+  applicationName,
+  intentKey,
+  workerId,
+  waitForCollision,
+}) {
+  return `
+set application_name = '${applicationName}';
+set statement_timeout = '${concurrencyTimeoutMs + 5_000}ms';
+begin;
+select 'EFFECT_STATE=' || accepted.state::text
+from public.background_job_record_provider_acceptance(
+  p_job_id => (
+    select id from public.background_jobs where intent_key = '${intentKey}'
+  ),
+  p_worker_id => '${workerId}',
+  p_lease_token => (
+    select lease_token from public.background_jobs where intent_key = '${intentKey}'
+  ),
+  p_effect_key => 'email_dispatch',
+  p_effect_kind => 'email_dispatch',
+  p_payload_hash => (
+    select payload_hash
+    from public.background_job_effects
+    where job_id = (select id from public.background_jobs where intent_key = '${intentKey}')
+      and effect_key = 'email_dispatch'
+  ),
+  p_provider_name => 'resend',
+  p_provider_idempotency_key => '${intentKey}',
+  p_provider_idempotency_expires_at => (
+    select provider_idempotency_expires_at
+    from public.background_job_effects
+    where job_id = (select id from public.background_jobs where intent_key = '${intentKey}')
+      and effect_key = 'email_dispatch'
+  ),
+  p_provider_message_id => '${providerCollisionMessageId}',
+  p_safe_metadata => jsonb_build_object(
+    'effectKind', 'email_dispatch',
+    'checkpoint', 'provider_accepted',
+    'providerName', 'resend',
+    'providerAccepted', true
+  )
+) accepted;
+${
+  waitForCollision
+    ? `set application_name = '${providerCollisionClientAReady}';
+do $provider_collision_barrier$
+declare
+  v_deadline timestamptz := clock_timestamp() + (${concurrencyTimeoutMs} * interval '1 millisecond');
+begin
+  loop
+    perform pg_catalog.pg_stat_clear_snapshot();
+    exit when exists (
+      select 1
+      from pg_catalog.pg_stat_activity blocked
+      where blocked.application_name = '${providerCollisionClientB}'
+        and blocked.state = 'active'
+        and blocked.wait_event_type = 'Lock'
+        and blocked.wait_event = 'transactionid'
+        and pg_backend_pid() = any(pg_catalog.pg_blocking_pids(blocked.pid))
+    );
+
+    if clock_timestamp() >= v_deadline then
+      raise exception 'provider-collision client B did not wait on client A unique-index transaction';
+    end if;
+    perform pg_sleep(0.05);
+  end loop;
+end;
+$provider_collision_barrier$;`
+    : ""
+}
+commit;
+`;
+}
+
+async function waitForProviderCollisionClientA(clientAState) {
+  const deadline = Date.now() + concurrencyTimeoutMs;
+  while (Date.now() < deadline) {
+    if (clientAState.error) throw clientAState.error;
+    if (clientAState.result) {
+      throw new Error(
+        "Provider-collision client A completed before holding its accepted provider identity.",
+      );
+    }
+
+    const readyCount = Number.parseInt(
+      queryScalar(
+        `select count(*)::text
+from pg_catalog.pg_stat_activity activity
+where activity.application_name = '${providerCollisionClientAReady}'
+  and activity.state = 'active';`,
+        "Provider-collision client A readiness probe",
+      ),
+      10,
+    );
+    if (readyCount === 1) return;
+    await delay(50);
+  }
+
+  throw new Error(
+    `Provider-collision client A was not ready within ${concurrencyTimeoutMs}ms.`,
+  );
+}
+
+function providerCollisionAssertionSql() {
+  return `
+do $provider_collision_assertions$
+declare
+  v_owner_job public.background_jobs%rowtype;
+  v_loser_job public.background_jobs%rowtype;
+  v_owner_effect public.background_job_effects%rowtype;
+  v_loser_effect public.background_job_effects%rowtype;
+begin
+  select * into strict v_owner_job
+  from public.background_jobs
+  where intent_key = '${providerCollisionIntentA}';
+  select * into strict v_loser_job
+  from public.background_jobs
+  where intent_key = '${providerCollisionIntentB}';
+  select * into strict v_owner_effect
+  from public.background_job_effects
+  where job_id = v_owner_job.id and effect_key = 'email_dispatch';
+  select * into strict v_loser_effect
+  from public.background_job_effects
+  where job_id = v_loser_job.id and effect_key = 'email_dispatch';
+
+  if v_owner_effect.state <> 'provider_accepted'
+     or v_owner_effect.provider_message_id is distinct from '${providerCollisionMessageId}'
+     or v_owner_job.status <> 'provider_accepted'
+     or v_owner_job.provider_message_id is distinct from '${providerCollisionMessageId}'
+     or v_owner_job.lease_owner is distinct from '${providerCollisionWorkerA}'
+     or not private.background_job_queue_contains(v_owner_job.queue_message_id) then
+    raise exception 'concurrent provider-message winner did not retain its accepted identity and lease';
+  end if;
+
+  if v_loser_effect.state <> 'uncertain'
+     or v_loser_effect.provider_message_id is not null
+     or v_loser_job.status <> 'needs_attention'
+     or v_loser_job.error_code is distinct from 'EMAIL_PROVIDER_MESSAGE_ID_CONFLICT'
+     or v_loser_job.lease_owner is not null
+     or v_loser_job.lease_token is not null
+     or private.background_job_queue_contains(v_loser_job.queue_message_id)
+     or not exists (
+       select 1
+       from pgmq.a_portal_background_jobs archived
+       where archived.msg_id = v_loser_job.queue_message_id
+     ) then
+    raise exception 'concurrent provider-message loser was not atomically quarantined';
+  end if;
+
+  if (
+    select count(*)
+    from public.background_job_effects effect
+    where effect.provider_name = 'resend'
+      and effect.provider_message_id = '${providerCollisionMessageId}'
+  ) <> 1 then
+    raise exception 'concurrent provider-message collision created multiple owners';
+  end if;
+
+  if not pgmq.archive('portal_background_jobs', v_owner_job.queue_message_id) then
+    raise exception 'concurrent provider-message winner queue cleanup failed';
+  end if;
+  delete from public.background_jobs where id in (v_owner_job.id, v_loser_job.id);
+end;
+$provider_collision_assertions$;
+`;
+}
+
+async function verifyConcurrentProviderMessageCollision() {
+  await psqlAsync(
+    providerCollisionSetupSql(),
+    "Concurrent provider-message fixture setup",
+  );
+
+  const clientAState = { result: undefined, error: undefined };
+  const clientA = psqlAsync(
+    providerCollisionClientSql({
+      applicationName: providerCollisionClientA,
+      intentKey: providerCollisionIntentA,
+      workerId: providerCollisionWorkerA,
+      waitForCollision: true,
+    }),
+    "Concurrent provider-message client A",
+  );
+  clientA.then(
+    (result) => {
+      clientAState.result = result;
+    },
+    (error) => {
+      clientAState.error = error;
+    },
+  );
+
+  await waitForProviderCollisionClientA(clientAState);
+  const clientB = psqlAsync(
+    providerCollisionClientSql({
+      applicationName: providerCollisionClientB,
+      intentKey: providerCollisionIntentB,
+      workerId: providerCollisionWorkerB,
+      waitForCollision: false,
+    }),
+    "Concurrent provider-message client B",
+  );
+  const clientResults = await Promise.allSettled([clientA, clientB]);
+  const failures = clientResults
+    .filter((result) => result.status === "rejected")
+    .map((result) =>
+      result.reason instanceof Error ? result.reason.message : String(result.reason),
+    );
+  if (failures.length > 0) {
+    throw new Error(
+      `Concurrent provider-message clients failed:\n${failures.join("\n\n")}`,
+    );
+  }
+
+  const [clientAResult, clientBResult] = clientResults.map(
+    (result) => result.value,
+  );
+  if (!/EFFECT_STATE=provider_accepted/i.test(clientAResult.stdout)) {
+    throw new Error("Concurrent provider-message client A did not retain acceptance.");
+  }
+  if (!/EFFECT_STATE=uncertain/i.test(clientBResult.stdout)) {
+    throw new Error("Concurrent provider-message client B did not return quarantine state.");
+  }
+
+  await psqlAsync(
+    providerCollisionAssertionSql(),
+    "Concurrent provider-message assertions and cleanup",
+  );
+  process.stdout.write(
+    "background-jobs-db: concurrent provider-message collision contract passed\n",
+  );
+}
+
 let containerStarted = false;
 let cleanupInProgress = false;
 
@@ -586,6 +927,7 @@ async function run() {
   }
   verifyPgmqVersion();
   await verifyConcurrentEnqueue();
+  await verifyConcurrentProviderMessageCollision();
   applySql(contractSqlFile);
   process.stdout.write(
     `background-jobs-db: isolated PGMQ contract passed (${image})\n`,

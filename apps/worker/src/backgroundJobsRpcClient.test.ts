@@ -181,6 +181,12 @@ describe('background jobs RPC adapter', () => {
       [BACKGROUND_JOBS_RPC_NAMES.heartbeat]: safeJobRow,
       [BACKGROUND_JOBS_RPC_NAMES.recordProgress]: safeJobRow,
       [BACKGROUND_JOBS_RPC_NAMES.recordEffectCheckpoint]: effectRow,
+      [BACKGROUND_JOBS_RPC_NAMES.recordProviderAcceptance]: {
+        ...effectRow,
+        state: 'provider_accepted',
+        provider_message_id: 'resend-message-1',
+        safe_metadata: { effectKind: 'email_dispatch', checkpoint: 'provider_accepted' },
+      },
       [BACKGROUND_JOBS_RPC_NAMES.complete]: safeJobRow,
       [BACKGROUND_JOBS_RPC_NAMES.scheduleRetry]: safeJobRow,
       [BACKGROUND_JOBS_RPC_NAMES.markNeedsAttention]: safeJobRow,
@@ -204,6 +210,18 @@ describe('background jobs RPC adapter', () => {
       providerIdempotencyKey: 'quote-1/email-1',
       providerIdempotencyExpiresAt: '2026-07-20T02:02:03.000Z',
       safeMetadata: { effectKind: 'email_dispatch', checkpoint: 'prepared' },
+    });
+    await rpc.recordEffectCheckpoint({
+      ...owned,
+      effectKey: 'quote-1/email-1',
+      effectKind: 'email_dispatch',
+      state: 'provider_accepted',
+      payloadHash: hash,
+      providerName: 'resend',
+      providerIdempotencyKey: 'quote-1/email-1',
+      providerIdempotencyExpiresAt: '2026-07-20T02:02:03.000Z',
+      providerMessageId: 'resend-message-1',
+      safeMetadata: { effectKind: 'email_dispatch', checkpoint: 'provider_accepted' },
     });
     await rpc.complete({ ...owned, safeResult: {} });
     await rpc.scheduleRetry({ ...owned, delaySeconds: 30, errorCode: 'TRANSIENT_FAILURE' });
@@ -241,6 +259,23 @@ describe('background jobs RPC adapter', () => {
     expect(calls.find((call) => call.name === BACKGROUND_JOBS_RPC_NAMES.recordEffectCheckpoint)?.selectedColumns).toBe(
       BACKGROUND_JOB_EFFECT_COLUMNS,
     );
+    const providerAcceptanceCall = calls.find(
+      (call) => call.name === BACKGROUND_JOBS_RPC_NAMES.recordProviderAcceptance,
+    );
+    expect(providerAcceptanceCall?.selectedColumns).toBe(BACKGROUND_JOB_EFFECT_COLUMNS);
+    expect(providerAcceptanceCall?.parameters).toEqual({
+      p_job_id: jobId,
+      p_worker_id: 'worker-1',
+      p_lease_token: leaseToken,
+      p_effect_key: 'quote-1/email-1',
+      p_effect_kind: 'email_dispatch',
+      p_payload_hash: hash,
+      p_provider_name: 'resend',
+      p_provider_idempotency_key: 'quote-1/email-1',
+      p_provider_idempotency_expires_at: '2026-07-20T02:02:03.000Z',
+      p_provider_message_id: 'resend-message-1',
+      p_safe_metadata: { effectKind: 'email_dispatch', checkpoint: 'provider_accepted' },
+    });
     expect(calls.find((call) => call.name === BACKGROUND_JOBS_RPC_NAMES.workerHeartbeat)?.selectedColumns).toBe(
       BACKGROUND_WORKER_HEARTBEAT_COLUMNS,
     );

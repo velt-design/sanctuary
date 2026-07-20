@@ -28,6 +28,9 @@
       "@sp/geometry/*": [
         "./packages/geometry/src/*"
       ],
+      "@sp/email-provider": [
+        "./packages/email-provider/src/index.ts"
+      ],
       "@sp/jobs": [
         "./packages/jobs/src/index.ts"
       ],

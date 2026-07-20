@@ -46,11 +46,13 @@ server-owned workflow intent
   -> atomic service-role enqueue RPC
   -> durable ledger plus private payload plus logged minimal PGMQ message
   -> worker claim with a random application lease token
-  -> lease-fenced progress, effect checkpoints, retry, and finalisation RPCs
+  -> lease-fenced progress and prepared/dispatch_started/provider_accepted/finalised effect checkpoints
+  -> same-key provider retry or signed-webhook reconciliation while delivery is uncertain
+  -> owning workflow finalisation and terminal queue archive
   -> owning workflow state and safe staff-visible status
 ```
 
-The queue is a wake-up pointer, not the job record or payload store. `packages/jobs` owns shared kinds, worker-safe response contracts, and transition/retry policy; Supabase owns durable state, protected input, leases, append-only events, and effect checkpoints. `apps/worker` owns generic execution mechanics and is dark by default. It does not own copied quote/invoice/job-pack/email/automation rules, and its presence does not authorise a producer or rollout.
+The queue is a wake-up pointer, not the job record or payload store. `packages/jobs` owns shared kinds, worker-safe response contracts, and transition/retry policy; `packages/email-provider` owns provider request identity, exact transport bytes, typed delivery outcomes, and signed-envelope parsing; Supabase owns durable state, protected input, leases, append-only events, receipts, and effect checkpoints. `apps/worker` owns generic execution mechanics and is dark by default. It does not own copied quote/invoice/job-pack/email/automation rules, and its presence does not authorise a producer or rollout.
 
 Workbench must not own pricing policy. Costing must not solve geometry. Portal may orchestrate, adapt, persist, and show status, but it must not duplicate package truth. `CommercialDesignInputV1` is allowed as the costing boundary and migration comparison contract, not as a parallel geometry model.
 
@@ -86,6 +88,11 @@ Portal may adapt package output for UI and persistence. It must not fork package
 
 - versioned job kinds, safe queue and status contracts, retry/timeout/rollout policy, idempotency strategy, and allowed state/effect transitions.
 - it does not own database persistence, business-workflow handlers, provider clients, or worker process lifecycle.
+
+`packages/email-provider` owns provider-transport contract truth:
+
+- canonical email normalization and exact direct-`fetch` Resend request bytes, stable job/effect-derived idempotency identity, a conservative 20-hour automatic retry window inside Resend's 24-hour retention window, safe correlation tags, timeout/abort behavior, typed provider outcomes, and raw-body Svix verification.
+- it does not own workflow intent, durable database state, business finalisation, app logging, or rollout.
 
 `packages/quote-format` owns shared customer-facing quote wording and formatting.
 
@@ -139,6 +146,8 @@ Design List and Running Jobs spreadsheet edits go through their staff APIs and s
 
 Quote, invoice, PDF, email, public-token, generated-artifact, and job-pack side effects go through their owning server/domain helpers.
 
+Email transport goes through `@sp/email-provider` or a thin server-only app adapter. Deposit-invoice delivery remains request-bound until JOB-04, quote send/resend until JOB-05, and automation/outbox ownership until JOB-07; introducing the shared gateway alone does not migrate those workflows.
+
 Durable background-job callers go through server-owned enqueue helpers and service-role RPCs. Browser code never reads PGMQ, private payloads, or job tables directly. Until a later migration task explicitly moves a workflow, the current owning synchronous/legacy helper remains authoritative.
 
 The first browser data-access visibility gate is `npm run browser:supabase`, with `npm run browser:supabase:changed` for handoffs that touch browser-facing Supabase access. This report is advisory; `npm run cache:forbid` remains the narrower hard guard for invalid portal UI table access.
@@ -149,7 +158,7 @@ Staff routes use staff auth helpers. Admin routes use admin auth helpers. Public
 
 Service-role access is server-only and must stay allowlisted. Valid service-role uses are admin tooling, imports, automation, public-token verification, server-owned side effects, and explicit RLS bypasses documented by the owning feature.
 
-Background-job access is a narrower service-role boundary: direct job-table, PGMQ, and private-schema access stays revoked from browser roles and `service_role`; workers use only the granted security-definer RPCs. Protected payload reads and worker-owned lifecycle/effect writes require both worker identity and the current random lease token; cancellation, manual retry, recovery, and repair use separate administrative RPCs.
+Background-job access is a narrower service-role boundary: direct job-table, PGMQ, and private-schema access stays revoked from browser roles and `service_role`; workers use only the granted security-definer RPCs. Protected payload reads and worker-owned lifecycle/effect writes require both worker identity and the current random lease token; cancellation, manual retry, recovery, and repair use separate administrative RPCs. The public provider webhook verifies a bounded untouched request body before one narrow service-role reconciliation RPC receives only safe correlation fields; verified acceptance may wake finalisation but must not mutate unrelated business state. Verified acceptance may supersede only stale provider-outcome classifications; exact frozen-request, key, provider-message, and effect-identity conflicts remain operator-visible. A local acceptance racing a signed callback with a different message ID, or colliding with another effect's message ID, is atomically quarantined by the worker's lease-fenced acceptance RPC. A conflicting signed callback discovered after success or cancellation reclassifies the durable job to `needs_attention` without replaying business finalisation.
 
 Never expose raw tokens, token hashes, service-role keys, broad file access, or private artifacts to client components, browser bundles, generated documents, public payloads, or logs.
 
@@ -170,6 +179,8 @@ Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, a
 Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
 
 Durable background-job kinds and transition policy must come from `@sp/jobs`. Apps and workers may supply handlers and workflow adapters, but they must not fork the kind registry, queue-message schema, status machine, effect-state machine, or rollout vocabulary.
+
+Email provider behavior must come from `@sp/email-provider`. Apps must not recreate Resend request classification, signature verification, provider idempotency identity, or canonical payload hashing. The root npm lockfile is the only workspace lockfile; app-local lockfiles must not become separate dependency authorities.
 
 ## Target Areas
 
@@ -247,11 +258,11 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 
 - Lane label: `durable-jobs`.
 - North star: long-running server work is crash-recoverable, idempotent, observable, privacy-safe, and rolled out without changing business ownership accidentally.
-- Source of truth: `packages/jobs` for kinds and transition policy; the logged `portal_background_jobs` PGMQ queue, `background_jobs` ledger, private payload table, event/effect history, worker records, and service-role RPCs for durable persistence and lifecycle.
-- Allowed paths: a server-owned workflow creates one stable intent and frozen input through an atomic enqueue RPC; workers claim a minimal queue message, read protected payload and perform worker-owned lifecycle/effect mutations only with the current lease token, checkpoint external effects before/following provider calls, and finalise the owning business workflow through its domain helper. Domain handler milestones stay separate from provider-effect checkpoints. Administrative cancellation, manual retry, recovery, and repair remain separate service-role RPCs.
-- Forbidden shortcuts: sensitive or business payloads in PGMQ, browser or authenticated-role queue/table access, direct service-role table mutation, unfenced worker writes, queue deletion treated as business completion, duplicate effect dispatch without a checkpoint, or enabling a worker because foundation migrations merely exist.
-- Primary gates: `npm run test:jobs`, `npm run test:worker`, `npm run typecheck:worker`, `npm run build:worker`, repo security/service-role tests, and the Docker-backed `npm run test:jobs:db` contract that executes the rollback-wrapped SQL on a disposable PGMQ-capable database before rollout.
-- Next direction: JOB-01's five foundation migrations and JOB-02's sixth runtime-projection migration pass the isolated PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1 matrix. The dark-by-default, RPC-only worker passes local job/worker suites plus the dedicated CI typecheck, tests, lint, production build, built CLI, strict service-role guard, and non-root container build in Background Jobs run 29713940507. Implement JOB-03's provider gateway and reconciliation boundary next; JOB-04 through JOB-08 remain pending and no shared-environment rollout is implied.
+- Source of truth: `packages/jobs` for kinds and transition policy; `packages/email-provider` for byte-stable provider identity, transport outcomes, and signed-envelope parsing; the logged `portal_background_jobs` PGMQ queue, `background_jobs` ledger, private payload/receipt tables, event/effect history, worker records, and service-role RPCs for durable persistence and lifecycle.
+- Allowed paths: a server-owned workflow creates one stable intent and frozen input through an atomic enqueue RPC; workers claim a minimal queue message, read protected payload and perform worker-owned lifecycle/effect mutations only with the current lease token, freeze one exact provider key/body/hash/tag set, checkpoint `prepared`, `dispatch_started`, `provider_accepted`, and `finalised`, and finalise the owning business workflow through its domain helper. An uncertain attempt may replay only the same request and key inside the frozen 20-hour window and attempt budget. A verified signed callback may reconcile acceptance and wake finalisation through the narrow RPC. Domain handler milestones stay separate from provider-effect checkpoints. Administrative cancellation, manual retry, recovery, and repair remain separate service-role RPCs.
+- Forbidden shortcuts: sensitive or business payloads in PGMQ, browser or authenticated-role queue/table access, direct service-role table mutation, unfenced worker writes, queue deletion or provider acceptance treated as business completion, a new idempotency key after uncertainty, changed content under a frozen key, webhook mutation before raw-body signature verification, or enabling a worker because foundation code merely exists.
+- Primary gates: `npm run test:email-provider`, `npm run test:jobs`, `npm run test:worker`, `npm run typecheck:worker`, `npm run build:worker`, provider adapter/webhook route tests, repo security/service-role tests, and the Docker-backed `npm run test:jobs:db` contract that executes the rollback-wrapped SQL on a disposable PGMQ-capable database before rollout.
+- Next direction: JOB-01/JOB-02 pass the six-migration real-PGMQ matrix and worker artifact checks in Background Jobs run 29713940507. JOB-03 adds the shared provider gateway, the required ten-point hard-crash matrix plus one business-finaliser lost-return boundary, bounded signed-webhook reconciliation, and a lease-fenced local acceptance/message-ID quarantine RPC in the seventh migration; its checkpoint CI evidence remains pending until the commit is pushed. JOB-04 through JOB-08 remain pending. No shared database migration, production deployment, real email, enabled handler/producer, or rollout is implied.
 - Canonical docs: `docs/supabase-schema-map.md`, `docs/environment-auth-supabase.md`, `docs/security-privacy-quality.md`, `docs/testing-and-qa.md`, and `docs/portal-production-readiness.md`.
 
 ### Schedule V2 And Site Visits
@@ -302,7 +313,7 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 
 - Lane label: `package-truth`.
 - North star: packages own reusable domain truth; apps orchestrate and adapt that truth for workflows and UI.
-- Source of truth: `packages/costing`, `packages/geometry`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
+- Source of truth: `packages/costing`, `packages/email-provider`, `packages/geometry`, `packages/jobs`, `packages/quote-format`, `packages/theme`, and package public exports.
 - Allowed paths: behavior changes start in the owning package, then app adapters and integration tests are updated.
 - Forbidden shortcuts: TypeScript-only package aliases without declared dependencies, app-local forks of package rules, or private package internals used as stable APIs.
 - Primary gates: package tests, `npm run packages:guard`, app integration tests for changed adapters, and `npm run typecheck`.

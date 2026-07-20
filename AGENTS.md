@@ -35,6 +35,7 @@ Read this file first, then follow links into `docs/README.md`. For non-trivial o
 - `apps/portal`: staff portal, authenticated project workflow, estimates, quotes, invoices, schedule, running jobs, design list, job packs, admin.
 - `apps/worker`: dedicated Node background worker; dark by default, RPC-only against the durable job boundary, and independent of Next.js/browser code.
 - `packages/costing`: only source of truth for costing engine and base config.
+- `packages/email-provider`: only source of truth for Resend transport, frozen-request hashing, provider idempotency, timeout, and webhook-signature verification.
 - `packages/geometry`: only source of truth for geometry solving and 3D/profile assets.
 - `packages/jobs`: only source of truth for durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transitions.
 - `packages/quote-format`: shared quote display/formatting.
@@ -49,6 +50,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 ## Source Of Truth Boundaries
 
 - Costing imports must come from `@sp/costing`; do not copy engine/config logic into apps.
+- Resend wire calls, provider idempotency keys, frozen-request hashes, and webhook signature verification must come from `@sp/email-provider`; application email modules stay thin adapters.
 - Geometry imports should use `@sp/geometry` or portal drawing adapters; keep compatibility paths explicit.
 - Durable background-job kinds, worker-safe runtime contracts, retry policy, and transition policy must come from `@sp/jobs`. The worker uses the explicit service-role RPC adapter only; do not infer an enabled producer, domain handler, or rollout from the worker package, registry, or migrations.
 - Portal staff/admin APIs should use auth-bound server clients and `requireStaffSession` or `requireAdminSession`.

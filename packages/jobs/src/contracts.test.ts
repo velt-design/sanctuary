@@ -44,6 +44,11 @@ const foundation = readFileSync(
   path.join(process.cwd(), 'supabase/migrations/20260720_000001_background_job_foundation.sql'),
   'utf8',
 );
+const providerReconciliation = readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/20260720_000007_background_job_provider_reconciliation.sql'),
+  'utf8',
+);
+const effectiveTransitionSql = `${foundation}\n${providerReconciliation}`;
 
 function enumValues(enumName: string): string[] {
   const block = foundation.match(
@@ -54,9 +59,13 @@ function enumValues(enumName: string): string[] {
 }
 
 function sqlTransitionTargets(functionName: string, from: string): string[] {
-  const functionSource = foundation.match(
-    new RegExp(`create or replace function public\\.${functionName}\\([\\s\\S]*?\\n\\$\\$;`, 'i'),
-  )?.[0];
+  const definitions = Array.from(
+    effectiveTransitionSql.matchAll(
+      new RegExp(`create or replace function public\\.${functionName}\\([\\s\\S]*?\\n\\$\\$;`, 'gi'),
+    ),
+    (match) => match[0],
+  );
+  const functionSource = definitions.at(-1);
   if (!functionSource) throw new Error(`Missing SQL transition function: ${functionName}`);
 
   const list = functionSource.match(new RegExp(`when '${from}' then p_to in \\(([^)]*)\\)`, 'i'))?.[1];
@@ -149,6 +158,7 @@ describe('background job contracts', () => {
     }
 
     expect(backgroundJobEffectTransitionAllowed('failed', 'dispatch_started')).toBe(true);
+    expect(backgroundJobEffectTransitionAllowed('failed', 'provider_accepted')).toBe(true);
     expect(backgroundJobEffectTransitionAllowed('uncertain', 'dispatch_started')).toBe(true);
     expect(backgroundJobEffectTransitionAllowed('provider_accepted', 'dispatch_started')).toBe(false);
   });
@@ -156,6 +166,11 @@ describe('background job contracts', () => {
   it('rejects invalid job and effect transitions', () => {
     expect(backgroundJobTransitionAllowed('queued', 'claimed')).toBe(true);
     expect(backgroundJobTransitionAllowed('dispatching', 'provider_accepted')).toBe(true);
+    expect(backgroundJobTransitionAllowed('retrying', 'provider_accepted')).toBe(true);
+    expect(backgroundJobTransitionAllowed('needs_attention', 'provider_accepted')).toBe(true);
+    expect(backgroundJobTransitionAllowed('permanent_failed', 'provider_accepted')).toBe(true);
+    expect(backgroundJobTransitionAllowed('succeeded', 'needs_attention')).toBe(true);
+    expect(backgroundJobTransitionAllowed('cancelled', 'needs_attention')).toBe(true);
     expect(backgroundJobTransitionAllowed('provider_accepted', 'queued')).toBe(false);
     expect(() => assertBackgroundJobTransition('succeeded', 'queued')).toThrow(/invalid background-job transition/i);
     expect(() => assertBackgroundJobEffectTransition('provider_accepted', 'dispatch_started')).toThrow(
@@ -553,7 +568,19 @@ describe('background job contracts', () => {
         ...base,
         effects: [{ effectKind: 'email_dispatch', state: 'dispatch_started', providerIdempotencyExpiresAt: null }],
       }),
-    ).toEqual({ retry: false, delayMs: null, reason: 'provider_outcome_unknown' });
+    ).toEqual({ retry: false, delayMs: null, reason: 'provider_idempotency_window_expired' });
+    expect(
+      getBackgroundJobAutomaticRetryDecision({
+        ...base,
+        effects: [
+          {
+            effectKind: 'email_dispatch',
+            state: 'dispatch_started',
+            providerIdempotencyExpiresAt: new Date(nowMs + 30_001).toISOString(),
+          },
+        ],
+      }),
+    ).toEqual({ retry: true, delayMs: 30_000, reason: null });
     expect(
       getBackgroundJobAutomaticRetryDecision({
         ...base,

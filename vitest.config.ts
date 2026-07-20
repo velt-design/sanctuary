@@ -6,6 +6,7 @@ export default defineConfig({
     alias: [
       { find: /^@sp\/geometry\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry/src') + '/$1.ts' },
       { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
+      { find: /^@sp\/email-provider$/, replacement: path.resolve(__dirname, 'packages/email-provider/src/index.ts') },
       { find: /^@sp\/jobs$/, replacement: path.resolve(__dirname, 'packages/jobs/src/index.ts') },
       { find: '@sp/theme', replacement: path.resolve(__dirname, 'packages/theme/src/index.ts') },
       { find: '@/lib/enquiryEstimate', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryEstimate.ts') },

@@ -1,4 +1,8 @@
-type BackgroundJobFailureDisposition = 'retry' | 'needs_attention' | 'permanent_failure';
+type BackgroundJobFailureDisposition =
+  | 'retry'
+  | 'needs_attention'
+  | 'needs_attention_recorded'
+  | 'permanent_failure';
 
 const SAFE_ERROR_CODE = /^[A-Z][A-Z0-9_]{0,95}$/;
 

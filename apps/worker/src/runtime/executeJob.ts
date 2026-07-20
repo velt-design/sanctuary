@@ -1,6 +1,7 @@
 import {
   backgroundJobEffectAllowed,
   backgroundJobEffectTransitionAllowed,
+  backgroundJobProviderAcceptanceWins,
   backgroundJobTransitionAllowed,
   getBackgroundJobAutomaticRetryDecision,
   getBackgroundJobDefinition,
@@ -108,8 +109,16 @@ function createHandlerRpc(
   effectsRef: { current: readonly BackgroundJobWorkerEffect[] },
   stateRef: { status: BackgroundJobStatus },
   signal: AbortSignal,
+  heartbeat: BackgroundJobLeaseHeartbeat,
 ): BackgroundJobHandlerRpc {
   const owned = ownedJob(input.claim, input.workerId);
+  const canPersistProviderOutcomeAfterAbort = (
+    previous: BackgroundJobWorkerEffect | undefined,
+    nextState: BackgroundJobWorkerEffect['state'],
+  ) =>
+    (previous?.state === 'dispatch_started' &&
+      ['provider_accepted', 'uncertain', 'failed'].includes(nextState)) ||
+    (previous?.state === 'provider_accepted' && nextState === 'finalised');
   return Object.freeze({
     progress: async ({ status, phase, safeProgress = {} }) => {
       throwIfAborted(signal);
@@ -125,15 +134,16 @@ function createHandlerRpc(
       return job;
     },
     recordEffectCheckpoint: async (checkpoint) => {
-      throwIfAborted(signal);
+      const previous = effectsRef.current.find((effect) => effect.effectKey === checkpoint.effectKey);
+      if (signal.aborted && !canPersistProviderOutcomeAfterAbort(previous, checkpoint.state)) {
+        throw signal.reason;
+      }
       if (!backgroundJobEffectAllowed(input.claim.kind, checkpoint.effectKind, input.claim.contractVersion)) {
         throw new BackgroundJobHandlerError({
           code: 'UNDECLARED_EFFECT_CHECKPOINT',
           disposition: 'needs_attention',
         });
       }
-
-      const previous = effectsRef.current.find((effect) => effect.effectKey === checkpoint.effectKey);
       if (isResumedFinalisation(input.claim)) {
         if (
           checkpoint.state !== 'finalised' ||
@@ -159,14 +169,40 @@ function createHandlerRpc(
         });
       }
 
-      const effect = await input.rpc.recordEffectCheckpoint({ ...owned, ...checkpoint });
-      throwIfAborted(signal);
+      const resumeRenewal = checkpoint.state === 'provider_accepted'
+        ? await heartbeat.pauseRenewal()
+        : null;
+      let effect: BackgroundJobWorkerEffect;
+      try {
+        effect = await input.rpc.recordEffectCheckpoint({ ...owned, ...checkpoint });
+      } finally {
+        resumeRenewal?.();
+      }
       effectsRef.current = [
         ...effectsRef.current.filter((candidate) => candidate.effectKey !== effect.effectKey),
         effect,
       ];
+      if (
+        checkpoint.state === 'provider_accepted' &&
+        checkpoint.providerMessageId &&
+        (
+          !['provider_accepted', 'finalised'].includes(effect.state) ||
+          checkpoint.providerMessageId !== effect.providerMessageId
+        )
+      ) {
+        // The specialised acceptance RPC has already archived the queue row,
+        // moved the job to Needs attention, and cleared this lease. Stop lease
+        // renewal immediately and surface a result that requires no second
+        // terminal mutation.
+        heartbeat.beginTerminalMutation();
+        throw new BackgroundJobHandlerError({
+          code: 'EMAIL_PROVIDER_MESSAGE_ID_CONFLICT',
+          disposition: 'needs_attention_recorded',
+        });
+      }
       if (checkpoint.state === 'dispatch_started') stateRef.status = 'dispatching';
       if (checkpoint.state === 'provider_accepted') stateRef.status = 'provider_accepted';
+      throwIfAborted(signal);
       return effect;
     },
     refreshEffects: async () => {
@@ -174,6 +210,15 @@ function createHandlerRpc(
       const effects = await input.rpc.readEffects(owned);
       throwIfAborted(signal);
       effectsRef.current = effects;
+      if (
+        effects.some((effect) => effect.state === 'provider_accepted' || effect.state === 'finalised') &&
+        !['provider_accepted', 'finalising'].includes(stateRef.status)
+      ) {
+        // The verified-provider webhook updates the effect and job atomically
+        // while preserving a live worker lease. Mirror that out-of-band state
+        // so this same handler can finish without regressing to dispatching.
+        stateRef.status = 'provider_accepted';
+      }
       return effectsRef.current;
     },
   });
@@ -258,6 +303,15 @@ async function hasUnsafeStartedEffect(input: ExecuteBackgroundJobInput): Promise
   }
 }
 
+async function hasProviderAcceptedEffect(input: ExecuteBackgroundJobInput): Promise<boolean | null> {
+  try {
+    const effects = await input.rpc.readEffects(ownedJob(input.claim, input.workerId));
+    return effects.some((effect) => effect.state === 'provider_accepted' || effect.state === 'finalised');
+  } catch {
+    return null;
+  }
+}
+
 async function markNeedsAttention(
   input: ExecuteBackgroundJobInput,
   heartbeat: BackgroundJobLeaseHeartbeat,
@@ -273,6 +327,12 @@ async function markNeedsAttention(
     });
     return result(input.claim, 'needs_attention', errorCode);
   } catch {
+    if (
+      backgroundJobProviderAcceptanceWins(errorCode) &&
+      await hasProviderAcceptedEffect(input)
+    ) {
+      return result(input.claim, 'deferred', 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION');
+    }
     input.onUnhealthy('TERMINAL_WRITE_FAILED');
     input.logger.error('background_job.terminal_write_failed', {
       workerId: input.workerId,
@@ -300,6 +360,12 @@ async function markPermanentFailure(
     await input.rpc.markPermanentFailure({ ...ownedJob(input.claim, input.workerId), errorCode });
     return result(input.claim, 'permanent_failed', errorCode);
   } catch {
+    if (
+      backgroundJobProviderAcceptanceWins(errorCode) &&
+      await hasProviderAcceptedEffect(input)
+    ) {
+      return result(input.claim, 'deferred', 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION');
+    }
     input.onUnhealthy('TERMINAL_WRITE_FAILED');
     input.logger.error('background_job.terminal_write_failed', {
       workerId: input.workerId,
@@ -364,6 +430,9 @@ async function handleFailure(
   }
 
   const handlerError = toBackgroundJobHandlerError(error);
+  if (handlerError.disposition === 'needs_attention_recorded') {
+    return result(input.claim, 'needs_attention', handlerError.code);
+  }
   if (handlerError.disposition === 'needs_attention') {
     return markNeedsAttention(input, heartbeat, handlerError.code, 'handler_needs_attention');
   }
@@ -406,12 +475,36 @@ async function handleFailure(
   }
 
   if (!retryDecision.retry) {
+    if (retryDecision.reason === 'provider_already_accepted') {
+      // A signed webhook may win after the handler's last local refresh. Do
+      // not overwrite that durable acceptance with Needs attention; leave the
+      // lease fenced so expiry recovery can resume finalisation if the live
+      // handler did not observe the race.
+      return result(input.claim, 'deferred', 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION');
+    }
+    if (retryDecision.reason === 'provider_idempotency_window_expired') {
+      return markNeedsAttention(
+        input,
+        heartbeat,
+        'PROVIDER_IDEMPOTENCY_WINDOW_EXPIRED',
+        retryDecision.reason,
+      );
+    }
     if (
-      retryDecision.reason === 'provider_already_accepted' ||
-      retryDecision.reason === 'provider_outcome_unknown' ||
-      retryDecision.reason === 'provider_idempotency_window_expired'
+      (retryDecision.reason === 'attempts_exhausted' ||
+        retryDecision.reason === 'automatic_retry_window_expired') &&
+      effects.some((effect) =>
+        effect.state === 'dispatch_started' ||
+        effect.state === 'uncertain' ||
+        effect.state === 'failed',
+      )
     ) {
-      return markNeedsAttention(input, heartbeat, handlerError.code, retryDecision.reason);
+      return markNeedsAttention(
+        input,
+        heartbeat,
+        'PROVIDER_OUTCOME_UNCERTAIN',
+        retryDecision.reason,
+      );
     }
     return markPermanentFailure(input, heartbeat, handlerError.code);
   }
@@ -426,6 +519,9 @@ async function handleFailure(
     });
     return result(input.claim, 'retrying', handlerError.code, delaySeconds);
   } catch {
+    if (await hasProviderAcceptedEffect(input)) {
+      return result(input.claim, 'deferred', 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION');
+    }
     input.onUnhealthy('RETRY_WRITE_FAILED');
     input.logger.error('background_job.retry_write_failed', {
       workerId: input.workerId,
@@ -525,7 +621,7 @@ async function executeOwnedJob(
           payload,
           effects: effectsRef.current,
           signal: executionController.signal,
-          rpc: createHandlerRpc(input, effectsRef, stateRef, executionController.signal),
+          rpc: createHandlerRpc(input, effectsRef, stateRef, executionController.signal, heartbeat),
           logger: input.logger,
           clock: input.clock,
         },

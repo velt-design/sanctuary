@@ -1,6 +1,7 @@
 // app/api/contact/route.ts
 import { NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'node:crypto';
+import { getEmailDeliveryFailureSummary, sendEmail } from '@/lib/email/sendEmail';
 
 // Very lightweight, in-memory rate limiter (best-effort; per-instance)
 type Hit = { t: number; n: number };
@@ -334,7 +335,7 @@ export async function POST(req: Request) {
     escapeForHtml(lines.map(l => String(l)).join('\n'))
   }</pre>`;
 
-  // Send via Resend if configured; otherwise log
+  // Request-bound compatibility path; JOB-07 moves this send behind the durable worker.
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const EMAIL_TO_RESIDENTIAL = process.env.EMAIL_TO_RESIDENTIAL || 'info@sanctuarypergolas.co.nz';
   const EMAIL_TO_COMMERCIAL = process.env.EMAIL_TO_COMMERCIAL || 'jordan@sanctuarypergolas.co.nz';
@@ -347,33 +348,22 @@ export async function POST(req: Request) {
         ? EMAIL_TO_PROFESSIONAL
         : EMAIL_TO_RESIDENTIAL;
   const EMAIL_FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev';
-  let delivered = false;
   if (RESEND_API_KEY) {
     try {
-      const resendPayload: Record<string, unknown> = {
+      await sendEmail({
         from: EMAIL_FROM,
         to: [targetEmail],
-        reply_to: fields.email,
+        replyTo: fields.email,
         subject,
         html,
-      };
-      if (attachments.length) {
-        resendPayload.attachments = attachments;
-      }
-
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(resendPayload),
+        ...(attachments.length ? { attachments } : {}),
+        idempotencyKey: `website-contact/${fields.event_id}`,
       });
-      if (res.ok) delivered = true;
-      else console.warn('Resend error', await res.text());
-    } catch (e) {
-      console.warn('Resend exception', e);
+    } catch (error) {
+      console.warn('Contact email delivery failed', getEmailDeliveryFailureSummary(error));
     }
+  } else {
+    console.info('Contact email not dispatched', { code: 'EMAIL_PROVIDER_CONFIGURATION_MISSING' });
   }
 
   // Slack notification (optional)
@@ -420,10 +410,6 @@ export async function POST(req: Request) {
     } catch (e) {
       console.warn('Sheets webhook failed', e);
     }
-  }
-
-  if (!delivered) {
-    console.log('Contact submission (no email provider configured):', { subject, ...fields });
   }
 
   await sendMetaLeadEvent({

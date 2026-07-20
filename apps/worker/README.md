@@ -2,9 +2,9 @@
 
 This Node 22 application is the server-owned runtime for durable technical background jobs. It communicates with Supabase only through the explicit background-job RPC allowlist. It does not import portal or marketing application code, and its logs and health responses contain safe operational metadata only.
 
-JOB-02 installs the runtime dark by default. A repository build does not enable a producer, a handler, a shared database migration, or a rollout.
+JOB-02 installs the runtime dark by default. JOB-03 adds the reusable durable-email effect coordinator and provider reconciliation boundary without registering a commercial handler. A repository build does not enable a producer, a handler, apply a shared database migration, send email, or enable a rollout.
 
-The JOB-02 handler registry is intentionally empty. `active`, `once`, and `drain` fail before claiming while handler coverage is incomplete; only `dark`, `reconcile`, and aggregate health inspection are runnable until later checkpoints migrate domain handlers and their producers together.
+The handler registry remains intentionally empty through JOB-03. `active`, `once`, and `drain` fail before claiming while handler coverage is incomplete; only `dark`, `reconcile`, and aggregate health inspection are runnable until later checkpoints migrate domain handlers and their producers together.
 
 ## Commands
 
@@ -72,7 +72,7 @@ Use only an isolated local Supabase/PGMQ stack with the ordered background-job m
 
 ## Container and production hosting
 
-Build from the repository root so the worker and shared `@sp/jobs` source are present:
+Build from the repository root so the worker and shared `@sp/jobs` and `@sp/email-provider` sources are present:
 
 ```bash
 docker build -f apps/worker/Dockerfile -t sanctuary-background-worker .

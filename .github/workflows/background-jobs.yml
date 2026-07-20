@@ -8,6 +8,13 @@ on:
       - ".dockerignore"
       - ".github/workflows/background-jobs.yml"
       - "apps/worker/**"
+      - "apps/portal/app/api/webhooks/resend/**"
+      - "apps/portal/lib/backgroundJobs/providerWebhook*"
+      - "apps/portal/lib/emails/sendTransactionalEmail*"
+      - "apps/marketing/app/api/contact/**"
+      - "apps/marketing/app/api/enquiry/**"
+      - "apps/marketing/lib/email/**"
+      - "packages/email-provider/**"
       - "packages/jobs/**"
       - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
@@ -27,6 +34,13 @@ on:
       - ".dockerignore"
       - ".github/workflows/background-jobs.yml"
       - "apps/worker/**"
+      - "apps/portal/app/api/webhooks/resend/**"
+      - "apps/portal/lib/backgroundJobs/providerWebhook*"
+      - "apps/portal/lib/emails/sendTransactionalEmail*"
+      - "apps/marketing/app/api/contact/**"
+      - "apps/marketing/app/api/enquiry/**"
+      - "apps/marketing/lib/email/**"
+      - "packages/email-provider/**"
       - "packages/jobs/**"
       - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
@@ -62,8 +76,14 @@ jobs:
       - name: Jobs package typecheck
         run: npx tsc -p packages/jobs/tsconfig.typecheck.json --noEmit --incremental false
 
+      - name: Email provider package typecheck
+        run: npx tsc -p packages/email-provider/tsconfig.typecheck.json --noEmit --incremental false
+
       - name: Job contracts and security boundaries
         run: npm run test:jobs
+
+      - name: Email provider application integrations
+        run: npm run test:email-integrations
 
   worker-runtime:
     name: Worker runtime
@@ -88,8 +108,8 @@ jobs:
       - name: Worker tests
         run: npm run test:worker
 
-      - name: Worker lint
-        run: npx eslint apps/worker packages/jobs
+      - name: Worker and provider lint
+        run: npx eslint apps/worker packages/email-provider packages/jobs
 
       - name: Worker production build
         run: npm run build:worker

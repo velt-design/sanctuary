@@ -6,8 +6,9 @@ Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, 
 
 - `apps/marketing`: public Next.js marketing site on port `3000`.
 - `apps/portal`: staff portal Next.js app on port `3001`.
-- `apps/worker`: long-running Node 22 background worker with a private health endpoint; it defaults to dark mode and has no enabled commercial workflow handlers at JOB-02.
+- `apps/worker`: long-running Node 22 background worker with a private health endpoint; through JOB-03 it defaults to dark mode and has no enabled commercial workflow handlers.
 - `packages/costing`: canonical costing engine and pricing config.
+- `packages/email-provider`: canonical Resend transport, frozen-request hashing, idempotency, timeout, and webhook-verification contracts.
 - `packages/geometry`: canonical pergola and house geometry solvers.
 - `packages/jobs`: canonical durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transitions.
 - `packages/quote-format`: shared quote formatting helpers.

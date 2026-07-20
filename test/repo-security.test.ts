@@ -134,4 +134,69 @@ describe('repo security hardening', () => {
     );
     expect(source).toMatch(/revoke all on schema pgmq from public, anon, authenticated/i);
   });
+
+  it('keeps verified Resend receipts private, minimal, append-only, and service-RPC-only', () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        'supabase/migrations/20260720_000007_background_job_provider_reconciliation.sql',
+      ),
+      'utf8',
+    );
+    const receiptTable = source.match(
+      /create table private\.background_job_provider_receipts[\s\S]*?\n\);/i,
+    )?.[0];
+
+    expect(receiptTable).toBeTruthy();
+    expect(receiptTable).toMatch(/provider_name = 'resend'/i);
+    expect(receiptTable).toMatch(/provider_event_type = 'email\.sent'/i);
+    expect(receiptTable).toMatch(/unique \(provider_name, provider_event_id\)/i);
+    expect(receiptTable).not.toMatch(
+      /recipient|subject|html|body|signature|raw_payload|arbitrary_tags/i,
+    );
+    expect(source).toMatch(
+      /alter table private\.background_job_provider_receipts enable row level security/i,
+    );
+    expect(source).toMatch(
+      /background_job_provider_receipts_append_only_trigger/i,
+    );
+    expect(source).toMatch(
+      /revoke all on table private\.background_job_provider_receipts[\s\S]*?from public, anon, authenticated, service_role/i,
+    );
+    expect(source).toMatch(
+      /revoke all on sequence private\.background_job_provider_receipts_id_seq[\s\S]*?from public, anon, authenticated, service_role/i,
+    );
+    expect(source).toMatch(
+      /p_provider_name is distinct from 'resend'[\s\S]*?p_provider_event_type is distinct from 'email\.sent'/i,
+    );
+    expect(source).toMatch(
+      /revoke all on function public\.background_job_reconcile_verified_provider_acceptance\([\s\S]*?from public, anon, authenticated, service_role;[\s\S]*?grant execute on function public\.background_job_reconcile_verified_provider_acceptance\([\s\S]*?to service_role/i,
+    );
+    expect(source).not.toMatch(
+      /grant execute[^;]*background_job_reconcile_verified_provider_acceptance[^;]*to (?:public|anon|authenticated)/i,
+    );
+  });
+
+  it('keeps direct Resend transport inside the shared email-provider package', () => {
+    const sourceFile = /\.(?:[cm]?[jt]sx?)$/i;
+    const testFixture =
+      /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|\.(?:test|spec)\.[cm]?[jt]sx?$/i;
+    const directTransport = [
+      /\bfrom\s+['"]resend['"]/,
+      /\bimport\s+['"]resend['"]/,
+      /\bimport\s*\(\s*['"]resend['"]\s*\)/,
+      /\brequire\s*\(\s*['"]resend['"]\s*\)/,
+      /\bapi\.resend\.com\b/i,
+    ] as const;
+    const offenders = trackedFiles().filter((relativePath) => {
+      if (!sourceFile.test(relativePath)) return false;
+      if (relativePath.startsWith('packages/email-provider/')) return false;
+      if (testFixture.test(relativePath)) return false;
+      if (!existsSync(path.join(process.cwd(), relativePath))) return false;
+      const source = readTrackedFile(relativePath);
+      return directTransport.some((pattern) => pattern.test(source));
+    });
+
+    expect(offenders).toEqual([]);
+  });
 });

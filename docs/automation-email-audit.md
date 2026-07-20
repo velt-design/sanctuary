@@ -4,11 +4,20 @@ Status: Current.
 
 This doc owns current-state guidance for portal automation events, project tasks, follow-ups, email outbox, email previews, audit events, and marketing enquiry email side effects. Quote/invoice transactional side effects remain owned by `docs/quotes-invoices-job-packs.md`.
 
+## Read First
+
+- Use `## Ownership` and `## Current Data Flow` to locate the request-bound or durable email owner before changing a send.
+- Use `## Access Boundaries` and `## Guardrails` before changing provider transport, webhook reconciliation, outbox state, or logs.
+- Use `docs/quotes-invoices-job-packs.md` for quote/invoice lifecycle behavior and `docs/supabase-schema-map.md` for durable receipt/RPC ownership.
+
 ## Ownership
 
 - Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`.
 - Automation cache keys: `apps/portal/lib/cache/automationCache.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
+- Shared provider contract: `packages/email-provider` (`@sp/email-provider`).
+- Durable provider-effect coordinator: `apps/worker/src/effects/durableEmailEffect.ts` (not yet registered by a business handler).
+- Signed provider webhook and narrow persistence owner: `apps/portal/app/api/webhooks/resend/route.ts` and `apps/portal/lib/backgroundJobs/providerWebhookRepository.ts`.
 - Project action routes that emit automation events: `apps/portal/app/api/staff/v1/projects/[projectId]/action`.
 - Email preview route: `apps/portal/app/api/staff/v1/projects/[projectId]/emails/[emailId]/preview/route.ts`.
 - Marketing enquiry/contact routes: `apps/marketing/app/api/contact` and `apps/marketing/app/api/enquiry`.
@@ -40,6 +49,12 @@ Event handlers can:
 
 Marketing enquiry routes can create public lead/enquiry records and send or log autoresponder email behavior. Keep public marketing writes narrow and server-owned.
 
+Portal transactional email and marketing contact/enquiry email now use thin server-only adapters over `@sp/email-provider`. The package normalizes the message, enforces a bounded timeout/abort contract, classifies provider outcomes, and keeps raw provider responses out of app errors and logs. Existing stable marketing IDs are forwarded as compatibility idempotency keys where available. Quote/invoice delivery remains request-bound until JOB-04/JOB-05, while automation and `email_outbox` delivery remain under their current owners until JOB-07; the shared gateway does not by itself move either workflow to the worker.
+
+The durable JOB-03 email coordinator is a reusable worker primitive, not an enabled handler. It freezes one exact job/effect-derived Resend key, recipients, subject, content, attachments, tags, token bytes, request hash, and 20-hour automatic retry expiry. Its checkpoints are `prepared`, `dispatch_started`, `provider_accepted`, `finalised`, and `uncertain`. A retry after uncertainty may use only that same key and byte-identical request before expiry/attempt exhaustion; it must never manufacture a new key. Provider acceptance is evidence to resume an idempotent business finaliser, not business completion.
+
+Resend `email.sent` callbacks enter through `/api/webhooks/resend`. The route bounds the streamed body to 256 KiB, decodes UTF-8 strictly, verifies the untouched body and Svix headers with the server-only webhook secret, then passes only event/message identity and the safe `job_id`/opaque `effect_ref` correlation fields to one service-role RPC. Account-wide callbacks for request-bound legacy sends have no durable correlation tags, so they are acknowledged and ignored without persisting provider/customer fields; a partially present or malformed durable tag pair fails closed. Correlated receipts are minimal and append-only. Verified acceptance may supersede only named stale provider-outcome classifications. Exact payload/key/message/effect conflicts stay operator-visible; the worker's lease-fenced local acceptance RPC atomically quarantines a different or cross-job-colliding provider message, and a conflicting callback after success/cancellation reclassifies the durable job for attention. Non-conflicting acceptance may wake finalisation, but neither reconciliation path mutates quote, invoice, outbox, or other unrelated business state.
+
 Forward marketing attribution is recorded as project audit events only. New enquiries store compact UTM and Google click identifiers in `enquiry_requests.raw_payload.attribution`; later high-value lifecycle events are `marketing.lead_submitted`, `marketing.site_visit_booked`, `marketing.quote_accepted`, and `marketing.deposit_received`. These rows are a foundation for later Google Ads upload, not an Ads API integration.
 
 Current website enquiry autoresponders keep the existing payload shape for preview compatibility, but new base pergola estimates are sent and stored as a single lower-only amount by setting equal low/high values. Historical rows with unequal low/high values still preview as ranges. Optional blinds remain range-based.
@@ -53,6 +68,7 @@ Professional enquiry file uploads are stored, not just counted. The browser mint
 - `AutomationRunner` is server-only and uses service-role access intentionally.
 - Staff project action and preview routes must use staff auth helpers.
 - Public marketing enquiry/contact routes may write lead and email/audit records from server code, but must not expose staff workflow data.
+- The public Resend webhook is not a browser data surface. It verifies signatures before any database call and the repository may call only `background_job_reconcile_verified_provider_acceptance`; raw bodies, signatures, recipients, subjects, content, and arbitrary provider fields do not cross that repository boundary.
 - Browser task and activity access should use current project/dashboard APIs and query helpers. Do not reintroduce direct browser automation table writes; prefer staff API routes for new write behavior.
 - Manual project-task checkboxes may show optimistic local feedback, but the owning staff API remains authoritative for `project_task_checks`, pipeline transitions, and automation events. Concurrent saves must roll back only the rejected task, expose explicit retry, and never claim an auto-advance side effect before the response confirms it.
 - Service-role keys, raw email provider responses, and private customer data must not reach client props, logs, generated documents, or public routes.
@@ -60,6 +76,7 @@ Professional enquiry file uploads are stored, not just counted. The browser mint
 ## Guardrails
 
 - Side effects must be idempotent. Use stable idempotency keys for automation events, emails, tasks, and follow-ups.
+- For durable provider uncertainty, reuse only the frozen provider key and exact request while the 20-hour retry window and attempt budget remain live. Expired or unresolved work needs staff attention; changing delivery inputs creates a new workflow intent, not a mutation beneath the old key.
 - Do not duplicate quote, invoice, token, PDF, or job-pack side effects here; those belong to `docs/quotes-invoices-job-packs.md`.
 - Record email failures in `email_outbox` where the user needs visibility.
 - Keep outbox status transitions explicit: `QUEUED`, `SENT`, `FAILED`, or `CANCELLED`.
@@ -103,10 +120,16 @@ Focused commands depend on the changed path. If no direct test exists yet, use t
 
 ```bash
 rg -n "automationRunner|email_outbox|audit_events|followup_tasks" apps/portal apps/marketing supabase docs
+npm run test:email-provider
+npm run test:worker -- apps/worker/src/effects
+npm run test:portal -- apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/app/api/webhooks/resend/route.test.ts apps/portal/lib/backgroundJobs/providerWebhookRepository.test.ts
+npm run test:marketing -- apps/marketing/lib/email apps/marketing/app/api/contact/route.test.ts apps/marketing/app/api/enquiry/route.test.ts
 npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/app/api/contacts/route.test.ts "apps/portal/app/api/contacts/[contactId]/route.test.ts"
 npm run test:marketing -- apps/marketing/emails/utils/callWindow.test.ts
 ```
+
+These tests inject or mock provider transport and webhook signatures. Do not use production/shared database credentials or send a real email as part of repository verification. JOB-03 local provider, integration, worker, contract, typecheck, lint, and production-build gates pass; the dedicated seven-migration CI evidence remains pending until the checkpoint is pushed.
 
 Manual checks should cover:
 

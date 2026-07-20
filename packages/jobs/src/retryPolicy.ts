@@ -11,6 +11,7 @@ export const BACKGROUND_JOB_RETRY_MINIMUM_JITTER_FACTOR = 0.8;
 
 const REDISPATCHABLE_BACKGROUND_JOB_EFFECT_STATES = new Set<BackgroundJobEffectState>([
   'prepared',
+  'dispatch_started',
   'failed',
   'uncertain',
 ]);
@@ -19,7 +20,6 @@ export type BackgroundJobAutomaticRetryBlockReason =
   | 'attempts_exhausted'
   | 'automatic_retry_window_expired'
   | 'provider_already_accepted'
-  | 'provider_outcome_unknown'
   | 'provider_idempotency_window_expired';
 
 export type BackgroundJobAutomaticRetryDecision =
@@ -114,18 +114,14 @@ export function getBackgroundJobAutomaticRetryDecision(
 
   const executionOwner = context.executionOwner ?? 'worker';
   const definition = getBackgroundJobDefinition(context.kind, context.contractVersion);
+  if (context.effects.some((effect) => effect.state === 'provider_accepted' || effect.state === 'finalised')) {
+    return blocked('provider_already_accepted');
+  }
   if (context.attemptNumber >= definition.retry.maxAttempts) return blocked('attempts_exhausted');
 
   const remainingWindowMs = definition.retry.automaticRetryWindowMs - context.elapsedSinceFirstAttemptMs;
   const maximumDelayWithinWindowMs = Math.floor((remainingWindowMs - 1) / 1_000) * 1_000;
   if (maximumDelayWithinWindowMs < 1_000) return blocked('automatic_retry_window_expired');
-
-  if (context.effects.some((effect) => effect.state === 'provider_accepted' || effect.state === 'finalised')) {
-    return blocked('provider_already_accepted');
-  }
-  if (context.effects.some((effect) => effect.state === 'dispatch_started')) {
-    return blocked('provider_outcome_unknown');
-  }
 
   const nowMs = context.nowMs ?? Date.now();
   let earliestRedispatchableExpiryMs = Number.POSITIVE_INFINITY;

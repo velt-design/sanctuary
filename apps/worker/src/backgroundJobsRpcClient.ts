@@ -32,6 +32,7 @@ export const BACKGROUND_JOBS_RPC_NAMES = {
   heartbeat: 'background_job_heartbeat',
   recordProgress: 'background_job_record_progress',
   recordEffectCheckpoint: 'background_job_record_effect_checkpoint',
+  recordProviderAcceptance: 'background_job_record_provider_acceptance',
   complete: 'background_job_complete',
   scheduleRetry: 'background_job_schedule_retry',
   markNeedsAttention: 'background_job_mark_needs_attention',
@@ -297,14 +298,19 @@ class SupabaseBackgroundJobsRpc implements RuntimeBackgroundJobsRpc {
       safeMetadata?: BackgroundJobSafeEffectSummary;
     }>,
   ) {
-    const rpcName = BACKGROUND_JOBS_RPC_NAMES.recordEffectCheckpoint;
+    const rpcName = input.state === 'provider_accepted'
+      ? BACKGROUND_JOBS_RPC_NAMES.recordProviderAcceptance
+      : BACKGROUND_JOBS_RPC_NAMES.recordEffectCheckpoint;
+    const stateParameter = input.state === 'provider_accepted'
+      ? {}
+      : { p_state: input.state };
     const data = await this.call(
       rpcName,
       {
         ...ownedParameters(input),
         p_effect_key: input.effectKey,
         p_effect_kind: input.effectKind,
-        p_state: input.state,
+        ...stateParameter,
         p_payload_hash: input.payloadHash,
         p_provider_name: input.providerName ?? null,
         p_provider_idempotency_key: input.providerIdempotencyKey ?? null,

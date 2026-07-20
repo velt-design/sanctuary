@@ -5,6 +5,7 @@ import { BackgroundJobAbortError } from './errors';
 
 export type BackgroundJobLeaseHeartbeat = Readonly<{
   beginTerminalMutation(): void;
+  pauseRenewal(): Promise<() => void>;
   renewNow(): Promise<void>;
   stop(): Promise<void>;
 }>;
@@ -31,10 +32,12 @@ export function startBackgroundJobLeaseHeartbeat(
   const stopController = new AbortController();
   let stopped = false;
   let terminalMutationInProgress = false;
+  let renewalPauseCount = 0;
   let renewalInFlight: Promise<void> | null = null;
 
   const renew = () => {
     if (renewalInFlight) return renewalInFlight;
+    if (renewalPauseCount > 0) return Promise.resolve();
     const operation = (async () => {
       try {
         const job = await input.rpc.heartbeat({
@@ -91,6 +94,24 @@ export function startBackgroundJobLeaseHeartbeat(
   return {
     beginTerminalMutation: () => {
       terminalMutationInProgress = true;
+    },
+    pauseRenewal: async () => {
+      renewalPauseCount += 1;
+      const inFlight = renewalInFlight;
+      if (inFlight) {
+        try {
+          await inFlight;
+        } catch (error) {
+          renewalPauseCount -= 1;
+          throw error;
+        }
+      }
+      let resumed = false;
+      return () => {
+        if (resumed) return;
+        resumed = true;
+        renewalPauseCount = Math.max(0, renewalPauseCount - 1);
+      };
     },
     renewNow: renew,
     stop: async () => {

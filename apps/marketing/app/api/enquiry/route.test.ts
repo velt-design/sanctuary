@@ -256,6 +256,7 @@ describe('POST /api/enquiry attribution', () => {
     const [, options] = (sendCustomerAutoresponder as any).mock.calls[0];
     expect(options).toEqual({
       attachments: [{ filename: 'plan.pdf', content: Buffer.from('PDFDATA').toString('base64') }],
+      idempotencyKey: 'website:autoresponder:enquiry-1',
     });
   });
 });

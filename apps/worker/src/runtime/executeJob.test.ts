@@ -1,4 +1,9 @@
 import {
+  RESEND_PROVIDER_NAME,
+  type EmailMessageInput,
+  type ResendEmailGateway,
+} from '@sp/email-provider';
+import {
   getBackgroundJobDefinition,
   type BackgroundJobClaim,
   type BackgroundJobKind,
@@ -8,6 +13,7 @@ import {
 } from '@sp/jobs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { dispatchDurableEmailEffect } from '../effects/durableEmailEffect';
 import { BackgroundJobConcurrencyController } from './concurrency';
 import type { RuntimeBackgroundJobsRpc, RuntimeLogger } from './contracts';
 import { systemRuntimeClock } from './contracts';
@@ -18,6 +24,13 @@ const NOW = Date.parse('2026-07-20T01:02:03.000Z');
 const JOB_ID = '11111111-1111-4111-8111-111111111111';
 const LEASE_TOKEN = '22222222-2222-4222-8222-222222222222';
 const HASH = 'a'.repeat(64);
+const EMAIL_MESSAGE = Object.freeze({
+  from: 'Sanctuary <quotes@sanctuary.example>',
+  to: ['customer@example.com'],
+  subject: 'Your Sanctuary quote',
+  html: '<p>Your quote is ready.</p>',
+  text: 'Your quote is ready.',
+}) satisfies EmailMessageInput;
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -96,6 +109,23 @@ function runtimeContext(jobClaim: BackgroundJobClaim): BackgroundJobRuntimeConte
   };
 }
 
+function acceptedEmailEffect(
+  overrides: Partial<BackgroundJobWorkerEffect> = {},
+): BackgroundJobWorkerEffect {
+  return {
+    effectKey: 'quote-1-email-1',
+    effectKind: 'email_dispatch',
+    state: 'provider_accepted',
+    payloadHash: HASH,
+    providerName: 'resend',
+    providerIdempotencyKey: 'quote-1-email-1',
+    providerIdempotencyExpiresAt: new Date(NOW + 60_000).toISOString(),
+    providerMessageId: 'provider-webhook-late',
+    safeMetadata: { effectKind: 'email_dispatch', checkpoint: 'provider_accepted' },
+    ...overrides,
+  };
+}
+
 function logger(): RuntimeLogger {
   return {
     debug: vi.fn(),
@@ -108,6 +138,23 @@ function logger(): RuntimeLogger {
 function rpcFixture(jobClaim: BackgroundJobClaim, initialEffects: readonly BackgroundJobWorkerEffect[] = []) {
   let effects = [...initialEffects];
   const record = safeJob(jobClaim);
+  const persistEffect = async (
+    input: Parameters<RuntimeBackgroundJobsRpc['recordEffectCheckpoint']>[0],
+  ): Promise<BackgroundJobWorkerEffect> => {
+    const effect: BackgroundJobWorkerEffect = {
+      effectKey: input.effectKey,
+      effectKind: input.effectKind,
+      state: input.state,
+      payloadHash: input.payloadHash,
+      providerName: input.providerName ?? null,
+      providerIdempotencyKey: input.providerIdempotencyKey ?? null,
+      providerIdempotencyExpiresAt: input.providerIdempotencyExpiresAt ?? null,
+      providerMessageId: input.providerMessageId ?? null,
+      safeMetadata: input.safeMetadata ?? {},
+    };
+    effects = [...effects.filter((candidate) => candidate.effectKey !== effect.effectKey), effect];
+    return effect;
+  };
   const rpc = {
     claim: vi.fn(async () => []),
     readPayload: vi.fn(async () => ({ contractVersion: jobClaim.contractVersion, payloadHash: HASH, payload: {} })),
@@ -116,21 +163,7 @@ function rpcFixture(jobClaim: BackgroundJobClaim, initialEffects: readonly Backg
     getSafeJob: vi.fn(async () => record),
     heartbeat: vi.fn(async () => record),
     recordProgress: vi.fn(async () => record),
-    recordEffectCheckpoint: vi.fn(async (input: { effectKey: string; effectKind: string; state: BackgroundJobWorkerEffect['state']; payloadHash: string; providerName?: string | null; providerIdempotencyKey?: string | null; providerIdempotencyExpiresAt?: string | null; providerMessageId?: string | null; safeMetadata?: BackgroundJobWorkerEffect['safeMetadata'] }) => {
-      const effect: BackgroundJobWorkerEffect = {
-        effectKey: input.effectKey,
-        effectKind: input.effectKind,
-        state: input.state,
-        payloadHash: input.payloadHash,
-        providerName: input.providerName ?? null,
-        providerIdempotencyKey: input.providerIdempotencyKey ?? null,
-        providerIdempotencyExpiresAt: input.providerIdempotencyExpiresAt ?? null,
-        providerMessageId: input.providerMessageId ?? null,
-        safeMetadata: input.safeMetadata ?? {},
-      };
-      effects = [...effects.filter((candidate) => candidate.effectKey !== effect.effectKey), effect];
-      return effect;
-    }),
+    recordEffectCheckpoint: vi.fn(persistEffect),
     complete: vi.fn(async () => record),
     scheduleRetry: vi.fn(async () => record),
     markNeedsAttention: vi.fn(async () => record),
@@ -144,7 +177,7 @@ function rpcFixture(jobClaim: BackgroundJobClaim, initialEffects: readonly Backg
     runtimeMetrics: vi.fn(),
     workersListSafe: vi.fn(async () => []),
   } as unknown as RuntimeBackgroundJobsRpc;
-  return { rpc, effects: () => effects };
+  return { rpc, effects: () => effects, persistEffect };
 }
 
 function executeInput(
@@ -296,6 +329,205 @@ describe('executeBackgroundJob', () => {
     }));
   });
 
+  it('continues finalisation when a verified webhook accepts the effect under the live lease', async () => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim);
+    const expiresAt = new Date(NOW + 60_000).toISOString();
+    const acceptedEffect: BackgroundJobWorkerEffect = {
+      effectKey: 'quote-1-email-1',
+      effectKind: 'email_dispatch',
+      state: 'provider_accepted',
+      payloadHash: HASH,
+      providerName: 'resend',
+      providerIdempotencyKey: 'quote-1-email-1',
+      providerIdempotencyExpiresAt: expiresAt,
+      providerMessageId: 'provider-webhook-1',
+      safeMetadata: { effectKind: 'email_dispatch', checkpoint: 'provider_accepted' },
+    };
+
+    vi.mocked(fixture.rpc.readEffects)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([acceptedEffect]);
+
+    const execution = await executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async ({ rpc }) => {
+      await rpc.recordEffectCheckpoint({
+        effectKey: acceptedEffect.effectKey,
+        effectKind: acceptedEffect.effectKind,
+        state: 'prepared',
+        payloadHash: HASH,
+        providerName: acceptedEffect.providerName,
+        providerIdempotencyKey: acceptedEffect.providerIdempotencyKey,
+        providerIdempotencyExpiresAt: expiresAt,
+      });
+      await rpc.recordEffectCheckpoint({
+        effectKey: acceptedEffect.effectKey,
+        effectKind: acceptedEffect.effectKind,
+        state: 'dispatch_started',
+        payloadHash: HASH,
+        providerName: acceptedEffect.providerName,
+        providerIdempotencyKey: acceptedEffect.providerIdempotencyKey,
+        providerIdempotencyExpiresAt: expiresAt,
+      });
+      await rpc.refreshEffects();
+      await rpc.recordEffectCheckpoint({
+        effectKey: acceptedEffect.effectKey,
+        effectKind: acceptedEffect.effectKind,
+        state: 'finalised',
+        payloadHash: HASH,
+        providerName: acceptedEffect.providerName,
+        providerIdempotencyKey: acceptedEffect.providerIdempotencyKey,
+        providerIdempotencyExpiresAt: expiresAt,
+        providerMessageId: acceptedEffect.providerMessageId,
+      });
+      return { safeResult: { providerAccepted: true } };
+    }));
+
+    expect(execution.outcome).toBe('succeeded');
+    expect(fixture.rpc.complete).toHaveBeenCalledOnce();
+    expect(fixture.rpc.markNeedsAttention).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite a late provider acceptance when the handler already failed', async () => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim);
+    const acceptedEffect: BackgroundJobWorkerEffect = {
+      effectKey: 'quote-1-email-1',
+      effectKind: 'email_dispatch',
+      state: 'provider_accepted',
+      payloadHash: HASH,
+      providerName: 'resend',
+      providerIdempotencyKey: 'quote-1-email-1',
+      providerIdempotencyExpiresAt: new Date(NOW + 60_000).toISOString(),
+      providerMessageId: 'provider-webhook-late',
+      safeMetadata: { effectKind: 'email_dispatch', checkpoint: 'provider_accepted' },
+    };
+    vi.mocked(fixture.rpc.readEffects)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([acceptedEffect]);
+
+    const execution = await executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async () => {
+      throw new BackgroundJobHandlerError({ code: 'RESEND_TIMEOUT', disposition: 'retry' });
+    }));
+
+    expect(execution).toMatchObject({
+      outcome: 'deferred',
+      errorCode: 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION',
+    });
+    expect(fixture.rpc.markNeedsAttention).not.toHaveBeenCalled();
+    expect(fixture.rpc.scheduleRetry).not.toHaveBeenCalled();
+    expect(fixture.rpc.markPermanentFailure).not.toHaveBeenCalled();
+  });
+
+  it('defers when verified acceptance wins a terminal provider-classification write', async () => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim);
+    const acceptedEffect = acceptedEmailEffect();
+    vi.mocked(fixture.rpc.readEffects)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([acceptedEffect]);
+    vi.mocked(fixture.rpc.markNeedsAttention)
+      .mockRejectedValueOnce(new Error('verified acceptance committed first'));
+    const onUnhealthy = vi.fn();
+
+    const execution = await executeBackgroundJob(executeInput(
+      jobClaim,
+      fixture.rpc,
+      async () => {
+        throw new BackgroundJobHandlerError({
+          code: 'RESEND_VALIDATION_REJECTED',
+          disposition: 'needs_attention',
+        });
+      },
+      { onUnhealthy },
+    ));
+
+    expect(execution).toMatchObject({
+      outcome: 'deferred',
+      errorCode: 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION',
+    });
+    expect(onUnhealthy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['EMAIL_PROVIDER_MESSAGE_ID_CONFLICT', 'accepted_identity_conflict'],
+    ['EMAIL_FINALISATION_STATE_INVALID', 'accepted_finaliser_failure'],
+  ] as const)(
+    'keeps %s operator-visible after provider acceptance',
+    async (errorCode, _case) => {
+      const jobClaim = claim('quote_send', {
+        status: 'provider_accepted',
+        currentPhase: 'provider_accepted',
+      });
+      const fixture = rpcFixture(jobClaim, [acceptedEmailEffect()]);
+
+      const execution = await executeBackgroundJob(executeInput(
+        jobClaim,
+        fixture.rpc,
+        async () => {
+          throw new BackgroundJobHandlerError({
+            code: errorCode,
+            disposition: 'needs_attention',
+          });
+        },
+      ));
+
+      expect(execution).toMatchObject({ outcome: 'needs_attention', errorCode });
+      expect(fixture.rpc.markNeedsAttention).toHaveBeenCalledWith(
+        expect.objectContaining({ errorCode }),
+      );
+    },
+  );
+
+  it('classifies exhausted uncertain provider work without attempting a permanent failure', async () => {
+    const definition = getBackgroundJobDefinition('quote_send');
+    const jobClaim = claim('quote_send', { attemptNumber: definition.retry.maxAttempts });
+    const uncertain = acceptedEmailEffect({
+      state: 'uncertain',
+      providerMessageId: null,
+      safeMetadata: { effectKind: 'email_dispatch', checkpoint: 'uncertain' },
+    });
+    const fixture = rpcFixture(jobClaim, [uncertain]);
+
+    const execution = await executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async () => {
+      throw new BackgroundJobHandlerError({ code: 'RESEND_TIMEOUT', disposition: 'retry' });
+    }));
+
+    expect(execution).toMatchObject({
+      outcome: 'needs_attention',
+      errorCode: 'PROVIDER_OUTCOME_UNCERTAIN',
+    });
+    expect(fixture.rpc.markNeedsAttention).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: 'PROVIDER_OUTCOME_UNCERTAIN' }),
+    );
+    expect(fixture.rpc.markPermanentFailure).not.toHaveBeenCalled();
+  });
+
+  it('defers a runtime-context mismatch when a webhook changed the live job to accepted', async () => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim, [acceptedEmailEffect()]);
+    vi.mocked(fixture.rpc.readRuntimeContext).mockResolvedValueOnce({
+      ...runtimeContext(jobClaim),
+      status: 'provider_accepted',
+      currentPhase: 'provider_accepted',
+    });
+    vi.mocked(fixture.rpc.markNeedsAttention)
+      .mockRejectedValueOnce(new Error('verified acceptance committed first'));
+    const onUnhealthy = vi.fn();
+
+    const execution = await executeBackgroundJob(executeInput(
+      jobClaim,
+      fixture.rpc,
+      async () => ({}),
+      { onUnhealthy },
+    ));
+
+    expect(execution).toMatchObject({
+      outcome: 'deferred',
+      errorCode: 'PROVIDER_ACCEPTED_REQUIRES_FINALISATION',
+    });
+    expect(onUnhealthy).not.toHaveBeenCalled();
+  });
+
   it('does not release a shutdown-aborted lease after dispatch starts', async () => {
     const jobClaim = claim('quote_send');
     const { rpc } = rpcFixture(jobClaim);
@@ -321,6 +553,238 @@ describe('executeBackgroundJob', () => {
     });
     expect(rpc.releaseLease).not.toHaveBeenCalled();
     expect(rpc.scheduleRetry).not.toHaveBeenCalled();
+  });
+
+  it('leaves a provider-aborted-before-dispatch checkpoint recoverably uncertain', async () => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim);
+    const forceAbort = new AbortController();
+    const gateway: ResendEmailGateway = {
+      dispatchDurable: vi.fn(async () => {
+        forceAbort.abort(new BackgroundJobAbortError('shutdown'));
+        return {
+          outcome: 'not_dispatched',
+          code: 'RESEND_ABORTED_BEFORE_DISPATCH',
+          provider: RESEND_PROVIDER_NAME,
+          statusCode: null,
+          durationMs: 0,
+        } as const;
+      }),
+      dispatchLegacy: vi.fn(async () => {
+        throw new Error('legacy dispatch must not be used');
+      }),
+    };
+
+    const execution = executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async (context) => {
+      await dispatchDurableEmailEffect({
+        jobId: context.claim.jobId,
+        effectKey: 'quote-1-email-1',
+        message: EMAIL_MESSAGE,
+        effects: context.effects,
+        rpc: context.rpc,
+        gateway,
+        clock: context.clock,
+        signal: context.signal,
+      });
+      return {};
+    }, { forceAbortSignal: forceAbort.signal }));
+
+    await expect(execution).resolves.toMatchObject({
+      outcome: 'deferred',
+      errorCode: 'SHUTDOWN_REQUIRES_RECONCILIATION',
+    });
+    expect(fixture.effects()).toContainEqual(expect.objectContaining({ state: 'uncertain' }));
+    expect(fixture.rpc.releaseLease).not.toHaveBeenCalled();
+    expect(fixture.rpc.scheduleRetry).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['uncertain', null],
+    ['provider_accepted', 'provider-accepted-1'],
+  ] as const)(
+    'persists the safety-critical %s provider outcome when shutdown races the response',
+    async (state, providerMessageId) => {
+      const jobClaim = claim('quote_send');
+      const fixture = rpcFixture(jobClaim);
+      const forceAbort = new AbortController();
+      const expiresAt = new Date(NOW + 60_000).toISOString();
+
+      const execution = executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async (context) => {
+        await context.rpc.recordEffectCheckpoint({
+          effectKey: 'quote-1-email-1',
+          effectKind: 'email_dispatch',
+          state: 'prepared',
+          payloadHash: HASH,
+          providerName: 'resend',
+          providerIdempotencyKey: 'quote-1-email-1',
+          providerIdempotencyExpiresAt: expiresAt,
+        });
+        await context.rpc.recordEffectCheckpoint({
+          effectKey: 'quote-1-email-1',
+          effectKind: 'email_dispatch',
+          state: 'dispatch_started',
+          payloadHash: HASH,
+          providerName: 'resend',
+          providerIdempotencyKey: 'quote-1-email-1',
+          providerIdempotencyExpiresAt: expiresAt,
+        });
+
+        forceAbort.abort(new BackgroundJobAbortError('shutdown'));
+        await context.rpc.recordEffectCheckpoint({
+          effectKey: 'quote-1-email-1',
+          effectKind: 'email_dispatch',
+          state,
+          payloadHash: HASH,
+          providerName: 'resend',
+          providerIdempotencyKey: 'quote-1-email-1',
+          providerIdempotencyExpiresAt: expiresAt,
+          providerMessageId,
+        });
+        return {};
+      }, { forceAbortSignal: forceAbort.signal }));
+
+      await expect(execution).resolves.toMatchObject({
+        outcome: 'deferred',
+        errorCode: 'SHUTDOWN_REQUIRES_RECONCILIATION',
+      });
+      expect(fixture.effects()).toContainEqual(expect.objectContaining({ state, providerMessageId }));
+      expect(fixture.rpc.releaseLease).not.toHaveBeenCalled();
+      expect(fixture.rpc.scheduleRetry).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['a different webhook message', 'provider_accepted', 'resend-message-webhook'],
+    ['a cross-job provider-message collision', 'uncertain', null],
+  ] as const)(
+    'returns the already-recorded Needs attention result for %s',
+    async (_case, recordedState, recordedMessageId) => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim);
+    let durableConflictRecorded = false;
+    const gateway: ResendEmailGateway = {
+      dispatchDurable: vi.fn(async () => ({
+        outcome: 'accepted',
+        code: 'RESEND_ACCEPTED',
+        provider: RESEND_PROVIDER_NAME,
+        messageId: 'resend-message-local',
+        statusCode: 200,
+        durationMs: 1,
+      } as const)),
+      dispatchLegacy: vi.fn(async () => {
+        throw new Error('legacy dispatch must not be used');
+      }),
+    };
+    vi.mocked(fixture.rpc.recordEffectCheckpoint).mockImplementation(async (checkpoint) => {
+      if (checkpoint.state !== 'provider_accepted') {
+        return fixture.persistEffect(checkpoint);
+      }
+      durableConflictRecorded = true;
+      return fixture.persistEffect({
+        ...checkpoint,
+        state: recordedState,
+        providerMessageId: recordedMessageId,
+        safeMetadata: {
+          effectKind: 'email_dispatch',
+          checkpoint: recordedState,
+          providerName: 'resend',
+        },
+      });
+    });
+    const onUnhealthy = vi.fn();
+
+    const execution = await executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async (context) => {
+      await dispatchDurableEmailEffect({
+        jobId: context.claim.jobId,
+        effectKey: 'quote-1-email-1',
+        message: EMAIL_MESSAGE,
+        effects: context.effects,
+        rpc: context.rpc,
+        gateway,
+        clock: context.clock,
+        signal: context.signal,
+      });
+      return {};
+    }, { onUnhealthy }));
+
+    expect(execution).toMatchObject({
+      outcome: 'needs_attention',
+      errorCode: 'EMAIL_PROVIDER_MESSAGE_ID_CONFLICT',
+    });
+    expect(durableConflictRecorded).toBe(true);
+    expect(fixture.effects()).toContainEqual(expect.objectContaining({
+      state: recordedState,
+      providerMessageId: recordedMessageId,
+    }));
+    expect(fixture.rpc.markNeedsAttention).not.toHaveBeenCalled();
+    expect(fixture.rpc.markPermanentFailure).not.toHaveBeenCalled();
+    expect(fixture.rpc.scheduleRetry).not.toHaveBeenCalled();
+    expect(fixture.rpc.complete).not.toHaveBeenCalled();
+    expect(onUnhealthy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps an abort-raced provider message conflict durably quarantined', async () => {
+    const jobClaim = claim('quote_send');
+    const fixture = rpcFixture(jobClaim);
+    const forceAbort = new AbortController();
+    let durableConflictRecorded = false;
+    const gateway: ResendEmailGateway = {
+      dispatchDurable: vi.fn(async () => ({
+        outcome: 'accepted',
+        code: 'RESEND_ACCEPTED',
+        provider: RESEND_PROVIDER_NAME,
+        messageId: 'resend-message-local',
+        statusCode: 200,
+        durationMs: 1,
+      } as const)),
+      dispatchLegacy: vi.fn(async () => {
+        throw new Error('legacy dispatch must not be used');
+      }),
+    };
+    vi.mocked(fixture.rpc.recordEffectCheckpoint).mockImplementation(async (checkpoint) => {
+      if (checkpoint.state !== 'provider_accepted') {
+        return fixture.persistEffect(checkpoint);
+      }
+      const acceptedByWebhook = await fixture.persistEffect({
+        ...checkpoint,
+        providerMessageId: 'resend-message-webhook',
+      });
+      durableConflictRecorded = true;
+      forceAbort.abort(new BackgroundJobAbortError('shutdown'));
+      return acceptedByWebhook;
+    });
+    const onUnhealthy = vi.fn();
+
+    const execution = executeBackgroundJob(executeInput(jobClaim, fixture.rpc, async (context) => {
+      await dispatchDurableEmailEffect({
+        jobId: context.claim.jobId,
+        effectKey: 'quote-1-email-1',
+        message: EMAIL_MESSAGE,
+        effects: context.effects,
+        rpc: context.rpc,
+        gateway,
+        clock: context.clock,
+        signal: context.signal,
+      });
+      return {};
+    }, { forceAbortSignal: forceAbort.signal, onUnhealthy }));
+
+    await expect(execution).resolves.toMatchObject({
+      outcome: 'deferred',
+      errorCode: 'SHUTDOWN_REQUIRES_RECONCILIATION',
+    });
+    expect(durableConflictRecorded).toBe(true);
+    expect(fixture.effects()).toContainEqual(expect.objectContaining({
+      state: 'provider_accepted',
+      providerMessageId: 'resend-message-webhook',
+    }));
+    expect(fixture.rpc.markNeedsAttention).not.toHaveBeenCalled();
+    expect(fixture.rpc.markPermanentFailure).not.toHaveBeenCalled();
+    expect(fixture.rpc.scheduleRetry).not.toHaveBeenCalled();
+    expect(fixture.rpc.releaseLease).not.toHaveBeenCalled();
+    expect(fixture.rpc.complete).not.toHaveBeenCalled();
+    expect(onUnhealthy).not.toHaveBeenCalled();
   });
 
   it('fatal-exits before terminal writes when a timed-out handler ignores abort', async () => {

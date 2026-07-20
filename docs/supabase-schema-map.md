@@ -11,7 +11,7 @@ Use this before changing schema, RLS, grants, route Supabase access, RPC command
 - Start with `## Global Rules` before changing schema, RLS, grants, RPCs, or Supabase clients.
 - Use the domain table sections to route changed tables/RPCs to owner docs and write paths.
 - Use `## Schedule, Site Visits, And Running Jobs` for Schedule V2 and running-job storage boundaries.
-- Use `## Durable Background Jobs` for the logged PGMQ queue, ledger, protected payload, worker RPCs, and rollout boundary.
+- Use `## Durable Background Jobs` for the logged PGMQ queue, ledger, protected payload, provider receipts/reconciliation, worker RPCs, and rollout boundary.
 - Use `## Marketing, Automation, And Supporting Tables` for enquiry, email, audit, and support tables.
 - Finish with `## Verification` to choose migration, access, and route checks.
 
@@ -196,10 +196,10 @@ Owner docs: this schema map owns the current database boundary; `docs/target-arc
 
 Current scope:
 
-- JOB-01 is the proven durable database foundation. JOB-02 adds an RPC-only worker runtime plus safe runtime-context, aggregate-metrics, and worker-health projections. No app producer or commercial workflow handler consumes it yet; current quote, invoice, job-pack, automation, and email paths remain unchanged.
+- JOB-01 is the proven durable database foundation. JOB-02 adds an RPC-only worker runtime plus safe runtime-context, aggregate-metrics, and worker-health projections. JOB-03 adds the shared durable email-effect/provider contract, a signed provider-acceptance reconciliation boundary, and lease-fenced local acceptance conflict quarantine. No app producer or commercial workflow handler consumes the durable path yet; deposit-invoice delivery remains request-bound until JOB-04, quote send/resend until JOB-05, and automation/outbox ownership until JOB-07.
 - The shared `@sp/jobs` registry declares versioned policy for `deposit_invoice_prepare_and_send`, `quote_send`, `quote_resend`, `job_pack_generate`, `automation_event`, and `email_outbox_deliver`, with every default rollout mode still `legacy`.
 - Registry policy keeps `requiredHandlerCheckpoints` for domain-owned freeze/stage/business-finalisation milestones separate from allowed and required external effects. The database snapshots `has_external_side_effect`, `allowed_effect_kinds`, `required_effect_kinds`, and cancellation policy onto each accepted job so a later registry edit cannot change policy beneath durable work. `background_job_complete` rejects success until every recorded worker effect is terminal and every required kind has a durable `finalised` checkpoint; shadow work may retain prepared checkpoints but cannot dispatch.
-- JOB-03 through JOB-08 remain pending. The presence of kinds, tables, RPCs, or a dark worker artifact is not producer, handler, deployment, or rollout evidence.
+- JOB-04 through JOB-08 remain pending. The presence of kinds, tables, RPCs, a provider gateway, or a dark worker artifact is not producer, handler, deployment, or rollout evidence.
 
 Queue, tables, and history:
 
@@ -207,6 +207,7 @@ Queue, tables, and history:
 - Policy and durable state: `background_job_kinds`, `background_jobs`.
 - Frozen protected input: `private.background_job_payloads`. Rows are immutable and direct access is revoked, including from `service_role`.
 - External-effect checkpoints and provider identity: `background_job_effects`, with strict effect-state transitions, one stable effect key per job, and unique non-null provider message and idempotency identities. Same-identity failed work may re-enter dispatch; uncertain work may re-enter dispatch only inside its live idempotency window.
+- Verified provider evidence: `private.background_job_provider_receipts`. Rows are append-only and contain only bounded provider/event/message identity, provider timestamp, safe job/effect correlation, reconciliation outcome, matched IDs, and receipt time. Raw webhook bodies/signatures, recipients, subjects, content, arbitrary tags, provider reasons, and frozen idempotency keys are not stored.
 - Append-only state/effect audit history: `background_job_events`. Event content is immutable; only database foreign-key cleanup may clear the nullable job or actor reference.
 - Worker liveness and drain/health state: `background_workers`.
 
@@ -214,7 +215,8 @@ Service-role RPC boundary:
 
 - Enqueue: `background_job_enqueue_staff`, `background_job_enqueue_system`. The `staff` name records user attribution; it is still executable only by `service_role`, not by the browser `authenticated` role.
 - Claim and lease: `background_jobs_claim`, `background_job_read_payload`, `background_job_read_effects`, `background_job_read_runtime_context`, `background_job_heartbeat`, `background_worker_heartbeat`. Payload, effect, and runtime-context reads require the current lease; the effect projection contains only the frozen identity needed to resume a checkpoint after restart and is not a staff-safe read.
-- Lifecycle and effects: `background_job_record_progress`, `background_job_record_effect_checkpoint`, `background_job_complete`, `background_job_schedule_retry`, `background_job_mark_needs_attention`, `background_job_mark_permanent_failure`, `background_job_request_cancellation`, `background_job_acknowledge_cancellation`, `background_job_release_lease`, `background_job_manual_retry`.
+- Lifecycle and effects: `background_job_record_progress`, `background_job_record_effect_checkpoint`, `background_job_record_provider_acceptance`, `background_job_complete`, `background_job_schedule_retry`, `background_job_mark_needs_attention`, `background_job_mark_permanent_failure`, `background_job_request_cancellation`, `background_job_acknowledge_cancellation`, `background_job_release_lease`, `background_job_manual_retry`. Local `provider_accepted` writes use the specialised lease-fenced acceptance RPC; all other effect checkpoints use the generic RPC.
+- Verified webhook reconciliation: `background_job_reconcile_verified_provider_acceptance`. Only the portal webhook repository may invoke this service-role RPC after bounded raw-body Svix verification; the database does not verify public HTTP signatures.
 - Recovery and inspection: `background_jobs_recover_expired_leases`, `background_jobs_reconcile`, `background_jobs_queue_health`, `background_jobs_runtime_metrics`, `background_workers_list_safe`, `background_job_get_safe`, `background_jobs_list_safe`, `background_job_event_history_safe`.
 
 Primary write path:
@@ -222,18 +224,20 @@ Primary write path:
 - One security-definer enqueue transaction validates the registered kind/version, rollout owner, stable intent key, and frozen input. A transaction-level advisory lock serialises concurrent first-enqueue calls for the same kind/intent. PostgreSQL computes the canonical SHA-256 from normalized `jsonb`, persists it as `input_hash`, then creates or reuses the ledger row, inserts the private payload, sends the minimal logged queue message, stores the canonical message ID, and appends the enqueue event. Callers do not supply or claim a matching hash because JavaScript serialization is not PostgreSQL `jsonb` canonicalization; `inputHash` is durable output/identity evidence.
 - Workers use the granted RPCs only. Claim creates a random per-claim lease token; payload reads and every worker lifecycle/effect mutation require the same worker ID and current unexpired token.
 - Generic progress cannot enter `dispatching`. Provider dispatch goes through the effect-checkpoint RPC with frozen provider/idempotency identity and a live expiry; a restarted lease owner retrieves that same identity through `background_job_read_effects`. Expired in-flight dispatch becomes `uncertain`, and unresolved, expired, or attempt-exhausted uncertainty moves to `needs_attention` before a generic retry-exhaustion branch can hide it as an ordinary failure.
+- Durable email dispatch freezes one job/effect-derived provider key, exact normalized request body and SHA-256, `job_id` plus opaque `effect_ref` tags, and a 20-hour automatic retry expiry inside Resend's documented 24-hour retention window. The package fixes both configuration constants; the database freezes the chosen expiry on the effect and rejects a Resend expiry later than effect `created_at + 24 hours`. Recovery may retry only the same key and request before that expiry and the attempt limit; it never creates a new key after an uncertain outcome. Expiry blocks redispatch, not later signature-verified acceptance evidence.
+- `POST /api/webhooks/resend` caps the streamed body before buffering beyond 256 KiB or verifying the untouched UTF-8 bytes and Svix headers, acknowledges untagged account-wide callbacks from request-bound legacy sends without persistence, and rejects a partial/malformed durable tag pair. `apps/portal/lib/backgroundJobs/providerWebhookRepository.ts` passes only a bounded correlated envelope to `background_job_reconcile_verified_provider_acceptance`. Signed acceptance advances matching `dispatch_started`/`uncertain`/`failed` evidence but reactivates an operator-terminal job only for the named stale provider-outcome classifications. Exact request, key, provider-message, and effect-identity conflicts remain operator-visible. A local response conflicting with an already-recorded webhook message, or colliding with another effect's message ID, is atomically archived and moved to `needs_attention` by `background_job_record_provider_acceptance`; heartbeat renewal is drained around that terminal-capable RPC. A conflicting signed callback found after success or cancellation also moves the durable job to attention while preserving the finalised effect and prior completion evidence. Neither RPC performs quote, invoice, outbox, or other business finalisation. Correlated-but-unmatched evidence is recorded without mutating a job.
 - Retry, cancellation, expired-lease recovery, orphan/duplicate repair, canonical message archive, and terminal business status remain explicit RPC state transitions. A cancellation request fences retry/failure/attention/release mutations until the current worker acknowledges it, and reconciliation durably records a missing canonical message before repair. Queue visibility or archive alone is not business completion.
 - Automatic retry is blocked for raw `dispatch_started`, provider-accepted/finalised work, exhausted attempts/windows, and uncertainty whose provider idempotency window would expire by the planned delay.
 
 Primary read path:
 
-- Future server/admin surfaces should use the explicit safe inspection RPC projections, not direct tables. No JOB-01/JOB-02 browser or portal UI read path exists.
+- Future server/admin surfaces should use the explicit safe inspection RPC projections, not direct tables. No JOB-01/JOB-02/JOB-03 browser or portal UI read path exists; the public provider route is a write-only verified reconciliation boundary, not an inspection surface.
 - Workers receive the minimal claim record first and may retrieve frozen execution input and frozen effect replay identity only through `background_job_read_payload` and `background_job_read_effects` while they own the current lease. Neither projection is browser-safe or browser-executable.
 
 Access rule:
 
 - RLS is enabled on every public job table, and public/anonymous/authenticated table and function access is revoked. Browser roles also have no PGMQ schema access.
-- Direct service-role job-table, PGMQ, and private-schema access is revoked. Explicitly granted security-definer RPCs are the service-role capability boundary.
+- Direct service-role job-table, PGMQ, private payload, and private provider-receipt access is revoked. Explicitly granted security-definer RPCs are the service-role capability boundary.
 - Progress, result, effect, event, and worker summaries each use an explicit flat field allowlist, bounded counts/bytes, and value-level rejection of obvious recipient, URL, credential, hash, name, and provider content. Safe staff inspection uses explicit columns rather than returning table rows. Sensitive payloads must never be copied into queue messages, safe summaries, logs, or public props.
 
 Migration and test source:
@@ -244,13 +248,15 @@ Migration and test source:
 - `supabase/migrations/20260720_000004_background_job_reconciliation.sql`: expired-lease recovery, queue reconciliation/repair, health, and safe inspection.
 - `supabase/migrations/20260720_000005_background_job_contract_hardening.sql`: frozen allowed-effect/cancellation policy, context-safe summaries and explicit safe projections, exact queue-body validation and repair, restart-safe lease-fenced effect identity, provider-window/max-attempt uncertainty guards, and narrowed grants.
 - `supabase/migrations/20260720_000006_background_job_worker_runtime.sql`: lease-fenced runtime context, aggregate queue/job/worker lifecycle metrics, safe worker listing, and explicit service-role-only grants.
+- `supabase/migrations/20260720_000007_background_job_provider_reconciliation.sql`: bounded Resend idempotency expiry, append-only minimal provider receipts, verified acceptance reconciliation, lease-fenced local provider acceptance and message-ID conflict quarantine, late-terminal conflict attention, same-key uncertainty recovery, finalisation wake-up, and narrowed grants.
 - `supabase/tests/background_jobs_bootstrap.sql` creates only the disposable auth/projects/role prerequisites needed by the isolated contract; it is test support, not a production migration.
 - `supabase/tests/background_jobs.sql` is the rollback-wrapped executable database contract. `npm run test:jobs` covers TypeScript plus static SQL/security assertions; `npm run test:jobs:db` is the Docker-backed real-PGMQ harness.
 
 Verification status:
 
-- `npm run test:jobs` passed locally on 2026-07-20 with 5 files and 86 tests across package contracts, package policy, strict worker wire contracts, static migration contracts, and repository security. `npm run test:worker` passed 9 files and 76 tests, with worker typecheck, build, built CLI, scoped lint, architecture, and security gates also green.
+- `npm run test:email-provider` passed locally on 2026-07-20 with 3 files and 47 tests; `npm run test:email-integrations` passed 8 files and 38 tests; `npm run test:jobs` passed 8 files and 144 tests across provider/package contracts, static migration contracts, and repository security; and `npm run test:worker` passed 12 files and 134 tests. Worker/portal typechecks and the prior checkpoint build, scoped lint, architecture, and security gates are green and are rerun before the checkpoint commit.
 - `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no local container started and no SQL executed. Background Jobs [run 29713940507](https://github.com/velt-design/sanctuary/actions/runs/29713940507) passes the rollback-wrapped six-migration JOB-01/JOB-02 contract against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, plus the worker runtime and non-root container job. No shared-environment migration or rollout is implied.
+- JOB-03 local provider, integration, worker, contract, typecheck, lint, security, and production-build gates pass. Seven-migration checkpoint CI evidence remains pending after push. No shared database was touched, no production deployment occurred, no real email was sent, and no handler, producer, or rollout was enabled.
 
 ## Portal Performance Telemetry
 
@@ -335,6 +341,6 @@ npm run test:jobs:db
 npm run text:mojibake
 ```
 
-`npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus the six JOB-01/JOB-02 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
+`npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus the seven JOB-01/JOB-02/JOB-03 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
 
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.

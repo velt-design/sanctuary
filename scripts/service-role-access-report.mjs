@@ -91,6 +91,7 @@ function isApprovedServerFlow(file) {
   ) return true;
   if (file.startsWith('apps/portal/app/api/admin/')) return true;
   if (file.startsWith('apps/portal/lib/automation/')) return true;
+  if (file === 'apps/portal/lib/backgroundJobs/providerWebhookRepository.ts') return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
   if (/^apps\/portal\/lib\/(?:estimates|invoices|quotes)\//.test(file)) return true;
@@ -117,6 +118,7 @@ function suggestedOwner(file, category) {
   if (file.startsWith('apps/marketing/')) return 'marketing server/public-token or lead-capture owner';
   if (file.startsWith('apps/worker/')) return 'dedicated worker RPC/auth boundary; keep service-role access narrow and server-only';
   if (file.startsWith('apps/portal/lib/automation/')) return 'automation/email/audit owner';
+  if (file.startsWith('apps/portal/lib/backgroundJobs/')) return 'background-job provider reconciliation owner';
   if (file.startsWith('apps/portal/lib/dashboard/')) return 'dashboard snapshot server owner';
   if (file.startsWith('apps/portal/lib/scheduling/')) return 'schedule server/RPC command owner';
   if (/^apps\/portal\/lib\/(?:estimates|invoices|quotes)\//.test(file)) return 'quote/invoice/estimate server-side-effect owner';

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   BACKGROUND_JOB_RETRY_MINIMUM_JITTER_FACTOR,
+  BACKGROUND_JOB_PROVIDER_ACCEPTANCE_WINS_ERROR_CODES,
   BACKGROUND_JOB_KINDS,
   BACKGROUND_JOB_REGISTRY,
   applyBackgroundJobDownwardRetryJitter,
   assertBackgroundJobEffectCheckpointsComplete,
   backgroundJobEffectAllowed,
   backgroundJobEffectCheckpointsComplete,
+  backgroundJobProviderAcceptanceWins,
   getBackgroundJobAutomaticRetryDecision,
   getBackgroundJobDefinition,
   getBackgroundJobEffectCompletionIssues,
@@ -56,6 +58,20 @@ function retryDecision(
 }
 
 describe('background job registry policy', () => {
+  it('lets verified provider acceptance supersede only stale provider-outcome classifications', () => {
+    for (const errorCode of BACKGROUND_JOB_PROVIDER_ACCEPTANCE_WINS_ERROR_CODES) {
+      expect(backgroundJobProviderAcceptanceWins(errorCode)).toBe(true);
+    }
+    for (const errorCode of [
+      'RESEND_IDEMPOTENCY_PAYLOAD_CONFLICT',
+      'EMAIL_PROVIDER_MESSAGE_ID_CONFLICT',
+      'EMAIL_EFFECT_IDENTITY_MISMATCH',
+      'EMAIL_FINALISATION_STATE_INVALID',
+    ]) {
+      expect(backgroundJobProviderAcceptanceWins(errorCode)).toBe(false);
+    }
+  });
+
   it('applies deterministic downward-only jitter after the retry upper bound is known', () => {
     const context = {
       kind: 'quote_send' as const,
@@ -295,7 +311,7 @@ describe('background job retry idempotency windows', () => {
     });
   });
 
-  it.each(['prepared', 'failed', 'uncertain'] as const)(
+  it.each(['prepared', 'dispatch_started', 'failed', 'uncertain'] as const)(
     'blocks %s work with missing, invalid, expired, or delay-crossed idempotency expiry',
     (state) => {
       expect(retryDecision(state, null)).toMatchObject({
@@ -359,7 +375,7 @@ describe('background job retry idempotency windows', () => {
     });
   });
 
-  it('keeps provider-accepted and unknown-dispatch outcomes blocked before expiry planning', () => {
+  it('keeps provider-accepted outcomes blocked and bounds started-dispatch replay by the frozen window', () => {
     expect(retryDecision('provider_accepted', null)).toMatchObject({
       retry: false,
       reason: 'provider_already_accepted',
@@ -368,10 +384,37 @@ describe('background job retry idempotency windows', () => {
       retry: false,
       reason: 'provider_already_accepted',
     });
-    expect(retryDecision('dispatch_started', null)).toMatchObject({
-      retry: false,
-      reason: 'provider_outcome_unknown',
+    expect(retryDecision('dispatch_started', NOW_MS + 30_001)).toEqual({
+      retry: true,
+      delayMs: 30_000,
+      reason: null,
     });
+  });
+
+  it('prioritises verified acceptance over exhausted attempts and the automatic retry window', () => {
+    const definition = getBackgroundJobDefinition('quote_send');
+    for (const context of [
+      {
+        attemptNumber: definition.retry.maxAttempts,
+        elapsedSinceFirstAttemptMs: 0,
+      },
+      {
+        attemptNumber: 1,
+        elapsedSinceFirstAttemptMs: definition.retry.automaticRetryWindowMs,
+      },
+    ]) {
+      expect(getBackgroundJobAutomaticRetryDecision({
+        kind: 'quote_send',
+        contractVersion: 1,
+        effects: [effect('email_dispatch', 'provider_accepted', null)],
+        nowMs: NOW_MS,
+        ...context,
+      })).toEqual({
+        retry: false,
+        delayMs: null,
+        reason: 'provider_already_accepted',
+      });
+    }
   });
 
   it('validates the contract version before planning a retry', () => {

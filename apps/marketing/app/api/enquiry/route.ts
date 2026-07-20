@@ -18,6 +18,7 @@ import {
   recordMarketingConversionEvent,
 } from '../../../../../apps/portal/lib/marketingAttribution/server';
 import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
+import { getEmailDeliveryFailureSummary } from '@/lib/email/sendEmail';
 import {
   EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
   EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
@@ -1101,11 +1102,15 @@ export async function POST(req: Request) {
       try {
         await sendCustomerAutoresponder(
           emailPayload,
-          professionalAttachments.length ? { attachments: professionalAttachments } : undefined,
+          {
+            ...(professionalAttachments.length ? { attachments: professionalAttachments } : {}),
+            idempotencyKey,
+          },
         );
       } catch (err) {
-        sendError = err instanceof Error ? err : new Error('Autoresponder send failed');
-        console.error('Autoresponder send failed', err);
+        const failure = getEmailDeliveryFailureSummary(err);
+        sendError = new Error(failure.code);
+        console.error('Autoresponder send failed', failure);
       }
 
       // Best-effort log (do not block submission)
@@ -1125,18 +1130,9 @@ export async function POST(req: Request) {
             { onConflict: 'id' } as any,
           );
 
-        console.log('[email_templates] upsert result', { data: templateSeedRes.data, error: templateSeedRes.error });
-
         if (templateSeedRes.error) {
           throw templateSeedRes.error;
         }
-
-        console.log('[email_outbox] about to upsert', {
-          projectId,
-          contactId,
-          to: email,
-          enquiryId: enquiryRow.id,
-        });
 
         const outboxRes = await supabase
           .from('email_outbox')
@@ -1156,8 +1152,6 @@ export async function POST(req: Request) {
             } as any,
             { onConflict: 'idempotency_key' } as any,
           );
-
-        console.log('[email_outbox] upsert result', { data: outboxRes.data, error: outboxRes.error });
 
         if (outboxRes.error) {
           const outboxError = outboxRes.error;
@@ -1196,7 +1190,9 @@ export async function POST(req: Request) {
             { onConflict: 'idempotency_key' } as any,
           );
       } catch (e) {
-        console.error('Failed to log autoresponder in email_outbox/audit_events', e);
+        console.error('Failed to log autoresponder in email_outbox/audit_events', {
+          code: 'EMAIL_OUTBOX_AUDIT_WRITE_FAILED',
+        });
         try {
           const fallbackIso = new Date().toISOString();
           const errorMessage = e instanceof Error ? e.message : 'email_outbox logging failed';
@@ -1219,13 +1215,15 @@ export async function POST(req: Request) {
               } as any,
               { onConflict: 'idempotency_key' } as any,
             );
-        } catch (auditErr) {
-          console.error('Failed to log email_outbox error to audit_events', auditErr);
+        } catch {
+          console.error('Failed to log email_outbox error to audit_events', {
+            code: 'EMAIL_AUDIT_FALLBACK_WRITE_FAILED',
+          });
         }
         throw e;
       }
     } catch (err) {
-      console.error('Autoresponder send failed', err);
+      console.error('Autoresponder send failed', getEmailDeliveryFailureSummary(err));
     }
   }
 

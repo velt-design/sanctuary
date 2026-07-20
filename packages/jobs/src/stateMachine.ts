@@ -1,18 +1,45 @@
 import type { BackgroundJobEffectState, BackgroundJobStatus } from './contracts';
 
 const statusTransitions = {
-  queued: ['claimed', 'cancelled', 'needs_attention', 'permanent_failed'],
-  claimed: ['preparing', 'running', 'retrying', 'cancelled', 'needs_attention', 'permanent_failed'],
-  preparing: ['running', 'dispatching', 'retrying', 'cancelled', 'needs_attention', 'permanent_failed'],
-  running: ['dispatching', 'finalising', 'retrying', 'cancelled', 'needs_attention', 'permanent_failed'],
+  queued: ['claimed', 'provider_accepted', 'cancelled', 'needs_attention', 'permanent_failed'],
+  claimed: [
+    'preparing',
+    'running',
+    'provider_accepted',
+    'retrying',
+    'cancelled',
+    'needs_attention',
+    'permanent_failed',
+  ],
+  preparing: [
+    'running',
+    'dispatching',
+    'provider_accepted',
+    'retrying',
+    'cancelled',
+    'needs_attention',
+    'permanent_failed',
+  ],
+  running: [
+    'dispatching',
+    'provider_accepted',
+    'finalising',
+    'retrying',
+    'cancelled',
+    'needs_attention',
+    'permanent_failed',
+  ],
   dispatching: ['provider_accepted', 'retrying', 'needs_attention', 'permanent_failed'],
   provider_accepted: ['finalising', 'needs_attention', 'permanent_failed'],
   finalising: ['succeeded', 'retrying', 'needs_attention', 'permanent_failed'],
-  retrying: ['claimed', 'queued', 'cancelled', 'needs_attention', 'permanent_failed'],
-  succeeded: [],
-  cancelled: [],
-  needs_attention: ['queued'],
-  permanent_failed: ['queued'],
+  retrying: ['claimed', 'queued', 'provider_accepted', 'cancelled', 'needs_attention', 'permanent_failed'],
+  // Signature-verified provider evidence may reveal a late delivery conflict
+  // after an otherwise terminal outcome. Only reconciliation owns these
+  // exceptional transitions; worker progress remains lease-fenced.
+  succeeded: ['needs_attention'],
+  cancelled: ['needs_attention'],
+  needs_attention: ['queued', 'provider_accepted'],
+  permanent_failed: ['queued', 'provider_accepted'],
 } as const satisfies Record<BackgroundJobStatus, readonly BackgroundJobStatus[]>;
 
 const effectTransitions = {
@@ -21,7 +48,7 @@ const effectTransitions = {
   provider_accepted: ['finalised'],
   finalised: [],
   uncertain: ['dispatch_started', 'provider_accepted', 'failed'],
-  failed: ['dispatch_started'],
+  failed: ['dispatch_started', 'provider_accepted'],
 } as const satisfies Record<BackgroundJobEffectState, readonly BackgroundJobEffectState[]>;
 
 export const TERMINAL_BACKGROUND_JOB_STATUSES = [

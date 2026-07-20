@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BACKGROUND_JOB_EFFECT_STATES,
   BACKGROUND_JOB_KINDS,
+  BACKGROUND_JOB_PROVIDER_ACCEPTANCE_WINS_ERROR_CODES,
   BACKGROUND_JOB_ROLLOUT_MODES,
   BACKGROUND_JOB_STATUSES,
   BACKGROUND_JOB_WORKER_LIFECYCLE_STATES,
@@ -17,6 +18,7 @@ const migrationNames = [
   '20260720_000004_background_job_reconciliation.sql',
   '20260720_000005_background_job_contract_hardening.sql',
   '20260720_000006_background_job_worker_runtime.sql',
+  '20260720_000007_background_job_provider_reconciliation.sql',
 ] as const;
 
 function migration(name: (typeof migrationNames)[number]): string {
@@ -32,11 +34,13 @@ const initialLifecycle = migration(migrationNames[2]);
 const reconciliation = migration(migrationNames[3]);
 const contractHardening = migration(migrationNames[4]);
 const workerRuntime = migration(migrationNames[5]);
+const providerReconciliation = migration(migrationNames[6]);
 const allMigrations = migrationNames.map(migration).join('\n');
 const effectiveLifecycle = [
   enqueueAndClaim,
   initialLifecycle,
   contractHardening,
+  providerReconciliation,
 ].join('\n');
 const executableSqlContract = readFileSync(
   path.join(process.cwd(), 'supabase/tests/background_jobs.sql'),
@@ -298,6 +302,7 @@ describe('Wave 3 background-job migrations', () => {
     for (const rpc of [
       'background_job_record_progress',
       'background_job_record_effect_checkpoint',
+      'background_job_record_provider_acceptance',
       'background_job_read_effects',
       'background_job_complete',
       'background_job_schedule_retry',
@@ -405,7 +410,14 @@ describe('Wave 3 background-job migrations', () => {
       /required external effect % must be finalised before job completion/i,
     );
     expect(retry).toMatch(
-      /started provider dispatch must be checkpointed failed or uncertain before retry/i,
+      /count\(\*\) filter \(where effect\.state = 'dispatch_started'\)/i,
+    );
+    expect(retry).toMatch(/v_dispatch_outcome_count <> 1/i);
+    expect(retry).toMatch(
+      /set state = 'uncertain'[\s\S]*?state = 'dispatch_started'/i,
+    );
+    expect(retry).toMatch(
+      /retry-exhausted provider uncertainty must move to needs attention/i,
     );
     expect(retry).toMatch(
       /redispatchable provider work must stay inside its frozen idempotency window/i,
@@ -534,6 +546,272 @@ describe('Wave 3 background-job migrations', () => {
     );
     expect(contractHardening).not.toMatch(/background_jobs_claim_core/i);
     expect(contractHardening).not.toMatch(/background_jobs_claim_unchecked/i);
+  });
+
+  it('stores only append-only minimal verified-provider receipts behind the private RPC boundary', () => {
+    const receiptTable = providerReconciliation.match(
+      /create table private\.background_job_provider_receipts[\s\S]*?\n\);/i,
+    )?.[0];
+    expect(receiptTable).toBeTruthy();
+    expect(receiptTable).toMatch(/unique \(provider_name, provider_event_id\)/i);
+    expect(receiptTable).toMatch(/provider_name = 'resend'/i);
+    expect(receiptTable).toMatch(/provider_event_type = 'email\.sent'/i);
+    expect(receiptTable).toMatch(
+      /tagged_effect_ref[\s\S]*?\^\[0-9a-f\]\{64\}/i,
+    );
+    expect(receiptTable).not.toMatch(/recipient|subject|html|body|signature|raw_payload|arbitrary_tags/i);
+    expect(providerReconciliation).toMatch(
+      /alter table private\.background_job_provider_receipts enable row level security/i,
+    );
+    expect(providerReconciliation).toMatch(
+      /background_job_provider_receipts_append_only_trigger/i,
+    );
+    expect(providerReconciliation).toMatch(
+      /revoke all on table private\.background_job_provider_receipts[\s\S]*?public, anon, authenticated, service_role/i,
+    );
+    expect(providerReconciliation).toMatch(
+      /revoke all on sequence private\.background_job_provider_receipts_id_seq[\s\S]*?public, anon, authenticated, service_role/i,
+    );
+  });
+
+  it('reconciles verified Resend acceptance atomically without trusting webhook tags alone', () => {
+    const reconcileAcceptance = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_job_reconcile_verified_provider_acceptance',
+    );
+    const effectRef = latestFunctionDefinition(
+      providerReconciliation,
+      'private.background_job_provider_effect_ref',
+    );
+
+    expect(effectRef).toContain('sanctuary:provider-effect:v1|');
+    expect(effectRef).toMatch(/sha256\(convert_to\(/i);
+    expect(reconcileAcceptance).toMatch(/p_provider_name is distinct from 'resend'/i);
+    expect(reconcileAcceptance).toMatch(/p_provider_event_type is distinct from 'email\.sent'/i);
+    expect(reconcileAcceptance).toMatch(/pg_advisory_xact_lock/i);
+    expect(reconcileAcceptance).toMatch(
+      /provider event identity was reused with different content/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /private\.background_job_provider_effect_ref\([\s\S]*?\) = p_tagged_effect_ref/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /v_effect\.state in \('dispatch_started', 'uncertain', 'failed'\)/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /v_effect\.state in \('dispatch_started', 'uncertain', 'failed'\)[\s\S]*?and v_job\.status in \([\s\S]*?'needs_attention'[\s\S]*?\) then[\s\S]*?set state = 'provider_accepted'/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /v_effect\.state = 'finalised'[\s\S]*?v_job\.status in \([\s\S]*?'provider_accepted'[\s\S]*?'finalising'[\s\S]*?'succeeded'[\s\S]*?'needs_attention'/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /set state = 'provider_accepted',[\s\S]*?provider_message_id = p_provider_message_id/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /'effectKind', 'email_dispatch',[\s\S]*?'checkpoint', 'provider_accepted',[\s\S]*?'providerName', 'resend',[\s\S]*?'providerAccepted', true/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /v_live_lease :=[\s\S]*?v_job\.lease_expires_at > now\(\)/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /if not v_live_lease then[\s\S]*?private\.background_job_set_visibility_or_repair\(/i,
+    );
+    expect(reconcileAcceptance).toMatch(/completed_at = null/i);
+    expect(reconcileAcceptance).toMatch(
+      /insert into private\.background_job_provider_receipts/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /if v_job\.status not in \('needs_attention', 'permanent_failed'\) then[\s\S]*?set status = 'needs_attention',[\s\S]*?error_code = 'PROVIDER_WEBHOOK_CONFLICT'/i,
+    );
+    expect(providerReconciliation).toMatch(
+      /background_job_effects_resend_idempotency_window_bounded[\s\S]*?created_at \+ interval '24 hours'/i,
+    );
+    expect(
+      latestFunctionDefinition(
+        providerReconciliation,
+        'public.background_job_effect_transition_allowed',
+      ),
+    ).toMatch(/when 'failed' then p_to in \('dispatch_started', 'provider_accepted'\)/i);
+    expect(providerReconciliation).toMatch(
+      /revoke all on function public\.background_job_reconcile_verified_provider_acceptance\([\s\S]*?service_role;[\s\S]*?grant execute on function public\.background_job_reconcile_verified_provider_acceptance\([\s\S]*?to service_role/i,
+    );
+    expect(providerReconciliation).not.toMatch(
+      /grant execute[^;]*background_job_reconcile_verified_provider_acceptance[^;]*to (?:public|anon|authenticated)/i,
+    );
+    for (const signature of [
+      'background_job_record_provider_acceptance\\(\\s*uuid,\\s*text,\\s*uuid,\\s*text,\\s*text,\\s*text,\\s*text,\\s*text,\\s*timestamptz,\\s*text,\\s*jsonb\\s*\\)',
+      'background_job_schedule_retry\\(uuid, text, uuid, integer, text, text\\)',
+      'background_job_mark_permanent_failure\\(uuid, text, uuid, text, text\\)',
+      'background_jobs_recover_expired_leases\\(text, integer\\)',
+      'background_jobs_claim\\(text, integer, integer\\)',
+    ]) {
+      expect(providerReconciliation).toMatch(
+        new RegExp(
+          `revoke all on function public\\.${signature}[\\s\\S]*?service_role;[\\s\\S]*?grant execute on function public\\.${signature}[\\s\\S]*?to service_role`,
+          'i',
+        ),
+      );
+    }
+  });
+
+  it('atomically quarantines a conflicting local provider acceptance under the worker lease', () => {
+    const recordAcceptance = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_job_record_provider_acceptance',
+    );
+
+    expect(recordAcceptance).toMatch(
+      /public\.background_job_record_effect_checkpoint\([\s\S]*?'provider_accepted'/i,
+    );
+    expect(recordAcceptance.indexOf('v_job := private.background_job_lock_owned'))
+      .toBeLessThan(recordAcceptance.indexOf('from public.background_job_record_effect_checkpoint'));
+    expect(recordAcceptance).toMatch(/exception when unique_violation/i);
+    expect(recordAcceptance).toMatch(/private\.background_job_lock_owned\(/i);
+    expect(recordAcceptance).toMatch(
+      /v_effect\.effect_key <> p_effect_key[\s\S]*?v_effect\.payload_hash <> p_payload_hash[\s\S]*?v_effect\.provider_name is distinct from p_provider_name[\s\S]*?v_effect\.provider_idempotency_key is distinct from p_provider_idempotency_key[\s\S]*?v_effect\.provider_idempotency_expires_at is distinct from p_provider_idempotency_expires_at/i,
+    );
+    expect(recordAcceptance).toMatch(
+      /v_effect\.state in \('provider_accepted', 'finalised'\)[\s\S]*?v_effect\.provider_message_id <> p_provider_message_id[\s\S]*?v_conflict_reason := 'provider_message_id_conflict'/i,
+    );
+    expect(recordAcceptance).toMatch(
+      /v_effect\.state in \('dispatch_started', 'uncertain', 'failed'\)[\s\S]*?other_effect\.provider_message_id = p_provider_message_id[\s\S]*?v_conflict_reason := 'provider_message_id_collision'/i,
+    );
+    expect(recordAcceptance).toMatch(
+      /v_effect\.state = 'dispatch_started'[\s\S]*?set state = 'uncertain'/i,
+    );
+    expect(recordAcceptance).toMatch(
+      /private\.background_job_archive_canonical\([\s\S]*?set status = 'needs_attention',[\s\S]*?error_code = 'EMAIL_PROVIDER_MESSAGE_ID_CONFLICT',[\s\S]*?lease_owner = null,[\s\S]*?lease_token = null/i,
+    );
+    expect(recordAcceptance).toMatch(
+      /private\.background_job_insert_event\([\s\S]*?'EMAIL_PROVIDER_MESSAGE_ID_CONFLICT'[\s\S]*?return v_effect/i,
+    );
+    expect(providerReconciliation).toMatch(
+      /revoke all on function public\.background_job_record_provider_acceptance\([\s\S]*?service_role;[\s\S]*?grant execute on function public\.background_job_record_provider_acceptance\([\s\S]*?to service_role/i,
+    );
+    expect(providerReconciliation).not.toMatch(
+      /grant execute[^;]*background_job_record_provider_acceptance[^;]*to (?:public|anon|authenticated)/i,
+    );
+  });
+
+  it('autonomously retries lost provider responses only under the frozen live identity', () => {
+    const recoverExpired = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_jobs_recover_expired_leases',
+    );
+    const claim = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_jobs_claim',
+    );
+
+    for (const definition of [recoverExpired, claim]) {
+      expect(definition).toMatch(
+        /set state = 'uncertain'[\s\S]*?state = 'dispatch_started'/i,
+      );
+      expect(definition).toMatch(
+        /count\(\*\) filter \(where effect\.state in \('dispatch_started', 'uncertain'\)\)/i,
+      );
+      expect(definition).toMatch(
+        /v_dispatch_effect_count <> 1 or v_dispatch_outcome_count <> 1/i,
+      );
+      expect(definition).toMatch(/PROVIDER_EFFECT_INVARIANT/i);
+      expect(definition).toMatch(
+        /effect\.state in \('prepared', 'failed', 'uncertain'\)[\s\S]*?provider_idempotency_expires_at <= now\(\)/i,
+      );
+      expect(definition).toMatch(
+        /v_job\.attempt_count >= v_job\.max_attempts[\s\S]*?effect\.state = 'uncertain'/i,
+      );
+      expect(definition).toMatch(/status = 'retrying'/i);
+      expect(definition).toMatch(
+        /current_phase = (?:'provider_retry'|case when v_previous_status = 'dispatching'[\s\S]*?then 'provider_retry')/i,
+      );
+      expect(definition).toMatch(/PROVIDER_OUTCOME_UNCERTAIN/i);
+    }
+
+    expect(recoverExpired).toMatch(
+      /private\.background_job_set_visibility_or_repair\([\s\S]*?'provider_uncertainty_recovery'/i,
+    );
+    expect(claim).toMatch(
+      /from pgmq\.read\('portal_background_jobs', p_visibility_timeout_seconds, p_batch_size\)/i,
+    );
+    expect(claim).not.toMatch(
+      /if v_previous_status = 'dispatching' then[\s\S]{0,900}?error_code = 'LEASE_EXPIRED_DURING_DISPATCH'/i,
+    );
+  });
+
+  it('prevents a terminal worker write from overwriting verified provider acceptance', () => {
+    const acceptanceWins = latestFunctionDefinition(
+      providerReconciliation,
+      'private.background_job_provider_acceptance_wins',
+    );
+    const markNeedsAttention = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_job_mark_needs_attention',
+    );
+    const markPermanentFailure = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_job_mark_permanent_failure',
+    );
+    const reconcileAcceptance = latestFunctionDefinition(
+      providerReconciliation,
+      'public.background_job_reconcile_verified_provider_acceptance',
+    );
+
+    const sqlErrorCodes = Array.from(
+      acceptanceWins.matchAll(/'([A-Z][A-Z0-9_]+)'/g),
+      (match) => match[1],
+    );
+    expect(sqlErrorCodes).toEqual([
+      ...BACKGROUND_JOB_PROVIDER_ACCEPTANCE_WINS_ERROR_CODES,
+    ]);
+    expect(providerReconciliation).toMatch(
+      /revoke all on function private\.background_job_provider_acceptance_wins\(text\)[\s\S]*?public, anon, authenticated, service_role/i,
+    );
+
+    expect(markNeedsAttention).toMatch(
+      /private\.background_job_provider_acceptance_wins\(p_error_code\)[\s\S]*?effect\.state in \('provider_accepted', 'finalised'\)/i,
+    );
+    expect(markNeedsAttention).toMatch(
+      /provider-accepted work must resume finalisation, not needs attention/i,
+    );
+    expect(markNeedsAttention).toMatch(/errcode = '40001'/i);
+    expect(markNeedsAttention.indexOf("effect.state in ('provider_accepted', 'finalised')"))
+      .toBeLessThan(markNeedsAttention.indexOf("set status = 'needs_attention'"));
+    expect(markNeedsAttention).not.toMatch(/if v_job\.status = 'needs_attention'[\s\S]*?return v_job/i);
+    expect(markNeedsAttention.indexOf('private.background_job_lock_owned'))
+      .toBeLessThan(markNeedsAttention.indexOf("set status = 'needs_attention'"));
+
+    expect(markPermanentFailure).not.toMatch(
+      /if v_job\.status = 'permanent_failed'[\s\S]*?return v_job/i,
+    );
+    expect(markPermanentFailure).toMatch(
+      /private\.background_job_lock_owned\([\s\S]*?private\.background_job_provider_acceptance_wins\(p_error_code\)[\s\S]*?effect\.state in \('provider_accepted', 'finalised'\)[\s\S]*?errcode = '40001'/i,
+    );
+    expect(markPermanentFailure.indexOf('private.background_job_lock_owned'))
+      .toBeLessThan(markPermanentFailure.indexOf("set status = 'permanent_failed'"));
+
+    expect(reconcileAcceptance).toMatch(
+      /v_job\.status not in \('needs_attention', 'permanent_failed'\)[\s\S]*?private\.background_job_provider_acceptance_wins\(v_job\.error_code\)/i,
+    );
+    expect(reconcileAcceptance).toMatch(
+      /v_effect\.state = 'provider_accepted'[\s\S]*?v_job\.status in \([\s\S]*?'provider_accepted'[\s\S]*?'finalising'[\s\S]*?'needs_attention'[\s\S]*?'permanent_failed'/i,
+    );
+  });
+
+  it('keeps direct uncertain-state recovery metadata canonical and auditable', () => {
+    const uncertainUpdates = Array.from(
+      providerReconciliation.matchAll(
+        /set state = 'uncertain',([\s\S]*?updated_at = now\(\))/gi,
+      ),
+      (match) => match[1],
+    );
+
+    expect(uncertainUpdates).toHaveLength(7);
+    for (const update of uncertainUpdates) {
+      expect(update).toMatch(
+        /safe_metadata = jsonb_build_object\([\s\S]*?'effectKind', effect_kind,[\s\S]*?'checkpoint', 'uncertain',[\s\S]*?'providerName', provider_name/i,
+      );
+      expect(update).toMatch(/updated_at = now\(\)/i);
+    }
   });
 
   it('uses explicit context-safe summary contracts plus value-level sensitive-data defence', () => {
@@ -830,6 +1108,12 @@ describe('Wave 3 background-job migrations', () => {
       /frozen provider message ID was silently replaced/i,
     );
     expect(executableSqlContract).toMatch(
+      /same-key recovered dispatch did not re-enter dispatching/i,
+    );
+    expect(executableSqlContract).toMatch(
+      /background_job_reconcile_verified_provider_acceptance/i,
+    );
+    expect(executableSqlContract).toMatch(
       /event content update bypassed append-only history/i,
     );
     expect(executableSqlContract).toMatch(/background_job_complete/i);
@@ -844,6 +1128,14 @@ describe('Wave 3 background-job migrations', () => {
     expect(databaseBootstrap).toMatch(/to_regclass\('auth\.users'\) is null/i);
     expect(databaseHarness).toMatch(/p_priority => 100::smallint/i);
     expect(databaseHarness).toMatch(/LEDGER_COUNT=/i);
+    expect(databaseHarness).toMatch(/wait_event = 'transactionid'/i);
+    expect(databaseHarness).toMatch(/pg_blocking_pids\(blocked\.pid\)/i);
+    expect(databaseHarness).toMatch(
+      /concurrent provider-message collision contract passed/i,
+    );
+    expect(databaseHarness).toMatch(
+      /await verifyConcurrentProviderMessageCollision\(\)/i,
+    );
   });
 
   it('executes release, effect-policy, safe-summary, and role/capability matrices', () => {
@@ -860,6 +1152,29 @@ describe('Wave 3 background-job migrations', () => {
       'delayed claim resurrected an expired provider effect',
       'max-attempt uncertain effect was hidden as permanent failure',
       'shadow prepared effect was not reclaimable without provider identity',
+      'lost provider outcome checkpoint did not schedule an atomic same-key retry',
+      'same-key cooperative retry was not reclaimable with its frozen identity',
+      'missing dispatch checkpoint was accepted for cooperative retry',
+      'missing dispatch checkpoint retry rejection was not atomic',
+      'multiple dispatch checkpoints were accepted for cooperative retry',
+      'multiple dispatch checkpoint retry rejection was not atomic',
+      'expired dispatch identity was accepted for cooperative retry',
+      'expired dispatch identity retry rejection was not atomic',
+      'exhausted dispatch was accepted for cooperative retry',
+      'exhausted dispatch retry rejection was not atomic',
+      'verified provider acceptance did not preserve the live lease with exact canonical metadata',
+      'verified provider acceptance did not append its minimal matched receipt',
+      'exact duplicate provider event was not idempotent',
+      'provider event ID reuse accepted changed event content',
+      'changed duplicate provider event mutated the accepted effect',
+      'verified acceptance after provider expiry did not atomically reactivate finalisation',
+      'provider-accepted repair message did not resume finalisation',
+      'provider acceptance queue failure did not roll back the full reconciliation transaction',
+      'provider acceptance could not retry after transactional queue-repair rollback',
+      'provider message collision was not retained as a fenced reconciliation conflict',
+      'unmatched verified provider event was not retained minimally',
+      'provider receipt update bypassed append-only history',
+      'provider receipt delete bypassed append-only history',
     ]) {
       expect(executableSqlContract, `release matrix: ${marker}`).toContain(
         marker,
@@ -915,6 +1230,7 @@ describe('Wave 3 background-job migrations', () => {
       'safe event inspection exposed internal correlation fields',
       'service role read the background-job ledger directly',
       'service role read protected payloads directly',
+      'service role read provider receipts directly',
       'service role read PGMQ directly',
     ]) {
       expect(executableSqlContract, `role matrix: ${marker}`).toContain(marker);

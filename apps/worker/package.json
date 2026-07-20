@@ -18,6 +18,7 @@
     "queue-health": "tsx src/cli.ts queue-health"
   },
   "dependencies": {
+    "@sp/email-provider": "0.0.0",
     "@sp/jobs": "0.0.0",
     "@supabase/supabase-js": "^2.90.1"
   },
