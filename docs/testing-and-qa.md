@@ -6,7 +6,7 @@ Use the smallest test that covers the risk. Run broader suites when touching sha
 
 - Use `## Common Commands` for routine repo, portal, focused, and operational scripts.
 - Use `## Docs-Only Checks` when changing docs, agent guidance, or docs tooling.
-- Use `## Background-Job Contract Tests` for JOB-01 package, migration, security, and isolated PGMQ database checks.
+- Use `## Background-Job And Worker Tests` for JOB-01/JOB-02 package, worker, migration, security, and isolated PGMQ database checks.
 - Use `## Portal Browser Tests` and `## Drawing Fixture Route` for Playwright/auth/drawing smoke expectations.
 - Use `## Schedule QA Gate` for Schedule V2 readiness and focused schedule checks.
 - Use `## CI` to confirm which workflows enforce or report each gate.
@@ -22,15 +22,19 @@ The root `npm run dev`, `build`, and `start` scripts only print the app-specific
 ```bash
 npm run dev:marketing
 npm run dev:portal
+npm run dev:worker
 npm run test
 npm run test:marketing
 npm run test:jobs
 npm run test:jobs:db-contract
 npm run test:jobs:db
+npm run test:worker
 npm run test:portal
 npm run build:marketing
 npm run build:portal
+npm run build:worker
 npm run typecheck
+npm run typecheck:worker
 npm run lint
 ```
 
@@ -155,17 +159,18 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 
 `npm run docs:readiness` is an advisory report for `docs/portal-production-readiness.md`. It summarizes tracker age, status counts, at-risk rows, and unchecked checklist counts, but it does not verify readiness by itself.
 
-## Background-Job Contract Tests
+## Background-Job And Worker Tests
 
-JOB-01 has three distinct verification layers:
+JOB-01 and JOB-02 have four distinct verification layers:
 
-- `npm run test:jobs` runs the `@sp/jobs` contract/state-machine tests, static migration contract assertions, and repository security-boundary tests. On 2026-07-20 the hardened suite passed 4 files and 71 tests: package contracts, package policy, migration contracts, and repository security.
+- `npm run test:jobs` runs the `@sp/jobs` contract/state-machine/runtime-parser tests, static migration contract assertions, and repository security-boundary tests. On 2026-07-20 the JOB-02 suite passed 5 files and 86 tests: package contracts, package policy, strict worker wire contracts, migration contracts, and repository security.
 - `npm run test:jobs:db-contract` runs only `test/background-jobs-migration.test.ts`. Despite the name, it inspects SQL text and the checked-in SQL test shape; it does not connect to Postgres or execute a migration.
-- `npm run test:jobs:db` is the live database contract. `scripts/test-background-jobs-db.mjs` starts a disposable PGMQ-capable container, reports the resolved image, PostgreSQL major version, and PGMQ extension version, applies `supabase/tests/background_jobs_bootstrap.sql`, applies the five JOB-01 migrations in order with each migration protected by a transaction, executes the rollback-wrapped `supabase/tests/background_jobs.sql`, and removes the container. The default image is `ghcr.io/pgmq/pg18-pgmq:v1.10.0`; intentional overrides can set `BACKGROUND_JOBS_DB_IMAGE` and the expected version variables.
+- `npm run test:jobs:db` is the live database contract. `scripts/test-background-jobs-db.mjs` starts a disposable PGMQ-capable container, reports the resolved image, PostgreSQL major version, and PGMQ extension version, applies `supabase/tests/background_jobs_bootstrap.sql`, discovers and applies the six JOB-01/JOB-02 migrations in order with each migration protected by a transaction, executes the rollback-wrapped `supabase/tests/background_jobs.sql`, and removes the container. The default image is `ghcr.io/pgmq/pg18-pgmq:v1.10.0`; intentional overrides can set `BACKGROUND_JOBS_DB_IMAGE` and the expected version variables.
+- `npm run test:worker` runs the Node-only worker configuration, safe logger, health server, RPC adapter, CLI, concurrency, execution, retry, heartbeat, shutdown, and mode tests. On 2026-07-20 it passed 9 files and 76 tests. `npm run typecheck:worker` and `npm run build:worker` prove the standalone TypeScript and bundled Node 22 entrypoint; `node apps/worker/dist/worker.mjs --help` is the built CLI smoke.
 
 The database bootstrap creates only the test roles plus minimal `auth.users` and `public.projects` prerequisites. It is not a production migration and does not validate the repository's full historical migration chain, which is not independently bootstrappable from an empty database. Never run the SQL contract against a shared local, staging, or production database.
 
-As of 2026-07-20, `docker`, `psql`, and the Supabase CLI were unavailable on this workstation, so the local live command still stops at `spawnSync docker ENOENT` before starting a container. The dedicated `.github/workflows/background-jobs.yml` workflow is the executable evidence for this branch: [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) passed `npm run test:jobs` and both real-database legs, upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1. This proves the scoped JOB-01 migration/contract harness, not deployment to a shared environment or the repository's non-bootstrappable historical migration chain.
+As of 2026-07-20, `docker`, `psql`, and the Supabase CLI were unavailable on this workstation, so the local live command still stops at `spawnSync docker ENOENT` before starting a container. The dedicated `.github/workflows/background-jobs.yml` workflow is the executable database evidence: [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) passed the JOB-01 five-migration harness on upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1. The JOB-02 checkpoint still requires a green run of the six-migration matrix plus the worker typecheck/tests/build, built CLI, service-role strict guard, and non-root container build. These checks prove the scoped background-job harness and artifact, not deployment to a shared environment or the repository's non-bootstrappable historical migration chain.
 
 The database contract checks the logged queue and unlogged-name fail-closed rule, minimal message, atomic intent-stable enqueue (including two database clients synchronised by an advisory-lock barrier), private payload and effect-identity read fencing, competing claims, random lease fencing, heartbeat extension, strict state/effect transitions, provider-window and uncertainty recovery, cancellation fencing, bounded-argument NULL rejection, exact terminal archive, missing/stale-message audit and repair, safe inspection projections, and browser/service-role revokes. Static tests cannot prove those runtime behaviours by themselves.
 
@@ -389,7 +394,7 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
-- Background Jobs runs `npm run test:jobs` and `npm run test:jobs:db` in a dedicated workflow when job package, worker, migration, SQL harness, repository-security test, package manifest, or workflow configuration files change. A configured workflow without a successful run is not a green database signal; this doc does not claim the check is required by branch protection.
+- Background Jobs runs `npm run test:jobs`, the worker typecheck/tests/build/CLI/container checks, the strict service-role boundary, and `npm run test:jobs:db` in a dedicated workflow when job package, worker, migration, SQL harness, repository-security test, package manifest, container context, privileged-access report, or workflow configuration files change. A configured workflow without a successful run is not a green signal; this doc does not claim the check is required by branch protection.
 - Portal Quality runs docs guard, architecture changed advisory reporting, architecture strict new-growth advisory reporting, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, general route bundle budgets, production security audit, fixture browser/performance smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
 - Portal Performance Report runs five authenticated journey repetitions as a separate blocking job, rejects missing schema-v2 journeys, publishes p50/p75/p95, and uploads the `portal-performance-baseline` artifacts. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.

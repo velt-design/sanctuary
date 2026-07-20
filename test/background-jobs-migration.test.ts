@@ -6,6 +6,7 @@ import {
   BACKGROUND_JOB_KINDS,
   BACKGROUND_JOB_ROLLOUT_MODES,
   BACKGROUND_JOB_STATUSES,
+  BACKGROUND_JOB_WORKER_LIFECYCLE_STATES,
   getBackgroundJobDefinition,
 } from '@sp/jobs';
 
@@ -15,6 +16,7 @@ const migrationNames = [
   '20260720_000003_background_job_lifecycle.sql',
   '20260720_000004_background_job_reconciliation.sql',
   '20260720_000005_background_job_contract_hardening.sql',
+  '20260720_000006_background_job_worker_runtime.sql',
 ] as const;
 
 function migration(name: (typeof migrationNames)[number]): string {
@@ -29,6 +31,7 @@ const enqueueAndClaim = migration(migrationNames[1]);
 const initialLifecycle = migration(migrationNames[2]);
 const reconciliation = migration(migrationNames[3]);
 const contractHardening = migration(migrationNames[4]);
+const workerRuntime = migration(migrationNames[5]);
 const allMigrations = migrationNames.map(migration).join('\n');
 const effectiveLifecycle = [
   enqueueAndClaim,
@@ -916,5 +919,66 @@ describe('Wave 3 background-job migrations', () => {
     ]) {
       expect(executableSqlContract, `role matrix: ${marker}`).toContain(marker);
     }
+  });
+
+  it('adds lease-fenced worker context and aggregate-only runtime health projections', () => {
+    const runtimeMetrics = latestFunctionDefinition(
+      workerRuntime,
+      'public.background_jobs_runtime_metrics',
+    );
+    const executableRuntimeContract = executableSqlContract.slice(
+      executableSqlContract.indexOf('-- JOB-02 runtime reads'),
+      executableSqlContract.indexOf('-- Explicit NULLs fail closed'),
+    );
+
+    expect(workerRuntime).toMatch(/background_job_read_runtime_context/i);
+    expect(workerRuntime).toMatch(/job\.lease_token = p_lease_token/i);
+    expect(workerRuntime).toMatch(/job\.lease_expires_at > now\(\)/i);
+    expect(workerRuntime).toMatch(/background_jobs_runtime_metrics/i);
+    expect(workerRuntime).toMatch(/oldest_job_age_seconds/i);
+    expect(workerRuntime).toMatch(/status_counts jsonb/i);
+    expect(workerRuntime).toMatch(/kind_counts jsonb/i);
+    expect(workerRuntime).toMatch(/worker_lifecycle_counts jsonb/i);
+    expect(returnedTableColumns(runtimeMetrics)).toEqual([
+      'queue_depth',
+      'oldest_message_age_seconds',
+      'oldest_job_age_seconds',
+      'due_jobs',
+      'next_due_at',
+      'status_counts',
+      'kind_counts',
+      'worker_lifecycle_counts',
+      'stale_workers',
+      'measured_at',
+    ]);
+    for (const lifecycleState of BACKGROUND_JOB_WORKER_LIFECYCLE_STATES) {
+      expect(runtimeMetrics).toContain(`'${lifecycleState}'`);
+    }
+    expect(workerRuntime).toMatch(/background_workers_list_safe/i);
+    expect(workerRuntime).not.toMatch(/grant execute[\s\S]*to (?:public|anon|authenticated)/i);
+    for (const signature of [
+      'background_job_read_runtime_context\\(uuid, text, uuid\\)',
+      'background_jobs_runtime_metrics\\(\\)',
+      'background_workers_list_safe\\(integer\\)',
+    ]) {
+      expect(workerRuntime).toMatch(
+        new RegExp(`revoke all on function public\\.${signature}[\\s\\S]*?service_role`, 'i'),
+      );
+      expect(workerRuntime).toMatch(
+        new RegExp(`grant execute on function public\\.${signature}[\\s\\S]*?to service_role`, 'i'),
+      );
+    }
+
+    expect(executableRuntimeContract).toMatch(
+      /set local role service_role;[\s\S]*service-role lease-fenced worker runtime context was incomplete[\s\S]*service-role safe worker health projection was incomplete[\s\S]*service-role runtime aggregate metrics were incomplete[\s\S]*reset role;/i,
+    );
+    for (const marker of [
+      'authenticated role read worker runtime context',
+      'authenticated role read aggregate runtime metrics',
+      'authenticated role read safe worker list',
+    ]) {
+      expect(executableRuntimeContract, `JOB-02 role boundary: ${marker}`).toContain(marker);
+    }
+    expect(executableRuntimeContract).toMatch(/set local role authenticated;[\s\S]*reset role;/i);
   });
 });

@@ -33,16 +33,18 @@ GTM migration note: the coded GA4 loader remains active while the GTM container 
 
 ## Durable Background-Job Boundary
 
-The JOB-01 foundation defines one logged PGMQ queue, a durable job ledger, a private frozen-payload table, append-only events, effect checkpoints, worker heartbeats, and service-role-only security-definer RPCs. It is foundation code only: no deployment evidence is recorded, no worker runtime or workflow producer is live, and JOB-02 through JOB-08 remain pending.
+The durable foundation defines one logged PGMQ queue, a durable job ledger, a private frozen-payload table, append-only events, effect checkpoints, worker heartbeats, and service-role-only security-definer RPCs. JOB-02 adds a dark-by-default Node worker with strict response validation, safe structured logs, cached health output, bounded execution, and an RPC-only Supabase adapter. No deployment evidence, workflow producer, or commercial handler is enabled yet; JOB-03 through JOB-08 remain pending.
 
 Security invariants:
 
 - A PGMQ message contains exactly `jobId` and `contractVersion`. It must never contain recipients, email addresses, tokens, attachments, generated content, customer data, or the frozen execution payload.
 - Frozen versioned input lives in `private.background_job_payloads`. Direct access is revoked from browser roles and `service_role`; a worker may read it only through the lease-fenced RPC after a valid claim.
 - Browser roles have no PGMQ schema, ledger, event, effect, worker, payload, or job RPC access. Direct PGMQ/private-schema access is revoked from `service_role` too; server workers use only explicitly granted security-definer RPCs.
+- Worker production code may read the service-role key only in `apps/worker/src/config.ts` and construct the private client only in `apps/worker/src/backgroundJobsRpcClient.ts`. Boundary tests forbid direct table/schema access, browser or Next.js imports, cross-app imports, and raw console logging elsewhere in the worker.
 - Every protected payload read and worker-owned lifecycle/effect mutation is fenced by worker ID plus a random per-claim lease token. An expired or stale claimant must not be able to report progress, checkpoint an effect, schedule its retry, acknowledge cancellation, or complete the job; administrative cancellation, retry, recovery, and repair stay separate service-role RPCs.
+- Abort is advisory until handler code settles. The runtime keeps the lease heartbeat active through settlement and terminal mutation, signal-fences every handler RPC, never releases or retries while old handler code is live, and exits before lease recovery if an aborted handler will not settle. CPU-heavy handlers must yield or be offloaded inside the heartbeat budget.
 - Safe progress, result, error, event, effect, and worker metadata use separate flat allowlisted contracts with strict byte/count limits plus value-level rejection of obvious recipients, URLs, credentials, hashes, names, and provider payloads. Staff-safe inspection RPCs project an explicit column list and omit leases, queue IDs, hashes, raw errors, cancellation detail, protected payloads, and provider internals. Provider dispatch and provider acceptance are not business completion; durable effect and state history must reconcile before finalisation.
-- Static SQL inspection is necessary but not sufficient. Background Jobs [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) passed the Docker-backed contract on both supported real-PGMQ images, including grants, lease behaviour, logged queue persistence, atomic enqueue, and terminal archive. Preserve that gate and repeat it for migration changes; it does not replace shared-environment deployment review.
+- Static SQL inspection is necessary but not sufficient. Background Jobs [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) passed JOB-01's five-migration Docker-backed contract on both supported real-PGMQ images, including grants, lease behaviour, logged queue persistence, atomic enqueue, and terminal archive. JOB-02's sixth migration and worker container still require a green dedicated CI run. Preserve that gate for every migration change; it does not replace shared-environment deployment review.
 
 ## Repository Key Incident
 
@@ -73,7 +75,7 @@ Security:
 
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
 - Portal Quality runs `npm run audit:security` as a blocking pull-request gate; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
-- Run `npm run test:jobs` for JOB-01 contract, migration, and repository-security checks. These are static/unit checks and do not replace live isolated-database execution.
+- Run `npm run test:jobs` for JOB-01/JOB-02 contract, migration, and repository-security checks, and `npm run test:worker` for the Node runtime. These are static/unit checks and do not replace live isolated-database or container execution.
 
 Privacy:
 
@@ -91,6 +93,7 @@ npm run brand:forbid
 npm run cache:forbid
 npm run test:jobs
 npm run test:jobs:db
+npm run test:worker
 npx vitest run apps/portal/lib/performance/webVitals.test.ts apps/portal/app/api/staff/v1/performance/web-vitals/route.test.ts apps/portal/app/api/admin/performance/web-vitals/route.test.ts
 ```
 

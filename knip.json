@@ -62,6 +62,15 @@
         "lib/**/*.{js,jsx,ts,tsx}"
       ]
     },
+    "apps/worker": {
+      "entry": [
+        "src/cli.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
     "packages/costing": {
       "entry": [
         "src/index.ts",

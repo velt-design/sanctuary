@@ -14,7 +14,7 @@ const MAX_ROWS = Number.parseInt(process.env.SERVICE_ROLE_REPORT_MAX_ROWS ?? '80
 const CODE_FILE_RE = /\.(cjs|cts|js|jsx|mjs|mts|ts|tsx)$/;
 const TEST_FILE_RE = /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const SKIP_DIRS = new Set(['.git', '.next', 'build', 'coverage', 'dist', 'node_modules', 'out', 'public', 'test-results', 'vendor']);
-const SCAN_ROOTS = ['apps/portal', 'apps/marketing', 'components', 'lib', 'scripts'].filter((relPath) =>
+const SCAN_ROOTS = ['apps/portal', 'apps/marketing', 'apps/worker', 'components', 'lib', 'scripts'].filter((relPath) =>
   fs.existsSync(path.join(ROOT, relPath)),
 );
 
@@ -85,6 +85,10 @@ function isCompatibilityHelper(file) {
 
 function isApprovedServerFlow(file) {
   if (file.startsWith('scripts/')) return true;
+  if (
+    file === 'apps/worker/src/config.ts' ||
+    file === 'apps/worker/src/backgroundJobsRpcClient.ts'
+  ) return true;
   if (file.startsWith('apps/portal/app/api/admin/')) return true;
   if (file.startsWith('apps/portal/lib/automation/')) return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
@@ -111,6 +115,7 @@ function suggestedOwner(file, category) {
   if (category === 'compatibility-helper') return 'service-role helper boundary; keep server-only';
   if (file.startsWith('scripts/')) return 'operational script; document env and keep out of browser bundles';
   if (file.startsWith('apps/marketing/')) return 'marketing server/public-token or lead-capture owner';
+  if (file.startsWith('apps/worker/')) return 'dedicated worker RPC/auth boundary; keep service-role access narrow and server-only';
   if (file.startsWith('apps/portal/lib/automation/')) return 'automation/email/audit owner';
   if (file.startsWith('apps/portal/lib/dashboard/')) return 'dashboard snapshot server owner';
   if (file.startsWith('apps/portal/lib/scheduling/')) return 'schedule server/RPC command owner';

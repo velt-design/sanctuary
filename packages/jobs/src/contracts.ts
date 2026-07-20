@@ -297,7 +297,12 @@ const BACKGROUND_JOB_PEM_VALUE_PATTERN = /-----BEGIN [A-Z0-9 ]*(?:PRIVATE KEY|CR
 const BACKGROUND_JOB_ISO_TIMESTAMP_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 
-function isObviousSensitiveSummaryString(value: string): boolean {
+/**
+ * Defence-in-depth value screen shared by safe summaries, worker logs, and
+ * other operational metadata. Callers must still apply their own structural
+ * allowlist; this only identifies values that are obviously sensitive.
+ */
+export function isBackgroundJobObviouslySensitiveString(value: string): boolean {
   const trimmed = value.trim();
   return (
     BACKGROUND_JOB_EMAIL_VALUE_PATTERN.test(trimmed) ||
@@ -316,7 +321,7 @@ function isObviousSensitiveSummaryString(value: string): boolean {
 function isSafeIdentifier(value: string): boolean {
   return (
     value.length <= BACKGROUND_JOB_SAFE_SUMMARY_MAX_STRING_LENGTH &&
-    !isObviousSensitiveSummaryString(value) &&
+    !isBackgroundJobObviouslySensitiveString(value) &&
     (BACKGROUND_JOB_UUID_PATTERN.test(value) ||
       (BACKGROUND_JOB_SAFE_IDENTIFIER_PATTERN.test(value) && /\d/.test(value)))
   );
@@ -325,13 +330,16 @@ function isSafeIdentifier(value: string): boolean {
 function isSafeCode(value: string): boolean {
   return (
     value.length <= 96 &&
-    !isObviousSensitiveSummaryString(value) &&
+    !isBackgroundJobObviouslySensitiveString(value) &&
     (BACKGROUND_JOB_LOWER_CODE_PATTERN.test(value) || BACKGROUND_JOB_UPPER_CODE_PATTERN.test(value))
   );
 }
 
 function isIsoTimestamp(value: string): boolean {
-  if (value.length > BACKGROUND_JOB_SAFE_SUMMARY_MAX_STRING_LENGTH || isObviousSensitiveSummaryString(value)) {
+  if (
+    value.length > BACKGROUND_JOB_SAFE_SUMMARY_MAX_STRING_LENGTH ||
+    isBackgroundJobObviouslySensitiveString(value)
+  ) {
     return false;
   }
 

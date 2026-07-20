@@ -7,6 +7,7 @@ import type { BackgroundJobEffectCheckpointSnapshot } from './effectPolicy';
 import { getBackgroundJobDefinition } from './registry';
 
 export const BACKGROUND_JOB_DATABASE_MAX_RETRY_DELAY_MS = 20 * 60 * 60 * 1_000;
+export const BACKGROUND_JOB_RETRY_MINIMUM_JITTER_FACTOR = 0.8;
 
 const REDISPATCHABLE_BACKGROUND_JOB_EFFECT_STATES = new Set<BackgroundJobEffectState>([
   'prepared',
@@ -39,12 +40,58 @@ export type BackgroundJobAutomaticRetryContext = Readonly<{
   nowMs?: number;
 }>;
 
+export type BackgroundJobRetryJitterContext = Readonly<{
+  jitterKey: string;
+  kind: BackgroundJobKind;
+  attemptNumber: number;
+  /** The fully bounded delay before downward-only jitter is applied. */
+  maximumDelayMs: number;
+}>;
+
+export type BackgroundJobRetryJitterSource = (context: BackgroundJobRetryJitterContext) => number;
+
+export type BackgroundJobAutomaticRetryOptions = Readonly<{
+  /** Stable per-job key used to spread retries deterministically across restarts. */
+  jitterKey?: string;
+  /** Injectable unit-interval source for deterministic tests or an alternative stable sampler. */
+  jitterSource?: BackgroundJobRetryJitterSource;
+}>;
+
 function blocked(reason: BackgroundJobAutomaticRetryBlockReason): BackgroundJobAutomaticRetryDecision {
   return { retry: false, delayMs: null, reason };
 }
 
+function deterministicRetryJitterSample(context: BackgroundJobRetryJitterContext): number {
+  const value = `${context.jitterKey}:${context.kind}:${context.attemptNumber}`;
+  let hash = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0) / 4_294_967_296;
+}
+
+export function applyBackgroundJobDownwardRetryJitter(maximumDelayMs: number, sample: number): number {
+  if (!Number.isSafeInteger(maximumDelayMs) || maximumDelayMs < 1_000) {
+    throw new RangeError('Background-job retry jitter maximum delay must be an integer of at least 1000ms');
+  }
+  if (!Number.isFinite(sample) || sample < 0 || sample > 1) {
+    throw new RangeError('Background-job retry jitter sample must be between zero and one');
+  }
+
+  const minimumDelayMs = Math.max(
+    1_000,
+    Math.floor(maximumDelayMs * BACKGROUND_JOB_RETRY_MINIMUM_JITTER_FACTOR),
+  );
+  return Math.min(
+    maximumDelayMs,
+    Math.max(1_000, Math.floor(minimumDelayMs + (maximumDelayMs - minimumDelayMs) * sample)),
+  );
+}
+
 export function getBackgroundJobAutomaticRetryDecision(
   context: BackgroundJobAutomaticRetryContext,
+  options: BackgroundJobAutomaticRetryOptions = {},
 ): BackgroundJobAutomaticRetryDecision {
   if (!Number.isInteger(context.attemptNumber) || context.attemptNumber < 1) {
     throw new RangeError('Background-job attempt number must be a positive integer');
@@ -54,6 +101,15 @@ export function getBackgroundJobAutomaticRetryDecision(
   }
   if (context.nowMs !== undefined && !Number.isFinite(context.nowMs)) {
     throw new RangeError('Background-job retry clock must be finite');
+  }
+  if (
+    options.jitterKey !== undefined &&
+    (typeof options.jitterKey !== 'string' || options.jitterKey.length < 1 || options.jitterKey.length > 256)
+  ) {
+    throw new RangeError('Background-job retry jitter key must contain between 1 and 256 characters');
+  }
+  if (options.jitterSource !== undefined && typeof options.jitterSource !== 'function') {
+    throw new TypeError('Background-job retry jitter source must be a function');
   }
 
   const executionOwner = context.executionOwner ?? 'worker';
@@ -91,15 +147,29 @@ export function getBackgroundJobAutomaticRetryDecision(
 
   const exponent = Math.min(context.attemptNumber - 1, 30);
   const exponentialDelayMs = definition.retry.baseDelayMs * 2 ** exponent;
-  const delayMs = Math.min(
+  const maximumDelayMs = Math.min(
     exponentialDelayMs,
     definition.retry.maximumDelayMs,
     BACKGROUND_JOB_DATABASE_MAX_RETRY_DELAY_MS,
     maximumDelayWithinWindowMs,
   );
-  if (nowMs + delayMs >= earliestRedispatchableExpiryMs) {
+  if (nowMs + maximumDelayMs >= earliestRedispatchableExpiryMs) {
     return blocked('provider_idempotency_window_expired');
   }
+
+  const shouldJitter = options.jitterKey !== undefined || options.jitterSource !== undefined;
+  const jitterContext: BackgroundJobRetryJitterContext = {
+    jitterKey: options.jitterKey ?? '',
+    kind: context.kind,
+    attemptNumber: context.attemptNumber,
+    maximumDelayMs,
+  };
+  const delayMs = shouldJitter
+    ? applyBackgroundJobDownwardRetryJitter(
+        maximumDelayMs,
+        (options.jitterSource ?? deterministicRetryJitterSample)(jitterContext),
+      )
+    : maximumDelayMs;
 
   return { retry: true, delayMs, reason: null };
 }

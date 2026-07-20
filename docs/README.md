@@ -61,6 +61,7 @@ These docs are current-state references and active guardrails for coding agents.
 
 ## Local READMEs
 
+- `apps/worker/README.md`: worker modes, environment, health, deployment shape, and operational commands.
 - `apps/portal/components/drawings/README.md`: drawing UI component boundaries.
 - `apps/portal/lib/drawings/README.md`: drawing domain library boundaries.
 - `apps/portal/vendor/pdf-lib-fontkit/README.md`: vendored dependency note. Leave vendor docs intact.

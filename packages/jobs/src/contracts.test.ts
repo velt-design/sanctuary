@@ -29,6 +29,7 @@ import {
   getBackgroundJobDefinition,
   getBackgroundJobUserFacingStatus,
   getMissingBackgroundJobEffectCheckpoints,
+  isBackgroundJobObviouslySensitiveString,
   isBackgroundJobQueueMessage,
   isBackgroundJobSafeEffectSummary,
   isBackgroundJobSafeEventSummary,
@@ -382,6 +383,10 @@ describe('background job contracts', () => {
     expect(isBackgroundJobSafeEffectSummary({ providerMessageId: syntheticJwt })).toBe(false);
     expect(isBackgroundJobSafeEventSummary({ reason: 'a'.repeat(64) })).toBe(false);
     expect(isBackgroundJobSafeWorkerSummary({ buildVersion: 'a1'.repeat(24) })).toBe(false);
+
+    expect(isBackgroundJobObviouslySensitiveString('sk_syntheticCredentialValue123456789')).toBe(true);
+    expect(isBackgroundJobObviouslySensitiveString('person@example.test')).toBe(true);
+    expect(isBackgroundJobObviouslySensitiveString('provider_reconciliation')).toBe(false);
   });
 
   it('rejects unsafe scalar, timestamp, array, object, and byte-boundary shapes', () => {

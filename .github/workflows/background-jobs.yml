@@ -5,9 +5,11 @@ on:
     branches:
       - main
     paths:
+      - ".dockerignore"
       - ".github/workflows/background-jobs.yml"
       - "apps/worker/**"
       - "packages/jobs/**"
+      - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/tests/background_jobs*.sql"
@@ -22,9 +24,11 @@ on:
     branches:
       - main
     paths:
+      - ".dockerignore"
       - ".github/workflows/background-jobs.yml"
       - "apps/worker/**"
       - "packages/jobs/**"
+      - "scripts/service-role-access-report.mjs"
       - "scripts/test-background-jobs-db.mjs"
       - "supabase/migrations/*background_job*.sql"
       - "supabase/tests/background_jobs*.sql"
@@ -60,6 +64,44 @@ jobs:
 
       - name: Job contracts and security boundaries
         run: npm run test:jobs
+
+  worker-runtime:
+    name: Worker runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Worker typecheck
+        run: npm run typecheck:worker
+
+      - name: Worker tests
+        run: npm run test:worker
+
+      - name: Worker lint
+        run: npx eslint apps/worker packages/jobs
+
+      - name: Worker production build
+        run: npm run build:worker
+
+      - name: Built CLI smoke
+        run: node apps/worker/dist/worker.mjs --help
+
+      - name: Service-role boundary
+        run: npm run service-role:changed:strict
+
+      - name: Worker container build
+        run: docker build --file apps/worker/Dockerfile --tag sanctuary-worker:ci .
 
   database-contract:
     name: Database contract (${{ matrix.database }})

@@ -1,11 +1,12 @@
 # Sanctuary
 
-Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, staff portal, and shared business packages.
+Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, staff portal, dedicated background worker, and shared business packages.
 
 ## Workspace Map
 
 - `apps/marketing`: public Next.js marketing site on port `3000`.
 - `apps/portal`: staff portal Next.js app on port `3001`.
+- `apps/worker`: long-running Node 22 background worker with a private health endpoint; it defaults to dark mode and has no enabled commercial workflow handlers at JOB-02.
 - `packages/costing`: canonical costing engine and pricing config.
 - `packages/geometry`: canonical pergola and house geometry solvers.
 - `packages/jobs`: canonical durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transitions.
@@ -38,6 +39,8 @@ At minimum, local portal and marketing work need:
 - `SUPABASE_SERVICE_ROLE_KEY` for server-owned admin tooling, imports, and protected write flows.
 
 Email, tracking, public URL, and Playwright variables are documented in `docs/environment-auth-supabase.md` and `docs/testing-and-qa.md`.
+
+The worker uses `SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY`, never browser-prefixed credentials. Its complete fail-closed environment contract, modes, and local commands live in `apps/worker/README.md`.
 
 ## Docs
 

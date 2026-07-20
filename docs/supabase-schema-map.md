@@ -196,10 +196,10 @@ Owner docs: this schema map owns the current database boundary; `docs/target-arc
 
 Current scope:
 
-- JOB-01 is a foundation only. No app producer, worker runtime, or workflow handler consumes it yet; current quote, invoice, job-pack, automation, and email paths remain unchanged.
+- JOB-01 is the proven durable database foundation. JOB-02 adds an RPC-only worker runtime plus safe runtime-context, aggregate-metrics, and worker-health projections. No app producer or commercial workflow handler consumes it yet; current quote, invoice, job-pack, automation, and email paths remain unchanged.
 - The shared `@sp/jobs` registry declares versioned policy for `deposit_invoice_prepare_and_send`, `quote_send`, `quote_resend`, `job_pack_generate`, `automation_event`, and `email_outbox_deliver`, with every default rollout mode still `legacy`.
 - Registry policy keeps `requiredHandlerCheckpoints` for domain-owned freeze/stage/business-finalisation milestones separate from allowed and required external effects. The database snapshots `has_external_side_effect`, `allowed_effect_kinds`, `required_effect_kinds`, and cancellation policy onto each accepted job so a later registry edit cannot change policy beneath durable work. `background_job_complete` rejects success until every recorded worker effect is terminal and every required kind has a durable `finalised` checkpoint; shadow work may retain prepared checkpoints but cannot dispatch.
-- JOB-02 through JOB-08 remain pending. The presence of kinds, tables, or RPCs is not rollout evidence.
+- JOB-03 through JOB-08 remain pending. The presence of kinds, tables, RPCs, or a dark worker artifact is not producer, handler, deployment, or rollout evidence.
 
 Queue, tables, and history:
 
@@ -213,9 +213,9 @@ Queue, tables, and history:
 Service-role RPC boundary:
 
 - Enqueue: `background_job_enqueue_staff`, `background_job_enqueue_system`. The `staff` name records user attribution; it is still executable only by `service_role`, not by the browser `authenticated` role.
-- Claim and lease: `background_jobs_claim`, `background_job_read_payload`, `background_job_read_effects`, `background_job_heartbeat`, `background_worker_heartbeat`. The effect read is a current-lease worker projection containing only the frozen identity needed to resume a checkpoint after restart; it is not a staff-safe read.
+- Claim and lease: `background_jobs_claim`, `background_job_read_payload`, `background_job_read_effects`, `background_job_read_runtime_context`, `background_job_heartbeat`, `background_worker_heartbeat`. Payload, effect, and runtime-context reads require the current lease; the effect projection contains only the frozen identity needed to resume a checkpoint after restart and is not a staff-safe read.
 - Lifecycle and effects: `background_job_record_progress`, `background_job_record_effect_checkpoint`, `background_job_complete`, `background_job_schedule_retry`, `background_job_mark_needs_attention`, `background_job_mark_permanent_failure`, `background_job_request_cancellation`, `background_job_acknowledge_cancellation`, `background_job_release_lease`, `background_job_manual_retry`.
-- Recovery and inspection: `background_jobs_recover_expired_leases`, `background_jobs_reconcile`, `background_jobs_queue_health`, `background_job_get_safe`, `background_jobs_list_safe`, `background_job_event_history_safe`.
+- Recovery and inspection: `background_jobs_recover_expired_leases`, `background_jobs_reconcile`, `background_jobs_queue_health`, `background_jobs_runtime_metrics`, `background_workers_list_safe`, `background_job_get_safe`, `background_jobs_list_safe`, `background_job_event_history_safe`.
 
 Primary write path:
 
@@ -227,7 +227,7 @@ Primary write path:
 
 Primary read path:
 
-- Future server/admin surfaces should use the explicit safe inspection RPC projections, not direct tables. No JOB-01 browser or portal UI read path exists.
+- Future server/admin surfaces should use the explicit safe inspection RPC projections, not direct tables. No JOB-01/JOB-02 browser or portal UI read path exists.
 - Workers receive the minimal claim record first and may retrieve frozen execution input and frozen effect replay identity only through `background_job_read_payload` and `background_job_read_effects` while they own the current lease. Neither projection is browser-safe or browser-executable.
 
 Access rule:
@@ -243,13 +243,14 @@ Migration and test source:
 - `supabase/migrations/20260720_000003_background_job_lifecycle.sql`: progress, effect checkpoints, completion, retry, attention/failure, cancellation, lease release, and manual retry.
 - `supabase/migrations/20260720_000004_background_job_reconciliation.sql`: expired-lease recovery, queue reconciliation/repair, health, and safe inspection.
 - `supabase/migrations/20260720_000005_background_job_contract_hardening.sql`: frozen allowed-effect/cancellation policy, context-safe summaries and explicit safe projections, exact queue-body validation and repair, restart-safe lease-fenced effect identity, provider-window/max-attempt uncertainty guards, and narrowed grants.
+- `supabase/migrations/20260720_000006_background_job_worker_runtime.sql`: lease-fenced runtime context, aggregate queue/job/worker lifecycle metrics, safe worker listing, and explicit service-role-only grants.
 - `supabase/tests/background_jobs_bootstrap.sql` creates only the disposable auth/projects/role prerequisites needed by the isolated contract; it is test support, not a production migration.
 - `supabase/tests/background_jobs.sql` is the rollback-wrapped executable database contract. `npm run test:jobs` covers TypeScript plus static SQL/security assertions; `npm run test:jobs:db` is the Docker-backed real-PGMQ harness.
 
 Verification status:
 
-- `npm run test:jobs` passed locally on 2026-07-20 with 4 files and 71 tests across package contracts, package policy, static migration contracts, and repository security.
-- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no local container started and no SQL executed. Background Jobs [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) passed the rollback-wrapped contract against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1. JOB-01 is database-verified for this scoped harness, but no shared-environment migration or rollout is implied.
+- `npm run test:jobs` passed locally on 2026-07-20 with 5 files and 86 tests across package contracts, package policy, strict worker wire contracts, static migration contracts, and repository security. `npm run test:worker` passed 9 files and 76 tests, with worker typecheck, build, built CLI, scoped lint, architecture, and security gates also green.
+- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no local container started and no SQL executed. Background Jobs [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) proves only the rollback-wrapped five-migration JOB-01 contract against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1. JOB-02's six-migration matrix and worker-container job remain pending; no shared-environment migration or rollout is implied.
 
 ## Portal Performance Telemetry
 
@@ -334,6 +335,6 @@ npm run test:jobs:db
 npm run text:mojibake
 ```
 
-`npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus JOB-01 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
+`npm run test:jobs:db` requires Docker and creates/removes its own disposable logged-PGMQ Postgres container. It applies only the test bootstrap plus the six JOB-01/JOB-02 migrations because the historical migration chain is not independently bootstrappable; a static pass or missing local Docker must never be reported as a live database pass.
 
 When changing auth, RLS, grants, or API access, also use `docs/staff-api-auth-contracts.md` and `docs/environment-auth-supabase.md` for route/auth verification. When changing Schedule V2 tables or RPCs, run the readiness checks in `docs/schedule.md`.

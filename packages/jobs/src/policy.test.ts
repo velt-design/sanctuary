@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BACKGROUND_JOB_RETRY_MINIMUM_JITTER_FACTOR,
   BACKGROUND_JOB_KINDS,
   BACKGROUND_JOB_REGISTRY,
+  applyBackgroundJobDownwardRetryJitter,
   assertBackgroundJobEffectCheckpointsComplete,
   backgroundJobEffectAllowed,
   backgroundJobEffectCheckpointsComplete,
@@ -54,6 +56,68 @@ function retryDecision(
 }
 
 describe('background job registry policy', () => {
+  it('applies deterministic downward-only jitter after the retry upper bound is known', () => {
+    const context = {
+      kind: 'quote_send' as const,
+      contractVersion: 1,
+      attemptNumber: 1,
+      elapsedSinceFirstAttemptMs: 0,
+      effects: [],
+      nowMs: NOW_MS,
+    };
+
+    expect(getBackgroundJobAutomaticRetryDecision(context)).toEqual({ retry: true, delayMs: 30_000, reason: null });
+    expect(
+      getBackgroundJobAutomaticRetryDecision(context, {
+        jitterKey: 'job-123',
+        jitterSource: () => 0,
+      }),
+    ).toEqual({ retry: true, delayMs: 24_000, reason: null });
+    expect(
+      getBackgroundJobAutomaticRetryDecision(context, {
+        jitterKey: 'job-123',
+        jitterSource: () => 1,
+      }),
+    ).toEqual({ retry: true, delayMs: 30_000, reason: null });
+
+    const first = getBackgroundJobAutomaticRetryDecision(context, { jitterKey: 'job-123' });
+    const repeated = getBackgroundJobAutomaticRetryDecision(context, { jitterKey: 'job-123' });
+    const other = getBackgroundJobAutomaticRetryDecision(context, { jitterKey: 'job-456' });
+    expect(repeated).toEqual(first);
+    expect(other).not.toEqual(first);
+    expect(first.retry && first.delayMs).toBeGreaterThanOrEqual(24_000);
+    expect(first.retry && first.delayMs).toBeLessThanOrEqual(30_000);
+    expect(BACKGROUND_JOB_RETRY_MINIMUM_JITTER_FACTOR).toBe(0.8);
+  });
+
+  it('never jitters beyond a retry-window-bounded delay and validates injected samples', () => {
+    const decision = getBackgroundJobAutomaticRetryDecision(
+      {
+        kind: 'quote_send',
+        attemptNumber: 1,
+        elapsedSinceFirstAttemptMs: 20 * 60 * 60 * 1_000 - 10_000,
+        effects: [],
+        nowMs: NOW_MS,
+      },
+      { jitterKey: 'job-123', jitterSource: () => 1 },
+    );
+    expect(decision).toEqual({ retry: true, delayMs: 9_000, reason: null });
+    expect(applyBackgroundJobDownwardRetryJitter(1_000, 0)).toBe(1_000);
+    expect(() => applyBackgroundJobDownwardRetryJitter(999, 0.5)).toThrow(/at least 1000ms/i);
+    expect(() => applyBackgroundJobDownwardRetryJitter(30_000, -0.1)).toThrow(/between zero and one/i);
+    expect(() => applyBackgroundJobDownwardRetryJitter(30_000, 1.1)).toThrow(/between zero and one/i);
+    expect(() => getBackgroundJobAutomaticRetryDecision(
+      {
+        kind: 'quote_send',
+        attemptNumber: 1,
+        elapsedSinceFirstAttemptMs: 0,
+        effects: [],
+        nowMs: NOW_MS,
+      },
+      { jitterKey: '' },
+    )).toThrow(/jitter key/i);
+  });
+
   it('declares unique allowed effects and keeps every required effect inside that allowlist', () => {
     for (const kind of BACKGROUND_JOB_KINDS) {
       const definition = getBackgroundJobDefinition(kind, 1);

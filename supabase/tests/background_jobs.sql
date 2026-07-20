@@ -1022,6 +1022,7 @@ declare
     'background_job_mark_permanent_failure',
     'background_job_read_effects',
     'background_job_read_payload',
+    'background_job_read_runtime_context',
     'background_job_record_effect_checkpoint',
     'background_job_record_progress',
     'background_job_release_lease',
@@ -1032,7 +1033,9 @@ declare
     'background_jobs_queue_health',
     'background_jobs_reconcile',
     'background_jobs_recover_expired_leases',
-    'background_worker_heartbeat'
+    'background_jobs_runtime_metrics',
+    'background_worker_heartbeat',
+    'background_workers_list_safe'
   ];
   v_actual_service_functions text[];
   v_actual_service_function_count bigint;
@@ -1609,6 +1612,134 @@ begin
 end;
 $$;
 
+-- JOB-02 runtime reads expose only lease-fenced execution timing plus aggregate
+-- operational data. They never reveal a protected payload or provider key.
+do $$
+begin
+  perform public.background_worker_heartbeat(
+    'sql-worker-runtime-stale', 'dark', 'ready', 'sql-test', 1, 0,
+    '{"mode":"dark","globalConcurrency":1,"activeJobCount":0,"acceptingJobs":false}'::jsonb
+  );
+  update public.background_workers
+  set last_heartbeat_at = now() - interval '3 minutes'
+  where worker_id = 'sql-worker-runtime-stale';
+end;
+$$;
+
+set local role service_role;
+do $$
+declare
+  v_job record;
+  v_claim record;
+  v_context record;
+  v_metrics record;
+  v_worker record;
+begin
+  select * into v_job
+  from public.background_job_enqueue_system(
+    'job_pack_generate', 1, 'job_pack', 'sql-worker-runtime-1', null,
+    0::smallint, 'sql-test/worker-runtime/context', '{}'::jsonb,
+    now(), 'worker_enabled', 'worker', 'sql-test'
+  );
+  select * into strict v_claim
+  from public.background_jobs_claim('sql-worker-runtime-one', 1, 60);
+
+  select * into strict v_context
+  from public.background_job_read_runtime_context(
+    v_job.id, 'sql-worker-runtime-one', v_claim.lease_token
+  );
+  if v_context.job_id <> v_job.id
+     or v_context.started_at is null
+     or v_context.attempt_count <> 1
+     or v_context.execution_owner <> 'worker' then
+    raise exception 'service-role lease-fenced worker runtime context was incomplete';
+  end if;
+  if exists (
+    select 1 from public.background_job_read_runtime_context(
+     v_job.id, 'sql-worker-runtime-one', gen_random_uuid()
+    )
+  ) then
+    raise exception 'service-role stale lease read worker runtime context';
+  end if;
+
+  perform public.background_worker_heartbeat(
+    'sql-worker-runtime-one', 'dark', 'ready', 'sql-test', 1, 0,
+    '{"mode":"dark","globalConcurrency":1,"activeJobCount":0,"acceptingJobs":false}'::jsonb
+  );
+  select * into strict v_worker
+  from public.background_workers_list_safe(10)
+  where worker_id = 'sql-worker-runtime-one';
+  if v_worker.mode <> 'dark'
+     or v_worker.lifecycle_state <> 'ready'
+     or v_worker.is_stale then
+    raise exception 'service-role safe worker health projection was incomplete';
+  end if;
+
+  perform public.background_worker_heartbeat(
+    'sql-worker-runtime-unhealthy', 'dark', 'unhealthy', 'sql-test', 1, 0,
+    '{"mode":"dark","lifecycleState":"unhealthy","globalConcurrency":1,"activeJobCount":0,"acceptingJobs":false}'::jsonb
+  );
+  select * into strict v_worker
+  from public.background_workers_list_safe(10)
+  where worker_id = 'sql-worker-runtime-stale';
+  if not v_worker.is_stale then
+    raise exception 'service-role safe worker health projection did not classify a stale worker';
+  end if;
+
+  select * into strict v_metrics from public.background_jobs_runtime_metrics();
+  if v_metrics.queue_depth < 1
+     or v_metrics.oldest_job_age_seconds < 0
+     or v_metrics.due_jobs < 0
+     or v_metrics.stale_workers < 1
+     or not (v_metrics.status_counts ?& array['queued', 'claimed', 'retrying', 'needs_attention'])
+     or not (v_metrics.kind_counts ?& array['job_pack_generate', 'quote_send', 'email_outbox_deliver'])
+     or v_metrics.worker_lifecycle_counts is distinct from jsonb_build_object(
+       'starting', 0,
+       'ready', 2,
+       'draining', 0,
+       'stopped', 0,
+       'unhealthy', 1
+     ) then
+    raise exception 'service-role runtime aggregate metrics were incomplete: %', to_jsonb(v_metrics);
+  end if;
+
+  perform public.background_job_mark_needs_attention(
+    v_job.id, 'sql-worker-runtime-one', v_claim.lease_token,
+    'TEST_CLEANUP', 'ignored raw test detail', '{"progressCode":"test_cleanup"}'::jsonb
+  );
+end;
+$$;
+reset role;
+
+set local role authenticated;
+do $$
+begin
+  begin
+    perform * from public.background_job_read_runtime_context(
+      '00000000-0000-4000-8000-000000000001'::uuid,
+      'sql-authenticated-runtime',
+      '00000000-0000-4000-8000-000000000002'::uuid
+    );
+    raise exception 'authenticated role read worker runtime context';
+  exception when insufficient_privilege then
+    null;
+  end;
+  begin
+    perform * from public.background_jobs_runtime_metrics();
+    raise exception 'authenticated role read aggregate runtime metrics';
+  exception when insufficient_privilege then
+    null;
+  end;
+  begin
+    perform * from public.background_workers_list_safe(10);
+    raise exception 'authenticated role read safe worker list';
+  exception when insufficient_privilege then
+    null;
+  end;
+end;
+$$;
+reset role;
+
 -- Explicit NULLs fail closed on every bounded worker/list argument, while the
 -- documented reconciliation upper bound remains executable.
 do $$
@@ -1660,6 +1791,12 @@ begin
   begin
     perform * from public.background_job_event_history_safe(gen_random_uuid(), null);
     raise exception 'NULL event-history limit bypassed bounds';
+  exception when invalid_parameter_value then
+    null;
+  end;
+  begin
+    perform * from public.background_workers_list_safe(null);
+    raise exception 'NULL worker-list limit bypassed bounds';
   exception when invalid_parameter_value then
     null;
   end;
