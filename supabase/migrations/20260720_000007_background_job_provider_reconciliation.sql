@@ -660,6 +660,257 @@ begin
 end;
 $$;
 
+-- The shared transition predicate permits verified provider evidence to repair
+-- stale failed or uncertain classifications. Keep that system-level edge out
+-- of the generic worker command: a local acceptance must follow a fresh
+-- dispatch_started checkpoint, while an exact accepted-state replay remains
+-- idempotent.
+create or replace function public.background_job_record_effect_checkpoint(
+  p_job_id uuid,
+  p_worker_id text,
+  p_lease_token uuid,
+  p_effect_key text,
+  p_effect_kind text,
+  p_state public.background_job_effect_state,
+  p_payload_hash text,
+  p_provider_name text default null,
+  p_provider_idempotency_key text default null,
+  p_provider_idempotency_expires_at timestamptz default null,
+  p_provider_message_id text default null,
+  p_safe_metadata jsonb default '{}'::jsonb
+)
+returns public.background_job_effects
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_job public.background_jobs%rowtype;
+  v_effect public.background_job_effects%rowtype;
+  v_previous_job_status public.background_job_status;
+  v_previous_state public.background_job_effect_state;
+  v_event_type public.background_job_event_type := 'effect_checkpoint';
+begin
+  v_job := private.background_job_lock_owned(p_job_id, p_worker_id, p_lease_token);
+  v_previous_job_status := v_job.status;
+
+  if not v_job.has_external_side_effect
+     or not (p_effect_kind = any(v_job.allowed_effect_kinds)) then
+    raise exception 'external effect % is not allowed for background-job kind % v%',
+      p_effect_kind, v_job.kind, v_job.contract_version
+      using errcode = '22023';
+  end if;
+  if not public.background_job_safe_summary('effect', coalesce(p_safe_metadata, '{}'::jsonb)) then
+    raise exception 'unsafe background-job effect metadata' using errcode = '22023';
+  end if;
+  if v_job.execution_owner <> 'shadow'
+     and p_state = 'prepared'
+     and (
+       p_provider_name is null
+       or p_provider_idempotency_key is null
+       or p_provider_idempotency_expires_at is null
+       or p_provider_idempotency_expires_at <= now()
+     ) then
+    raise exception 'effect preparation requires frozen provider identity and a live idempotency window'
+      using errcode = '22023';
+  end if;
+
+  select effect.*
+  into v_effect
+  from public.background_job_effects effect
+  where effect.job_id = p_job_id
+    and effect.effect_kind = p_effect_kind
+  for update;
+
+  if not found then
+    if p_state <> 'prepared' then
+      raise exception 'the first effect checkpoint must be prepared' using errcode = '22023';
+    end if;
+    if v_job.status not in ('claimed', 'preparing', 'running') then
+      raise exception 'effect preparation is incompatible with the current job state'
+        using errcode = '22023';
+    end if;
+
+    insert into public.background_job_effects (
+      job_id,
+      effect_key,
+      effect_kind,
+      state,
+      payload_hash,
+      provider_name,
+      provider_idempotency_key,
+      provider_idempotency_expires_at,
+      provider_message_id,
+      safe_metadata
+    )
+    values (
+      p_job_id,
+      p_effect_key,
+      p_effect_kind,
+      p_state,
+      p_payload_hash,
+      p_provider_name,
+      p_provider_idempotency_key,
+      p_provider_idempotency_expires_at,
+      p_provider_message_id,
+      coalesce(p_safe_metadata, '{}'::jsonb)
+    )
+    returning * into v_effect;
+    v_previous_state := null;
+  else
+    if v_effect.effect_key <> p_effect_key
+       or v_effect.payload_hash <> p_payload_hash
+       or v_effect.provider_name is distinct from p_provider_name
+       or v_effect.provider_idempotency_key is distinct from p_provider_idempotency_key
+       or v_effect.provider_idempotency_expires_at is distinct from p_provider_idempotency_expires_at
+       or (
+         v_effect.provider_message_id is not null
+         and v_effect.provider_message_id is distinct from p_provider_message_id
+       ) then
+      raise exception 'effect checkpoint identity does not match its frozen preparation'
+        using errcode = '23505';
+    end if;
+
+    if v_effect.state = p_state then
+      if v_effect.safe_metadata is distinct from coalesce(p_safe_metadata, '{}'::jsonb)
+         or v_effect.provider_message_id is distinct from p_provider_message_id then
+        raise exception 'repeated effect checkpoint does not exactly match the durable checkpoint'
+          using errcode = '23505';
+      end if;
+      return v_effect;
+    end if;
+
+    if p_state = 'provider_accepted'
+       and v_effect.state <> 'dispatch_started' then
+      raise exception 'provider acceptance requires a fresh dispatch_started checkpoint'
+        using errcode = '22023';
+    end if;
+
+    if v_job.execution_owner = 'shadow' then
+      raise exception 'shadow jobs can retain only a prepared non-dispatch checkpoint'
+        using errcode = '22023';
+    end if;
+
+    v_previous_state := v_effect.state;
+
+    if p_state = 'dispatch_started' then
+      if v_job.status not in ('preparing', 'running', 'dispatching') then
+        raise exception 'provider dispatch is incompatible with the current job state'
+          using errcode = '22023';
+      end if;
+    elsif p_state in ('failed', 'uncertain') then
+      if v_job.status not in ('preparing', 'running', 'dispatching') then
+        raise exception 'provider failure checkpoint is incompatible with the current job state'
+          using errcode = '22023';
+      end if;
+      if p_state = 'uncertain' and v_effect.state <> 'dispatch_started' then
+        raise exception 'only a started provider dispatch can become uncertain'
+          using errcode = '22023';
+      end if;
+    elsif p_state = 'provider_accepted' and v_job.status not in ('dispatching', 'provider_accepted') then
+      raise exception 'provider acceptance is incompatible with the current job state'
+        using errcode = '22023';
+    elsif p_state = 'finalised' and v_job.status not in ('provider_accepted', 'finalising') then
+      raise exception 'effect finalisation is incompatible with the current job state'
+        using errcode = '22023';
+    end if;
+
+    update public.background_job_effects
+    set state = p_state,
+        provider_message_id = coalesce(background_job_effects.provider_message_id, p_provider_message_id),
+        dispatch_started_at = case
+          when p_state = 'dispatch_started' then coalesce(dispatch_started_at, now())
+          else dispatch_started_at
+        end,
+        provider_accepted_at = case
+          when p_state = 'provider_accepted' then coalesce(provider_accepted_at, now())
+          else provider_accepted_at
+        end,
+        finalised_at = case
+          when p_state = 'finalised' then coalesce(finalised_at, now())
+          else finalised_at
+        end,
+        safe_metadata = coalesce(p_safe_metadata, '{}'::jsonb)
+    where id = v_effect.id
+    returning * into v_effect;
+  end if;
+
+  if p_state = 'dispatch_started' then
+    if v_job.cancellation_requested_at is not null then
+      raise exception 'background-job cancellation must be acknowledged before provider dispatch'
+        using errcode = '22023';
+    end if;
+    if v_job.execution_owner = 'shadow' then
+      raise exception 'shadow jobs cannot start external dispatch' using errcode = '22023';
+    end if;
+    if p_provider_name is null
+       or p_provider_idempotency_key is null
+       or p_provider_idempotency_expires_at is null
+       or p_provider_idempotency_expires_at <= now() then
+      raise exception 'provider dispatch requires frozen identity and a live idempotency window'
+        using errcode = '22023';
+    end if;
+    update public.background_jobs
+    set status = 'dispatching',
+        current_phase = 'provider_dispatch'
+    where id = p_job_id
+      and lease_owner = p_worker_id
+      and lease_token = p_lease_token
+      and status in ('preparing', 'running', 'dispatching')
+    returning * into v_job;
+    if not found then
+      raise exception 'job is not ready for provider dispatch' using errcode = '22023';
+    end if;
+    v_event_type := 'provider_dispatch';
+  elsif p_state = 'provider_accepted' then
+    if p_provider_name is null
+       or p_provider_message_id is null
+       or p_provider_idempotency_key is null
+       or p_provider_idempotency_expires_at is null then
+      raise exception 'provider acceptance requires provider identity and idempotency metadata'
+        using errcode = '22023';
+    end if;
+    update public.background_jobs
+    set status = 'provider_accepted',
+        current_phase = 'provider_accepted',
+        provider_name = p_provider_name,
+        provider_message_id = p_provider_message_id,
+        provider_idempotency_expires_at = p_provider_idempotency_expires_at
+    where id = p_job_id
+      and lease_owner = p_worker_id
+      and lease_token = p_lease_token
+      and status in ('dispatching', 'provider_accepted')
+    returning * into v_job;
+    if not found then
+      raise exception 'job is not dispatching this provider effect' using errcode = '22023';
+    end if;
+    v_event_type := 'provider_accepted';
+  elsif p_state = 'finalised' then
+    v_event_type := 'finalised';
+  end if;
+
+  perform private.background_job_insert_event(
+    p_job_id,
+    v_job.queue_message_id,
+    v_event_type,
+    v_previous_job_status,
+    v_job.status,
+    v_job.current_phase,
+    v_job.attempt_count,
+    p_worker_id,
+    null,
+    null,
+    jsonb_build_object(
+      'effectKind', p_effect_kind,
+      'checkpoint', p_state,
+      'previousCheckpoint', v_previous_state
+    )
+  );
+
+  return v_effect;
+end;
+$$;
+
 -- Local provider acceptance normally delegates to the generic effect
 -- checkpoint. If a signed callback committed a different provider message in
 -- the narrow pre-write race, catch that identity error and quarantine the job

@@ -401,6 +401,9 @@ describe('Wave 3 background-job migrations', () => {
     expect(checkpoint).toMatch(
       /provider_message_id is distinct from p_provider_message_id/i,
     );
+    expect(checkpoint).toMatch(
+      /provider acceptance requires a fresh dispatch_started checkpoint/i,
+    );
     expect(checkpoint).toMatch(/v_previous_job_status,[\s\S]*?v_job\.status/i);
     expect(complete).toMatch(/v_job\.execution_owner <> 'shadow'/i);
     expect(complete).toMatch(
