@@ -327,13 +327,14 @@ declare
   v_deadline timestamptz := clock_timestamp() + (${concurrencyTimeoutMs} * interval '1 millisecond');
 begin
   loop
+    perform pg_catalog.pg_stat_clear_snapshot();
     exit when exists (
       select 1
       from pg_catalog.pg_stat_activity activity
-      join pg_catalog.pg_locks waiting_lock on waiting_lock.pid = activity.pid
       where activity.application_name = '${clientBApplicationName}'
-        and waiting_lock.locktype = 'advisory'
-        and not waiting_lock.granted
+        and activity.state = 'active'
+        and activity.wait_event_type = 'Lock'
+        and activity.wait_event = 'advisory'
     );
 
     if clock_timestamp() >= v_deadline then
@@ -412,7 +413,20 @@ async function verifyConcurrentEnqueue() {
     }),
     "Concurrent enqueue client B",
   );
-  const [clientAResult, clientBResult] = await Promise.all([clientA, clientB]);
+  const clientResults = await Promise.allSettled([clientA, clientB]);
+  const clientFailures = clientResults
+    .filter((result) => result.status === "rejected")
+    .map((result) =>
+      result.reason instanceof Error ? result.reason.message : String(result.reason),
+    );
+  if (clientFailures.length > 0) {
+    throw new Error(
+      `Concurrent enqueue clients failed:\n${clientFailures.join("\n\n")}`,
+    );
+  }
+  const [clientAResult, clientBResult] = clientResults.map(
+    (result) => result.value,
+  );
   const clientAJobId = requireJobId(
     clientAResult.stdout,
     "Concurrent enqueue client A",

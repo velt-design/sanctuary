@@ -815,7 +815,10 @@ describe('Wave 3 background-job migrations', () => {
     );
     expect(executableSqlContract).toMatch(/background_job_complete/i);
     expect(executableSqlContract).toMatch(/rollback;/i);
-    expect(databaseHarness).toMatch(/Promise\.all\(\[clientA, clientB\]\)/i);
+    expect(databaseHarness).toMatch(/Promise\.allSettled\(\[clientA, clientB\]\)/i);
+    expect(databaseHarness).toMatch(/pg_stat_clear_snapshot\(\)/i);
+    expect(databaseHarness).toMatch(/wait_event_type = 'Lock'/i);
+    expect(databaseHarness).toMatch(/wait_event = 'advisory'/i);
     expect(databaseHarness).toMatch(/p_priority => 100::smallint/i);
     expect(databaseHarness).toMatch(/LEDGER_COUNT=/i);
   });
