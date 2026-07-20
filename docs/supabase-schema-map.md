@@ -249,7 +249,7 @@ Migration and test source:
 Verification status:
 
 - `npm run test:jobs` passed locally on 2026-07-20 with 4 files and 71 tests across package contracts, package policy, static migration contracts, and repository security.
-- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no container started and no SQL executed. The dedicated Background Jobs workflow runs it against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1; do not mark JOB-01 database-verified or rollout-ready until both real-database legs pass.
+- `npm run test:jobs:db` was attempted locally and stopped at the Docker readiness check with `spawnSync docker ENOENT`; no local container started and no SQL executed. Background Jobs [run 29710584022](https://github.com/velt-design/sanctuary/actions/runs/29710584022) passed the rollback-wrapped contract against upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1. JOB-01 is database-verified for this scoped harness, but no shared-environment migration or rollout is implied.
 
 ## Portal Performance Telemetry
 
