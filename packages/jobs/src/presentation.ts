@@ -1,8 +1,10 @@
 import {
-  assertBackgroundJobSafeSummary,
+  assertBackgroundJobSafeProgressSummary,
+  assertBackgroundJobSafeResultSummary,
   type BackgroundJobKind,
+  type BackgroundJobSafeProgressSummary,
   type BackgroundJobSafeRecord,
-  type BackgroundJobSafeSummary,
+  type BackgroundJobSafeResultSummary,
   type BackgroundJobStatus,
 } from './contracts';
 import { getBackgroundJobUserFacingStatus } from './registry';
@@ -16,8 +18,8 @@ export type BackgroundJobUserFacingRecord = Readonly<{
   maxAttempts: number;
   nextAttemptAt: string;
   cancellationRequested: boolean;
-  progress: BackgroundJobSafeSummary;
-  result: BackgroundJobSafeSummary;
+  progress: BackgroundJobSafeProgressSummary;
+  result: BackgroundJobSafeResultSummary;
   createdAt: string;
   updatedAt: string;
   startedAt: string | null;
@@ -25,12 +27,12 @@ export type BackgroundJobUserFacingRecord = Readonly<{
 }>;
 
 /**
- * Deliberately omits intent/input hashes, phases, leases, provider identity, and raw errors.
- * Those fields remain service-owned diagnostics and must not leak through staff-facing payloads.
+ * Deliberately omits the internal phase and rollout diagnostics that remain in the safe service projection.
+ * Protected payload, lease, hash, provider, and raw-error fields are excluded before this boundary.
  */
 export function toBackgroundJobUserFacingRecord(record: BackgroundJobSafeRecord): BackgroundJobUserFacingRecord {
-  assertBackgroundJobSafeSummary(record.safeProgress);
-  assertBackgroundJobSafeSummary(record.safeResult);
+  assertBackgroundJobSafeProgressSummary(record.safeProgress);
+  assertBackgroundJobSafeResultSummary(record.safeResult);
 
   return {
     id: record.id,

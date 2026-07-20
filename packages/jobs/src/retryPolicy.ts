@@ -1,8 +1,18 @@
-import type { BackgroundJobKind } from './contracts';
+import type {
+  BackgroundJobEffectState,
+  BackgroundJobExecutionOwner,
+  BackgroundJobKind,
+} from './contracts';
 import type { BackgroundJobEffectCheckpointSnapshot } from './effectPolicy';
 import { getBackgroundJobDefinition } from './registry';
 
 export const BACKGROUND_JOB_DATABASE_MAX_RETRY_DELAY_MS = 20 * 60 * 60 * 1_000;
+
+const REDISPATCHABLE_BACKGROUND_JOB_EFFECT_STATES = new Set<BackgroundJobEffectState>([
+  'prepared',
+  'failed',
+  'uncertain',
+]);
 
 export type BackgroundJobAutomaticRetryBlockReason =
   | 'attempts_exhausted'
@@ -17,6 +27,10 @@ export type BackgroundJobAutomaticRetryDecision =
 
 export type BackgroundJobAutomaticRetryContext = Readonly<{
   kind: BackgroundJobKind;
+  /** Validate persisted work against the currently registered payload contract when supplied. */
+  contractVersion?: number;
+  /** Shadow work prepares effects without dispatching them. Defaults to worker semantics. */
+  executionOwner?: BackgroundJobExecutionOwner;
   /** One-based attempt number returned by `background_jobs_claim`. */
   attemptNumber: number;
   /** Elapsed time from the first claimed attempt (`background_jobs.started_at`). */
@@ -42,7 +56,8 @@ export function getBackgroundJobAutomaticRetryDecision(
     throw new RangeError('Background-job retry clock must be finite');
   }
 
-  const definition = getBackgroundJobDefinition(context.kind);
+  const executionOwner = context.executionOwner ?? 'worker';
+  const definition = getBackgroundJobDefinition(context.kind, context.contractVersion);
   if (context.attemptNumber >= definition.retry.maxAttempts) return blocked('attempts_exhausted');
 
   const remainingWindowMs = definition.retry.automaticRetryWindowMs - context.elapsedSinceFirstAttemptMs;
@@ -57,16 +72,21 @@ export function getBackgroundJobAutomaticRetryDecision(
   }
 
   const nowMs = context.nowMs ?? Date.now();
-  let earliestUncertainExpiryMs = Number.POSITIVE_INFINITY;
+  let earliestRedispatchableExpiryMs = Number.POSITIVE_INFINITY;
   for (const effect of context.effects) {
-    if (effect.state !== 'uncertain') continue;
+    if (!REDISPATCHABLE_BACKGROUND_JOB_EFFECT_STATES.has(effect.state)) {
+      continue;
+    }
+    if (executionOwner === 'shadow' && effect.state === 'prepared') {
+      continue;
+    }
     const expiresAtMs = effect.providerIdempotencyExpiresAt
       ? Date.parse(effect.providerIdempotencyExpiresAt)
       : Number.NaN;
     if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) {
       return blocked('provider_idempotency_window_expired');
     }
-    earliestUncertainExpiryMs = Math.min(earliestUncertainExpiryMs, expiresAtMs);
+    earliestRedispatchableExpiryMs = Math.min(earliestRedispatchableExpiryMs, expiresAtMs);
   }
 
   const exponent = Math.min(context.attemptNumber - 1, 30);
@@ -77,7 +97,7 @@ export function getBackgroundJobAutomaticRetryDecision(
     BACKGROUND_JOB_DATABASE_MAX_RETRY_DELAY_MS,
     maximumDelayWithinWindowMs,
   );
-  if (nowMs + delayMs >= earliestUncertainExpiryMs) {
+  if (nowMs + delayMs >= earliestRedispatchableExpiryMs) {
     return blocked('provider_idempotency_window_expired');
   }
 

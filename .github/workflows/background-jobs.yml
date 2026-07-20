@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  background-jobs:
+  background-job-contracts:
     name: Background jobs contracts
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -60,6 +60,35 @@ jobs:
 
       - name: Job contracts and security boundaries
         run: npm run test:jobs
+
+  database-contract:
+    name: Database contract (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: upstream-pgmq-pg18
+            image: "ghcr.io/pgmq/pg18-pgmq:v1.10.0"
+            postgres_major: "18"
+            pgmq_version: "1.10.0"
+          - database: supabase-postgres-pg17
+            image: "public.ecr.aws/supabase/postgres:17.6.1.107"
+            postgres_major: "17"
+            pgmq_version: "1.5.1"
+    env:
+      BACKGROUND_JOBS_DB_IMAGE: ${{ matrix.image }}
+      BACKGROUND_JOBS_DB_EXPECTED_POSTGRES_MAJOR: ${{ matrix.postgres_major }}
+      BACKGROUND_JOBS_DB_EXPECTED_PGMQ_VERSION: ${{ matrix.pgmq_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Isolated logged-PGMQ database contract
         run: npm run test:jobs:db

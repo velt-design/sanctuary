@@ -52,7 +52,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 ## CI
 
 - `.github/workflows/portal-quality.yml`: repository typecheck, portal Vitest, portal build, authenticated smoke, and performance report.
-- `.github/workflows/background-jobs.yml`: `@sp/jobs` typecheck and contract tests plus the isolated logged-PGMQ database contract.
+- `.github/workflows/background-jobs.yml`: `@sp/jobs` typecheck and contract tests plus isolated logged-PGMQ contracts against upstream PostgreSQL 18 and the supported Supabase PostgreSQL 17 image.
 - `.github/workflows/docs-health.yml`: scheduled and manual docs guard, mojibake, docs impact advisory, and readiness aging report.
 - `.github/workflows/lighthouse.yml`: scheduled and PR Lighthouse guardrails for marketing.
 - `.github/workflows/governance-monthly.yml`: marketing tests, production dependency audit, Lighthouse mobile and desktop.

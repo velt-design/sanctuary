@@ -15,24 +15,37 @@ export type BackgroundJobRetryPolicy = Readonly<{
   automaticRetryWindowMs: number;
 }>;
 
-export type BackgroundJobKindDefinition = Readonly<{
+type BackgroundJobKindDefinitionBase = Readonly<{
   kind: BackgroundJobKind;
   payloadContractVersion: number;
   handlerOwner: string;
   retry: BackgroundJobRetryPolicy;
   timeoutMs: number;
   concurrencyClass: BackgroundJobConcurrencyClass;
-  hasExternalSideEffect: boolean;
   cancellationAllowed: boolean;
   /** Handler/domain checkpoints whose durability is owned outside the generic provider-effect ledger. */
   requiredHandlerCheckpoints: readonly string[];
-  /** External `background_job_effects.effect_kind` values that must be finalised before completion. */
-  requiredEffectCheckpoints: readonly string[];
   /** Fixed copy safe for staff-facing progress. Never substitute raw phases or provider errors. */
   userFacingStatus: Readonly<Record<BackgroundJobStatus, string>>;
   defaultRolloutMode: BackgroundJobRolloutMode;
   idempotencyStrategy: BackgroundJobIdempotencyStrategy;
 }>;
+
+type BackgroundJobExternalEffectPolicy =
+  | Readonly<{
+      hasExternalSideEffect: true;
+      /** Every external `background_job_effects.effect_kind` value this job kind may record. */
+      allowedEffectCheckpoints: readonly [string, ...string[]];
+      /** Allowed external effects that must be finalised before completion. */
+      requiredEffectCheckpoints: readonly string[];
+    }>
+  | Readonly<{
+      hasExternalSideEffect: false;
+      allowedEffectCheckpoints: readonly [];
+      requiredEffectCheckpoints: readonly [];
+    }>;
+
+export type BackgroundJobKindDefinition = BackgroundJobKindDefinitionBase & BackgroundJobExternalEffectPolicy;
 
 const FIVE_MINUTES_MS = 5 * 60 * 1_000;
 export const BACKGROUND_JOB_MAX_AUTOMATIC_RETRY_WINDOW_MS = 20 * 60 * 60 * 1_000;
@@ -107,6 +120,7 @@ export const BACKGROUND_JOB_REGISTRY = {
     hasExternalSideEffect: true,
     cancellationAllowed: false,
     requiredHandlerCheckpoints: ['invoice_prepared', 'pdf_staged', 'business_finalised'],
+    allowedEffectCheckpoints: ['email_dispatch'],
     requiredEffectCheckpoints: ['email_dispatch'],
     userFacingStatus: { ...userFacingEmailStatus, succeeded: 'Invoice sent' },
     defaultRolloutMode: 'legacy',
@@ -122,6 +136,7 @@ export const BACKGROUND_JOB_REGISTRY = {
     hasExternalSideEffect: true,
     cancellationAllowed: false,
     requiredHandlerCheckpoints: ['quote_frozen', 'pdf_staged', 'business_finalised'],
+    allowedEffectCheckpoints: ['email_dispatch'],
     requiredEffectCheckpoints: ['email_dispatch'],
     userFacingStatus: { ...userFacingEmailStatus, succeeded: 'Quote sent' },
     defaultRolloutMode: 'legacy',
@@ -137,6 +152,7 @@ export const BACKGROUND_JOB_REGISTRY = {
     hasExternalSideEffect: true,
     cancellationAllowed: false,
     requiredHandlerCheckpoints: ['quote_frozen', 'pdf_staged', 'business_finalised'],
+    allowedEffectCheckpoints: ['email_dispatch'],
     requiredEffectCheckpoints: ['email_dispatch'],
     userFacingStatus: { ...userFacingEmailStatus, succeeded: 'Quote resent' },
     defaultRolloutMode: 'legacy',
@@ -152,6 +168,7 @@ export const BACKGROUND_JOB_REGISTRY = {
     hasExternalSideEffect: false,
     cancellationAllowed: true,
     requiredHandlerCheckpoints: ['inputs_frozen', 'artifacts_staged', 'business_finalised'],
+    allowedEffectCheckpoints: [],
     requiredEffectCheckpoints: [],
     userFacingStatus: userFacingJobPackStatus,
     defaultRolloutMode: 'legacy',
@@ -167,6 +184,7 @@ export const BACKGROUND_JOB_REGISTRY = {
     hasExternalSideEffect: false,
     cancellationAllowed: true,
     requiredHandlerCheckpoints: ['event_recorded', 'effects_persisted'],
+    allowedEffectCheckpoints: [],
     requiredEffectCheckpoints: [],
     userFacingStatus: userFacingAutomationStatus,
     defaultRolloutMode: 'legacy',
@@ -182,6 +200,7 @@ export const BACKGROUND_JOB_REGISTRY = {
     hasExternalSideEffect: true,
     cancellationAllowed: false,
     requiredHandlerCheckpoints: ['outbox_frozen', 'business_finalised'],
+    allowedEffectCheckpoints: ['email_dispatch'],
     requiredEffectCheckpoints: ['email_dispatch'],
     userFacingStatus: userFacingEmailStatus,
     defaultRolloutMode: 'legacy',
@@ -189,8 +208,45 @@ export const BACKGROUND_JOB_REGISTRY = {
   },
 } as const satisfies Record<BackgroundJobKind, BackgroundJobKindDefinition>;
 
-export function getBackgroundJobDefinition<K extends BackgroundJobKind>(kind: K): (typeof BACKGROUND_JOB_REGISTRY)[K] {
-  return BACKGROUND_JOB_REGISTRY[kind];
+function assertBackgroundJobDefinitionIntegrity(definition: BackgroundJobKindDefinition): void {
+  const allowedEffects = new Set(definition.allowedEffectCheckpoints);
+  if (allowedEffects.size !== definition.allowedEffectCheckpoints.length) {
+    throw new Error(`Background-job kind ${definition.kind} declares duplicate allowed external effects`);
+  }
+
+  const requiredEffects = new Set(definition.requiredEffectCheckpoints);
+  if (requiredEffects.size !== definition.requiredEffectCheckpoints.length) {
+    throw new Error(`Background-job kind ${definition.kind} declares duplicate required external effects`);
+  }
+  if (definition.requiredEffectCheckpoints.some((effectKind) => !allowedEffects.has(effectKind))) {
+    throw new Error(`Background-job kind ${definition.kind} requires an undeclared external effect`);
+  }
+  if (definition.hasExternalSideEffect !== (definition.allowedEffectCheckpoints.length > 0)) {
+    throw new Error(`Background-job kind ${definition.kind} has an inconsistent external-effect policy`);
+  }
+}
+
+for (const definition of Object.values(BACKGROUND_JOB_REGISTRY)) {
+  assertBackgroundJobDefinitionIntegrity(definition);
+}
+
+export function getBackgroundJobDefinition<K extends BackgroundJobKind>(
+  kind: K,
+  contractVersion?: number,
+): (typeof BACKGROUND_JOB_REGISTRY)[K] {
+  const definition = BACKGROUND_JOB_REGISTRY[kind];
+  if (!definition) {
+    throw new RangeError(`Unknown background-job kind: ${String(kind)}`);
+  }
+  if (
+    contractVersion !== undefined &&
+    (!Number.isInteger(contractVersion) || contractVersion !== definition.payloadContractVersion)
+  ) {
+    throw new RangeError(
+      `Unsupported background-job contract version for ${kind}: ${String(contractVersion)}`,
+    );
+  }
+  return definition;
 }
 
 export function getBackgroundJobUserFacingStatus(

@@ -70,6 +70,7 @@
       "pathPatterns": [
         "packages/costing/src/index.ts",
         "packages/geometry/src/index.ts",
+        "packages/jobs/src/index.ts",
         "packages/quote-format/src/index.ts",
         "packages/theme/src/index.ts"
       ],

@@ -10,11 +10,17 @@ import {
   BACKGROUND_JOB_MAX_AUTOMATIC_RETRY_WINDOW_MS,
   BACKGROUND_JOB_REGISTRY,
   BACKGROUND_JOB_ROLLOUT_MODES,
+  BACKGROUND_JOB_SAFE_SUMMARY_MAX_ARRAY_LENGTH,
   BACKGROUND_JOB_SAFE_SUMMARY_MAX_BYTES,
+  BACKGROUND_JOB_SAFE_SUMMARY_MAX_STRING_LENGTH,
   BACKGROUND_JOB_STATUSES,
   TERMINAL_BACKGROUND_JOB_STATUSES,
   assertBackgroundJobEffectTransition,
-  assertBackgroundJobSafeSummary,
+  assertBackgroundJobSafeEffectSummary,
+  assertBackgroundJobSafeEventSummary,
+  assertBackgroundJobSafeProgressSummary,
+  assertBackgroundJobSafeResultSummary,
+  assertBackgroundJobSafeWorkerSummary,
   assertBackgroundJobTransition,
   backgroundJobEffectCheckpointsComplete,
   backgroundJobEffectTransitionAllowed,
@@ -24,7 +30,11 @@ import {
   getBackgroundJobUserFacingStatus,
   getMissingBackgroundJobEffectCheckpoints,
   isBackgroundJobQueueMessage,
-  isBackgroundJobSafeSummary,
+  isBackgroundJobSafeEffectSummary,
+  isBackgroundJobSafeEventSummary,
+  isBackgroundJobSafeProgressSummary,
+  isBackgroundJobSafeResultSummary,
+  isBackgroundJobSafeWorkerSummary,
   toBackgroundJobUserFacingRecord,
   type BackgroundJobSafeRecord,
 } from '@sp/jobs';
@@ -211,23 +221,245 @@ describe('background job contracts', () => {
     expect(isBackgroundJobQueueMessage({ ...message, jobId: 'not-a-uuid' })).toBe(false);
   });
 
-  it('validates safe summaries before they reach staff-facing fields', () => {
+  it('accepts only the documented fields and value shapes for each safe-summary context', () => {
+    const timestamp = '2026-07-20T01:02:03.456Z';
+    const jobId = '8b50378a-70c5-4c63-a47d-f31f27ed30ee';
+    const artifactId = 'artifact-123';
+
+    for (const validator of [
+      isBackgroundJobSafeProgressSummary,
+      isBackgroundJobSafeResultSummary,
+      isBackgroundJobSafeEffectSummary,
+      isBackgroundJobSafeEventSummary,
+      isBackgroundJobSafeWorkerSummary,
+    ]) {
+      expect(validator({})).toBe(true);
+    }
+
     expect(
-      isBackgroundJobSafeSummary({ percent: 50, result: { artifactCount: 2 }, stages: ['prepare', 'render'] }),
+      isBackgroundJobSafeProgressSummary({
+        phase: 'pdf_generation',
+        progressCode: 'RENDERING',
+        completedPhases: ['inputs_frozen', 'pdf_staged'],
+        pendingPhases: ['business_finalised'],
+        processedCount: 2,
+        totalCount: 4,
+        percentComplete: 50.5,
+        retryable: true,
+        updatedAt: timestamp,
+      }),
     ).toBe(true);
-    expect(isBackgroundJobSafeSummary({ recipientEmail: 'customer@example.test' })).toBe(false);
-    expect(isBackgroundJobSafeSummary({ nested: { apiKey: 'redacted' } })).toBe(false);
-    expect(isBackgroundJobSafeSummary({ value: Number.NaN })).toBe(false);
-    expect(isBackgroundJobSafeSummary({ value: 'x'.repeat(1_025) })).toBe(false);
-    expect(isBackgroundJobSafeSummary({ chunks: Array.from({ length: 9 }, () => 'x'.repeat(1_000)) })).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        phase: 'succeeded',
+        resultCode: 'ARTIFACT_READY',
+        artifactId,
+        artifactIds: [artifactId, 'artifact-456'],
+        quoteId: jobId,
+        artifactCount: 2,
+        cached: false,
+        providerAccepted: true,
+        completedAt: timestamp,
+      }),
+    ).toBe(true);
+    expect(
+      isBackgroundJobSafeEffectSummary({
+        effectKind: 'email_dispatch',
+        checkpoint: 'provider_accepted',
+        previousCheckpoint: null,
+        providerName: 'resend',
+        effectId: 'effect-123',
+        providerMessageId: jobId,
+        attemptNumber: 1,
+        providerStatusCode: 202,
+        providerAccepted: true,
+        providerAcceptedAt: timestamp,
+      }),
+    ).toBe(true);
+    expect(
+      isBackgroundJobSafeEventSummary({
+        reason: 'missing_canonical_message',
+        kind: 'quote_send',
+        owner: 'worker',
+        jobId,
+        queueMessageId: 42,
+        delaySeconds: 30,
+        effectKind: 'email_dispatch',
+        checkpoint: 'finalised',
+        occurredAt: timestamp,
+      }),
+    ).toBe(true);
+    expect(
+      isBackgroundJobSafeWorkerSummary({
+        mode: 'active',
+        lifecycleState: 'ready',
+        buildVersion: 'v1.2.3',
+        supportedKinds: ['quote_send', 'job_pack_generate'],
+        concurrencyClasses: ['email', 'documents'],
+        globalConcurrency: 8,
+        activeJobCount: 2,
+        queueDepth: 4,
+        acceptingJobs: true,
+        drainRequested: false,
+        lastHeartbeatAt: '2026-07-20T11:02:03+10:00',
+      }),
+    ).toBe(true);
+  });
+
+  it('bounds safe percentages to six fractional decimal places', () => {
+    expect(isBackgroundJobSafeProgressSummary({ percentComplete: 33.333333 })).toBe(true);
+    expect(isBackgroundJobSafeEventSummary({ percentComplete: 0.000001 })).toBe(true);
+    expect(isBackgroundJobSafeProgressSummary({ percentComplete: 33.3333333 })).toBe(false);
+    expect(isBackgroundJobSafeEventSummary({ percentComplete: 0.0000001 })).toBe(false);
+  });
+
+  it('rejects unknown keys, free-form customer data, recipient arrays, and provider payload objects', () => {
+    expect(isBackgroundJobSafeProgressSummary({ customerName: 'Ada Lovelace' })).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        message: 'Artifact ready for the customer',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeEventSummary({
+        recipients: ['customer@example.test'],
+      }),
+    ).toBe(false);
+    expect(isBackgroundJobSafeEventSummary({ recipientIds: ['contact-123'] })).toBe(false);
+    expect(
+      isBackgroundJobSafeEffectSummary({
+        providerPayload: { id: 'provider-123' },
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeEffectSummary({
+        providerName: { id: 'provider-123' },
+      }),
+    ).toBe(false);
+    expect(isBackgroundJobSafeWorkerSummary({ region: 'Sydney' })).toBe(false);
+    expect(
+      isBackgroundJobSafeProgressSummary({
+        phase: 'Preparing invoice for Ada Lovelace',
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects sensitive strings even when they are stored under an allowed key', () => {
+    const syntheticJwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzeW50aGV0aWMifQ.c3ludGhldGljLXNpZ25hdHVyZQ';
+
+    expect(isBackgroundJobSafeProgressSummary({ phase: 'customer@example.test' })).toBe(false);
+    expect(
+      isBackgroundJobSafeProgressSummary({
+        progressCode: 'Bearer synthetic-credential-123',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactId: 'Basic dXNlcjpwYXNzd29yZA==',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactId: 'https://example.test/public/quote-123',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactId: 'files.example.test/public/quote-123',
+      }),
+    ).toBe(false);
+    expect(isBackgroundJobSafeResultSummary({ artifactId: 'files1.example.test' })).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactId: 'https://example.test/file?token=synthetic-token',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactId: 'https://storage.example.test/file?X-Amz-Signature=synthetic-signature',
+      }),
+    ).toBe(false);
+    expect(isBackgroundJobSafeEffectSummary({ providerMessageId: syntheticJwt })).toBe(false);
+    expect(isBackgroundJobSafeEventSummary({ reason: 'a'.repeat(64) })).toBe(false);
+    expect(isBackgroundJobSafeWorkerSummary({ buildVersion: 'a1'.repeat(24) })).toBe(false);
+  });
+
+  it('rejects unsafe scalar, timestamp, array, object, and byte-boundary shapes', () => {
+    expect(isBackgroundJobSafeProgressSummary({ processedCount: Number.NaN })).toBe(false);
+    expect(isBackgroundJobSafeProgressSummary({ processedCount: 1.5 })).toBe(false);
+    expect(isBackgroundJobSafeProgressSummary({ processedCount: -1 })).toBe(false);
+    expect(isBackgroundJobSafeProgressSummary({ percentComplete: 100.1 })).toBe(false);
+    expect(
+      isBackgroundJobSafeProgressSummary({
+        completedAt: '2026-02-30T00:00:00.000Z',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactId: 'artifact-without-a-number',
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeResultSummary({
+        artifactIds: ['artifact-123', 'customer@example.test'],
+      }),
+    ).toBe(false);
+    expect(
+      isBackgroundJobSafeWorkerSummary({
+        supportedKinds: Array.from(
+          { length: BACKGROUND_JOB_SAFE_SUMMARY_MAX_ARRAY_LENGTH + 1 },
+          (_, index) => `kind_${index}`,
+        ),
+      }),
+    ).toBe(false);
+
+    const sparsePhases = ['prepare', 'render'];
+    delete sparsePhases[0];
+    expect(isBackgroundJobSafeProgressSummary({ completedPhases: sparsePhases })).toBe(false);
 
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
-    expect(isBackgroundJobSafeSummary(cyclic)).toBe(false);
-    expect(() => assertBackgroundJobSafeSummary({ accessToken: 'secret' })).toThrow(
-      'Unsafe background-job summary',
+    expect(isBackgroundJobSafeEffectSummary({ providerName: cyclic })).toBe(false);
+
+    const ids = Array.from(
+      { length: BACKGROUND_JOB_SAFE_SUMMARY_MAX_ARRAY_LENGTH },
+      (_, index) => `artifact-${index}-${'x'.repeat(32)}`,
     );
+    const phases = Array.from(
+      { length: BACKGROUND_JOB_SAFE_SUMMARY_MAX_ARRAY_LENGTH },
+      (_, index) => `phase_${index}_${'x'.repeat(32)}`,
+    );
+    expect(
+      isBackgroundJobSafeEventSummary({
+        artifactIds: ids,
+        documentIds: ids,
+        completedPhases: phases,
+        pendingPhases: phases,
+      }),
+    ).toBe(false);
     expect(BACKGROUND_JOB_SAFE_SUMMARY_MAX_BYTES).toBe(8_192);
+    expect(BACKGROUND_JOB_SAFE_SUMMARY_MAX_STRING_LENGTH).toBe(128);
+    expect(BACKGROUND_JOB_SAFE_SUMMARY_MAX_ARRAY_LENGTH).toBe(50);
+  });
+
+  it('uses context-specific assertions rather than a generic safe-JSON assertion', () => {
+    expect(() =>
+      assertBackgroundJobSafeProgressSummary({
+        recipientEmail: 'customer@example.test',
+      }),
+    ).toThrow('Unsafe background-job progress summary');
+    expect(() => assertBackgroundJobSafeResultSummary({ providerPayload: {} })).toThrow(
+      'Unsafe background-job result summary',
+    );
+    expect(() => assertBackgroundJobSafeEffectSummary({ providerPayload: {} })).toThrow(
+      'Unsafe background-job effect summary',
+    );
+    expect(() => assertBackgroundJobSafeEventSummary({ customerName: 'Ada Lovelace' })).toThrow(
+      'Unsafe background-job event summary',
+    );
+    expect(() => assertBackgroundJobSafeWorkerSummary({ accessToken: 'synthetic' })).toThrow(
+      'Unsafe background-job worker summary',
+    );
   });
 
   it('maps staff-facing records without internal phases, hashes, leases, provider IDs, or raw errors', () => {
@@ -243,25 +475,17 @@ describe('background job contracts', () => {
       attemptCount: 3,
       maxAttempts: 6,
       nextAttemptAt: '2026-07-20T01:00:00.000Z',
-      leaseExpiresAt: null,
-      lastHeartbeatAt: null,
       cancellationRequestedAt: null,
       rolloutMode: 'worker_enabled',
       executionOwner: 'worker',
-      safeProgress: { stageNumber: 2 },
+      safeProgress: { phase: 'provider_reconciliation', completedCount: 2 },
       safeResult: {},
       createdAt: '2026-07-20T00:00:00.000Z',
       updatedAt: '2026-07-20T00:30:00.000Z',
       startedAt: '2026-07-20T00:01:00.000Z',
       completedAt: '2026-07-20T00:30:00.000Z',
       currentPhase: 'provider_reconciliation',
-      intentKey: 'quote/secret-internal-intent',
-      inputHash: 'a'.repeat(64),
-      leaseOwner: 'worker-internal',
-      providerName: 'resend',
-      providerMessageId: 'provider-internal',
       errorCode: 'PROVIDER_INTERNAL_CODE',
-      errorMessage: 'Internal provider diagnostic',
     } satisfies BackgroundJobSafeRecord;
 
     const userFacing = toBackgroundJobUserFacingRecord(internalRecord);
@@ -274,7 +498,7 @@ describe('background job contracts', () => {
       maxAttempts: 6,
       nextAttemptAt: internalRecord.nextAttemptAt,
       cancellationRequested: false,
-      progress: { stageNumber: 2 },
+      progress: { phase: 'provider_reconciliation', completedCount: 2 },
       result: {},
       createdAt: internalRecord.createdAt,
       updatedAt: internalRecord.updatedAt,
@@ -282,9 +506,16 @@ describe('background job contracts', () => {
       completedAt: internalRecord.completedAt,
     });
     expect(userFacing).not.toHaveProperty('currentPhase');
-    expect(userFacing).not.toHaveProperty('inputHash');
-    expect(userFacing).not.toHaveProperty('providerMessageId');
-    expect(userFacing).not.toHaveProperty('errorMessage');
+    expect(userFacing).not.toHaveProperty('rolloutMode');
+    expect(userFacing).not.toHaveProperty('executionOwner');
+    expect(userFacing).not.toHaveProperty('errorCode');
+
+    expect(() =>
+      toBackgroundJobUserFacingRecord({
+        ...internalRecord,
+        safeProgress: { phase: 'customer@example.test' },
+      } as unknown as BackgroundJobSafeRecord),
+    ).toThrow('Unsafe background-job progress summary');
   });
 
   it('plans bounded automatic retries and blocks unsafe provider outcomes', () => {
@@ -364,8 +595,8 @@ describe('background job contracts', () => {
       getBackgroundJobAutomaticRetryDecision({
         ...base,
         effects: [{ effectKind: 'email_dispatch', state: 'failed', providerIdempotencyExpiresAt: null }],
-      }).retry,
-    ).toBe(true);
+      }),
+    ).toEqual({ retry: false, delayMs: null, reason: 'provider_idempotency_window_expired' });
   });
 
   it('requires a finalised effect of every registered checkpoint kind', () => {
