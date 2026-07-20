@@ -129,7 +129,7 @@ npm run test:portal -- apps/portal/app/api/contacts/route.test.ts "apps/portal/a
 npm run test:marketing -- apps/marketing/emails/utils/callWindow.test.ts
 ```
 
-These tests inject or mock provider transport and webhook signatures. Do not use production/shared database credentials or send a real email as part of repository verification. JOB-03 local provider, integration, worker, contract, typecheck, lint, and production-build gates pass; the dedicated seven-migration CI evidence remains pending until the checkpoint is pushed.
+These tests inject or mock provider transport and webhook signatures. Do not use production/shared database credentials or send a real email as part of repository verification. JOB-03 local provider, integration, worker, contract, typecheck, lint, and production-build gates pass. Background Jobs [run 29723041212](https://github.com/velt-design/sanctuary/actions/runs/29723041212) passes all seven migrations on upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, plus the contracts/integrations and worker artifact/container gates.
 
 Manual checks should cover:
 
