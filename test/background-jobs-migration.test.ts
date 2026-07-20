@@ -708,6 +708,9 @@ describe('Wave 3 background-job migrations', () => {
         /set state = 'uncertain'[\s\S]*?state = 'dispatch_started'/i,
       );
       expect(definition).toMatch(
+        /update public\.background_job_effects as effect[\s\S]*?where effect\.job_id = v_job\.id[\s\S]*?effect\.state = 'dispatch_started'/i,
+      );
+      expect(definition).toMatch(
         /count\(\*\) filter \(where effect\.state in \('dispatch_started', 'uncertain'\)\)/i,
       );
       expect(definition).toMatch(
@@ -808,7 +811,7 @@ describe('Wave 3 background-job migrations', () => {
     expect(uncertainUpdates).toHaveLength(7);
     for (const update of uncertainUpdates) {
       expect(update).toMatch(
-        /safe_metadata = jsonb_build_object\([\s\S]*?'effectKind', effect_kind,[\s\S]*?'checkpoint', 'uncertain',[\s\S]*?'providerName', provider_name/i,
+        /safe_metadata = jsonb_build_object\([\s\S]*?'effectKind', (?:effect\.)?effect_kind,[\s\S]*?'checkpoint', 'uncertain',[\s\S]*?'providerName', (?:effect\.)?provider_name/i,
       );
       expect(update).toMatch(/updated_at = now\(\)/i);
     }

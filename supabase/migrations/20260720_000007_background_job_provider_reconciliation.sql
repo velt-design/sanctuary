@@ -1134,16 +1134,16 @@ begin
         continue;
       end if;
 
-      update public.background_job_effects
+      update public.background_job_effects as effect
       set state = 'uncertain',
           safe_metadata = jsonb_build_object(
-            'effectKind', effect_kind,
+            'effectKind', effect.effect_kind,
             'checkpoint', 'uncertain',
-            'providerName', provider_name
+            'providerName', effect.provider_name
           ),
           updated_at = now()
-      where job_id = v_job.id
-        and state = 'dispatch_started';
+      where effect.job_id = v_job.id
+        and effect.state = 'dispatch_started';
     end if;
 
     if v_previous_status in ('provider_accepted', 'finalising') then
@@ -1507,16 +1507,16 @@ begin
 
     if v_job.contract_version <> v_contract_version then
       if v_job.status = 'dispatching' then
-        update public.background_job_effects
+        update public.background_job_effects as effect
         set state = 'uncertain',
             safe_metadata = jsonb_build_object(
-              'effectKind', effect_kind,
+              'effectKind', effect.effect_kind,
               'checkpoint', 'uncertain',
-              'providerName', provider_name
+              'providerName', effect.provider_name
             ),
             updated_at = now()
-        where job_id = v_job.id
-          and state = 'dispatch_started';
+        where effect.job_id = v_job.id
+          and effect.state = 'dispatch_started';
       end if;
       update public.background_jobs
       set status = 'needs_attention',
@@ -1651,16 +1651,16 @@ begin
           continue;
         end if;
 
-        update public.background_job_effects
+        update public.background_job_effects as effect
         set state = 'uncertain',
             safe_metadata = jsonb_build_object(
-              'effectKind', effect_kind,
+              'effectKind', effect.effect_kind,
               'checkpoint', 'uncertain',
-              'providerName', provider_name
+              'providerName', effect.provider_name
             ),
             updated_at = now()
-        where job_id = v_job.id
-          and state = 'dispatch_started';
+        where effect.job_id = v_job.id
+          and effect.state = 'dispatch_started';
 
         -- A cancellation requested while the prior worker was in the provider
         -- call must win before this claimant can replay the frozen request.
