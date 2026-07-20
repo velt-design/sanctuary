@@ -5,7 +5,6 @@
 -- invoke psql with ON_ERROR_STOP=1 and this file; every mutation is rolled back.
 
 begin;
-set local plpgsql.variable_conflict = 'error';
 
 do $$
 declare
