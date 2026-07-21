@@ -79,6 +79,20 @@
       "proofCommand": "npm run packages:guard && npm run typecheck"
     },
     {
+      "id": "portal-ui-foundation-public-types",
+      "category": "intentional-entrypoint",
+      "status": "current",
+      "ownerArea": "Portal UI foundation public API",
+      "pathPatterns": [
+        "apps/portal/components/layout/PageHeader.tsx",
+        "apps/portal/components/ui/foundation/*.tsx",
+        "apps/portal/components/ui/foundation/index.ts"
+      ],
+      "reason": "The UI foundation exports component prop and variant types as its documented adoption contract; application consumers may use those types without the catalogue importing every export directly.",
+      "retirementAction": "Remove an export only after checking the foundation barrel, catalogue, adopting portal screens, tests, and docs/ui-foundation.md.",
+      "proofCommand": "rg \"from ['\\\"]@/components/(ui/foundation|layout/PageHeader)\" apps/portal && npx vitest run apps/portal/components/ui/foundation apps/portal/components/layout/PageHeader.test.tsx && npm run typecheck"
+    },
+    {
       "id": "playwright-entrypoints",
       "category": "intentional-entrypoint",
       "status": "current",

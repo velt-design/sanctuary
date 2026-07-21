@@ -32,8 +32,55 @@
   overflow: hidden;
 }
 
+.sidebarToggle {
+  position: fixed;
+  z-index: 75;
+  top: 12px;
+  left: calc(var(--portal-sidebar-pinned-width, 208px) - 14px);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(var(--portal-bg-surface-rgb), 0.3);
+  border-radius: 999px;
+  background: var(--accentRed);
+  color: var(--portal-text-inverse);
+  cursor: pointer;
+}
+.sidebarToggle[aria-pressed='true'] { left: calc(var(--portal-sidebar-rail-width, 48px) - 14px); }
+.sidebarToggle svg { width: 16px; height: 16px; }
+.sidebarToggle:focus-visible { outline: 2px solid var(--ui-focus-colour, rgb(var(--portal-accent-rgb))); outline-offset: 2px; }
+
+.mobileTopBar { display: none; }
+
 @media (max-width: 899px) {
-  .contentSidebarPinned {
-    padding-left: var(--portal-sidebar-rail-width, 48px);
+  .sidebarToggle { display: none; }
+  .mobileTopBar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 80;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 16px;
+    background: var(--accentRed);
+    color: var(--portal-text-inverse);
   }
+  .mobileTopBar strong { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .mobileTopBar button {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+  }
+  .mobileTopBar button:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+  .contentSidebarPinned {
+    padding-left: 0;
+  }
+  .content { padding-top: 56px; padding-left: 0; }
 }

@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
+import localFont from 'next/font/local';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
 import './globals.css';
+import '@/components/ui/foundation/foundation.tokens.css';
 import PortalAuthProvider from '@/components/auth/PortalAuthProvider';
 import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import PortalShell from '@/components/layout/PortalShell';
@@ -15,6 +19,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+const portalInter = localFont({
+  src: [
+    { path: '../assets/fonts/Inter-Regular.ttf', weight: '400', style: 'normal' },
+    { path: '../assets/fonts/Inter-Medium.ttf', weight: '500', style: 'normal' },
+    { path: '../assets/fonts/Inter-SemiBold.ttf', weight: '600', style: 'normal' },
+  ],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let cssVars: CSSProperties = {} as CSSProperties;
   const accessState = await getPortalAccessState();
@@ -27,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" style={cssVars}>
+    <html lang="en" className={portalInter.variable} style={cssVars}>
       <body>
         <PortalAuthProvider initialAuthState={initialPortalAuthStateFromAccess(accessState)}>
           <Providers>

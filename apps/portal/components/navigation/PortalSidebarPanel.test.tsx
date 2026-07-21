@@ -150,6 +150,7 @@ describe('PortalSidebarPanel', () => {
     }
 
     expect(projectsGroup.querySelector('a[aria-label="Projects"]')).toBeInstanceOf(HTMLAnchorElement);
+    expect(projectsGroup.querySelectorAll('a[href="/staff/projects"]')).toHaveLength(1);
     expect(projectsGroup.textContent).toContain('Projects');
     expect(projectsGroup.textContent).toContain('Drafting Queue');
     expect(projectsGroup.compareDocumentPosition(contactsGroup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

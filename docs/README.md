@@ -44,6 +44,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `automation-email-audit.md` | Current | You are touching automation events, project tasks, follow-ups, email outbox, email previews, audit events, or marketing enquiry email side effects. |
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `portal-route-catalog.md` | Current | You need portal route metadata, required roles, data requirements, owner docs, or browser-smoke status. |
+| `ui-foundation.md` | Current | You are changing shared portal tokens, reusable UI primitives, page-header variants, status components, or `/staff/ui-foundation`. |
 | `projects-contacts-estimates-calculator.md` | Current | You are touching contacts, projects, project snapshots/tasks, calculator estimates, estimate locks, or local-first estimate mutations. |
 | `quotes-invoices-job-packs.md` | Current | You are touching quote, invoice, public-token, PDF/email, file-artifact, or job-pack side effects. |
 | `parallel-work-guardrails.md` | Active guardrail | You are working in parallel across apps, packages, shared flows, docs, or design workbench migration lanes. |

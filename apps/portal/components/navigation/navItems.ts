@@ -17,7 +17,6 @@ export const NAV_ITEMS = [
     Icon: Hammer,
     adminOnly: false,
     children: [
-      { key: 'all-projects', label: 'All Projects', href: '/staff/projects' },
       { key: 'new-project', label: 'New Project', href: '/staff/projects/new' },
       { key: 'design-list', label: 'Drafting Queue', href: '/staff/projects/design-packages' },
       { key: 'running-jobs', label: 'Running Jobs', href: '/staff/projects/running-jobs' },
@@ -30,7 +29,6 @@ export const NAV_ITEMS = [
     Icon: Users,
     adminOnly: false,
     children: [
-      { key: 'all-contacts', label: 'All Contacts', href: '/staff/contacts' },
       { key: 'new-contact', label: 'New Contact', href: '/staff/contacts/new' },
     ],
   },

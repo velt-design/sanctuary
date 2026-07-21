@@ -1,0 +1,296 @@
+.button,
+.iconButton {
+  --control-bg: transparent;
+  --control-border: var(--ui-border-strong);
+  --control-colour: var(--ui-text-strong);
+  appearance: none;
+  border: var(--ui-border-width) solid var(--control-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--control-bg);
+  color: var(--control-colour);
+  cursor: pointer;
+  font-family: var(--ui-font-body);
+  font-size: var(--ui-font-size-label);
+  font-weight: 600;
+  line-height: 1;
+  transition: background var(--ui-motion-duration) ease, border-color var(--ui-motion-duration) ease,
+    color var(--ui-motion-duration) ease, transform var(--ui-motion-duration) ease;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-space-2);
+  padding-inline: var(--ui-density-control-padding);
+  white-space: nowrap;
+}
+
+.button svg,
+.iconButton svg {
+  width: var(--ui-icon-compact);
+  height: var(--ui-icon-compact);
+  flex: 0 0 auto;
+  stroke-width: 2;
+}
+
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.controlSmall { min-height: var(--ui-control-sm); height: var(--ui-control-sm); }
+.controlStandard { min-height: var(--ui-control-md); height: var(--ui-control-md); }
+.controlLarge { min-height: var(--ui-control-lg); height: var(--ui-control-lg); }
+.iconButton.controlSmall { width: var(--ui-control-sm); }
+.iconButton.controlStandard { width: var(--ui-control-md); }
+.iconButton.controlLarge { width: var(--ui-control-lg); }
+.fullWidth { width: 100%; }
+.buttonLinkDisabled { pointer-events: none; opacity: 0.48; }
+
+.buttonPrimary,
+.iconButtonPrimary {
+  --control-bg: var(--ui-action);
+  --control-border: var(--ui-action);
+  --control-colour: var(--ui-action-foreground);
+}
+
+.buttonSecondary,
+.iconButtonSecondary {
+  --control-bg: var(--ui-surface-inverse);
+  --control-border: var(--ui-surface-inverse);
+  --control-colour: var(--ui-text-inverse);
+}
+
+.buttonTertiary {
+  --control-bg: transparent;
+  --control-border: var(--ui-border-strong);
+  --control-colour: var(--ui-text-strong);
+}
+
+.buttonQuiet,
+.iconButtonQuiet {
+  --control-bg: transparent;
+  --control-border: transparent;
+  --control-colour: var(--ui-text-strong);
+}
+
+.buttonDestructive {
+  --control-bg: transparent;
+  --control-border: var(--ui-destructive);
+  --control-colour: var(--ui-destructive);
+}
+
+.iconButtonInverse {
+  --control-bg: transparent;
+  --control-border: var(--ui-border-inverse);
+  --control-colour: var(--ui-text-inverse);
+}
+
+.button:hover:not(:disabled),
+.button[data-visual-state='hover'],
+.iconButton:hover:not(:disabled),
+.iconButton[data-visual-state='hover'] {
+  filter: brightness(1.08);
+}
+
+.buttonPrimary:hover:not(:disabled),
+.buttonPrimary[data-visual-state='hover'],
+.iconButtonPrimary:hover:not(:disabled),
+.iconButtonPrimary[data-visual-state='hover'] {
+  --control-bg: var(--ui-action-hover);
+  --control-border: var(--ui-action-hover);
+  filter: none;
+}
+
+.buttonDestructive:hover:not(:disabled),
+.buttonDestructive[data-visual-state='hover'] {
+  --control-bg: var(--ui-status-error-bg);
+  --control-border: var(--ui-destructive-hover);
+  --control-colour: var(--ui-destructive-hover);
+  filter: none;
+}
+
+.button:active:not(:disabled),
+.button[data-visual-state='pressed'],
+.iconButton:active:not(:disabled),
+.iconButton[data-visual-state='pressed'] {
+  transform: translateY(1px);
+  filter: brightness(0.88);
+}
+
+.buttonPrimary:active:not(:disabled),
+.buttonPrimary[data-visual-state='pressed'],
+.iconButtonPrimary:active:not(:disabled),
+.iconButtonPrimary[data-visual-state='pressed'] {
+  --control-bg: var(--ui-action-pressed);
+  --control-border: var(--ui-action-pressed);
+  filter: none;
+}
+
+.button:focus-visible,
+.button[data-visual-state='focus-visible'],
+.iconButton:focus-visible,
+.iconButton[data-visual-state='focus-visible'],
+.textControl:focus-visible,
+.textControl[data-visual-state='focus-visible'],
+.choiceInput:focus-visible + .checkboxMark,
+.choiceInput:focus-visible + .radioMark,
+.choiceInput:focus-visible + .switchTrack {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.button:disabled,
+.iconButton:disabled {
+  --control-bg: var(--ui-surface-sunken);
+  --control-border: var(--ui-border);
+  --control-colour: var(--ui-text-subtle);
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+}
+
+.spinner {
+  animation: ui-spin 700ms linear infinite;
+}
+
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+.field {
+  display: grid;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  font-family: var(--ui-font-body);
+}
+
+.field > label {
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-label);
+  font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing-label);
+}
+
+.textControl {
+  width: 100%;
+  min-height: var(--ui-control-md);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-body);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.35;
+  padding: 0 var(--ui-density-control-padding);
+  transition: border-color var(--ui-motion-duration) ease, background var(--ui-motion-duration) ease;
+}
+
+.textControl::placeholder { color: var(--ui-text-subtle); }
+.textControl:hover:not(:disabled),
+.textControl[data-visual-state='hover'] { border-color: var(--ui-text-strong); }
+.textControl:focus { outline: none; border-color: var(--ui-text-strong); }
+.textControl[data-visual-state='pressed'] { background: var(--ui-surface-secondary); }
+.textControl:disabled { background: var(--ui-surface-sunken); color: var(--ui-text-subtle); cursor: not-allowed; }
+.textControl:read-only:not(:disabled) { border-style: dashed; background: var(--ui-surface-secondary); color: var(--ui-text-muted); }
+.textControl.controlError { border-color: var(--ui-status-error-border); }
+.textarea { min-height: 88px; padding-block: var(--ui-space-3); resize: vertical; }
+.select { padding-right: var(--ui-space-8); }
+.helperText,
+.errorText { font-size: var(--ui-font-size-caption); line-height: 1.35; }
+.helperText { color: var(--ui-text-muted); }
+.errorText { color: var(--ui-status-error-border); }
+
+.choice {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  color: var(--ui-text-strong);
+  cursor: pointer;
+  font-family: var(--ui-font-body);
+  font-size: var(--ui-font-size-small);
+  line-height: 18px;
+}
+
+.choiceInput {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkboxMark,
+.radioMark {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  background: var(--ui-surface-elevated);
+}
+
+.checkboxMark { border-radius: var(--ui-radius-control); }
+.radioMark { border-radius: var(--ui-radius-pill); }
+.choiceInput:checked + .checkboxMark,
+.choiceInput:checked + .radioMark { border-color: var(--ui-action); background: var(--ui-action); }
+.choiceInput:checked + .checkboxMark::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--ui-action-foreground);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.choiceInput:checked + .radioMark::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-action-foreground);
+}
+
+.switchTrack {
+  display: flex;
+  align-items: center;
+  width: 36px;
+  height: 20px;
+  flex: 0 0 36px;
+  padding: 2px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-surface-sunken);
+  transition: background var(--ui-motion-duration) ease;
+}
+.switchTrack span {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-text-strong);
+  transition: transform var(--ui-motion-duration) ease;
+}
+.choiceInput:checked + .switchTrack { border-color: var(--ui-action); background: var(--ui-action); }
+.choiceInput:checked + .switchTrack span { background: var(--ui-action-foreground); transform: translateX(16px); }
+.choiceInput:disabled + :is(.checkboxMark, .radioMark, .switchTrack) { opacity: 0.48; cursor: not-allowed; }
+.choice:has(.choiceInput:disabled) { color: var(--ui-text-subtle); cursor: not-allowed; }
+.choiceCopy { display: grid; gap: 2px; min-width: 0; }
+.choiceCopy small { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+  .button:active:not(:disabled),
+  .button[data-visual-state='pressed'],
+  .iconButton:active:not(:disabled),
+  .iconButton[data-visual-state='pressed'] { transform: none; }
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  .button,
+  .iconButton { min-height: 44px; }
+  .iconButton { min-width: 44px; }
+  .choice { min-height: 44px; align-items: center; }
+}

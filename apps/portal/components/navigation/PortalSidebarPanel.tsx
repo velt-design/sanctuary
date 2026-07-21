@@ -119,7 +119,7 @@ function isChildActive(
   }
 }
 
-export default function PortalSidebarPanel() {
+export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sidebar' | 'drawer' }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -233,6 +233,7 @@ export default function PortalSidebarPanel() {
       style={{ width: SIDEBAR_PINNED_WIDTH_PX }}
       aria-label="Portal navigation"
       data-portal-sidebar-panel="true"
+      data-portal-sidebar-presentation={mode}
     >
       <div className={styles.labelLayer} aria-hidden="false">
         <div className={styles.labelNav}>
@@ -252,7 +253,7 @@ export default function PortalSidebarPanel() {
                     prefetch={portalIndexTarget(item.href) ? false : undefined}
                     aria-label={item.label}
                     aria-current={isParentCurrent ? 'page' : undefined}
-                    className={cx(styles.iconButton, isParentCurrent && styles.iconButtonActive)}
+                    className={styles.parentLink}
                     data-nav-key={item.key}
                     onClick={(event) => handleIconLinkClick(event, item.href, item.label)}
                     onMouseEnter={() => prefetchFor(item.key, item.href)}
@@ -260,43 +261,30 @@ export default function PortalSidebarPanel() {
                     onPointerDown={() => prefetchFor(item.key, item.href)}
                     onTouchStart={() => prefetchFor(item.key, item.href)}
                   >
-                    <item.Icon
-                      aria-hidden="true"
-                      size={20}
-                      strokeWidth={2}
-                      className={styles.icon}
-                      style={{ opacity: isParentCurrent ? 1 : 0.85 }}
-                    />
+                    <span className={cx(styles.iconButton, isParentCurrent && styles.iconButtonActive)} aria-hidden="true">
+                      <item.Icon
+                        size={20}
+                        strokeWidth={2}
+                        className={styles.icon}
+                        style={{ opacity: isParentCurrent ? 1 : 0.85 }}
+                      />
+                    </span>
+                    <span className={styles.parentLabel}>{item.label}</span>
                   </Link>
-                  <div className={styles.parentHeader}>
-                    <Link
-                      href={item.href}
-                      prefetch={portalIndexTarget(item.href) ? false : undefined}
-                      aria-current={isParentCurrent ? 'page' : undefined}
-                      className={styles.parentLink}
-                      onClick={(event) => handleNavLinkClick(event, item.href, item.label)}
-                      onMouseEnter={() => prefetchFor(item.key, item.href)}
-                      onFocus={() => prefetchFor(item.key, item.href)}
-                      onPointerDown={() => prefetchFor(item.key, item.href)}
-                      onTouchStart={() => prefetchFor(item.key, item.href)}
+                  {hasSubmenu ? (
+                    <button
+                      type="button"
+                      className={styles.chevronButton}
+                      aria-label={`${isSubmenuOpen ? 'Collapse' : 'Expand'} ${item.label}`}
+                      aria-expanded={isSubmenuOpen}
+                      onClick={() => handleChevronClick(item.key)}
                     >
-                      <span className={styles.parentLabel}>{item.label}</span>
-                    </Link>
-                    {hasSubmenu ? (
-                      <button
-                        type="button"
-                        className={styles.chevronButton}
-                        aria-label={`${isSubmenuOpen ? 'Collapse' : 'Expand'} ${item.label}`}
-                        aria-expanded={isSubmenuOpen}
-                        onClick={() => handleChevronClick(item.key)}
-                      >
-                        <ChevronDown
-                          aria-hidden="true"
-                          className={cx(styles.chevron, isSubmenuOpen && styles.chevronOpen)}
-                        />
-                      </button>
-                    ) : null}
-                  </div>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={cx(styles.chevron, isSubmenuOpen && styles.chevronOpen)}
+                      />
+                    </button>
+                  ) : null}
                 </div>
 
                 {hasSubmenu && isSubmenuOpen ? (

@@ -42,6 +42,13 @@ import { useProjectsIndexData } from './useProjectsIndexData';
 import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import {
+  ButtonLink,
+  DataStatePanel,
+  LoadingSkeleton,
+  ProjectStageBadge,
+  SearchFilterBar,
+} from '@/components/ui/foundation';
 
 type EditingState = { id: string; field: ProjectIndexEditableField; value: string } | null;
 type StatusConfirmState = {
@@ -75,7 +82,7 @@ export default function ProjectsIndexClient({
   const initialFiltersRef = useRef(initialFilters ?? parseProjectsIndexFilters(searchParams));
   const currentTodayYmd = initialTodayYmd ?? todayYmd();
   const [query, setQuery] = useState(initialFiltersRef.current.query);
-  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFiltersRef.current.statusFilter);
+  const [statusFilter, setStatusFilter] = useState<NonNullable<Project['status']> | 'all'>(initialFiltersRef.current.statusFilter ?? 'all');
   const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFiltersRef.current.dueFilter);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -102,7 +109,7 @@ export default function ProjectsIndexClient({
 
   useEffect(() => {
     const nextFilters = parseProjectsIndexFilters(searchParams);
-    setStatusFilter(nextFilters.statusFilter);
+    setStatusFilter(nextFilters.statusFilter ?? 'all');
     setQuery(nextFilters.query);
     setDueFilter(nextFilters.dueFilter);
     setArchiveFilter(nextFilters.archiveFilter);
@@ -279,17 +286,14 @@ export default function ProjectsIndexClient({
     >
       <PageHeader
         title="Projects"
+        variant="index"
+        description="Search, update and continue work across the project pipeline."
+        count={`${projectsIndex.data?.projects.totalCount ?? projects.length} projects`}
+        primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
         right={
           <HeaderActions>
-            <Link className={styles.button} href="/staff/projects/design-packages">
-              Drafting Queue
-            </Link>
-            <Link className={styles.button} href="/staff/projects/running-jobs">
-              Running Jobs
-            </Link>
-            <Link className={styles.button} href="/staff/projects/new">
-              New Project
-            </Link>
+            <ButtonLink variant="tertiary" href="/staff/projects/design-packages">Drafting Queue</ButtonLink>
+            <ButtonLink variant="secondary" href="/staff/projects/running-jobs">Running Jobs</ButtonLink>
           </HeaderActions>
         }
       />
@@ -315,60 +319,18 @@ export default function ProjectsIndexClient({
             <h2 className={styles.sectionTitle}>Filters</h2>
           </div>
           <div className={styles.sectionBody}>
-            <div className={styles.formGrid}>
-              <div className={styles.field}>
-                <label htmlFor="projectSearch">Search</label>
-                <input
-                  id="projectSearch"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Name, client, phone, address…"
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="projectStatusFilter">Status</label>
-                <select id="projectStatusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
-                  <option value="all">All</option>
-                  {PROJECT_STATUS_ORDER.map((status) => (
-                    <option key={status} value={status}>
-                      {projectStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="projectArchiveFilter">Archive</label>
-                <select
-                  id="projectArchiveFilter"
-                  value={archiveFilter}
-                  onChange={(e) => setArchiveFilter(e.target.value as ArchiveFilter)}
-                >
-                  <option value="active">Active</option>
-                  <option value="archived">Archived</option>
-                  <option value="all">All</option>
-                </select>
-              </div>
-
-              <div className={styles.field} style={{ display: 'flex', flexDirection: 'column' }}>
-                <label className={styles.checkboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={dueFilter !== 'all'}
-                    onChange={(e) => setDueFilter(e.target.checked ? 'due' : 'all')}
-                  />
-                  <span className={styles.checkboxText}>Next action due (today + overdue)</span>
-                </label>
-                <div className={styles.muted} style={{ marginTop: 6, fontSize: 12 }}>
-                  {dueFilter === 'overdue'
-                    ? 'Shows overdue actions only'
-                    : dueFilter === 'today'
-                      ? 'Shows actions due today'
-                      : 'Shows projects with next action date ≤ today'}
-                </div>
-              </div>
-            </div>
+            <SearchFilterBar
+              query={query}
+              onQueryChange={setQuery}
+              searchId="projectSearch"
+              queryPlaceholder="Name, client, phone or address…"
+              filters={[
+                { id: 'projectStatusFilter', label: 'Status', value: statusFilter, onChange: (value) => setStatusFilter(value as NonNullable<Project['status']> | 'all'), options: [{ value: 'all', label: 'All statuses' }, ...PROJECT_STATUS_ORDER.map((status) => ({ value: status, label: projectStatusLabel(status) ?? status }))] },
+                { id: 'projectArchiveFilter', label: 'Archive', value: archiveFilter, onChange: (value) => setArchiveFilter(value as ArchiveFilter), options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }, { value: 'all', label: 'All' }] },
+                { id: 'projectDueFilter', label: 'Next action', value: dueFilter, onChange: (value) => setDueFilter(value as typeof dueFilter), options: [{ value: 'all', label: 'Any date' }, { value: 'due', label: 'Due today or overdue' }, { value: 'overdue', label: 'Overdue' }, { value: 'today', label: 'Due today' }] },
+              ]}
+              onClearAll={() => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); }}
+            />
           </div>
         </section>
 
@@ -500,6 +462,7 @@ export default function ProjectsIndexClient({
                           </td>
                           <td>{renderEditable('address', addressValue, 'Add address', true)}</td>
                           <td>
+                            <ProjectStageBadge stage={normalizePipelineStageKey(p.status ?? 'NEW') ?? 'new'} compact />
                             <select
                               className={styles.inlineSelect}
                               value={(p.status ?? 'NEW') as ProjectStatus}
@@ -592,20 +555,16 @@ export default function ProjectsIndexClient({
                 </table>
               </div>
             ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
-              <p className={styles.note}>Updating projects…</p>
+              <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
             ) : projectsIndex.state === 'unavailable' ? (
-              <p className={styles.note}>Your account cannot access the Projects list.</p>
+              <DataStatePanel state="unavailable" />
             ) : projectsIndex.state === 'refresh-failed' ? (
-              <p className={styles.note}>
-                Projects could not be loaded.{' '}
-                <button type="button" className={styles.link} onClick={() => void projectsIndex.retry()}>
-                  Retry
-                </button>
-              </p>
+              <DataStatePanel state={projects.length ? 'stale' : 'error'} onRetry={() => void projectsIndex.retry()} />
             ) : (
-              <p className={styles.note}>
-                {projects.length ? 'No projects match this filter.' : 'No projects yet. Click “New Project” to create one.'}
-              </p>
+              <DataStatePanel
+                state={projects.length ? 'filtered-empty' : 'empty'}
+                onClear={projects.length ? () => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); } : undefined}
+              />
             )}
           </div>
         </section>

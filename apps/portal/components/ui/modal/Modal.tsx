@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
 import { lockDocumentScroll, unlockDocumentScroll } from '../scrollLock';
+import { focusableElements, trapTabKey } from '../focusTrap';
 
 const MODAL_DEFAULTS = {
   closeOnBackdrop: true,
@@ -64,7 +65,7 @@ export default function Modal({
     const prevFocus = document.activeElement as HTMLElement | null;
 
     const focusTarget = () => {
-      const node = initialFocusRef?.current ?? panelRef.current;
+      const node = initialFocusRef?.current ?? (panelRef.current ? focusableElements(panelRef.current)[0] : null) ?? panelRef.current;
       if (!node) return;
       if (typeof node.focus !== 'function') return;
       try {
@@ -77,10 +78,12 @@ export default function Modal({
     const t = window.setTimeout(focusTarget, 0);
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!closeOnEsc) return;
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      onCloseRef.current();
+      const panel = panelRef.current;
+      if (panel) trapTabKey(e, panel);
+      if (closeOnEsc && e.key === 'Escape') {
+        e.preventDefault();
+        onCloseRef.current();
+      }
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -115,9 +118,10 @@ export default function Modal({
       <div
         ref={panelRef}
         className={panelClasses}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
+      role="dialog"
+      aria-modal="true"
+      aria-label={ariaLabel}
+      data-modal-panel="true"
         tabIndex={-1}
         style={{ maxWidth: maxWidthPx }}
       >

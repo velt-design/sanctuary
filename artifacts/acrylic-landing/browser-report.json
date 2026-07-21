@@ -1,0 +1,227 @@
+{
+  "responsive": [
+    {
+      "name": "small-mobile",
+      "width": 360,
+      "height": 800,
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "className": "acrylic-form__honeypot"
+        },
+        {
+          "tag": "LABEL",
+          "className": ""
+        },
+        {
+          "tag": "INPUT",
+          "className": ""
+        }
+      ],
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleLabels": true,
+      "stickyDisplay": "flex"
+    },
+    {
+      "name": "large-mobile",
+      "width": 430,
+      "height": 932,
+      "clientWidth": 430,
+      "scrollWidth": 430,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "className": "acrylic-form__honeypot"
+        },
+        {
+          "tag": "LABEL",
+          "className": ""
+        },
+        {
+          "tag": "INPUT",
+          "className": ""
+        }
+      ],
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleLabels": true,
+      "stickyDisplay": "flex"
+    },
+    {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "className": "acrylic-form__honeypot"
+        },
+        {
+          "tag": "LABEL",
+          "className": ""
+        },
+        {
+          "tag": "INPUT",
+          "className": ""
+        }
+      ],
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleLabels": true,
+      "stickyDisplay": "none"
+    },
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "className": "acrylic-form__honeypot"
+        },
+        {
+          "tag": "LABEL",
+          "className": ""
+        },
+        {
+          "tag": "INPUT",
+          "className": ""
+        }
+      ],
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleLabels": true,
+      "stickyDisplay": "none"
+    },
+    {
+      "name": "large-desktop",
+      "width": 1920,
+      "height": 1080,
+      "clientWidth": 1920,
+      "scrollWidth": 1920,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "className": "acrylic-form__honeypot"
+        },
+        {
+          "tag": "LABEL",
+          "className": ""
+        },
+        {
+          "tag": "INPUT",
+          "className": ""
+        }
+      ],
+      "h1Count": 1,
+      "brokenImages": [],
+      "visibleLabels": true,
+      "stickyDisplay": "none"
+    }
+  ],
+  "faqOpenWithKeyboard": true,
+  "faqFocusOutline": "solid",
+  "invalidCount": 6,
+  "focusedAfterInvalid": "acrylic-enquiry-type",
+  "valuesPreservedAfterSuccess": true,
+  "submittedPayload": {
+    "enquiryType": "residential",
+    "name": "Landing Page QA",
+    "phone": "000 000 0000",
+    "email": "qa@example.com",
+    "suburb": "Test Suburb",
+    "message": "Test enquiry for the local landing page verification workflow.",
+    "dimensions": {
+      "widthM": null,
+      "depthM": null,
+      "heightM": null
+    },
+    "style": "",
+    "roofMaterials": [],
+    "addOns": {
+      "blinds": false,
+      "lighting": false,
+      "heating": false,
+      "slats": false,
+      "acrylicInfillPanels": false,
+      "other": false
+    },
+    "files": [],
+    "projectDetails": {
+      "acrylicOption": null,
+      "attachment": null,
+      "priorities": [],
+      "accessories": [],
+      "consentStatus": null,
+      "timeframe": null
+    },
+    "utm": {},
+    "attribution": {
+      "utm": {},
+      "clickIds": {},
+      "landingPage": "http://localhost:3000/acrylic-roof-pergolas-auckland"
+    },
+    "page": "/acrylic-roof-pergolas-auckland",
+    "source": "website",
+    "honeypot": ""
+  },
+  "linkChecks": [
+    {
+      "href": "/products/screens-walls/drop-down-blinds",
+      "status": 200
+    },
+    {
+      "href": "/products/screens-walls/acrylic-infill-panels",
+      "status": 200
+    },
+    {
+      "href": "/products/pergolas/pitched",
+      "status": 200
+    },
+    {
+      "href": "/products/pergolas/gable",
+      "status": 200
+    },
+    {
+      "href": "/products/pergolas/hip",
+      "status": 200
+    },
+    {
+      "href": "/products/pergolas/box-perimeter",
+      "status": 200
+    },
+    {
+      "href": "/projects/warkworth-outdoor-room",
+      "status": 200
+    },
+    {
+      "href": "/projects/st-heliers-townhouse",
+      "status": 200
+    },
+    {
+      "href": "/projects/tindalls-bay-pavilion",
+      "status": 200
+    },
+    {
+      "href": "/projects/atelier-shu-cafe",
+      "status": 200
+    },
+    {
+      "href": "/projects",
+      "status": 200
+    },
+    {
+      "href": "/privacy",
+      "status": 200
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

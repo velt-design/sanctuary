@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { useProjectDetailsDraft } from '../../useProjectDetailsDraft';
 import styles from './ProjectStatusDetailsCard.module.css';
+import { AlertBanner, Button, Input, useUnsavedChangesGuard } from '@/components/ui/foundation';
 
 const ProjectStageControl = lazy(() => import('./ProjectStageControl'));
 
@@ -31,6 +32,7 @@ export default function ProjectStatusDetailsCard({
     statusText,
     updateDraftField,
   } = useProjectDetailsDraft(project);
+  useUnsavedChangesGuard(isEditing && canSave);
 
   return (
     <section className={styles.detailsCard} aria-labelledby="project-status-details-title" data-project-status-details="true">
@@ -43,11 +45,11 @@ export default function ProjectStatusDetailsCard({
           {statusText ? <span role="status">{statusText}</span> : null}
           {isEditing ? (
             <>
-              <button type="button" disabled={!canSave} onClick={finishEditing}>Done</button>
-              <button type="button" disabled={isSaving} onClick={resetEditing}>Reset</button>
+              <Button size="small" disabled={!canSave} onClick={finishEditing}>Done</Button>
+              <Button size="small" variant="tertiary" disabled={isSaving} onClick={resetEditing}>Reset</Button>
             </>
           ) : (
-            <button type="button" onClick={() => setIsEditing(true)}>Edit details</button>
+            <Button size="small" variant="secondary" onClick={() => setIsEditing(true)}>Edit details</Button>
           )}
         </div>
       </div>
@@ -63,26 +65,26 @@ export default function ProjectStatusDetailsCard({
       </Suspense>
 
       {error ? (
-        <div className={styles.detailsError} role="status">
+        <AlertBanner tone="error" title="Project details could not be saved">
           <p>{error}</p>
           {canRetry ? (
             <div className={styles.detailsActions}>
-              <button type="button" onClick={() => void retry()}>Retry now</button>
-              <button type="button" onClick={reviewLocalDraft}>Review changes</button>
+              <Button size="small" variant="secondary" onClick={() => void retry()}>Retry now</Button>
+              <Button size="small" variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button>
             </div>
           ) : null}
-        </div>
+        </AlertBanner>
       ) : null}
 
       {isEditing ? (
         <div className={styles.detailsForm}>
-          <label htmlFor="contactName">Contact<input id="contactName" value={draft.contactName} onChange={(event) => updateDraftField('contactName', event.target.value)} onBlur={saveCurrentDraft} /></label>
-          <label htmlFor="contactEmail">Email<input id="contactEmail" value={draft.contactEmail} onChange={(event) => updateDraftField('contactEmail', event.target.value)} onBlur={saveCurrentDraft} /></label>
-          <label htmlFor="contactPhone">Phone<input id="contactPhone" value={draft.contactPhone} onChange={(event) => updateDraftField('contactPhone', event.target.value)} onBlur={saveCurrentDraft} /></label>
-          <label htmlFor="projectName">Project name<input id="projectName" value={draft.projectName} onChange={(event) => updateDraftField('projectName', event.target.value)} onBlur={saveCurrentDraft} /></label>
-          <label htmlFor="siteAddress">Site address<input id="siteAddress" value={draft.siteAddress} onChange={(event) => updateDraftField('siteAddress', event.target.value)} onBlur={saveCurrentDraft} /></label>
-          <label htmlFor="region">Region<input id="region" value={draft.region} onChange={(event) => updateDraftField('region', event.target.value)} onBlur={saveCurrentDraft} /></label>
-          <label htmlFor="quoteRef">Project / quote reference<input id="quoteRef" value={draft.quoteRef} onChange={(event) => updateDraftField('quoteRef', event.target.value)} onBlur={saveCurrentDraft} /></label>
+          <Input id="contactName" label="Contact" value={draft.contactName} onChange={(event) => updateDraftField('contactName', event.target.value)} onBlur={saveCurrentDraft} />
+          <Input id="contactEmail" label="Email" type="email" value={draft.contactEmail} onChange={(event) => updateDraftField('contactEmail', event.target.value)} onBlur={saveCurrentDraft} />
+          <Input id="contactPhone" label="Phone" type="tel" value={draft.contactPhone} onChange={(event) => updateDraftField('contactPhone', event.target.value)} onBlur={saveCurrentDraft} />
+          <Input id="projectName" label="Project name" value={draft.projectName} onChange={(event) => updateDraftField('projectName', event.target.value)} onBlur={saveCurrentDraft} />
+          <Input id="siteAddress" label="Site address" value={draft.siteAddress} onChange={(event) => updateDraftField('siteAddress', event.target.value)} onBlur={saveCurrentDraft} />
+          <Input id="region" label="Region" value={draft.region} onChange={(event) => updateDraftField('region', event.target.value)} onBlur={saveCurrentDraft} />
+          <Input id="quoteRef" label="Project / quote reference" value={draft.quoteRef} onChange={(event) => updateDraftField('quoteRef', event.target.value)} onBlur={saveCurrentDraft} />
         </div>
       ) : (
         <dl className={styles.detailsGrid}>

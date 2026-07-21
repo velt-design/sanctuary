@@ -69,7 +69,7 @@ Professional enquiry file uploads are stored, not just counted. The browser mint
 
 ## Access Boundaries
 
-- `AutomationRunner` is server-only and uses service-role access intentionally.
+- `AutomationRunner` and its server-only `taskPersistence.ts` adapter intentionally use service-role access. The runner owns orchestration; `taskPersistence.ts` is the narrow persistence boundary for business-calendar reads plus idempotent automation task/follow-up writes. Both paths are named in the exact-match boundary allowlist so a new service-role consumer still fails the security test.
 - Staff project action and preview routes must use staff auth helpers.
 - Public marketing enquiry/contact routes may write lead and email/audit records from server code, but must not expose staff workflow data.
 - The public Resend webhook is not a browser data surface. It verifies signatures before any database call and the repository may call only `background_job_reconcile_verified_provider_acceptance`; raw bodies, signatures, recipients, subjects, content, and arbitrary provider fields do not cross that repository boundary.

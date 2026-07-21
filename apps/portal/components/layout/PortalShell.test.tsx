@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PortalShell from './PortalShell';
-import { renderIntoDocument } from '../../../../test/reactHarness';
+import { dispatchKeyboard, renderIntoDocument } from '../../../../test/reactHarness';
+import { act } from 'react';
 
 const replaceMock = vi.fn();
 
@@ -127,6 +128,20 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('renders the UI foundation QA fixture without auth redirects or portal chrome', () => {
+    mockPathname = '/qa/ui-foundation-fixture';
+    mockSession = { status: 'unauthenticated', email: null, role: null } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell><div data-testid="child">UI foundation fixture</div></PortalShell>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toBe('UI foundation fixture');
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).toBeNull();
+    expect(replaceMock).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
   it('renders protected routes with the pinned shell chrome for authenticated users', () => {
     const rendered = renderIntoDocument(
       <PortalShell>
@@ -190,6 +205,22 @@ describe('PortalShell', () => {
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Fallback child');
     expect(replaceMock).not.toHaveBeenCalled();
 
+    rendered.unmount();
+  });
+
+  it('switches to the real collapsed rail and exposes a focus-managed mobile drawer', () => {
+    const rendered = renderIntoDocument(<PortalShell><div>Content</div></PortalShell>);
+    const collapse = rendered.container.querySelector('button[aria-label="Collapse sidebar"]') as HTMLButtonElement;
+    act(() => collapse.click());
+    expect(rendered.container.querySelector('[data-portal-content-sidebar-mode]')?.getAttribute('data-portal-content-sidebar-mode')).toBe('collapsed');
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
+
+    const mobileTrigger = rendered.container.querySelector('button[aria-label="Open portal navigation"]') as HTMLButtonElement;
+    mobileTrigger.focus();
+    act(() => mobileTrigger.click());
+    expect(document.body.querySelector('[data-drawer-panel]')).not.toBeNull();
+    dispatchKeyboard(window, 'Escape');
+    expect(document.activeElement).toBe(mobileTrigger);
     rendered.unmount();
   });
 });

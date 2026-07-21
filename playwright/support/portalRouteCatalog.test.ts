@@ -55,6 +55,7 @@ describe('portalRouteCatalog', () => {
   it('keeps the initial authenticated agent smoke intentionally small', () => {
     expect(agentAccessSmokeRoutes.map((entry) => entry.id)).toEqual([
       'dashboard',
+      'ui-foundation',
       'projects-index',
       'contacts-index',
       'schedule',

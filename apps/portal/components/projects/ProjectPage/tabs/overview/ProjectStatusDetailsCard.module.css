@@ -48,7 +48,7 @@
   font-size: 0.75rem;
 }
 
-.detailsCard button {
+.stageControl > button {
   border: 1px solid rgba(var(--portal-accent-rgb), 0.3);
   border-radius: 0.45rem;
   background: rgba(var(--portal-accent-rgb), 0.09);
@@ -60,7 +60,7 @@
   padding: 0.45rem 0.65rem;
 }
 
-.detailsCard button:disabled {
+.stageControl > button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -100,7 +100,7 @@
 }
 
 .detailsGrid div,
-.detailsForm label {
+.detailsForm > * {
   display: grid;
   gap: 0.2rem;
   min-width: 0;
@@ -111,19 +111,6 @@
   color: rgba(var(--portal-text-rgb), 0.88);
   font-size: 0.84rem;
   overflow-wrap: anywhere;
-}
-
-.detailsForm input {
-  min-width: 0;
-  width: 100%;
-  border: 1px solid rgba(var(--portal-border-rgb), 0.9);
-  border-radius: 0.45rem;
-  background: rgb(var(--portal-bg-surface-rgb));
-  color: rgb(var(--portal-text-rgb));
-  font: inherit;
-  font-size: 0.84rem;
-  padding: 0.48rem 0.55rem;
-  text-transform: none;
 }
 
 .detailsError {

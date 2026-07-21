@@ -1,0 +1,8 @@
+.root { display: grid; gap: var(--ui-space-2); }
+.bulk { min-height: 48px; display: flex; align-items: center; flex-wrap: wrap; gap: var(--ui-space-2); border: var(--ui-border-width) solid var(--ui-border-strong); border-left: var(--ui-status-edge) solid var(--ui-action); background: var(--ui-stage-quoting-bg); padding: var(--ui-space-2) var(--ui-space-3); }
+.bulk strong { margin-right: auto; }
+.root tr[data-selected='true'] > td { background: var(--ui-status-info-bg); }
+.expanded { padding: var(--ui-space-3); border-left: var(--ui-status-edge) solid var(--ui-status-info-border); background: var(--ui-surface-secondary); }
+@media (max-width: 767px) {
+  .root table { min-width: 720px; }
+}

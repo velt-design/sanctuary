@@ -36,7 +36,7 @@ export default defineConfig({
         env: {
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
           ENABLE_PORTAL_QA_FIXTURES: '1',
-          ...(useProductionPortal ? {} : { PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir }),
+          PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir,
         },
         url: baseURL,
         reuseExistingServer: false,

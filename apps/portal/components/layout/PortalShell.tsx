@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import SidebarRail from '@/components/navigation/SidebarRail';
 import PortalSidebarPanel from '@/components/navigation/PortalSidebarPanel';
@@ -11,6 +12,7 @@ import {
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { buildAccessStatusHref, buildLoginHref, currentRequestPathWithSearch, toAccessStatusQueryState } from '@/lib/portalAccess';
+import { Drawer } from '@/components/ui/drawer/Drawer';
 import {
   PortalInstantRouteContent,
   PortalRouteTransitionProvider,
@@ -39,7 +41,8 @@ function isPortalQaFixtureRoutePath(
     isFixtureWorkbenchRoutePath(pathname, searchParams) ||
     pathname === '/qa/projects-index-mutation-fixture' ||
     pathname === '/qa/project-command-centre-fixture' ||
-    pathname === '/qa/project-page-shell-fixture'
+    pathname === '/qa/project-page-shell-fixture' ||
+    pathname === '/qa/ui-foundation-fixture'
   );
 }
 
@@ -62,6 +65,8 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const searchParams = useSearchParams();
   const { status, email, role } = usePortalSession();
   const hasMountedRef = useRef(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const isPublicRoute = isPublicRoutePath(pathname, searchParams);
   const sidebarMode = isDesignWorkbenchRoutePath(pathname) ? 'railOnly' : 'pinned';
@@ -113,6 +118,10 @@ export default function PortalShell({ children }: { children: React.ReactNode })
     router.replace(redirectHref);
   }, [isPublicRoute, redirectHref, router]);
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [pathname]);
+
   if (isPublicRoute) return <>{children}</>;
 
   if (status !== 'authenticated' || !role) {
@@ -126,7 +135,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
         data-portal-sidebar-mode={sidebarMode}
         style={sidebarLayoutStyle}
       >
-        {sidebarMode === 'railOnly' ? (
+        {sidebarMode === 'railOnly' || isSidebarCollapsed ? (
           <SidebarRail
             email={email ?? undefined}
             roleLabel={roleLabel}
@@ -136,13 +145,33 @@ export default function PortalShell({ children }: { children: React.ReactNode })
         ) : (
           <PortalSidebarPanel />
         )}
+        {sidebarMode === 'pinned' ? (
+          <button
+            type="button"
+            className={styles.sidebarToggle}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-pressed={isSidebarCollapsed}
+            onClick={() => setIsSidebarCollapsed((current) => !current)}
+          >
+            {isSidebarCollapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
+          </button>
+        ) : null}
+        <header className={styles.mobileTopBar}>
+          <strong>Sanctuary</strong>
+          <button type="button" aria-label="Open portal navigation" aria-expanded={isMobileNavOpen} onClick={() => setIsMobileNavOpen(true)}>
+            <Menu aria-hidden="true" />
+          </button>
+        </header>
+        <Drawer open={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} title="Portal navigation" side="left">
+          <PortalSidebarPanel mode="drawer" />
+        </Drawer>
         <div
           className={cx(
             styles.content,
-            sidebarMode === 'pinned' && styles.contentSidebarPinned,
+            sidebarMode === 'pinned' && !isSidebarCollapsed && styles.contentSidebarPinned,
             isViewportLockedPath && styles.contentViewportLocked,
           )}
-          data-portal-content-sidebar-mode={sidebarMode}
+          data-portal-content-sidebar-mode={sidebarMode === 'pinned' && isSidebarCollapsed ? 'collapsed' : sidebarMode}
         >
           <PortalInstantRouteContent>{children}</PortalInstantRouteContent>
         </div>

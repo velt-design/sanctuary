@@ -1,0 +1,31 @@
+.alert { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: var(--ui-space-3); border: var(--ui-border-width) solid var(--notice-border); border-left-width: var(--ui-status-edge); background: var(--notice-bg); padding: var(--ui-space-3); color: var(--ui-text); font-family: var(--ui-font-body); font-size: var(--ui-font-size-small); line-height: 1.45; }
+.alert[data-tone='info'] { --notice-bg: var(--ui-status-info-bg); --notice-border: var(--ui-status-info-border); }
+.alert[data-tone='warning'] { --notice-bg: var(--ui-status-warning-bg); --notice-border: var(--ui-status-warning-border); }
+.alert[data-tone='error'], .alert[data-tone='blocking'] { --notice-bg: var(--ui-status-error-bg); --notice-border: var(--ui-status-error-border); }
+.alert > svg { width: 20px; height: 20px; color: var(--notice-border); }
+.alert strong { display: block; color: var(--ui-text-strong); }
+.action { align-self: center; }
+.dataState { min-height: 112px; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-4); border: var(--ui-border-width) solid var(--ui-border); border-left-width: var(--ui-status-edge); padding: var(--ui-space-4); background: var(--ui-surface-primary); color: var(--ui-text); }
+.dataState[data-state='error'], .dataState[data-state='conflict'] { border-left-color: var(--ui-status-error-border); }
+.dataState[data-state='stale'] { border-left-color: var(--ui-status-warning-border); }
+.dataState > svg { width: 28px; height: 28px; }
+.dataState strong { color: var(--ui-text-strong); }
+.dataState p { margin: 4px 0 0; color: var(--ui-text-muted); font-size: var(--ui-font-size-small); }
+.financial { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border: var(--ui-border-width) solid var(--ui-border); }
+.financial > div { min-width: 0; padding: var(--ui-space-4); border-right: var(--ui-border-width) solid var(--ui-border); }
+.financial > div:last-child { border-right: 0; border-left: var(--ui-status-edge) solid var(--ui-action); background: var(--ui-stage-quoting-bg); }
+.financial dt { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); font-weight: 600; text-transform: uppercase; }
+.financial dd { margin: 5px 0 0; color: var(--ui-text-strong); font-family: var(--ui-font-display); font-size: 25px; font-weight: 600; }
+.permission { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ui-space-3); }
+.permission span { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
+.task { display: flex; align-items: center; gap: var(--ui-space-2); min-height: 40px; border: var(--ui-border-width) solid var(--ui-border); padding: var(--ui-space-2) var(--ui-space-3); font-size: var(--ui-font-size-small); }
+.task > span { width: 8px; height: 16px; background: var(--ui-status-success-border); }
+.task[data-state='saving'] > span, .task[data-state='retry'] > span { background: var(--ui-status-warning-border); }
+.task[data-state='blocked'] > span { background: var(--ui-status-error-border); }
+@media (max-width: 767px) {
+  .alert, .dataState { grid-template-columns: 24px minmax(0, 1fr); }
+  .alert .action, .dataState > button { grid-column: 1 / -1; }
+  .financial { grid-template-columns: 1fr 1fr; }
+  .financial > div:nth-child(2) { border-right: 0; }
+  .financial > div:nth-child(n + 3) { border-top: var(--ui-border-width) solid var(--ui-border); }
+}

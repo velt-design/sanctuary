@@ -42,7 +42,7 @@
   position: relative;
   z-index: 0;
   display: grid;
-  grid-template-columns: var(--portal-sidebar-rail-width, 48px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 36px;
   align-items: center;
   min-height: 40px;
   user-select: none;
@@ -87,14 +87,6 @@
   background: transparent;
 }
 
-.iconButton:focus {
-  outline: none;
-}
-
-.iconButton:focus-visible {
-  box-shadow: 0 0 0 2px rgba(var(--portal-bg-surface-rgb), 0.34);
-}
-
 .iconButtonActive {
   background: transparent;
 }
@@ -103,26 +95,15 @@
   color: var(--portal-text-inverse);
 }
 
-.parentHeader {
-  all: unset;
-  box-sizing: border-box;
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 40px;
-  min-width: 0;
-  padding: 0 6px 0 12px;
-  z-index: 1;
-  transition: color 120ms ease;
-}
-
 .parentLink {
   all: unset;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
   min-width: 0;
-  flex: 1 1 auto;
   height: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--portal-sidebar-rail-width, 48px) minmax(0, 1fr);
   align-items: center;
   cursor: pointer;
   text-decoration: none !important;
@@ -147,6 +128,10 @@
   outline: none;
 }
 
+.parentLink:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(var(--portal-bg-surface-rgb), 0.44);
+}
+
 .parentLink:visited,
 .parentLink:link,
 .parentLink:active {
@@ -155,6 +140,7 @@
 
 .parentLabel {
   min-width: 0;
+  padding-left: 12px;
   white-space: nowrap;
 }
 
@@ -307,16 +293,11 @@
 }
 
 @media (max-width: 899px) {
-  .panel {
-    width: var(--portal-sidebar-rail-width, 48px) !important;
+  .panel[data-portal-sidebar-presentation='sidebar'] { display: none; }
+  .panel[data-portal-sidebar-presentation='drawer'] {
+    position: static;
+    width: 100% !important;
+    min-height: 100%;
   }
-
-  .parentRow {
-    grid-template-columns: var(--portal-sidebar-rail-width, 48px);
-  }
-
-  .parentHeader,
-  .submenu {
-    display: none;
-  }
+  .panel[data-portal-sidebar-presentation='drawer'] .labelLayer { min-height: 100%; }
 }

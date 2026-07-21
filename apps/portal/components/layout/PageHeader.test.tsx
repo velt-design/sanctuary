@@ -59,4 +59,31 @@ describe('PageHeader', () => {
 
     rendered.unmount();
   });
+
+  it('renders the approved dashboard, index, and detail variants explicitly', () => {
+    const rendered = renderIntoDocument(
+      <div>
+        <PageHeader variant="dashboard" title="Dashboard" eyebrow="Friday 24 May 2024" />
+        <PageHeader variant="index" title="Active projects" count="142 projects" description="Overview of all projects." />
+        <PageHeader
+          variant="detail"
+          title="Remuera Residence"
+          breadcrumbs={[{ label: 'Projects', href: '/staff/projects' }, { label: 'P-2307' }]}
+        />
+      </div>,
+    );
+
+    expect(rendered.container.querySelector('[data-page-header-variant="dashboard"] h1')?.textContent).toBe('Dashboard');
+    expect(rendered.container.querySelector('[data-page-header-variant="index"]')?.textContent).toContain('142 projects');
+    expect(rendered.container.querySelector('[data-page-header-variant="detail"] nav')?.textContent).toContain('Projects');
+
+    rendered.unmount();
+  });
+
+  it('decouples semantic heading level from the visual variant', () => {
+    const rendered = renderIntoDocument(<PageHeader variant="detail" headingLevel={3} title="Remuera Residence" />);
+    expect(rendered.container.querySelector('h3')?.textContent).toBe('Remuera Residence');
+    expect(rendered.container.querySelector('h1')).toBeNull();
+    rendered.unmount();
+  });
 });

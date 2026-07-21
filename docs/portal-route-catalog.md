@@ -36,6 +36,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | Id | Route Pattern | Category | Role | Data Need | Smoke Status | Debug Export | Owner Doc |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `dashboard` | `/dashboard` | core | staff | none | agent-access | not-applicable | `docs/platform-workflow.md` |
+| `ui-foundation` | `/staff/ui-foundation` | core | staff | none | agent-access | not-applicable | `docs/ui-foundation.md` |
 | `projects-index` | `/staff/projects` | project | staff | visible_project | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `contacts-index` | `/staff/contacts` | project | staff | none | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `schedule` | `/staff/schedule` | schedule | staff | none | agent-access | planned | `docs/schedule.md` |
@@ -46,6 +47,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `design-list` | `/staff/projects/design-packages` | project | staff | scenario_required | catalog-only | planned | `docs/design-list.md` |
 | `running-jobs` | `/staff/projects/running-jobs` | project | staff | scenario_required | catalog-only | planned | `docs/running-jobs.md` |
 | `calculator` | `/staff/calculator?projectId=:projectId&editEstimateId=:estimateId` | commercial | staff | estimate_id | scenario-required | planned | `docs/projects-contacts-estimates-calculator.md` |
+| `qa-ui-foundation-fixture` | `/qa/ui-foundation-fixture` | diagnostic | fixture | fixture_flag | fixture-only | not-applicable | `docs/ui-foundation.md` |
 | `admin-home` | `/admin` | admin | admin | admin_role | admin-only | planned | `docs/environment-auth-supabase.md` |
 | `pricebook` | `/pricebook` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
 | `admin-cost-materials` | `/admin/costs/materials` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
@@ -59,6 +61,7 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 `npm run portal:agent-access` currently opens:
 
 - `/dashboard`
+- `/staff/ui-foundation`
 - `/staff/projects`
 - `/staff/contacts`
 - `/staff/schedule`

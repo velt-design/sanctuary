@@ -1,0 +1,155 @@
+:root {
+  /* Foundation colour roles. Existing portal tokens remain compatibility-owned. */
+  --ui-canvas: #f2eee6;
+  --ui-surface-primary: #faf7f0;
+  --ui-surface-secondary: #ebe2d7;
+  --ui-surface-elevated: #fffdf8;
+  --ui-surface-sunken: #ddd6c9;
+  --ui-surface-inverse: #0b0b0a;
+
+  --ui-text-strong: #11110f;
+  --ui-text: #302f28;
+  --ui-text-muted: #68655e;
+  --ui-text-subtle: #88877e;
+  --ui-text-inverse: #f8f4ec;
+
+  --ui-action: #f05a00;
+  --ui-action-hover: #ff6a1a;
+  --ui-action-pressed: #d94d00;
+  --ui-action-foreground: #11110f;
+  --ui-action-text: #8b3c00;
+  --ui-destructive: #bc2318;
+  --ui-destructive-hover: #d12b1f;
+
+  --ui-border: #c9c2b7;
+  --ui-border-strong: #8c867d;
+  --ui-border-inverse: #4a4842;
+
+  --ui-status-success-bg: #e6f3e5;
+  --ui-status-success-border: #2f6836;
+  --ui-status-warning-bg: #f8e8c2;
+  --ui-status-warning-border: #9a5600;
+  --ui-status-error-bg: #fce8e6;
+  --ui-status-error-border: #b42318;
+  --ui-status-info-bg: #e5e8f8;
+  --ui-status-info-border: #2e598a;
+  --ui-status-neutral-bg: #ece9e0;
+  --ui-status-neutral-border: #545750;
+
+  /* Typography */
+  --ui-font-body: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --ui-font-size-caption: 11px;
+  --ui-font-size-label: 12px;
+  --ui-font-size-small: 13px;
+  --ui-font-size-body: 15px;
+  --ui-font-size-card-heading: 16px;
+  --ui-font-size-section: 22px;
+  --ui-font-size-detail-title: 28px;
+  --ui-font-size-page-title: 36px;
+  --ui-font-size-display: clamp(64px, 8vw, 80px);
+  --ui-line-height-tight: 0.92;
+  --ui-line-height-heading: 1.05;
+  --ui-line-height-body: 1.6;
+  --ui-letter-spacing-tight: -0.02em;
+  --ui-letter-spacing-label: 0.05em;
+
+  /* 4px spacing foundation */
+  --ui-space-0: 0;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 20px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-space-10: 40px;
+  --ui-space-12: 48px;
+  --ui-space-16: 64px;
+
+  /* Structure */
+  --ui-border-width: 1px;
+  --ui-border-width-emphasis: 2px;
+  --ui-status-edge: 4px;
+  --ui-radius-panel: 0;
+  --ui-radius-control: 2px;
+  --ui-radius-overlay: 4px;
+  --ui-radius-pill: 999px;
+  --ui-control-sm: 32px;
+  --ui-control-md: 40px;
+  --ui-control-lg: 48px;
+  --ui-icon-compact: 16px;
+  --ui-icon-standard: 20px;
+  --ui-icon-large: 24px;
+  --ui-icon-xl: 32px;
+
+  /* Layout */
+  --ui-content-max: 1440px;
+  --ui-sidebar-expanded: 232px;
+  --ui-sidebar-collapsed: 64px;
+  --ui-mobile-bar: 56px;
+  --ui-sticky-action-height: 64px;
+  --ui-grid-gutter: 16px;
+
+  /* Focus is intentionally high contrast on both warm and inverse surfaces. */
+  --ui-focus-colour: #005fcc;
+  --ui-focus-ring: 0 0 0 2px var(--ui-focus-colour);
+  --ui-focus-ring-offset: 2px;
+
+  /* Sanctuary project-stage roles */
+  --ui-stage-new-bg: #f4f1ea;
+  --ui-stage-new-fg: #545750;
+  --ui-stage-contacted-bg: #ece8df;
+  --ui-stage-contacted-fg: #6d675e;
+  --ui-stage-site-visit-bg: #e5edf0;
+  --ui-stage-site-visit-fg: #48606a;
+  --ui-stage-quoting-bg: #fff0dd;
+  --ui-stage-quoting-fg: #713000;
+  --ui-stage-sent-bg: #fde7dc;
+  --ui-stage-sent-fg: #7a2a0b;
+  --ui-stage-deposit-bg: #f4eee2;
+  --ui-stage-deposit-fg: #725c3a;
+  --ui-stage-scheduled-bg: #e4eee7;
+  --ui-stage-scheduled-fg: #3f6b4a;
+  --ui-stage-completed-bg: #dfeee6;
+  --ui-stage-completed-fg: #2f6850;
+  --ui-stage-paid-bg: #e7e7e2;
+  --ui-stage-paid-fg: #11110f;
+}
+
+[data-ui-density='standard'],
+:root {
+  --ui-density-control-padding: 12px;
+  --ui-density-section-gap: 20px;
+  --ui-density-table-block: 11px;
+}
+
+[data-ui-density='compact'] {
+  --ui-control-sm: 28px;
+  --ui-control-md: 32px;
+  --ui-control-lg: 40px;
+  --ui-grid-gutter: 12px;
+  --ui-density-control-padding: 8px;
+  --ui-density-section-gap: 12px;
+  --ui-density-table-block: 7px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-motion-duration: 0ms;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --ui-motion-duration: 140ms;
+  }
+}
+
+/* The legacy mobile shell makes body a scroll container. The catalogue owns document scroll. */
+html:has([data-ui-foundation='true']),
+body:has([data-ui-foundation='true']) {
+  height: auto;
+  min-height: 100%;
+  overflow-y: visible !important;
+}
