@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { SupabaseRepoError } from '@/lib/supabase/repoError';
@@ -1330,7 +1331,7 @@ export default function ScheduleLegacyFallbackClient({
 
   if (!hydrated) {
     return (
-      <main className={cx(styles.page, styles.pageLocked)}>
+      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
           title="Schedule"
           right={
@@ -1342,7 +1343,7 @@ export default function ScheduleLegacyFallbackClient({
         <div className={styles.stack}>
           <p className={styles.note}>Loading schedule data from the portal database…</p>
         </div>
-      </main>
+      </PageLayout>
     );
   }
 
@@ -1362,7 +1363,7 @@ export default function ScheduleLegacyFallbackClient({
         : 'supabase/portal_schema.sql';
 
     return (
-      <main className={cx(styles.page, styles.pageLocked)}>
+      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
           title="Schedule"
           right={
@@ -1422,12 +1423,12 @@ export default function ScheduleLegacyFallbackClient({
           </p>
           {diagnosticsPanel}
         </div>
-      </main>
+      </PageLayout>
     );
   }
 
   return (
-    <main className={cx(styles.page, styles.pageLocked)}>
+    <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
       <PageHeader
         title="Schedule"
         right={
@@ -1444,7 +1445,7 @@ export default function ScheduleLegacyFallbackClient({
         {schedulingIssues.length ? (
           <section className={styles.issues} aria-label="Scheduling issues">
             <div className={styles.issuesHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className={styles.issueSummaryRow}>
                 <h2 className={styles.panelTitle}>Scheduling issues</h2>
                 <span className={styles.muted}>{schedulingIssues.length}</span>
               </div>
@@ -1562,6 +1563,6 @@ export default function ScheduleLegacyFallbackClient({
         />
       ) : null}
       </div>
-    </main>
+    </PageLayout>
   );
 }

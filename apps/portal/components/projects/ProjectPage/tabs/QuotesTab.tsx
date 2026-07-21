@@ -5,11 +5,15 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import legacy from '@/app/staff/projects/projects.module.css';
+import { QuoteStatusBadge } from '@/components/ui/foundation/SanctuaryStatus';
+import { StickyActionBar } from '@/components/ui/foundation/FoundationSurfaces';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import { useUnsavedChangesGuard } from '@/components/ui/foundation/useUnsavedChangesGuard';
 import styles from './QuotesTab.module.css';
 import QuotePdfInlinePreview from './QuotePdfInlinePreview';
+import QuoteModal from './QuoteWorkflowModal';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
-import type { QuoteLineItem, QuoteStatus, QuoteVersion, QuoteVersionDetail } from '@/lib/quotes/types';
+import type { QuoteLineItem, QuoteVersion, QuoteVersionDetail } from '@/lib/quotes/types';
 import {
   createQuoteInvoice,
   deleteDraftQuoteVersion,
@@ -86,32 +90,6 @@ function isExpired(expiresAt: string | null | undefined): boolean {
   today.setHours(0, 0, 0, 0);
   expiry.setHours(0, 0, 0, 0);
   return today > expiry;
-}
-
-function statusLabel(status: QuoteStatus): string {
-  switch (status) {
-    case 'SENT':
-      return 'SENT';
-    case 'ACCEPTED':
-      return 'ACCEPTED';
-    case 'DECLINED':
-      return 'DECLINED';
-    default:
-      return 'DRAFT';
-  }
-}
-
-function statusClass(status: QuoteStatus): string {
-  switch (status) {
-    case 'SENT':
-      return styles.statusSent;
-    case 'ACCEPTED':
-      return styles.statusAccepted;
-    case 'DECLINED':
-      return styles.statusDeclined;
-    default:
-      return styles.statusDraft;
-  }
 }
 
 function sanitizeMoneyInput(value: string): string {
@@ -661,6 +639,7 @@ export default function QuotesTab({
     if ((detail.expiresAt ?? '') !== draftExpiry) return true;
     return false;
   }, [detail, effectiveDraftItems, draftReference, draftIntro, draftTerms, draftDepositPercent, draftExpiry]);
+  const guardUnsavedDraft = useUnsavedChangesGuard(draftDirty, 'Discard the unsaved quote changes?');
 
   const previewDetail = useMemo(() => {
     if (!detail) return null;
@@ -1369,7 +1348,24 @@ export default function QuotesTab({
   };
 
   if (selectedId && detailLoading) {
-    return <p className={legacy.note}>Loading quote…</p>;
+    return <p className={styles.note}>Loading quote…</p>;
+  }
+
+  if (selectedId && quoteDetailQuery.error) {
+    const message = quoteDetailQuery.error instanceof Error ? quoteDetailQuery.error.message : String(quoteDetailQuery.error);
+    return (
+      <div className={styles.wrapper} role="region" aria-label="Quote detail" data-quotes-view="detail">
+        <button type="button" className={styles.backButton} onClick={() => selectQuote(null)}>
+          &lt; Back
+        </button>
+        <DataStatePanel
+          state="error"
+          title="Could not load this quote"
+          description={message}
+          onRetry={() => void quoteDetailQuery.refetch()}
+        />
+      </div>
+    );
   }
 
   if (selectedId && detail) {
@@ -1385,38 +1381,45 @@ export default function QuotesTab({
       : null;
 
     return (
-      <div className={styles.wrapper}>
+      <div className={styles.wrapper} role="region" aria-label="Quote detail" data-quotes-view="detail">
         <div className={styles.detailHeader}>
-          <button type="button" className={styles.backButton} onClick={() => selectQuote(null)}>
+          <button type="button" className={styles.backButton} onClick={() => guardUnsavedDraft(() => selectQuote(null))}>
             &lt; Back
           </button>
+        </div>
+        <StickyActionBar
+          className={styles.quoteActionBar}
+          status={<QuoteStatusBadge status={detail.status} detail={draftDirty ? 'Unsaved changes' : draftSyncPending ? 'Syncing' : undefined} />}
+          meta={`${detail.quoteRef} · v${detail.versionNumber}`}
+          issues={expired ? `Expired ${detail.expiresAt ?? ''}` : undefined}
+        >
           <div className={styles.detailActions}>
             {detail.status === 'DRAFT' ? (
-              <button type="button" className={legacy.button} onClick={() => void handleReviewAndSend()} disabled={savingDraft}>
+              <button type="button" className={styles.primaryButton} onClick={() => void handleReviewAndSend()} disabled={savingDraft}>
                 {savingDraft ? 'Saving draft...' : 'Review & Send'}
               </button>
             ) : detail.status === 'SENT' ? (
-              <button type="button" className={legacy.button} onClick={handleResendClick}>
+              <button type="button" className={styles.primaryButton} onClick={handleResendClick}>
                 Resend
               </button>
             ) : detail.status === 'ACCEPTED' ? (
               openJobPackHref ? (
-                <Link className={legacy.button} href={openJobPackHref}>
+                <Link className={styles.primaryButton} href={openJobPackHref}>
                   Open Job Pack
                 </Link>
               ) : (
-                <button type="button" className={legacy.button} onClick={openInvoiceModal}>
+                <button type="button" className={styles.primaryButton} onClick={openInvoiceModal}>
                   Create invoice
                 </button>
               )
             ) : (
-              <button type="button" className={legacy.button} onClick={handleRevise}>
+              <button type="button" className={styles.primaryButton} onClick={handleRevise}>
                 Create revision
               </button>
             )}
 
             <div className={styles.moreActionsWrap}>
-              <button type="button" className={legacy.buttonSecondary} onClick={() => setMoreActionsOpen((prev) => !prev)}>
+              <button type="button" className={styles.secondaryButton} onClick={() => setMoreActionsOpen((prev) => !prev)}>
                 More actions
               </button>
               {moreActionsOpen ? (
@@ -1497,7 +1500,7 @@ export default function QuotesTab({
               ) : null}
             </div>
           </div>
-        </div>
+        </StickyActionBar>
 
         {expired ? (
           <div className={styles.expiredBanner}>Expired on {detail.expiresAt ?? '—'}</div>
@@ -1514,7 +1517,7 @@ export default function QuotesTab({
             {detail.status === 'DRAFT' && !draftDirty && draftSyncPending ? (
               <div className={styles.metaWarning}>Preview is rendered from the current local draft while background sync completes.</div>
             ) : null}
-            {quotePdfPreviewLoading ? <p className={legacy.note}>Rendering quote preview...</p> : null}
+            {quotePdfPreviewLoading ? <p className={styles.note}>Rendering quote preview...</p> : null}
             {quotePdfPreviewError ? (
               <div className={styles.errorText}>
                 {quotePdfPreviewError}{' '}
@@ -1532,7 +1535,7 @@ export default function QuotesTab({
         <section className={styles.card}>
           <div className={styles.cardHeader}>
             <h4 className={styles.cardTitle}>Quote details</h4>
-            <span className={`${styles.statusPill} ${statusClass(detail.status)}`}>{statusLabel(detail.status)}</span>
+            <QuoteStatusBadge status={detail.status} />
           </div>
           <div className={styles.metaGrid}>
             <div className={styles.metaBlock}>
@@ -1614,7 +1617,7 @@ export default function QuotesTab({
           <div className={styles.cardHeader}>
             <h4 className={styles.cardTitle}>Line items</h4>
             {detail.status === 'DRAFT' ? (
-              <button type="button" className={legacy.buttonSecondary} onClick={handleAddRow}>
+              <button type="button" className={styles.secondaryButton} onClick={handleAddRow}>
                 Add row
               </button>
             ) : null}
@@ -1977,10 +1980,10 @@ export default function QuotesTab({
             <div className={styles.cardHeader}>
               <h4 className={styles.cardTitle}>Decision</h4>
               <div className={styles.cardActionsInline}>
-                <button type="button" className={legacy.button} onClick={handleAccept}>
+                <button type="button" className={styles.primaryButton} onClick={handleAccept}>
                   Mark accepted
                 </button>
-                <button type="button" className={legacy.buttonSecondary} onClick={handleDecline}>
+                <button type="button" className={styles.secondaryButton} onClick={handleDecline}>
                   Mark declined
                 </button>
               </div>
@@ -2026,8 +2029,10 @@ export default function QuotesTab({
         )}
 
         {refreshConfirmOpen ? (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
+          <QuoteModal
+            label={refreshUsesLatestDesign ? 'Refresh quote from latest design' : 'Refresh quote from current design'}
+            onClose={() => { if (!refreshBusy) setRefreshConfirmOpen(false); }}
+          >
               <div className={styles.modalHeader}>
                 <h4 className={styles.cardTitle}>
                   {refreshUsesLatestDesign ? 'Refresh from latest design' : 'Refresh from current design'}
@@ -2064,7 +2069,7 @@ export default function QuotesTab({
                     </label>
                   ))}
                 </div>
-                {refreshPreviewLoading ? <p className={legacy.note}>Loading refresh summary...</p> : null}
+                {refreshPreviewLoading ? <p className={styles.note}>Loading refresh summary...</p> : null}
                 {refreshPreviewError ? <div className={styles.errorText}>{refreshPreviewError}</div> : null}
                 {refreshPreview?.summary.length ? (
                   <div className={styles.refreshSummaryCard}>
@@ -2078,25 +2083,23 @@ export default function QuotesTab({
                 ) : null}
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => setRefreshConfirmOpen(false)} disabled={refreshBusy}>
+                <button type="button" className={styles.secondaryButton} onClick={() => setRefreshConfirmOpen(false)} disabled={refreshBusy}>
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className={legacy.button}
+                  className={styles.primaryButton}
                   onClick={() => void handleRefreshFromEstimate()}
                   disabled={refreshBusy || refreshPreviewLoading}
                 >
                   {refreshBusy ? 'Refreshing...' : formatRefreshModeLabel(refreshMode)}
                 </button>
               </div>
-            </div>
-          </div>
+          </QuoteModal>
         ) : null}
 
         {invoiceOpen ? (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
+          <QuoteModal label="Create invoice" onClose={() => { if (!invoiceBusy) closeInvoiceModal(); }}>
               <div className={styles.modalHeader}>
                 <h4 className={styles.cardTitle}>Create invoice</h4>
                 <button
@@ -2136,23 +2139,26 @@ export default function QuotesTab({
                 {invoiceError ? <div className={styles.errorText}>{invoiceError}</div> : null}
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => closeInvoiceModal()} disabled={invoiceBusy}>
+                <button type="button" className={styles.secondaryButton} onClick={() => closeInvoiceModal()} disabled={invoiceBusy}>
                   Cancel
                 </button>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => void handleCreateInvoice(false)} disabled={invoiceBusy}>
+                <button type="button" className={styles.secondaryButton} onClick={() => void handleCreateInvoice(false)} disabled={invoiceBusy}>
                   {invoiceBusy ? 'Working...' : 'Create only'}
                 </button>
-                <button type="button" className={legacy.button} onClick={() => void handleCreateInvoice(true)} disabled={invoiceBusy}>
+                <button type="button" className={styles.primaryButton} onClick={() => void handleCreateInvoice(true)} disabled={invoiceBusy}>
                   {invoiceBusy ? 'Working...' : 'Create & send'}
                 </button>
               </div>
-            </div>
-          </div>
+          </QuoteModal>
         ) : null}
 
         {sendOpen ? (
-          <div className={`${styles.modalOverlay} ${styles.sendModalOverlay}`}>
-            <div className={`${styles.modal} ${styles.modalWide} ${styles.sendModal}`}>
+          <QuoteModal
+            label={sendMode === 'send' ? 'Send quote' : 'Resend quote'}
+            onClose={closeSendModal}
+            panelClassName={`${styles.modal} ${styles.modalWide} ${styles.sendModal}`}
+            maxWidthPx={1120}
+          >
               <div className={styles.sendModalTop}>
                 <div className={styles.modalHeader}>
                   <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
@@ -2295,9 +2301,9 @@ export default function QuotesTab({
                   {sendMode === 'send' && (draftDirty || draftSyncPending) ? (
                     <div className={styles.metaWarning}>This review is based on your current local draft changes.</div>
                   ) : null}
-                  {sendReviewPdfLoading ? <p className={legacy.note}>Loading quote PDF...</p> : null}
+                  {sendReviewPdfLoading ? <p className={styles.note}>Loading quote PDF...</p> : null}
                   {sendReviewPdfError ? <div className={styles.errorText}>{sendReviewPdfError}</div> : null}
-                  {!sendReviewPdfLoading && !sendReviewPdfError && !sendReviewPdfData ? <p className={legacy.note}>No PDF preview available.</p> : null}
+                  {!sendReviewPdfLoading && !sendReviewPdfError && !sendReviewPdfData ? <p className={styles.note}>No PDF preview available.</p> : null}
                   {!sendReviewPdfError && sendReviewPdfData ? (
                     <div className={styles.quotePreviewFrameWrap}>
                       <QuotePdfInlinePreview data={sendReviewPdfData} />
@@ -2308,33 +2314,31 @@ export default function QuotesTab({
               <div className={`${styles.modalFooter} ${styles.sendModalFooter}`}>
                 <button
                   type="button"
-                  className={legacy.buttonSecondary}
+                  className={styles.secondaryButton}
                   onClick={() => closeSendModal()}
                 >
                   Cancel
                 </button>
                 {sendEditorMode === 'compose' ? (
-                  <button type="button" className={legacy.button} onClick={() => setSendEditorMode('review')}>
+                  <button type="button" className={styles.primaryButton} onClick={() => setSendEditorMode('review')}>
                     Continue to review
                   </button>
                 ) : (
                   <>
-                    <button type="button" className={legacy.buttonSecondary} onClick={() => setSendEditorMode('compose')}>
+                    <button type="button" className={styles.secondaryButton} onClick={() => setSendEditorMode('compose')}>
                       Back to edit
                     </button>
-                    <button type="button" className={legacy.button} onClick={handleSend} disabled={sendBusy}>
+                    <button type="button" className={styles.primaryButton} onClick={handleSend} disabled={sendBusy}>
                       {sendBusy ? 'Sending...' : sendMode === 'send' ? 'Send quote' : 'Resend quote'}
                     </button>
                   </>
                 )}
               </div>
-            </div>
-          </div>
+          </QuoteModal>
         ) : null}
 
         {expiredPromptOpen ? (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
+          <QuoteModal label="Quote expired" onClose={() => setExpiredPromptOpen(false)}>
               <div className={styles.modalHeader}>
                 <h4 className={styles.cardTitle}>Quote expired</h4>
                 <button type="button" className={styles.modalClose} onClick={() => setExpiredPromptOpen(false)}>
@@ -2343,20 +2347,18 @@ export default function QuotesTab({
               </div>
               <p className={styles.modalBodyText}>This quote expired on {detail.expiresAt ?? '—'}. How would you like to proceed?</p>
               <div className={styles.modalFooter}>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => handleExpiredResend('resend')}>
+                <button type="button" className={styles.secondaryButton} onClick={() => handleExpiredResend('resend')}>
                   Resend as-is
                 </button>
-                <button type="button" className={legacy.button} onClick={() => handleExpiredResend('revise')}>
+                <button type="button" className={styles.primaryButton} onClick={() => handleExpiredResend('revise')}>
                   Revise to extend expiry
                 </button>
               </div>
-            </div>
-          </div>
+          </QuoteModal>
         ) : null}
 
         {deleteConfirmOpen ? (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
+          <QuoteModal label="Delete draft quote" onClose={() => setDeleteConfirmOpen(false)}>
               <div className={styles.modalHeader}>
                 <h4 className={styles.cardTitle}>Delete draft?</h4>
                 <button type="button" className={styles.modalClose} onClick={() => setDeleteConfirmOpen(false)}>
@@ -2365,39 +2367,45 @@ export default function QuotesTab({
               </div>
               <p className={styles.modalBodyText}>This will remove the draft quote version. Sent quotes cannot be deleted.</p>
               <div className={styles.modalFooter}>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => setDeleteConfirmOpen(false)}>
+                <button type="button" className={styles.secondaryButton} onClick={() => setDeleteConfirmOpen(false)}>
                   Cancel
                 </button>
-                <button type="button" className={legacy.buttonDanger} onClick={handleDeleteDraft}>
+                <button type="button" className={styles.dangerButton} onClick={handleDeleteDraft}>
                   Delete draft
                 </button>
               </div>
-            </div>
-          </div>
+          </QuoteModal>
         ) : null}
       </div>
     );
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} role="region" aria-label="Quotes" data-quotes-view="list">
       <div className={styles.header}>
         <div>
           <h3 className={styles.title}>Quotes</h3>
           <p className={styles.subtitle}>Versioned quotes for this project.</p>
         </div>
-        <button type="button" className={legacy.button} onClick={openCreateModal}>
+        <button type="button" className={styles.primaryButton} onClick={openCreateModal}>
           Create quote
         </button>
       </div>
 
-      {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
-      {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
+      {quotesLoading ? <p className={styles.note}>Loading quotes…</p> : null}
+      {quotesError ? (
+        <DataStatePanel
+          state={quotes.length ? 'stale' : 'error'}
+          title={quotes.length ? 'Showing saved quote versions' : 'Could not load quote versions'}
+          description={quotesError}
+          onRetry={() => void quotesQuery.refetch()}
+        />
+      ) : null}
 
       {!quotesLoading && !quotes.length ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No quotes yet.</p>
-          <button type="button" className={legacy.button} onClick={openCreateModal}>
+          <button type="button" className={styles.primaryButton} onClick={openCreateModal}>
             Create quote from design
           </button>
         </div>
@@ -2425,10 +2433,18 @@ export default function QuotesTab({
                   <tr
                     key={quote.id}
                     className={styles.rowClickable}
+                    tabIndex={0}
+                    aria-label={`Open ${quote.quoteRef} version ${quote.versionNumber}`}
                     onClick={() => {
                       if (!isLocalQuoteId(quote.id)) {
                         prefetchQuoteDetail(quote.id);
                       }
+                      selectQuote(quote.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      if (!isLocalQuoteId(quote.id)) prefetchQuoteDetail(quote.id);
                       selectQuote(quote.id);
                     }}
                     onMouseEnter={() => prefetchQuoteDetail(quote.id)}
@@ -2447,7 +2463,7 @@ export default function QuotesTab({
                       )}
                     </td>
                     <td>
-                      <span className={`${styles.statusPill} ${statusClass(quote.status)}`}>{statusLabel(quote.status)}</span>
+                      <QuoteStatusBadge status={quote.status} />
                     </td>
                     <td>{formatMoneyFromCents(quote.totals.totalIncGstCents)}</td>
                     <td>
@@ -2470,8 +2486,7 @@ export default function QuotesTab({
       ) : null}
 
       {createOpen ? (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
+        <QuoteModal label="Create quote" onClose={() => setCreateOpen(false)}>
             <div className={styles.modalHeader}>
               <h4 className={styles.cardTitle}>Create quote</h4>
               <button type="button" className={styles.modalClose} onClick={() => setCreateOpen(false)}>
@@ -2495,15 +2510,14 @@ export default function QuotesTab({
               </select>
             </div>
             <div className={styles.modalFooter}>
-              <button type="button" className={legacy.buttonSecondary} onClick={() => setCreateOpen(false)}>
+              <button type="button" className={styles.secondaryButton} onClick={() => setCreateOpen(false)}>
                 Cancel
               </button>
-              <button type="button" className={legacy.button} onClick={handleCreateQuote}>
+              <button type="button" className={styles.primaryButton} onClick={handleCreateQuote}>
                 Create quote
               </button>
             </div>
-          </div>
-        </div>
+        </QuoteModal>
       ) : null}
     </div>
   );

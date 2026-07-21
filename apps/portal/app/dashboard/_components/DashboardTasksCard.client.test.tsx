@@ -51,11 +51,7 @@ describe('DashboardTasksCard', () => {
     });
 
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/dashboard/tasks/task_1', expect.objectContaining({ method: 'PATCH' }));
-    expect(
-      Array.from(rendered.container.querySelectorAll('li')).some((item) =>
-        String(item.className).includes('taskBubbleDone'),
-      ),
-    ).toBe(true);
+    expect(rendered.container.querySelector('li[data-complete="true"]')).not.toBeNull();
 
     rendered.unmount();
   });

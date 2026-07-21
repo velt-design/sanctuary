@@ -1,14 +1,24 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { PIPELINE_STAGE_LABELS, normalizePipelineStageKey, stageKeyToStatus } from '@/lib/projects/pipelineDefinition';
 import { STAGE_COMPLETE_MODAL, type StageCompleteAction } from '@/lib/projects/stageCompleteModal';
 import { consumeStageCompleteIntent, setStageCompleteIntent } from '@/lib/projects/stageCompleteIntent';
-import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
-import legacy from '@/app/staff/projects/projects.module.css';
+import { PipelineModal } from '@/components/ui/PipelineModal';
+import {
+  AlertBanner,
+  Badge,
+  Button,
+  ButtonLink,
+  EmptyState,
+  Input,
+  Radio,
+  TaskList,
+  TaskRow,
+  TaskScheduleFeedback,
+} from '@/components/ui/foundation';
 import { apiJson } from '@/lib/repo/apiClient';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -20,6 +30,7 @@ import {
   withManualTaskCompletion,
   type ProjectTaskItem,
 } from './projectTaskMutationState';
+import styles from './ProjectTasksSidebar.module.css';
 
 type TaskItem = ProjectTaskItem;
 
@@ -394,116 +405,75 @@ export default function ProjectTasksSidebarClient({
 
   return (
     <>
-      <section className={legacy.section} aria-label="Tasks">
-        <div className={legacy.sectionHeader}>
-          <h2 className={legacy.sectionTitle}>Tasks</h2>
-          <span className={legacy.muted}>{openTasks.length} open</span>
+      <div className={styles.tasks} aria-label="Tasks" data-ui-foundation-consumer="project-tasks">
+        <div className={styles.summary}>
+          <span>Stage: <strong>{stageLabel}</strong></span>
+          <Badge tone={openTasks.length ? 'warning' : 'success'}>{openTasks.length} open</Badge>
         </div>
-        <div className={legacy.sectionBody}>
-          <p className={legacy.muted}>Stage: {stageLabel}</p>
           {Object.entries(taskSaveFailures).map(([taskKey, failure]) => {
             const taskLabel = items.find((item) => item.key === taskKey)?.label ?? 'task';
             return (
-              <div key={taskKey} className={legacy.actions} role="status">
-                <p className={legacy.error}>{failure.message}</p>
-                <button
+              <div key={taskKey} className={styles.feedbackRow}>
+                <TaskScheduleFeedback state="retry">{failure.message}</TaskScheduleFeedback>
+                <Button
                   type="button"
-                  className={legacy.buttonSecondary}
+                  variant="secondary"
+                  size="small"
                   disabled={pendingTaskKeys.has(taskKey)}
                   aria-label={`Retry ${taskLabel}`}
                   onClick={() => void toggleManualTask(taskKey, failure.completed)}
                 >
                   Retry
-                </button>
+                </Button>
               </div>
             );
           })}
-          {taskSyncLabel ? <p className={legacy.note}>{taskSyncLabel}</p> : null}
+          {taskSyncLabel ? <TaskScheduleFeedback state="saving">{taskSyncLabel}</TaskScheduleFeedback> : null}
 
           {visibleTasks.length ? (
-            <div className={legacy.taskList}>
+            <TaskList>
               {visibleTasks.map((task) => {
                 const isManual = task.kind === 'manual';
                 const isDone = isCompleted(task);
                 const isLocked = Boolean(task.isLocked) && !isDone;
                 const isSavingTask = pendingTaskKeys.has(task.key);
-                const isInteractive = isManual && !isLocked && !isSavingTask;
                 const toggleNext = () => toggleManualTask(task.key, !(task.isManualDone ?? task.isDone));
-                const handleRowClick = (event: MouseEvent<HTMLDivElement>) => {
-                  const target = event.target as HTMLElement | null;
-                  if (target?.closest('input,button,a')) return;
-                  if (!isInteractive) return;
-                  toggleNext();
-                };
-                const rowStyle = isLocked ? { opacity: 0.6 } : undefined;
                 return (
-                  <div
+                  <TaskRow
                     key={task.key}
-                    className={legacy.taskRow}
-                    style={rowStyle}
-                    aria-disabled={isLocked || isSavingTask || undefined}
-                    role={isInteractive ? 'button' : undefined}
-                    tabIndex={isInteractive ? 0 : undefined}
-                    onClick={isInteractive ? handleRowClick : undefined}
-                    onKeyDown={
-                      isInteractive
-                        ? (event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              toggleNext();
-                            }
-                          }
-                        : undefined
-                    }
-                  >
-                    {isManual && !isLocked ? (
-                      <label className={`${legacy.checkboxRow} ${legacy.taskLabel}`}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(task.isManualDone ?? task.isDone)}
-                          disabled={isSavingTask}
-                          onChange={(event) => {
-                            event.stopPropagation();
-                            toggleNext();
-                          }}
-                          onClick={(event) => event.stopPropagation()}
-                        />
-                        <span className={legacy.checkboxText}>{task.label}</span>
-                      </label>
-                    ) : (
-                      <span className={legacy.taskLabel}>{task.label}</span>
-                    )}
-
-                    <div className={legacy.rowActions}>
-                      {isSavingTask ? (
-                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>Saving…</span>
+                    checked={isDone}
+                    showControl={isManual && !isLocked}
+                    disabled={!isManual || isLocked || isSavingTask}
+                    label={task.label}
+                    description={isLocked ? 'Complete the earlier stage requirement first.' : undefined}
+                    onChange={isManual && !isLocked && !isSavingTask ? () => toggleNext() : undefined}
+                    status={isSavingTask ? (
+                        <Badge tone="info">Saving…</Badge>
                       ) : isDone ? (
-                        <span className={`${legacy.statusPill} ${legacy.statusPillPaid}`}>Done</span>
+                        <Badge tone="success">Done</Badge>
                       ) : isLocked ? (
-                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>Pending</span>
+                        <Badge tone="warning">Pending</Badge>
                       ) : isManual ? (
-                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>To do</span>
+                        <Badge tone="neutral">To do</Badge>
                       ) : task.cta ? (
-                        <Link
-                          className={legacy.button}
+                        <ButtonLink
+                          size="small"
                           href={task.cta.href}
                           onClick={() => setStageCompleteIntent(projectId, stageKey)}
                         >
                           {task.cta.label}
-                        </Link>
+                        </ButtonLink>
                       ) : (
-                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>Pending</span>
+                        <Badge tone="warning">Pending</Badge>
                       )}
-                    </div>
-                  </div>
+                  />
                 );
               })}
-            </div>
+            </TaskList>
           ) : (
-            <p className={legacy.note}>No tasks for this stage.</p>
+            <EmptyState compact title="No tasks for this stage" description="The next stage action is available when the workflow is ready." />
           )}
-        </div>
-      </section>
+      </div>
       {stageModalOpen ? (
         <PipelineModal
           open={stageModalOpen}
@@ -520,28 +490,30 @@ export default function ProjectTasksSidebarClient({
           actions={
             pendingAction && (pendingAction.kind === 'call_later' || pendingAction.kind === 'set_reminder') ? (
               <>
-                <button
+                <Button
                   type="button"
-                  className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                  fullWidth
+                  loading={stageModalBusy}
                   onClick={savePendingAction}
                   disabled={!pendingDate || stageModalBusy}
                 >
-                  {stageModalBusy ? 'Saving…' : 'Save reminder'}
-                </button>
-                <button
+                  Save reminder
+                </Button>
+                <Button
                   type="button"
-                  className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                  variant="tertiary"
+                  fullWidth
                   onClick={() => setPendingAction(null)}
                   disabled={stageModalBusy}
                 >
                   Cancel
-                </button>
+                </Button>
               </>
             ) : hasStageActions ? (
               isTierStep ? (
-                <button
+                <Button
                   type="button"
-                  className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                  fullWidth
                   onClick={() => {
                     if (!siteVisitAction) return;
                     runStageAction(siteVisitAction);
@@ -549,142 +521,136 @@ export default function ProjectTasksSidebarClient({
                   disabled={!siteVisitTier || stageModalBusy || !siteVisitAction}
                 >
                   Confirm
-                </button>
+                </Button>
               ) : (
                 <>
                   {primaryAction ? (
-                    <button
+                    <Button
                       type="button"
-                      className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                      fullWidth
+                      loading={stageModalBusy}
                       onClick={() => runStageAction(primaryAction)}
                       disabled={stageModalBusy}
                     >
                       {primaryAction.label}
-                    </button>
+                    </Button>
                   ) : null}
                   {secondaryActions.map((action) => {
                     const key =
                       'toStage' in action ? `${action.kind}:${action.toStage}` : `${action.kind}:${action.label}`;
                     return (
-                      <button
+                      <Button
                         key={key}
                         type="button"
-                        className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                        variant="secondary"
+                        fullWidth
                         onClick={() => runStageAction(action)}
                         disabled={stageModalBusy}
                       >
                         {action.label}
-                      </button>
+                      </Button>
                     );
                   })}
                   {archiveAction ? (
                     confirmArchive ? (
-                      <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                        <div className="text-sm font-medium text-neutral-900">Archive this lead?</div>
-                        <div className="mt-1 text-sm text-neutral-600">
+                      <div className={styles.archiveConfirmation}>
+                        <AlertBanner tone="blocking" title="Archive this lead?">
                           This will move it out of active projects.
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <button
+                        </AlertBanner>
+                        <div className={styles.modalActions}>
+                          <Button
                             type="button"
-                            className="h-10 flex-1 rounded-lg border border-neutral-200 bg-white text-sm font-medium hover:bg-neutral-100"
+                            variant="tertiary"
+                            fullWidth
                             onClick={() => setConfirmArchive(false)}
                             disabled={stageModalBusy}
                           >
                             Cancel
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
-                            className="h-10 flex-1 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
+                            variant="destructive"
+                            fullWidth
                             onClick={() => runStageAction(archiveAction)}
                             disabled={stageModalBusy}
                           >
                             Archive
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ) : (
-                      <button
+                      <Button
                         type="button"
-                        className={PIPELINE_MODAL_ACTION_CLASSES.danger}
+                        variant="destructive"
+                        fullWidth
                         onClick={() => setConfirmArchive(true)}
                         disabled={stageModalBusy}
                       >
                         {archiveAction.label}
-                      </button>
+                      </Button>
                     )
                   ) : null}
                 </>
               )
             ) : (
-              <button
+              <Button
                 type="button"
-                className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                variant="tertiary"
+                fullWidth
                 onClick={() => setStageModalOpen(false)}
                 disabled={stageModalBusy}
               >
                 Close
-              </button>
+              </Button>
             )
           }
         >
-          {stageModalError ? <p className="text-sm text-red-600">{stageModalError}</p> : null}
-          {hasSiteVisitAction && isTierStep ? (
-            <div className={legacy.stageModalSection}>
-              <div className={legacy.stageModalLabel}>Site visit priority (required)</div>
-              <div className={legacy.stageModalHelper}>Budget + timeline only.</div>
-              <div className={legacy.stageModalRadioGroup}>
-                <label className={legacy.stageModalRadio}>
-                  <input
-                    type="radio"
+          <div className={styles.modalContent}>
+            {stageModalError ? (
+              <AlertBanner tone="error" title="Stage action not saved">
+                {stageModalError}
+              </AlertBanner>
+            ) : null}
+            {hasSiteVisitAction && isTierStep ? (
+              <fieldset className={styles.tierFieldset}>
+                <legend>Site visit priority (required)</legend>
+                <p className={styles.tierHelper}>Budget and timeline only.</p>
+                <Radio
                     name="siteVisitTier"
                     checked={siteVisitTier === 1}
+                    label="Tier 1 — Qualified + urgent"
+                    description="Budget: Yes · Timeline: ASAP / 0–8 weeks · Site visit in 2–3 days"
                     onChange={() => {
                       setSiteVisitTier(1);
                       setSiteVisitTierError(null);
                     }}
                   />
-                  <div>
-                    <div className={legacy.stageModalRadioTitle}>Tier 1 — Qualified + urgent</div>
-                    <div className={legacy.stageModalRadioSub}>
-                      Budget: Yes · Timeline: ASAP / 0–8 weeks · Site visit in 2–3 days
-                    </div>
-                  </div>
-                </label>
-                <label className={legacy.stageModalRadio}>
-                  <input
-                    type="radio"
+                <Radio
                     name="siteVisitTier"
                     checked={siteVisitTier === 2}
+                    label="Tier 2 — Qualified + near-term"
+                    description="Budget: Yes · Timeline: 2–6 months · Site visit in 2–3 weeks"
                     onChange={() => {
                       setSiteVisitTier(2);
                       setSiteVisitTierError(null);
                     }}
                   />
-                  <div>
-                    <div className={legacy.stageModalRadioTitle}>Tier 2 — Qualified + near-term</div>
-                    <div className={legacy.stageModalRadioSub}>
-                      Budget: Yes · Timeline: 2–6 months · Site visit in 2–3 weeks
-                    </div>
-                  </div>
-                </label>
-              </div>
-              {siteVisitTierError ? <div className={legacy.stageModalError}>{siteVisitTierError}</div> : null}
-            </div>
-          ) : null}
-          {pendingAction && (pendingAction.kind === 'call_later' || pendingAction.kind === 'set_reminder') ? (
-            <label className="mt-4 block text-sm font-medium text-neutral-900">
-              <span className="block text-xs uppercase tracking-[0.08em] text-neutral-500">
-                {pendingAction.kind === 'call_later' ? 'Call later date' : 'Reminder date'}
-              </span>
-              <input
-                className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                {siteVisitTierError ? (
+                  <AlertBanner tone="error" title="Select a priority">
+                    {siteVisitTierError}
+                  </AlertBanner>
+                ) : null}
+              </fieldset>
+            ) : null}
+            {pendingAction && (pendingAction.kind === 'call_later' || pendingAction.kind === 'set_reminder') ? (
+              <Input
                 type="date"
+                label={pendingAction.kind === 'call_later' ? 'Call later date' : 'Reminder date'}
                 value={pendingDate}
                 onChange={(event) => setPendingDate(event.target.value)}
               />
-            </label>
-          ) : null}
+            ) : null}
+          </div>
         </PipelineModal>
       ) : null}
     </>

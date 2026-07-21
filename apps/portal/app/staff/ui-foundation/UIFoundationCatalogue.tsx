@@ -5,6 +5,7 @@ import type { PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { FoundationComponentsSection } from './FoundationComponentsSection';
 import { FoundationPatternsSection } from './FoundationPatternsSection';
 import { FoundationTokensSection } from './FoundationTokensSection';
+import { PageLayout } from '@/components/ui/foundation';
 import styles from './ui-foundation.module.css';
 
 export default function UIFoundationCatalogue() {
@@ -12,7 +13,7 @@ export default function UIFoundationCatalogue() {
   const [page, setPage] = useState(1);
 
   return (
-    <main className={styles.page} data-ui-foundation="true" data-ui-density="standard">
+    <PageLayout width="full" className={styles.page} data-ui-foundation="true">
       <FoundationTokensSection currentStage={currentStage} onStageChange={setCurrentStage} />
       <FoundationComponentsSection currentStage={currentStage} />
       <FoundationPatternsSection page={page} onPageChange={setPage} />
@@ -23,6 +24,6 @@ export default function UIFoundationCatalogue() {
         <span>Radius: 0 / 2 / 4 / 999</span>
         <span>Spacing: 4px base</span>
       </footer>
-    </main>
+    </PageLayout>
   );
 }

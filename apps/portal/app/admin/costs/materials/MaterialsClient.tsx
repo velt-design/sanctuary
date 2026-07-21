@@ -126,7 +126,7 @@ export default function MaterialsClient({
   };
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-foundation-consumer="admin-costs">
       <div className={styles.card}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>Materials</h1>

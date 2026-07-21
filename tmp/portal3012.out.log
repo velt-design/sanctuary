@@ -1,0 +1,44 @@
+
+> sanctuary-portal@0.1.0 dev:playwright
+> next dev -p 3012
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3012
+- Network:       http://10.5.0.2:3012
+- Environments: .env.local
+✓ Ready in 342ms
+Creating turbopack project {
+  dir: 'C:\\Users\\Jorda\\OneDrive\\Documents\\GitHub\\sanctuary\\apps\\portal',
+  testMode: true
+}
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/playwright-diagnostic/types/**/*.ts'
+  	- include was updated to add '.next/playwright-diagnostic/dev/types/**/*.ts'
+
+- Experiments (use with caution):
+  ✓ externalDir
+
+ GET /staff/projects/running-jobs 200 in 4.8s (next.js: 1606ms, proxy.ts: 2.1s, application-code: 1109ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 963ms (next.js: 179ms, application-code: 784ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 1241ms (next.js: 189ms, application-code: 1052ms)
+ GET /api/staff/v1/running-jobs 500 in 2.3s (next.js: 157ms, application-code: 2.2s)
+ GET /api/staff/v1/running-jobs 500 in 1633ms (next.js: 19ms, application-code: 1614ms)
+ GET /staff/projects/running-jobs 200 in 1861ms (next.js: 29ms, proxy.ts: 874ms, application-code: 958ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 651ms (next.js: 17ms, application-code: 634ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 652ms (next.js: 20ms, application-code: 632ms)
+ GET /api/staff/v1/running-jobs 500 in 1721ms (next.js: 23ms, application-code: 1698ms)
+ GET /api/staff/v1/running-jobs 500 in 1560ms (next.js: 2ms, application-code: 1558ms)
+ GET /staff/projects/running-jobs 200 in 2.7s (next.js: 31ms, proxy.ts: 1713ms, application-code: 921ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 748ms (next.js: 16ms, application-code: 732ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 749ms (next.js: 20ms, application-code: 729ms)
+ GET /api/staff/v1/running-jobs 500 in 1922ms (next.js: 21ms, application-code: 1901ms)
+ GET /api/staff/v1/running-jobs 500 in 1663ms (next.js: 2ms, application-code: 1661ms)
+ GET /staff/projects/running-jobs 200 in 1562ms (next.js: 32ms, proxy.ts: 814ms, application-code: 716ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 584ms (next.js: 16ms, application-code: 568ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 610ms (next.js: 20ms, application-code: 590ms)
+ GET /api/staff/v1/running-jobs 500 in 1607ms (next.js: 21ms, application-code: 1586ms)
+ GET /api/staff/v1/running-jobs 500 in 1557ms (next.js: 4ms, application-code: 1553ms)
+[?25h

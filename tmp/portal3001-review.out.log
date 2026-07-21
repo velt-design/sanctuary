@@ -1,0 +1,472 @@
+
+> sanctuary-portal@0.1.0 dev
+> next dev -p 3001 --hostname 127.0.0.1 --port 3001
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+- Environments: .env.local
+✓ Ready in 310ms
+Creating turbopack project {
+  dir: 'C:\\Users\\Jorda\\OneDrive\\Documents\\GitHub\\sanctuary\\apps\\portal',
+  testMode: true
+}
+- Experiments (use with caution):
+  ✓ externalDir
+
+ GET /staff/ui-foundation 200 in 4.3s (next.js: 239ms, proxy.ts: 2.6s, application-code: 1497ms)
+ GET /dashboard 200 in 4.3s (next.js: 82ms, proxy.ts: 2.6s, application-code: 1658ms)
+ POST /api/staff/v1/performance/web-vitals 503 in 3.0s (next.js: 44ms, application-code: 2.9s)
+ GET /api/dashboard?queue=today 200 in 3.2s (next.js: 18ms, application-code: 3.2s)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 5.9s (next.js: 40ms, application-code: 5.8s)
+ GET /staff/calculator?projectId=proj_1702a954-5322-4cfa-ab92-50ea1c4d8799&editEstimateId=est_d00c0186-400d-437d-a046-a83ddd746ad6 200 in 2.2s (next.js: 20ms, proxy.ts: 1316ms, application-code: 883ms)
+ POST /api/staff/costing/v1/job 200 in 1295ms (next.js: 28ms, application-code: 1267ms)
+ GET /api/projects/proj_1702a954-5322-4cfa-ab92-50ea1c4d8799/estimates 200 in 2.1s (next.js: 543ms, application-code: 1509ms)
+ GET /api/estimates/est_d00c0186-400d-437d-a046-a83ddd746ad6 200 in 2.3s (next.js: 516ms, application-code: 1791ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 830.7,
+  recomputeMs: 1.5,
+  driftMs: 0.2,
+  formattingMs: 0.1,
+  projectEstimateMs: 607,
+  responseMappingMs: 0,
+  totalMs: 1440.3,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 3.0s (next.js: 32ms, proxy.ts: 1346ms, application-code: 1573ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: '0ec40ade-0e66-4441-b072-d3c35002af64',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:26:47.718Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:26:47.149Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 424ms (next.js: 25ms, application-code: 399ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 394.2,
+  recomputeMs: 1.1,
+  driftMs: 0,
+  formattingMs: 0,
+  projectEstimateMs: 444.7,
+  responseMappingMs: 0,
+  totalMs: 840.4,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 1282ms (next.js: 3ms, proxy.ts: 413ms, application-code: 866ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: '0b911e3f-61b6-4440-a273-e49928d21b44',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:26:49.501Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:26:49.047Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 418ms (next.js: 2ms, application-code: 416ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 405.2,
+  recomputeMs: 0.9000000000000001,
+  driftMs: 0,
+  formattingMs: 0,
+  projectEstimateMs: 413.1,
+  responseMappingMs: 0,
+  totalMs: 819.5,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 1243ms (next.js: 3ms, proxy.ts: 397ms, application-code: 844ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: '3eda6060-9f09-4cb0-b5e7-96ef414158ef',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:26:51.219Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:26:50.769Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 431ms (next.js: 1727µs, application-code: 429ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 419.6,
+  recomputeMs: 0.9000000000000001,
+  driftMs: 0,
+  formattingMs: 0,
+  projectEstimateMs: 483.6,
+  responseMappingMs: 0,
+  totalMs: 904.4,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 1349ms (next.js: 3ms, proxy.ts: 418ms, application-code: 928ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: '94b62fa8-197a-48a7-b11f-22d6946fa3e1',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:26:52.981Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:26:52.577Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 386ms (next.js: 1843µs, application-code: 384ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 422,
+  recomputeMs: 0.8,
+  driftMs: 0,
+  formattingMs: 0,
+  projectEstimateMs: 447.8,
+  responseMappingMs: 0,
+  totalMs: 870.8,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 1284ms (next.js: 4ms, proxy.ts: 384ms, application-code: 896ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: 'c37f2d66-2c9a-4ae7-835d-434d6ca179e8',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:26:54.724Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:26:54.322Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 383ms (next.js: 1828µs, application-code: 381ms)
+ GET /staff/schedule?view=gantt 200 in 1642ms (next.js: 3ms, proxy.ts: 371ms, application-code: 1268ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: '14ecf6e0-db71-4514-9640-948948e84d97',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'gantt',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:26:56.749Z',
+  counts: { installers: 5, projects: 42, scheduleItems: 7, unscheduledJobs: 0 },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:26:56.330Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 374ms (next.js: 2000µs, application-code: 372ms)
+ GET /staff/schedule?view=site-visits 200 in 1014ms (next.js: 3ms, proxy.ts: 376ms, application-code: 634ms)
+ GET /api/staff/v1/site-visits?from=2026-07-19T20%3A00%3A00.000Z&to=2026-07-26T10%3A00%3A00.000Z 200 in 308ms (next.js: 22ms, application-code: 285ms)
+ GET /staff/schedule?view=site-visits 200 in 1011ms (next.js: 3ms, proxy.ts: 368ms, application-code: 640ms)
+ GET /api/staff/v1/site-visits?from=2026-07-19T20%3A00%3A00.000Z&to=2026-07-26T10%3A00%3A00.000Z 200 in 606ms (next.js: 1777µs, application-code: 604ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 436.4,
+  recomputeMs: 0.9000000000000001,
+  driftMs: 0,
+  formattingMs: 0,
+  projectEstimateMs: 430.6,
+  responseMappingMs: 0,
+  totalMs: 868.2,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 1332ms (next.js: 3ms, proxy.ts: 366ms, application-code: 963ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: 'c8c20778-5c4d-495c-b5cb-74c92e2f5c80',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:27:03.270Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:27:02.719Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 374ms (next.js: 1763µs, application-code: 372ms)
+[schedule] {
+  event: 'schedule.board.load',
+  requestId: null,
+  route: '/api/staff/v1/schedule/board',
+  method: 'GET',
+  contextMs: 398.9,
+  recomputeMs: 0.8,
+  driftMs: 0,
+  formattingMs: 0,
+  projectEstimateMs: 1060.7,
+  responseMappingMs: 0,
+  totalMs: 1460.7,
+  crewCount: 5,
+  scheduleItemCount: 43,
+  scheduledJobCount: 43,
+  downtimeCount: 0,
+  unscheduledJobCount: 6,
+  projectIndexCount: 49,
+  scheduledEstimateIdCount: 43,
+  scheduledProjectCount: 43,
+  readyProjectRowCount: 8,
+  scheduledProjectRowCount: 43,
+  projectCount: 50,
+  estimateCount: 66,
+  archivedProjectFilterRetried: false
+}
+ GET /staff/schedule 200 in 1863ms (next.js: 3ms, proxy.ts: 374ms, application-code: 1486ms)
+[portal] {
+  event: 'schedule.client.schedule_hydrated',
+  requestId: 'd605979b-4e60-4ae8-ace3-9595f321e027',
+  route: '/api/staff/v1/schedule/telemetry',
+  method: 'POST',
+  view: 'board',
+  reason: undefined,
+  clientRequestId: null,
+  clientCreatedAt: '2026-07-21T09:27:05.354Z',
+  counts: {
+    installers: 5,
+    projects: 49,
+    scheduleItems: 43,
+    unscheduledJobs: 6
+  },
+  meta: { source: 'server_seed', generatedAt: '2026-07-21T09:27:04.928Z' }
+}
+ POST /api/staff/v1/schedule/telemetry 200 in 406ms (next.js: 1748µs, application-code: 404ms)
+ GET /staff/projects 200 in 1363ms (next.js: 19ms, proxy.ts: 727ms, application-code: 618ms)
+ GET /api/staff/v1/projects/index?archive=active 200 in 1876ms (next.js: 20ms, application-code: 1856ms)
+ GET /staff/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a 200 in 1326ms (next.js: 327ms, proxy.ts: 368ms, application-code: 631ms)
+ GET /api/staff/v1/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/summary 200 in 1162ms (next.js: 524ms, application-code: 638ms)
+ GET /api/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/snapshot 200 in 1401ms (next.js: 560ms, application-code: 841ms)
+ GET /api/staff/v1/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/command-centre 200 in 1610ms (next.js: 534ms, application-code: 1077ms)
+ GET /staff/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a 200 in 1130ms (next.js: 9ms, proxy.ts: 428ms, application-code: 694ms)
+ GET /api/staff/v1/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/summary 200 in 605ms (next.js: 5ms, application-code: 600ms)
+ GET /api/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/snapshot 200 in 658ms (next.js: 12ms, application-code: 646ms)
+ GET /api/staff/v1/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/command-centre 200 in 231ms (next.js: 5ms, application-code: 226ms)
+ GET /staff/contacts 200 in 2.3s (next.js: 21ms, proxy.ts: 1388ms, application-code: 933ms)
+ GET /api/staff/v1/contacts/index 200 in 6.8s (next.js: 19ms, application-code: 6.8s)
+ GET /staff/contacts/new 200 in 1392ms (next.js: 22ms, proxy.ts: 587ms, application-code: 783ms)
+ GET /staff/contacts 200 in 1132ms (next.js: 4ms, proxy.ts: 464ms, application-code: 664ms)
+ GET /api/staff/v1/contacts/index 200 in 2.5s (next.js: 1614µs, application-code: 2.5s)
+ GET /staff/contacts/new 200 in 1255ms (next.js: 3ms, proxy.ts: 499ms, application-code: 752ms)
+ GET /staff/contacts 200 in 1099ms (next.js: 3ms, proxy.ts: 388ms, application-code: 707ms)
+ GET /api/staff/v1/contacts/index 200 in 2.2s (next.js: 2ms, application-code: 2.2s)
+ GET /staff/contacts/new 200 in 1038ms (next.js: 3ms, proxy.ts: 389ms, application-code: 646ms)
+ GET /staff/contacts 200 in 1029ms (next.js: 3ms, proxy.ts: 370ms, application-code: 656ms)
+ GET /api/staff/v1/contacts/index 200 in 1909ms (next.js: 1954µs, application-code: 1907ms)
+ GET /staff/contacts/new 200 in 1078ms (next.js: 3ms, proxy.ts: 447ms, application-code: 628ms)
+ GET /staff/contacts 200 in 1055ms (next.js: 3ms, proxy.ts: 393ms, application-code: 659ms)
+ GET /api/staff/v1/contacts/index 200 in 1863ms (next.js: 3ms, application-code: 1861ms)
+ GET /staff/contacts/new 200 in 1078ms (next.js: 3ms, proxy.ts: 428ms, application-code: 646ms)
+ GET /staff/contacts 200 in 999ms (next.js: 3ms, proxy.ts: 378ms, application-code: 618ms)
+ GET /api/staff/v1/contacts/index 200 in 61ms (next.js: 1830µs, application-code: 59ms)
+ GET /staff/contacts/new 200 in 982ms (next.js: 3ms, proxy.ts: 375ms, application-code: 604ms)
+ GET /staff/contacts 200 in 2.0s (next.js: 3ms, proxy.ts: 1220ms, application-code: 799ms)
+ GET /api/staff/v1/contacts/index 200 in 1940ms (next.js: 1700µs, application-code: 1938ms)
+ GET /staff/contacts/ct_3d473ba7-7d16-49a0-9bdb-667e5e97e604 200 in 1485ms (next.js: 343ms, proxy.ts: 417ms, application-code: 724ms)
+ GET /staff/contacts/ct_3d473ba7-7d16-49a0-9bdb-667e5e97e604 200 in 1083ms (next.js: 8ms, proxy.ts: 395ms, application-code: 681ms)
+ GET /staff/contacts/ct_3d473ba7-7d16-49a0-9bdb-667e5e97e604 200 in 1015ms (next.js: 8ms, proxy.ts: 379ms, application-code: 628ms)
+ GET /staff/contacts/ct_3d473ba7-7d16-49a0-9bdb-667e5e97e604 200 in 1353ms (next.js: 8ms, proxy.ts: 393ms, application-code: 953ms)
+ GET /staff/contacts/ct_3d473ba7-7d16-49a0-9bdb-667e5e97e604 200 in 1015ms (next.js: 8ms, proxy.ts: 378ms, application-code: 630ms)
+ GET /staff/contacts/ct_3d473ba7-7d16-49a0-9bdb-667e5e97e604 200 in 1210ms (next.js: 7ms, proxy.ts: 498ms, application-code: 705ms)
+ GET /dashboard 200 in 1538ms (next.js: 3ms, proxy.ts: 875ms, application-code: 659ms)
+ GET /api/dashboard?queue=today 200 in 4.4s (next.js: 1940µs, application-code: 4.4s)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 5.5s (next.js: 6ms, application-code: 5.5s)
+ GET /dashboard 200 in 1026ms (next.js: 3ms, proxy.ts: 397ms, application-code: 626ms)
+ GET /api/dashboard?queue=today 200 in 622ms (next.js: 1874µs, application-code: 620ms)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 3.6s (next.js: 5ms, application-code: 3.6s)
+ GET /dashboard 200 in 1024ms (next.js: 3ms, proxy.ts: 399ms, application-code: 621ms)
+ GET /api/dashboard?queue=today 200 in 983ms (next.js: 1900µs, application-code: 981ms)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 3.2s (next.js: 5ms, application-code: 3.2s)
+ GET /dashboard 200 in 1272ms (next.js: 3ms, proxy.ts: 422ms, application-code: 847ms)
+ GET /api/dashboard?queue=today 200 in 691ms (next.js: 1813µs, application-code: 689ms)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 3.7s (next.js: 5ms, application-code: 3.7s)
+ GET /dashboard 200 in 1037ms (next.js: 3ms, proxy.ts: 390ms, application-code: 643ms)
+ GET /api/dashboard?queue=today 200 in 768ms (next.js: 1767µs, application-code: 766ms)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 3.2s (next.js: 5ms, application-code: 3.2s)
+ GET /dashboard 200 in 1013ms (next.js: 3ms, proxy.ts: 368ms, application-code: 642ms)
+ GET /api/dashboard?queue=today 200 in 645ms (next.js: 1955µs, application-code: 643ms)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 3.2s (next.js: 6ms, application-code: 3.2s)
+ GET /dashboard 200 in 1038ms (next.js: 3ms, proxy.ts: 406ms, application-code: 630ms)
+ GET /api/dashboard?queue=today 200 in 834ms (next.js: 1946µs, application-code: 832ms)
+ GET /api/staff/v1/dashboard/project-exceptions 200 in 3.8s (next.js: 5ms, application-code: 3.8s)
+ GET /login 200 in 60ms (next.js: 19ms, proxy.ts: 2ms, application-code: 39ms)
+ GET /access-status?state=lookup-failed&callbackUrl=%2Fdashboard 200 in 44ms (next.js: 15ms, proxy.ts: 2ms, application-code: 27ms)
+ GET /login 200 in 34ms (next.js: 3ms, proxy.ts: 1848µs, application-code: 30ms)
+ GET /access-status?state=lookup-failed&callbackUrl=%2Fdashboard 200 in 32ms (next.js: 2ms, proxy.ts: 2ms, application-code: 27ms)
+ GET /login 200 in 33ms (next.js: 3ms, proxy.ts: 2ms, application-code: 28ms)
+ GET /login?callbackUrl=%2Fstaff%2Fprojects 200 in 33ms (next.js: 2ms, proxy.ts: 1980µs, application-code: 29ms)
+ GET /staff/projects 200 in 2.0s (next.js: 3ms, proxy.ts: 1160ms, application-code: 877ms)
+ GET /api/staff/v1/projects/index?archive=active 200 in 2.6s (next.js: 1721µs, application-code: 2.6s)
+ GET /staff/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a?tab=quotes 200 in 1810ms (next.js: 9ms, proxy.ts: 1001ms, application-code: 800ms)
+ GET /api/staff/v1/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/summary 200 in 829ms (next.js: 6ms, application-code: 823ms)
+ GET /api/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/snapshot 200 in 1029ms (next.js: 14ms, application-code: 1015ms)
+ GET /api/staff/v1/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/job-packs 200 in 1307ms (next.js: 652ms, application-code: 655ms)
+ GET /api/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/estimates 200 in 1312ms (next.js: 5ms, application-code: 1307ms)
+ GET /api/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a/quotes 200 in 1408ms (next.js: 739ms, application-code: 669ms)
+ GET /staff/projects/proj_4d7f4d05-e49b-45ce-b3c8-aaf528ff228f?tab=quotes 200 in 1016ms (next.js: 7ms, proxy.ts: 378ms, application-code: 630ms)
+ GET /api/staff/v1/projects/proj_4d7f4d05-e49b-45ce-b3c8-aaf528ff228f/summary 200 in 629ms (next.js: 5ms, application-code: 624ms)
+ GET /api/projects/proj_4d7f4d05-e49b-45ce-b3c8-aaf528ff228f/snapshot 200 in 794ms (next.js: 12ms, application-code: 782ms)
+ GET /api/projects/proj_4d7f4d05-e49b-45ce-b3c8-aaf528ff228f/quotes 200 in 606ms (next.js: 24ms, application-code: 582ms)
+ GET /api/staff/v1/projects/proj_4d7f4d05-e49b-45ce-b3c8-aaf528ff228f/job-packs 200 in 907ms (next.js: 16ms, application-code: 891ms)
+ GET /api/projects/proj_4d7f4d05-e49b-45ce-b3c8-aaf528ff228f/estimates 200 in 1063ms (next.js: 6ms, application-code: 1057ms)
+ GET /staff/projects/proj_0a4049c6-0451-4852-8827-994ad35b4090?tab=quotes 200 in 1239ms (next.js: 7ms, proxy.ts: 606ms, application-code: 626ms)
+ GET /api/staff/v1/projects/proj_0a4049c6-0451-4852-8827-994ad35b4090/summary 200 in 704ms (next.js: 5ms, application-code: 699ms)
+ GET /api/projects/proj_0a4049c6-0451-4852-8827-994ad35b4090/snapshot 200 in 806ms (next.js: 11ms, application-code: 795ms)
+ GET /api/staff/v1/projects/proj_0a4049c6-0451-4852-8827-994ad35b4090/job-packs 200 in 573ms (next.js: 18ms, application-code: 555ms)
+ GET /api/projects/proj_0a4049c6-0451-4852-8827-994ad35b4090/quotes 200 in 1005ms (next.js: 5ms, application-code: 1000ms)
+ GET /api/projects/proj_0a4049c6-0451-4852-8827-994ad35b4090/estimates 200 in 1007ms (next.js: 12ms, application-code: 995ms)
+ GET /staff/projects/proj_d37c1e40-e563-4a0d-bd01-d0e384ea4a12?tab=quotes 200 in 1064ms (next.js: 8ms, proxy.ts: 420ms, application-code: 635ms)
+ GET /api/staff/v1/projects/proj_d37c1e40-e563-4a0d-bd01-d0e384ea4a12/summary 200 in 730ms (next.js: 5ms, application-code: 726ms)
+ GET /api/projects/proj_d37c1e40-e563-4a0d-bd01-d0e384ea4a12/snapshot 200 in 744ms (next.js: 12ms, application-code: 732ms)
+ GET /api/staff/v1/projects/proj_d37c1e40-e563-4a0d-bd01-d0e384ea4a12/job-packs 200 in 590ms (next.js: 5ms, application-code: 585ms)
+ GET /api/projects/proj_d37c1e40-e563-4a0d-bd01-d0e384ea4a12/quotes 200 in 654ms (next.js: 5ms, application-code: 649ms)
+ GET /api/projects/proj_d37c1e40-e563-4a0d-bd01-d0e384ea4a12/estimates 200 in 1080ms (next.js: 11ms, application-code: 1068ms)
+ GET /staff/projects/proj_5d1f1fff-1250-4d63-aac0-a49054ef619a?tab=quotes 200 in 1142ms (next.js: 7ms, proxy.ts: 443ms, application-code: 692ms)
+ GET /api/staff/v1/projects/proj_5d1f1fff-1250-4d63-aac0-a49054ef619a/summary 200 in 668ms (next.js: 12ms, application-code: 657ms)
+ GET /api/projects/proj_5d1f1fff-1250-4d63-aac0-a49054ef619a/snapshot 200 in 764ms (next.js: 5ms, application-code: 759ms)
+ GET /api/staff/v1/projects/proj_5d1f1fff-1250-4d63-aac0-a49054ef619a/job-packs 200 in 570ms (next.js: 19ms, application-code: 551ms)
+ GET /api/projects/proj_5d1f1fff-1250-4d63-aac0-a49054ef619a/quotes 200 in 606ms (next.js: 5ms, application-code: 600ms)
+ GET /api/projects/proj_5d1f1fff-1250-4d63-aac0-a49054ef619a/estimates 200 in 999ms (next.js: 12ms, application-code: 987ms)
+ GET /staff/projects/proj_b5e7b053-7d43-4ab5-b9ea-65a9f114f392?tab=quotes 200 in 1001ms (next.js: 7ms, proxy.ts: 365ms, application-code: 629ms)
+ GET /api/staff/v1/projects/proj_b5e7b053-7d43-4ab5-b9ea-65a9f114f392/summary 200 in 629ms (next.js: 5ms, application-code: 624ms)
+ GET /api/projects/proj_b5e7b053-7d43-4ab5-b9ea-65a9f114f392/snapshot 200 in 756ms (next.js: 12ms, application-code: 744ms)
+ GET /api/projects/proj_b5e7b053-7d43-4ab5-b9ea-65a9f114f392/quotes 200 in 601ms (next.js: 5ms, application-code: 596ms)
+ GET /api/staff/v1/projects/proj_b5e7b053-7d43-4ab5-b9ea-65a9f114f392/job-packs 200 in 684ms (next.js: 19ms, application-code: 665ms)
+ GET /api/projects/proj_b5e7b053-7d43-4ab5-b9ea-65a9f114f392/estimates 200 in 1034ms (next.js: 12ms, application-code: 1023ms)
+ GET /staff/projects/proj_d42e6179-9634-461d-8e0f-0c2ebb342819?tab=quotes 200 in 996ms (next.js: 7ms, proxy.ts: 366ms, application-code: 622ms)
+ GET /api/projects/proj_d42e6179-9634-461d-8e0f-0c2ebb342819/snapshot 200 in 601ms (next.js: 12ms, application-code: 589ms)
+ GET /api/staff/v1/projects/proj_d42e6179-9634-461d-8e0f-0c2ebb342819/summary 200 in 628ms (next.js: 6ms, application-code: 623ms)
+ GET /api/staff/v1/projects/proj_d42e6179-9634-461d-8e0f-0c2ebb342819/job-packs 200 in 661ms (next.js: 18ms, application-code: 643ms)
+ GET /api/projects/proj_d42e6179-9634-461d-8e0f-0c2ebb342819/quotes 200 in 662ms (next.js: 5ms, application-code: 658ms)
+ GET /api/projects/proj_d42e6179-9634-461d-8e0f-0c2ebb342819/estimates 200 in 1042ms (next.js: 11ms, application-code: 1030ms)
+ GET /staff/projects/proj_12324341-7c6e-4fad-a88c-0fd256ee8869?tab=quotes 200 in 1015ms (next.js: 7ms, proxy.ts: 383ms, application-code: 625ms)
+ GET /api/staff/v1/projects/proj_12324341-7c6e-4fad-a88c-0fd256ee8869/summary 200 in 656ms (next.js: 5ms, application-code: 651ms)
+ GET /api/projects/proj_12324341-7c6e-4fad-a88c-0fd256ee8869/snapshot 200 in 662ms (next.js: 11ms, application-code: 651ms)
+ GET /api/projects/proj_12324341-7c6e-4fad-a88c-0fd256ee8869/quotes 200 in 584ms (next.js: 6ms, application-code: 578ms)
+ GET /api/staff/v1/projects/proj_12324341-7c6e-4fad-a88c-0fd256ee8869/job-packs 200 in 614ms (next.js: 14ms, application-code: 601ms)
+ GET /api/projects/proj_12324341-7c6e-4fad-a88c-0fd256ee8869/estimates 200 in 842ms (next.js: 19ms, application-code: 822ms)
+ GET /staff/projects/proj_8bd246d9-c36e-42fc-8a75-50880679094a?tab=quotes 200 in 992ms (next.js: 8ms, proxy.ts: 371ms, application-code: 613ms)

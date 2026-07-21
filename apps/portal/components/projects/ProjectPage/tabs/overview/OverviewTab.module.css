@@ -1,101 +1,21 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-  min-width: 0;
-}
-
-.operationalGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.875rem;
-  align-items: start;
-}
-
-.queryState button,
-.commandState button,
-.refreshNotice button {
-  border: 1px solid rgba(var(--portal-accent-rgb), 0.3);
-  border-radius: 0.45rem;
-  background: rgba(var(--portal-accent-rgb), 0.09);
-  color: rgb(var(--portal-accent-rgb));
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.45rem 0.65rem;
+  align-content: start;
+  gap: var(--ui-density-section-gap);
+  min-width: 0;
 }
 
 .layout {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-  gap: 0.875rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   align-items: start;
-}
-
-.column {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  min-width: 0;
-}
-
-.activityColumn,
-.tasksColumn {
-  min-width: 0;
-}
-
-.columnHeader {
-  color: rgba(var(--portal-text-rgb), 0.72);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  line-height: 1.1;
-  margin: 0;
-  text-transform: uppercase;
-}
-
-.queryState,
-.commandState,
-.refreshNotice {
-  display: grid;
-  gap: 0.35rem;
-  min-width: 0;
-  border: 1px solid rgba(var(--portal-border-rgb), 0.82);
-  border-radius: 0.65rem;
-  background: rgba(var(--portal-text-rgb), 0.035);
-  color: rgba(var(--portal-text-rgb), 0.68);
-  font-size: 0.84rem;
-  padding: 0.875rem 1rem;
-}
-
-.commandState {
-  grid-column: span 2;
-}
-
-.queryState button,
-.commandState button,
-.refreshNotice button {
-  justify-self: start;
 }
 
 .workstreamsSlot {
   min-height: 0;
 }
 
-@media (max-width: 1199px) {
-  .operationalGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .operationalGrid,
+@media (max-width: 900px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .commandState {
-    grid-column: auto;
   }
 }

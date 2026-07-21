@@ -1,7 +1,7 @@
 .leftPanel,
 .mainPanel {
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  border: var(--ui-border-width) solid var(--border);
+  border-radius: var(--ui-radius-panel);
   overflow: hidden;
   background: var(--bg);
   min-height: 0;
@@ -27,9 +27,32 @@
   }
 }
 
+@media (max-width: 760px) {
+  .leftPanel,
+  .leftPanelCollapsed {
+    flex: 0 0 min(320px, 42dvh);
+  }
+
+  .panelCollapseButton,
+  .kebab,
+  .menuItem {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .lanes {
+    grid-auto-columns: min(340px, calc(100vw - 44px));
+    scroll-snap-type: x proximity;
+  }
+
+  .lane {
+    scroll-snap-align: start;
+  }
+}
+
 .panelHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -48,16 +71,17 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-text-rgb), 0.03);
-  color: rgba(var(--portal-text-rgb), 0.8);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-surface-inverse);
+  background: var(--ui-surface-inverse);
+  color: var(--ui-text-inverse);
   cursor: pointer;
 }
 
 .panelCollapseButton:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+  box-shadow: none;
 }
 
 .leftPanelCollapsed .panelHeader {
@@ -81,7 +105,7 @@
   padding: 14px;
   display: grid;
   gap: 10px;
-  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
 }
 
 .unscheduledBody,
@@ -103,16 +127,17 @@
 
 .unscheduledBody[data-over='true'],
 .laneBody[data-over='true'] {
-  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.25);
-  border-radius: 12px;
-  background: rgba(var(--accentRgb), 0.04);
+  box-shadow: inset 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
+  border-radius: var(--ui-radius-panel);
+  background: color-mix(in srgb, var(--ui-action) 5%, var(--ui-surface-primary));
 }
 
 .debugDetails {
   margin: 12px 14px 14px 14px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
-  border-radius: 14px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.75);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-left: var(--ui-status-edge) solid var(--ui-status-info-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-secondary);
 }
 
 .debugSummary {
@@ -121,7 +146,7 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(var(--portal-text-rgb), 0.7);
+  color: var(--ui-text-muted);
 }
 
 .debugBody {
@@ -141,11 +166,11 @@
 .debugSectionTitle {
   margin-top: 6px;
   padding-top: 10px;
-  border-top: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-top: var(--ui-border-width) solid var(--ui-border);
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(var(--portal-text-rgb), 0.62);
+  color: var(--ui-text-muted);
 }
 
 .cardList {
@@ -155,17 +180,17 @@
 
 .insertionMarker {
   height: 0;
-  border-top: 3px solid rgba(var(--accentRgb), 0.65);
-  border-radius: 999px;
+  border-top: 3px solid color-mix(in srgb, var(--ui-action) 65%, transparent);
+  border-radius: var(--ui-radius-panel);
   margin: 6px 4px;
 }
 
 .jobCard {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  border-radius: 12px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-elevated);
   padding: 8px;
-  box-shadow: 0 8px 22px rgba(var(--portal-text-rgb), 0.06);
+  box-shadow: none;
   transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
@@ -178,32 +203,35 @@
 }
 
 .jobCard:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18), 0 14px 36px rgba(var(--portal-text-rgb), 0.12);
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+  box-shadow: none;
 }
 
 .jobCard:hover {
-  box-shadow: 0 14px 36px rgba(var(--portal-text-rgb), 0.12);
-  border-color: rgba(var(--portal-text-rgb), 0.22);
+  box-shadow: none;
+  border-color: var(--ui-border-strong);
 }
 
 .jobCard[data-drop-target='true'] {
-  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.35), 0 14px 36px rgba(var(--portal-text-rgb), 0.12);
-  border-color: rgba(var(--accentRgb), 0.55);
+  box-shadow: inset 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
+  border-color: var(--ui-action);
 }
 
 .jobCard[data-issue-level='warning'] {
-  border-color: rgba(245, 158, 11, 0.55);
+  border-color: var(--ui-status-warning-border);
+  border-left: var(--ui-status-edge) solid var(--ui-status-warning-border);
 }
 
 .jobCard[data-issue-level='warning'] .warnBadge {
-  background: rgba(245, 158, 11, 0.16);
-  border-color: rgba(245, 158, 11, 0.28);
-  color: rgb(180, 83, 9);
+  background: var(--ui-status-warning-bg);
+  border-color: var(--ui-status-warning-border);
+  color: var(--ui-text-strong);
 }
 
 .jobCard[data-issue-level='error'] {
-  border-color: rgba(185, 28, 28, 0.45);
+  border-color: var(--ui-status-error-border);
+  border-left: var(--ui-status-edge) solid var(--ui-status-error-border);
 }
 
 .jobTopRow {
@@ -236,7 +264,7 @@
 .jobDescriptor {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.65);
+  color: var(--ui-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -254,9 +282,10 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-text-rgb), 0.03);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-status-neutral-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-neutral-bg);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -267,9 +296,9 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--accentRgb), 0.08);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -280,9 +309,10 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(42, 157, 143, 0.16);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-status-success-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-success-bg);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -293,9 +323,10 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-text-rgb), 0.06);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-status-neutral-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-neutral-bg);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -306,10 +337,11 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.32);
-  background: rgba(37, 99, 235, 0.12);
-  color: rgb(29, 78, 216);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-text-strong);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -320,10 +352,11 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(245, 158, 11, 0.36);
-  background: rgba(245, 158, 11, 0.14);
-  color: rgb(180, 83, 9);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -335,9 +368,10 @@
   align-items: center;
   gap: 6px;
   padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
-  background: rgba(var(--portal-text-rgb), 0.06);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) solid var(--ui-status-neutral-border);
+  border-left-width: var(--ui-status-edge);
+  background: var(--ui-status-neutral-bg);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -348,18 +382,19 @@
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.65);
-  background: var(--portal-bg-surface);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  background: var(--ui-surface-primary);
 }
 
 .warnBadge {
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(185, 28, 28, 0.12);
-  border: 1px solid rgba(185, 28, 28, 0.22);
-  color: rgb(185, 28, 28);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-status-error-bg);
+  border: var(--ui-border-width) solid var(--ui-status-error-border);
+  border-left-width: var(--ui-status-edge);
+  color: var(--ui-text-strong);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -369,7 +404,7 @@
 .dateLine {
   margin-top: 8px;
   font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.72);
+  color: var(--ui-text-muted);
 }
 
 .menuWrap {
@@ -377,10 +412,10 @@
 }
 
 .kebab {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-text-rgb), 0.03);
-  color: rgba(var(--portal-text-rgb), 0.75);
-  border-radius: 999px;
+  border: var(--ui-border-width) solid var(--ui-surface-inverse);
+  background: var(--ui-surface-inverse);
+  color: var(--ui-text-inverse);
+  border-radius: var(--ui-radius-control);
   padding: 6px 10px;
   font-size: 18px;
   line-height: 1;
@@ -388,8 +423,9 @@
 }
 
 .kebab:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+  box-shadow: none;
 }
 
 .menu {
@@ -397,20 +433,20 @@
   right: 0;
   top: calc(100% + 8px);
   width: 160px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-bg-surface-rgb), 0.98);
-  box-shadow: 0 18px 50px rgba(var(--portal-text-rgb), 0.18);
+  border-radius: var(--ui-radius-overlay);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  background: var(--ui-surface-elevated);
+  box-shadow: none;
   padding: 8px;
   z-index: 5;
 }
 
 .menuItem {
   width: 100%;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-text-rgb), 0.03);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
   color: var(--text);
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   padding: 10px 12px;
   font-size: 12px;
   font-weight: 900;
@@ -425,14 +461,15 @@
 }
 
 .menuItemDanger {
-  border-color: rgba(185, 28, 28, 0.3);
-  background: rgba(185, 28, 28, 0.08);
-  color: rgb(185, 28, 28);
+  border-color: var(--ui-destructive);
+  background: transparent;
+  color: var(--ui-destructive);
 }
 
 .menuItem:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+  box-shadow: none;
 }
 
 .lanes {
@@ -449,13 +486,13 @@
 }
 
 .lane {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border: var(--ui-border-width) solid var(--ui-border);
   border-left-width: 6px;
   border-left-style: solid;
-  border-left-color: rgba(var(--portal-text-rgb), 0.12);
-  border-radius: 14px;
+  border-left-color: var(--ui-border);
+  border-radius: var(--ui-radius-panel);
   overflow: hidden;
-  background: rgba(var(--portal-bg-surface-rgb), 0.92);
+  background: var(--ui-surface-primary);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -464,13 +501,13 @@
 }
 
 .lane[data-over='true'] {
-  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.25);
-  background: rgba(var(--accentRgb), 0.03);
+  box-shadow: inset 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
+  background: color-mix(in srgb, var(--ui-action) 4%, var(--ui-surface-primary));
 }
 
 .laneHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -478,7 +515,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  background: var(--ui-surface-secondary);
 }
 
 .laneNameRow {
@@ -498,15 +535,14 @@
 .smallMeta {
   margin: 6px 2px 0 2px;
   font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.65);
+  color: var(--ui-text-muted);
 }
 
 .dragOverlay {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  border-radius: 14px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-elevated);
   padding: 10px 12px;
-  box-shadow: 0 18px 50px rgba(var(--portal-text-rgb), 0.25);
 }
 
 .emptyLane {
@@ -516,19 +552,19 @@
   text-align: center;
   padding: 18px 10px;
   gap: 8px;
-  color: rgba(var(--portal-text-rgb), 0.75);
+  color: var(--ui-text-muted);
 }
 
 .emptyLaneIcon {
   width: 34px;
   height: 34px;
-  border-radius: 999px;
-  border: 1px dashed rgba(var(--portal-text-rgb), 0.22);
+  border-radius: var(--ui-radius-control);
+  border: var(--ui-border-width) dashed var(--ui-border-strong);
   display: grid;
   place-items: center;
   font-weight: 900;
-  color: rgba(var(--portal-text-rgb), 0.55);
-  background: rgba(var(--portal-bg-surface-rgb), 0.6);
+  color: var(--ui-text-subtle);
+  background: color-mix(in srgb, var(--ui-surface-primary) 60%, transparent);
 }
 
 .emptyLaneTitle {
@@ -542,5 +578,5 @@
 .emptyLaneHint {
   margin: 0;
   font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  color: var(--ui-text-muted);
 }

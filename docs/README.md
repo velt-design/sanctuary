@@ -58,6 +58,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
 | `security-privacy-quality.md` | Current | You are touching tracking, consent, CSP, Lighthouse, audits, or quality gates. |
+| `marketing-ui-foundation.md` | Current | You are changing the standalone internal marketing foundation catalogue or its route-local reusable primitives and patterns. |
 
 ## Superseded Redirects
 

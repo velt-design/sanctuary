@@ -1,0 +1,2753 @@
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] Cannot update a component (`PortalSidebarPanel`) while rendering a different component (`Router`). To locate the bad setState() call inside `Router`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at PortalSidebarPanel.useEffect.readHash (components/navigation/PortalSidebarPanel.tsx:155:28)
+  153 |
+  154 |   useEffect(() => {
+> 155 |     const readHash = () => setHashValue(window.location.hash.toLowerCase());
+      |                            ^
+  156 |     readHash();
+  157 |     window.addEventListener('hashchange', readHash);
+  158 |     window.addEventListener('popstate', readHash); (components/navigation/PortalSidebarPanel.tsx:155:28)
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx:7:1
+Module not found: Can't resolve '../dashboard.module.css'
+   5 | import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
+   6 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+>  7 | import dash from '../dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+   9 | import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
+  10 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/DashboardTasksCard.client.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiStrip.tsx:1:1
+Module not found: Can't resolve '../dashboard.module.css'
+> 1 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  2 | import type { DashboardKpis } from '@/lib/dashboard/types';
+  3 | import KpiTile from './KpiTile';
+  4 | import { projectsHref, scheduleHref } from '@/lib/dashboard/links';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/KpiTile.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function KpiTile({
+  6 |   label,
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/KpiTile.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/_components/KpiStrip.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx:4:1
+Module not found: Can't resolve '../dashboard.module.css'
+  2 | import type { PipelineCounts } from '@/lib/dashboard/types';
+  3 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 4 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { statusHref } from '@/lib/dashboard/links';
+  6 | import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/p...
+  7 | import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/PipelineCountsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx:3:1
+Module not found: Can't resolve '../dashboard.module.css'
+  1 | import Link from 'next/link';
+  2 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+> 3 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  5 |
+  6 | const LABELS = {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/ProjectExceptionsCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx:6:1
+Module not found: Can't resolve '../dashboard.module.css'
+  4 | import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
+  5 | import styles from '@/components/ui/surface/PortalSurface.module.css';
+> 6 | import dash from '../dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
+  8 |
+  9 | function authorLabel(item: DashboardRecentActivityItem): string {
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/_components/RecentActivityCard.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardPendingView.tsx:3:1
+Module not found: Can't resolve './dashboard.module.css'
+  1 | import PageHeader from '@/components/layout/PageHeader';
+  2 | import stateStyles from '@/components/page-state/PageState.module.css';
+> 3 | import dash from './dashboard.module.css';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | export default function DashboardPendingView({
+  6 |   failed = false,
+
+Import traces:
+  Server Component:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx
+    ./apps/portal/app/dashboard/loading.tsx
+
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardPendingView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[browser] ./apps/portal/app/dashboard/DashboardView.tsx:8:1
+Module not found: Can't resolve './dashboard.module.css'
+   6 | import RecentActivityCard from './_components/RecentActivityCard';
+   7 | import DashboardTasksCard from './_components/DashboardTasksCard.client';
+>  8 | import dash from './dashboard.module.css';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+  10 | import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+  11 |
+
+Import traces:
+  Client Component Browser:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component Browser]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/portal/app/dashboard/DashboardView.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Client Component SSR]
+    ./apps/portal/app/dashboard/DashboardClient.tsx [Server Component]
+    ./apps/portal/app/dashboard/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[browser] ⨯ unhandledRejection: Error: No link element found for chunk /_next/static/chunks/apps_portal_components_page-state_PageState_module_1bssm7_.css
+    at new Promise (<anonymous>)
+[browser] ⨯ unhandledRejection: Error: No link element found for chunk /_next/static/chunks/apps_portal_components_page-state_PageState_module_1bssm7_.css
+    at new Promise (<anonymous>)
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'INP', routeTemplate: '/dashboard' }
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'INP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[browser] ⨯ unhandledRejection: Error: No link element found for chunk /_next/static/chunks/apps_portal_app_staff_schedule_1k8yj38._.css
+    at new Promise (<anonymous>)
+[browser] ⨯ unhandledRejection: Error: No link element found for chunk /_next/static/chunks/apps_portal_app_staff_schedule_1k8yj38._.css
+    at new Promise (<anonymous>)
+[browser] ⨯ unhandledRejection: Error: No link element found for chunk /_next/static/chunks/apps_portal_app_staff_schedule_1k8yj38._.css
+    at new Promise (<anonymous>)
+⨯ Error: No QueryClient set, use QueryClientProvider to set one
+    at useDashboardData (app\dashboard\useDashboardData.ts:20:25)
+    at DashboardClient (app\dashboard\DashboardClient.tsx:16:37)
+  18 |
+  19 | export function useDashboardData(queueMode: QueueMode) {
+> 20 |   const query = useQuery({
+     |                         ^
+  21 |     ...dashboardDataQueryOptions(queueMode),
+  22 |     refetchOnMount: 'always',
+  23 |     retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2, {
+  digest: '2660266402'
+}
+⨯ Error: Module [project]/apps/portal/components/sync/DbGate.tsx [app-ssr] (ecmascript) was instantiated because it was required from module [project]/node_modules/next/dist/esm/build/templates/app-page.js?page=/dashboard/page { MODULE_0 => "[project]/apps/portal/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_1 => "[project]/apps/portal/app/error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_2 => "[project]/apps/portal/app/loading.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_3 => "[project]/node_modules/next/dist/client/components/builtin/not-found.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_4 => "[project]/node_modules/next/dist/client/components/builtin/forbidden.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_5 => "[project]/node_modules/next/dist/client/components/builtin/unauthorized.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_6 => "[project]/node_modules/next/dist/client/components/builtin/global-error.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_7 => "[project]/apps/portal/app/dashboard/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_8 => "[project]/apps/portal/app/dashboard/loading.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_9 => "[project]/apps/portal/app/dashboard/page.tsx [app-rsc] (ecmascript, Next.js Server Component)" } [app-rsc] (ecmascript) <locals>, but the module factory is not available.
+This is often caused by a stale browser cache, misconfigured Cache-Control headers, or a service worker serving outdated responses.
+To fix this, make sure your Cache-Control headers allow revalidation of chunks and review your service worker configuration. As an immediate workaround, try hard-reloading the page, clearing the browser cache, or unregistering any service workers.
+    at ignore-listed frames {
+  digest: '392630349'
+}
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/dashboard' }

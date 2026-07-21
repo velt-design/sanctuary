@@ -62,4 +62,14 @@ describe('PortalIndexLink Contacts navigation', () => {
     expect(beginInstantRoute).not.toHaveBeenCalled();
     rendered.unmount();
   });
+
+  it('can use a foundation button treatment without changing instant navigation', () => {
+    const rendered = renderIntoDocument(<PortalIndexLink href="/staff/contacts" variant="secondary">Contacts</PortalIndexLink>);
+    const link = rendered.container.querySelector('a');
+    expect(link?.textContent).toBe('Contacts');
+    act(() => link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
+    expect(beginInstantRoute).toHaveBeenCalledWith('contacts-index');
+    expect(routerReplace).toHaveBeenCalledWith('/staff/contacts', { scroll: false });
+    rendered.unmount();
+  });
 });

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
-import legacy from '@/app/staff/projects/projects.module.css';
+import { PipelineModal } from '@/components/ui/PipelineModal';
+import { AlertBanner, Button, Input, Select } from '@/components/ui/foundation';
 import {
   PIPELINE_STAGES,
   PIPELINE_STAGE_LABELS,
@@ -92,15 +92,17 @@ export default function ProjectStageControl({
           <span>Pipeline stage</span>
           <strong data-project-stage={stage}>{stageLabel}</strong>
         </div>
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="small"
           onClick={() => {
             setTargetStage(stage);
             setOpen(true);
           }}
         >
           Change stage
-        </button>
+        </Button>
       </div>
 
       {open ? (
@@ -113,68 +115,64 @@ export default function ProjectStageControl({
           description={`Current stage: ${stageLabel}.`}
           actions={
             <>
-              <button
+              <Button
                 type="button"
-                className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                fullWidth
                 disabled={busy || targetStage === stage || (rollback && confirmText.trim().toUpperCase() !== 'RESET')}
+                loading={busy}
                 onClick={() => void apply()}
               >
-                {busy ? 'Applying...' : `Move to ${targetLabel}`}
-              </button>
-              <button
+                {`Move to ${targetLabel}`}
+              </Button>
+              <Button
                 type="button"
-                className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                variant="tertiary"
+                fullWidth
                 disabled={busy}
                 onClick={close}
               >
                 Cancel
-              </button>
+              </Button>
             </>
           }
         >
-          <div className={legacy.field}>
-            <label htmlFor="project-stage-target">New stage</label>
-            <select
-              id="project-stage-target"
-              value={targetStage}
-              disabled={busy}
-              onChange={(event) => {
-                setTargetStage(event.target.value as ProjectStage);
-                setConfirmText('');
-              }}
-            >
-              {PIPELINE_STAGES.map((option) => (
-                <option key={option.key} value={option.key}>{option.label}</option>
-              ))}
-            </select>
-          </div>
+          <Select
+            id="project-stage-target"
+            label="New stage"
+            value={targetStage}
+            disabled={busy}
+            onChange={(event) => {
+              setTargetStage(event.target.value as ProjectStage);
+              setConfirmText('');
+            }}
+          >
+            {PIPELINE_STAGES.map((option) => (
+              <option key={option.key} value={option.key}>{option.label}</option>
+            ))}
+          </Select>
 
-          <p className={legacy.note} style={{ marginTop: 10 }}>
+          <AlertBanner tone="info" title="Silent correction">
             Silent correction only: this does not trigger automations or customer communications.
-          </p>
+          </AlertBanner>
 
           {rollback ? (
-            <div className={legacy.field} style={{ marginTop: 10 }}>
-              <label htmlFor="project-stage-reset">Type RESET to confirm rollback</label>
-              <input
-                id="project-stage-reset"
-                value={confirmText}
-                disabled={busy}
-                autoComplete="off"
-                onChange={(event) => setConfirmText(event.target.value)}
-              />
-            </div>
+            <Input
+              id="project-stage-reset"
+              label="Type RESET to confirm rollback"
+              value={confirmText}
+              disabled={busy}
+              autoComplete="off"
+              onChange={(event) => setConfirmText(event.target.value)}
+            />
           ) : null}
 
-          <div className={legacy.field} style={{ marginTop: 10 }}>
-            <label htmlFor="project-stage-reason">Reason (optional)</label>
-            <input
-              id="project-stage-reason"
-              value={reason}
-              disabled={busy}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
+          <Input
+            id="project-stage-reason"
+            label="Reason (optional)"
+            value={reason}
+            disabled={busy}
+            onChange={(event) => setReason(event.target.value)}
+          />
         </PipelineModal>
       ) : null}
     </>

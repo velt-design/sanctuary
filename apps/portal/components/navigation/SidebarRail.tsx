@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import { NAV_ITEMS } from './navItems';
-import { SIDEBAR_RAIL_WIDTH_PX } from './sidebarLayout';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
 import { useQueryClient } from '@tanstack/react-query';
@@ -102,7 +101,6 @@ export default function SidebarRail({
   return (
     <aside
       className={styles.rail}
-      style={{ width: SIDEBAR_RAIL_WIDTH_PX }}
       data-portal-sidebar-rail="true"
       data-sidebar-panel-visible={panelVisible ? 'true' : undefined}
     >
@@ -132,7 +130,6 @@ export default function SidebarRail({
                   size={20}
                   strokeWidth={2}
                   className={styles.icon}
-                  style={{ opacity: active ? 1 : 0.85 }}
                 />
               </Link>
             );

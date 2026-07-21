@@ -3,8 +3,20 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './InvoicesTab.module.css';
+import {
+  Badge,
+  Button,
+  DataStatePanel,
+  LoadingSkeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  type BadgeTone,
+} from '@/components/ui/foundation';
 import { formatPortalDate, formatPortalDateTime } from '@/lib/format/portalDateTime';
 import type { DepositInvoiceDeliveryStatus, DepositInvoiceSummary } from '@/lib/invoices/types';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
@@ -25,8 +37,8 @@ function formatDateTime(value: string | null | undefined): string {
   return formatPortalDateTime(value, { fallback: '-' });
 }
 
-function invoiceStatusClass(status: DepositInvoiceSummary['status']): string {
-  return status === 'VOID' ? styles.pillVoid : styles.pillOpen;
+function invoiceStatusTone(status: DepositInvoiceSummary['status']): BadgeTone {
+  return status === 'VOID' ? 'neutral' : 'success';
 }
 
 function deliveryLabel(status: DepositInvoiceDeliveryStatus): string {
@@ -40,14 +52,14 @@ function deliveryLabel(status: DepositInvoiceDeliveryStatus): string {
   }
 }
 
-function deliveryClass(status: DepositInvoiceDeliveryStatus): string {
+function deliveryTone(status: DepositInvoiceDeliveryStatus): BadgeTone {
   switch (status) {
     case 'SENT':
-      return styles.pillSent;
+      return 'success';
     case 'FAILED':
-      return styles.pillFailed;
+      return 'error';
     default:
-      return styles.pillPending;
+      return 'warning';
   }
 }
 
@@ -75,19 +87,27 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
   };
 
   if (invoicesQuery.isPending) {
-    return <p className={legacy.note}>Loading invoices...</p>;
+    return <LoadingSkeleton rows={3} columns={6} label="Loading invoices" />;
   }
 
   if (invoicesQuery.isError) {
-    return <p className={legacy.error}>{invoicesQuery.error instanceof Error ? invoicesQuery.error.message : 'Failed to load invoices.'}</p>;
+    return (
+      <DataStatePanel
+        state="error"
+        title="Could not load invoices"
+        description={invoicesQuery.error instanceof Error ? invoicesQuery.error.message : 'Failed to load invoices.'}
+        onRetry={() => void invoicesQuery.refetch()}
+      />
+    );
   }
 
   if (!invoices.length) {
     return (
-      <div className={styles.emptyState}>
-        <p className={styles.emptyTitle}>No invoices yet</p>
-        <p>Deposit invoices appear here after a quote is accepted. If delivery ever fails, this tab is where staff can resend it.</p>
-      </div>
+      <DataStatePanel
+        state="empty"
+        title="No invoices yet"
+        description="Deposit invoices appear here after a quote is accepted. If delivery ever fails, this tab is where staff can resend it."
+      />
     );
   }
 
@@ -98,55 +118,54 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
         <p className={styles.subtitle}>Invoices are created from accepted quotes. Use this tab to confirm delivery status and send an invoice manually if needed.</p>
       </div>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Invoice</th>
-              <th>Quote</th>
-              <th>Amount</th>
-              <th>Due</th>
-              <th>Delivery</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Table aria-label="Invoices">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invoice</TableHead>
+              <TableHead>Quote</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Due</TableHead>
+              <TableHead>Delivery</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {invoices.map((invoice) => {
               const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT';
               const isSending = sendingInvoiceId === invoice.id;
               return (
-                <tr key={invoice.id}>
-                  <td>
+                <TableRow key={invoice.id}>
+                  <TableCell>
                     <div className={styles.meta}>
                       <strong>{invoice.invoiceRef}</strong>
                       <div className={styles.statusRow}>
-                        <span className={`${styles.pill} ${invoiceStatusClass(invoice.status)}`}>{invoice.status}</span>
-                        <span className={`${styles.pill} ${deliveryClass(invoice.lastDeliveryStatus)}`}>
+                        <Badge tone={invoiceStatusTone(invoice.status)}>{invoice.status}</Badge>
+                        <Badge tone={deliveryTone(invoice.lastDeliveryStatus)}>
                           {deliveryLabel(invoice.lastDeliveryStatus)}
-                        </span>
+                        </Badge>
                       </div>
                       <span className={styles.muted}>Created {formatDate(invoice.createdAt)}</span>
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className={styles.meta}>
                       <strong>{invoice.quoteRef} v{invoice.quoteVersionNumber}</strong>
                       <span className={styles.muted}>{invoice.reference || invoice.projectName || '-'}</span>
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className={styles.meta}>
                       <strong>{formatMoneyFromCents(invoice.totalIncGstCents)}</strong>
                       <span className={styles.muted}>{invoice.depositPercent}% deposit</span>
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className={styles.meta}>
                       <strong>{formatDate(invoice.dueDate)}</strong>
                       <span className={styles.muted}>Issued {formatDate(invoice.issueDate)}</span>
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className={styles.meta}>
                       <span>{invoice.sentAt ? `Sent ${formatDateTime(invoice.sentAt)}` : 'Not delivered yet'}</span>
                       {invoice.lastDeliveryAttemptAt ? (
@@ -155,27 +174,26 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                       {invoice.nextRetryAt ? (
                         <span className={styles.muted}>Retry queued for {formatDateTime(invoice.nextRetryAt)}</span>
                       ) : null}
-                      {invoice.lastDeliveryError ? <span className={legacy.error}>{invoice.lastDeliveryError}</span> : null}
+                      {invoice.lastDeliveryError ? <span className={styles.error}>{invoice.lastDeliveryError}</span> : null}
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className={styles.actions}>
-                      <button
+                      <Button
                         type="button"
-                        className={legacy.button}
+                        size="small"
                         onClick={() => handleSendNow(invoice.id)}
                         disabled={!canSend || isSending}
                       >
                         {isSending ? 'Sending...' : canSend ? 'Send now' : 'Sent'}
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+      </Table>
     </div>
   );
 }

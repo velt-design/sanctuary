@@ -8,7 +8,15 @@ import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
-import legacy from '@/app/staff/projects/projects.module.css';
+import {
+  ActivityTimeline,
+  ActivityTimelineItem,
+  Badge,
+  Button,
+  DestructiveConfirmation,
+  EmptyState,
+  Textarea,
+} from '@/components/ui/foundation';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildOptimisticProjectNote,
@@ -72,6 +80,9 @@ export default function ProjectNotesPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorValue, setEditorValue] = useState('');
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<ProjectNote | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setNotes(initialNotes);
@@ -201,10 +212,7 @@ export default function ProjectNotesPanel({
   }
 
   async function handleDelete(note: ProjectNote) {
-    const confirmed =
-      typeof window === 'undefined' || window.confirm('Delete this note? This cannot be undone.');
-    if (!confirmed) return;
-
+    setDeleting(true);
     removeProjectNoteFromSnapshot(queryClient, hostKey, projectId, note.id);
 
     const payload: PortalProjectNoteDeleteMutationPayload = {
@@ -222,107 +230,99 @@ export default function ProjectNotesPanel({
       // Re-insert the note on terminal failure so the user can retry.
       insertOptimisticProjectNote(queryClient, hostKey, projectId, note);
       toast.error(error instanceof Error ? error.message : 'Failed to delete note');
+    } finally {
+      setDeleting(false);
+      setDeleteCandidate(null);
+      setDeleteConfirmText('');
     }
   }
 
   return (
-    <section className={styles.panel} data-project-notes-panel="true">
+    <div className={styles.panel} data-project-notes-panel="true">
       <div className={styles.composer}>
-        <textarea
-          className={styles.composerTextarea}
-          aria-label="Add a note"
+        <Textarea
+          label="Add a note"
           placeholder="Add a note for the team…"
           value={composerValue}
           maxLength={PROJECT_NOTE_BODY_MAX_LENGTH}
+          error={composerError}
           onChange={(event) => {
             setComposerValue(event.target.value);
             if (composerError) setComposerError(null);
           }}
           disabled={submitting}
         />
-        {composerError ? <p className={styles.composerError}>{composerError}</p> : null}
         <div className={styles.composerActions}>
-          <button
+          <Button
             type="button"
-            className={legacy.button}
+            loading={submitting}
             disabled={submitting || !composerValue.trim()}
             onClick={() => void handleSubmit()}
           >
-            {submitting ? 'Adding…' : 'Add note'}
-          </button>
+            Add note
+          </Button>
         </div>
       </div>
 
       {notes.length === 0 ? (
-        <p className={styles.empty}>No notes yet. Add the first note for the team.</p>
+        <EmptyState compact title="No activity yet" description="Add the first note for the team." />
       ) : (
-        <ul className={styles.list}>
+        <ActivityTimeline ariaLabel="Project activity">
           {notes.map((note) => {
             const editing = editingId === note.id;
             const pending = isPendingId(note.id);
             return (
-              <li key={note.id} className={styles.note} data-project-note-id={note.id}>
-                <header className={styles.noteHeader}>
-                  <span className={styles.noteTypePill}>Project note</span>
-                  <span className={styles.noteMetaCluster}>
-                    <span className={styles.noteMeta}>{formatPortalDateTime(note.createdAt)}</span>
-                    {pending ? <span className={styles.notePending}>Saving…</span> : null}
-                    {!pending && noteWasEdited(note) ? <span className={styles.noteEdited}>(edited)</span> : null}
-                    {!editing && canEditNote(note) ? (
-                      <span className={styles.noteActions}>
-                        <button
-                          type="button"
-                          className={styles.actionButton}
-                          onClick={() => startEditing(note)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.actionButton}
-                          onClick={() => void handleDelete(note)}
-                        >
-                          Delete
-                        </button>
-                      </span>
-                    ) : null}
-                  </span>
-                </header>
+              <ActivityTimelineItem
+                key={note.id}
+                data-project-note-id={note.id}
+                marker={<Badge tone="info">Project note</Badge>}
+                meta={<>{formatPortalDateTime(note.createdAt)}{pending ? ' · Saving…' : !pending && noteWasEdited(note) ? ' · Edited' : ''}</>}
+                footer={<>Added by {authorLabelFor(note)}</>}
+                actions={!editing && canEditNote(note) ? (
+                  <>
+                    <Button type="button" variant="quiet" size="small" onClick={() => startEditing(note)}>Edit</Button>
+                    <Button type="button" variant="quiet" size="small" onClick={() => { setDeleteCandidate(note); setDeleteConfirmText(''); }}>Delete</Button>
+                  </>
+                ) : null}
+              >
                 {editing ? (
-                  <div>
-                    <textarea
-                      className={styles.editorTextarea}
-                      aria-label="Edit note"
+                  <div className={styles.editor}>
+                    <Textarea
+                      label="Edit note"
                       value={editorValue}
                       maxLength={PROJECT_NOTE_BODY_MAX_LENGTH}
+                      error={editorError}
                       onChange={(event) => {
                         setEditorValue(event.target.value);
                         if (editorError) setEditorError(null);
                       }}
                     />
-                    {editorError ? <p className={styles.composerError}>{editorError}</p> : null}
                     <div className={styles.editorActions}>
-                      <button type="button" className={styles.actionButton} onClick={cancelEditing}>
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className={legacy.button}
-                        onClick={() => void commitEdit(note)}
-                      >
-                        Save
-                      </button>
+                      <Button type="button" variant="tertiary" size="small" onClick={cancelEditing}>Cancel</Button>
+                      <Button type="button" size="small" onClick={() => void commitEdit(note)}>Save</Button>
                     </div>
                   </div>
                 ) : (
                   <p className={styles.noteBody}>{note.body}</p>
                 )}
-                <p className={styles.noteFooter}>Added by {authorLabelFor(note)}</p>
-              </li>
+              </ActivityTimelineItem>
             );
           })}
-        </ul>
+        </ActivityTimeline>
       )}
-    </section>
+
+      <DestructiveConfirmation
+        open={Boolean(deleteCandidate)}
+        title="Delete project note?"
+        description="The note will be removed from this project activity."
+        confirmationText="DELETE"
+        value={deleteConfirmText}
+        onValueChange={setDeleteConfirmText}
+        pending={deleting}
+        onCancel={() => { if (!deleting) { setDeleteCandidate(null); setDeleteConfirmText(''); } }}
+        onConfirm={() => { if (deleteCandidate) void handleDelete(deleteCandidate); }}
+        consequences="The note cannot be recovered after the queued delete is confirmed."
+      />
+    </div>
   );
 }

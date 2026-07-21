@@ -1,17 +1,20 @@
 'use client';
 
-import PortalIndexLink from '@/components/navigation/PortalIndexLink';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiJson } from '@/lib/repo/apiClient';
-import type { Contact } from '@/lib/types/contact';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
-import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
-import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import PageHeader from '@/components/layout/PageHeader';
+import PortalIndexLink from '@/components/navigation/PortalIndexLink';
+import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
+import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import { Card, PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
+import { apiJson } from '@/lib/repo/apiClient';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import type { Contact } from '@/lib/types/contact';
+import styles from '../contacts.module.css';
 
 type Draft = {
   displayName: string;
@@ -37,84 +40,79 @@ export default function ContactCreateClient() {
   }, [busy, draft.displayName, draft.email]);
 
   return (
-    <main className={styles.page}>
+    <PageLayout className={styles.page}>
       <PageHeader
+        variant="detail"
         title="New Contact"
+        description="Create a customer record that can be linked to enquiries and projects."
+        breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: 'New contact' }]}
         right={
           <HeaderActions>
-            <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
-              Contacts
-            </PortalIndexLink>
+            <PortalIndexLink variant="secondary" href="/staff/contacts">Contacts</PortalIndexLink>
           </HeaderActions>
         }
       />
 
-      <section className={styles.section} aria-label="Contact form">
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Contact Details</h2>
-        </div>
-        <div className={styles.sectionBody}>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (busy || !canSubmit) return;
-              setError(null);
-              setBusy(true);
-              try {
-                const res = await apiJson<{ contact: Contact }>('/api/contacts', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    displayName: draft.displayName.trim(),
-                    email: draft.email.trim(),
-                    phone: draft.phone.trim(),
-                  }),
-                });
-                upsertContactCaches(queryClient, host, res.contact);
-                router.push(`/staff/contacts/${encodeURIComponent(res.contact.id)}`);
-              } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Failed to create contact';
-                setError(msg);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <div className={styles.formGrid}>
-              <div className={styles.field}>
-                <label htmlFor="displayName">Name *</label>
-                <input
-                  id="displayName"
-                  value={draft.displayName}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, displayName: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="email">Email</label>
-                <input id="email" value={draft.email} onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))} />
-                {!isValidOptionalEmail(draft.email) ? <p className={styles.error}>Email must include "@".</p> : null}
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="phone">Phone</label>
-                <input id="phone" value={draft.phone} onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))} />
-              </div>
-            </div>
+      <Card title="Contact details" aria-label="Contact form">
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (busy || !canSubmit) return;
+            setError(null);
+            setBusy(true);
+            try {
+              const response = await apiJson<{ contact: Contact }>('/api/contacts', {
+                method: 'POST',
+                body: JSON.stringify({
+                  displayName: draft.displayName.trim(),
+                  email: draft.email.trim(),
+                  phone: draft.phone.trim(),
+                }),
+              });
+              upsertContactCaches(queryClient, host, response.contact);
+              router.push(`/staff/contacts/${encodeURIComponent(response.contact.id)}`);
+            } catch (reason) {
+              setError(reason instanceof Error ? reason.message : 'Failed to create contact');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <div className={styles.formGrid}>
+            <Input
+              id="displayName"
+              label="Name *"
+              value={draft.displayName}
+              onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))}
+              required
+            />
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              value={draft.email}
+              onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))}
+              error={!isValidOptionalEmail(draft.email) ? 'Email must include "@".' : undefined}
+            />
+            <Input
+              id="phone"
+              label="Phone"
+              type="tel"
+              value={draft.phone}
+              onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}
+            />
+          </div>
 
-            {error ? <p className={styles.error}>{error}</p> : null}
+          {error ? <div className={styles.status}><AlertBanner tone="error" title="Contact could not be created">{error}</AlertBanner></div> : null}
 
-            <div className={styles.actions} style={{ justifyContent: 'flex-start', marginTop: 14 }}>
-              <button className={styles.button} type="submit" disabled={!canSubmit}>
-                {busy ? 'Creating...' : 'Create Contact'}
-              </button>
-              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
-                Cancel
-              </PortalIndexLink>
-            </div>
-          </form>
+          <div className={styles.formActions}>
+            <Button type="submit" disabled={!canSubmit} loading={busy}>{busy ? 'Creating...' : 'Create Contact'}</Button>
+            <PortalIndexLink variant="secondary" href="/staff/contacts">Cancel</PortalIndexLink>
+          </div>
+        </form>
 
-          <SupabaseEnvStatus />
-        </div>
-      </section>
-    </main>
+        <SupabaseEnvStatus />
+      </Card>
+    </PageLayout>
   );
 }

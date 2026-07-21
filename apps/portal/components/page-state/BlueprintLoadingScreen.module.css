@@ -3,7 +3,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--portal-bg-page);
+  background: var(--ui-canvas);
 }
 
 .overlay {
@@ -14,8 +14,7 @@
   place-items: center;
   padding: 24px;
   pointer-events: auto;
-  background: rgba(var(--portal-bg-page-rgb), 0.88);
-  backdrop-filter: blur(7px);
+  background: color-mix(in srgb, var(--ui-canvas) 92%, transparent);
 }
 
 .sheet {
@@ -26,20 +25,14 @@
   justify-items: center;
   gap: 18px;
   padding: 28px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
-  border-radius: 8px;
-  color: var(--portal-text);
-  background:
-    linear-gradient(rgba(var(--portal-accent-rgb), 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(var(--portal-accent-rgb), 0.08) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(var(--portal-bg-elevated-rgb), 0.97), rgba(var(--portal-bg-surface-rgb), 0.94));
-  background-size: 24px 24px, 24px 24px, auto;
-  box-shadow: 0 24px 80px rgba(var(--portal-text-rgb), 0.14);
+  border: var(--ui-border-width-emphasis) solid var(--ui-text-strong);
+  border-top: var(--ui-status-edge) solid var(--ui-action);
+  border-radius: var(--ui-radius-panel);
+  color: var(--ui-text);
+  background: var(--ui-surface-elevated);
 }
 
-.sheetOverlay {
-  box-shadow: 0 18px 68px rgba(var(--portal-text-rgb), 0.16);
-}
+.sheetOverlay { border-radius: var(--ui-radius-overlay); }
 
 .drawing {
   width: min(320px, 100%);
@@ -64,12 +57,12 @@
 }
 
 .planLineMuted {
-  stroke: rgba(var(--portal-text-rgb), 0.18);
+  stroke: var(--ui-border);
   stroke-width: 1;
 }
 
 .planLine {
-  stroke: rgba(var(--portal-accent-rgb), 0.94);
+  stroke: var(--ui-action);
   stroke-width: 2.4;
   stroke-dasharray: 620;
   stroke-dashoffset: 620;
@@ -77,7 +70,7 @@
 }
 
 .planLineAccent {
-  stroke: rgba(var(--portal-text-rgb), 0.48);
+  stroke: var(--ui-text-muted);
   stroke-width: 1.6;
   stroke-dasharray: 160;
   stroke-dashoffset: 160;
@@ -85,7 +78,7 @@
 }
 
 .dimensionLine {
-  stroke: rgba(var(--portal-text-rgb), 0.34);
+  stroke: var(--ui-border-strong);
   stroke-width: 1;
   stroke-dasharray: 220;
   stroke-dashoffset: 220;
@@ -93,7 +86,7 @@
 }
 
 .setoutDot {
-  fill: var(--portal-accent);
+  fill: var(--ui-action);
   transform-box: fill-box;
   transform-origin: center;
   animation: blueprintDot 1.25s ease-in-out infinite;
@@ -106,7 +99,7 @@
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
-  color: rgba(var(--portal-text-rgb), 0.76);
+  color: var(--ui-text);
 }
 
 @keyframes blueprintDraw {

@@ -11,6 +11,7 @@ import {
 } from '@/lib/export/mappers';
 import { addProjectActivity } from '@/lib/repo/projectsRepo';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
+import outputStyles from './OutputsPanel.module.css';
 import type { Estimate } from '@/lib/types/estimate';
 import type { JobPack } from '@/lib/outputs/types';
 import OrderListTable from './OrderListTable';
@@ -28,7 +29,7 @@ export default function OutputsPanel({ estimate, jobPack }: { estimate: Estimate
   const estimateVersion = estimate.version ?? '—';
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    <div className={outputStyles.stack}>
       <section className={styles.section} aria-label="Job pack summary">
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Job pack summary</h3>
@@ -145,7 +146,7 @@ export default function OutputsPanel({ estimate, jobPack }: { estimate: Estimate
             <table className={styles.table}>
               <tbody>
                 <tr>
-                  <th style={{ width: 220 }}>Project</th>
+                  <th className={outputStyles.summaryLabel}>Project</th>
                   <td>{jobPack.summary.projectName ?? '—'}</td>
                 </tr>
                 <tr>

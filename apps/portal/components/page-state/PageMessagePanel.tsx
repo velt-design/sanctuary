@@ -11,7 +11,7 @@ export default function PageMessagePanel({
   actions?: ReactNode;
 }) {
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-ui-foundation-consumer="page-message">
       <section className={styles.panel}>
         <h1 className={styles.panelTitle}>{title}</h1>
         <p className={styles.panelDescription}>{description}</p>

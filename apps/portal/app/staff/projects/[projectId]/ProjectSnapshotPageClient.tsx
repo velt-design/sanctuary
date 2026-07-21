@@ -1,11 +1,19 @@
 'use client';
 
-import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PortalDebugExportButton from '@/components/debug/PortalDebugExportButton';
 import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
+import PageHeader from '@/components/layout/PageHeader';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  DataStatePanel,
+  LoadingSkeleton,
+  PageLayout,
+} from '@/components/ui/foundation';
 import { buildPortalPageDebugExport, type PortalPageDebugExport } from '@/lib/debug/portalPageDebugExport';
 import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
@@ -152,28 +160,39 @@ export default function ProjectSnapshotPageClient({
         : 'Check your connection and try again.';
 
     return (
-      <main className={styles.page} data-project-id={projectId} data-project-snapshot-state={loadState}>
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
-            <h1 className={styles.title}>{title}</h1>
-            <p className={styles.subtitle} role={pending ? 'status' : undefined}>{message}</p>
-            {!pending && !unavailable ? (
-              <button type="button" className={styles.refreshButton} onClick={retry}>
-                Retry
-              </button>
-            ) : null}
-            <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
-              Back to Projects
-            </ProjectsIndexLink>
-          </div>
-        </section>
-      </main>
+      <PageLayout
+        width="full"
+        className={styles.page}
+        data-ui-foundation-consumer="project-detail"
+        data-project-id={projectId}
+        data-project-snapshot-state={loadState}
+      >
+        <PageHeader
+          variant="detail"
+          eyebrow="Projects"
+          title={title}
+          description={message}
+          back={{ label: 'Back to Projects', href: '/staff/projects' }}
+        />
+        {pending ? (
+          <Card padding="compact"><LoadingSkeleton rows={5} columns={4} label="Loading project" /></Card>
+        ) : (
+          <DataStatePanel
+            state={unavailable ? 'unavailable' : 'error'}
+            title={title}
+            description={message}
+            onRetry={!unavailable ? retry : undefined}
+          />
+        )}
+      </PageLayout>
     );
   }
 
   return (
-    <main
+    <PageLayout
+      width="full"
       className={styles.page}
+      data-ui-foundation-consumer="project-detail"
       data-project-background-ready={loadState === 'fresh' ? 'true' : undefined}
       data-project-id={projectId}
       data-project-shell-ready="true"
@@ -181,15 +200,16 @@ export default function ProjectSnapshotPageClient({
     >
       {debugExport ? <PortalDebugExportButton payload={debugExport} /> : null}
       {loadState === 'summary' ? (
-        <div className={styles.backgroundStatus} role="status">Updating project…</div>
+        <AlertBanner tone="info" title="Updating project">Loading the latest activity, tasks and commercial state.</AlertBanner>
       ) : null}
       {loadState === 'refresh-failed' ? (
-        <div className={styles.backgroundStatus} role="status">
-          Couldn&apos;t refresh this project. Showing the last known details.
-          <button type="button" className={styles.inlineRetryButton} onClick={retry}>
-            Retry
-          </button>
-        </div>
+        <AlertBanner
+          tone="warning"
+          title="Showing saved project details"
+          action={<Button variant="secondary" onClick={retry}>Retry</Button>}
+        >
+          The latest refresh failed. Your last known details remain available.
+        </AlertBanner>
       ) : null}
       <ProjectPageFrame
         snapshot={snapshot}
@@ -199,6 +219,6 @@ export default function ProjectSnapshotPageClient({
         tab={tab}
         onProjectAccessEnding={handleProjectAccessEnding}
       />
-    </main>
+    </PageLayout>
   );
 }

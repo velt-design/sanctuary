@@ -13,8 +13,6 @@ export default function SupabaseEnvHydrator() {
   if (!url || !anonKey) return null;
 
   const payload: PublicSupabaseEnv = { url, anonKey };
-  const js = `window.__SP_SUPABASE__ = ${JSON.stringify(payload)};`;
-
-  return <script dangerouslySetInnerHTML={{ __html: js }} />;
+  return <span hidden data-sp-supabase-env={JSON.stringify(payload)} />;
 }
 

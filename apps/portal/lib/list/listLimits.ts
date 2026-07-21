@@ -37,6 +37,13 @@ export const LIST_WARNING_THRESHOLD = 4000;
 export const LIST_PAGE_SIZE = 1000;
 
 /**
+ * Keeps PostgREST `.in(...)` filters below common proxy/request-line limits.
+ * UUID filters become surprisingly large once a staff list spans hundreds of
+ * projects, so related-table lookups must use bounded batches.
+ */
+export const LIST_ID_FILTER_CHUNK_SIZE = 100;
+
+/**
  * Canonical result shape for any list-fetch boundary that surfaces a
  * row count to the UI. The `totalCount` field carries Supabase's
  * `count: 'exact'` response when the query asked for it; consumers
@@ -115,6 +122,33 @@ export async function fetchAllPages<T>(
   const truncated =
     rows.length >= maxRows && (totalCount === null || totalCount > maxRows);
   return { rows, totalCount, truncated };
+}
+
+type SupabaseRowsResponse<T> = {
+  data: T[] | null;
+  error: unknown;
+};
+
+/**
+ * Fetch rows for a potentially large set of IDs without producing an
+ * oversized PostgREST URL. Chunks are fetched sequentially to keep request
+ * concurrency bounded when several related tables are loaded in parallel.
+ */
+export async function fetchRowsByIdChunks<T>(
+  ids: readonly string[],
+  buildChunk: (chunkIds: string[]) => PromiseLike<SupabaseRowsResponse<T>>,
+  options?: { chunkSize?: number },
+): Promise<T[]> {
+  const chunkSize = options?.chunkSize ?? LIST_ID_FILTER_CHUNK_SIZE;
+  if (chunkSize <= 0) throw new Error('fetchRowsByIdChunks: chunkSize must be > 0');
+
+  const rows: T[] = [];
+  for (let offset = 0; offset < ids.length; offset += chunkSize) {
+    const response = await buildChunk(ids.slice(offset, offset + chunkSize));
+    if (response.error) throw response.error;
+    if (Array.isArray(response.data)) rows.push(...response.data);
+  }
+  return rows;
 }
 
 /**

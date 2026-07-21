@@ -9,21 +9,19 @@
   overflow: hidden;
 }
 
-.content {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding-left: var(--portal-sidebar-rail-width, 48px);
-}
-
-.contentSidebarPinned {
-  padding-left: var(--portal-sidebar-pinned-width, 208px);
-}
-
+.content,
 .contentStandalone {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.content {
+  padding-left: var(--portal-sidebar-rail-width, var(--ui-sidebar-collapsed));
+}
+
+.contentSidebarPinned {
+  padding-left: var(--portal-sidebar-pinned-width, var(--ui-sidebar-expanded));
 }
 
 .contentViewportLocked {
@@ -35,52 +33,100 @@
 .sidebarToggle {
   position: fixed;
   z-index: 75;
-  top: 12px;
-  left: calc(var(--portal-sidebar-pinned-width, 208px) - 14px);
-  width: 28px;
-  height: 28px;
+  top: var(--ui-space-3);
+  left: calc(var(--portal-sidebar-pinned-width, var(--ui-sidebar-expanded)) - var(--ui-space-4));
+  width: var(--ui-control-sm);
+  height: var(--ui-control-sm);
   display: grid;
   place-items: center;
-  border: 1px solid rgba(var(--portal-bg-surface-rgb), 0.3);
-  border-radius: 999px;
-  background: var(--accentRed);
-  color: var(--portal-text-inverse);
+  border: var(--ui-border-width) solid var(--ui-action);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-action);
+  color: var(--ui-action-foreground);
   cursor: pointer;
 }
-.sidebarToggle[aria-pressed='true'] { left: calc(var(--portal-sidebar-rail-width, 48px) - 14px); }
-.sidebarToggle svg { width: 16px; height: 16px; }
-.sidebarToggle:focus-visible { outline: 2px solid var(--ui-focus-colour, rgb(var(--portal-accent-rgb))); outline-offset: 2px; }
 
-.mobileTopBar { display: none; }
+.sidebarToggle:hover {
+  background: var(--ui-action-hover);
+}
+
+.sidebarToggle[aria-pressed='true'] {
+  left: calc(var(--portal-sidebar-rail-width, var(--ui-sidebar-collapsed)) - var(--ui-space-4));
+}
+
+.sidebarToggle svg {
+  width: var(--ui-icon-compact);
+  height: var(--ui-icon-compact);
+}
+
+.sidebarToggle:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.mobileTopBar {
+  display: none;
+}
 
 @media (max-width: 899px) {
-  .sidebarToggle { display: none; }
+  .sidebarToggle {
+    display: none;
+  }
+
   .mobileTopBar {
     position: fixed;
-    inset: 0 0 auto 0;
+    inset: 0 0 auto;
     z-index: 80;
-    height: 56px;
+    box-sizing: border-box;
+    height: calc(var(--ui-mobile-bar, 56px) + env(safe-area-inset-top));
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px 0 16px;
-    background: var(--accentRed);
-    color: var(--portal-text-inverse);
+    border-bottom: var(--ui-status-edge) solid var(--ui-action);
+    padding: env(safe-area-inset-top) var(--ui-space-2) 0 var(--ui-space-4);
+    background: var(--ui-surface-inverse);
+    color: var(--ui-text-inverse);
   }
-  .mobileTopBar strong { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .mobileTopBar strong {
+    font-family: var(--ui-font-display);
+    font-size: var(--ui-font-size-card-heading);
+    letter-spacing: var(--ui-letter-spacing-label);
+    text-transform: uppercase;
+  }
+
   .mobileTopBar button {
-    width: 44px;
-    height: 44px;
+    width: var(--ui-control-lg);
+    height: var(--ui-control-lg);
     display: grid;
     place-items: center;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--ui-radius-control);
     background: transparent;
     color: inherit;
   }
-  .mobileTopBar button:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+
+  .mobileTopBar button:hover {
+    background: var(--ui-border-inverse);
+  }
+
+  .mobileTopBar button:focus-visible {
+    outline: var(--ui-border-width-emphasis) solid var(--ui-action);
+    outline-offset: calc(var(--ui-space-1) * -1);
+  }
+
   .contentSidebarPinned {
     padding-left: 0;
   }
-  .content { padding-top: 56px; padding-left: 0; }
+
+  .content {
+    padding-top: calc(var(--ui-mobile-bar, 56px) + env(safe-area-inset-top));
+    padding-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebarToggle {
+    transition: none;
+  }
 }

@@ -10,6 +10,7 @@ export default function ProjectsIndexPendingFrame() {
     <main
       className={styles.page}
       data-projects-index-state="pending"
+      data-ui-foundation-consumer="projects-pending"
       data-projects-index-background-ready="false"
       aria-label="Opening projects"
     >

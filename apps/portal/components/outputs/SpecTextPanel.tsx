@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
+import outputStyles from './OutputsPanel.module.css';
 
 export default function SpecTextPanel({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <section className={styles.section} aria-label="Builder spec" style={{ marginTop: 14 }}>
+    <section className={styles.section} aria-label="Builder spec">
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>Builder spec</h3>
         <div className={styles.actions}>
@@ -29,7 +30,7 @@ export default function SpecTextPanel({ text }: { text: string }) {
         </div>
       </div>
       <div className={styles.sectionBody}>
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.4 }}>{text}</pre>
+        <pre className={outputStyles.specText}>{text}</pre>
       </div>
     </section>
   );

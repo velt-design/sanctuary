@@ -40,4 +40,30 @@ describe('getProjectCommandExceptions', () => {
       reasons: expect.arrayContaining(['no_action', 'missing_owner']),
     });
   });
+
+  it('chunks related-table filters when the active project set is large', async () => {
+    const projectRows = Array.from({ length: 205 }, (_, index) => ({
+      id: `11111111-1111-4111-8111-${String(index).padStart(12, '0')}`,
+      name: `Project ${index}`,
+      pipeline_stage: 'NEW',
+      created_at: '2026-07-21T00:00:00.000Z',
+    }));
+    const projectQuery = queryResult(projectRows);
+    const relatedQuery = queryResult([]);
+    const client = {
+      from: vi.fn((table: string) => table === 'projects' ? projectQuery : relatedQuery),
+      rpc: vi.fn(async () => ({ data: [], error: null })),
+    } as any;
+
+    const result = await getProjectCommandExceptions(
+      client,
+      { userId: 'staff-user', isAdmin: false },
+      new Date('2026-07-21T01:00:00.000Z'),
+    );
+
+    const filteredChunks = relatedQuery.in.mock.calls.map((call: unknown[]) => call[1] as string[]);
+    expect(filteredChunks).toHaveLength(18);
+    expect(filteredChunks.every((chunk: string[]) => chunk.length > 0 && chunk.length <= 100)).toBe(true);
+    expect(result.totalProjects).toBe(205);
+  });
 });

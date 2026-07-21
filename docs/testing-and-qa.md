@@ -350,6 +350,14 @@ Before shipping schedule changes:
 3. Run relevant schedule unit and route tests.
 4. Manually check Board, Gantt, and Site Visits if UI behavior changed.
 
+For UI-foundation presentation changes, run the authenticated non-mutating matrix after storage state exists:
+
+```bash
+npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
+```
+
+It covers Board at 1440/1280/1024/768/390, Gantt, Site Visits, Schedule and Site Visit dialogs, project Tasks, 720x500 at 200% zoom, document overflow, mobile targets, focus return, reduced motion, and browser/runtime evidence. It opens forms and dialogs but does not save, drag, delete, unschedule, or toggle a task.
+
 Minimum targeted schedule tests:
 
 ```bash

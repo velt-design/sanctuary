@@ -29,6 +29,7 @@ export default function DashboardView({
   return (
     <main
       className={dash.page}
+      data-ui-foundation-consumer="dashboard"
       data-dashboard-state={state}
       data-dashboard-background-ready={state === 'fresh' ? 'true' : 'false'}
     >

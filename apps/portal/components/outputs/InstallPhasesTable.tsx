@@ -10,7 +10,7 @@ function formatMoney(n: number): string {
 
 export default function InstallPhasesTable({ phases }: { phases: InstallPhase[] }) {
   return (
-    <section className={styles.section} aria-label="Install phases" style={{ marginTop: 14 }}>
+    <section className={styles.section} aria-label="Install phases">
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>Install phases</h3>
       </div>

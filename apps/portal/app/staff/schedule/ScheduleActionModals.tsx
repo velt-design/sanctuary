@@ -1,77 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { createPortal } from 'react-dom';
-import { lockDocumentScroll, unlockDocumentScroll } from '@/components/ui/scrollLock';
+import type { Dispatch, SetStateAction } from 'react';
+import Modal from '@/components/ui/modal/Modal';
 import type { ScheduleItem } from '@/lib/types/scheduling';
 import { addDaysYmd, isYmd as isYmdDate } from '@/lib/scheduling/date';
 import styles from './schedule.module.css';
-
-type ScheduleModalProps = {
-  open: boolean;
-  onClose: () => void;
-  children: ReactNode;
-  ariaLabel: string;
-  maxWidthPx?: number;
-};
-
-function Modal({ open, onClose, children, ariaLabel, maxWidthPx = 720 }: ScheduleModalProps) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  const portalRoot = typeof document === 'undefined' ? null : document.body;
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open || typeof window === 'undefined') return;
-
-    lockDocumentScroll();
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const focusTimer = window.setTimeout(() => panelRef.current?.focus({ preventScroll: true }), 0);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      onCloseRef.current();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      window.clearTimeout(focusTimer);
-      window.removeEventListener('keydown', onKeyDown);
-      unlockDocumentScroll();
-      previousFocus?.focus?.({ preventScroll: true });
-    };
-  }, [open]);
-
-  const panelStyle = useMemo(() => ({ maxWidth: maxWidthPx }), [maxWidthPx]);
-
-  if (!open || !portalRoot) return null;
-
-  return createPortal(
-    <div
-      className={styles.modalOverlay}
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        ref={panelRef}
-        className={styles.modalPanel}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        tabIndex={-1}
-        style={panelStyle}
-      >
-        {children}
-      </div>
-    </div>,
-    portalRoot,
-  );
-}
 
 function parsePositiveInt(value: string): number | null {
   const n = Number.parseInt(value.trim(), 10);
@@ -210,21 +143,21 @@ export default function ScheduleActionModals({
           onClose={() => setQuickEdit(null)}
           maxWidthPx={520}
         >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Quick edit</h2>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>Quick edit</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setQuickEdit(null)}>
                 Close
               </button>
             </div>
 
-            <p className={styles.hint} style={{ marginTop: 10 }}>
+            <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Overrides apply to this job only. Changing start/duration recalculates downstream jobs for the crew.
             </p>
 
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+            <div className={styles.actionModalFields}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Start date override
                 </label>
                 <input
@@ -233,13 +166,13 @@ export default function ScheduleActionModals({
                   value={quickEdit.startDateOverride}
                   onChange={(e) => setQuickEdit((prev) => (prev ? { ...prev, startDateOverride: e.target.value } : prev))}
                 />
-                <p className={styles.hint} style={{ marginTop: 6 }}>
+                <p className={`${styles.hint} ${styles.actionModalHint}`}>
                   Leave blank to auto-calculate from lane availability.
                 </p>
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Duration (days)
                 </label>
                 <input
@@ -251,20 +184,19 @@ export default function ScheduleActionModals({
                   value={quickEdit.durationDays}
                   onChange={(e) => setQuickEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
                 />
-                <p className={styles.hint} style={{ marginTop: 6 }}>
+                <p className={`${styles.hint} ${styles.actionModalHint}`}>
                   1 day = 8h. {scheduleMode === 'v2' ? 'Whole days only.' : 'Use 0.5 increments.'}
                 </p>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setQuickEdit(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 onClick={onSaveQuickEdit}
               >
                 Save
@@ -281,9 +213,9 @@ export default function ScheduleActionModals({
           onClose={() => setCommitmentEdit(null)}
           maxWidthPx={560}
         >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>
                 {commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
               </h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
@@ -291,10 +223,10 @@ export default function ScheduleActionModals({
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+            <div className={`${styles.actionModalFields} ${styles.actionModalFieldsWide}`}>
               <div>
-                <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Commitment type</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div className={styles.actionModalLegend}>Commitment type</div>
+                <div className={styles.actionModalChoices}>
                   <button
                     type="button"
                     className={styles.buttonSecondary}
@@ -338,7 +270,7 @@ export default function ScheduleActionModals({
 
               {commitmentEdit.commitmentType === 'week_of' ? (
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <label className={styles.actionModalLabel}>
                     Week-of date
                   </label>
                   <input
@@ -356,13 +288,13 @@ export default function ScheduleActionModals({
                       )
                     }
                   />
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
+                  <p className={`${styles.hint} ${styles.actionModalHint}`}>
                     Date is snapped to Monday of the selected week.
                   </p>
                 </div>
               ) : (
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <label className={styles.actionModalLabel}>
                     Start date
                   </label>
                   <input
@@ -380,15 +312,15 @@ export default function ScheduleActionModals({
                       )
                     }
                   />
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
+                  <p className={`${styles.hint} ${styles.actionModalHint}`}>
                     Date snaps forward to a weekday; holiday handling is enforced server-side.
                   </p>
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className={styles.actionModalTwoColumns}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <label className={styles.actionModalLabel}>
                     Approx duration (days)
                   </label>
                   <input
@@ -402,7 +334,7 @@ export default function ScheduleActionModals({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <label className={styles.actionModalLabel}>
                     Flex days
                   </label>
                   <input
@@ -417,7 +349,7 @@ export default function ScheduleActionModals({
                 </div>
               </div>
 
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <label className={styles.actionModalCheckbox}>
                 <input
                   type="checkbox"
                   checked={commitmentEdit.hardLock}
@@ -446,14 +378,13 @@ export default function ScheduleActionModals({
               })()}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 disabled={(() => {
                   const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
                   const flexRaw = Number(commitmentEdit.flexDays.trim());
@@ -472,21 +403,21 @@ export default function ScheduleActionModals({
 
       {durationEdit ? (
         <Modal open ariaLabel="Set job duration" onClose={() => setDurationEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Set duration</h2>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>Set duration</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setDurationEdit(null)}>
                 Close
               </button>
             </div>
 
-            <p className={styles.hint} style={{ marginTop: 10 }}>
+            <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Duration is stored as whole working days.
             </p>
 
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+            <div className={styles.actionModalFields}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Duration (days)
                 </label>
                 <input
@@ -501,14 +432,13 @@ export default function ScheduleActionModals({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setDurationEdit(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 onClick={onSaveDuration}
               >
                 Save
@@ -520,21 +450,21 @@ export default function ScheduleActionModals({
 
       {pinEdit ? (
         <Modal open ariaLabel="Pin job" onClose={() => setPinEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Pin job</h2>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>Pin job</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setPinEdit(null)}>
                 Close
               </button>
             </div>
 
-            <p className={styles.hint} style={{ marginTop: 10 }}>
+            <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Pinned starts snap forward to the next working day if needed.
             </p>
 
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+            <div className={styles.actionModalFields}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Start date
                 </label>
                 <input
@@ -546,14 +476,13 @@ export default function ScheduleActionModals({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setPinEdit(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 onClick={onSavePin}
               >
                 Pin job
@@ -565,21 +494,21 @@ export default function ScheduleActionModals({
 
       {daysRemainingEdit ? (
         <Modal open ariaLabel="Set days remaining" onClose={() => setDaysRemainingEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Days remaining</h2>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>Days remaining</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setDaysRemainingEdit(null)}>
                 Close
               </button>
             </div>
 
-            <p className={styles.hint} style={{ marginTop: 10 }}>
+            <p className={`${styles.hint} ${styles.actionModalIntro}`}>
               Updates the forecast duration for this in-progress job.
             </p>
 
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+            <div className={styles.actionModalFields}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Days remaining
                 </label>
                 <input
@@ -594,14 +523,13 @@ export default function ScheduleActionModals({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setDaysRemainingEdit(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 onClick={onSaveDaysRemaining}
               >
                 Save
@@ -618,9 +546,9 @@ export default function ScheduleActionModals({
           onClose={() => setDowntimeEdit(null)}
           maxWidthPx={520}
         >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>
                 {downtimeEdit.mode === 'create' ? 'Add downtime' : 'Edit downtime'}
               </h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setDowntimeEdit(null)}>
@@ -628,9 +556,9 @@ export default function ScheduleActionModals({
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+            <div className={styles.actionModalFields}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Duration (days)
                 </label>
                 <input
@@ -645,7 +573,7 @@ export default function ScheduleActionModals({
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Reason
                 </label>
                 <select
@@ -663,7 +591,7 @@ export default function ScheduleActionModals({
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <label className={styles.actionModalLabel}>
                   Note
                 </label>
                 <textarea
@@ -675,14 +603,13 @@ export default function ScheduleActionModals({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setDowntimeEdit(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 onClick={onSaveDowntime}
               >
                 Save
@@ -699,9 +626,9 @@ export default function ScheduleActionModals({
           onClose={() => setFinishEarlyPrompt(null)}
           maxWidthPx={560}
         >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Finished early</h2>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>Finished early</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
                 Close
               </button>
@@ -715,9 +642,9 @@ export default function ScheduleActionModals({
                 : null;
               const forecastLabel = endInclusive ? formatShortDate(endInclusive) : '—';
               return (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontWeight: 700 }}>{jobName}</div>
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
+                <div className={styles.finishedJob}>
+                  <div className={styles.finishedJobName}>{jobName}</div>
+                  <p className={`${styles.hint} ${styles.actionModalHint}`}>
                     Finished on {formatShortDate(finishEarlyPrompt.actualFinish)} — {finishEarlyPrompt.freedDays} working day
                     {finishEarlyPrompt.freedDays === 1 ? '' : 's'} freed (forecast end {forecastLabel}).
                   </p>
@@ -726,17 +653,17 @@ export default function ScheduleActionModals({
             })()}
 
             {finishEarlyPrompt.impacts?.length ? (
-              <div style={{ marginTop: 12 }}>
-                <div className={styles.hint} style={{ fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              <div className={styles.finishedSummary}>
+                <div className={`${styles.hint} ${styles.finishedSummaryLabel}`}>
                   Pull forward preview
                 </div>
-                <pre className={styles.note} style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
+                <pre className={`${styles.note} ${styles.finishedSummaryNote}`}>
                   {formatCommitImpactList(finishEarlyPrompt.impacts)}
                 </pre>
               </div>
             ) : null}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+            <div className={`${styles.actionModalActions} ${styles.actionModalActionsWrap}`}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
                 Cancel
               </button>
@@ -749,8 +676,7 @@ export default function ScheduleActionModals({
               </button>
               <button
                 type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
+                className={styles.button}
                 onClick={onFinishEarlyPullForward}
               >
                 Pull forward

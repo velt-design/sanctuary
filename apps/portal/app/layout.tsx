@@ -13,6 +13,7 @@ import { getPortalAccessState } from '@/lib/auth';
 import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
 import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 import PortalVitalsReporter from '@/components/performance/PortalVitalsReporter';
+import SupabaseEnvHydrator from '@/components/diagnostics/SupabaseEnvHydrator';
 
 export const metadata: Metadata = {
   title: 'Sanctuary Portal',
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={portalInter.variable} style={cssVars}>
       <body>
+        <SupabaseEnvHydrator />
         <PortalAuthProvider initialAuthState={initialPortalAuthStateFromAccess(accessState)}>
           <Providers>
             <PortalVitalsReporter />

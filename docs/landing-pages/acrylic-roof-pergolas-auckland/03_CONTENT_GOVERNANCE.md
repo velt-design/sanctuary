@@ -122,9 +122,9 @@ Confirm before using any figure or strong performance claim:
 
 Confirm:
 
-- Approved use of “weatherproof”
-- Approved use of “watertight”
-- Approved use of “waterproof”
+- Approved use of "weatherproof"
+- Approved use of "watertight"
+- Approved use of "waterproof"
 - Minimum roof fall
 - Jointing system
 - Sealing system
@@ -230,7 +230,7 @@ Only use project facts that can be verified from:
 Do not infer:
 
 - Acrylic tint from image appearance
-- Product type from a generic “clear roof” description
+- Product type from a generic "clear roof" description
 - Customer challenge
 - Design rationale
 - Consent status

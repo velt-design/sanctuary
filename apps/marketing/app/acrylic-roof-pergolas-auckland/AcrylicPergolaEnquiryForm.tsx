@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Eyebrow, Heading } from '@/components/marketing-foundation';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import {
   ENQUIRY_ATTACHMENT_LIMITS,
@@ -11,6 +12,12 @@ import {
 
 type RequiredField = 'enquiryType' | 'name' | 'phone' | 'email' | 'suburb' | 'message';
 type FieldErrors = Partial<Record<RequiredField | 'files', string>>;
+type AcrylicPergolaEnquiryFormProps = {
+  eyebrow?: string;
+  heading?: string;
+  intro?: string;
+  submitLabel?: string;
+};
 
 const pergolaForms = [
   ['pitched', 'Mono-pitched'],
@@ -40,7 +47,7 @@ function makeEventId(): string {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function trackLeadSubmitted(enquiryType: string, eventId: string): void {
+function trackLeadSubmitted(enquiryType: string, eventId: string, landingPage: string): void {
   type TrackingWindow = typeof window & {
     dataLayer?: Array<Record<string, unknown>>;
     gtag?: (...args: unknown[]) => void;
@@ -51,7 +58,7 @@ function trackLeadSubmitted(enquiryType: string, eventId: string): void {
     event_category: 'contact',
     event_label: enquiryType,
     enquiry_type: enquiryType,
-    landing_page: '/acrylic-roof-pergolas-auckland',
+    landing_page: landingPage,
   };
 
   try {
@@ -68,7 +75,12 @@ function fieldErrorId(field: keyof FieldErrors): string {
   return `acrylic-enquiry-${field}-error`;
 }
 
-export default function AcrylicPergolaEnquiryForm() {
+export default function AcrylicPergolaEnquiryForm({
+  eyebrow = 'Tell us about the site',
+  heading = 'Request an initial estimate',
+  intro = 'Share your suburb, approximate dimensions and a few photos of the area. Tell us what matters most, whether that is preserving daylight, adding rain cover, reducing glare or creating a more sheltered outdoor room.',
+  submitLabel = 'Request my initial estimate',
+}: AcrylicPergolaEnquiryFormProps = {}) {
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitState, setSubmitState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
@@ -198,7 +210,7 @@ export default function AcrylicPergolaEnquiryForm() {
       if (!response.ok || !responsePayload?.ok) throw new Error('SUBMIT_FAILED');
 
       setSubmitState('success');
-      trackLeadSubmitted(enquiryType, makeEventId());
+      trackLeadSubmitted(enquiryType, makeEventId(), window.location.pathname);
     } catch {
       setSubmitState('error');
     }
@@ -207,12 +219,9 @@ export default function AcrylicPergolaEnquiryForm() {
   return (
     <form className="acrylic-form" noValidate onSubmit={handleSubmit} aria-labelledby="estimate-form-title">
       <div className="acrylic-form__intro">
-        <p className="acrylic-eyebrow">Tell us about the site</p>
-        <h2 id="estimate-form-title">Request an initial estimate</h2>
-        <p>
-          Share your suburb, approximate dimensions and a few photos of the area. Tell us what matters most,
-          whether that is preserving daylight, adding rain cover, reducing glare or creating a more sheltered outdoor room.
-        </p>
+        <Eyebrow className="acrylic-eyebrow">{eyebrow}</Eyebrow>
+        <Heading id="estimate-form-title">{heading}</Heading>
+        <p>{intro}</p>
         <p className="acrylic-form__required-note">Fields marked required are needed before the enquiry can be assessed.</p>
       </div>
 
@@ -349,7 +358,7 @@ export default function AcrylicPergolaEnquiryForm() {
           <Link href="/privacy">Privacy Policy</Link> for more information.
         </p>
         <button type="submit" disabled={submitState === 'sending'}>
-          {submitState === 'sending' ? 'Sending project details...' : 'Request my initial estimate'}
+          {submitState === 'sending' ? 'Sending project details...' : submitLabel}
         </button>
       </div>
 

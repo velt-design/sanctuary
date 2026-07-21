@@ -18,7 +18,7 @@ export default function QuoteStatusCard({ items }: { items: StatusItem[] }) {
   return (
     <section className={styles.previewCard} aria-label="Quote status">
       <div className={styles.statusHeader}>
-        <h2 className={styles.previewCardTitle} style={{ margin: 0 }}>
+        <h2 className={`${styles.previewCardTitle} ${styles.previewCardTitleFlush}`}>
           Quote status
         </h2>
         <div className={styles.statusMeta}>

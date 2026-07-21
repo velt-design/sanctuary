@@ -1,93 +1,16 @@
-.body {
+.body,
+.grid {
   display: grid;
-  gap: 16px;
+  gap: var(--ui-space-4);
 }
 
 .grid {
-  display: grid;
-  gap: 12px;
-}
-
-.summaryGrid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-
-.tile {
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 14px;
-  background: rgba(248, 250, 252, 0.9);
-  padding: 12px;
-}
-
-.tileLabel {
-  color: rgb(71, 85, 105);
-  font-size: 12px;
-  font-weight: 600;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.tileValue {
-  color: rgb(15, 23, 42);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.field {
-  display: grid;
-  gap: 8px;
-}
-
-.field label {
-  color: rgb(30, 41, 59);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.field select,
-.field textarea {
-  min-height: 110px;
-  resize: vertical;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  border-radius: 14px;
-  padding: 12px 14px;
-  font: inherit;
-  background: white;
-  color: rgb(15, 23, 42);
-}
-
-.field select {
-  min-height: 0;
-  resize: none;
-}
-
-.field select:focus,
-.field textarea:focus {
-  outline: 2px solid rgba(14, 165, 233, 0.25);
-  outline-offset: 1px;
+  gap: var(--ui-space-3);
 }
 
 .muted {
-  color: rgb(100, 116, 139);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.error {
-  color: rgb(185, 28, 28);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.warning {
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  background: rgba(255, 251, 235, 0.95);
-  border-radius: 14px;
-  padding: 12px 14px;
-  color: rgb(146, 64, 14);
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: var(--ui-line-height-body);
 }

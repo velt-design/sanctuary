@@ -10,10 +10,9 @@
 
 .navigator {
   min-width: 0;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 14px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.96);
-  box-shadow: 0 8px 24px rgba(var(--portal-text-rgb), 0.045);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
 }
 
 .header,
@@ -46,7 +45,7 @@
 .summary,
 .emptyGroup,
 .moduleMeta {
-  color: rgba(var(--portal-text-rgb), 0.62);
+  color: var(--ui-text-muted);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -59,9 +58,9 @@
 .addModuleButton,
 .moveActions button,
 .mobileHeader button {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 999px;
-  background: var(--portal-bg-surface);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
   color: inherit;
   font: inherit;
   font-size: 11px;
@@ -100,7 +99,7 @@
   border-color: transparent;
   padding: 4px 6px;
   background: transparent;
-  color: rgba(var(--portal-text-rgb), 0.7);
+  color: var(--ui-text-muted);
 }
 
 .moduleList {
@@ -116,14 +115,13 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   background: transparent;
 }
 
 .moduleItemActive {
-  border-color: rgba(var(--accentRgb), 0.3);
-  background: rgba(var(--accentRgb), 0.065);
-  box-shadow: 0 0 0 1px rgba(var(--accentRgb), 0.055);
+  border-color: color-mix(in srgb, var(--ui-action) 30%, transparent);
+  background: color-mix(in srgb, var(--ui-action) 6.5%, transparent);
 }
 
 .moduleSelect {
@@ -149,23 +147,23 @@
 .issueBadge,
 .readyBadge {
   flex: 0 0 auto;
-  border-radius: 999px;
+  border-radius: var(--ui-radius-control);
   padding: 3px 6px;
   font-size: 10px;
   font-weight: 700;
 }
 
 .issueBadge {
-  border: 1px solid rgba(185, 28, 28, 0.24);
-  background: rgba(185, 28, 28, 0.08);
-  color: rgb(185, 28, 28);
+  border: 1px solid color-mix(in srgb, var(--ui-destructive) 24%, transparent);
+  background: color-mix(in srgb, var(--ui-destructive) 8%, transparent);
+  color: var(--ui-destructive);
 }
 
 .readyBadge {
   border: 0;
   padding-inline: 0;
   background: transparent;
-  color: rgba(var(--portal-text-rgb), 0.48);
+  color: var(--ui-text-subtle);
 }
 
 .moduleMeta {
@@ -180,7 +178,7 @@
   gap: 2px;
   margin: 0 8px 7px;
   padding-top: 5px;
-  border-top: 1px solid rgba(var(--portal-text-rgb), 0.075);
+  border-top: var(--ui-border-width) solid var(--ui-border);
 }
 
 .moduleActions button {
@@ -188,10 +186,10 @@
   min-width: 0;
   min-height: 30px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--ui-radius-control);
   padding: 5px 4px;
   background: transparent;
-  color: rgba(var(--portal-text-rgb), 0.66);
+  color: var(--ui-text-muted);
   font: inherit;
   font-size: 10.5px;
   font-weight: 700;
@@ -199,8 +197,8 @@
 }
 
 .moduleActions button:hover {
-  background: rgba(var(--portal-text-rgb), 0.045);
-  color: var(--portal-text);
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text);
 }
 
 .moveActions button {
@@ -215,7 +213,7 @@
 }
 
 .moduleActions .removeButton {
-  color: rgb(185, 28, 28);
+  color: var(--ui-destructive);
 }
 
 .movePanel {
@@ -223,22 +221,22 @@
   gap: 6px;
   margin: 0 8px 8px;
   padding: 8px;
-  border-radius: 10px;
-  background: rgba(var(--portal-text-rgb), 0.04);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-secondary);
 }
 
 .movePanel label {
-  color: rgba(var(--portal-text-rgb), 0.68);
+  color: var(--ui-text-muted);
   font-size: 10px;
   font-weight: 700;
 }
 
 .movePanel select {
   width: 100%;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
-  border-radius: 9px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
   padding: 7px 8px;
-  background: var(--portal-bg-surface);
+  background: var(--ui-surface-primary);
   color: inherit;
 }
 
@@ -249,8 +247,8 @@
 
 .emptyGroup {
   padding: 9px 10px;
-  border: 1px dashed rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 10px;
+  border: var(--ui-border-width) dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
 }
 
 .mobileLauncher {
@@ -260,10 +258,10 @@
   gap: 12px;
   width: 100%;
   min-width: 0;
-  border: 1px solid rgba(var(--accentRgb), 0.34);
-  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--ui-action) 34%, transparent);
+  border-radius: var(--ui-radius-control);
   padding: 10px 12px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  background: var(--ui-surface-elevated);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -283,15 +281,15 @@
 
 .mobileLauncher > span:first-child > span {
   margin-top: 2px;
-  color: rgba(var(--portal-text-rgb), 0.62);
+  color: var(--ui-text-muted);
   font-size: 11px;
 }
 
 .mobileLauncherCount {
   flex: 0 0 auto;
-  border-radius: 999px;
+  border-radius: var(--ui-radius-control);
   padding: 5px 8px;
-  background: rgba(var(--accentRgb), 0.09);
+  background: color-mix(in srgb, var(--ui-action) 9%, transparent);
   font-size: 10px;
   font-weight: 700;
 }
@@ -304,16 +302,15 @@
   align-items: flex-end;
   justify-content: center;
   padding: 12px;
-  background: rgba(var(--portal-text-rgb), 0.44);
+  background: color-mix(in srgb, var(--ui-surface-inverse) 44%, transparent);
 }
 
 .mobilePanel {
   width: min(560px, 100%);
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
-  border-radius: 18px;
-  background: var(--portal-bg-surface);
-  box-shadow: 0 24px 70px rgba(var(--portal-text-rgb), 0.28);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
 }
 
 .mobileHeader {
@@ -322,7 +319,7 @@
   z-index: 2;
   padding: 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--portal-bg-surface);
+  background: var(--ui-surface-primary);
 }
 
 .mobileHeader button {
@@ -332,7 +329,6 @@
 .mobilePanel .navigator {
   border: none;
   border-radius: 0;
-  box-shadow: none;
 }
 
 .moduleSelect:focus-visible,
@@ -343,7 +339,7 @@
 .mobileLauncher:focus-visible,
 .mobileHeader button:focus-visible,
 .movePanel select:focus-visible {
-  outline: 3px solid rgba(var(--accentRgb), 0.2);
+  outline: 3px solid color-mix(in srgb, var(--ui-action) 20%, transparent);
   outline-offset: 2px;
 }
 
@@ -355,4 +351,110 @@
   .mobileLauncher {
     display: flex;
   }
+}
+
+/* Foundation presentation contract; module navigation behavior is unchanged. */
+.navigator {
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
+}
+
+.header,
+.moduleActions,
+.mobileHeader {
+  border-color: var(--ui-border);
+}
+
+.summary,
+.emptyGroup,
+.moduleMeta,
+.addModuleButton,
+.moduleActions button,
+.movePanel label,
+.mobileLauncher > span:first-child > span {
+  color: var(--ui-text-muted);
+}
+
+.addPergolaButton,
+.addModuleButton,
+.moveActions button,
+.mobileHeader button,
+.moduleItem,
+.moduleItemActive,
+.moduleActions button,
+.movePanel,
+.movePanel select,
+.emptyGroup,
+.mobileLauncher,
+.mobileLauncherCount,
+.mobilePanel,
+.issueBadge,
+.readyBadge {
+  border-radius: var(--ui-radius-control);
+}
+
+.addPergolaButton,
+.moveActions button,
+.mobileHeader button,
+.movePanel select {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-strong);
+}
+
+.moduleItemActive {
+  border-color: var(--ui-border-strong);
+  border-left: var(--ui-status-edge) solid var(--ui-action);
+  background: var(--ui-surface-secondary);
+}
+
+.moduleActions button:hover,
+.movePanel,
+.mobileLauncherCount {
+  background: var(--ui-surface-secondary);
+}
+
+.issueBadge {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+  color: var(--ui-status-error-border);
+}
+
+.readyBadge {
+  color: var(--ui-text-muted);
+}
+
+.emptyGroup,
+.mobileLauncher {
+  border-color: var(--ui-border);
+}
+
+.mobileLauncher {
+  background: var(--ui-surface-primary);
+}
+
+.mobileOverlay {
+  background: color-mix(in srgb, var(--ui-surface-inverse) 64%, transparent);
+}
+
+.mobilePanel,
+.mobileHeader {
+  background: var(--ui-surface-elevated);
+}
+
+.mobilePanel {
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+}
+
+.moduleSelect:focus-visible,
+.addPergolaButton:focus-visible,
+.addModuleButton:focus-visible,
+.moduleActions button:focus-visible,
+.moveActions button:focus-visible,
+.mobileLauncher:focus-visible,
+.mobileHeader button:focus-visible,
+.movePanel select:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
 }

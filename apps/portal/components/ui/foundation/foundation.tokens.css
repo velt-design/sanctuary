@@ -85,8 +85,8 @@
 
   /* Layout */
   --ui-content-max: 1440px;
-  --ui-sidebar-expanded: 232px;
-  --ui-sidebar-collapsed: 64px;
+  --ui-sidebar-expanded: 208px;
+  --ui-sidebar-collapsed: 48px;
   --ui-mobile-bar: 56px;
   --ui-sticky-action-height: 64px;
   --ui-grid-gutter: 16px;

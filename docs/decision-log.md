@@ -253,11 +253,11 @@ Decision or mistake: browser specs were starting to grow local copies of console
 
 Why it mattered: ad hoc evidence listeners drift quickly and make failures harder for agents to compare across auth, scenario, fixture, and route-catalog lanes. Browser failures should attach consistent artifacts without weakening auth or logging secrets.
 
-Current guardrail: use `playwright/support/portalBrowserEvidence.ts` for portal browser evidence and `playwright/support/workbenchEvidence.ts` for Plan/3D viewport diagnostics. Specs should not add local evidence listeners or screenshots unless the shared helper cannot express the needed artifact; if that happens, extend the helper first.
+Current guardrail: use `playwright/support/portalBrowserEvidence.ts` for portal browser evidence and `playwright/support/workbenchEvidence.ts` for Plan/3D viewport diagnostics. Specs should not add local evidence listeners or screenshots unless the shared helper cannot express the needed artifact; if that happens, extend the helper first. Shared screenshot capture keeps `caret: 'initial'`: Playwright's default caret masking mutates input styles and can create a false hydration mismatch when a capture is followed immediately by navigation.
 
 Promoted to: None
 
-Related docs/tests: `playwright/support/portalBrowserEvidence.ts`, `playwright/support/workbenchEvidence.ts`, `playwright/portal.agent-access.spec.ts`, `playwright/portal.agent-scenarios.spec.ts`, `playwright/portal.auth-runtime.spec.ts`, `docs/testing-and-qa.md`.
+Related docs/tests: `playwright/support/portalBrowserEvidence.ts`, `playwright/support/workbenchEvidence.ts`, `playwright/portal.contacts-ui.spec.ts`, `playwright/portal.agent-access.spec.ts`, `playwright/portal.agent-scenarios.spec.ts`, `playwright/portal.auth-runtime.spec.ts`, `docs/testing-and-qa.md`.
 
 ### 2026-06-01 - Workbench Geometry - Roof Solver Stage Diagnostics
 
@@ -3101,3 +3101,19 @@ Current guardrail: Never clip document overflow to hide layout defects. Keep sta
 Promoted to: `docs/ui-foundation.md`; `docs/testing-and-qa.md`
 
 Related docs/tests: `apps/portal/components/ui/foundation/FoundationStyles.test.ts`; `apps/portal/components/ui/foundation/SanctuaryStatus.test.tsx`; `playwright/portal.ui-foundation.spec.ts`
+
+### 2026-07-21 - Production-Scale Related Reads - Bound PostgREST ID Filters
+
+Status: Active
+
+Area: Running Jobs and Dashboard project exceptions
+
+Decision or mistake: Related-table reads placed the complete active-project inventory into a single PostgREST `.in(...)` query. With 783 projects, the generated request lines exceeded the gateway limit and every dependent read failed with `Bad Request`.
+
+Why it mattered: Both routes looked correct with small fixtures, but production-scale authenticated browser review produced repeated 500s. Visual readiness cannot be separated from the settled data state that the route is meant to present.
+
+Current guardrail: Use `fetchRowsByIdChunks()` for large ID-filtered reads, keep chunk concurrency bounded, test above one chunk, and require live browser evidence to settle past loading before screenshots or READY claims.
+
+Promoted to: `docs/running-jobs.md`; `docs/project-command-centre-architecture.md`; `docs/ui-foundation.md`
+
+Related docs/tests: `apps/portal/lib/list/listLimits.test.ts`; `apps/portal/lib/projects/commandCentre/getProjectCommandExceptions.test.ts`; `playwright/portal.remaining-routes-ui.spec.ts`; `playwright/portal.dashboard-ui.spec.ts`

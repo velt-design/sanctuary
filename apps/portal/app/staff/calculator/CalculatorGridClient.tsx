@@ -40,6 +40,7 @@ import { getProject } from '@/lib/repo/projectsRepo';
 import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
@@ -4040,6 +4041,8 @@ export default function CalculatorGridClient({
     <CalculatorRoot
       className={`${styles.page} ${styles.previewPage}${workspace ? ` ${styles.embeddedPage}` : ''}${previewSplit.isDragging ? ` ${styles.previewPageResizing}` : ''}`}
       data-calculator-workspace={workspace ? 'project' : 'standalone'}
+      data-ui-foundation-consumer="calculator"
+      data-ui-density="compact"
     >
       <div className={styles.previewFrame}>
         <CalculatorCommandBar
@@ -4152,27 +4155,21 @@ export default function CalculatorGridClient({
                 <ul className={styles.warningList}>
                   {uiWarnings.map((warning) => (
                     <li key={warning.id} className={styles.warningRow}>
-                      <span
-                        className={
-                          warning.severity === 'critical'
-                            ? styles.warningBadgeCritical
-                            : warning.severity === 'review'
-                              ? styles.warningBadgeReview
-                              : styles.warningBadgeInfo
-                        }
+                      <AlertBanner
+                        tone={warning.severity === 'critical' ? 'blocking' : warning.severity === 'review' ? 'warning' : 'info'}
+                        title={warning.severity === 'critical' ? 'Critical' : warning.severity === 'review' ? 'Review' : 'Information'}
+                        action={warning.source === 'infill' ? (
+                          <button
+                            type="button"
+                            className={styles.warningJumpButton}
+                            onClick={() => jumpToInfillWarningGlobal(warning.infillId, warning.warning)}
+                          >
+                            Jump
+                          </button>
+                        ) : undefined}
                       >
-                        {warning.severity === 'critical' ? 'Critical' : warning.severity === 'review' ? 'Review' : 'Info'}
-                      </span>
-                      <span className={styles.warningMessage}>{warning.message}</span>
-                      {warning.source === 'infill' ? (
-                        <button
-                          type="button"
-                          className={styles.warningJumpButton}
-                          onClick={() => jumpToInfillWarningGlobal(warning.infillId, warning.warning)}
-                        >
-                          Jump
-                        </button>
-                      ) : null}
+                        {warning.message}
+                      </AlertBanner>
                     </li>
                   ))}
                 </ul>
@@ -4210,7 +4207,7 @@ export default function CalculatorGridClient({
             <>
             <section className={styles.previewCard} aria-label="Materials debug">
               <div className={styles.materialsDebugHeader}>
-                <h2 className={styles.previewCardTitle} style={{ margin: 0 }}>
+                <h2 className={`${styles.previewCardTitle} ${styles.previewCardTitleFlush}`}>
                   Materials debug
                 </h2>
                 {!materialsDebugAvailable ? <span className={styles.previewMuted}>Disabled</span> : null}

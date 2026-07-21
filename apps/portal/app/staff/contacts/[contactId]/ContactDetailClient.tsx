@@ -1,12 +1,24 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import HeaderActions from '@/components/layout/HeaderActions';
 import PageHeader from '@/components/layout/PageHeader';
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
+import { Button, ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
+import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
+import {
+  Card,
+  EmptyState,
+  LoadingSkeleton,
+  PageLayout,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/foundation/FoundationSurfaces';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { contactDetailQueryOptions } from '@/lib/queries/contacts';
@@ -15,6 +27,7 @@ import { projectsByContactQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
+import styles from '../contacts.module.css';
 import { isValidOptionalContactEmail, useContactDetailsDraft } from './useContactDetailsDraft';
 
 type ContactDetailsViewProps = {
@@ -53,171 +66,149 @@ export function ContactDetailsView({
   } = useContactDetailsDraft(contact, hostKey);
 
   return (
-    <main className={styles.page}>
+    <PageLayout className={styles.page}>
       <PageHeader
+        variant="detail"
         title={displayed.displayName || contact.displayName}
+        description="Customer details and linked project history."
+        breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: displayed.displayName || contact.displayName }]}
         right={
           <HeaderActions>
-            <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
-              Contacts
-            </PortalIndexLink>
-            <Link className={styles.button} href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>
-              Create Project
-            </Link>
+            <PortalIndexLink variant="secondary" href="/staff/contacts">Contacts</PortalIndexLink>
+            <ButtonLink href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>Create Project</ButtonLink>
           </HeaderActions>
         }
       />
-      <div className="mt-1 mb-3 text-xs text-zinc-500">Contact ID: {contact.id}</div>
+      <p className={styles.detailMeta}>Contact ID: {contact.id}</p>
 
-      {loadError ? <p className={styles.error}>{loadError}</p> : null}
+      {loadError ? <AlertBanner tone="warning" title="Latest contact refresh failed">{loadError}</AlertBanner> : null}
 
-      <section className={styles.section} aria-label="Contact info">
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Contact Info</h2>
-          <div className={styles.actions}>
-            {statusText ? <span className={styles.note}>{statusText}</span> : null}
+      <Card
+        title="Contact info"
+        aria-label="Contact info"
+        action={
+          <div className={styles.detailActions}>
+            {statusText ? <TaskScheduleFeedback state={error ? 'retry' : isSaving ? 'saving' : 'saved'}>{statusText}</TaskScheduleFeedback> : null}
             {isEditing ? (
               <>
-                <button type="button" className={styles.button} disabled={!canSave} onClick={finishEditing}>
-                  Done
-                </button>
-                <button type="button" className={styles.buttonSecondary} disabled={isSaving} onClick={resetEditing}>
-                  Reset
-                </button>
+                <Button disabled={!canSave} onClick={finishEditing}>Done</Button>
+                <Button variant="secondary" disabled={isSaving} onClick={resetEditing}>Reset</Button>
               </>
             ) : (
-              <button type="button" className={styles.buttonSecondary} onClick={() => setIsEditing(true)}>
-                Edit
-              </button>
+              <Button variant="secondary" onClick={() => setIsEditing(true)}>Edit</Button>
             )}
           </div>
-        </div>
-        <div className={styles.sectionBody}>
-          {error ? (
-            <div className={styles.field} role="status">
-              <p className={styles.error}>{error}</p>
-              {canRetry ? (
-                <div className={styles.actions}>
-                  <button type="button" className={styles.buttonSecondary} onClick={() => void retry()}>
-                    Retry now
-                  </button>
-                  <button type="button" className={styles.buttonSecondary} onClick={reviewLocalDraft}>
-                    Review changes
-                  </button>
+        }
+      >
+        {error ? (
+          <div className={styles.status}>
+            <AlertBanner
+              tone="error"
+              title="Contact changes need attention"
+              action={canRetry ? (
+                <div className={styles.detailActions}>
+                  <Button variant="secondary" onClick={() => void retry()}>Retry now</Button>
+                  <Button variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button>
                 </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <tbody>
-                <tr>
-                  <th style={{ width: 180 }}>Name</th>
-                  <td>
-                    {isEditing ? (
-                      <input
-                        aria-label="Contact name"
-                        className={styles.inlineInput}
-                        value={draft.displayName}
-                        onChange={(event) => updateDraftField('displayName', event.target.value)}
-                        onBlur={saveCurrentDraft}
-                        required
-                      />
-                    ) : (
-                      displayed.displayName
-                    )}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Email</th>
-                  <td>
-                    {isEditing ? (
-                      <input
-                        aria-label="Contact email"
-                        className={styles.inlineInput}
-                        value={draft.email}
-                        onChange={(event) => updateDraftField('email', event.target.value)}
-                        onBlur={saveCurrentDraft}
-                      />
-                    ) : (
-                      displayed.email || '—'
-                    )}
-                    {isEditing && !isValidOptionalContactEmail(draft.email) ? (
-                      <p className={styles.error}>Email must include &quot;@&quot;.</p>
-                    ) : null}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Phone</th>
-                  <td>
-                    {isEditing ? (
-                      <input
-                        aria-label="Contact phone"
-                        className={styles.inlineInput}
-                        value={draft.phone}
-                        onChange={(event) => updateDraftField('phone', event.target.value)}
-                        onBlur={saveCurrentDraft}
-                      />
-                    ) : (
-                      displayed.phone || '—'
-                    )}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Created</th>
-                  <td>{formatPortalDateTime(contact.createdAt)}</td>
-                </tr>
-                <tr>
-                  <th>Updated</th>
-                  <td>{formatPortalDateTime(contact.updatedAt)}</td>
-                </tr>
-              </tbody>
-            </table>
+              ) : undefined}
+            >
+              {error}
+            </AlertBanner>
           </div>
-        </div>
-      </section>
+        ) : null}
 
-      <section className={styles.section} aria-label="Projects for contact" style={{ marginTop: 14 }}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Projects</h2>
-        </div>
-        <div className={styles.sectionBody}>
-          {!projectsLoaded ? (
-            <p className={styles.note}>Loading projects...</p>
-          ) : projects.length ? (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Project</th>
-                    <th>Region</th>
-                    <th>Created</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {projects.map((project) => (
-                    <tr key={project.id}>
-                      <td>{project.projectName ?? project.name ?? '—'}</td>
-                      <td className={styles.muted}>{project.region ?? '—'}</td>
-                      <td className={styles.muted}>{formatPortalDateTime(project.createdAt)}</td>
-                      <td>
-                        <Link className={styles.link} href={`/staff/projects/${encodeURIComponent(project.id)}`}>
-                          Open
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className={styles.note}>{projectsError ? 'Could not load projects.' : 'No projects linked to this contact yet.'}</p>
-          )}
-        </div>
-      </section>
-    </main>
+        <Table className={styles.detailTable}>
+          <TableBody>
+            <TableRow>
+              <TableHead scope="row">Name</TableHead>
+              <TableCell>
+                {isEditing ? (
+                  <Input
+                    aria-label="Contact name"
+                    value={draft.displayName}
+                    onChange={(event) => updateDraftField('displayName', event.target.value)}
+                    onBlur={saveCurrentDraft}
+                    required
+                  />
+                ) : displayed.displayName}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableHead scope="row">Email</TableHead>
+              <TableCell>
+                {isEditing ? (
+                  <Input
+                    aria-label="Contact email"
+                    type="email"
+                    value={draft.email}
+                    onChange={(event) => updateDraftField('email', event.target.value)}
+                    onBlur={saveCurrentDraft}
+                    error={!isValidOptionalContactEmail(draft.email) ? 'Email must include "@".' : undefined}
+                  />
+                ) : displayed.email || '\u2014'}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableHead scope="row">Phone</TableHead>
+              <TableCell>
+                {isEditing ? (
+                  <Input
+                    aria-label="Contact phone"
+                    type="tel"
+                    value={draft.phone}
+                    onChange={(event) => updateDraftField('phone', event.target.value)}
+                    onBlur={saveCurrentDraft}
+                  />
+                ) : displayed.phone || '\u2014'}
+              </TableCell>
+            </TableRow>
+            <TableRow><TableHead scope="row">Created</TableHead><TableCell>{formatPortalDateTime(contact.createdAt)}</TableCell></TableRow>
+            <TableRow><TableHead scope="row">Updated</TableHead><TableCell>{formatPortalDateTime(contact.updatedAt)}</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Card title="Projects" aria-label="Projects for contact" padding="none">
+        {!projectsLoaded ? (
+          <LoadingSkeleton rows={3} columns={4} label="Loading projects" />
+        ) : projects.length ? (
+          <Table className={styles.responsiveTable}>
+            <TableHeader><TableRow><TableHead>Project</TableHead><TableHead className={styles.mobileOptional}>Region</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {projects.map((project) => (
+                <TableRow key={project.id}>
+                  <TableCell><strong>{project.projectName ?? project.name ?? '\u2014'}</strong></TableCell>
+                  <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{project.region ?? '\u2014'}</TableCell>
+                  <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(project.createdAt)}</TableCell>
+                  <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/projects/${encodeURIComponent(project.id)}`}>Open</ButtonLink></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            compact
+            title={projectsError ? 'Projects unavailable' : 'No linked projects'}
+            description={projectsError ? 'The project list could not be loaded.' : 'Create a project to connect work with this contact.'}
+            action={!projectsError ? <ButtonLink href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>Create Project</ButtonLink> : undefined}
+          />
+        )}
+      </Card>
+    </PageLayout>
+  );
+}
+
+function ContactDetailState({ title, description }: { title: string; description: string }) {
+  return (
+    <PageLayout className={styles.page}>
+      <PageHeader
+        variant="detail"
+        title="Contact"
+        breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: 'Contact' }]}
+        right={<HeaderActions><PortalIndexLink variant="secondary" href="/staff/contacts">Contacts</PortalIndexLink></HeaderActions>}
+      />
+      <EmptyState title={title} description={description} />
+    </PageLayout>
   );
 }
 
@@ -247,39 +238,11 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
   }, [projectsQuery.error, toast]);
 
   if (typeof contactQuery.data === 'undefined') {
-    return (
-      <main className={styles.page}>
-        <PageHeader
-          title="Contact"
-          right={
-            <HeaderActions>
-              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
-                Contacts
-              </PortalIndexLink>
-            </HeaderActions>
-          }
-        />
-        <p className={styles.note}>Loading contact details...</p>
-      </main>
-    );
+    return <ContactDetailState title="Loading contact" description="Retrieving the latest saved contact details." />;
   }
 
   if (!contactQuery.data) {
-    return (
-      <main className={styles.page}>
-        <PageHeader
-          title="Contact"
-          right={
-            <HeaderActions>
-              <PortalIndexLink className={styles.buttonSecondary} href="/staff/contacts">
-                Contacts
-              </PortalIndexLink>
-            </HeaderActions>
-          }
-        />
-        <p className={styles.note}>This contact does not exist in the portal database.</p>
-      </main>
-    );
+    return <ContactDetailState title="Contact not found" description="This contact does not exist in the portal database." />;
   }
 
   return (

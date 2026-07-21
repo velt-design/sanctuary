@@ -4,6 +4,7 @@ import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import { projectNoteAuthorDisplayName } from '@/lib/projectNotes/types';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
+import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
 
 function authorLabel(item: DashboardRecentActivityItem): string {
   const resolved = projectNoteAuthorDisplayName({
@@ -34,7 +35,7 @@ export default function RecentActivityCard({ items }: { items: DashboardRecentAc
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Activity</h2>
-          <div className={styles.muted} style={{ fontSize: 12 }}>
+          <div className={`${styles.muted} ${dash.cardSubheading}`}>
             Latest project notes.
           </div>
         </div>
@@ -46,7 +47,7 @@ export default function RecentActivityCard({ items }: { items: DashboardRecentAc
               <li key={item.id}>
                 <Link href={item.href} className={dash.activityItem}>
                   <div className={dash.activityHeaderRow}>
-                    <span className={dash.activityTypePill}>Project note</span>
+                    <Badge tone="success" edge className={dash.activityTypePill}>Project note</Badge>
                     <span className={dash.activityTime}>{activityTimeLabel(item.at)}</span>
                   </div>
                   <div className={dash.activityProject}>{item.projectName}</div>

@@ -1,9 +1,17 @@
-import Link from 'next/link';
 import type {
   CommandCentreCostingState,
   CommandCentreDeliveryState,
   ProjectCommandCentreCurrentDesign,
 } from '@/lib/projects/commandCentre/types';
+import {
+  AlertBanner,
+  Badge,
+  ButtonLink,
+  Card,
+  EmptyState,
+  MetricGrid,
+  type BadgeTone,
+} from '@/components/ui/foundation';
 import styles from './ProjectCurrentDesignCommercialCard.module.css';
 
 const MONEY = new Intl.NumberFormat('en-NZ', {
@@ -54,115 +62,107 @@ function quoteVersionLabel(data: ProjectCommandCentreCurrentDesign): string {
   return `${ref}${version}`;
 }
 
+function badgeTone(tone: ProjectCommandCentreCurrentDesign['statusTone']): BadgeTone {
+  if (tone === 'accepted') return 'success';
+  if (tone === 'declined') return 'error';
+  if (tone === 'sent') return 'warning';
+  return 'neutral';
+}
+
 export default function ProjectCurrentDesignCommercialCard({
   data,
 }: {
   data: ProjectCommandCentreCurrentDesign;
 }) {
   return (
-    <section
+    <Card
       className={styles.card}
-      aria-labelledby="current-design-commercial-heading"
+      aria-label="Current design and commercial summary"
+      title="Current design & commercial"
+      eyebrow="Project overview"
+      padding="compact"
+      action={<Badge tone={badgeTone(data.statusTone)}>{data.statusLabel}</Badge>}
       data-command-centre-source={data.source}
       data-current-design-state={data.designState}
     >
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Project overview</p>
-          <h2 className={styles.title} id="current-design-commercial-heading">
-            Current design &amp; commercial
-          </h2>
-        </div>
-        <span className={`${styles.status} ${styles[`status_${data.statusTone}`]}`}>
-          {data.statusLabel}
-        </span>
-      </header>
+      <div className={styles.stack}>
+        {data.source === 'none' ? (
+          <EmptyState compact title="No current design" description="No estimate or active quote has been saved for this project." />
+        ) : (
+          <MetricGrid
+            ariaLabel="Current design and commercial metrics"
+            columns={2}
+            items={[
+              {
+                label: 'Design',
+                value: data.designState === 'source_unavailable'
+                  ? 'Source unavailable'
+                  : `${data.design?.size ?? 'Size not recorded'}${data.design && data.design.additionalModuleCount > 0 ? ` + ${data.design.additionalModuleCount} more` : ''}`,
+                detail: data.designState === 'source_unavailable'
+                  ? 'The selected quote remains current; no other estimate has been substituted.'
+                  : `${data.design?.shape ?? 'Shape not recorded'} · ${data.design?.roofing ?? 'Roofing not recorded'}`,
+              },
+              {
+                label: 'Customer price',
+                value: formatPrice(data.price.totalIncGstCents),
+                detail: data.price.source === 'quote' ? 'Stored quote total' : data.price.source === 'estimate' ? 'Stored estimate total' : 'No price source',
+                emphasis: true,
+              },
+              {
+                label: 'Estimate',
+                value: data.estimate?.versionLabel ?? 'No source estimate',
+                detail: data.estimate ? `${formatDate(data.estimate.savedAt)} · ${COSTING_LABEL[data.estimate.costingState]}` : 'Source record not available',
+              },
+              {
+                label: 'Quote',
+                value: quoteVersionLabel(data),
+                detail: data.quote ? DELIVERY_LABEL[data.quote.deliveryState] : 'Estimate-led project',
+              },
+            ]}
+          />
+        )}
 
-      {data.source === 'none' ? (
-        <div className={styles.empty}>
-          <strong>No current design</strong>
-          <span>No estimate or active quote has been saved for this project.</span>
+        <div className={styles.notices}>
+          {data.latestDeclinedQuote ? (
+            <div data-command-centre-notice="declined">
+              <AlertBanner tone="info" title="Latest quote declined">
+                {data.source === 'estimate'
+                  ? 'The current design falls back to the eligible estimate.'
+                  : 'No eligible estimate is current.'}
+              </AlertBanner>
+            </div>
+          ) : null}
+          {data.newerEstimate ? (
+            <div data-command-centre-notice="newer-estimate">
+              <AlertBanner tone="info" title="Newer unrelated estimate">
+                {data.newerEstimate.versionLabel}, saved {formatDate(data.newerEstimate.savedAt)}, does not replace the quote-controlled current design.
+              </AlertBanner>
+            </div>
+          ) : null}
+          {data.warnings.includes('source_design_unavailable') ? (
+            <div data-command-centre-warning="source-design-unavailable">
+              <AlertBanner tone="warning" title="Source design unavailable">Review the quote source before relying on design details.</AlertBanner>
+            </div>
+          ) : null}
+          {data.warnings.includes('quote_price_unavailable') ? (
+            <div data-command-centre-warning="quote-price-unavailable">
+              <AlertBanner tone="warning" title="Stored quote price unavailable">No estimate price has been substituted.</AlertBanner>
+            </div>
+          ) : null}
+          {data.warnings.includes('multiple_accepted_quotes') ? (
+            <div data-command-centre-warning="multiple-accepted-quotes">
+              <AlertBanner tone="warning" title="Multiple accepted quotes">The newest accepted quote is shown; review quote history.</AlertBanner>
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <div className={styles.metrics}>
-          <div className={styles.metric}>
-            <span className={styles.metricLabel}>Design</span>
-            {data.designState === 'source_unavailable' ? (
-              <strong className={styles.unavailable}>Source design unavailable</strong>
-            ) : (
-              <strong>
-                {data.design?.size ?? 'Size not recorded'}
-                {data.design && data.design.additionalModuleCount > 0
-                  ? ` + ${data.design.additionalModuleCount} more`
-                  : ''}
-              </strong>
-            )}
-            <span>
-              {data.designState === 'source_unavailable'
-                ? 'The selected quote remains current; no other estimate has been substituted.'
-                : `${data.design?.shape ?? 'Shape not recorded'} · ${data.design?.roofing ?? 'Roofing not recorded'}`}
-            </span>
-          </div>
 
-          <div className={styles.metric}>
-            <span className={styles.metricLabel}>Customer price</span>
-            <strong>{formatPrice(data.price.totalIncGstCents)}</strong>
-            <span>{data.price.source === 'quote' ? 'Stored quote total' : data.price.source === 'estimate' ? 'Stored estimate total' : 'No price source'}</span>
-          </div>
-
-          <div className={styles.metric}>
-            <span className={styles.metricLabel}>Estimate</span>
-            <strong>{data.estimate?.versionLabel ?? 'No source estimate'}</strong>
-            <span>
-              {data.estimate
-                ? `${formatDate(data.estimate.savedAt)} · ${COSTING_LABEL[data.estimate.costingState]}`
-                : 'Source record not available'}
-            </span>
-          </div>
-
-          <div className={styles.metric}>
-            <span className={styles.metricLabel}>Quote</span>
-            <strong>{quoteVersionLabel(data)}</strong>
-            <span>{data.quote ? DELIVERY_LABEL[data.quote.deliveryState] : 'Estimate-led project'}</span>
-          </div>
+        <div className={styles.links}>
+          {data.links.quote ? <ButtonLink variant="secondary" size="small" href={data.links.quote}>View current quote</ButtonLink> : null}
+          {data.links.estimate ? <ButtonLink variant="secondary" size="small" href={data.links.estimate}>View source design</ButtonLink> : null}
+          {!data.links.quote ? <ButtonLink variant="tertiary" size="small" href={data.links.quotes}>View quotes</ButtonLink> : null}
+          {!data.links.estimate ? <ButtonLink variant="tertiary" size="small" href={data.links.designs}>View designs</ButtonLink> : null}
         </div>
-      )}
-
-      {data.latestDeclinedQuote ? (
-        <div className={styles.notice} data-command-centre-notice="declined">
-          Latest quote outcome: declined. {data.source === 'estimate'
-            ? 'The current design falls back to the eligible estimate.'
-            : 'No eligible estimate is current.'}
-        </div>
-      ) : null}
-      {data.newerEstimate ? (
-        <div className={styles.notice} data-command-centre-notice="newer-estimate">
-          A newer unrelated estimate ({data.newerEstimate.versionLabel}, saved {formatDate(data.newerEstimate.savedAt)}) exists.
-          The selected quote still controls the current design.
-        </div>
-      ) : null}
-      {data.warnings.includes('source_design_unavailable') ? (
-        <div className={styles.warning} data-command-centre-warning="source-design-unavailable">
-          Source design unavailable. Review the quote source before relying on design details.
-        </div>
-      ) : null}
-      {data.warnings.includes('quote_price_unavailable') ? (
-        <div className={styles.warning} data-command-centre-warning="quote-price-unavailable">
-          Stored quote price unavailable. No estimate price has been substituted.
-        </div>
-      ) : null}
-      {data.warnings.includes('multiple_accepted_quotes') ? (
-        <div className={styles.warning} data-command-centre-warning="multiple-accepted-quotes">
-          Multiple accepted quotes were found. The newest accepted quote is shown; review quote history.
-        </div>
-      ) : null}
-
-      <footer className={styles.links}>
-        {data.links.quote ? <Link href={data.links.quote}>View current quote</Link> : null}
-        {data.links.estimate ? <Link href={data.links.estimate}>View source design</Link> : null}
-        {!data.links.quote ? <Link href={data.links.quotes}>View quotes</Link> : null}
-        {!data.links.estimate ? <Link href={data.links.designs}>View designs</Link> : null}
-      </footer>
-    </section>
+      </div>
+    </Card>
   );
 }

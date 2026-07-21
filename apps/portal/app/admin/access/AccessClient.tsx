@@ -355,7 +355,7 @@ export default function AccessClient() {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-foundation-consumer="admin-access">
       <PageHeader title="Access" />
       <div className={styles.card}>
         <p className={styles.intro}>

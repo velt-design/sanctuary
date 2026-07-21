@@ -6,6 +6,7 @@ import { useTransition } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
 import PageHeader from '@/components/layout/PageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 import styles from './schedule.module.css';
 
@@ -46,7 +47,7 @@ export default function SiteVisitsScheduleClient() {
   };
 
   return (
-    <main className={cx(styles.page, styles.pageLocked)}>
+    <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
       <PageHeader
         title="Schedule"
         right={
@@ -58,6 +59,6 @@ export default function SiteVisitsScheduleClient() {
       <div className={cx(styles.stack, styles.stackLocked)}>
         <LazySiteVisitsView />
       </div>
-    </main>
+    </PageLayout>
   );
 }

@@ -32,8 +32,10 @@ export default function ProjectMainTabs({
 
   return (
     <section
+      id="project-tab-content"
       className={`${layout.projectTabSurface} ${activeTab === 'estimates' ? layout.tabSectionWorkspace : ''}`}
       aria-label="Project tab content"
+      role="tabpanel"
       data-project-active-tab={activeTab}
     >
       <div

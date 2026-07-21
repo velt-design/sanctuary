@@ -33,18 +33,12 @@ export default function ScheduleDiagnosticsPanel({
   return (
     <div
       aria-label="Schedule diagnostics"
-      style={{
-        marginTop: 12,
-        border: '1px solid rgba(var(--portal-text-rgb), 0.14)',
-        borderRadius: 14,
-        background: 'rgba(var(--portal-bg-surface-rgb), 0.92)',
-        overflow: 'hidden',
-      }}
+      className={styles.diagnostics}
     >
-      <div style={{ padding: 12, display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Diagnostics (dev only)</strong>
-          <span className={styles.muted} style={{ fontSize: 12 }}>
+      <div className={styles.diagnosticsHeader}>
+        <div className={styles.diagnosticsHeading}>
+          <strong className={styles.diagnosticsTitle}>Diagnostics (dev only)</strong>
+          <span className={styles.diagnosticsDescription}>
             Checks projects + estimates + schedule tables
           </span>
         </div>
@@ -59,7 +53,7 @@ export default function ScheduleDiagnosticsPanel({
       </div>
 
       {open ? (
-        <div style={{ padding: 12, borderTop: '1px solid rgba(var(--portal-text-rgb), 0.08)' }}>
+        <div className={styles.diagnosticsBody}>
           <button
             type="button"
             className={styles.buttonSecondary}
@@ -70,7 +64,7 @@ export default function ScheduleDiagnosticsPanel({
           </button>
 
           {diagnostics ? (
-            <div className={styles.note} style={{ marginTop: 12 }}>
+            <div className={`${styles.note} ${styles.diagnosticsResult}`}>
               <div>
                 Host: <strong>{diagnostics.host || '—'}</strong>
               </div>
@@ -92,15 +86,15 @@ export default function ScheduleDiagnosticsPanel({
               </div>
             </div>
           ) : (
-            <p className={styles.note} style={{ marginTop: 12 }}>
+            <p className={`${styles.note} ${styles.diagnosticsResult}`}>
               Click “Run diagnostics” to test PostgREST access.
             </p>
           )}
 
-          <div className={styles.note} style={{ marginTop: 12 }}>
+          <div className={`${styles.note} ${styles.diagnosticsTelemetry}`}>
             <strong>Recent schedule telemetry</strong>
             {recentTelemetryEvents.length ? (
-              <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+              <ul className={styles.diagnosticsList}>
                 {recentTelemetryEvents.map((event, index) => (
                   <li key={`${event.createdAt ?? 'event'}-${event.event}-${index}`}>
                     <code>{event.event}</code>
@@ -111,7 +105,7 @@ export default function ScheduleDiagnosticsPanel({
                 ))}
               </ul>
             ) : (
-              <div className={styles.muted} style={{ marginTop: 8 }}>
+              <div className={styles.diagnosticsEmpty}>
                 No client schedule telemetry yet.
               </div>
             )}

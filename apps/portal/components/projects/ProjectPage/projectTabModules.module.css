@@ -2,6 +2,6 @@
   display: grid;
   place-items: center;
   min-height: 160px;
-  color: rgba(var(--portal-text-rgb), 0.65);
+  color: var(--ui-text-muted);
   font-size: 13px;
 }

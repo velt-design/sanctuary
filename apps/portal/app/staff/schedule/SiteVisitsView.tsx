@@ -9,6 +9,7 @@ import UnscheduledSiteVisitCard from './UnscheduledSiteVisitCard';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
+import { SiteVisitsActionError, SiteVisitsRefreshFeedback } from './SiteVisitsFeedback';
 import SiteVisitEventModal, { LINK_NONE, type SiteVisitEventFormValues } from '@/components/schedule/site-visits/SiteVisitEventModal';
 import SiteVisitHoverPopover from '@/components/schedule/site-visits/SiteVisitHoverPopover';
 import SlotSelectPopover from '@/components/schedule/site-visits/SlotSelectPopover';
@@ -31,6 +32,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/queries/keys';
 
 const styles = { ...sharedStyles, ...siteVisitsStyles };
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ');
+}
 
 const HOURS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => i + DAY_START_HOUR);
 const DAY_START_MINUTES = DAY_START_HOUR * 60;
@@ -810,7 +815,7 @@ export default function SiteVisitsView() {
       <section className={styles.siteVisitsShell} aria-label="Site visits calendar">
         <div className={styles.siteVisitsTopBar}>
           <div className={styles.siteVisitsControls}>
-            <span className={styles.muted} style={{ alignSelf: 'center' }}>
+            <span className={cx(styles.muted, styles.controlMeta)}>
               Loading site visits…
             </span>
           </div>
@@ -840,13 +845,13 @@ export default function SiteVisitsView() {
           <button type="button" className={styles.buttonSecondary} onClick={() => openWeek(addDaysLocal(viewWeek, 7))}>
             Next →
           </button>
-          <span className={styles.muted} style={{ alignSelf: 'center' }}>
+          <span className={cx(styles.muted, styles.controlMeta)}>
             Week of {fmtDayLabel(viewWeek)}
           </span>
         </div>
 
         <div className={styles.siteVisitsControls}>
-          <label className={styles.muted} style={{ alignSelf: 'center' }}>
+          <label className={cx(styles.muted, styles.controlMeta)}>
             Sales:
           </label>
           <select
@@ -861,11 +866,13 @@ export default function SiteVisitsView() {
               </option>
             ))}
           </select>
-          <span className={styles.muted} style={{ alignSelf: 'center' }}>
+          <span className={cx(styles.muted, styles.controlMeta)}>
             {syncing ? 'Syncing…' : data?.generatedAt ? `Updated ${new Date(data.generatedAt).toLocaleTimeString('en-NZ')}` : ''}
           </span>
         </div>
       </div>
+
+      <SiteVisitsRefreshFeedback error={snapshotError} hasSnapshot={Boolean(snapshot)} onRetry={() => void refetch()} />
 
       <div className={styles.siteVisitsContent}>
         <div className={styles.siteVisitsPanels}>
@@ -891,9 +898,9 @@ export default function SiteVisitsView() {
               {orphanEventCandidates.length ? (
                 <div className={styles.issues}>
                   <div className={styles.issuesHeader}>
-                    <div style={{ display: 'grid', gap: 2 }}>
-                      <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Issues</strong>
-                      <span className={styles.muted} style={{ fontSize: 12 }}>
+                    <div className={styles.issuesHeading}>
+                      <strong className={styles.issuesTitle}>Issues</strong>
+                      <span className={cx(styles.muted, styles.issuesCopy)}>
                         {orphanEventCandidates.length} site visit record{orphanEventCandidates.length === 1 ? '' : 's'} missing project details
                       </span>
                     </div>
@@ -902,7 +909,7 @@ export default function SiteVisitsView() {
                     </button>
                   </div>
                   <div className={styles.issuesBody}>
-                    <p className={styles.muted} style={{ margin: 0, fontSize: 12 }}>
+                    <p className={cx(styles.muted, styles.issuesCopy, styles.emptyState)}>
                       These are not shown on the calendar. This usually means a `site_visit_events` row references a project that no longer exists.
                     </p>
                   </div>
@@ -911,9 +918,9 @@ export default function SiteVisitsView() {
               {needsAssignmentEvents.length ? (
                 <div className={styles.issues}>
                   <div className={styles.issuesHeader}>
-                    <div style={{ display: 'grid', gap: 2 }}>
-                      <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Needs assignment</strong>
-                      <span className={styles.muted} style={{ fontSize: 12 }}>
+                    <div className={styles.issuesHeading}>
+                      <strong className={styles.issuesTitle}>Needs assignment</strong>
+                      <span className={cx(styles.muted, styles.issuesCopy)}>
                         {needsAssignmentEvents.length} scheduled site visit{needsAssignmentEvents.length === 1 ? '' : 's'} missing salesperson
                       </span>
                     </div>
@@ -921,12 +928,12 @@ export default function SiteVisitsView() {
                   <div className={styles.issuesBody}>
                     <ul className={styles.issueList}>
                       {needsAssignmentEvents.map((item) => (
-                        <li key={item.id} className={styles.issueItem} style={{ justifyContent: 'space-between' }}>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 800 }}>
+                        <li key={item.id} className={cx(styles.issueItem, styles.issueItemSpread)}>
+                          <div className={styles.issueIdentity}>
+                            <div className={styles.issueName}>
                               {(item.project.name || '').trim() || item.projectId || 'Untitled project'}
                             </div>
-                            <div className={styles.muted} style={{ fontSize: 12 }}>
+                            <div className={cx(styles.muted, styles.issuesCopy)}>
                               {item.scheduledStart ? new Date(item.scheduledStart).toLocaleString('en-NZ') : '—'}
                             </div>
                           </div>
@@ -952,7 +959,7 @@ export default function SiteVisitsView() {
                   />
                 ))
               ) : (
-                <p className={styles.muted} style={{ margin: 0 }}>
+                <p className={cx(styles.muted, styles.emptyState)}>
                   No unscheduled site visits.
                 </p>
               )}
@@ -960,19 +967,7 @@ export default function SiteVisitsView() {
           </aside>
 
           <main className={styles.siteVisitsCalendar} aria-label="Site visits week calendar">
-            {actionError ? (
-              <div style={{ padding: 10, borderBottom: '1px solid rgba(var(--portal-text-rgb), 0.08)', background: 'rgba(185,28,28,0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Booking error</strong>
-                  <button type="button" className={styles.buttonSecondary} onClick={() => setActionError(null)}>
-                    Dismiss
-                  </button>
-                </div>
-                <pre style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12 }}>
-                  {actionError}
-                </pre>
-              </div>
-            ) : null}
+            <SiteVisitsActionError error={actionError} onDismiss={() => setActionError(null)} />
             <div
               className={styles.siteVisitsCalendarScroll}
               ref={calendarScrollRef}
@@ -1046,8 +1041,8 @@ export default function SiteVisitsView() {
                               return (
                                 <div
                                   key={item.id}
-                                  className={isHighlighted ? styles.siteVisitEventHighlight : undefined}
-                                  style={{ position: 'absolute', left: 4, right: 4, top, height }}
+                                  className={cx(styles.siteVisitEventPositioner, isHighlighted && styles.siteVisitEventHighlight)}
+                                  style={{ top, height }}
                                 >
                                   <SiteVisitEvent
                                     item={item}
@@ -1117,23 +1112,23 @@ export default function SiteVisitsView() {
 
       {assigning ? (
         <Modal open ariaLabel="Assign salesperson" onClose={() => setAssigning(null)} maxWidthPx={560}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Assign</h2>
+          <div className={styles.actionModalBody}>
+            <div className={styles.actionModalHeader}>
+              <h2 className={styles.actionModalTitle}>Assign</h2>
               <button type="button" className={styles.buttonSecondary} onClick={() => setAssigning(null)}>
                 Close
               </button>
             </div>
 
-            <p className={styles.hint} style={{ marginTop: 10 }}>
+            <p className={cx(styles.hint, styles.actionModalIntro)}>
               Project: <strong>{(assigning.item.project.name || '').trim() || assigning.item.projectId || 'Untitled project'}</strong>
             </p>
-            <p className={styles.muted} style={{ marginTop: 8, marginBottom: 0 }}>
+            <p className={cx(styles.muted, styles.assignmentSchedule)}>
               Scheduled: {assigning.item.scheduledStart ? new Date(assigning.item.scheduledStart).toLocaleString('en-NZ') : '—'}
             </p>
 
-            <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
-              <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Salesperson</label>
+            <div className={styles.actionModalFields}>
+              <label className={styles.actionModalLabel}>Salesperson</label>
               <select
                 className={styles.input}
                 value={assigning.salespersonId}
@@ -1147,11 +1142,11 @@ export default function SiteVisitsView() {
               </select>
             </div>
 
-            <div className={styles.actions} style={{ justifyContent: 'flex-end', marginTop: 14 }}>
+            <div className={styles.actionModalActions}>
               <button type="button" className={styles.buttonSecondary} onClick={() => setAssigning(null)}>
                 Cancel
               </button>
-              <button type="button" className={styles.buttonSecondary} onClick={() => void assignSalesperson(assigning.item, assigning.salespersonId)}>
+              <button type="button" className={styles.buttonPrimary} onClick={() => void assignSalesperson(assigning.item, assigning.salespersonId)}>
                 Assign
               </button>
             </div>

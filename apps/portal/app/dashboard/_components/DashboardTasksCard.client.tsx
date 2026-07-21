@@ -5,6 +5,8 @@ import type { DashboardPersonalTask } from '@/lib/dashboard/types';
 import { DASHBOARD_TASK_TITLE_MAX_LENGTH } from '@/lib/dashboard/tasks';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
+import { Button, Input } from '@/components/ui/foundation/FoundationControls';
+import { TaskList, TaskRow } from '@/components/ui/foundation/FoundationOperational';
 
 async function readTaskResponse(res: Response): Promise<DashboardPersonalTask> {
   const body = await res.json().catch(() => null);
@@ -81,7 +83,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Tasks</h2>
-          <div className={styles.muted} style={{ fontSize: 12 }}>
+          <div className={`${styles.muted} ${dash.cardSubheading}`}>
             Personal reminders.
           </div>
         </div>
@@ -94,7 +96,8 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
             void createTask();
           }}
         >
-          <input
+          <Input
+            fieldClassName={dash.taskInputField}
             className={dash.taskInput}
             aria-label="New dashboard task"
             placeholder="Add a task..."
@@ -106,31 +109,29 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
             }}
             disabled={submitting}
           />
-          <button className={dash.taskAddButton} type="submit" disabled={submitting || !title.trim()}>
+          <Button className={dash.taskAddButton} type="submit" loading={submitting} disabled={!title.trim()}>
             Add
-          </button>
+          </Button>
         </form>
         {error ? <div className={dash.taskError}>{error}</div> : null}
 
         {tasks.length ? (
-          <ul className={dash.taskList}>
+          <TaskList className={dash.taskList} ariaLabel="Personal tasks">
             {tasks.map((task) => {
               const completed = Boolean(task.completedAt);
               return (
-                <li key={task.id} className={`${dash.taskBubble} ${completed ? dash.taskBubbleDone : ''}`}>
-                  <span className={dash.taskTitle}>{task.title}</span>
-                  <input
-                    className={dash.taskCheckbox}
-                    type="checkbox"
-                    aria-label={`Complete ${task.title}`}
-                    checked={completed}
-                    disabled={pendingTaskId === task.id}
-                    onChange={(event) => void toggleTask(task, event.currentTarget.checked)}
-                  />
-                </li>
+                <TaskRow
+                  key={task.id}
+                  className={dash.taskBubble}
+                  checked={completed}
+                  disabled={pendingTaskId === task.id}
+                  label={task.title}
+                  controlAriaLabel={`Complete ${task.title}`}
+                  onChange={(checked) => void toggleTask(task, checked)}
+                />
               );
             })}
-          </ul>
+          </TaskList>
         ) : (
           <div className={dash.emptyState}>No personal tasks yet.</div>
         )}

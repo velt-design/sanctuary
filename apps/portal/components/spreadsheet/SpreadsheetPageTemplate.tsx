@@ -340,7 +340,7 @@ export default function SpreadsheetPageTemplate<
   );
 
   return (
-    <main className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`}>
+    <main className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`} data-ui-foundation-consumer="spreadsheet">
       {embedded ? null : <PageHeader title={adapter.title} />}
 
       <div className={styles.stack}>

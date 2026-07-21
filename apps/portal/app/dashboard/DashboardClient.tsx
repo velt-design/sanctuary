@@ -18,7 +18,11 @@ export default function DashboardClient({
 
   if (dashboard.state === 'unavailable') {
     return (
-      <div data-dashboard-state="unavailable" data-dashboard-background-ready="false">
+      <div
+        data-ui-foundation-consumer="dashboard"
+        data-dashboard-state="unavailable"
+        data-dashboard-background-ready="false"
+      >
         <PageMessagePanel
           title="Dashboard unavailable"
           description="Your current session cannot access the Dashboard."

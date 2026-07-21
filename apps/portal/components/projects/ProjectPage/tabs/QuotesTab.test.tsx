@@ -232,6 +232,10 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.textContent).toContain('More actions');
     expect(rendered.container.textContent).toContain('A newer design (V2) exists.');
     expect(rendered.container.textContent).toContain('Structured pergola editor');
+    expect(rendered.container.querySelector('[aria-label="Page actions"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-quotes-view="detail"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Draft');
+    expect(rendered.container.textContent).toContain('Internal');
 
     rendered.unmount();
   });

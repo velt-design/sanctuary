@@ -16,20 +16,31 @@ import {
 import {
   Button,
   AlertBanner,
+  ActivityTimeline,
+  ActivityTimelineItem,
+  ActionPanel,
+  Badge,
   CalculatorNotice,
+  Card,
   DataStatePanel,
   DestructiveConfirmation,
   EmptyState,
   FinancialSummary,
   IconButton,
   Input,
+  KeyValueGrid,
   LoadingSkeleton,
+  MetricGrid,
+  OperationalGrid,
   OverflowMenu,
   Pagination,
   PermissionBlockedControl,
   SearchFilterBar,
   SelectionTable,
   StickyActionBar,
+  TabNavigation,
+  TaskList,
+  TaskRow,
   TaskScheduleFeedback,
   useUnsavedChangesGuard,
 } from '@/components/ui/foundation';
@@ -56,6 +67,7 @@ export function FoundationPatternsSection({
   const [confirmText, setConfirmText] = useState('');
   const [confirmPending, setConfirmPending] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [operationalTab, setOperationalTab] = useState<'overview' | 'commercial' | 'activity'>('overview');
   const guardDrawerClose = useUnsavedChangesGuard(drawerOpen);
 
   const runDeleteDemo = () => {
@@ -204,7 +216,60 @@ export function FoundationPatternsSection({
       </article>
 
       <article className={styles.patternPanel}>
-        <div className={styles.sectionTitle}><h2>16. Modal, drawer and destructive work</h2><small>Focus trap, return and safe cancellation</small></div>
+        <div className={styles.sectionTitle}><h2>16. Detail-page operations</h2><small>Shared tabs, facts, metrics, activity and tasks</small></div>
+        <TabNavigation
+          ariaLabel="Detail-page pattern tabs"
+          items={[
+            { key: 'overview', label: 'Overview' },
+            { key: 'commercial', label: 'Commercial' },
+            { key: 'activity', label: 'Activity' },
+          ]}
+          selectedKey={operationalTab}
+          onSelect={setOperationalTab}
+        />
+        <OperationalGrid>
+          <Card title="Status & details" eyebrow="Project overview" padding="none">
+            <KeyValueGrid
+              ariaLabel="Example project details"
+              items={[
+                { label: 'Contact', value: 'James Wilson' },
+                { label: 'Owner', value: 'Jordan' },
+                { label: 'Site', value: 'Remuera, Auckland', wide: true },
+              ]}
+            />
+          </Card>
+          <Card title="Commercial summary" eyebrow="Current design" padding="compact">
+            <MetricGrid
+              ariaLabel="Example commercial summary"
+              columns={2}
+              items={[
+                { label: 'Customer price', value: '$78,940', detail: 'inc GST', emphasis: true },
+                { label: 'Quote', value: 'Q-2311 v2', detail: 'Sent to customer' },
+              ]}
+            />
+          </Card>
+          <ActionPanel title="Confirm site visit" eyebrow="Primary next action" tone="inverse" status={<Badge tone="warning">Due today</Badge>}>
+            <KeyValueGrid columns={2} items={[{ label: 'Owner', value: 'Jordan' }, { label: 'Category', value: 'Site visit' }]} />
+            <Button>Complete action</Button>
+          </ActionPanel>
+          <Card title="Activity" padding="none">
+            <ActivityTimeline>
+              <ActivityTimelineItem marker={<Badge tone="info">Project note</Badge>} meta="Today, 10:42 am" footer="Added by Jordan">
+                Client confirmed the revised roof layout.
+              </ActivityTimelineItem>
+            </ActivityTimeline>
+          </Card>
+          <Card title="Tasks" padding="none">
+            <TaskList>
+              <TaskRow checked={false} label="Confirm site visit" description="Due tomorrow" status={<Badge tone="warning">To do</Badge>} />
+              <TaskRow checked label="Send concept" status={<Badge tone="success">Done</Badge>} />
+            </TaskList>
+          </Card>
+        </OperationalGrid>
+      </article>
+
+      <article className={styles.patternPanel}>
+        <div className={styles.sectionTitle}><h2>17. Modal, drawer and destructive work</h2><small>Focus trap, return and safe cancellation</small></div>
         <div className={styles.overlayActions}>
           <Button variant="destructive" onClick={() => setConfirmOpen(true)}>Open destructive confirmation</Button>
           <Button variant="secondary" onClick={() => setDrawerOpen(true)}>Open editable drawer</Button>

@@ -1,0 +1,52 @@
+.tasks {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.summary,
+.feedbackRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+
+.modalContent,
+.archiveConfirmation,
+.tierFieldset {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.modalActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-2);
+}
+
+.tierFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tierFieldset legend {
+  padding: 0;
+  color: var(--ui-colour-text);
+  font-family: var(--ui-font-body);
+  font-size: var(--ui-text-sm);
+  font-weight: var(--ui-font-weight-semibold);
+}
+
+.tierHelper {
+  margin: calc(var(--ui-space-3) * -1) 0 0;
+  color: var(--ui-colour-text-muted);
+  font-size: var(--ui-text-sm);
+}
+
+@media (max-width: 767px) {
+  .modalActions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

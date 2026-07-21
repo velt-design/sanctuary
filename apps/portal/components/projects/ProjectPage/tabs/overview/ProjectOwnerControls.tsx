@@ -6,6 +6,7 @@ import {
 } from '@/lib/projects/commandCentre/client';
 import { PROJECT_OWNER_OPTIONS } from '@/lib/projects/commandCentre/projectOwners';
 import type { ProjectCommandOwnerSummary, ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
+import { Select } from '@/components/ui/foundation';
 import styles from './ProjectPrimaryActionCard.module.css';
 
 export default function ProjectOwnerControls({
@@ -25,9 +26,9 @@ export default function ProjectOwnerControls({
     commandId: crypto.randomUUID(),
   }));
 
-  return <div className={styles.createGrid} data-project-owner-controls="true">
-    {owner.permissions.canManage ? <label>Project owner
-      <select
+  return <div className={styles.ownerControl} data-project-owner-controls="true">
+    {owner.permissions.canManage ? <Select
+        label="Project owner"
         aria-label="Change project owner"
         value={owner.owner?.key ?? ''}
         disabled={disabled}
@@ -35,7 +36,6 @@ export default function ProjectOwnerControls({
       >
         <option value="">Unassigned</option>
         {PROJECT_OWNER_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.displayName}</option>)}
-      </select>
-    </label> : null}
+      </Select> : null}
   </div>;
 }

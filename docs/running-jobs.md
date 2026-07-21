@@ -42,6 +42,8 @@ Read route:
 GET /api/staff/v1/running-jobs
 ```
 
+The read model may span hundreds of projects. Related-table lookups use `fetchRowsByIdChunks()` from `apps/portal/lib/list/listLimits.ts`; do not replace those bounded filters with one inventory-wide PostgREST `.in(...)` URL.
+
 Cell write route:
 
 ```text

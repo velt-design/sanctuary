@@ -395,7 +395,7 @@ function WarningList({
 }) {
   return (
     <>
-      <div className={styles.modalKey} style={tone === 'critical' ? { marginBottom: 6, color: 'rgb(185, 28, 28)' } : { marginTop: 10, marginBottom: 6 }}>
+      <div className={`${styles.modalKey} ${tone === 'critical' ? dialogStyles.criticalKey : dialogStyles.warningKey}`}>
         {title}
       </div>
       <ul className={styles.modalWarnings}>

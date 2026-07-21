@@ -1,8 +1,9 @@
 'use client';
 
 import { lazy, Suspense, useRef, useState } from 'react';
+import { Button } from '@/components/ui/foundation/FoundationControls';
 import type { Contact } from '@/lib/types/contact';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
+import styles from './contacts.module.css';
 
 const loadContactsImportDialog = () => import('./ContactsImportDialog');
 const ContactsImportDialog = lazy(loadContactsImportDialog);
@@ -14,22 +15,20 @@ export default function ContactsImportAction({ contacts, host }: { contacts: Con
 
   return (
     <>
-      <button
+      <Button
         type="button"
-        className={styles.buttonSecondary}
+        variant="secondary"
         onClick={() => inputRef.current?.click()}
         onMouseEnter={prepare}
         onFocus={prepare}
         onPointerDown={prepare}
         onTouchStart={prepare}
-      >
-        Import CSV
-      </button>
+      >Import CSV</Button>
       <input
         ref={inputRef}
         type="file"
         accept=".csv,text/csv"
-        style={{ display: 'none' }}
+        className={styles.fileInput}
         onChange={(event) => {
           const nextFile = event.target.files?.[0] ?? null;
           event.target.value = '';

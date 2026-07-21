@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
+import { Button, LoadingSkeleton, TabNavigation } from '@/components/ui/foundation';
 import styles from './CommercialTab.module.css';
 
 type CommercialView = 'quotes' | 'invoices';
@@ -15,10 +16,10 @@ type QuoteView = 'edit' | 'preview';
 const loadQuotesTab = () => import('./QuotesTab');
 const loadInvoicesTab = () => import('./InvoicesTab');
 const QuotesTab = dynamic(loadQuotesTab, {
-  loading: () => <div className={styles.loading} role="status">Loading quotes…</div>,
+  loading: () => <LoadingSkeleton rows={4} columns={5} label="Loading quotes" />,
 });
 const InvoicesTab = dynamic(loadInvoicesTab, {
-  loading: () => <div className={styles.loading} role="status">Loading invoices…</div>,
+  loading: () => <LoadingSkeleton rows={4} columns={6} label="Loading invoices" />,
 });
 
 export default function CommercialTab({
@@ -81,40 +82,34 @@ export default function CommercialTab({
   return (
     <div className={styles.container} data-project-commercial-view={view}>
       <div className={styles.toolbar}>
-        <div className={styles.switcher} role="tablist" aria-label="Commercial sections">
-          {(['quotes', 'invoices'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={view === value}
-              className={view === value ? styles.active : undefined}
-              onClick={() => setView(value)}
-              onFocus={() => preload(value)}
-              onMouseEnter={() => preload(value)}
-              onPointerDown={() => preload(value)}
-            >
-              {value === 'quotes' ? 'Quotes' : 'Invoices'}
-            </button>
-          ))}
-        </div>
+        <TabNavigation
+          items={[
+            { key: 'quotes', label: 'Quotes' },
+            { key: 'invoices', label: 'Invoices' },
+          ]}
+          selectedKey={view}
+          onSelect={setView}
+          onIntent={preload}
+          ariaLabel="Commercial sections"
+        />
 
         {view === 'quotes' ? (
           <div className={styles.quoteViews} role="group" aria-label="Quote view">
             {(['edit', 'preview'] as const).map((value) => {
               const disabled = value === 'preview' && !selectedQuoteId;
               return (
-                <button
+                <Button
                   key={value}
                   type="button"
-                  className={quoteView === value ? styles.active : undefined}
+                  variant={quoteView === value ? 'secondary' : 'quiet'}
+                  size="small"
                   aria-pressed={quoteView === value}
                   disabled={disabled}
                   title={disabled ? 'Select a quote to preview' : undefined}
                   onClick={() => setQuotePreview(value === 'preview')}
                 >
                   {value === 'preview' ? 'Preview' : 'Edit'}
-                </button>
+                </Button>
               );
             })}
           </div>

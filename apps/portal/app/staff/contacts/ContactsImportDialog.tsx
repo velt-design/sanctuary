@@ -2,14 +2,26 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { X } from 'lucide-react';
+import { Button, IconButton, Switch } from '@/components/ui/foundation/FoundationControls';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import {
+  LoadingSkeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/foundation/FoundationSurfaces';
 import Modal from '@/components/ui/modal/Modal';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { parseContactsCsv, planContactsImport } from '@/lib/import/contactsCsv';
 import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
 import { invalidateContactsIndexCaches } from '@/lib/queries/contactsIndex';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { Contact } from '@/lib/types/contact';
+import styles from './contacts.module.css';
 
 function upsertContact(list: Contact[], contact: Contact): Contact[] {
   const next = [...list.filter((entry) => entry.id !== contact.id), contact];
@@ -86,147 +98,135 @@ export default function ContactsImportDialog({
       open
       ariaLabel="Import contacts from CSV"
       onClose={close}
-      overlayClassName={styles.modalOverlay}
-      panelClassName={styles.modal}
       maxWidthPx={920}
       closeOnBackdrop={!busy}
       closeOnEsc={!busy}
     >
-      <div className={styles.modalHeader}>
-        <h2 className={styles.modalTitle}>Import contacts</h2>
-        <button type="button" className={styles.modalClose} onClick={close}>Close</button>
-      </div>
-
-      <p className={styles.note}>File: <strong>{file.name || 'CSV upload'}</strong></p>
-      {!payload && !error ? <p className={styles.note}>Reading file...</p> : null}
-      {error ? <p className={styles.error}>{error}</p> : null}
-
-      {payload && plan ? (
-        <>
-          <p className={styles.note}>
-            Header detected on row <strong>{payload.headerRowNumber}</strong>. Import creates new contacts and can optionally merge missing fields into existing contacts.
-          </p>
-          {payload.warnings.length ? (
-            <div className={styles.note} style={{ marginTop: 10 }}>
-              <strong>CSV warnings:</strong> {payload.warnings.join(' · ')}
-            </div>
-          ) : null}
-
-          <div className={styles.formGrid} style={{ marginTop: 12 }}>
-            <div className={styles.field}>
-              <label>Planned changes</label>
-              <div className={styles.muted}>
-                {plan.stats.create} create · {plan.stats.merge} merge · {plan.stats.skip} skip · {plan.stats.invalid} invalid
-              </div>
-            </div>
-            <div className={styles.field}>
-              <label>Merge blanks</label>
-              <div className={styles.actions} style={{ justifyContent: 'flex-start' }}>
-                <button
-                  type="button"
-                  className={mergeBlanks ? styles.button : styles.buttonSecondary}
-                  disabled={busy}
-                  onClick={() => setMergeBlanks((value) => !value)}
-                >
-                  {mergeBlanks ? 'On' : 'Off'}
-                </button>
-                <span className={styles.muted} style={{ alignSelf: 'center' }}>
-                  When on: fills missing email, phone, or name without overwriting existing values.
-                </span>
-              </div>
-            </div>
+      <div className={styles.dialog}>
+        <div className={styles.dialogHeader}>
+          <div>
+            <h2 className={styles.dialogTitle}>Import contacts</h2>
+            <p className={styles.dialogMeta}>File: <strong>{file.name || 'CSV upload'}</strong></p>
           </div>
+          <IconButton aria-label="Close import contacts" variant="quiet" disabled={busy} onClick={close}><X aria-hidden="true" /></IconButton>
+        </div>
 
-          <div className={styles.tableWrap} style={{ marginTop: 14, maxHeight: 360, overflow: 'auto' }}>
-            <table className={styles.table}>
-              <thead>
-                <tr><th>Row</th><th>Name</th><th>Email</th><th>Phone</th><th>Action</th><th>Notes</th></tr>
-              </thead>
-              <tbody>
-                {plan.decisions.slice(0, 200).map((decision, index) => (
-                  <tr key={importDecisionKey(decision, index)}>
-                    <td className={styles.muted}>{decision.row.sourceRowNumber}</td>
-                    <td>{decision.row.displayName || '—'}</td>
-                    <td className={styles.muted}>{decision.row.email || '—'}</td>
-                    <td className={styles.muted}>{decision.row.phone || '—'}</td>
-                    <td>{decision.action === 'create' ? 'Create' : decision.action === 'merge' ? 'Merge' : decision.action === 'skip' ? 'Skip' : 'Invalid'}</td>
-                    <td className={styles.muted}>
-                      {decision.action === 'invalid'
-                        ? decision.row.errors.join(' ')
-                        : decision.reason
-                          ? decision.reason
-                          : decision.match
-                            ? `Matches existing by ${decision.match.by}`
-                            : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {plan.decisions.length > 200 ? <p className={styles.note}>Showing first 200 rows.</p> : null}
+        {!payload && !error ? <LoadingSkeleton rows={3} columns={2} label="Reading file..." /> : null}
+        {error ? <AlertBanner tone="error" title="Import failed">{error}</AlertBanner> : null}
 
-          <div className={styles.modalFooter}>
-            <button type="button" className={styles.buttonSecondary} disabled={busy} onClick={close}>Cancel</button>
-            <button
-              type="button"
-              className={styles.button}
-              disabled={busy || plan.stats.create + plan.stats.merge === 0}
-              onClick={async () => {
-                setBusy(true);
-                setError(null);
-                try {
-                  let created = 0;
-                  let merged = 0;
-                  let workingContacts = contacts.slice();
-                  for (const decision of plan.decisions) {
-                    if (decision.action === 'create') {
-                      const response = await apiJson<{ contact: Contact }>('/api/contacts', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                          displayName: decision.row.displayName,
-                          email: decision.row.email ?? '',
-                          phone: decision.row.phone ?? '',
-                        }),
-                      });
-                      workingContacts = upsertContact(workingContacts, response.contact);
-                      upsertContactCaches(queryClient, host, response.contact);
-                      created += 1;
-                    } else if (decision.action === 'merge' && decision.match) {
-                      const existing = workingContacts.find((contact) => contact.id === decision.match!.existingId);
-                      if (!existing) continue;
-                      const patch: Partial<Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>> = {};
-                      if (!existing.displayName.trim() && decision.row.displayName.trim()) patch.displayName = decision.row.displayName;
-                      if (!existing.email.trim() && decision.row.email.trim()) patch.email = decision.row.email;
-                      if (!existing.phone.trim() && decision.row.phone.trim()) patch.phone = decision.row.phone;
-                      if (Object.keys(patch).length) {
-                        const response = await apiJson<{ contact: Contact }>(`/api/contacts/${encodeURIComponent(existing.id)}`, {
-                          method: 'PATCH',
-                          body: JSON.stringify(patch),
+        {payload && plan ? (
+          <>
+            <p className={styles.dialogMeta}>
+              Header detected on row <strong>{payload.headerRowNumber}</strong>. Import creates new contacts and can optionally merge missing fields into existing contacts.
+            </p>
+
+            {payload.warnings.length ? (
+              <AlertBanner tone="warning" title="CSV warnings">{payload.warnings.join(' | ')}</AlertBanner>
+            ) : null}
+
+            <div className={styles.dialogStats} aria-label="Planned changes">
+              <span><small>Create</small><strong>{plan.stats.create}</strong></span>
+              <span><small>Merge</small><strong>{plan.stats.merge}</strong></span>
+              <span><small>Skip</small><strong>{plan.stats.skip}</strong></span>
+              <span><small>Invalid</small><strong>{plan.stats.invalid}</strong></span>
+            </div>
+
+            <Switch
+              label="Merge blanks"
+              description="Fill missing email, phone, or name without overwriting existing values."
+              checked={mergeBlanks}
+              disabled={busy}
+              onChange={(event) => setMergeBlanks(event.target.checked)}
+            />
+
+            <div className={styles.dialogTable}>
+              <Table>
+                <TableHeader><TableRow><TableHead>Row</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>Action</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {plan.decisions.slice(0, 200).map((decision, index) => (
+                    <TableRow key={importDecisionKey(decision, index)}>
+                      <TableCell className={styles.muted}>{decision.row.sourceRowNumber}</TableCell>
+                      <TableCell>{decision.row.displayName || '\u2014'}</TableCell>
+                      <TableCell className={styles.muted}>{decision.row.email || '\u2014'}</TableCell>
+                      <TableCell className={styles.muted}>{decision.row.phone || '\u2014'}</TableCell>
+                      <TableCell>{decision.action === 'create' ? 'Create' : decision.action === 'merge' ? 'Merge' : decision.action === 'skip' ? 'Skip' : 'Invalid'}</TableCell>
+                      <TableCell className={styles.muted}>
+                        {decision.action === 'invalid'
+                          ? decision.row.errors.join(' ')
+                          : decision.reason
+                            ? decision.reason
+                            : decision.match
+                              ? `Matches existing by ${decision.match.by}`
+                              : '\u2014'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {plan.decisions.length > 200 ? <p className={styles.dialogMeta}>Showing first 200 rows.</p> : null}
+
+            <div className={styles.dialogFooter}>
+              <Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
+              <Button
+                loading={busy}
+                disabled={busy || plan.stats.create + plan.stats.merge === 0}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    let created = 0;
+                    let merged = 0;
+                    let workingContacts = contacts.slice();
+                    for (const decision of plan.decisions) {
+                      if (decision.action === 'create') {
+                        const response = await apiJson<{ contact: Contact }>('/api/contacts', {
+                          method: 'POST',
+                          body: JSON.stringify({
+                            displayName: decision.row.displayName,
+                            email: decision.row.email ?? '',
+                            phone: decision.row.phone ?? '',
+                          }),
                         });
                         workingContacts = upsertContact(workingContacts, response.contact);
                         upsertContactCaches(queryClient, host, response.contact);
-                        merged += 1;
+                        created += 1;
+                      } else if (decision.action === 'merge' && decision.match) {
+                        const existing = workingContacts.find((contact) => contact.id === decision.match!.existingId);
+                        if (!existing) continue;
+                        const patch: Partial<Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>> = {};
+                        if (!existing.displayName.trim() && decision.row.displayName.trim()) patch.displayName = decision.row.displayName;
+                        if (!existing.email.trim() && decision.row.email.trim()) patch.email = decision.row.email;
+                        if (!existing.phone.trim() && decision.row.phone.trim()) patch.phone = decision.row.phone;
+                        if (Object.keys(patch).length) {
+                          const response = await apiJson<{ contact: Contact }>(`/api/contacts/${encodeURIComponent(existing.id)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(patch),
+                          });
+                          workingContacts = upsertContact(workingContacts, response.contact);
+                          upsertContactCaches(queryClient, host, response.contact);
+                          merged += 1;
+                        }
                       }
                     }
+                    await invalidateContactsIndexCaches(queryClient, host);
+                    toast.success(`Imported contacts: ${created} created, ${merged} merged.`);
+                    onClose();
+                  } catch (reason) {
+                    const message = reason instanceof Error ? reason.message : 'Import failed';
+                    setError(message);
+                    toast.error(message);
+                  } finally {
+                    setBusy(false);
                   }
-                  await invalidateContactsIndexCaches(queryClient, host);
-                  toast.success(`Imported contacts: ${created} created, ${merged} merged.`);
-                  onClose();
-                } catch (reason) {
-                  const message = reason instanceof Error ? reason.message : 'Import failed';
-                  setError(message);
-                  toast.error(message);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              {busy ? 'Importing...' : 'Confirm import'}
-            </button>
-          </div>
-        </>
-      ) : null}
+                }}
+              >
+                {busy ? 'Importing...' : 'Confirm import'}
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </div>
     </Modal>
   );
 }

@@ -1,0 +1,85 @@
+.page {
+  display: grid;
+  align-content: start;
+  gap: var(--ui-density-section-gap);
+}
+
+.stack {
+  display: grid;
+  gap: var(--ui-density-section-gap);
+  min-width: 0;
+}
+
+.muted {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.editableCell,
+.editableCellInput {
+  width: 100%;
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.editableCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  border: var(--ui-border-width) dashed transparent;
+  border-radius: var(--ui-radius-control);
+  padding: var(--ui-space-1);
+  background: transparent;
+  cursor: text;
+}
+
+.editableCell:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface-secondary);
+}
+
+.editableCell:focus-visible,
+.rowClickable:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.editableCellInput {
+  border: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  border-radius: var(--ui-radius-control);
+  padding: var(--ui-space-1);
+  background: var(--ui-surface-elevated);
+}
+
+.syncStatus {
+  flex: 0 0 auto;
+  color: var(--ui-text-subtle);
+  font-size: var(--ui-font-size-caption);
+}
+
+.rowClickable {
+  cursor: pointer;
+}
+
+.statusCell,
+.rowActions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+
+.inlineSelectField {
+  flex: 0 0 calc(var(--ui-space-10) * 4);
+}
+
+.inlineSelect {
+  width: 100%;
+}
+
+.modalContent {
+  display: grid;
+  gap: var(--ui-space-4);
+}

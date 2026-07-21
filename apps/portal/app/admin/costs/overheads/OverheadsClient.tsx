@@ -73,7 +73,7 @@ export default function OverheadsClient({
   }, [indexed, query]);
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-foundation-consumer="admin-costs">
       <div className={styles.card}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>Overheads</h1>

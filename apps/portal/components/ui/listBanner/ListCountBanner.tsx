@@ -1,5 +1,5 @@
 import { shouldShowListCountWarning } from '@/lib/list/listLimits';
-import styles from './ListCountBanner.module.css';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 
 /**
  * PR-PG1 (2026-06-16): inline banner that surfaces list-fetch scale to
@@ -47,10 +47,5 @@ export default function ListCountBanner({
       : `Showing ${formattedVisible} ${entityLabel}. The list may be approaching the size where cursor pagination is needed — file a ticket if you notice missing rows.`;
   }
 
-  return (
-    <div className={styles.banner} role="status" aria-live="polite">
-      <span className={styles.icon}>Heads up</span>
-      <span>{message}</span>
-    </div>
-  );
+  return <AlertBanner tone="warning" title="Heads up">{message}</AlertBanner>;
 }

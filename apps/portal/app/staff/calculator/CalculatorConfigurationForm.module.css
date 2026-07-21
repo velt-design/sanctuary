@@ -13,25 +13,24 @@
 .sectionSheet {
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.085);
-  border-radius: 14px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.9);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
 }
 
 .sectionQuiet + .sectionQuiet {
-  border-top: 1px solid rgba(var(--portal-text-rgb), 0.075);
+  border-top: var(--ui-border-width) solid var(--ui-border);
 }
 
 .sectionCard {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.11);
-  border-radius: 14px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.98);
-  box-shadow: 0 7px 18px rgba(var(--portal-text-rgb), 0.04);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
 }
 
 .sectionTitle {
   margin: 0 0 14px;
-  color: rgba(var(--portal-text-rgb), 0.72);
+  color: var(--ui-text-muted);
   font-size: 13px;
   font-weight: 750;
 }
@@ -84,7 +83,7 @@
   text-overflow: clip;
   white-space: normal;
   line-height: 1.35;
-  color: rgba(var(--portal-text-rgb), 0.78);
+  color: var(--ui-text);
   font-size: 12.5px;
   font-weight: 650;
 }
@@ -101,10 +100,10 @@
 
 :global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
   min-height: 40px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
-  border-radius: 12px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
   padding: 0 12px;
-  background: var(--portal-bg-surface);
+  background: var(--ui-surface-primary);
 }
 
 :global([data-field-tile-appearance='configuration'] [data-field-part='helper']),
@@ -158,4 +157,31 @@
   .fieldSlotFull {
     grid-column: 1 / -1;
   }
+}
+
+/* Foundation presentation contract; field definitions and validation remain owned upstream. */
+.form {
+  gap: var(--ui-density-section-gap);
+}
+
+.sectionSheet,
+.sectionCard {
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
+}
+
+.sectionQuiet + .sectionQuiet {
+  border-top-color: var(--ui-border);
+}
+
+.sectionTitle,
+:global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+  color: var(--ui-text-strong);
+}
+
+:global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
 }

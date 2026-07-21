@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Card, EmptyState, LoadingSkeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './FoundationSurfaces';
+import { Card, EmptyState, LoadingSkeleton, PageLayout, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './FoundationSurfaces';
 import { Pagination } from './FoundationPagination';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
@@ -16,6 +16,15 @@ describe('foundation surfaces', () => {
     expect(rendered.container.querySelector('h3')?.textContent).toBe('Pipeline');
     expect(rendered.container.querySelector('h2')?.textContent).toBe('No projects');
     expect(rendered.container.querySelector('table thead th')?.textContent).toBe('Project');
+    rendered.unmount();
+  });
+
+  it('provides the shared route canvas and density contract', () => {
+    const rendered = renderIntoDocument(<PageLayout density="compact" data-route="contacts">Content</PageLayout>);
+    const main = rendered.container.querySelector('main');
+    expect(main?.dataset.uiDensity).toBe('compact');
+    expect(main?.dataset.route).toBe('contacts');
+    expect(main?.textContent).toBe('Content');
     rendered.unmount();
   });
 

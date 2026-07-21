@@ -11,8 +11,9 @@ export function AlertBanner({ tone = 'info', title, children, action }: {
   action?: ReactNode;
 }) {
   const Icon = tone === 'info' ? Info : tone === 'warning' ? AlertTriangle : AlertCircle;
+  const urgent = tone === 'error' || tone === 'blocking';
   return (
-    <aside className={styles.alert} data-tone={tone} role={tone === 'error' || tone === 'blocking' ? 'alert' : 'status'}>
+    <aside className={styles.alert} data-tone={tone} role={urgent ? 'alert' : 'status'} aria-live={urgent ? undefined : 'polite'}>
       <Icon aria-hidden="true" />
       <div><strong>{title}</strong>{children ? <div>{children}</div> : null}</div>
       {action ? <div className={styles.action}>{action}</div> : null}
@@ -30,8 +31,10 @@ const DATA_STATE_COPY: Record<DataStateKind, { title: string; description: strin
   conflict: { title: 'Changes need review', description: 'A newer saved version exists. Review it before replacing data.' },
 };
 
-export function DataStatePanel({ state, onRetry, onClear }: {
+export function DataStatePanel({ state, title, description, onRetry, onClear }: {
   state: DataStateKind;
+  title?: string;
+  description?: string;
   onRetry?: () => void;
   onClear?: () => void;
 }) {
@@ -40,7 +43,7 @@ export function DataStatePanel({ state, onRetry, onClear }: {
   return (
     <div className={styles.dataState} data-state={state} role={state === 'error' || state === 'conflict' ? 'alert' : 'status'}>
       <Icon aria-hidden="true" />
-      <div><strong>{copy.title}</strong><p>{copy.description}</p></div>
+      <div><strong>{title ?? copy.title}</strong><p>{description ?? copy.description}</p></div>
       {onRetry ? <Button variant="secondary" leadingIcon={<RefreshCw aria-hidden="true" />} onClick={onRetry}>Retry</Button> : null}
       {onClear ? <Button variant="tertiary" onClick={onClear}>Clear filters</Button> : null}
     </div>

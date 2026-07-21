@@ -52,7 +52,9 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next/playwright-marketing/types/**/*.ts",
+    ".next/playwright-marketing/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -1,21 +1,22 @@
 .banner {
-  border-radius: 14px;
-  padding: 10px 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  background: rgba(var(--portal-text-rgb), 0.04);
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  color: rgba(var(--portal-text-rgb), 0.78);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-space-2);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-left: var(--ui-status-edge) solid var(--ui-status-info-border);
+  border-radius: var(--ui-radius-panel);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-small);
+  line-height: var(--ui-line-height-body);
 }
 
 .icon {
   flex: 0 0 auto;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  color: var(--ui-status-info-border);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 800;
+  letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
-  font-size: 11px;
-  color: rgba(var(--portal-text-rgb), 0.56);
 }

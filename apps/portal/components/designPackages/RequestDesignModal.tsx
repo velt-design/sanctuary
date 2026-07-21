@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { createDesignRequest, fetchDesignRequestPreview } from '@/lib/repo/designPackagesRepo';
 import type { DesignRequestPreview, DesignRequestPriorityTier, DesignRequestSource } from '@/lib/designPackages/types';
 import { useEnqueueLocalFirstMutation } from '@/lib/localFirst/useEnqueueLocalFirstMutation';
+import { AlertBanner, KeyValueGrid, Select, Textarea } from '@/components/ui/foundation';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildDesignRequestEntityKey,
@@ -18,7 +19,7 @@ const PRIORITY_TIERS: readonly DesignRequestPriorityTier[] = ['TIER_1', 'TIER_2'
 
 function formatMoneyCents(value: number | null): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'Unpriced';
-  return `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${(value / 100).toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatTierLabel(value: string): string {
@@ -201,67 +202,55 @@ export default function RequestDesignModal({
     >
       <div className={styles.body}>
         {loading ? <p className={styles.muted}>Loading request preview…</p> : null}
-        {error ? <p className={styles.error}>{error}</p> : null}
+        {error ? <AlertBanner tone="error" title="Drafting request unavailable">{error}</AlertBanner> : null}
 
         {preview ? (
           <div className={styles.grid}>
             {useDeferredCreate ? (
-              <div className={styles.warning}>
+              <AlertBanner tone="warning" title="Local design changes">
                 This design still has local changes. The drafting request will queue now and the server will validate it after sync completes.
-              </div>
+              </AlertBanner>
             ) : null}
-            <div className={styles.summaryGrid}>
-              <div className={styles.tile}>
-                <div className={styles.tileLabel}>Design</div>
-                <div className={styles.tileValue}>{estimateLabel}</div>
-              </div>
-              <div className={styles.tile}>
-                <div className={styles.tileLabel}>Request version</div>
-                <div className={styles.tileValue}>{`v${preview.nextVersion}`}</div>
-              </div>
-              <div className={styles.tile}>
-                <div className={styles.tileLabel}>Suggested priority</div>
-                <div className={styles.tileValue}>{formatTierLabel(preview.priorityTier)}</div>
-              </div>
-              <div className={styles.tile}>
-                <div className={styles.tileLabel}>Design total</div>
-                <div className={styles.tileValue}>{formatMoneyCents(preview.priceTotalIncGstCents)}</div>
-              </div>
-            </div>
+            <KeyValueGrid
+              columns={4}
+              ariaLabel="Drafting request summary"
+              items={[
+                { label: 'Design', value: estimateLabel },
+                { label: 'Request version', value: `v${preview.nextVersion}` },
+                { label: 'Suggested priority', value: formatTierLabel(preview.priorityTier) },
+                { label: 'Design total', value: formatMoneyCents(preview.priceTotalIncGstCents) },
+              ]}
+            />
 
             {preview.activeRequest ? (
-              <div className={styles.warning}>
+              <AlertBanner tone="warning" title="Active drafting request">
                 {`Active drafting request v${preview.activeRequest.requestVersion} is still ${preview.activeRequest.status.toLowerCase()}. `}
                 Finish or cancel it before creating another revision.
-              </div>
+              </AlertBanner>
             ) : null}
 
-            <div className={styles.field}>
-              <label htmlFor="designRequestPriorityTier">Priority tier</label>
-              <select
-                id="designRequestPriorityTier"
-                value={selectedPriorityTier}
-                onChange={(event) => setSelectedPriorityTier(event.target.value as DesignRequestPriorityTier)}
-                disabled={submitting || !preview.canSubmit}
-              >
-                {PRIORITY_TIERS.map((tier) => (
-                  <option key={tier} value={tier}>
-                    {formatTierLabel(tier)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              id="designRequestPriorityTier"
+              label="Priority tier"
+              value={selectedPriorityTier}
+              onChange={(event) => setSelectedPriorityTier(event.target.value as DesignRequestPriorityTier)}
+              disabled={submitting || !preview.canSubmit}
+            >
+              {PRIORITY_TIERS.map((tier) => (
+                <option key={tier} value={tier}>
+                  {formatTierLabel(tier)}
+                </option>
+              ))}
+            </Select>
 
-            <div className={styles.field}>
-              <label htmlFor="designRequestNote">Request note</label>
-              <textarea
-                id="designRequestNote"
-                value={requestNote}
-                onChange={(event) => setRequestNote(event.target.value)}
-                placeholder="Optional note for the drafting team"
-                disabled={submitting}
-              />
-            </div>
+            <Textarea
+              id="designRequestNote"
+              label="Request note"
+              value={requestNote}
+              onChange={(event) => setRequestNote(event.target.value)}
+              placeholder="Optional note for the drafting team"
+              disabled={submitting}
+            />
           </div>
         ) : null}
       </div>

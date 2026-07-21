@@ -5,15 +5,14 @@
   height: 3px;
   overflow: hidden;
   pointer-events: none;
-  background: rgba(var(--portal-accent-rgb), 0.16);
+  background: color-mix(in srgb, var(--ui-action) 16%, transparent);
 }
 
 .bar {
   display: block;
   width: 42%;
   height: 100%;
-  background: var(--portal-accent);
-  box-shadow: 0 0 12px rgba(var(--portal-accent-rgb), 0.45);
+  background: var(--ui-action);
   animation: portalNavigationProgress 900ms ease-in-out infinite;
 }
 

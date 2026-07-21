@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
+import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import type { SiteVisitCalendarItem, SiteVisitCalendarPerson } from '@/lib/types/siteVisits';
-import styles from '@/app/staff/schedule/schedule.module.css';
+import sharedStyles from '@/app/staff/schedule/schedule.module.css';
+import modalStyles from './SiteVisitEventModal.module.css';
 import { DEFAULT_DURATION_MINUTES, MINUTES_STEP, WORK_END_HOUR, WORK_START_HOUR } from '@/components/schedule/site-visits/siteVisits.constants';
 
 const LINK_NONE = '__none__';
+const styles = { ...sharedStyles, ...modalStyles };
 
 export type SiteVisitEventFormValues = {
   linkMode: 'unscheduled' | 'none';
@@ -111,6 +114,7 @@ export default function SiteVisitEventModal({
   });
   const [errors, setErrors] = useState<Partial<Record<keyof SiteVisitEventFormValues, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [confirmUnschedule, setConfirmUnschedule] = useState(false);
 
   const timeOptions = useMemo(() => {
     const minMins = WORK_START_HOUR * 60;
@@ -180,6 +184,7 @@ export default function SiteVisitEventModal({
       notes,
     });
     setErrors({});
+    setConfirmUnschedule(false);
   }, [defaultSalespersonId, initialLinkValue, isEditMode, item, open, preset, unscheduled]);
 
   useEffect(() => {
@@ -259,10 +264,6 @@ export default function SiteVisitEventModal({
 
   const handleUnschedule = async () => {
     if (!onUnschedule || saving) return;
-    if (typeof window !== 'undefined') {
-      const ok = window.confirm('Unschedule this site visit? It will return to the Unscheduled list.');
-      if (!ok) return;
-    }
     setSaving(true);
     try {
       await onUnschedule();
@@ -286,7 +287,7 @@ export default function SiteVisitEventModal({
       <div className={styles.eventModalHeader}>
         <div className={styles.eventModalActions}>
           {canUnschedule ? (
-            <button type="button" className={styles.buttonDanger} onClick={handleUnschedule} disabled={saving}>
+            <button type="button" className={styles.buttonDanger} onClick={() => setConfirmUnschedule(true)} disabled={saving || confirmUnschedule}>
               Unschedule
             </button>
           ) : null}
@@ -302,6 +303,27 @@ export default function SiteVisitEventModal({
           {isEditMode && linkedContact ? <div className={styles.eventModalSubtitle}>{linkedContact}</div> : null}
         </div>
       </div>
+
+      {confirmUnschedule ? (
+        <div className={styles.eventModalConfirmation}>
+          <AlertBanner
+            tone="blocking"
+            title="Unschedule this site visit?"
+            action={
+              <div className={styles.eventModalConfirmationActions}>
+                <button type="button" className={styles.buttonSecondary} onClick={() => setConfirmUnschedule(false)} disabled={saving}>
+                  Keep scheduled
+                </button>
+                <button type="button" className={styles.buttonDanger} onClick={handleUnschedule} disabled={saving}>
+                  {saving ? 'Unscheduling…' : 'Confirm unschedule'}
+                </button>
+              </div>
+            }
+          >
+            The visit will return to the Unscheduled list. No project or contact data will be deleted.
+          </AlertBanner>
+        </div>
+      ) : null}
 
       <div className={styles.eventModalBody}>
         <div className={styles.eventModalSection}>

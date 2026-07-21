@@ -1,0 +1,80 @@
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[running_jobs] load failed { message: 'Bad Request' }
+[running_jobs] load failed { message: 'Bad Request' }
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[running_jobs] site visits failed { message: 'Bad Request' }
+[running_jobs] scheduled jobs failed { message: 'Bad Request' }
+[running_jobs] tasks failed { message: 'Bad Request' }
+[running_jobs] meta failed { message: 'Bad Request' }
+[running_jobs] estimates failed { message: 'Bad Request' }
+[running_jobs] quotes failed { message: 'Bad Request' }
+[running_jobs] load failed { message: 'Bad Request' }
+[running_jobs] site visits failed { message: 'Bad Request' }
+[running_jobs] scheduled jobs failed { message: 'Bad Request' }
+[running_jobs] tasks failed { message: 'Bad Request' }
+[running_jobs] meta failed { message: 'Bad Request' }
+[running_jobs] estimates failed { message: 'Bad Request' }
+[running_jobs] quotes failed { message: 'Bad Request' }
+[running_jobs] load failed { message: 'Bad Request' }
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/running-jobs'
+}
+[running_jobs] project ids {
+  count: 783,
+  first: 'a283eb29-1581-4ade-a17f-50442481e9b5',
+  last: 'd7f201cb-0de1-42e2-a20d-fa105f19c0bb'
+}
+[running_jobs] site visits failed { message: 'Bad Request' }
+[running_jobs] scheduled jobs failed { message: 'Bad Request' }
+[running_jobs] tasks failed { message: 'Bad Request' }
+[running_jobs] meta failed { message: 'Bad Request' }
+[running_jobs] estimates failed { message: 'Bad Request' }
+[running_jobs] quotes failed { message: 'Bad Request' }
+[running_jobs] load failed { message: 'Bad Request' }
+[running_jobs] project ids {
+  count: 783,
+  first: 'a283eb29-1581-4ade-a17f-50442481e9b5',
+  last: 'd7f201cb-0de1-42e2-a20d-fa105f19c0bb'
+}
+[running_jobs] site visits failed { message: 'Bad Request' }
+[running_jobs] scheduled jobs failed { message: 'Bad Request' }
+[running_jobs] tasks failed { message: 'Bad Request' }
+[running_jobs] meta failed { message: 'Bad Request' }
+[running_jobs] estimates failed { message: 'Bad Request' }
+[running_jobs] quotes failed { message: 'Bad Request' }
+[running_jobs] load failed { message: 'Bad Request' }

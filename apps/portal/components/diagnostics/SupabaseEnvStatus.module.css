@@ -1,0 +1,29 @@
+.details {
+  margin-top: var(--ui-space-4);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  padding: var(--ui-space-3);
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text);
+}
+
+.details summary {
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.details summary:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.output {
+  margin: var(--ui-space-3) 0 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-label);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

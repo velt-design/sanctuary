@@ -1,17 +1,27 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
-import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
-import PageMessagePanel from '@/components/page-state/PageMessagePanel';
+import PageHeader from '@/components/layout/PageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
+import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
+import {
+  Card,
+  LoadingSkeleton,
+  PageLayout,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/foundation/FoundationSurfaces';
+import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import styles from '@/components/ui/surface/PortalSurface.module.css';
-import stateStyles from '@/components/page-state/PageState.module.css';
 import ContactsImportAction from './ContactsImportAction';
+import styles from './contacts.module.css';
 import { useContactsIndexData } from './useContactsIndexData';
 
 export default function ContactsIndexClient() {
@@ -35,27 +45,21 @@ export default function ContactsIndexClient() {
     );
   }, [contacts, query]);
 
-  if (contactsIndex.state === 'unavailable') {
-    return (
-      <PageMessagePanel
-        title="Contacts unavailable"
-        description="Your current session cannot access the Contacts list."
-      />
-    );
-  }
-
   return (
-    <main
+    <PageLayout
       className={styles.page}
       data-contacts-index-state={contactsIndex.state}
       data-contacts-index-background-ready={contactsIndex.backgroundReady ? 'true' : 'false'}
     >
       <PageHeader
+        variant="index"
         title="Contacts"
+        description="Search customer records, review linked projects, or add a new enquiry contact."
+        count={contactsIndex.data?.contacts.totalCount ?? contacts.length}
         right={
           <HeaderActions>
             <ContactsImportAction contacts={contacts} host={host} />
-            <Link className={styles.button} href="/staff/contacts/new">New Contact</Link>
+            <ButtonLink href="/staff/contacts/new">New Contact</ButtonLink>
           </HeaderActions>
         }
       />
@@ -68,62 +72,72 @@ export default function ContactsIndexClient() {
         truncated={contactsIndex.data?.contacts.truncated ?? false}
       />
 
-      <div className="sp-page-stack">
-        <section className={styles.section} aria-label="Search contacts">
-          <div className={styles.sectionHeader}><h2 className={styles.sectionTitle}>Search</h2></div>
-          <div className={styles.sectionBody}>
-            <div className={styles.field}>
-              <label htmlFor="contactSearch">Search</label>
-              <input
-                id="contactSearch"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Name, email, phone..."
-              />
-            </div>
+      <div className={styles.stack}>
+        <Card title="Find contacts" aria-label="Search contacts" padding="compact">
+          <div role="search" aria-label="Search and filter" className={styles.searchField}>
+            <Input
+              id="contactSearch"
+              label="Search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Name, email, phone..."
+            />
           </div>
-        </section>
+        </Card>
 
-        <section className={styles.section} aria-label="Contacts list" aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>All Contacts</h2>
-            <span className={styles.muted}>
-              {contactsIndex.state === 'pending' || contactsIndex.state === 'cached' ? 'Updating...' : `${filtered.length} total`}
-            </span>
-          </div>
-          <div className={styles.sectionBody}>
-            {contactsIndex.state === 'refresh-failed' ? (
-              <div className={stateStyles.inlineNotice} role="status">
-                <span>Could not refresh contacts. Showing the last saved list.</span>
-                <button type="button" className={stateStyles.secondaryAction} onClick={() => void contactsIndex.retry()}>Retry</button>
-              </div>
-            ) : null}
+        <Card
+          title="All contacts"
+          action={<span className={styles.muted}>{contactsIndex.state === 'pending' || contactsIndex.state === 'cached' ? 'Updating...' : `${filtered.length} shown`}</span>}
+          aria-label="Contacts list"
+          aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
+          padding="none"
+        >
+          {contactsIndex.state === 'unavailable' ? (
+            <DataStatePanel
+              state="unavailable"
+              title="Contacts unavailable"
+              description="Your current session cannot access the Contacts list."
+            />
+          ) : (
+            <>
+              {contactsIndex.state === 'refresh-failed' ? (
+                <DataStatePanel
+                  state="stale"
+                  title="Could not refresh contacts"
+                  description="Showing the last saved list."
+                  onRetry={() => void contactsIndex.retry()}
+                />
+              ) : null}
 
-            {filtered.length ? (
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Created</th><th /></tr></thead>
-                  <tbody>
+              {filtered.length ? (
+                <Table className={styles.responsiveTable}>
+                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
+                  <TableBody>
                     {filtered.map((contact) => (
-                      <tr key={contact.id}>
-                        <td>{contact.displayName}</td>
-                        <td className={styles.muted}>{contact.email || '—'}</td>
-                        <td className={styles.muted}>{contact.phone || '—'}</td>
-                        <td className={styles.muted}>{formatPortalDateTime(contact.createdAt)}</td>
-                        <td><Link className={styles.link} href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</Link></td>
-                      </tr>
+                      <TableRow key={contact.id}>
+                        <TableCell><strong>{contact.displayName}</strong></TableCell>
+                        <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.email || '\u2014'}</TableCell>
+                        <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.phone || '\u2014'}</TableCell>
+                        <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(contact.createdAt)}</TableCell>
+                        <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : contactsIndex.state === 'fresh' ? (
-              <p className={styles.note}>{query.trim() ? 'No contacts match your search.' : 'No contacts found.'}</p>
-            ) : (
-              <p className={styles.note}>Updating contacts...</p>
-            )}
-          </div>
-        </section>
+                  </TableBody>
+                </Table>
+              ) : contactsIndex.state === 'fresh' ? (
+                <DataStatePanel
+                  state={query.trim() ? 'filtered-empty' : 'empty'}
+                  title={query.trim() ? 'No contacts match your search.' : 'No contacts found.'}
+                  description={query.trim() ? 'Clear or adjust the search.' : 'Create the first contact to begin.'}
+                  onClear={query.trim() ? () => setQuery('') : undefined}
+                />
+              ) : (
+                <LoadingSkeleton rows={5} columns={5} label="Updating contacts..." />
+              )}
+            </>
+          )}
+        </Card>
       </div>
-    </main>
+    </PageLayout>
   );
 }

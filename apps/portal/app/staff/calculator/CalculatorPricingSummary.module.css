@@ -1,25 +1,23 @@
 .summary {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 15px;
-  background: rgba(var(--portal-bg-surface-rgb), 0.97);
-  box-shadow: 0 10px 28px rgba(var(--portal-text-rgb), 0.07);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
 }
 
 .compactSummary {
   display: none;
   min-width: 0;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 14px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
   padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(var(--accentRgb), 0.09), rgba(var(--portal-bg-surface-rgb), 0.97));
-  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.06);
+  background: var(--ui-surface-elevated);
 }
 
 .compactSummaryStale {
-  border-color: rgba(180, 83, 9, 0.28);
-  background: linear-gradient(135deg, rgba(180, 83, 9, 0.08), rgba(var(--portal-bg-surface-rgb), 0.97));
+  border-color: color-mix(in srgb, var(--ui-status-warning-border) 28%, transparent);
+  background: var(--ui-status-warning-bg);
 }
 
 .compactPrice,
@@ -32,7 +30,7 @@
 }
 
 .compactLabel {
-  color: rgba(var(--portal-text-rgb), 0.68);
+  color: var(--ui-text-muted);
   font-size: 12px;
   font-weight: 650;
 }
@@ -47,13 +45,12 @@
 
 .compactMeta {
   margin-top: 7px;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  color: var(--ui-text-muted);
   font-size: 11px;
 }
 
 .summaryStale {
-  border-color: rgba(180, 83, 9, 0.3);
-  box-shadow: 0 10px 28px rgba(180, 83, 9, 0.06);
+  border-color: color-mix(in srgb, var(--ui-status-warning-border) 30%, transparent);
 }
 
 .header {
@@ -81,17 +78,17 @@
 
 .header p {
   margin-top: 3px;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  color: var(--ui-text-muted);
   font-size: 12px;
 }
 
 .issueButton {
   flex: 0 0 auto;
-  border: 1px solid rgba(185, 28, 28, 0.24);
-  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ui-destructive) 24%, transparent);
+  border-radius: var(--ui-radius-control);
   padding: 6px 10px;
-  background: rgba(185, 28, 28, 0.06);
-  color: rgb(185, 28, 28);
+  background: color-mix(in srgb, var(--ui-destructive) 6%, transparent);
+  color: var(--ui-destructive);
   font: inherit;
   font-size: 11px;
   font-weight: 700;
@@ -99,7 +96,7 @@
 }
 
 .issueButton:focus-visible {
-  outline: 3px solid rgba(185, 28, 28, 0.18);
+  outline: 3px solid color-mix(in srgb, var(--ui-destructive) 18%, transparent);
   outline-offset: 2px;
 }
 
@@ -107,15 +104,15 @@
   display: grid;
   gap: 4px;
   margin: 14px 16px 0;
-  border-radius: 13px;
+  border-radius: var(--ui-radius-control);
   padding: 16px;
-  background: linear-gradient(135deg, rgba(var(--accentRgb), 0.1), rgba(var(--accentRgb), 0.035));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ui-action) 10%, transparent), color-mix(in srgb, var(--ui-action) 3.5%, transparent));
 }
 
 .heroLabel,
 .heroEx,
 .heroExplanation {
-  color: rgba(var(--portal-text-rgb), 0.67);
+  color: var(--ui-text-muted);
   font-size: 12px;
 }
 
@@ -128,7 +125,7 @@
 
 .heroEx {
   margin-top: 3px;
-  color: rgba(var(--portal-text-rgb), 0.82);
+  color: var(--ui-text);
   font-weight: 650;
 }
 
@@ -137,7 +134,7 @@
 }
 
 .summaryStale .hero {
-  background: rgba(180, 83, 9, 0.07);
+  background: color-mix(in srgb, var(--ui-status-warning-border) 7%, transparent);
 }
 
 .internalSection,
@@ -148,7 +145,7 @@
 .internalSection h3,
 .addonsSection h3 {
   margin-bottom: 10px;
-  color: rgba(var(--portal-text-rgb), 0.72);
+  color: var(--ui-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -167,14 +164,14 @@
   gap: 8px;
   min-width: 0;
   padding: 5px 0;
-  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.065);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
 }
 
 .metric dt {
   flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: normal;
-  color: rgba(var(--portal-text-rgb), 0.56);
+  color: var(--ui-text-muted);
   font-size: 11px;
   white-space: normal;
 }
@@ -191,13 +188,13 @@
 }
 
 .addonsSection {
-  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  background: rgba(var(--portal-text-rgb), 0.015);
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
 }
 
 .addonsSection p {
   margin-top: 10px;
-  color: rgba(var(--portal-text-rgb), 0.58);
+  color: var(--ui-text-muted);
   font-size: 11px;
   line-height: 1.4;
 }
@@ -230,4 +227,60 @@
   .addonsGrid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Foundation presentation contract; pricing calculations and freshness state are unchanged. */
+.summary,
+.compactSummary {
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
+}
+
+.compactSummaryStale,
+.summaryStale {
+  border-color: var(--ui-status-warning-border);
+}
+
+.compactLabel,
+.compactMeta,
+.header p,
+.heroLabel,
+.heroEx,
+.heroExplanation,
+.internalSection h3,
+.addonsSection h3,
+.metric dt,
+.addonsSection p {
+  color: var(--ui-text-muted);
+}
+
+.issueButton {
+  border-color: var(--ui-status-error-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-status-error-bg);
+  color: var(--ui-status-error-border);
+}
+
+.issueButton:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.hero {
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-secondary);
+}
+
+.summaryStale .hero {
+  background: var(--ui-status-warning-bg);
+}
+
+.metric,
+.addonsSection {
+  border-color: var(--ui-border);
+}
+
+.addonsSection {
+  background: var(--ui-surface-secondary);
 }

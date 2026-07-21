@@ -412,7 +412,7 @@ The exact profile sizes, finishes, structural design and suitability for the sit
 
 Clear, light grey, dark grey and opal should not be treated as interchangeable colour choices.
 
-The recommendation should reflect the site’s sun, outlook, desired shade, adjoining rooms and roof area.
+The recommendation should reflect the site's sun, outlook, desired shade, adjoining rooms and roof area.
 
 ### Design through installation
 
@@ -661,7 +661,7 @@ This information is general and is not legal or regulatory advice.
 
 ### Are acrylic roof pergolas waterproof?
 
-An acrylic-roof pergola is intended to provide overhead rain cover, but “waterproof” can be misleading when describing an open-sided outdoor structure.
+An acrylic-roof pergola is intended to provide overhead rain cover, but "waterproof" can be misleading when describing an open-sided outdoor structure.
 
 Roof pitch, joints, flashings, gutters, downpipes and installation all affect how the roof manages water. Wind-driven rain can also enter through open sides.
 

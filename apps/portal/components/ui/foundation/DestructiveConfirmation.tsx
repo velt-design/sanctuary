@@ -6,7 +6,7 @@ import { AlertBanner } from './FoundationFeedback';
 import { Button, Input } from './FoundationControls';
 import styles from './DestructiveConfirmation.module.css';
 
-export function DestructiveConfirmation({ open, title, description, confirmationText, value, onValueChange, pending, onCancel, onConfirm, consequences }: {
+export function DestructiveConfirmation({ open, title, description, confirmationText, value, onValueChange, pending, onCancel, onConfirm, consequences, additionalContent }: {
   open: boolean;
   title: string;
   description: string;
@@ -17,6 +17,7 @@ export function DestructiveConfirmation({ open, title, description, confirmation
   onCancel: () => void;
   onConfirm: () => void;
   consequences?: ReactNode;
+  additionalContent?: ReactNode;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const matches = value === confirmationText;
@@ -25,6 +26,7 @@ export function DestructiveConfirmation({ open, title, description, confirmation
       <div className={styles.content}>
         <header><h2>{title}</h2><p>{description}</p></header>
         {consequences ? <AlertBanner tone="blocking" title="This cannot be undone">{consequences}</AlertBanner> : null}
+        {additionalContent}
         <Input ref={inputRef} label={<>Type <strong>{confirmationText}</strong> to confirm</>} value={value} onChange={(event) => onValueChange(event.target.value)} disabled={pending} autoComplete="off" />
         <footer>
           <Button variant="tertiary" onClick={onCancel} disabled={pending}>Cancel</Button>

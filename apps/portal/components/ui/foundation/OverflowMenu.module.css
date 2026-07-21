@@ -1,4 +1,13 @@
+.root {
+  position: relative;
+  display: inline-flex;
+}
+
 .content {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + var(--ui-space-2));
+  right: 0;
   min-width: 208px;
   padding: var(--ui-space-2);
   border: var(--ui-border-width) solid var(--ui-border-strong);
@@ -10,12 +19,23 @@
 }
 
 .content [role='menuitem'] {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: var(--ui-space-2);
   min-height: var(--ui-control-sm);
+  border: 0;
   border-radius: var(--ui-radius-control);
+  padding: 0 var(--ui-space-3);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
   font-size: var(--ui-font-size-small);
   font-weight: 500;
   letter-spacing: 0;
+  text-align: left;
   text-transform: none;
+  cursor: pointer;
 }
 
 .content [role='menuitem']:focus {
@@ -32,7 +52,7 @@
   text-transform: uppercase;
 }
 
-.separator { background: var(--ui-border); }
+.separator { height: var(--ui-border-width); margin: var(--ui-space-1) 0; background: var(--ui-border); }
 .destructive { color: var(--ui-destructive) !important; }
 .icon { display: inline-grid; place-items: center; width: var(--ui-icon-compact); height: var(--ui-icon-compact); }
 .icon svg { width: 100%; height: 100%; stroke-width: 2; }

@@ -4,7 +4,7 @@ import { lazy, Suspense } from 'react';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { useProjectDetailsDraft } from '../../useProjectDetailsDraft';
 import styles from './ProjectStatusDetailsCard.module.css';
-import { AlertBanner, Button, Input, useUnsavedChangesGuard } from '@/components/ui/foundation';
+import { AlertBanner, Badge, Button, Card, Input, KeyValueGrid, useUnsavedChangesGuard } from '@/components/ui/foundation';
 
 const ProjectStageControl = lazy(() => import('./ProjectStageControl'));
 
@@ -35,14 +35,16 @@ export default function ProjectStatusDetailsCard({
   useUnsavedChangesGuard(isEditing && canSave);
 
   return (
-    <section className={styles.detailsCard} aria-labelledby="project-status-details-title" data-project-status-details="true">
-      <div className={styles.detailsHeader}>
-        <div>
-          <p className={styles.eyebrow}>Project overview</p>
-          <h2 id="project-status-details-title">Status &amp; details</h2>
-        </div>
+    <Card
+      title="Status & details"
+      eyebrow="Project overview"
+      padding="none"
+      className={styles.detailsCard}
+      aria-label="Project status and details"
+      data-project-status-details="true"
+      action={(
         <div className={styles.detailsActions}>
-          {statusText ? <span role="status">{statusText}</span> : null}
+          {statusText ? <Badge tone={isSaving ? 'info' : 'neutral'}>{statusText}</Badge> : null}
           {isEditing ? (
             <>
               <Button size="small" disabled={!canSave} onClick={finishEditing}>Done</Button>
@@ -52,32 +54,33 @@ export default function ProjectStatusDetailsCard({
             <Button size="small" variant="secondary" onClick={() => setIsEditing(true)}>Edit details</Button>
           )}
         </div>
-      </div>
+      )}
+    >
 
       <Suspense
         fallback={(
-          <div className={styles.stageControl} role="status">
-            <div><span>Pipeline stage</span><strong>{project.stage.replaceAll('_', ' ')}</strong></div>
-          </div>
+          <KeyValueGrid items={[{ label: 'Pipeline stage', value: project.stage.replaceAll('_', ' ') }]} ariaLabel="Pipeline stage" />
         )}
       >
         <ProjectStageControl projectId={project.id} host={host} stage={project.stage} />
       </Suspense>
 
       {error ? (
-        <AlertBanner tone="error" title="Project details could not be saved">
-          <p>{error}</p>
+        <div className={styles.detailsNotice}>
+          <AlertBanner tone="error" title="Project details could not be saved">
+          {error}
           {canRetry ? (
             <div className={styles.detailsActions}>
               <Button size="small" variant="secondary" onClick={() => void retry()}>Retry now</Button>
               <Button size="small" variant="tertiary" onClick={reviewLocalDraft}>Review changes</Button>
             </div>
           ) : null}
-        </AlertBanner>
+          </AlertBanner>
+        </div>
       ) : null}
 
       {isEditing ? (
-        <div className={styles.detailsForm}>
+        <div className={styles.detailsForm} aria-label="Edit project details">
           <Input id="contactName" label="Contact" value={draft.contactName} onChange={(event) => updateDraftField('contactName', event.target.value)} onBlur={saveCurrentDraft} />
           <Input id="contactEmail" label="Email" type="email" value={draft.contactEmail} onChange={(event) => updateDraftField('contactEmail', event.target.value)} onBlur={saveCurrentDraft} />
           <Input id="contactPhone" label="Phone" type="tel" value={draft.contactPhone} onChange={(event) => updateDraftField('contactPhone', event.target.value)} onBlur={saveCurrentDraft} />
@@ -87,16 +90,19 @@ export default function ProjectStatusDetailsCard({
           <Input id="quoteRef" label="Project / quote reference" value={draft.quoteRef} onChange={(event) => updateDraftField('quoteRef', event.target.value)} onBlur={saveCurrentDraft} />
         </div>
       ) : (
-        <dl className={styles.detailsGrid}>
-          <div><dt>Contact</dt><dd>{displayed.contactName || '—'}</dd></div>
-          <div><dt>Email</dt><dd>{displayed.contactEmail || '—'}</dd></div>
-          <div><dt>Phone</dt><dd>{displayed.contactPhone || '—'}</dd></div>
-          <div><dt>Project name</dt><dd>{displayed.projectName || '—'}</dd></div>
-          <div><dt>Site address</dt><dd>{displayed.siteAddress || '—'}</dd></div>
-          <div><dt>Region</dt><dd>{displayed.region || '—'}</dd></div>
-          <div><dt>Project / quote reference</dt><dd>{displayed.quoteRef || 'Not allocated'}</dd></div>
-        </dl>
+        <KeyValueGrid
+          ariaLabel="Project details"
+          items={[
+            { label: 'Contact', value: displayed.contactName || '—' },
+            { label: 'Email', value: displayed.contactEmail || '—' },
+            { label: 'Phone', value: displayed.contactPhone || '—' },
+            { label: 'Project name', value: displayed.projectName || '—' },
+            { label: 'Site address', value: displayed.siteAddress || '—', wide: true },
+            { label: 'Region', value: displayed.region || '—' },
+            { label: 'Project / quote reference', value: displayed.quoteRef || 'Not allocated' },
+          ]}
+        />
       )}
-    </section>
+    </Card>
   );
 }

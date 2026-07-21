@@ -55,6 +55,12 @@ When touching fallback:
 - Preserve tests that guard dependency direction.
 - Do not remove fallback unless production readiness and telemetry prove it is unused.
 
+## UI Foundation Contract
+
+Board, Gantt, Site Visits, and the legacy fallback render inside the full-width compact foundation canvas without moving read or mutation ownership. V2 load failures, scheduling issues, Site Visit stale/error state, and action failures use shared accessible feedback. Schedule action dialogs use the shared focus trap and return focus to their trigger; active V2 locked-job unscheduling and downtime deletion use the extracted confirmation owner. Site Visit unscheduling uses a two-step in-modal confirmation and states explicitly that project/contact data is retained.
+
+At narrow widths the Unscheduled queue stacks above one horizontally focused crew lane, and Site Visits stack the waiting queue above a horizontally focused day calendar. Route-level document overflow is not allowed; the Board, Gantt, and calendar keep their specialist internal scroll owners. Presentation changes must not bypass Schedule V2 staff API/RPC commands, change optimistic rollback, or merge the explicit legacy fallback into the normal client.
+
 ## Performance Posture
 
 Schedule is one of the heaviest portal surfaces. Watch:
@@ -79,14 +85,15 @@ npm run test:portal:performance
 
 ## Verification
 
-Current local gate signal from 2026-07-18:
+Current local gate signal from 2026-07-21:
 
 ```bash
 npm run test:portal:schedule
 npm run schedule:bundle-budget
+npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-The schedule test coverage passes, including the readiness route, V2 API/RPC command routes, Board/Gantt/Site Visits clients, action dialogs, and legacy fallback isolation. From the same fresh production build, the general bundle gate passes at 621.9 KiB initial raw, 176.1 KiB initial gzip, 349.1 KiB lazy raw, and 80.6 KiB lazy gzip without changing the original Schedule ceilings.
+The focused UI coverage includes 58 Schedule, Site Visit modal, and project-task tests. The authenticated non-mutating browser review covers Board at 1440/1280/1024/768/390, Gantt, Site Visits, action/create dialogs, project Tasks, 200% zoom, touch targets, focus return, reduced motion, document overflow, and browser/runtime errors. Record fresh bundle figures from `npm run schedule:bundle-budget`; do not raise the existing ceilings to accommodate presentation work.
 
 Focused tests:
 

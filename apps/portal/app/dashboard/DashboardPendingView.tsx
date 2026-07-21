@@ -12,6 +12,7 @@ export default function DashboardPendingView({
   return (
     <main
       className={dash.page}
+      data-ui-foundation-consumer="dashboard"
       data-dashboard-state={failed ? 'refresh-failed' : 'pending'}
       data-dashboard-background-ready="false"
     >

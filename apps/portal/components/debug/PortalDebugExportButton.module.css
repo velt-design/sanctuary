@@ -1,0 +1,16 @@
+.panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  border: var(--ui-border-width) dashed var(--ui-border-strong);
+  background: var(--ui-surface-secondary);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  color: var(--ui-text-muted);
+  font-family: var(--ui-font-body);
+}
+
+.panel > svg {
+  width: var(--ui-icon-compact);
+  height: var(--ui-icon-compact);
+}

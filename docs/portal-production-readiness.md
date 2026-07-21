@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-07-20.
+Last updated: 2026-07-21.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -91,6 +91,27 @@ This table maps the original Instant Portal plan to the integrated Wave 0 and Wa
 | BUNDLE-01 | Green | Fresh isolated Stage 1 build assertions pass all six route gates. Project Detail is about 2,434 KiB raw / 562.0 KiB gzip combined after the Overview command-centre boundary, below the preserved 3,014,656 / 757,760 byte cap. Three/React Three Fiber remains isolated behind exact `3D Review` intent and counted by Design Workbench, whose split allowance does not increase its previous 2,681,856 / 671,744 cap. |
 | CALC-01 | Green | `useCalculatorCostingRequest` owns debounce, abort, newest-result protection, last-valid continuity, and errors without moving costing authority into the browser. Current-head five-run feedback is 40/47/58 ms p50/p75/p95, fresh result is 924/939/942 ms, and no overlay or long task was observed. Focused calculator coverage passed. |
 | WB-01 | Green | Workbench clients memoize one solved base by draft/project identity; selection, visibility, and viewport changes reuse that solved-model object while draft changes still solve. Focused coverage proves identity reuse. Fixture evidence remains request-free and overlay-free; selection measured 86/119 ms feedback/useful and Plan-to-3D 117/122 ms on the latest single run, both within regression budgets, with no long task. |
+
+## Project Pages Speed Priority
+
+Project pages are the highest product-performance priority after the current UI-foundation work reaches a reviewable checkpoint. The Wave 1 results above remain historical evidence for the integrated stack that produced them; they do not automatically prove the redesigned project shell, navigation, Calculator/Commercial composition, or shared foundation. Revalidate the current UI in a production build before choosing a new optimization, then fix the slowest measured project journey at its owning read, cache, preload, bundle, or render boundary.
+
+The product contract remains 100 ms visible feedback and 500 ms useful content for warm project navigation and project-tab intent. Fresh server settlement is measured separately and must not replace useful known content with a blocking overlay. Cold direct Project Detail keeps its existing 2,699 ms comparison guard until five current-UI production runs justify a tighter ratchet.
+
+| Item | Status | Evidence and remaining work |
+| --------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PPS-01 | Yellow | Finish a reviewable UI-foundation checkpoint, then run the production bundle gate and exactly five authenticated performance repetitions against that integrated commit. Record Projects Index, Projects-to-project, browser Back, cold Project Detail, and current project-tab p50/p75/p95 for feedback, useful content, and background settlement. Do not rebaseline from development compilation or from a dirty mixed lane. |
+| PPS-02 | Yellow | Revalidate Projects Index and routine project opening first. Preserve the current-user QueryClient summary, intent-only route/data preload, immediate canonical URL feedback, truthful updating frame, quiet snapshot refresh, and reversible browser Back. If either warm journey misses 100/500 ms, fix the measured owner before expanding scope. |
+| PPS-03 | Yellow | Update the project-tab performance journey to the current registry and composition: Overview, Calculator, Commercial with Quotes/Invoices, and conditional Job Packs. Each tab must show immediate selected/busy feedback, preload only from exact intent, render its useful shell within the warm 100/500 ms target, and settle independent data without pulling unrelated specialist bundles into the initial project shell. |
+| PPS-04 | Yellow | Measure project and contact creation only after index, opening, Back, and tab journeys are green. Prefer immediate truthful submitted/pending feedback and an idempotent staff-API creation contract before adding persisted provisional entities. Add canonical client-generated IDs or local-first aliases only if measured latency or an explicit offline requirement justifies their reload, retry, discard, and dependent-action complexity. |
+
+Execution order:
+
+1. Checkpoint the current UI-foundation lane and run PPS-01 without changing product behavior.
+2. Complete PPS-02, keeping the existing 100/500 ms ceiling; optimize only a measured regression or bottleneck.
+3. Complete PPS-03 against the current project tab registry and bundle boundaries.
+4. Complete PPS-04 only after the everyday project journeys are green.
+5. Keep JOB-04 through JOB-08 in a separate backend worktree while this lane is active; they may not edit project-page UI, shared shell, or current quote/invoice/job-pack presentation until the project-speed checkpoint lands.
 
 ## Wave 2 Instant Write Status
 
@@ -246,12 +267,13 @@ Do not enable `PORTAL_ESTIMATE_PRICING_SOURCE=workbench_solved` until every item
 
 Keep this ordered list current as work lands.
 
-1. Restore failing quality gates before broad feature expansion; when the failure is in a hotspot, fix it at the owning layer rather than adding another caller workaround.
-2. Close the repository key incident by rotating or revoking the compromised credential and auditing downstream use; do not rewrite Git history.
-3. Preserve JOB-03's green seven-migration, contract/integration, and worker-container CI signal, then continue JOB-04 through JOB-08 as repository work only; require shared-environment deployment review before enabling any producer or active worker rollout.
-4. Keep manual quote/invoice/public-token/job-pack, Schedule V2, and Design Workbench edit/save/reload QA visible in release checks with staff credentials and compatible data.
-5. Advance the geometry/costing migration without switching live pricing: extend package-owned physical takeoff in `packages/geometry`, compare `calculator_compat` and `workbench_solved`, and keep compatibility retirement explicit.
-6. Make hotspot maintainability part of ordinary work: use `npm run files:report` to choose the next owner surface, and use `npm run files:changed` plus a decomposition note whenever warning or critical files are touched.
+1. Make Project Pages Speed the highest product lane: checkpoint the current UI foundation, complete PPS-01 through PPS-03 in order, preserve the 100/500 ms warm ceiling, and defer creation complexity until the everyday project journeys are green.
+2. Restore any quality gate that blocks the project-speed lane before adding an optimization; when the failure is in a hotspot, fix it at the owning layer rather than adding another caller workaround.
+3. Close the repository key incident in parallel by rotating or revoking the compromised credential and auditing downstream use; do not rewrite Git history.
+4. Preserve JOB-03's green seven-migration, contract/integration, and worker-container CI signal, then continue JOB-04 through JOB-08 in a separate backend worktree; require shared-environment deployment review before enabling any producer or active worker rollout.
+5. Keep manual quote/invoice/public-token/job-pack, Schedule V2, and Design Workbench edit/save/reload QA visible in release checks with staff credentials and compatible data.
+6. Advance the geometry/costing migration without switching live pricing: extend package-owned physical takeoff in `packages/geometry`, compare `calculator_compat` and `workbench_solved`, and keep compatibility retirement explicit.
+7. Make hotspot maintainability part of ordinary work: use `npm run files:report` to choose the next owner surface, and use `npm run files:changed` plus a decomposition note whenever warning or critical files are touched.
 
 ## Parallel Work Lanes
 
@@ -262,6 +284,7 @@ Parallel work is encouraged when ownership is clear and file overlap is low. Rea
 | Quality gate repair | Current failing tests, lint guards, build blockers. | Security/deps, docs tracker updates, isolated feature fixes. | Broad refactors not needed for the failure. |
 | Security/dependency audit | Production dependency upgrades, audit remediation, residual-risk notes. | Contacts/projects, schedule performance, workbench fixes. | Large feature behavior changes unless required by upgrade. |
 | Contacts/projects env boundary | Contact APIs, contact/project server data helpers, project snapshot tests. | Schedule, workbench, style isolation, security/deps. | Quote/invoice side-effect helpers unless failure crosses that boundary. |
+| Project pages speed | Projects Index query/cache/navigation, Project Detail summary/snapshot/opening/Back, current project-tab preload and bundle boundaries, and authenticated performance evidence. | Backend-only durable-job work, schedule, workbench, and security remediation that do not touch the same shell or project workflow files. | Active UI-foundation files before its checkpoint; quote/invoice/job-pack behavior; broad shared-shell refactors; speculative caching without a measured journey. |
 | Schedule performance | `/staff/schedule`, schedule queries, schedule CSS, route timing, bundle split. | Contacts/projects, workbench, security/deps. | Design workbench, quote/invoice, unrelated portal shell. |
 | Design workbench | `apps/portal/components/drawings`, `apps/portal/lib/drawings`, workbench fixture/browser gates. | Contacts/projects, schedule, security/deps. | Calculator or costing files unless needed by explicit geometry contract. |
 | Geometry/costing migration | `packages/geometry`, `packages/costing/src/commercial`, commercial parity adapters, and docs for the target boundary. | Design workbench, calculator decomposition, docs tracker updates. | Live estimate/quote pricing, public outputs, or job-pack pricing unless an explicit rollout task is in scope. |

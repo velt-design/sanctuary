@@ -2,7 +2,7 @@ import type { PortalScenarioId } from './portalScenarioRegistry';
 
 type PortalRouteCategory = 'core' | 'project' | 'commercial' | 'schedule' | 'workbench' | 'admin' | 'diagnostic';
 
-type PortalRouteRequiredRole = 'staff' | 'admin' | 'fixture';
+type PortalRouteRequiredRole = 'public' | 'staff' | 'admin' | 'fixture';
 
 type PortalRouteDataRequirement =
   | 'none'
@@ -10,6 +10,7 @@ type PortalRouteDataRequirement =
   | 'project_id'
   | 'estimate_id'
   | 'quote_id'
+  | 'redirect_only'
   | 'fixture_flag'
   | 'admin_role'
   | 'scenario_required';
@@ -18,7 +19,7 @@ export type PortalRouteSmokeStatus = 'agent-access' | 'scenario-required' | 'adm
 
 export type PortalRouteDebugExportStatus = 'exported' | 'planned' | 'not-applicable';
 
-type PortalShellMarker = 'portal-shell' | 'admin-shell' | 'fixture-shell';
+type PortalShellMarker = 'public-auth-shell' | 'portal-shell' | 'admin-shell' | 'fixture-shell';
 
 export interface PortalRouteCatalogEntry {
   id: string;
@@ -37,6 +38,46 @@ export interface PortalRouteCatalogEntry {
 }
 
 export const portalRouteCatalog = [
+  {
+    id: 'root-redirect',
+    category: 'core',
+    routePattern: '/',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/platform-workflow.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'redirect_only',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Compatibility entry redirects to the authenticated Dashboard.',
+  },
+  {
+    id: 'login',
+    category: 'core',
+    routePattern: '/login',
+    runnableRoute: '/login',
+    requiredRole: 'public',
+    ownerDoc: 'docs/environment-auth-supabase.md',
+    expectedHeading: 'Staff Login',
+    expectedShell: 'public-auth-shell',
+    dataRequirement: 'none',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Canonical public staff sign-in route using the Foundation public-auth surface.',
+  },
+  {
+    id: 'access-status',
+    category: 'core',
+    routePattern: '/access-status',
+    runnableRoute: '/access-status?state=lookup-failed',
+    requiredRole: 'public',
+    ownerDoc: 'docs/environment-auth-supabase.md',
+    expectedHeading: 'Access check unavailable',
+    expectedShell: 'public-auth-shell',
+    dataRequirement: 'none',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Public no-access and lookup-failure recovery states share the Foundation auth shell.',
+  },
   {
     id: 'dashboard',
     category: 'core',
@@ -80,6 +121,19 @@ export const portalRouteCatalog = [
     notes: 'Project list and current source for first visible project discovery.',
   },
   {
+    id: 'project-create',
+    category: 'project',
+    routePattern: '/staff/projects/new',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/projects-contacts-estimates-calculator.md',
+    expectedHeading: 'New Project',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'none',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Project creation form, including the nested contact-create flow.',
+  },
+  {
     id: 'contacts-index',
     category: 'project',
     routePattern: '/staff/contacts',
@@ -92,6 +146,31 @@ export const portalRouteCatalog = [
     smokeStatus: 'agent-access',
     debugExportStatus: 'not-applicable',
     notes: 'Contact list; deeper create/detail scenarios belong to seeded coverage.',
+  },
+  {
+    id: 'contact-create',
+    category: 'project',
+    routePattern: '/staff/contacts/new',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/projects-contacts-estimates-calculator.md',
+    expectedHeading: 'New Contact',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'none',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Standalone contact creation form.',
+  },
+  {
+    id: 'contact-detail',
+    category: 'project',
+    routePattern: '/staff/contacts/:contactId',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/projects-contacts-estimates-calculator.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'scenario_required',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Contact detail requires a visible contact discovered by an authenticated scenario.',
   },
   {
     id: 'schedule',
@@ -147,6 +226,18 @@ export const portalRouteCatalog = [
     notes: 'Requires a quote-ready seeded scenario.',
   },
   {
+    id: 'quote-print-redirect',
+    category: 'commercial',
+    routePattern: '/staff/projects/:projectId/quotes/:quoteId/print',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/quotes-invoices-job-packs.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'quote_id',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Compatibility URL redirects to the canonical Commercial quote preview.',
+  },
+  {
     id: 'design-workbench',
     category: 'workbench',
     routePattern: '/staff/projects/:projectId/design-workbench',
@@ -165,12 +256,12 @@ export const portalRouteCatalog = [
     routePattern: '/staff/projects/design-packages',
     requiredRole: 'staff',
     ownerDoc: 'docs/design-list.md',
-    expectedHeading: 'Design Packages',
+    expectedHeading: 'Drafting Queue',
     expectedShell: 'portal-shell',
     dataRequirement: 'scenario_required',
     smokeStatus: 'catalog-only',
     debugExportStatus: 'planned',
-    notes: 'Operational list; route is cataloged now and should join smoke after stable seeded data exists.',
+    notes: 'Operational Design Packages route presented to staff as the Drafting Queue; seeded data is required for row-level smoke coverage.',
   },
   {
     id: 'running-jobs',
@@ -198,6 +289,66 @@ export const portalRouteCatalog = [
     debugExportStatus: 'planned',
     scenarioId: 'project-with-estimate',
     notes: 'Authenticated calculator trust coverage uses a valid V2 project estimate scenario.',
+  },
+  {
+    id: 'staff-home-redirect',
+    category: 'core',
+    routePattern: '/staff',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/platform-workflow.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'redirect_only',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Compatibility entry redirects to Dashboard.',
+  },
+  {
+    id: 'staff-login-redirect',
+    category: 'core',
+    routePattern: '/staff/login',
+    requiredRole: 'public',
+    ownerDoc: 'docs/environment-auth-supabase.md',
+    expectedShell: 'public-auth-shell',
+    dataRequirement: 'redirect_only',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Preserves search parameters while redirecting to the canonical public login.',
+  },
+  {
+    id: 'running-jobs-redirect',
+    category: 'project',
+    routePattern: '/staff/running-jobs',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/running-jobs.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'redirect_only',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Compatibility URL redirects to the Projects-owned Running Jobs route.',
+  },
+  {
+    id: 'old-calculator-redirect',
+    category: 'commercial',
+    routePattern: '/staff/old-calculator',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/projects-contacts-estimates-calculator.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'redirect_only',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Compatibility URL redirects to the canonical Calculator route.',
+  },
+  {
+    id: 'sidebar-lab',
+    category: 'diagnostic',
+    routePattern: '/staff/sidebar-lab',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/ui-foundation.md',
+    expectedShell: 'portal-shell',
+    dataRequirement: 'none',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Protected diagnostic route for sidebar-state development; not a production workflow.',
   },
   {
     id: 'admin-home',
@@ -272,6 +423,19 @@ export const portalRouteCatalog = [
     notes: 'Admin import tooling; mutating flows need explicit scenario planning.',
   },
   {
+    id: 'admin-access',
+    category: 'admin',
+    routePattern: '/admin/access',
+    requiredRole: 'admin',
+    ownerDoc: 'docs/environment-auth-supabase.md',
+    expectedHeading: 'Access',
+    expectedShell: 'admin-shell',
+    dataRequirement: 'admin_role',
+    smokeStatus: 'admin-only',
+    debugExportStatus: 'planned',
+    notes: 'Admin access and schedule-crew assignment route.',
+  },
+  {
     id: 'qa-design-workbench-fixture',
     category: 'diagnostic',
     routePattern: '/qa/design-workbench-fixture?fixture=:fixtureSlug',
@@ -294,6 +458,30 @@ export const portalRouteCatalog = [
     smokeStatus: 'fixture-only',
     debugExportStatus: 'not-applicable',
     notes: 'Data-free mutation timing route gated by ENABLE_PORTAL_QA_FIXTURES.',
+  },
+  {
+    id: 'qa-project-page-shell-fixture',
+    category: 'diagnostic',
+    routePattern: '/qa/project-page-shell-fixture',
+    requiredRole: 'fixture',
+    ownerDoc: 'docs/projects-contacts-estimates-calculator.md',
+    expectedShell: 'fixture-shell',
+    dataRequirement: 'fixture_flag',
+    smokeStatus: 'fixture-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Data-free Project Detail shell fixture gated by ENABLE_PORTAL_QA_FIXTURES.',
+  },
+  {
+    id: 'qa-project-command-centre-fixture',
+    category: 'diagnostic',
+    routePattern: '/qa/project-command-centre-fixture',
+    requiredRole: 'fixture',
+    ownerDoc: 'docs/project-command-centre-architecture.md',
+    expectedShell: 'fixture-shell',
+    dataRequirement: 'fixture_flag',
+    smokeStatus: 'fixture-only',
+    debugExportStatus: 'exported',
+    notes: 'Data-free command-centre state fixture gated by ENABLE_PORTAL_QA_FIXTURES.',
   },
   {
     id: 'qa-ui-foundation-fixture',

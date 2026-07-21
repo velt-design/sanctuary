@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -7,20 +7,32 @@ import { portalScenarioRegistry, seededPortalScenarios } from './portalScenarioR
 import { agentAccessSmokeRoutes, agentScenarioSmokeRoutes, portalRouteCatalog } from './portalRouteCatalog';
 
 const categories = new Set(['core', 'project', 'commercial', 'schedule', 'workbench', 'admin', 'diagnostic']);
-const roles = new Set(['staff', 'admin', 'fixture']);
+const roles = new Set(['public', 'staff', 'admin', 'fixture']);
 const dataRequirements = new Set([
   'none',
   'visible_project',
   'project_id',
   'estimate_id',
   'quote_id',
+  'redirect_only',
   'fixture_flag',
   'admin_role',
   'scenario_required',
 ]);
 const smokeStatuses = new Set(['agent-access', 'scenario-required', 'admin-only', 'fixture-only', 'catalog-only']);
-const shellMarkers = new Set(['portal-shell', 'admin-shell', 'fixture-shell']);
+const shellMarkers = new Set(['public-auth-shell', 'portal-shell', 'admin-shell', 'fixture-shell']);
 const debugExportStatuses = new Set(['exported', 'planned', 'not-applicable']);
+
+function collectPageRoutes(directory: string, routeSegments: string[] = []): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) {
+      const segment = entry.name.replace(/^\[(.+)\]$/, ':$1');
+      return collectPageRoutes(path.join(directory, entry.name), [...routeSegments, segment]);
+    }
+    if (entry.name !== 'page.tsx') return [];
+    return [`/${routeSegments.join('/')}`.replace(/\/$/, '') || '/'];
+  });
+}
 
 describe('portalRouteCatalog', () => {
   it('has valid metadata and owner docs for every cataloged route', () => {
@@ -50,6 +62,12 @@ describe('portalRouteCatalog', () => {
         ).toBe(true);
       }
     }
+  });
+
+  it('inventories every application page route', () => {
+    const filesystemRoutes = collectPageRoutes(path.resolve(process.cwd(), 'apps/portal/app')).sort();
+    const catalogRoutes = portalRouteCatalog.map((entry) => entry.routePattern.split('?')[0]).sort();
+    expect(catalogRoutes).toEqual(filesystemRoutes);
   });
 
   it('keeps the initial authenticated agent smoke intentionally small', () => {

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import Modal from '@/components/ui/modal/Modal';
+import { IconButton } from '@/components/ui/foundation/FoundationControls';
 import styles from './PipelineModal.module.css';
 
 type PipelineModalProps = {
@@ -53,31 +54,31 @@ export function PipelineModal({
         <div className={styles.header}>
           <div className={styles.headerMain}>
             {onBack ? (
-              <button
-                type="button"
+              <IconButton
                 aria-label="Back"
-                className={styles.backButton}
+                variant="quiet"
+                size="standard"
                 onClick={onBack}
               >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
+                <ArrowLeft aria-hidden="true" />
+              </IconButton>
             ) : null}
             <div className={styles.headerText}>
-              <div className={styles.title}>{title}</div>
+              <h2 className={styles.title}>{title}</h2>
               {description ? (
                 <div className={styles.description}>{description}</div>
               ) : null}
             </div>
           </div>
 
-          <button
-            type="button"
+          <IconButton
             aria-label="Close"
-            className={styles.closeButton}
+            variant="quiet"
+            size="standard"
             onClick={() => onOpenChange(false)}
           >
-            <X className="h-4 w-4" />
-          </button>
+            <X aria-hidden="true" />
+          </IconButton>
         </div>
 
         {children ? <div className={styles.content}>{children}</div> : null}

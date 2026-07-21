@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   LIST_PAGE_SIZE,
+  LIST_ID_FILTER_CHUNK_SIZE,
   LIST_WARNING_THRESHOLD,
   MAX_LIST_FETCH_ROWS,
   fetchAllPages,
+  fetchRowsByIdChunks,
   intoListFetchResult,
   shouldShowListCountWarning,
 } from './listLimits';
@@ -72,6 +74,54 @@ describe('shouldShowListCountWarning', () => {
 describe('LIST_PAGE_SIZE', () => {
   it('matches PostgREST max-rows default (1000)', () => {
     expect(LIST_PAGE_SIZE).toBe(1000);
+  });
+});
+
+describe('fetchRowsByIdChunks', () => {
+  it('keeps ID filters bounded and combines every chunk in order', async () => {
+    const ids = Array.from({ length: 205 }, (_, index) => `id-${index}`);
+    const chunks: string[][] = [];
+    const rows = await fetchRowsByIdChunks(
+      ids,
+      async (chunkIds) => {
+        chunks.push(chunkIds);
+        return { data: chunkIds.map((id) => ({ id })), error: null };
+      },
+      { chunkSize: 100 },
+    );
+
+    expect(chunks.map((chunk) => chunk.length)).toEqual([100, 100, 5]);
+    expect(rows.map((row) => row.id)).toEqual(ids);
+  });
+
+  it('does not issue a request for an empty ID set', async () => {
+    let called = false;
+    const rows = await fetchRowsByIdChunks([], async () => {
+      called = true;
+      return { data: [], error: null };
+    });
+    expect(called).toBe(false);
+    expect(rows).toEqual([]);
+  });
+
+  it('propagates the first chunk error and stops', async () => {
+    let calls = 0;
+    await expect(
+      fetchRowsByIdChunks(['a', 'b', 'c'], async () => {
+        calls += 1;
+        return calls === 2
+          ? { data: null, error: new Error('chunk failed') }
+          : { data: [{ id: 'a' }], error: null };
+      }, { chunkSize: 1 }),
+    ).rejects.toThrow('chunk failed');
+    expect(calls).toBe(2);
+  });
+
+  it('uses a safe default and rejects invalid chunk sizes', async () => {
+    expect(LIST_ID_FILTER_CHUNK_SIZE).toBeGreaterThan(0);
+    await expect(
+      fetchRowsByIdChunks(['a'], async () => ({ data: [], error: null }), { chunkSize: 0 }),
+    ).rejects.toThrow(/chunkSize/);
   });
 });
 

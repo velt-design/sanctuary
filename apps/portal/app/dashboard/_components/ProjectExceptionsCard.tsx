@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
 import dash from '../dashboard.module.css';
+import { Badge } from '@/components/ui/foundation/FoundationSurfaces';
 
 const LABELS = {
   selection_conflict: 'Action conflict',
@@ -20,6 +21,8 @@ export default function ProjectExceptionsCard({
   onRetry?: () => void;
 }) {
   if (!data && !pending && !failed) return null;
+  const visibleProjects = data?.projects.slice(0, 6) ?? [];
+  const remainingProjects = Math.max(0, (data?.totalProjects ?? visibleProjects.length) - visibleProjects.length);
   return (
     <section className={dash.exceptionsCard} data-dashboard-project-exceptions="true" aria-labelledby="project-exceptions-title">
       <div className={dash.exceptionsHeader}>
@@ -33,15 +36,15 @@ export default function ProjectExceptionsCard({
         </div>
       ) : pending && !data ? (
         <p className={dash.exceptionsEmpty} role="status">Loading project exceptions…</p>
-      ) : data?.projects.length ? (
+      ) : visibleProjects.length ? (
         <ul className={dash.exceptionsList}>
-          {data.projects.slice(0, 6).map((project) => (
+          {visibleProjects.map((project) => (
             <li key={project.projectId}>
               <Link href={project.href}>{project.projectName}</Link>
-              <div>{project.reasons.map((reason) => <span key={reason}>{LABELS[reason]}</span>)}</div>
+              <div>{project.reasons.map((reason) => <Badge key={reason} tone="warning" edge>{LABELS[reason]}</Badge>)}</div>
             </li>
           ))}
-          {data.projects.length > 6 ? <li className={dash.exceptionsMore}>+{data.projects.length - 6} more projects</li> : null}
+          {remainingProjects > 0 ? <li className={dash.exceptionsMore}>+{remainingProjects} more projects</li> : null}
         </ul>
       ) : <p className={dash.exceptionsEmpty}>No ownership or next-action exceptions.</p>}
     </section>

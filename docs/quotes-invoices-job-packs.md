@@ -39,6 +39,8 @@ The project page's Overview surfaces the current design and commercial record th
 
 The project header exposes one Commercial tab. Its accessible inner switch keeps Quotes and Invoices as separate lazy owners and preserves the existing `tab=quotes` and `tab=invoices` URLs. `QuotesTab.tsx` continues to own quote state and side effects; `CommercialTab.tsx` owns only composition, Edit/Preview URL state, and navigation. Switching to Invoices clears `quotePreview` but preserves selected quote, create-from-estimate, and unrelated query context. Email audit data and quote/invoice delivery side effects remain available through their domain records and APIs even though the standalone project Emails tab is retired.
 
+The Commercial Quotes surface uses canonical `QuoteStatusBadge` presentation for `DRAFT`, `SENT`, `ACCEPTED`, and `DECLINED`; a sticky action owner reports dirty or syncing draft state without claiming durable success. Version rows are keyboard operable, quote and estimate-version reads expose retry states, and create/refresh/send/invoice/expiry/delete dialogs use the shared focus trap, Escape policy, scroll lock, and focus return. Responsive CSS may hide secondary quote-index columns or contain editor tables, but it must retain quote identity, status, inc-GST amount, the explicit GST breakdown, and every lifecycle action. These are presentation boundaries only and must not move local-first queueing, locks, quote email/PDF behavior, or server-confirmed transitions into shared UI components.
+
 
 
 - Draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.

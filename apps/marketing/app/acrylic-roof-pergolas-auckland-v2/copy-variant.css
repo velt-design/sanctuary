@@ -1,0 +1,9 @@
+.acrylic-copy-variant .acrylic-weather-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .acrylic-copy-variant .acrylic-weather-grid--three {
+    grid-template-columns: 1fr;
+  }
+}

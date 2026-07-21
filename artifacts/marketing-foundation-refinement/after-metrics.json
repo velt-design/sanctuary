@@ -1,0 +1,50 @@
+[
+  {
+    "label": "1440x1000",
+    "width": 1440,
+    "height": 1000,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "scrollHeight": 19522,
+    "mainHeight": 19522,
+    "headerHeight": 82,
+    "sectionPadding": "115.2px",
+    "focusRing": "2px solid #4f5748"
+  },
+  {
+    "label": "1024x768",
+    "width": 1024,
+    "height": 768,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "scrollHeight": 15964,
+    "mainHeight": 15964,
+    "headerHeight": 82,
+    "sectionPadding": "81.92px",
+    "focusRing": "2px solid #4f5748"
+  },
+  {
+    "label": "768x1024",
+    "width": 768,
+    "height": 1024,
+    "scrollWidth": 768,
+    "clientWidth": 768,
+    "scrollHeight": 17629,
+    "mainHeight": 17629,
+    "headerHeight": 72,
+    "sectionPadding": "72px",
+    "focusRing": "2px solid #4f5748"
+  },
+  {
+    "label": "390x844",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "scrollHeight": 19292,
+    "mainHeight": 19292,
+    "headerHeight": 64,
+    "sectionPadding": "72px",
+    "focusRing": "2px solid #4f5748"
+  }
+]

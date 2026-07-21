@@ -17,6 +17,27 @@ function cx(...classes: Array<string | false | null | undefined>): string {
 
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'error' | 'info' | 'inverse';
 
+export type PageLayoutProps = HTMLAttributes<HTMLElement> & {
+  width?: 'content' | 'full';
+  density?: 'standard' | 'compact';
+};
+
+export const PageLayout = forwardRef<HTMLElement, PageLayoutProps>(function PageLayout(
+  { width = 'content', density = 'standard', className, children, ...props },
+  ref,
+) {
+  return (
+    <main
+      ref={ref}
+      className={cx(styles.pageLayout, width === 'full' && styles.pageLayoutFull, className)}
+      data-ui-density={density}
+      {...props}
+    >
+      {children}
+    </main>
+  );
+});
+
 export function Badge({
   tone = 'neutral',
   edge = false,

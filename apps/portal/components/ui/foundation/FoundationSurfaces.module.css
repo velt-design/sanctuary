@@ -1,3 +1,17 @@
+.pageLayout {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--ui-content-max);
+  min-height: 100%;
+  margin-inline: auto;
+  padding: var(--ui-space-5);
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+  font-family: var(--ui-font-body);
+}
+.pageLayoutFull { max-width: none; }
+.pageLayout * { box-sizing: border-box; }
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -49,7 +63,7 @@
 .paddingStandard { padding: var(--ui-space-5); }
 .cardFooter { border-top: var(--ui-border-width) solid var(--ui-border); padding: var(--ui-space-3) var(--ui-space-4); }
 
-.tableScroll { width: 100%; overflow-x: auto; border: var(--ui-border-width) solid var(--ui-border); background: var(--ui-surface-elevated); }
+.tableScroll { contain: inline-size; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; border: var(--ui-border-width) solid var(--ui-border); background: var(--ui-surface-elevated); }
 .table { width: 100%; min-width: 660px; border-collapse: collapse; color: var(--ui-text); font-family: var(--ui-font-body); font-size: var(--ui-font-size-small); }
 .tableHead,
 .tableCell { padding: var(--ui-density-table-block) var(--ui-space-3); text-align: left; vertical-align: middle; }
@@ -104,6 +118,7 @@
 .stickyActions { flex: 0 0 auto; }
 
 @media (max-width: 767px) {
+  .pageLayout { padding: var(--ui-space-3); }
   .paginationControls button,
   .paginationControls > span { min-width: 44px; height: 44px; }
   .pagination { align-items: flex-start; flex-direction: column; }

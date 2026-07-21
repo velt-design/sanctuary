@@ -220,7 +220,7 @@ export default function ActionsClient({
   };
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-foundation-consumer="admin-costs">
       <div className={styles.card}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>Install actions</h1>

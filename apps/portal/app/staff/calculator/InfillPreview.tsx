@@ -182,8 +182,8 @@ export default function InfillPreview({
       >
         <defs>
           <linearGradient id="infill-preview-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(var(--portal-accent-rgb), 0.2)" />
-            <stop offset="100%" stopColor="rgba(var(--portal-accent-rgb), 0.06)" />
+            <stop offset="0%" stopColor="color-mix(in srgb, var(--ui-action) 20%, transparent)" />
+            <stop offset="100%" stopColor="color-mix(in srgb, var(--ui-action) 6%, transparent)" />
           </linearGradient>
         </defs>
 

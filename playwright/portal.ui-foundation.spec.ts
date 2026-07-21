@@ -61,6 +61,18 @@ async function expectCoreControlsUncropped(page: Page) {
   expect(cropped).toEqual([]);
 }
 
+async function expectNoLegacyRoundedSurfaces(root: Locator) {
+  const offenders = await root.locator('*:visible').evaluateAll((elements) => elements.flatMap((element) => {
+    const style = getComputedStyle(element);
+    const radius = Number.parseFloat(style.borderRadius);
+    const rect = element.getBoundingClientRect();
+    const isSmallCircle = Math.abs(rect.width - rect.height) < 1 && rect.width <= 24;
+    if (!Number.isFinite(radius) || radius <= 4 || isSmallCircle || element.tagName.toLowerCase() === 'svg') return [];
+    return [{ tag: element.tagName, className: element.className, radius: style.borderRadius }];
+  }).slice(0, 20));
+  expect(offenders).toEqual([]);
+}
+
 async function contrastRatio(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     const parse = (value: string) => value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
@@ -78,6 +90,10 @@ async function contrastRatio(locator: Locator): Promise<number> {
 async function firstProjectDetailRoute(page: Page): Promise<string | null> {
   await page.goto('/staff/projects');
   await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+  await expect(page.locator('main[data-projects-index-state]:visible')).toHaveAttribute(
+    'data-projects-index-state',
+    /^(fresh|refresh-failed|unavailable)$/,
+  );
   const href = await page.locator('a', { hasText: 'Open' }).first().getAttribute('href').catch(() => null);
   return href ? new URL(href, page.url()).pathname : null;
 }
@@ -117,6 +133,8 @@ test('foundation is responsive, semantic, keyboard-operable, and reduced-motion 
   await openFresh(page, '/staff/ui-foundation');
   const mobileBar = page.locator('header').filter({ has: page.getByRole('button', { name: 'Open portal navigation' }) });
   await expect(mobileBar).toHaveCSS('height', '56px');
+  await expect(mobileBar).toHaveCSS('background-color', 'rgb(11, 11, 10)');
+  await expect(mobileBar).toHaveCSS('border-bottom-color', 'rgb(240, 90, 0)');
   const menuButton = page.getByRole('button', { name: 'Open portal navigation' });
   await menuButton.focus();
   await menuButton.click();
@@ -155,14 +173,25 @@ test('foundation is responsive, semantic, keyboard-operable, and reduced-motion 
 
 test('Projects Index and Project Detail prove the foundation on real workflows', async ({ page }) => {
   const detailRoute = await firstProjectDetailRoute(page);
-  await expect(page.locator('[data-page-header-variant="index"]')).toBeVisible();
+  await expect(page.locator('[data-page-header-variant="index"]:visible')).toHaveCount(1);
   await expect(page.getByRole('search', { name: 'Search and filter' })).toBeVisible();
+  await expect(page.locator('[data-portal-sidebar-panel] > div')).toHaveCSS('background-color', 'rgb(11, 11, 10)');
+  await expect(page.locator('[data-portal-sidebar-panel] a[aria-current="page"]').first().locator('..')).toHaveCSS(
+    'border-left-color',
+    'rgb(240, 90, 0)',
+  );
+  await expect(page.locator('main[data-projects-index-state] section[aria-label="Filters"]')).toHaveCSS('border-radius', '0px');
+  await expect(page.locator('main[data-projects-index-state] section[aria-label="Projects list"]')).toHaveCSS('border-radius', '0px');
   await expectNoDocumentOverflow(page);
 
   for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openFresh(page, '/staff/projects');
-    await expect(page.locator('[data-page-header-variant="index"]')).toBeVisible();
+    await expect(page.locator('[data-page-header-variant="index"]:visible')).toHaveCount(1);
+    await expect(page.locator('main[data-projects-index-state]:visible')).toHaveAttribute(
+      'data-projects-index-state',
+      /^(fresh|refresh-failed|unavailable)$/,
+    );
     await expectNoDocumentOverflow(page);
     await capture(page, 'projects-index', viewport.name);
   }
@@ -171,10 +200,56 @@ test('Projects Index and Project Detail prove the foundation on real workflows',
   for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openFresh(page, detailRoute!);
-    await expect(page.locator('[data-page-header-variant="detail"]')).toBeVisible();
-    await expect(page.locator('[data-project-status-details="true"]')).toBeVisible();
-    await expect(page.locator('ol[aria-label="Project stage"] li')).toHaveCount(9);
+    await expect(page.locator('[data-page-header-variant="detail"]:visible')).toHaveCount(1);
+    await expect(page.locator('[data-project-snapshot-state]:visible')).toHaveAttribute(
+      'data-project-snapshot-state',
+      /^(fresh|refresh-failed|unavailable)$/,
+    );
+    await expect(page.locator('[data-command-centre-state]:visible')).not.toHaveAttribute(
+      'data-command-centre-state',
+      'pending',
+    );
+    await expect(page.locator('[data-project-status-details="true"]:visible')).toHaveCount(1);
+    await expect(page.locator('ol[aria-label="Project stage"]:visible li')).toHaveCount(9);
     await expectNoDocumentOverflow(page);
     await capture(page, 'project-detail', viewport.name);
   }
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openFresh(page, `${detailRoute!}?tab=estimates`);
+  await expect(page.locator('[data-project-snapshot-state]:visible')).toHaveAttribute(
+    'data-project-snapshot-state',
+    /^(fresh|refresh-failed|unavailable)$/,
+  );
+  await expect(page.locator('[data-project-active-tab="estimates"]:visible')).toHaveCount(1);
+  await expect(page.locator('[data-project-calculator="true"]:visible')).toHaveAttribute(
+    'data-project-calculator-state',
+    /^(ready|locked|invalid|error)$/,
+  );
+  await expectNoDocumentOverflow(page);
+  await expectNoLegacyRoundedSurfaces(page.locator('[data-project-calculator="true"]:visible'));
+  await capture(page, 'project-detail-calculator', '1440x1000');
+
+  await openFresh(page, `${detailRoute!}?tab=quotes`);
+  await expect(page.locator('[data-project-snapshot-state]:visible')).toHaveAttribute(
+    'data-project-snapshot-state',
+    /^(fresh|refresh-failed|unavailable)$/,
+  );
+  await expect(page.locator('[data-project-active-tab="quotes"]:visible')).toHaveCount(1);
+  await expect(page.locator('[data-project-commercial-view="quotes"]:visible')).toHaveCount(1);
+  await expect(page.getByText('Loading quotes…', { exact: true })).toHaveCount(0);
+  await expectNoDocumentOverflow(page);
+  await expectNoLegacyRoundedSurfaces(page.locator('[data-project-commercial-view="quotes"]:visible'));
+  await capture(page, 'project-detail-commercial', '1440x1000');
+
+  await openFresh(page, `${detailRoute!}?tab=invoices`);
+  await expect(page.locator('[data-project-snapshot-state]:visible')).toHaveAttribute(
+    'data-project-snapshot-state',
+    /^(fresh|refresh-failed|unavailable)$/,
+  );
+  await expect(page.locator('[data-project-active-tab="invoices"]:visible')).toHaveCount(1);
+  await expect(page.locator('[data-project-commercial-view="invoices"]:visible')).toHaveCount(1);
+  await expectNoDocumentOverflow(page);
+  await expectNoLegacyRoundedSurfaces(page.locator('[data-project-commercial-view="invoices"]:visible'));
+  await capture(page, 'project-detail-invoices', '1440x1000');
 });

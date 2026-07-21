@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
-import { fetchAllPages } from '@/lib/list/listLimits';
+import { fetchAllPages, fetchRowsByIdChunks } from '@/lib/list/listLimits';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -381,61 +381,66 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     };
   }
 
-  const [siteVisitsRes, scheduledJobsRes, tasksRes, metaRes, estimatesRes, quotesRes] = await Promise.all([
-    supabase
-      .from('site_visit_events')
-      .select('id, project_id, status, assigned_sales_owner_id, updated_at')
-      .in('project_id', projectIds),
-    supabase
-      .from('scheduled_jobs')
-      .select(
-        [
-          'id',
-          'job_id',
-          'crew_id',
-          'planned_start',
-          'planned_duration_days',
-          'forecast_start',
-          'forecast_duration_days',
-          'actual_start',
-          'actual_finish',
-          'status',
-          'updated_at',
-        ].join(','),
-      )
-      .in('job_id', projectIds),
-    supabase.from('project_task_checks').select('project_id, task_key').in('project_id', projectIds),
-    supabase.from('project_running_job_meta').select('project_id, lights_status, notes, updated_at').in('project_id', projectIds),
-    supabase
-      .from('estimates')
-      .select('id, project_id, status, created_at, version, inputs, outputs')
-      .in('project_id', projectIds),
-    supabase.from('quotes').select('id, project_id').in('project_id', projectIds),
+  const [siteVisitRows, scheduledJobRows, taskRows, metaRows, estimateRows, rawQuoteRows] = await Promise.all([
+    fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
+      supabase
+        .from('site_visit_events')
+        .select('id, project_id, status, assigned_sales_owner_id, updated_at')
+        .in('project_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
+      supabase
+        .from('scheduled_jobs')
+        .select(
+          [
+            'id',
+            'job_id',
+            'crew_id',
+            'planned_start',
+            'planned_duration_days',
+            'forecast_start',
+            'forecast_duration_days',
+            'actual_start',
+            'actual_finish',
+            'status',
+            'updated_at',
+          ].join(','),
+        )
+        .in('job_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<TaskRow>(projectIds, (chunkIds) =>
+      supabase.from('project_task_checks').select('project_id, task_key').in('project_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
+      supabase.from('project_running_job_meta').select('project_id, lights_status, notes, updated_at').in('project_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
+      supabase
+        .from('estimates')
+        .select('id, project_id, status, created_at, version, inputs, outputs')
+        .in('project_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
+      supabase.from('quotes').select('id, project_id').in('project_id', chunkIds),
+    ),
   ]);
 
-  if (siteVisitsRes.error) throw siteVisitsRes.error;
-  if (scheduledJobsRes.error) throw scheduledJobsRes.error;
-  if (tasksRes.error) throw tasksRes.error;
-  if (metaRes.error) throw metaRes.error;
-  if (estimatesRes.error) throw estimatesRes.error;
-  if (quotesRes.error) throw quotesRes.error;
-
-  const quoteRows = (Array.isArray(quotesRes.data) ? quotesRes.data : []).map((row: any) => ({
+  const quoteRows = rawQuoteRows.map((row: any) => ({
     id: String(row?.id ?? ''),
     project_id: String(row?.project_id ?? ''),
   }));
 
   const quoteIds = quoteRows.map((row) => row.id).filter(Boolean);
-  const quoteVersionsRes = quoteIds.length
-    ? await supabase.from('quote_versions').select('id, quote_id, version_number, created_at, customer_name').in('quote_id', quoteIds)
-    : { data: [], error: null };
-
-  if (quoteVersionsRes.error) throw quoteVersionsRes.error;
+  const quoteVersionRows = await fetchRowsByIdChunks<any>(quoteIds, (chunkIds) =>
+    supabase
+      .from('quote_versions')
+      .select('id, quote_id, version_number, created_at, customer_name')
+      .in('quote_id', chunkIds),
+  );
 
   const salesPeopleById = new Map(salesPeople.map((person) => [person.id, person]));
   const crewsById = new Map(crews.map((crew) => [crew.id, crew]));
 
-  const siteVisitRows = Array.isArray(siteVisitsRes.data) ? (siteVisitsRes.data as any[]) : [];
   const siteVisitByProjectId = new Map<string, SiteVisitRow>();
   for (const row of siteVisitRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
@@ -449,7 +454,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     });
   }
 
-  const scheduledJobRows = Array.isArray(scheduledJobsRes.data) ? (scheduledJobsRes.data as any[]) : [];
   const scheduledJobByProjectId = new Map<string, ScheduledJobRow>();
   for (const row of scheduledJobRows) {
     const projectId = typeof row?.job_id === 'string' ? row.job_id : '';
@@ -469,10 +473,8 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     });
   }
 
-  const taskRows = Array.isArray(tasksRes.data) ? (tasksRes.data as TaskRow[]) : [];
   const tasksByProjectId = taskSetByProject(taskRows);
 
-  const metaRows = Array.isArray(metaRes.data) ? (metaRes.data as any[]) : [];
   const metaByProjectId = new Map<string, MetaRow>();
   for (const row of metaRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
@@ -485,7 +487,6 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     });
   }
 
-  const estimateRows = Array.isArray(estimatesRes.data) ? (estimatesRes.data as any[]) : [];
   const estimatesByProjectId = new Map<string, RunningJobsEstimateLite[]>();
   for (const row of estimateRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
@@ -505,7 +506,7 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
 
   const projectIdByQuoteId = new Map(quoteRows.map((row) => [row.id, row.project_id]));
   const latestQuoteVersionByProjectId = new Map<string, QuoteVersionRow>();
-  for (const row of (Array.isArray(quoteVersionsRes.data) ? quoteVersionsRes.data : []) as any[]) {
+  for (const row of quoteVersionRows) {
     const quoteId = typeof row?.quote_id === 'string' ? row.quote_id : '';
     const projectId = projectIdByQuoteId.get(quoteId) ?? '';
     if (!projectId) continue;

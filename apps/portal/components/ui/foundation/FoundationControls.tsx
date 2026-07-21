@@ -3,8 +3,8 @@
 import {
   forwardRef,
   useId,
-  type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
+  type ComponentProps,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -88,7 +88,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
 });
 
-export type ButtonLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
+export type ButtonLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
   href: string;
   variant?: ButtonVariant;
   size?: ControlSize;

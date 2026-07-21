@@ -6,17 +6,20 @@ Status: Current foundation contract.
 
 `/staff/ui-foundation` is the protected live catalogue for the staff portal's next shared visual system. It renders the same reusable exports that future portal screens should consume; it is not a parallel collection of demonstration-only markup.
 
-The production-hardening phase is intentionally narrow. Projects Index and the Project Detail shell plus Overview details editor are the representative consumers; other portal screens and legacy `PortalSurface` styles remain unchanged until a separately approved rollout.
+The production rollout is a replacement migration, not a compatibility skin. A route is complete only when its active presentation is built from Foundation tokens and reusable patterns with no legacy card, control, colour, radius, or arbitrary feature-level styling left in the rendered layer. Behavioural owners, API contracts, cache/local-first semantics, permissions, accessibility, and performance boundaries remain unchanged.
+
+The active checkpoint order is Shell, Projects Index, Project Detail, Contacts, Estimates/Quotes, Calculator, Schedule/Tasks, remaining staff routes, then Dashboard. Earlier checkpoints were reopened after the July 2026 visual audit found blended legacy presentation. The inventory below, not a prior checkpoint label, is the current completion record.
 
 ## Owners
 
 - Semantic tokens: `apps/portal/components/ui/foundation/foundation.tokens.css`
 - Reusable controls and form fields: `apps/portal/components/ui/foundation/FoundationControls.tsx`
-- Server-compatible cards, badges, tables, empty/loading states, and sticky actions: `apps/portal/components/ui/foundation/FoundationSurfaces.tsx`
+- Server-compatible page layout, cards, badges, tables, empty/loading states, and sticky actions: `apps/portal/components/ui/foundation/FoundationSurfaces.tsx`
 - Interactive pagination, search/filter, selectable-table, destructive-confirmation, and unsaved-change owners: their named modules in `apps/portal/components/ui/foundation/`
 - Information, warning, error/blocking, data-state, calculator, financial, permission, and task/schedule feedback: `apps/portal/components/ui/foundation/FoundationFeedback.tsx`
 - Focus-managed portal drawer: `apps/portal/components/ui/drawer/Drawer.tsx`; focus trap shared with the existing modal through `apps/portal/components/ui/focusTrap.ts`
 - Keyboard-operable overflow menu: `apps/portal/components/ui/foundation/OverflowMenu.tsx`
+- Detail-page tabs, key-value and metric groups, action panels, timelines, and task rows: `apps/portal/components/ui/foundation/FoundationOperational.tsx`
 - Project stages and commercial statuses: `apps/portal/components/ui/foundation/SanctuaryStatus.tsx`
 - Dashboard, index, and detail header variants: `apps/portal/components/layout/PageHeader.tsx`
 - Catalogue route: `apps/portal/app/staff/ui-foundation/**`
@@ -31,31 +34,83 @@ The production-hardening phase is intentionally narrow. Projects Index and the P
 - Panels are square, controls use 2px radii, and overlays use 4px radii.
 - Borders and tonal contrast replace general card shadows.
 - Spacing uses a 4px foundation. Standard and compact density are scoped with `data-ui-density`.
+- `PageLayout` owns the warm route canvas, 1440px content ceiling, density scope, and responsive page padding. Route CSS should add composition only.
 - Lucide outline icons, native form semantics, keyboard operation, and visible focus states are required.
 - Project stages come from `lib/projects/pipelineDefinition.ts`; components must not duplicate workflow order.
 - Quote and estimate badges accept canonical `QuoteStatus` and `EstimateStatus` types directly. Their exhaustive presentation maps are the only commercial status display mapping in the foundation.
 - Action orange uses a dark semantic foreground. Reduced-motion mode stops spinners and shimmer and removes non-essential pressed transforms.
 - The actual `PortalShell` owns expanded and collapsed desktop navigation plus a 56px mobile top bar and focus-managed drawer. Each sidebar destination has one keyboard focus stop.
+- `components/navigation/sidebarLayout.ts` owns the approved 208px expanded and 48px collapsed shell widths; the matching `--ui-sidebar-*` tokens are guarded against drift. Mobile chrome and drawers account for top and bottom safe-area insets, hide desktop rails below the mobile breakpoint, expose 44px navigation targets, and disable non-essential navigation motion when reduced motion is requested.
+- Shared header actions and breadcrumb links retain 44px touch targets at mobile/coarse-pointer breakpoints. The shared modal uses the overlay radius, safe-area padding, focus trap, Escape/backdrop policy, and focus return contract.
 
 ## Production Patterns
 
 The catalogue renders the actual exported search/filter bar, selection table, pagination, modal, drawer, alerts, data states, permission/read-only controls, calculator notices, NZD financial summary, task/schedule feedback, and sticky action bar. Forced interaction states stay in catalogue markup via `data-visual-state`; they are not component props. Demo-only helpers are not exported.
 
-Projects Index consumes the index `PageHeader`, `ButtonLink`, `SearchFilterBar`, `ProjectStageBadge`, `LoadingSkeleton`, and `DataStatePanel` while retaining its existing query, preload, optimistic mutation, archive-scope, and retry owners. Project Detail consumes the detail `PageHeader`, stage badge/tracker, shared controls, alerts, and unsaved-change guard while retaining lazy tabs and the existing local-first details draft owner.
+Projects Index consumes the index `PageHeader`, `ButtonLink`, `SearchFilterBar`, `ProjectStageBadge`, `LoadingSkeleton`, and `DataStatePanel` while retaining its existing query, preload, optimistic mutation, archive-scope, and retry owners. Project Detail consumes the detail `PageHeader`, stage tracker, `TabNavigation`, `KeyValueGrid`, `MetricGrid`, `ActionPanel`, `ActivityTimeline`, `TaskList`, shared controls, alerts, and confirmation owners while retaining lazy tabs and existing cache/local-first owners.
+
+Contacts Index, Contact Create, Contact Detail, and CSV import compose `PageLayout`, header variants, foundation controls, cards, tables, loading/data states, alerts, and the shared modal. Their existing Contacts-index state machine, instant navigation, authenticated APIs, cache coherence, lazy import boundary, and local-first Contact Detail queue remain the behavioral owners. Mobile contact tables reduce to identity and action columns; secondary data remains available on wider screens and the detail field table reflows without document overflow.
+
+Project Commercial keeps `CommercialTab` as a composition-only Quotes/Invoices owner. `QuotesTab` now consumes canonical quote badges, the shared sticky action and unsaved-change owners, shared focus-managed dialogs, retryable data states, semantic foundation surfaces, and responsive table containment. Quote creation still selects an exact saved estimate version and all local-first quote mutations, lifecycle locks, PDF/email actions, invoice/job-pack handoffs, and cache invalidation remain with their existing domain owners. The retired standalone estimate URL redirects to Job Packs; standalone quote and quote-print URLs redirect to the canonical Commercial editor/preview. Their unused legacy editor, print view, chevron, and project stylesheet are retired.
+
+Calculator retains its specialist command bar, configuration, module navigation, preview, draft, and save-dialog owners while inheriting foundation density, canvas, text, border, focus, and destructive roles. Preview warnings use the shared accessible alert pattern, and command-bar actions expose 44px mobile/coarse-pointer targets. Costing, cancellation/newest-result protection, browser drafts, validation focus, Preserve/Reprice, and estimate/quote handoff behavior are unchanged.
+
+Schedule Board, Gantt, Site Visits, and the legacy fallback share the full-width compact foundation canvas while retaining their existing view/lazy boundaries. V2 scheduling issues, load/refresh failures, task pending/retry state, and Site Visit action failures use shared accessible feedback; Schedule action dialogs use the focus-trapping modal owner. Active V2 downtime deletion, locked-job unscheduling, and Site Visit unscheduling require an in-context confirmation instead of a browser prompt. Narrow Board lanes and Site Visit days remain horizontally focused inside their owning scroll regions, while controls expose 44px targets. Schedule API/RPC commands, optimistic state, drag/drop, project-task field-owned rollback, and legacy fallback isolation are unchanged.
+
+New Project, Drafting Queue, Running Jobs, Imports, Pricebook, and Access use the Foundation canvas, form controls, status edges, and hard-edge working surfaces. Drafting Queue and Running Jobs retain their shared spreadsheet viewport, zoom, local editing, and internal horizontal containment. Pricebook retains all three admin data owners behind an accessible tab/panel relationship. Large related-record reads use bounded ID-filter chunks so production-scale project inventories do not exceed PostgREST request-line limits.
+
+Dashboard is the final migrated checkpoint. It composes stage-colour pipeline cells, orange-edged KPI links, semantic exception badges, flat activity rows, and the shared accessible `TaskRow` control without restoring rounded cards or pills. The page retains cached/fresh/failure states, workflow links, personal-task optimistic mutations, a bounded desktop operational viewport, one-column mobile flow, and the server-total exception count.
+
+The canonical `/login` and `/access-status` routes use the same hard-edge Foundation tokens through `PublicAuthShell`; `/staff/login` remains a query-preserving redirect. Generic page-message and pending-state surfaces share that token owner, so authentication, failure, and loading states do not reintroduce the retired rounded-card layer.
 
 ## Change Rules
 
 - Prefer semantic `--ui-*` roles over raw colour or spacing values in new foundation consumers.
-- Keep old portal tokens compatibility-owned until a production-screen migration explicitly replaces them.
+- Legacy tokens may remain only in explicitly inventoried, not-yet-migrated routes. They cannot remain in a route marked complete.
 - Add a catalogue example and focused test when adding a public primitive variant.
 - Update `playwright/support/portalRouteCatalog.ts` if the route contract changes.
-- Do not use the catalogue as approval to broadly restyle existing portal screens.
+- A missing production pattern must be implemented as a reusable Foundation component, demonstrated in the catalogue, tested, and then consumed by the route.
+
+## Route Migration Inventory
+
+Status meanings: `migrated` means the named active layer has no legacy presentation; `in review` means the Foundation replacement exists but browser/route audit is not closed; `pending` means a legacy presentation remains and the route checkpoint is not complete.
+
+| Route / surface | Legacy presentation owner being replaced | Foundation owner | Status |
+| --- | --- | --- | --- |
+| Staff shell | legacy sidebar/mobile chrome and compatibility tokens | `PortalShell`, inverse Foundation navigation, orange active edge, focus-managed drawer | Migrated |
+| `/staff/projects` | index-specific legacy table/filter/action styling | `PageHeader`, `SearchFilterBar`, `Table`, badges, data states, shared confirmation | Migrated |
+| Project Detail header | legacy masthead, action menu, chevron workflow, tab strip | detail `PageHeader`, `OverflowMenu`, `ProjectStageTracker`, `TabNavigation` | Migrated |
+| Project Detail status/details | rounded status/detail cards and inline field styling | square `Card`, `KeyValueGrid`, Foundation inputs and alerts | Migrated |
+| Project Detail design/commercial summary | legacy summary cards and ad hoc metrics | `Card`, `MetricGrid`, canonical status badges | Migrated |
+| Project Detail command | legacy command-centre card and action controls | `Card`, `ActionPanel`, `KeyValueGrid`, Foundation controls/timeline | Migrated |
+| Project Detail activity | legacy note cards and browser delete prompt | `Textarea`, `ActivityTimeline`, `DestructiveConfirmation` | Migrated |
+| Project Detail tasks/stage modal | legacy task rows, raw utility controls, legacy modal classes | `TaskList`, `TaskRow`, feedback, Foundation controls, semantic `PipelineModal` | Migrated |
+| Project Detail overview composition | blended legacy grid/card layer | warm `PageLayout`, square cards, `OperationalGrid` | Migrated |
+| Project Detail Commercial, Calculator, Invoices, Job Packs tabs | legacy tab-specific cards, tables, controls, and modal actions | shared tabs, controls, tables, badges, data states, and Foundation-token specialist calculator/spreadsheet owners | Migrated |
+| Contacts routes | legacy route-specific cards/tables/forms and dev diagnostic panel | Foundation layout, forms, tables, feedback, import dialog, semantic diagnostic surface | Migrated |
+| Estimates / Quotes | legacy presentation in active editors and dialogs | canonical badges, tables, sticky actions, dialogs, square semantic notes and row actions | Migrated |
+| Calculator | specialist command/configuration presentation | Foundation density, controls, feedback, panels, and approved geometry-status chips | Migrated |
+| Schedule / Tasks | rounded Board/Gantt/Site Visit cards, pill controls, and inline popover styling | hard-edge Foundation canvas, controls, feedback, semantic status edges, dialogs, and portal popovers | Migrated |
+| Remaining staff routes and settings | legacy route presentation | Foundation project form, shared spreadsheet, admin data surfaces, accessible Pricebook tabs, canonical quote redirects | Migrated |
+| Dashboard | legacy dashboard composition | dashboard header, stage cells, KPI links, semantic badges, flat activity, shared task rows | Migrated |
+| Public staff auth, access, and page states | rounded gradient cards, pill actions, and rounded loading blocks | hard-edge `PublicAuthShell`, semantic status edges, Foundation controls and reduced-motion skeletons | Migrated |
+| Compatibility URLs | standalone or superseded route presentation | server redirects to the canonical Dashboard, Login, Calculator, Running Jobs, Commercial, or Job Packs owner | Migrated (redirect-only) |
+
+Temporary exceptions must be recorded as `pending` with a named owner and removal checkpoint. They are excluded from final completion and the portal-wide READY verdict.
 
 ## Verification
 
 - `npx vitest run apps/portal/components/ui/foundation apps/portal/components/layout/PageHeader.test.tsx apps/portal/app/staff/ui-foundation`
 - `npx playwright test playwright/portal.ui-foundation.spec.ts --project=portal-chromium`
+- `npx playwright test playwright/portal.contacts-ui.spec.ts --project=portal-chromium --no-deps` after authenticated storage state exists
+- `npx playwright test playwright/portal.quotes-estimates-ui.spec.ts --project=portal-chromium --no-deps` after authenticated storage state exists; the populated detail state uses a read-only mocked quote response and performs no live mutation
+- `npx playwright test playwright/portal.calculator-foundation-ui.spec.ts --project=portal-chromium --no-deps` for the non-mutating responsive Calculator foundation review
+- `npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps` for the non-mutating Board, Gantt, Site Visits, dialog, and project Tasks review
+- `npx playwright test playwright/portal.remaining-routes-ui.spec.ts --project=portal-chromium --no-deps` for New Project, settled Drafting Queue/Running Jobs data, Imports, all Pricebook panels, Access, and canonical quote redirects
+- `npx playwright test playwright/portal.dashboard-ui.spec.ts --project=portal-chromium --no-deps` for settled Dashboard data, responsive/zoom geometry, reduced motion, and read-only workflow links
+- `npx playwright test playwright/portal.public-auth-ui.spec.ts --project=portal-chromium --no-deps` for credential-free Login, Access Status, `/staff/login` redirect, responsive/zoom geometry, and reduced motion
 - Browser matrix: 1440x1000, 1280x800, 1024x900, 768x1024, 390x844, and 720x500 with 200% zoom simulation. Assert document overflow, major-section overlap, cropped controls, heading semantics, focus return, reduced motion, and action/stage contrast.
+- Portal browser specs use `playwright/support/portalBrowserEvidence.ts`. Named screenshot capture keeps the real caret state so evidence collection cannot introduce a hydration mismatch.
 - `npx tsc -p apps/portal/tsconfig.json --noEmit --incremental false`
 - `npm --prefix apps/portal run lint`
 - `npm run build:portal`

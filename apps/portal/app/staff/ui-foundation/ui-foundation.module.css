@@ -1,14 +1,8 @@
 .page {
-  width: 100%;
   min-height: 100vh;
-  background: var(--ui-canvas);
-  color: var(--ui-text);
-  font-family: var(--ui-font-body);
   padding: var(--ui-space-3);
   container-type: inline-size;
 }
-
-.page * { box-sizing: border-box; }
 .page :global(.visually-hidden) { inset: 0 auto auto 0; clip-path: inset(50%); }
 .hero { display: grid; grid-template-columns: 176px minmax(0, 1fr); border: var(--ui-border-width) solid var(--ui-border-strong); background: var(--ui-surface-primary); }
 .heroBrand { display: flex; flex-direction: column; min-height: 316px; padding: var(--ui-space-4); background: var(--ui-surface-inverse); color: var(--ui-text-inverse); }

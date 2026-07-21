@@ -4,8 +4,18 @@ import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
-import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './JobPacksTab.module.css';
+import {
+  Badge,
+  DataStatePanel,
+  LoadingSkeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/foundation';
 import { formatPortalDate } from '@/lib/format/portalDateTime';
 import { estimateDetailQueryOptions } from '@/lib/queries/projectEstimates';
 import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
@@ -14,14 +24,6 @@ import { coerceJobPackSheet, useJobPackSpreadsheetAdapter, type JobPackSheetKey 
 
 function formatDate(value: string | null | undefined): string {
   return formatPortalDate(value, { fallback: '-' });
-}
-
-function statusLabel(status: string): string {
-  return status === 'archived' ? 'Archived' : 'Draft';
-}
-
-function statusClass(status: string): string {
-  return status === 'archived' ? styles.statusArchived : styles.statusDraft;
 }
 
 export default function JobPacksTab({ projectId }: { projectId: string }) {
@@ -116,20 +118,20 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     return (
       <div className={styles.wrapper}>
         {selectedDetailQuery.isLoading ? (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>Loading job pack</p>
-            <p>Fetching the estimate snapshot and building the workbook.</p>
-          </div>
+          <LoadingSkeleton rows={5} columns={5} label="Loading job pack" />
         ) : selectedDetailQuery.isError ? (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>Job pack unavailable</p>
-            <p>{selectedDetailQuery.error instanceof Error ? selectedDetailQuery.error.message : 'Failed to load this job pack.'}</p>
-          </div>
+          <DataStatePanel
+            state="error"
+            title="Job pack unavailable"
+            description={selectedDetailQuery.error instanceof Error ? selectedDetailQuery.error.message : 'Failed to load this job pack.'}
+            onRetry={() => void selectedDetailQuery.refetch()}
+          />
         ) : !adapter ? (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>Workbook unavailable</p>
-            <p>This estimate snapshot is missing the data needed to render the spreadsheet view.</p>
-          </div>
+          <DataStatePanel
+            state="unavailable"
+            title="Workbook unavailable"
+            description="This estimate snapshot is missing the data needed to render the spreadsheet view."
+          />
         ) : (
           <div className={styles.sheetWrap}>
             <SpreadsheetPageTemplate adapter={adapter} embedded zoomDockPlacement="viewport" />
@@ -148,32 +150,37 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      {jobPacksQuery.isLoading ? <p className={legacy.note}>Loading job packs...</p> : null}
+      {jobPacksQuery.isLoading ? <LoadingSkeleton rows={4} columns={4} label="Loading job packs" /> : null}
       {jobPacksQuery.isError ? (
-        <p className={legacy.error}>{jobPacksQuery.error instanceof Error ? jobPacksQuery.error.message : 'Failed to load job packs.'}</p>
+        <DataStatePanel
+          state="error"
+          title="Could not load job packs"
+          description={jobPacksQuery.error instanceof Error ? jobPacksQuery.error.message : 'Failed to load job packs.'}
+          onRetry={() => void jobPacksQuery.refetch()}
+        />
       ) : null}
 
       {!jobPacksQuery.isLoading && !jobPacksQuery.isError && !(jobPacksQuery.data?.length ?? 0) ? (
-        <div className={styles.emptyState}>
-          <p className={styles.emptyTitle}>No job packs yet</p>
-          <p>Send a quote, then generate a job pack from that quote to see it here.</p>
-        </div>
+        <DataStatePanel
+          state="empty"
+          title="No job packs yet"
+          description="Send a quote, then generate a job pack from that quote to see it here."
+        />
       ) : null}
 
       {jobPacksQuery.data?.length ? (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Design</th>
-                <th>Quote</th>
-                <th>Generated</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Table aria-label="Job packs">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Design</TableHead>
+                <TableHead>Quote</TableHead>
+                <TableHead>Generated</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {jobPacksQuery.data.map((jobPack) => (
-                <tr
+                <TableRow
                   key={jobPack.id}
                   className={styles.rowClickable}
                   tabIndex={0}
@@ -186,15 +193,14 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
                     updateParams({ estimateId: jobPack.estimateId, sheet: 'materials' });
                   }}
                 >
-                  <td>{jobPack.estimateVersionLabel}</td>
-                  <td>{`${jobPack.quoteRef} • V${jobPack.quoteVersionNumber}`}</td>
-                  <td>{formatDate(jobPack.createdAt)}</td>
-                  <td><span className={`${styles.statusPill} ${statusClass(jobPack.quoteStatus === 'DECLINED' ? 'archived' : 'draft')}`}>{jobPack.quoteStatus}</span></td>
-                </tr>
+                  <TableCell>{jobPack.estimateVersionLabel}</TableCell>
+                  <TableCell>{`${jobPack.quoteRef} • V${jobPack.quoteVersionNumber}`}</TableCell>
+                  <TableCell>{formatDate(jobPack.createdAt)}</TableCell>
+                  <TableCell><Badge tone={jobPack.quoteStatus === 'DECLINED' ? 'neutral' : 'info'}>{jobPack.quoteStatus}</Badge></TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+        </Table>
       ) : null}
     </div>
   );

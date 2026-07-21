@@ -1,4 +1,4 @@
-import type { Page, TestInfo } from '@playwright/test';
+import type { Page, ScreenshotOptions, TestInfo } from '@playwright/test';
 
 type PortalEvidenceMode = 'default' | 'full';
 
@@ -133,6 +133,13 @@ export function installPortalBrowserEvidence(page: Page): PortalBrowserEvidence 
   return evidence;
 }
 
+export async function capturePortalEvidenceScreenshot(
+  page: Page,
+  options: ScreenshotOptions,
+) {
+  return page.screenshot({ caret: 'initial', ...options });
+}
+
 async function readPortalPageDebugExportForEvidence(page: Page): Promise<unknown | null> {
   const locator = page.locator('[data-portal-debug-export="true"]').first();
   if ((await locator.count()) === 0) return null;
@@ -189,7 +196,7 @@ export async function attachPortalBrowserEvidence(
 
   if (!rich) return;
 
-  const screenshot = await page.screenshot({ fullPage: true }).catch(() => null);
+  const screenshot = await capturePortalEvidenceScreenshot(page, { fullPage: true }).catch(() => null);
   if (screenshot) {
     await testInfo.attach('portal-page-screenshot.png', {
       body: screenshot,

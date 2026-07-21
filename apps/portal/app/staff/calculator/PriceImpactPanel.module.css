@@ -12,10 +12,10 @@
 
 .reset {
   flex: 0 0 auto;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 999px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
   padding: 5px 9px;
-  background: rgba(var(--portal-text-rgb), 0.02);
+  background: var(--ui-surface-secondary);
   color: inherit;
   font: inherit;
   font-size: 11px;
@@ -25,21 +25,21 @@
 }
 
 .reset:focus-visible {
-  outline: 3px solid rgba(var(--accentRgb), 0.18);
+  outline: 3px solid color-mix(in srgb, var(--ui-action) 18%, transparent);
   outline-offset: 2px;
 }
 
 .hero {
   display: grid;
   gap: 3px;
-  border-radius: 11px;
+  border-radius: var(--ui-radius-control);
   padding: 11px 12px;
-  background: rgba(var(--accentRgb), 0.055);
+  background: color-mix(in srgb, var(--ui-action) 5.5%, transparent);
 }
 
 .hero span,
 .hero small {
-  color: rgba(var(--portal-text-rgb), 0.58);
+  color: var(--ui-text-muted);
   font-size: 11px;
 }
 
@@ -63,12 +63,12 @@
   gap: 6px;
   min-width: 0;
   padding: 6px 7px;
-  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
 }
 
 .category dt,
 .operations dt {
-  color: rgba(var(--portal-text-rgb), 0.58);
+  color: var(--ui-text-muted);
   font-size: 10.5px;
 }
 
@@ -96,7 +96,7 @@
 
 .noChange {
   margin: 8px 0 0;
-  color: rgba(var(--portal-text-rgb), 0.58);
+  color: var(--ui-text-muted);
   font-size: 11px;
 }
 
@@ -108,7 +108,7 @@
 
 .driversTitle {
   margin-bottom: 6px;
-  color: rgba(var(--portal-text-rgb), 0.62);
+  color: var(--ui-text-muted);
   font-size: 11px;
 }
 
@@ -125,10 +125,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 10px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
   padding: 8px 10px;
-  background: var(--portal-bg-surface);
+  background: var(--ui-surface-primary);
 }
 
 .rowLabel {
@@ -141,4 +141,41 @@
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* Foundation presentation contract; price-impact ranking is unchanged. */
+.reset {
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-strong);
+}
+
+.reset:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.hero {
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-secondary);
+}
+
+.hero span,
+.hero small,
+.category dt,
+.operations dt,
+.noChange,
+.driversTitle {
+  color: var(--ui-text-muted);
+}
+
+.category,
+.row {
+  border-color: var(--ui-border);
+}
+
+.row {
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
 }

@@ -21,6 +21,7 @@ export {
   Card,
   EmptyState,
   LoadingSkeleton,
+  PageLayout,
   StickyActionBar,
   Table,
   TableBody,
@@ -30,6 +31,7 @@ export {
   TableRow,
   type BadgeTone,
   type CardProps,
+  type PageLayoutProps,
 } from './FoundationSurfaces';
 export { Pagination } from './FoundationPagination';
 export { SearchFilterBar, type FilterDefinition, type FilterOption } from './SearchFilterBar';
@@ -48,6 +50,20 @@ export {
   type DataStateKind,
 } from './FoundationFeedback';
 export { OverflowMenu, type OverflowMenuItem } from './OverflowMenu';
+export {
+  ActivityTimeline,
+  ActivityTimelineItem,
+  ActionPanel,
+  KeyValueGrid,
+  MetricGrid,
+  OperationalGrid,
+  TabNavigation,
+  TaskList,
+  TaskRow,
+  type FoundationTabItem,
+  type KeyValueItem,
+  type MetricItem,
+} from './FoundationOperational';
 export {
   EstimateStatusBadge,
   ProjectStageBadge,

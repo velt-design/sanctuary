@@ -41,5 +41,5 @@ export default function BlueprintLoadingScreen({
     );
   }
 
-  return <main className={styles.page}>{content}</main>;
+  return <main className={styles.page} data-ui-foundation-consumer="blueprint-loading">{content}</main>;
 }

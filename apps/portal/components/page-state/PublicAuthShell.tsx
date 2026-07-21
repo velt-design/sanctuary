@@ -13,7 +13,7 @@ export default function PublicAuthShell({
   children: ReactNode;
 }) {
   return (
-    <main className={styles.publicPage}>
+    <main className={styles.publicPage} data-ui-foundation-consumer="public-auth">
       <section className={styles.publicCard}>
         <div>
           <p className={styles.publicEyebrow}>{eyebrow}</p>

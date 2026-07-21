@@ -1,31 +1,27 @@
 .trigger {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: var(--ui-control-md);
+  height: var(--ui-control-md);
   border: 0;
+  border-radius: var(--ui-radius-control);
   background: transparent;
+  color: var(--ui-text-inverse);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease;
-  color: var(--portal-text-inverse);
 }
 
 .trigger:hover {
-  background: rgba(var(--portal-text-rgb), 0.1);
-}
-
-.trigger:focus {
-  outline: none;
+  background: var(--ui-border-inverse);
 }
 
 .trigger:focus-visible {
-  box-shadow: 0 0 0 2px rgba(var(--portal-bg-surface-rgb), 0.5);
+  outline: var(--ui-border-width-emphasis) solid var(--ui-action);
+  outline-offset: var(--ui-focus-ring-offset);
 }
 
 .icon {
-  color: var(--portal-text-inverse);
+  color: var(--ui-text-inverse);
   opacity: 0.9;
 }
 
@@ -34,80 +30,102 @@
   max-width: min(92vw, 420px);
 }
 
+.labelContent,
+.themeLabel,
+.colorField {
+  display: grid;
+}
+
 .labelContent {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: var(--ui-space-1);
 }
 
 .email {
-  font-size: 13px;
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-small);
   font-weight: 600;
-  color: var(--portal-text);
 }
 
-.role {
-  font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.6);
+.role,
+.themeHint {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-label);
+}
+
+.themeSection,
+.colorGrid {
+  display: grid;
+  gap: var(--ui-space-2);
 }
 
 .themeSection {
-  display: grid;
-  gap: 10px;
-  padding: 4px 2px;
+  padding: var(--ui-space-1);
 }
 
 .themeHeader {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--ui-space-2);
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-label);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
-  color: var(--portal-text);
 }
 
 .themeLabel {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.72);
+  gap: var(--ui-space-2);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-label);
 }
 
-.themeSelect {
+.themeSelect,
+.themeTextInput,
+.colorText {
   width: 100%;
-  min-height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  background: var(--portal-bg-surface);
-  color: var(--portal-text);
-  font-size: 13px;
-  padding: 6px 10px;
+  min-height: var(--ui-control-sm);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: var(--ui-space-2);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-small);
 }
 
-.themeButtonRow {
+.themeButtonRow,
+.colorInputRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--ui-space-2);
 }
 
-.themeButton {
-  min-height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  background: var(--portal-bg-surface);
-  color: var(--portal-text);
-  font-size: 12px;
+.themeButton,
+.themeSaveButton {
+  min-height: var(--ui-control-sm);
+  border-radius: var(--ui-radius-control);
+  font-size: var(--ui-font-size-label);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--ui-space-2);
 }
 
-.themeButton:disabled {
+.themeButton {
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+}
+
+.themeSaveButton {
+  border: var(--ui-border-width) solid var(--ui-action-pressed);
+  background: var(--ui-action);
+  color: var(--ui-action-foreground);
+}
+
+.themeButton:disabled,
+.themeSaveButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -117,93 +135,38 @@
 .themeTextInput:focus-visible,
 .colorText:focus-visible,
 .themeSaveButton:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--portal-accent-rgb), 0.18);
-}
-
-.themeTextInput {
-  width: 100%;
-  min-height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  background: var(--portal-bg-surface);
-  color: var(--portal-text);
-  font-size: 13px;
-  padding: 6px 10px;
-}
-
-.colorGrid {
-  display: grid;
-  gap: 8px;
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
 }
 
 .colorField {
-  display: grid;
-  gap: 5px;
+  gap: var(--ui-space-1);
 }
 
 .colorLabel {
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
-  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .colorInputRow {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 8px;
+  grid-template-columns: var(--ui-control-md) 1fr;
 }
 
 .colorPicker {
-  width: 36px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.2);
+  width: var(--ui-control-md);
+  height: var(--ui-control-sm);
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
   padding: 0;
-  background: var(--portal-bg-surface);
+  background: var(--ui-surface-elevated);
   cursor: pointer;
-}
-
-.colorText {
-  min-height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  background: var(--portal-bg-surface);
-  color: var(--portal-text);
-  font-size: 12px;
-  padding: 6px 8px;
-}
-
-.themeSaveButton {
-  min-height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--portal-accent-rgb), 0.5);
-  background: var(--portal-accent);
-  color: var(--portal-text-inverse);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.themeSaveButton:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 
 .themeDangerButton {
-  border-color: rgba(185, 28, 28, 0.32);
-  color: rgb(185, 28, 28);
-}
-
-.themeHint {
-  font-size: 11px;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  border-color: var(--ui-destructive);
+  color: var(--ui-destructive);
 }
 
 .signOutItem {
@@ -211,5 +174,5 @@
 }
 
 .signOutIcon {
-  margin-right: 8px;
+  margin-right: var(--ui-space-2);
 }

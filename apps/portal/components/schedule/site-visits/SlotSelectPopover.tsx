@@ -72,28 +72,18 @@ export default function SlotSelectPopover({
       role="dialog"
       aria-label="Select site visit"
     >
-      <div
-        style={{
-          display: 'grid',
-          gap: 8,
-          border: '1px solid rgba(var(--portal-text-rgb), 0.16)',
-          borderRadius: 12,
-          background: 'var(--portal-bg-surface)',
-          padding: 10,
-          boxShadow: '0 18px 40px rgba(var(--portal-text-rgb), 0.18)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ display: 'grid', gap: 2 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Book slot</div>
-            {label ? <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.6)' }}>{label}</div> : null}
+      <div className={styles.slotPopover}>
+        <div className={styles.slotPopoverHeader}>
+          <div className={styles.slotPopoverHeading}>
+            <div className={styles.slotPopoverTitle}>Book slot</div>
+            {label ? <div className={styles.slotPopoverLabel}>{label}</div> : null}
           </div>
-          <button type="button" className={styles.buttonSecondary} onClick={onClose} style={{ padding: '6px 8px' }}>
+          <button type="button" className={`${styles.buttonSecondary} ${styles.slotPopoverClose}`} onClick={onClose}>
             Close
           </button>
         </div>
 
-        <div style={{ display: 'grid', gap: 6 }}>
+        <div className={styles.slotPopoverActions}>
           <button
             type="button"
             className={styles.buttonSecondary}
@@ -117,7 +107,7 @@ export default function SlotSelectPopover({
           </button>
         </div>
 
-        <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.6)' }}>
+        <div className={styles.slotPopoverNote}>
           {unscheduledCount === 0 ? 'No unscheduled visits available.' : `${unscheduledCount} unscheduled visit${unscheduledCount === 1 ? '' : 's'} available.`}
         </div>
       </div>

@@ -1,11 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
-import styles from './projects.module.css';
+import styles from './ProjectsIndexClient.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
@@ -13,8 +12,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { ProjectRowTooltip, useProjectRowTooltip } from './ProjectRowTooltip';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import Modal from '@/components/ui/modal/Modal';
-import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
+import { PipelineModal } from '@/components/ui/PipelineModal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { deleteProject } from '@/lib/repo/projectsRepo';
 import {
@@ -43,11 +41,25 @@ import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import {
+  AlertBanner,
+  Badge,
+  Button,
   ButtonLink,
+  Card,
   DataStatePanel,
+  DestructiveConfirmation,
+  Input,
   LoadingSkeleton,
+  PageLayout,
   ProjectStageBadge,
   SearchFilterBar,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/foundation';
 
 type EditingState = { id: string; field: ProjectIndexEditableField; value: string } | null;
@@ -279,7 +291,9 @@ export default function ProjectsIndexClient({
     : '';
 
   return (
-    <main
+    <PageLayout
+      width="full"
+      density="compact"
       className={styles.page}
       data-projects-index-state={projectsIndex.state}
       data-projects-index-background-ready={projectsIndex.backgroundReady ? 'true' : 'false'}
@@ -314,11 +328,7 @@ export default function ProjectsIndexClient({
       />
 
       <div className={styles.stack}>
-        <section className={styles.section} aria-label="Filters">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Filters</h2>
-          </div>
-          <div className={styles.sectionBody}>
+        <Card title="Filters" padding="compact" aria-label="Filters">
             <SearchFilterBar
               query={query}
               onQueryChange={setQuery}
@@ -331,12 +341,13 @@ export default function ProjectsIndexClient({
               ]}
               onClearAll={() => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); }}
             />
-          </div>
-        </section>
+        </Card>
 
-        <section className={styles.section} aria-label="Projects list">
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>All Projects</h2>
+        <Card
+          title="All Projects"
+          padding="none"
+          aria-label="Projects list"
+          action={(
             <div className={styles.muted} suppressHydrationWarning>
               {projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? 'Updating…' : null}
               {projectsIndex.state === 'fresh' ? `${filteredProjects.length} shown` : null}
@@ -344,28 +355,27 @@ export default function ProjectsIndexClient({
               {projectsIndex.state === 'refresh-failed' ? (
                 <>
                   {projects.length ? 'Refresh failed · ' : null}
-                  <button type="button" className={styles.link} onClick={() => void projectsIndex.retry()}>
+                  <Button type="button" size="small" variant="quiet" onClick={() => void projectsIndex.retry()}>
                     Retry
-                  </button>
+                  </Button>
                 </>
               ) : null}
             </div>
-          </div>
-          <div className={styles.sectionBody}>
+          )}
+        >
             {filteredProjects.length ? (
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Client</th>
-                      <th>Phone</th>
-                      <th>Address</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table aria-label="Projects">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;
                       const clientLabel = contact?.displayName ?? p.clientName ?? '—';
@@ -426,7 +436,7 @@ export default function ProjectsIndexClient({
                       };
 
                       const rowEl = (
-                        <tr
+                        <TableRow
                           key={p.id}
                           className={styles.rowClickable}
                           tabIndex={0}
@@ -450,21 +460,24 @@ export default function ProjectsIndexClient({
                             }
                           }}
                         >
-                          <td>{renderEditable('name', nameValue, 'Project name', true)}</td>
-                          <td className={styles.muted}>{clientLabel}</td>
-                          <td>
+                          <TableCell data-column="Name">{renderEditable('name', nameValue, 'Project name', true)}</TableCell>
+                          <TableCell data-column="Client" className={styles.muted}>{clientLabel}</TableCell>
+                          <TableCell data-column="Phone">
                             {renderEditable(
                               'phone',
                               phoneValue,
                               phoneEditable ? 'Add phone' : 'No contact linked',
                               phoneEditable,
                             )}
-                          </td>
-                          <td>{renderEditable('address', addressValue, 'Add address', true)}</td>
-                          <td>
+                          </TableCell>
+                          <TableCell data-column="Address">{renderEditable('address', addressValue, 'Add address', true)}</TableCell>
+                          <TableCell data-column="Status">
+                            <div className={styles.statusCell}>
                             <ProjectStageBadge stage={normalizePipelineStageKey(p.status ?? 'NEW') ?? 'new'} compact />
-                            <select
+                            <Select
+                              fieldClassName={styles.inlineSelectField}
                               className={styles.inlineSelect}
+                              aria-label={`Status for ${nameValue || 'project'}`}
                               value={(p.status ?? 'NEW') as ProjectStatus}
                               disabled={isStatusBusyRow}
                               onClick={(e) => e.stopPropagation()}
@@ -479,22 +492,20 @@ export default function ProjectsIndexClient({
                                   {projectStatusLabel(status)}
                                 </option>
                               ))}
-                            </select>
+                            </Select>
                             {p.isLost ? (
-                              <span className={styles.dueBadge} style={{ marginLeft: 8 }}>
-                                Lost
-                              </span>
+                              <Badge tone="error">Lost</Badge>
                             ) : null}
                             {p.isArchived ? (
-                              <span className={styles.dueBadge} style={{ marginLeft: 8 }}>
-                                Archived
-                              </span>
+                              <Badge tone="neutral">Archived</Badge>
                             ) : null}
-                          </td>
-                          <td>
+                            </div>
+                          </TableCell>
+                          <TableCell data-column="Actions">
                             <div className={styles.rowActions}>
-                              <Link
-                                className={styles.link}
+                              <ButtonLink
+                                variant="quiet"
+                                size="small"
                                 href={projectDetailHref(p.id)}
                                 prefetch={false}
                                 onClick={(e) => {
@@ -510,10 +521,11 @@ export default function ProjectsIndexClient({
                                 onTouchStart={() => prepareProjectOpen(p.id)}
                               >
                                 Open
-                              </Link>
-                              <button
+                              </ButtonLink>
+                              <Button
                                 type="button"
-                                className={styles.link}
+                                variant="quiet"
+                                size="small"
                                 disabled={isArchiveBusy}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -528,11 +540,12 @@ export default function ProjectsIndexClient({
                                   : p.isArchived
                                     ? 'Unarchive'
                                     : 'Archive'}
-                              </button>
+                              </Button>
                               {isAdmin ? (
-                                <button
+                                <Button
                                   type="button"
-                                  className={styles.linkDanger}
+                                  variant="destructive"
+                                  size="small"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setDeleteTarget(p);
@@ -542,18 +555,17 @@ export default function ProjectsIndexClient({
                                   onKeyDown={(e) => e.stopPropagation()}
                                 >
                                   Delete
-                                </button>
+                                </Button>
                               ) : null}
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
 
                       return rowEl;
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
             ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
               <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
             ) : projectsIndex.state === 'unavailable' ? (
@@ -566,94 +578,52 @@ export default function ProjectsIndexClient({
                 onClear={projects.length ? () => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); } : undefined}
               />
             )}
-          </div>
-        </section>
+        </Card>
       </div>
 
-      {deleteTarget ? (
-        <Modal
-          open
-          ariaLabel="Delete project confirmation"
-          onClose={closeDeleteModal}
-          overlayClassName={styles.modalOverlay}
-          panelClassName={styles.modal}
-          maxWidthPx={560}
-        >
-          <div className={styles.modalHeader}>
-            <h2 className={styles.modalTitle}>Delete project?</h2>
-            <button type="button" className={styles.modalClose} onClick={closeDeleteModal}>
-              Close
-            </button>
-          </div>
-
-          <p className={styles.note}>
-            This is a hard delete. Project data and linked records are permanently removed.
-          </p>
-          <p className={styles.note} style={{ marginTop: 8 }}>
-            Stage: <strong>{projectStatusLabel(deleteTarget.status ?? 'NEW')}</strong>
-          </p>
-          <p className={styles.note} style={{ marginTop: 8 }}>
-            Type <strong>{requiredDeleteText}</strong> to confirm.
-          </p>
-
-          <div className={styles.field} style={{ marginTop: 12 }}>
-            <label htmlFor="delete-project-confirm-text">Confirmation</label>
-            <input
-              id="delete-project-confirm-text"
-              className={styles.inlineInput}
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-
-          <div className={styles.field} style={{ marginTop: 10 }}>
-            <label htmlFor="delete-project-reason">Reason (optional)</label>
-            <input
-              id="delete-project-reason"
-              className={styles.inlineInput}
-              value={deleteReason}
-              onChange={(e) => setDeleteReason(e.target.value)}
-            />
-          </div>
-
-          <div className={styles.modalFooter}>
-            <button type="button" className={styles.buttonSecondary} onClick={closeDeleteModal} disabled={isDeleteBusy}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.buttonDanger}
-              disabled={isDeleteBusy || deleteConfirmText.trim().toUpperCase() !== requiredDeleteText.toUpperCase()}
-              onClick={() => {
-                if (!deleteTarget || isDeleteBusy) return;
-                setIsDeleteBusy(true);
-                void (async () => {
-                  try {
-                    await deleteProject(deleteTarget.id, {
-                      confirmText: deleteConfirmText.trim(),
-                      reason: deleteReason.trim() || null,
-                    });
-                    toast.success('Project deleted.');
-                    setDeleteTarget(null);
-                    setDeleteConfirmText('');
-                    setDeleteReason('');
-                    removeProjectListItem(queryClient, host, deleteTarget.id);
-                    await invalidateProjectsIndexCaches(queryClient, host);
-                  } catch (err) {
-                    const msg = err instanceof Error ? err.message : 'Failed to delete project';
-                    toast.error(msg);
-                  } finally {
-                    setIsDeleteBusy(false);
-                  }
-                })();
-              }}
-            >
-              {isDeleteBusy ? 'Deleting...' : 'Delete project'}
-            </button>
-          </div>
-        </Modal>
-      ) : null}
+      <DestructiveConfirmation
+        open={Boolean(deleteTarget)}
+        title="Delete project?"
+        description="Project data and linked records will be permanently removed."
+        confirmationText={requiredDeleteText}
+        value={deleteConfirmText}
+        onValueChange={setDeleteConfirmText}
+        pending={isDeleteBusy}
+        onCancel={closeDeleteModal}
+        consequences={deleteTarget ? <>This hard delete cannot be recovered. Current stage: <strong>{projectStatusLabel(deleteTarget.status ?? 'NEW')}</strong>.</> : null}
+        additionalContent={(
+          <Input
+            id="delete-project-reason"
+            label="Reason (optional)"
+            value={deleteReason}
+            onChange={(event) => setDeleteReason(event.target.value)}
+            disabled={isDeleteBusy}
+          />
+        )}
+        onConfirm={() => {
+          if (!deleteTarget || isDeleteBusy || deleteConfirmText !== requiredDeleteText) return;
+          const target = deleteTarget;
+          setIsDeleteBusy(true);
+          void (async () => {
+            try {
+              await deleteProject(target.id, {
+                confirmText: deleteConfirmText.trim(),
+                reason: deleteReason.trim() || null,
+              });
+              toast.success('Project deleted.');
+              setDeleteTarget(null);
+              setDeleteConfirmText('');
+              setDeleteReason('');
+              removeProjectListItem(queryClient, host, target.id);
+              await invalidateProjectsIndexCaches(queryClient, host);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : 'Failed to delete project');
+            } finally {
+              setIsDeleteBusy(false);
+            }
+          })();
+        }}
+      />
 
       {statusConfirm ? (
         <PipelineModal
@@ -665,9 +635,9 @@ export default function ProjectsIndexClient({
           description={`Correct from ${PIPELINE_STAGE_LABELS[statusConfirm.current]} to ${statusConfirm.label}.`}
           actions={
             <>
-              <button
+              <Button
                 type="button"
-                className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                fullWidth
                 disabled={isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET'}
                 onClick={() => {
                   if (!statusConfirm) return;
@@ -683,51 +653,50 @@ export default function ProjectsIndexClient({
                 }}
               >
                 {`Move to ${statusConfirm.label}`}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                variant="tertiary"
+                fullWidth
                 onClick={closeStatusConfirm}
               >
                 Cancel
-              </button>
+              </Button>
             </>
           }
         >
-          <p className={styles.note}>Silent correction only: this does not trigger automations or customer comms.</p>
+          <div className={styles.modalContent}>
+          <AlertBanner tone="info" title="Silent correction">
+            This does not trigger automations or customer communications.
+          </AlertBanner>
 
           {isStatusRollback ? (
             <>
-              <p className={styles.note} style={{ marginTop: 10 }}>
+              <AlertBanner tone="warning" title="Rollback resets tasks">
                 Rollback: manual task checkmarks from this stage and later stages will be reset.
-              </p>
-              <div className={styles.field} style={{ marginTop: 10 }}>
-                <label htmlFor="index-stage-confirm-text">Type RESET to confirm rollback</label>
-                <input
-                  id="index-stage-confirm-text"
-                  className={styles.inlineInput}
-                  value={statusConfirmText}
-                  onChange={(e) => setStatusConfirmText(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
+              </AlertBanner>
+              <Input
+                id="index-stage-confirm-text"
+                label="Type RESET to confirm rollback"
+                value={statusConfirmText}
+                onChange={(event) => setStatusConfirmText(event.target.value)}
+                autoComplete="off"
+              />
             </>
           ) : null}
 
-          <div className={styles.field} style={{ marginTop: 10 }}>
-            <label htmlFor="index-stage-reason">Reason (optional)</label>
-            <input
-              id="index-stage-reason"
-              className={styles.inlineInput}
-              value={statusReason}
-              onChange={(e) => setStatusReason(e.target.value)}
-            />
+          <Input
+            id="index-stage-reason"
+            label="Reason (optional)"
+            value={statusReason}
+            onChange={(event) => setStatusReason(event.target.value)}
+          />
           </div>
         </PipelineModal>
       ) : null}
 
       <ProjectRowTooltip host={host} visibleInfo={visibleInfo} fallbackClientName={visibleFallback} />
 
-    </main>
+    </PageLayout>
   );
 }

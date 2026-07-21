@@ -22,7 +22,7 @@ type Props = (PowdercoatProps | AcrylicProps | HardwareProps) & { title: string 
 
 export default function OrderListTable({ title, kind, rows }: Props) {
   return (
-    <section className={styles.section} aria-label={title} style={{ marginTop: 14 }}>
+    <section className={styles.section} aria-label={title}>
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>{title}</h3>
         <span className={styles.muted}>{rows.length} items</span>

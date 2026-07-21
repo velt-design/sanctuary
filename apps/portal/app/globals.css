@@ -4,6 +4,8 @@
 
 :root {
   --portal-header-height: 48px;
+  /* Compatibility tokens for the separately owned design workbench and theme editor.
+   * Migrated staff routes consume the semantic --ui-* Foundation contract instead. */
   --portal-accent: #4F5748;
   --portal-accent-rgb: 79, 87, 72;
   --portal-text: #121312;
@@ -251,36 +253,12 @@
 html, body { height: 100%; }
 body {
   margin: 0;
-  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
-  background: var(--portal-bg-page);
-  color: var(--portal-text);
+  font-family: var(--ui-font-body);
+  background: var(--ui-canvas);
+  color: var(--ui-text);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Portal layout utilities */
-.sp-page-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-box-gap, 14px);
-}
-
-.sp-section-grid {
-  display: grid;
-  grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
-  gap: var(--sp-box-gap, 14px);
-  align-items: start;
-}
-
-.sp-section-grid > * {
-  min-width: 0;
-}
-
-@media (max-width: 1023px) {
-  .sp-section-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .visually-hidden {

@@ -17,7 +17,17 @@ function envSupabaseAnonKey(): string {
 
 function hydrated(): { url: string; anonKey: string } | null {
   const g: any = globalThis as any;
-  const value = g?.__SP_SUPABASE__;
+  let value = g?.__SP_SUPABASE__;
+  if ((!value || typeof value !== 'object') && typeof document !== 'undefined') {
+    const encoded = document.querySelector<HTMLElement>('[data-sp-supabase-env]')?.dataset.spSupabaseEnv;
+    if (encoded) {
+      try {
+        value = JSON.parse(encoded);
+      } catch {
+        value = null;
+      }
+    }
+  }
   if (!value || typeof value !== 'object') return null;
   const url = typeof value.url === 'string' ? value.url.trim() : '';
   const anonKey = typeof value.anonKey === 'string' ? value.anonKey.trim() : '';

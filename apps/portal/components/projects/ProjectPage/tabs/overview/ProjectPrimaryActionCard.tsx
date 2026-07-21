@@ -13,6 +13,18 @@ import type {
   ProjectCommandCentreOperations,
   ProjectCommandStaffSummary,
 } from '@/lib/projects/commandCentre/types';
+import {
+  ActionPanel,
+  ActivityTimeline,
+  ActivityTimelineItem,
+  AlertBanner,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  KeyValueGrid,
+  Select,
+} from '@/components/ui/foundation';
 import styles from './ProjectPrimaryActionCard.module.css';
 
 const ProjectPrimaryActionControls = lazy(() => import('./ProjectPrimaryActionControls'));
@@ -42,14 +54,17 @@ function auditTimestamp(value: string): string {
   }).format(parsed);
 }
 
-function AuditItems({ entries, detailed = false }: { entries: ProjectCommandAuditEntry[]; detailed?: boolean }) {
-  return <>{entries.map((entry) => <li key={entry.id}>
-    {detailed ? <strong>{eventLabel(entry.eventType)}</strong> : <span>{eventLabel(entry.eventType)}</span>}
-    {detailed
-      ? <span>{entry.actor?.displayName ?? 'Staff'} · {auditTimestamp(entry.createdAt)}</span>
-      : <small>{entry.actor?.displayName ?? 'Staff'} · {auditTimestamp(entry.createdAt)}</small>}
-    {entry.reason ? <em>{entry.reason}</em> : null}
-  </li>)}</>;
+function AuditItems({ entries }: { entries: ProjectCommandAuditEntry[] }) {
+  return <>{entries.map((entry) => (
+    <ActivityTimelineItem
+      key={entry.id}
+      marker={<Badge tone="neutral">{eventLabel(entry.eventType)}</Badge>}
+      meta={`${entry.actor?.displayName ?? 'Staff'} · ${auditTimestamp(entry.createdAt)}`}
+      footer={entry.reason || undefined}
+    >
+      {entry.reason ? 'Reason recorded' : 'Project command updated'}
+    </ActivityTimelineItem>
+  ))}</>;
 }
 
 export default function ProjectPrimaryActionCard({
@@ -129,142 +144,157 @@ export default function ProjectPrimaryActionCard({
     ...payload,
   }));
 
-  return (
-    <section className={styles.card} data-primary-action-card="true" aria-labelledby="primary-action-title">
-      <div className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Project command</p>
-          <h2 id="primary-action-title">Primary next action</h2>
-        </div>
-        {current ? (
-          <span className={`${styles.statePill} ${current.isCritical ? styles.critical : current.dueState === 'overdue' ? styles.overdue : ''}`}>
-            {current.isCritical ? 'Critical' : current.dueLabel}
-          </span>
-        ) : null}
-      </div>
+  const actionTone = current?.isCritical ? 'error' : current?.dueState === 'overdue' ? 'warning' : 'neutral';
 
-      <div className={styles.owners} aria-label="Project ownership">
-        <div className={styles.ownerRow} data-project-owner={operations.owner.owner?.key ?? 'unassigned'}>
-          <div>
-            <strong>Project Owner</strong>
-            <span className={operations.owner.missing ? styles.missing : undefined}>{operations.owner.owner?.displayName ?? 'Unassigned'}</span>
-          </div>
-        </div>
-        {operations.owner.permissions.canManage ? (
-          <button type="button" disabled={disabled} aria-expanded={ownersOpen} onClick={() => setOwnersOpen((open) => !open)}>
-            {ownersOpen ? 'Close owner control' : 'Manage project owner'}
-          </button>
-        ) : null}
-        {ownersOpen ? (
-          <Suspense fallback={<p className={styles.notice}>Loading owner controls…</p>}>
+  return (
+    <Card
+      className={styles.card}
+      data-primary-action-card="true"
+      aria-label="Project command"
+      title="Project command"
+      eyebrow="Primary next action"
+      padding="compact"
+      action={current ? <Badge tone={actionTone}>{current.isCritical ? 'Critical' : current.dueLabel}</Badge> : null}
+    >
+      <div className={styles.stack}>
+        <div className={styles.ownerSection} aria-label="Project ownership" data-project-owner>
+          <KeyValueGrid
+            columns={1}
+            items={[{
+              label: 'Project owner',
+              value: operations.owner.owner?.displayName ?? <span className={styles.missing}>Unassigned</span>,
+            }]}
+          />
+          {operations.owner.permissions.canManage ? (
+            <Button type="button" variant="secondary" size="small" disabled={disabled} aria-expanded={ownersOpen} onClick={() => setOwnersOpen((open) => !open)}>
+              {ownersOpen ? 'Close owner control' : 'Manage project owner'}
+            </Button>
+          ) : null}
+          {ownersOpen ? (
+            <Suspense fallback={<AlertBanner tone="info" title="Loading owner controls" />}>
               <ProjectOwnerControls
                 projectId={projectId}
                 owner={operations.owner}
                 disabled={disabled}
                 runMutation={run}
+              />
+            </Suspense>
+          ) : null}
+        </div>
+
+        {operations.selectionConflict ? (
+          <AlertBanner tone="blocking" title="Primary-action review required">
+            <p>{operations.selectionConflict.challenger.title} now outranks the selected action.</p>
+            {operations.permissions.canResolveConflict ? (
+              <div className={styles.inlineActions}>
+                <Button variant="secondary" size="small" disabled={disabled} onClick={() => current && void executeCommand({
+                  command: 'resolve_conflict', resolution: 'keep_current', ...actionRef(current),
+                })}>Keep current</Button>
+                <Select
+                  label="Outranking action"
+                  value={conflictCandidateKey || `${operations.selectionConflict.challenger.sourceKind}:${operations.selectionConflict.challenger.sourceId}`}
+                  disabled={disabled}
+                  onChange={(event) => setConflictCandidateKey(event.target.value)}
+                >
+                  {operations.selectionConflict.outrankingCandidates.map((candidate) => (
+                    <option key={`${candidate.sourceKind}:${candidate.sourceId}`} value={`${candidate.sourceKind}:${candidate.sourceId}`}>
+                      {candidate.title}
+                    </option>
+                  ))}
+                </Select>
+                <Button size="small" disabled={disabled || !conflictCandidate} onClick={() => conflictCandidate && void executeCommand({
+                  command: 'resolve_conflict', resolution: 'select_candidate', ...actionRef(conflictCandidate),
+                })}>Use selected action</Button>
+              </div>
+            ) : <p>An admin must resolve this. You can still complete the current action.</p>}
+          </AlertBanner>
+        ) : null}
+
+        {current ? (
+          <ActionPanel
+            title={current.title}
+            eyebrow={current.sourceLabel}
+            tone={current.isCritical ? 'critical' : 'inverse'}
+            data-primary-action-source={current.sourceKind}
+            status={<Badge tone={actionTone}>{current.isCritical ? 'Critical' : current.dueLabel}</Badge>}
+            footer={(
+              <Button
+                loading={pending}
+                disabled={disabled || !operations.permissions.canComplete}
+                onClick={() => void executeCommand({ command: 'complete', ...actionRef(current) })}
+              >
+                Complete
+              </Button>
+            )}
+          >
+            <KeyValueGrid
+              columns={3}
+              items={[
+                { label: 'Owner', value: current.owner?.displayName ?? 'Unassigned' },
+                { label: 'Due', value: current.dueLabel },
+                { label: 'Category', value: current.category },
+              ]}
             />
+            {current.isCritical && current.criticalReason ? (
+              <AlertBanner tone="blocking" title="Critical action">{current.criticalReason}</AlertBanner>
+            ) : null}
+          </ActionPanel>
+        ) : (
+          <div data-primary-action-state="empty">
+            <EmptyState
+              compact
+              title="No next action has been set"
+              description={operations.candidates.some((candidate) => candidate.requiresDueDate)
+                ? 'Due date required. Select open work or create an action; undated work needs a date before it can become primary.'
+                : 'Select open work or create a concrete action.'}
+            />
+          </div>
+        )}
+
+        {operations.permissions.canSelect || operations.permissions.canCreate
+          || operations.permissions.canReschedule || operations.permissions.canReassign
+          || operations.permissions.canSetCritical ? (
+            <div className={styles.controlsSection}>
+              <Button type="button" variant="secondary" disabled={disabled} aria-expanded={controlsOpen} onClick={() => setControlsOpen((open) => !open)}>
+                {controlsOpen ? 'Close action controls' : 'Manage next action'}
+              </Button>
+              {controlsOpen ? (
+                <Suspense fallback={<AlertBanner tone="info" title="Loading action controls" />}>
+                  <ProjectPrimaryActionControls
+                    operations={operations}
+                    current={current}
+                    disabled={disabled}
+                    host={host}
+                    initialStaff={initialStaff}
+                    executeCommand={executeCommand}
+                  />
+                </Suspense>
+              ) : null}
+            </div>
+          ) : null}
+
+        {stale ? <AlertBanner tone="warning" title="Action controls paused">Refresh the Overview before changing the primary action.</AlertBanner> : null}
+        {message ? <AlertBanner tone="info" title="Project command saved">{message}</AlertBanner> : null}
+        {error ? <AlertBanner tone="error" title="Project command not saved">{error}</AlertBanner> : null}
+
+        {operations.audit.length ? (
+          <section className={styles.history} aria-label="Recent project command changes">
+            <div className={styles.historyHeader}>
+              <h3>Recent changes</h3>
+              {operations.audit.length > 5 ? <Button variant="tertiary" size="small" onClick={() => setHistoryOpen(true)}>View recent history</Button> : null}
+            </div>
+            <ActivityTimeline ariaLabel="Recent project command changes"><AuditItems entries={operations.audit.slice(0, 5)} /></ActivityTimeline>
+          </section>
+        ) : null}
+
+        {historyOpen ? (
+          <Suspense fallback={null}>
+            <ProjectCommandHistoryModal onClose={() => setHistoryOpen(false)}>
+              <AuditItems entries={operations.audit} />
+            </ProjectCommandHistoryModal>
           </Suspense>
         ) : null}
       </div>
-
-      {operations.selectionConflict ? (
-        <div className={styles.conflict} role="alert" data-action-conflict="true">
-          <strong>Primary-action review required</strong>
-          <span>{operations.selectionConflict.challenger.title} now outranks the selected action.</span>
-          {operations.permissions.canResolveConflict ? (
-            <div className={styles.inlineActions}>
-              <button type="button" disabled={disabled} onClick={() => current && void executeCommand({
-                command: 'resolve_conflict', resolution: 'keep_current', ...actionRef(current),
-              })}>Keep current</button>
-              <label>Outranking action<select
-                value={conflictCandidateKey || `${operations.selectionConflict.challenger.sourceKind}:${operations.selectionConflict.challenger.sourceId}`}
-                disabled={disabled}
-                onChange={(event) => setConflictCandidateKey(event.target.value)}
-              >
-                {operations.selectionConflict.outrankingCandidates.map((candidate) => (
-                  <option key={`${candidate.sourceKind}:${candidate.sourceId}`} value={`${candidate.sourceKind}:${candidate.sourceId}`}>
-                    {candidate.title}
-                  </option>
-                ))}
-              </select></label>
-              <button type="button" disabled={disabled || !conflictCandidate} onClick={() => conflictCandidate && void executeCommand({
-                command: 'resolve_conflict', resolution: 'select_candidate',
-                ...actionRef(conflictCandidate),
-              })}>Use selected action</button>
-            </div>
-          ) : <span>An admin must resolve this. You can still complete the current action.</span>}
-        </div>
-      ) : null}
-
-      {current ? (
-        <div className={styles.current} data-primary-action-source={current.sourceKind}>
-          <div className={styles.currentTitle}>
-            <h3>{current.title}</h3>
-            <span>{current.sourceLabel}</span>
-          </div>
-          <dl className={styles.facts}>
-            <div><dt>Owner</dt><dd>{current.owner?.displayName ?? 'Unassigned'}</dd></div>
-            <div><dt>Due</dt><dd>{current.dueLabel}</dd></div>
-            <div><dt>Category</dt><dd>{current.category}</dd></div>
-          </dl>
-          {current.isCritical && current.criticalReason ? <p className={styles.criticalReason}>Critical: {current.criticalReason}</p> : null}
-          <div className={styles.inlineActions}>
-            <button type="button" disabled={disabled || !operations.permissions.canComplete} onClick={() => void executeCommand({
-              command: 'complete', ...actionRef(current),
-            })}>{pending ? 'Saving...' : 'Complete'}</button>
-          </div>
-
-        </div>
-      ) : (
-        <div className={styles.empty} data-primary-action-state="empty">
-          <strong>No next action has been set.</strong>
-          <span>Select open work or create a concrete action.</span>
-          {operations.candidates.some((candidate) => candidate.requiresDueDate) ? (
-            <span><strong>Due date required:</strong> undated work cannot become primary.</span>
-          ) : null}
-        </div>
-      )}
-
-      {operations.permissions.canSelect || operations.permissions.canCreate
-        || operations.permissions.canReschedule || operations.permissions.canReassign
-        || operations.permissions.canSetCritical ? (
-          <div className={styles.create}>
-            <button type="button" disabled={disabled} aria-expanded={controlsOpen} onClick={() => setControlsOpen((open) => !open)}>
-              {controlsOpen ? 'Close action controls' : 'Manage next action'}
-            </button>
-            {controlsOpen ? (
-              <Suspense fallback={<p className={styles.notice}>Loading action controls…</p>}>
-                <ProjectPrimaryActionControls
-                  operations={operations}
-                  current={current}
-                  disabled={disabled}
-                  host={host}
-                  initialStaff={initialStaff}
-                  executeCommand={executeCommand}
-                />
-              </Suspense>
-            ) : null}
-          </div>
-        ) : null}
-
-      {stale ? <p className={styles.notice}>Action controls are paused until the Overview refreshes.</p> : null}
-      {message ? <p className={styles.success} role="status">{message}</p> : null}
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
-
-      {operations.audit.length ? (
-        <div className={styles.history}>
-          <div className={styles.historyHeader}><h3>Recent changes</h3>{operations.audit.length > 5 ? <button type="button" onClick={() => setHistoryOpen(true)}>View recent history</button> : null}</div>
-          <ul><AuditItems entries={operations.audit.slice(0, 5)} /></ul>
-        </div>
-      ) : null}
-
-      {historyOpen ? (
-        <Suspense fallback={null}>
-          <ProjectCommandHistoryModal onClose={() => setHistoryOpen(false)}>
-            <AuditItems entries={operations.audit} detailed />
-          </ProjectCommandHistoryModal>
-        </Suspense>
-      ) : null}
-    </section>
+    </Card>
   );
 }

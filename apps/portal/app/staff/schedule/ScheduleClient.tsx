@@ -35,6 +35,8 @@ import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGantt
 import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
+import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
@@ -55,6 +57,7 @@ import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { EMPTY_SCHEDULE_BOARD_MODEL, buildScheduleBarsFromForecast, formatDuration, formatHours, makeJobId, mapV2UnscheduledJobs, safeProjectName } from './ScheduleBoardModelShared';
 import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
 import { logScheduleDebug } from './scheduleDebug';
+import { useScheduleConfirmation } from './useScheduleConfirmation';
 import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
 import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 
@@ -494,6 +497,7 @@ export default function ScheduleClient({
   const searchParams = useSearchParams();
   const { beginRouteTransition } = usePortalRouteTransition();
   const queryClient = useQueryClient();
+  const { confirm: confirmScheduleAction, dialog: scheduleConfirmationDialog } = useScheduleConfirmation();
   const [isTransitionPending, startUiTransition] = useTransition();
   const hydratedFromCacheRef = useRef(false);
   const scheduleItemsRef = useRef<ScheduleItem[]>([]);
@@ -1737,8 +1741,13 @@ export default function ScheduleClient({
       const item = scheduleItemById.get(id) ?? null;
       if (!item || item.itemType === 'downtime') return false;
       const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
-      if (isLockedScheduleStatus(status) && typeof window !== 'undefined') {
-        const ok = window.confirm(`This job is ${scheduleStatusLabel(status)}. Unschedule anyway?`);
+      if (isLockedScheduleStatus(status)) {
+        const ok = await confirmScheduleAction({
+          title: 'Unschedule locked job?',
+          description: `This job is ${scheduleStatusLabel(status)}. It will return to the Unscheduled list.`,
+          confirmLabel: 'Unschedule job',
+          destructive: true,
+        });
         if (!ok) return false;
       }
       let projectUuid: string;
@@ -2054,15 +2063,18 @@ export default function ScheduleClient({
         {
           label: 'Delete downtime',
           tone: 'danger',
-          onClick: () => {
+          onClick: async () => {
             if (!scheduleItem.downtimeId) {
               toast.error('Downtime record not found.');
               return;
             }
-            if (typeof window !== 'undefined') {
-              const ok = window.confirm('Delete this downtime block? This cannot be undone.');
-              if (!ok) return;
-            }
+            const ok = await confirmScheduleAction({
+              title: 'Delete downtime block?',
+              description: 'This cannot be undone and may change the crew forecast.',
+              confirmLabel: 'Delete downtime',
+              destructive: true,
+            });
+            if (!ok) return;
             void runWithCommitConfirmation(
               (force) => deleteDowntime({ downtime_id: scheduleItem.downtimeId as string, force, today }),
               { successToast: 'Downtime deleted.', errorToast: 'Failed to delete downtime.' },
@@ -2873,7 +2885,7 @@ export default function ScheduleClient({
 
   if (!hydrated || waitingForBoardSnapshot) {
     return (
-      <main className={cx(styles.page, styles.pageLocked)}>
+      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
           title="Schedule"
           right={
@@ -2883,9 +2895,9 @@ export default function ScheduleClient({
           }
         />
         <div className={styles.stack}>
-          <p className={styles.note}>Loading schedule data from the portal database…</p>
+          <TaskScheduleFeedback state="saving">Loading schedule data from the portal database…</TaskScheduleFeedback>
         </div>
-      </main>
+      </PageLayout>
     );
   }
 
@@ -2905,7 +2917,7 @@ export default function ScheduleClient({
         : 'supabase/portal_schema.sql';
 
     return (
-      <main className={cx(styles.page, styles.pageLocked)}>
+      <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
           title="Schedule"
           right={
@@ -2925,7 +2937,7 @@ export default function ScheduleClient({
           }
         />
         <div className={styles.stack}>
-          <p className={styles.note}>
+          <AlertBanner tone="error" title="Schedule data could not load">
             {loadError.table ? (
               <>
                 Failed to query <strong>public.{loadError.table}</strong>
@@ -2962,15 +2974,15 @@ export default function ScheduleClient({
                 Run <code>supabase/portal_schema.sql</code> (or <code>supabase/schedule.sql</code>) in Supabase SQL editor, then refresh.
               </>
             )}
-          </p>
+          </AlertBanner>
           {diagnosticsPanel}
         </div>
-      </main>
+      </PageLayout>
     );
   }
 
   return (
-    <main className={cx(styles.page, styles.pageLocked)}>
+    <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
       <PageHeader
         title="Schedule"
         right={
@@ -2983,40 +2995,35 @@ export default function ScheduleClient({
 
       <div className={cx(styles.stack, styles.stackLocked)}>
         {schedulingIssues.length ? (
-          <section className={styles.issues} aria-label="Scheduling issues">
-            <div className={styles.issuesHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <h2 className={styles.panelTitle}>Scheduling issues</h2>
-                <span className={styles.muted}>{schedulingIssues.length}</span>
-              </div>
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.buttonSecondary}
-                  disabled={cleanupBusy || !orphanedScheduleItems.length}
-                  onClick={() => void handleRemoveOrphanedScheduleItems()}
-                  title={
-                    orphanedScheduleItems.length
-                      ? `Remove ${orphanedScheduleItems.length} orphaned schedule item(s)`
-                      : 'No orphaned schedule items found'
-                  }
-                >
-                  {cleanupBusy ? 'Removing orphaned schedule items…' : orphanedScheduleItems.length ? 'Remove orphaned schedule items' : 'No orphaned items'}
-                </button>
-              </div>
-            </div>
-            <div className={styles.issuesBody}>
-              <ul className={styles.issueList}>
-                {schedulingIssues.slice(0, 10).map((i, idx) => (
-                  <li key={`${idx}-${i.message}`} className={styles.issueItem}>
-                    <span className={styles.warnBadge}>{i.level}</span>
-                    <span>{i.message}</span>
-                  </li>
-                ))}
-              </ul>
-              {schedulingIssues.length > 10 ? <p className={styles.hint}>Showing first 10 issues.</p> : null}
-            </div>
-          </section>
+          <AlertBanner
+            tone="warning"
+            title={`${schedulingIssues.length} scheduling issue${schedulingIssues.length === 1 ? '' : 's'}`}
+            action={
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                disabled={cleanupBusy || !orphanedScheduleItems.length}
+                onClick={() => void handleRemoveOrphanedScheduleItems()}
+                title={
+                  orphanedScheduleItems.length
+                    ? `Remove ${orphanedScheduleItems.length} orphaned schedule item(s)`
+                    : 'No orphaned schedule items found'
+                }
+              >
+                {cleanupBusy ? 'Removing orphaned schedule items…' : orphanedScheduleItems.length ? 'Remove orphaned schedule items' : 'No orphaned items'}
+              </button>
+            }
+          >
+            <ul className={styles.issueList} aria-label="Scheduling issues">
+              {schedulingIssues.slice(0, 10).map((issue, index) => (
+                <li key={`${index}-${issue.message}`} className={styles.issueItem}>
+                  <span className={styles.warnBadge}>{issue.level}</span>
+                  <span>{issue.message}</span>
+                </li>
+              ))}
+            </ul>
+            {schedulingIssues.length > 10 ? <p className={styles.hint}>Showing first 10 issues.</p> : null}
+          </AlertBanner>
         ) : null}
 
         {diagnosticsPanel}
@@ -3102,7 +3109,8 @@ export default function ScheduleClient({
           onFinishEarlyPullForward={handleFinishEarlyPullForward}
         />
       ) : null}
+      {scheduleConfirmationDialog}
       </div>
-    </main>
+    </PageLayout>
   );
 }

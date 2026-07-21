@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { Bug, Copy } from 'lucide-react';
 
+import { Badge, Button } from '@/components/ui/foundation';
 import type { PortalPageDebugExport } from '@/lib/debug/portalPageDebugExport';
+import styles from './PortalDebugExportButton.module.css';
 
 type PortalDebugExportButtonProps = {
   payload: PortalPageDebugExport;
@@ -26,19 +29,27 @@ export default function PortalDebugExportButton({
   }
 
   return (
-    <section data-portal-debug-export-panel="true" style={{ margin: '8px 0' }}>
-      <button type="button" onClick={copyPayload} data-portal-debug-export-copy="true">
+    <aside className={styles.panel} data-portal-debug-export-panel="true" aria-label="Debug export">
+      <Bug aria-hidden="true" />
+      <Button
+        type="button"
+        variant="tertiary"
+        size="small"
+        leadingIcon={<Copy aria-hidden="true" />}
+        onClick={copyPayload}
+        data-portal-debug-export-copy="true"
+      >
         {label}
-      </button>
-      <span data-portal-debug-export-copy-status={status} style={{ marginLeft: 8, fontSize: 12 }}>
+      </Button>
+      <Badge tone={status === 'failed' ? 'error' : status === 'copied' ? 'success' : 'neutral'} data-portal-debug-export-copy-status={status}>
         {status === 'copied' ? 'Copied' : status === 'failed' ? 'Copy failed' : 'Debug export enabled'}
-      </span>
+      </Badge>
       <script
         type="application/json"
         data-portal-debug-export="true"
         data-portal-debug-page-id={payload.pageId}
         dangerouslySetInnerHTML={{ __html: serializedPayload }}
       />
-    </section>
+    </aside>
   );
 }

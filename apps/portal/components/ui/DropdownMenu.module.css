@@ -1,42 +1,43 @@
 .content {
   min-width: 220px;
-  padding: 8px;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: color-mix(in srgb, var(--portal-bg-surface) 98%, #ffffff 2%);
-  color: var(--portal-text);
-  box-shadow: 0 18px 40px rgba(var(--portal-text-rgb), 0.16);
+  padding: var(--ui-space-2);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-overlay);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
   z-index: 80;
 }
 
 .label {
-  padding: 6px 8px 8px;
-  font-size: 12px;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  padding: var(--ui-space-2);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-label);
 }
 
 .separator {
-  height: 1px;
-  margin: 6px 0;
-  background: rgba(var(--portal-text-rgb), 0.12);
+  height: var(--ui-border-width);
+  margin-block: var(--ui-space-2);
+  background: var(--ui-border);
 }
 
 .item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-space-2);
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 13px;
+  min-height: var(--ui-control-sm);
+  border-radius: var(--ui-radius-control);
+  padding: var(--ui-space-2);
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-small);
   cursor: pointer;
   user-select: none;
-  color: var(--portal-text);
 }
 
 .item:focus {
-  outline: none;
-  background: rgba(var(--portal-text-rgb), 0.06);
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: calc(var(--ui-space-1) * -1);
+  background: var(--ui-surface-secondary);
 }
 
 .item[data-disabled] {

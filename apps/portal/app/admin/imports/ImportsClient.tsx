@@ -179,7 +179,7 @@ export default function ImportsClient() {
   const canImport = Boolean((summary.contacts.length || summary.projects.length || summary.estimates.length || summary.scheduleItems.length) && !busy);
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-ui-foundation-consumer="imports">
       <PageHeader
         title="Imports"
         right={
@@ -202,7 +202,7 @@ export default function ImportsClient() {
         type="file"
         accept="application/json"
         multiple
-        style={{ display: 'none' }}
+        className={styles.fileInput}
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
           e.target.value = '';
@@ -299,7 +299,7 @@ export default function ImportsClient() {
               </table>
             </div>
             {sources.length ? (
-              <p className={styles.note} style={{ marginTop: 12 }}>
+              <p className={`${styles.note} ${styles.noteSpaced}`}>
                 Imports are idempotent: records are upserted by id where possible.
               </p>
             ) : (

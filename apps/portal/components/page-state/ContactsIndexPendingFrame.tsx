@@ -10,6 +10,7 @@ export default function ContactsIndexPendingFrame() {
     <main
       className={styles.page}
       data-contacts-index-state="pending"
+      data-ui-foundation-consumer="contacts-pending"
       data-contacts-index-background-ready="false"
       aria-label="Opening contacts"
     >

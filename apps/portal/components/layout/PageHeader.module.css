@@ -2,14 +2,14 @@
 .row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .identity { min-width: 0; flex: 1 1 220px; display: grid; gap: 6px; }
 .titleLine { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
-.title { margin: 0; font-size: clamp(26px, 4vw, 32px); line-height: 0.98; font-weight: 700; letter-spacing: -0.04em; color: rgba(var(--portal-text-rgb), 0.98); }
-.subtitle { font-size: 14px; line-height: 1.5; color: rgba(var(--portal-text-rgb), 0.68); }
-.meta { color: rgba(var(--portal-text-rgb), 0.66); font-size: 13px; }
+.title { margin: 0; font-size: clamp(26px, 4vw, 32px); line-height: 0.98; font-weight: 700; letter-spacing: -0.04em; color: var(--ui-text-strong); }
+.subtitle { font-size: 14px; line-height: 1.5; color: var(--ui-text-muted); }
+.meta { color: var(--ui-text-muted); font-size: 13px; }
 .right { min-width: 0; display: flex; align-items: center; justify-content: flex-end; flex: 1 1 auto; flex-wrap: wrap; gap: 8px; }
 
-.breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--ui-text-muted, rgba(var(--portal-text-rgb), 0.66)); font-size: var(--ui-font-size-caption, 11px); }
+.breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
 .breadcrumbs > * { color: inherit; text-decoration: none; }
-.breadcrumbs > * + *::before { content: '/'; margin-right: 6px; color: var(--ui-text-subtle, rgba(var(--portal-text-rgb), 0.48)); }
+.breadcrumbs > * + *::before { content: '/'; margin-right: 6px; color: var(--ui-text-subtle); }
 .eyebrow { color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); font-weight: 600; letter-spacing: var(--ui-letter-spacing-label); text-transform: uppercase; }
 .count { flex: 0 0 auto; margin-bottom: 3px; border: var(--ui-border-width) solid var(--ui-border); border-radius: var(--ui-radius-control); color: var(--ui-text-muted); font-family: var(--ui-font-body); font-size: var(--ui-font-size-caption); font-weight: 600; line-height: 1; padding: 5px 7px; text-transform: uppercase; }
 .foundation { color: var(--ui-text); font-family: var(--ui-font-body); }
@@ -27,4 +27,5 @@
   .variantDashboard .title { font-size: 56px; }
   .variantIndex .title { font-size: 34px; }
   .variantDetail .title { font-size: 26px; }
+  .breadcrumbs > a { display: inline-flex; align-items: center; min-height: 44px; }
 }

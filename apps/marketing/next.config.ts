@@ -1,8 +1,12 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
 
+const marketingPlaywrightDistDir = process.env.MARKETING_PLAYWRIGHT_DIST_DIR?.trim();
+
 const nextConfig: NextConfig = {
+  ...(marketingPlaywrightDistDir ? { distDir: marketingPlaywrightDistDir } : {}),
   experimental: { externalDir: true },
+  allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: ['@sp/costing', '@sp/email-provider', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },

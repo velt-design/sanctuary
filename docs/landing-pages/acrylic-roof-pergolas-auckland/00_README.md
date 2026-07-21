@@ -21,6 +21,7 @@ Use the files in this order:
 3. `03_CONTENT_GOVERNANCE.md`
 4. `04_ACCEPTANCE_CRITERIA.md`
 5. `05_CODEX_TASK_PROMPT.md`
+6. `06_CONTEXT_PACK_COPY_VARIANT.md`
 
 ## Source-of-truth hierarchy
 

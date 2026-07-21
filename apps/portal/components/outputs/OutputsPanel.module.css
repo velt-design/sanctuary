@@ -1,0 +1,17 @@
+.stack {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.summaryLabel {
+  width: 220px;
+}
+
+.specText {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: var(--ui-font-size-small);
+  line-height: var(--ui-line-height-body);
+}

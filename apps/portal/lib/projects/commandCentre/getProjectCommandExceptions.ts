@@ -15,6 +15,7 @@ import {
   type ProjectCommandSelectionRecord,
 } from './actionResolver';
 import { getPortalStaffDirectory } from './staffDirectory';
+import { fetchRowsByIdChunks } from '@/lib/list/listLimits';
 import type {
   ProjectCommandActionSourceKind,
   ProjectCommandException,
@@ -72,12 +73,24 @@ export async function getProjectCommandExceptions(
   const ids = activeProjects.map((project) => project.id);
   const [staffRows, assignments, tasks, followups, manuals, controls, selections] = await Promise.all([
     getPortalStaffDirectory(supabase),
-    read(supabase.from('project_owner_assignments').select('project_id,owner_key,updated_at').in('project_id', ids), 'project owners'),
-    read(supabase.from('tasks').select('id,project_id,type,title,assigned_to,due_at,created_at,updated_at').in('project_id', ids).eq('status', 'OPEN'), 'automation tasks'),
-    read(supabase.from('followup_tasks').select('id,project_id,type,assigned_to,due_at,created_at,updated_at').in('project_id', ids).eq('status', 'OPEN'), 'follow-up tasks'),
-    read(supabase.from('project_manual_actions').select('id,project_id,title,category,owner_user_id,due_at,created_at,updated_at').in('project_id', ids).eq('status', 'OPEN'), 'manual actions'),
-    read(supabase.from('project_action_controls').select('project_id,source_kind,source_id,is_critical,critical_reason,reschedule_count').in('project_id', ids), 'action controls'),
-    read(supabase.from('project_primary_action_selections').select('project_id,source_kind,source_id,confirmed_outranking_hash').in('project_id', ids), 'action selections'),
+    fetchRowsByIdChunks<Row>(ids, (chunkIds) =>
+      supabase.from('project_owner_assignments').select('project_id,owner_key,updated_at').in('project_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<Row>(ids, (chunkIds) =>
+      supabase.from('tasks').select('id,project_id,type,title,assigned_to,due_at,created_at,updated_at').in('project_id', chunkIds).eq('status', 'OPEN'),
+    ),
+    fetchRowsByIdChunks<Row>(ids, (chunkIds) =>
+      supabase.from('followup_tasks').select('id,project_id,type,assigned_to,due_at,created_at,updated_at').in('project_id', chunkIds).eq('status', 'OPEN'),
+    ),
+    fetchRowsByIdChunks<Row>(ids, (chunkIds) =>
+      supabase.from('project_manual_actions').select('id,project_id,title,category,owner_user_id,due_at,created_at,updated_at').in('project_id', chunkIds).eq('status', 'OPEN'),
+    ),
+    fetchRowsByIdChunks<Row>(ids, (chunkIds) =>
+      supabase.from('project_action_controls').select('project_id,source_kind,source_id,is_critical,critical_reason,reschedule_count').in('project_id', chunkIds),
+    ),
+    fetchRowsByIdChunks<Row>(ids, (chunkIds) =>
+      supabase.from('project_primary_action_selections').select('project_id,source_kind,source_id,confirmed_outranking_hash').in('project_id', chunkIds),
+    ),
   ]);
   const staff = new Map(staffRows.map((person) => [person.userId, person]));
   const assignmentGroups = group(assignments);

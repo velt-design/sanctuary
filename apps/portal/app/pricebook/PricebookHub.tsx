@@ -72,12 +72,13 @@ export default function PricebookHub(props: PricebookHubProps) {
   };
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-ui-foundation-consumer="pricebook">
       <PageHeader title="Pricebook" />
       <div className={styles.tabs} role="tablist" aria-label="Pricebook tabs">
         {tabs.map((tab) => (
           <button
             key={tab.key}
+            id={`pricebook-tab-${tab.key}`}
             type="button"
             className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabButtonActive : ''}`}
             onClick={() => onSelect(tab.key)}
@@ -93,6 +94,7 @@ export default function PricebookHub(props: PricebookHubProps) {
       <div
         id="pricebook-panel-materials"
         role="tabpanel"
+        aria-labelledby="pricebook-tab-materials"
         className={activeTab === 'materials' ? styles.panel : styles.panelHidden}
       >
         <MaterialsClient
@@ -108,6 +110,7 @@ export default function PricebookHub(props: PricebookHubProps) {
       <div
         id="pricebook-panel-actions"
         role="tabpanel"
+        aria-labelledby="pricebook-tab-actions"
         className={activeTab === 'actions' ? styles.panel : styles.panelHidden}
       >
         <ActionsClient
@@ -125,6 +128,7 @@ export default function PricebookHub(props: PricebookHubProps) {
       <div
         id="pricebook-panel-overheads"
         role="tabpanel"
+        aria-labelledby="pricebook-tab-overheads"
         className={activeTab === 'overheads' ? styles.panel : styles.panelHidden}
       >
         <OverheadsClient

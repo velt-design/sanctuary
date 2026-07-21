@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom';
 import { useMemo } from 'react';
 import type { SiteVisitCalendarItem, SiteVisitCalendarPerson } from '@/lib/types/siteVisits';
+import styles from '@/app/staff/schedule/schedule.module.css';
 
 export default function SiteVisitHoverPopover({
   open,
@@ -64,40 +65,22 @@ export default function SiteVisitHoverPopover({
 
   return createPortal(
     <div style={style} role="tooltip" aria-label="Site visit info">
-      <div
-        style={{
-          display: 'grid',
-          gap: 6,
-          border: '1px solid rgba(var(--portal-text-rgb), 0.16)',
-          borderRadius: 12,
-          background: 'var(--portal-bg-surface)',
-          padding: 10,
-          boxShadow: '0 18px 40px rgba(var(--portal-text-rgb), 0.18)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Site visit</div>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              color: 'rgba(var(--portal-text-rgb), 0.6)',
-            }}
-          >
+      <div className={styles.siteVisitTooltip}>
+        <div className={styles.siteVisitTooltipHeader}>
+          <div className={styles.siteVisitTooltipEyebrow}>Site visit</div>
+          <div className={styles.siteVisitTooltipStatus}>
             {status}
           </div>
         </div>
 
-        <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-        {address ? <div style={{ fontSize: 12, color: 'rgba(var(--portal-text-rgb), 0.65)' }}>{address}</div> : null}
-        {phone ? <div style={{ fontSize: 12, color: 'rgba(var(--portal-text-rgb), 0.65)' }}>{phone}</div> : null}
+        <div className={styles.siteVisitTooltipTitle}>{title}</div>
+        {address ? <div className={styles.siteVisitTooltipText}>{address}</div> : null}
+        {phone ? <div className={styles.siteVisitTooltipText}>{phone}</div> : null}
 
-        <div style={{ fontSize: 12, color: 'rgba(var(--portal-text-rgb), 0.75)' }}>{when}</div>
-        {salespersonName ? <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.6)' }}>Sales: {salespersonName}</div> : null}
+        <div className={styles.siteVisitTooltipWhen}>{when}</div>
+        {salespersonName ? <div className={styles.siteVisitTooltipMeta}>Sales: {salespersonName}</div> : null}
 
-        <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.5)' }}>Click to edit</div>
+        <div className={styles.siteVisitTooltipHint}>Click to edit</div>
       </div>
     </div>,
     portalRoot,

@@ -1,0 +1,382 @@
+[
+  {
+    "label": "1440x1000",
+    "width": 1440,
+    "height": 1000,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "scrollHeight": 20908,
+    "mainHeight": 20908,
+    "headings": [
+      {
+        "text": "Architectural Editorial UI Foundation",
+        "fontSize": "115.2px",
+        "lineHeight": "105.984px",
+        "width": 793,
+        "height": 318
+      },
+      {
+        "text": "Navigation states",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 567,
+        "height": 61
+      },
+      {
+        "text": "Architectural pergolas tailored to Kiwi homes.",
+        "fontSize": "86.4px",
+        "lineHeight": "83.808px",
+        "width": 870,
+        "height": 168
+      },
+      {
+        "text": "Project hero",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 567,
+        "height": 61
+      },
+      {
+        "text": "Warkworth Outdoor Room",
+        "fontSize": "86.4px",
+        "lineHeight": "83.808px",
+        "width": 870,
+        "height": 168
+      },
+      {
+        "text": "Colour and surface",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 567,
+        "height": 61
+      },
+      {
+        "text": "Designed as part of the home.",
+        "fontSize": "86.4px",
+        "lineHeight": "83.808px",
+        "width": 870,
+        "height": 168
+      },
+      {
+        "text": "Calm, precise, and resolved in detail.",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 730,
+        "height": 122
+      },
+      {
+        "text": "Spacing scale",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 567,
+        "height": 61
+      },
+      {
+        "text": "Responsive composition",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 567,
+        "height": 122
+      },
+      {
+        "text": "Outdoor rooms, tailored to their setting.",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 367,
+        "height": 244
+      },
+      {
+        "text": "A permanent addition, not an off-the-shelf cover.",
+        "fontSize": "60.48px",
+        "lineHeight": "61.0848px",
+        "width": 367,
+        "height": 244
+      }
+    ]
+  },
+  {
+    "label": "1024x768",
+    "width": 1024,
+    "height": 768,
+    "scrollWidth": 1024,
+    "clientWidth": 1024,
+    "scrollHeight": 16938,
+    "mainHeight": 16938,
+    "headings": [
+      {
+        "text": "Architectural Editorial UI Foundation",
+        "fontSize": "81.92px",
+        "lineHeight": "75.3664px",
+        "width": 644,
+        "height": 226
+      },
+      {
+        "text": "Navigation states",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 460,
+        "height": 43
+      },
+      {
+        "text": "Architectural pergolas tailored to Kiwi homes.",
+        "fontSize": "61.44px",
+        "lineHeight": "59.5968px",
+        "width": 618,
+        "height": 119
+      },
+      {
+        "text": "Project hero",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 460,
+        "height": 43
+      },
+      {
+        "text": "Warkworth Outdoor Room",
+        "fontSize": "61.44px",
+        "lineHeight": "59.5968px",
+        "width": 618,
+        "height": 119
+      },
+      {
+        "text": "Colour and surface",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 460,
+        "height": 43
+      },
+      {
+        "text": "Designed as part of the home.",
+        "fontSize": "61.44px",
+        "lineHeight": "59.5968px",
+        "width": 618,
+        "height": 119
+      },
+      {
+        "text": "Calm, precise, and resolved in detail.",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 519,
+        "height": 87
+      },
+      {
+        "text": "Spacing scale",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 460,
+        "height": 43
+      },
+      {
+        "text": "Responsive composition",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 460,
+        "height": 43
+      },
+      {
+        "text": "Outdoor rooms, tailored to their setting.",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 299,
+        "height": 130
+      },
+      {
+        "text": "A permanent addition, not an off-the-shelf cover.",
+        "fontSize": "43.008px",
+        "lineHeight": "43.4381px",
+        "width": 299,
+        "height": 174
+      }
+    ]
+  },
+  {
+    "label": "768x1024",
+    "width": 768,
+    "height": 1024,
+    "scrollWidth": 768,
+    "clientWidth": 768,
+    "scrollHeight": 18005,
+    "mainHeight": 18005,
+    "headings": [
+      {
+        "text": "Architectural Editorial UI Foundation",
+        "fontSize": "61.44px",
+        "lineHeight": "56.5248px",
+        "width": 495,
+        "height": 170
+      },
+      {
+        "text": "Navigation states",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 33
+      },
+      {
+        "text": "Architectural pergolas tailored to Kiwi homes.",
+        "fontSize": "46.08px",
+        "lineHeight": "44.6976px",
+        "width": 464,
+        "height": 89
+      },
+      {
+        "text": "Project hero",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 33
+      },
+      {
+        "text": "Warkworth Outdoor Room",
+        "fontSize": "46.08px",
+        "lineHeight": "44.6976px",
+        "width": 464,
+        "height": 89
+      },
+      {
+        "text": "Colour and surface",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 33
+      },
+      {
+        "text": "Designed as part of the home.",
+        "fontSize": "46.08px",
+        "lineHeight": "44.6976px",
+        "width": 464,
+        "height": 89
+      },
+      {
+        "text": "Calm, precise, and resolved in detail.",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 65
+      },
+      {
+        "text": "Spacing scale",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 33
+      },
+      {
+        "text": "Responsive composition",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 33
+      },
+      {
+        "text": "Outdoor rooms, tailored to their setting.",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 224,
+        "height": 98
+      },
+      {
+        "text": "A permanent addition, not an off-the-shelf cover.",
+        "fontSize": "32.256px",
+        "lineHeight": "32.5786px",
+        "width": 390,
+        "height": 65
+      }
+    ]
+  },
+  {
+    "label": "390x844",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "scrollHeight": 19578,
+    "mainHeight": 19578,
+    "headings": [
+      {
+        "text": "Architectural Editorial UI Foundation",
+        "fontSize": "56px",
+        "lineHeight": "51.52px",
+        "width": 350,
+        "height": 155
+      },
+      {
+        "text": "Navigation states",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 32
+      },
+      {
+        "text": "Architectural pergolas tailored to Kiwi homes.",
+        "fontSize": "44.8px",
+        "lineHeight": "43.456px",
+        "width": 350,
+        "height": 130
+      },
+      {
+        "text": "Project hero",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 32
+      },
+      {
+        "text": "Warkworth Outdoor Room",
+        "fontSize": "44.8px",
+        "lineHeight": "43.456px",
+        "width": 350,
+        "height": 87
+      },
+      {
+        "text": "Colour and surface",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 32
+      },
+      {
+        "text": "Designed as part of the home.",
+        "fontSize": "44.8px",
+        "lineHeight": "43.456px",
+        "width": 350,
+        "height": 87
+      },
+      {
+        "text": "Calm, precise, and resolved in detail.",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 65
+      },
+      {
+        "text": "Spacing scale",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 32
+      },
+      {
+        "text": "Responsive composition",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 32
+      },
+      {
+        "text": "Outdoor rooms, tailored to their setting.",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 65
+      },
+      {
+        "text": "A permanent addition, not an off-the-shelf cover.",
+        "fontSize": "32px",
+        "lineHeight": "32.32px",
+        "width": 350,
+        "height": 97
+      }
+    ]
+  }
+]

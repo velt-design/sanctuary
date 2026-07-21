@@ -10,6 +10,7 @@ import type {
   CalculatorProjectWorkspace,
 } from '@/app/staff/calculator/calculatorWorkspace';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { Button, Card, DataStatePanel, LoadingSkeleton, Select } from '@/components/ui/foundation';
 import styles from './ProjectCalculatorTab.module.css';
 
 function versionNumber(label: string): number {
@@ -30,12 +31,11 @@ function UnavailableDesignNavigation({ label }: { label: string }) {
   return (
     <div className={styles.stateToolbar} data-project-calculator-state-navigation="true">
       <strong>{label}</strong>
-      <label>
-        <span className="sr-only">Design version</span>
-        <select className={styles.selector} aria-label="Design version" disabled defaultValue="unavailable">
+      <div className={styles.selectorField}>
+        <Select className={styles.selector} aria-label="Design version" disabled defaultValue="unavailable">
           <option value="unavailable">Designs unavailable</option>
-        </select>
-      </label>
+        </Select>
+      </div>
     </div>
   );
 }
@@ -167,22 +167,23 @@ export default function ProjectCalculatorTab({
 
   if (estimatesQuery.isPending) {
     return (
-      <div className={styles.container} data-project-calculator="true">
+      <div className={styles.container} data-project-calculator="true" data-project-calculator-state="pending">
         <UnavailableDesignNavigation label="Loading project designs" />
-        <div className={styles.state} role="status">Loading project designs…</div>
+        <LoadingSkeleton rows={4} columns={4} label="Loading project designs" />
       </div>
     );
   }
 
   if (estimatesQuery.isError) {
     return (
-      <div className={styles.container} data-project-calculator="true">
+      <div className={styles.container} data-project-calculator="true" data-project-calculator-state="error">
         <UnavailableDesignNavigation label="Project designs unavailable" />
-        <div className={styles.state} role="alert">
-          <h2>Couldn&apos;t load project designs</h2>
-          <p>{estimatesQuery.error instanceof Error ? estimatesQuery.error.message : 'Try again.'}</p>
-          <button type="button" onClick={() => void estimatesQuery.refetch()}>Retry</button>
-        </div>
+        <DataStatePanel
+          state="error"
+          title="Could not load project designs"
+          description={estimatesQuery.error instanceof Error ? estimatesQuery.error.message : 'Try again.'}
+          onRetry={() => void estimatesQuery.refetch()}
+        />
       </div>
     );
   }
@@ -192,29 +193,41 @@ export default function ProjectCalculatorTab({
   const historicalSelection = selectedEstimate && !selectedEstimate.isActiveDraft;
 
   return (
-    <div className={styles.container} data-project-calculator="true">
+    <div
+      className={styles.container}
+      data-project-calculator="true"
+      data-project-calculator-state={historicalSelection
+        ? 'locked'
+        : invalidSelection || invalidRevision
+          ? 'invalid'
+          : editEstimateId || fromEstimateId || newDesign
+            ? 'ready'
+            : 'opening'}
+    >
       {historicalSelection || invalidSelection || invalidRevision ? <ProjectDesignNavigation navigation={designNavigation} /> : null}
 
       {historicalSelection ? (
-        <section className={styles.state} data-calculator-locked-source="true">
-          <h2>{selectedEstimate.versionLabel} is historical</h2>
-          <p>Saved historical designs are revision sources and cannot be edited directly.</p>
-          <button type="button" onClick={() => startRevision(selectedEstimate.id)}>Start revision</button>
-        </section>
+        <Card title={`${selectedEstimate.versionLabel} is historical`} padding="compact" data-calculator-locked-source="true">
+          <div className={styles.stateContent}>
+            <p>Saved historical designs are revision sources and cannot be edited directly.</p>
+            <Button type="button" onClick={() => startRevision(selectedEstimate.id)}>Start revision</Button>
+          </div>
+        </Card>
       ) : invalidSelection || invalidRevision ? (
-        <section className={styles.state} data-calculator-invalid-source="true">
-          <h2>Design unavailable</h2>
-          <p>The requested design no longer belongs to this project.</p>
-          <button type="button" onClick={() => activeDraft ? openDraft(activeDraft.id) : openBlankDesign()}>
-            {activeDraft ? 'Open current draft' : 'Start a blank design'}
-          </button>
-        </section>
+        <Card title="Design unavailable" padding="compact" data-calculator-invalid-source="true">
+          <div className={styles.stateContent}>
+            <p>The requested design no longer belongs to this project.</p>
+            <Button type="button" onClick={() => activeDraft ? openDraft(activeDraft.id) : openBlankDesign()}>
+              {activeDraft ? 'Open current draft' : 'Start a blank design'}
+            </Button>
+          </div>
+        </Card>
       ) : editEstimateId || fromEstimateId || newDesign ? (
         <div className={styles.calculatorSurface}>
           <CalculatorGridClient workspace={workspace} />
         </div>
       ) : (
-        <div className={styles.state} role="status">Opening Calculator…</div>
+        <LoadingSkeleton rows={4} columns={4} label="Opening Calculator" />
       )}
     </div>
   );

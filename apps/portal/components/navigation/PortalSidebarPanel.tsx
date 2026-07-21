@@ -6,7 +6,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { NAV_ITEMS } from './navItems';
-import { SIDEBAR_PINNED_WIDTH_PX } from './sidebarLayout';
 import UserMenu from './UserMenu';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import {
@@ -230,7 +229,6 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
   return (
     <div
       className={styles.panel}
-      style={{ width: SIDEBAR_PINNED_WIDTH_PX }}
       aria-label="Portal navigation"
       data-portal-sidebar-panel="true"
       data-portal-sidebar-presentation={mode}
@@ -266,7 +264,6 @@ export default function PortalSidebarPanel({ mode = 'sidebar' }: { mode?: 'sideb
                         size={20}
                         strokeWidth={2}
                         className={styles.icon}
-                        style={{ opacity: isParentCurrent ? 1 : 0.85 }}
                       />
                     </span>
                     <span className={styles.parentLabel}>{item.label}</span>

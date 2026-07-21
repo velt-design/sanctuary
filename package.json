@@ -67,6 +67,7 @@
     "typecheck:worker": "tsc -p apps/worker/tsconfig.json --noEmit --incremental false",
     "test": "vitest run",
     "test:marketing": "vitest run apps/marketing",
+    "test:marketing:browser": "playwright test --config=playwright.marketing.config.ts",
     "test:jobs": "vitest run packages/jobs packages/email-provider test/background-jobs-migration.test.ts test/repo-security.test.ts",
     "test:email-provider": "vitest run packages/email-provider",
     "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry",
