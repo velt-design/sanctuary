@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { projectCommandCentreQueryOptions } from '@/lib/queries/projects';
 import { ApiError } from '@/lib/repo/apiClient';
 import ProjectTasksSidebarClient from '../ProjectTasksSidebar.client';
 import ProjectNotesPanel from './_components/ProjectNotesPanel.client';
-import OverviewCustomerContext from './overview/OverviewCustomerContext';
-import ProjectCurrentDesignCommercialCard from './overview/ProjectCurrentDesignCommercialCard';
 import styles from './overview/OverviewTab.module.css';
+
+const ProjectCurrentDesignCommercialCard = lazy(() => import('./overview/ProjectCurrentDesignCommercialCard'));
+const ProjectPrimaryActionCard = lazy(() => import('./overview/ProjectPrimaryActionCard'));
+const ProjectStatusDetailsCard = lazy(() => import('./overview/ProjectStatusDetailsCard'));
 
 export default function OverviewTab({
   snapshot,
@@ -36,37 +38,54 @@ export default function OverviewTab({
 
   return (
     <div className={styles.container} data-project-overview="true">
-      {accessEndingStatus !== null ? (
-        <section className={styles.queryState} data-command-centre-state="unavailable" role="status">
-          Project access is no longer available.
-        </section>
-      ) : commandQuery.data ? (
-        <>
-          {commandQuery.isError ? (
-            <div className={styles.refreshNotice} data-command-centre-state="stale" role="status">
-              Couldn&apos;t refresh this overview. Showing the last known commercial state.
-              <button type="button" onClick={() => void commandQuery.refetch()}>Retry</button>
-            </div>
-          ) : commandQuery.isFetching ? (
-            <div className={styles.refreshNotice} data-command-centre-state="refreshing" role="status">
-              Updating commercial state…
-            </div>
-          ) : null}
-          <ProjectCurrentDesignCommercialCard data={commandQuery.data.currentDesign} />
-        </>
-      ) : commandQuery.isPending ? (
-        <section className={styles.queryState} data-command-centre-state="pending" role="status">
-          Updating current design and commercial state…
-        </section>
-      ) : (
-        <section className={styles.queryState} data-command-centre-state="failed" role="alert">
-          <strong>Couldn&apos;t load current design and commercial state.</strong>
-          <span>Check your connection and try again.</span>
+      {commandQuery.data && commandQuery.isError ? (
+        <div className={styles.refreshNotice} data-command-centre-state="stale" role="status">
+          Couldn&apos;t refresh this overview. Showing the last known commercial state.
           <button type="button" onClick={() => void commandQuery.refetch()}>Retry</button>
-        </section>
-      )}
+        </div>
+      ) : commandQuery.data && commandQuery.isFetching ? (
+        <div className={styles.refreshNotice} data-command-centre-state="refreshing" role="status">
+          Updating commercial state…
+        </div>
+      ) : null}
 
-      <OverviewCustomerContext project={snapshot.project} />
+      <div className={styles.operationalGrid}>
+        <Suspense fallback={<section className={styles.queryState} role="status">Loading project details...</section>}>
+          <ProjectStatusDetailsCard project={snapshot.project} host={host} />
+        </Suspense>
+        {accessEndingStatus !== null ? (
+          <section className={styles.commandState} data-command-centre-state="unavailable" role="status">
+            Project access is no longer available.
+          </section>
+        ) : commandQuery.data ? (
+          <>
+            <Suspense fallback={<section className={styles.queryState} role="status">Loading commercial summary…</section>}>
+              <ProjectCurrentDesignCommercialCard data={commandQuery.data.currentDesign} />
+            </Suspense>
+            <Suspense fallback={<section className={styles.queryState} role="status">Loading primary action…</section>}>
+              <ProjectPrimaryActionCard
+                projectId={snapshot.project.id}
+                host={host}
+                operations={commandQuery.data.operations}
+                stale={commandQuery.isError}
+                onRefresh={() => void commandQuery.refetch()}
+              />
+            </Suspense>
+          </>
+        ) : commandQuery.isPending ? (
+          <section className={styles.commandState} data-command-centre-state="pending" role="status">
+            Updating current design and commercial state…
+          </section>
+        ) : (
+          <section className={styles.commandState} data-command-centre-state="failed" role="alert">
+            <strong>Couldn&apos;t load current design and commercial state.</strong>
+            <span>Check your connection and try again.</span>
+            <button type="button" onClick={() => void commandQuery.refetch()}>Retry</button>
+          </section>
+        )}
+      </div>
+
+      <div className={styles.workstreamsSlot} data-stage3-workstreams-slot aria-hidden="true" />
 
       {snapshotContentReady ? (
         <div className={styles.layout} data-project-overview-context="fresh">

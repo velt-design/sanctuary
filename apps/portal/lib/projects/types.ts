@@ -1,4 +1,5 @@
 import type { PipelineStageKey, TaskKey, TaskKind } from '@/lib/projects/pipelineDefinition';
+import type { ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
 
 export type ProjectStage = PipelineStageKey;
 
@@ -69,6 +70,10 @@ export type ProjectPageSnapshot = {
     quoteRef?: string;
     nextActionDate?: string;
     hasJobPacks?: boolean;
+    owner?: {
+      key: ProjectOwnerKey;
+      displayName: string;
+    };
   };
   pipeline: {
     stage: ProjectStage;

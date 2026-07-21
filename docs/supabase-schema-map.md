@@ -295,6 +295,7 @@ Tables/RPCs:
 
 - Marketing/enquiries: `enquiry_requests`
 - Email and automation: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `design_package_tickets`, `followup_plans`, `followup_tasks`
+- Project command centre: `project_owner_assignments`, `project_manual_actions`, `project_action_controls`, `project_primary_action_selections`, `project_command_audit`, `project_action_versions` (`project_role_assignments` is retained read-only as legacy rollback evidence)
 - Site-visit automation support: `site_visit_events`
 - Dashboard/supporting RPC: `dashboard_snapshot_v1()`
 - Personal dashboard tasks: `portal_dashboard_tasks`
@@ -306,6 +307,8 @@ Primary write path:
 - Project action routes that enqueue or preview email/outbox entries.
 - Dashboard snapshot is read-oriented and should not become a generic write boundary.
 - Personal dashboard task writes go through staff-only dashboard task APIs under `apps/portal/app/api/dashboard/tasks`.
+- Project owner/action writes go through `project_command_set_owner` and `project_command_action` from staff command routes. `project_command_action` refreshes legacy Schedule columns inside the same transaction through the non-callable `project_command_sync_projection` helper.
+- Design Package source-task writes use the bounded `project_command_sync_design_task` RPC; automation/follow-up persistence remains a server-only service-role flow. Source-table triggers keep the candidate revision and compatibility projection current.
 
 Primary read path:
 
@@ -321,11 +324,14 @@ Access rule:
 - Automation may use service-role access only on the server and only for intentional bypasses documented by the owning workflow.
 - Audit/supporting tables should stay append-oriented where possible.
 - Personal dashboard tasks are owned by `owner_id = auth.uid()` and are independent from automation/project workflow `tasks`.
+- Command-centre tables plus canonical `tasks`/`followup_plans`/`followup_tasks` allow portal reads but no direct authenticated writes. The project-owner command is admin-only and accepts only Jordan, JP, Joe, or Bruce; other commands check portal access, active staff where relevant, source/project identity, optimistic versions, permissions, and command idempotency. The append-only command audit retains actor IDs where available.
 
 Migration source:
 
 - `supabase/enquiry_requests.sql`, `supabase/automation_phase_a.sql`, `supabase/email_templates_website_autoresponder.sql`, `supabase/dashboard_snapshot_v1.sql`, and security hardening.
 - Personal dashboard tasks use ordered migrations under `supabase/migrations`.
+- `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into ordered truth and owns command-centre tables, RLS/grants/indexes/backfills/RPCs, and compatibility projection columns.
+- `20260721_000001_project_command_single_owner.sql` replaces the three-role owner contract with one named project owner, performs the deterministic legacy backfill, and replaces the owner command.
 - If a supporting table becomes part of a new first-class workflow, add an ordered migration and update this map plus the owning feature doc.
 
 ## Verification

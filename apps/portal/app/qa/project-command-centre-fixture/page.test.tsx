@@ -10,6 +10,10 @@ vi.mock('next/navigation', () => ({
   notFound: () => notFoundMock(),
 }));
 
+vi.mock('./ProjectCommandCentreFixtureClient', () => ({
+  default: () => <section>Primary next action</section>,
+}));
+
 describe('ProjectCommandCentreFixturePage', () => {
   beforeEach(() => {
     delete process.env.ENABLE_PORTAL_QA_FIXTURES;

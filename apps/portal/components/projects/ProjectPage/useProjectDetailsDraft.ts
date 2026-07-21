@@ -32,11 +32,10 @@ function toDraft(project: ProjectPageSnapshot['project']): PortalProjectDetailsD
     siteAddress: project.siteAddress ?? '',
     region: project.region ?? '',
     quoteRef: project.quoteRef ?? '',
-    nextActionDate: project.nextActionDate ?? '',
   });
 }
 
-export function isValidProjectDetailsYmd(value: string): boolean {
+function isValidProjectDetailsYmd(value: string): boolean {
   if (!value.trim()) return true;
   return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 }
@@ -64,7 +63,7 @@ export function useProjectDetailsDraft(project: ProjectPageSnapshot['project']) 
   const entityKey = useMemo(() => buildProjectDetailsEntityKey(project.id), [project.id]);
   const serverDraft = useMemo(
     () => toDraft(project),
-    [project.contactEmail, project.contactName, project.contactPhone, project.name, project.nextActionDate, project.quoteRef, project.region, project.siteAddress],
+    [project.contactEmail, project.contactName, project.contactPhone, project.name, project.quoteRef, project.region, project.siteAddress],
   );
   const workingCopy = useLocalWorkingCopy<PortalProjectDetailsDraft>(entityKey, serverDraft);
   const syncState = useAliasedEntitySyncState(project.id, buildProjectDetailsEntityKey, entityKey);
@@ -123,15 +122,12 @@ export function useProjectDetailsDraft(project: ProjectPageSnapshot['project']) 
     }
   }, []);
 
-  const canSave = useMemo(
-    () => Boolean(draft.projectName.trim()) && isValidProjectDetailsYmd(draft.nextActionDate),
-    [draft],
-  );
+  const canSave = useMemo(() => Boolean(draft.projectName.trim()), [draft.projectName]);
   const dirty = useMemo(() => !sameDraft(draft, confirmedDraft), [confirmedDraft, draft]);
 
   const persistDraft = useCallback(async (candidate: PortalProjectDetailsDraft) => {
     const nextDraft = normalizeProjectDetailsDraft(candidate);
-    if (!nextDraft.projectName || !isValidProjectDetailsYmd(nextDraft.nextActionDate)) return false;
+    if (!nextDraft.projectName) return false;
 
     const serialized = JSON.stringify(nextDraft);
     if (serialized === lastEnqueuedSerializedRef.current) return true;

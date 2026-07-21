@@ -1,0 +1,7 @@
+.tabLoadingState {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: rgba(var(--portal-text-rgb), 0.65);
+  font-size: 13px;
+}

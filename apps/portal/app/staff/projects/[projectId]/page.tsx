@@ -2,12 +2,11 @@ import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
-
-const VALID_TABS = new Set(['activity', 'estimates', 'quotes', 'job-packs', 'emails']);
+import { isProjectTabKey } from '@/lib/projects/projectTabs';
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
-  if (raw && VALID_TABS.has(raw)) return raw;
+  if (isProjectTabKey(raw)) return raw;
   return 'activity';
 }
 

@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Stage 0 assessment complete; Stage 1 current-state contract implemented in the working tree.
+Status: Stage 1 committed at `8770198f`; approved Stage 2 implementation and verification in progress.
 
 Baseline assessed: `ea1641c6c6647d22603d07b9f980cc3a1dad95fc` on 2026-07-20.
 
@@ -8,15 +8,15 @@ Product authority: `project-command-centre-v1.md`. Programme authority: `project
 
 ## How To Use This Document
 
-- Read sections 3, 4, 10, 11, 14, 16, and 17 before changing the Stage 1 read model or Overview.
-- Read the later-stage ownership, communication, migration, and risk sections before proposing Stage 2 or later work.
+- Read sections 3, 4, 7, 8, 10, 11, 14, 16, and 17 before changing the command-centre read model, commands, or Overview.
+- Read the later-stage communication, migration, and risk sections before proposing Stage 3 or later work.
 - Treat repository evidence as current-state fact and the V1 specification as product policy.
-- Do not move a later-stage workflow into Stage 1 by extending the read model or card.
+- Do not move a later-stage workflow into the current stage by extending the read model or card.
 - Keep this document, the roadmap, the project current-state doc, and testing commands aligned when implementation changes.
 
 ## 1. Repository baseline and commit
 
-The Stage 0 assessment used clean repository head `ea1641c6c6647d22603d07b9f980cc3a1dad95fc`. Stage 1 was then implemented as a bounded working-tree change.
+The Stage 0 assessment used clean repository head `ea1641c6c6647d22603d07b9f980cc3a1dad95fc`. Stage 1 was committed locally as `8770198f`; that commit is the Stage 2 baseline.
 
 The project-page architecture at the baseline already had the performance and trust foundations Stage 1 needed:
 
@@ -53,7 +53,7 @@ Required owner and guardrail docs are:
 
 The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the internal default tab key `activity`. The staff-facing label is `Overview`; preserving the key keeps URLs, old links, lazy-loading boundaries, and tests compatible.
 
-`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns the header and pipeline. `ProjectPageShell.tsx` owns responsive rails and the narrow-layout Details tab. `ProjectMainTabs.tsx` owns tab URL state and intent preloading.
+`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns one fixed sticky header and the full-width body. `ProjectTabNavigation.tsx` owns the shared tab registry, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering and quote Edit/Preview controls. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
 The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
 
@@ -64,7 +64,8 @@ Specialist workflows remain separate lazy tabs:
 - Invoices.
 - Job Packs when available.
 - Emails.
-- Details on narrow layouts.
+
+Project details and stage correction are part of Overview at every width. The pipeline is no longer rendered in the header.
 
 Stage 1 does not add logic to `QuotesTab.tsx` or `EstimatesTab.tsx`.
 
@@ -122,17 +123,19 @@ The Overview composes:
 
 Placeholder task/note arrays never produce a false empty state.
 
-## 7. Existing ownership fields
+## 7. Canonical ownership
 
-Stage 1 introduces no Sales, Design, or Estimating owner field. No existing field was found that could truthfully serve as canonical multi-role ownership without redefining meaning.
+Stage 2 owns one project assignment in `project_owner_assignments`, keyed by project. The approved owner roster is Jordan, JP, Joe, and Bruce. A row stores only the stable business key; no row means unassigned. This project owner carries the project from `new` through `deposit` and remains visible afterward when assigned.
 
-Stage 2 must decide schema ownership, role semantics, admin/staff update permissions, backfill, audit, and local-first posture before exposing editable owners. Project creator, note author, quote sender, and task assignee are not ownership substitutes.
+The forward migration prefers an existing active Sales assignment, then Design and Estimating, only when the legacy assignee name maps to the approved roster. Unknown identities remain unassigned. The legacy three-role table is retained read-only as rollback evidence and has no current writer or read-model consumer.
 
 ## 8. Existing next-action and task systems
 
 The project snapshot already resolves stage tasks from `pipelineDefinition.ts` and `project_task_checks`. Those tasks remain visible in Overview and retain their existing mutation owner.
 
-Stage 1 does not invent a canonical primary next action. Stage 2 must define server ownership, precedence, override rules, due-date semantics, completion semantics, and interaction with existing stage tasks before adding it.
+Stage 2 candidates are open `tasks`, open `followup_tasks`, and `project_manual_actions`. The pure `actionResolver.ts` owns precedence, owner fallback, Auckland due state, explicit selection, conflict detection, and the 25-option bounded response. Stage checks, personal reminders, generic statuses, undated automatic candidates, approvals, and blockers are excluded.
+
+`project_primary_action_selections` records explicit focus and the confirmed outranking hash. `project_action_controls` records critical state and lifetime reschedule count. `project_command_audit` is append-only command history. `project_action_versions` is trigger-maintained optimistic concurrency support for the complete candidate set. Source tasks remain canonical records rather than copied action rows.
 
 ## 9. Existing communication and activity sources
 
@@ -149,7 +152,7 @@ Stage 4 owns the future normalized communication/timeline read model.
 
 ## 10. Existing auth and permissions
 
-`GET /api/staff/v1/projects/[projectId]/command-centre` uses `requireStaffContext()` and the returned auth-bound Supabase client. RLS remains authoritative. The route does not use service role.
+Command-centre reads and owner/action commands use `requireStaffContext()` and the returned auth-bound Supabase client. RLS plus security-definer command checks remain authoritative. The compatibility projection is refreshed inside the transactional action command; no browser or service-role caller has execute permission on its helper, and Details or task routes cannot write the legacy project columns.
 
 The response is `private, no-store`, carries standard request diagnostics, returns `401`/`403` from the auth helper, returns `404` only when the authenticated project read is absent, and returns a stable `500` when a bounded subordinate read fails.
 
@@ -199,8 +202,13 @@ The existing authenticated Project Detail journey already measures the active ta
 | Quote delivery | Selected quote status and send logs | Accepted/sent/failed/draft only |
 | Notes and tasks | Existing project snapshot | Render only when full snapshot is ready |
 | Specialist links | Existing tab routes | Read-only navigation |
+| Project owner | `project_owner_assignments` | One approved owner, required/missing state, and admin edit permission |
+| Primary action sources | Open `tasks`, `followup_tasks`, `project_manual_actions` | Referenced and selected, never copied |
+| Selection/conflict | `project_primary_action_selections` plus selector hashes | Explicit selection with later outranking conflict |
+| Critical/reschedule state | `project_action_controls` | Explicit red reason and lifetime count |
+| Command history | `project_command_audit` | Latest 20 in project read model |
 
-Later-stage owners, action, workstreams, communications, timeline, blockers, and approvals are intentionally absent.
+Later-stage workstreams, communications, normalized timeline, blockers, and approvals remain intentionally absent.
 
 ## 14. Required read models
 
@@ -219,14 +227,19 @@ The payload contains:
 - Optional declined historical outcome when no quote is current.
 - Explicit integrity/source/price warnings.
 - Existing specialist-tab links.
+- Three normalized owner summaries and permissions.
+- Current primary action or explicit no-action state.
+- Up to 25 sorted candidate options plus total/revision.
+- Explicit-selection conflict and allowed operations.
+- Latest 20 command-audit events and project exception flags.
 
 The server performs one auth-bound `projects` relation read for estimate metadata, quote versions, and send logs, followed by one exact selected-estimate detail read for `inputs`, `outputs`, and costing trace fields. Only the bounded normalized response reaches the browser.
 
 ## 15. Required migrations
 
-Stage 1 requires no migration, backfill, new RLS policy, grant, index, or schema compatibility path.
+Stage 1 required no migration. Stage 2 adds ordered migration `20260720_000008_project_command_centre_stage2.sql`. It promotes task/follow-up setup into migration truth, adds canonical owner/action/control/selection/audit tables, updated timestamps and focused indexes, select-only portal RLS, transactional idempotent commands, active-user backfills, and compatibility projection columns. Source-table triggers maintain candidate versions and the Schedule projection; Design Package source-task changes use a bounded staff RPC after direct authenticated source writes are revoked.
 
-Later stages are expected to need explicit migrations for ownership, structured communications, workstream overrides, issues, and approvals. Each later migration must be forward-only and include RLS/grants, API ownership, backfill/compatibility, rollback, tests, and docs.
+Legacy `projects.next_action*` and `follow_up_date` are a read-only Schedule compatibility projection. The transactional action command alone refreshes them through an internal helper. Project Details, dashboard controls, stage-task completion, and AutomationRunner no longer own those fields.
 
 ## 16. Required API boundaries
 
@@ -246,16 +259,28 @@ Contract:
 
 Existing summary and complete snapshot routes remain unchanged and independent.
 
+Stage 2 extends that GET response with `operations` and adds:
+
+- `GET /api/staff/v1/staff-directory`.
+- `PATCH /api/staff/v1/projects/[projectId]/command-centre/owners`.
+- `POST /api/staff/v1/projects/[projectId]/command-centre/primary-action/commands`.
+- `GET /api/staff/v1/dashboard/project-exceptions`.
+
+Every response, including errors, is `private, no-store`. Mutations require UUID command IDs and optimistic versions, are transactional/idempotent, and return committed success with `refreshRequired` rather than inviting a retry after a post-commit refresh failure.
+
 ## 17. Component reuse plan
 
 Implemented component boundaries:
 
-- `OverviewTab.tsx`: query and five-state orchestration plus existing context composition.
+- `OverviewTab.tsx`: query and five-state orchestration plus the responsive operational-card composition.
 - `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation.
-- `overview/OverviewCustomerContext.tsx`: compact existing customer/site/reference context.
+- `overview/ProjectStatusDetailsCard.tsx`: pipeline stage, stage correction, and user-owned local-first project details.
 - Existing `ProjectNotesPanel.client.tsx`: project note/activity column.
-- Existing `ProjectTasksSidebar.client.tsx`: stage-task action rail.
-- Existing Project Header and Details rail/tab: project identity and full details.
+- Existing `ProjectTasksSidebar.client.tsx`: stage-task action card below the operational row.
+- Project Header: project identity, owner, actions, and the horizontally scrollable tab navigation.
+- `overview/ProjectPrimaryActionCard.tsx`: owner/action/conflict/manual/history controls.
+- Project Header: always-visible single Project Owner summary.
+- Dashboard `ProjectExceptionsCard.tsx`: bounded deduplicated lead-to-quote exceptions; personal reminders remain independent.
 
 The `activity` module loader now resolves to `OverviewTab`; the old Activity component, three-query snapshot bar, fallback resolver, and summarizer are removed after consumer search proved no remaining code consumer.
 
@@ -271,10 +296,10 @@ Focused coverage includes:
 - Page-level protected cache clearing tests.
 - Current design/commercial component tests.
 - Environment-gated, customer-data-free fixture route.
-- Browser matrix for a new lead with draft estimate, no current design, standard estimate, multiple estimates, sent revision, accepted quote plus newer estimate, declined quote, missing source, and missing price.
-- 390px no-horizontal-overflow browser check.
+- Browser matrix for the nine Stage 1 commercial scenarios plus primary, empty, conflict, critical, and undated Stage 2 states at 1600, 1366, 1024, 768, and 390 px.
+- 390px no-horizontal-overflow and always-visible action facts.
 
-Fixture route: `/qa/project-command-centre-fixture?scenario=...`, enabled only by `ENABLE_PORTAL_QA_FIXTURES=1`.
+Fixture route: `/qa/project-command-centre-fixture?scenario=...&action=...`, enabled only by `ENABLE_PORTAL_QA_FIXTURES=1`.
 
 Stage 1 verification completed on 2026-07-20:
 
@@ -294,7 +319,7 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 1A: strict selector, normalized read model, staff API, and query. Implemented.
 - Stage 1B: Overview label/module, commercial card, customer context, truthful states, and legacy retirement. Implemented.
 - Stage 1C: deterministic unit/route/component/browser fixtures, docs, bundle/performance verification. Complete in the working tree.
-- Stage 2: ownership plus canonical primary next action. Not approved in Stage 1.
+- Stage 2A-C: approved and implemented locally; authenticated and final quality gates remain before completion.
 - Stage 3: workstreams. Not started.
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.
@@ -319,10 +344,16 @@ Stage 1 verification completed on 2026-07-20:
 - Never select declined quotes.
 - Never fall back from quote source or quote price to an estimate.
 - Read stored estimate summary and freshness; do not run costing.
-- Keep existing project identity, notes, tasks, Details, lazy boundaries, and specialist tabs.
+- Keep existing project identity, notes, tasks, lazy boundaries, URL keys, and specialist tabs while consolidating details and stage correction into Overview.
 - Clear protected user-owned caches on command-centre access-ending responses.
 - Remove the legacy fallback resolver/summarizer/bar after zero-consumer proof.
 - Make no Stage 1 migration or specialist mutation change.
+- Keep task/follow-up rows canonical; manual rows represent only genuinely manual actions.
+- Keep stage checks and personal dashboard reminders outside selection.
+- Store staff dates at 5:00pm Auckland and preserve source timestamps.
+- Keep overdue amber; critical is explicit and reasoned.
+- Keep the compatibility projection service-owned and non-authoritative.
+- Keep QuotesTab, EstimatesTab, workbench/drawings, geometry, and costing inputs unchanged in Stage 2.
 
 ## 22. Unresolved technical questions
 
@@ -330,8 +361,6 @@ No unresolved question blocks Stage 1.
 
 Later-stage questions remain deliberately open:
 
-- Exact ownership schema and role vocabulary.
-- Canonical next-action persistence and override semantics.
 - Structured inbound/outbound communication schema.
 - Timeline normalization and pagination.
 - Workstream override and progress storage.

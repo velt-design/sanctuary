@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import Modal from '@/components/ui/modal/Modal';
@@ -11,6 +11,7 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { deleteProject } from '@/lib/repo/projectsRepo';
 import { PIPELINE_STAGE_LABELS } from '@/lib/projects/pipelineDefinition';
+import ProjectTabNavigation from './ProjectTabNavigation';
 import styles from './ProjectPage.module.css';
 
 const EXTRA_DELETE_CONFIRM_STAGES = new Set(['deposit', 'scheduled', 'completed', 'paid']);
@@ -21,14 +22,12 @@ function requiredDeleteConfirmation(projectId: string, stage: string): string {
 
 export default function ProjectHeader({
   project,
-  currentStage,
-  mode = 'expanded',
-  pipeline,
+  host,
+  tab,
 }: {
   project: ProjectPageSnapshot['project'];
-  currentStage: ProjectPageSnapshot['pipeline']['stage'];
-  mode?: 'expanded' | 'compact';
-  pipeline?: ReactNode;
+  host: string;
+  tab: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -41,9 +40,8 @@ export default function ProjectHeader({
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const subtext = [project.contactName, project.region].filter(Boolean).join(' / ');
-  const stageLabel = PIPELINE_STAGE_LABELS[currentStage] ?? String(currentStage);
-  const requiredText = requiredDeleteConfirmation(project.id, currentStage);
-  const isCompact = mode === 'compact';
+  const stageLabel = PIPELINE_STAGE_LABELS[project.stage] ?? String(project.stage);
+  const requiredText = requiredDeleteConfirmation(project.id, project.stage);
 
   const closeDeleteModal = () => {
     if (deleteBusy) return;
@@ -53,45 +51,48 @@ export default function ProjectHeader({
   };
 
   return (
-    <section className={styles.masthead} aria-label="Project summary" data-project-masthead-mode={mode}>
+    <section className={styles.masthead} aria-label="Project summary">
       <div className={styles.mastheadTop}>
         <div className={styles.mastheadIdentity}>
           <div className={styles.mastheadTitleRow}>
             <h1 className={styles.mastheadTitle}>{project.name}</h1>
-            <span className={styles.mastheadStagePill}>{stageLabel}</span>
-            {!isCompact && subtext ? <p className={styles.mastheadMeta}>{subtext}</p> : null}
+            {subtext ? <p className={styles.mastheadMeta}>{subtext}</p> : null}
+          </div>
+          <div className={styles.mastheadOwners} aria-label="Project owner">
+            <span className={styles.mastheadOwner} data-project-owner={project.owner?.key ?? 'unassigned'}>
+              <strong>Owner</strong>
+              <span>{project.owner?.displayName ?? 'Unassigned'}</span>
+            </span>
           </div>
         </div>
 
-        {!isCompact ? (
-          <div className={styles.mastheadActions}>
-            <ProjectsIndexLink href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
-              Projects
-            </ProjectsIndexLink>
-            <Link
-              href={`/staff/projects/${encodeURIComponent(project.id)}/design-workbench`}
-              className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}
+        <div className={styles.mastheadActions}>
+          <ProjectsIndexLink href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
+            Projects
+          </ProjectsIndexLink>
+          <Link
+            href={`/staff/projects/${encodeURIComponent(project.id)}/design-workbench`}
+            className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}
+          >
+            Design Workbench
+          </Link>
+          {isAdmin ? (
+            <button
+              type="button"
+              className={`${legacy.buttonDanger} ${styles.mastheadAction}`}
+              onClick={() => {
+                setDeleteConfirmText('');
+                setDeleteReason('');
+                setDeleteOpen(true);
+              }}
             >
-              Design Workbench
-            </Link>
-            {isAdmin ? (
-              <button
-                type="button"
-                className={`${legacy.buttonDanger} ${styles.mastheadAction}`}
-                onClick={() => {
-                  setDeleteConfirmText('');
-                  setDeleteReason('');
-                  setDeleteOpen(true);
-                }}
-              >
-                Delete project
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+              Delete project
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      {!isCompact && pipeline ? <div className={styles.mastheadPipeline}>{pipeline}</div> : null}
+      <ProjectTabNavigation hasJobPacks={Boolean(project.hasJobPacks)} host={host} initialTab={tab} projectId={project.id} />
 
       {deleteOpen ? (
         <Modal

@@ -27,7 +27,7 @@
 
 .layout {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
   height: 100%;
@@ -105,7 +105,7 @@
 
   .layout {
     height: auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   .grid {
@@ -887,3 +887,32 @@
   height: 36px;
   border-radius: 10px;
 }
+.exceptionsCard {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  padding: 14px;
+}
+
+.exceptionsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exceptionsHeader p,
+.exceptionsHeader h2 { margin: 0; }
+.exceptionsHeader p { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; }
+.exceptionsHeader h2 { font-size: 16px; }
+.exceptionsHeader > strong { color: rgb(var(--portal-accent-rgb)); font-size: 22px; }
+.exceptionsList { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.exceptionsList li { display: grid; gap: 5px; border-top: 1px solid var(--border); padding-top: 8px; }
+.exceptionsList a { color: rgb(var(--portal-text-rgb)); font-size: 13px; font-weight: 750; text-decoration: none; }
+.exceptionsList li > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.exceptionsList span { border-radius: 999px; background: rgba(217, 119, 6, 0.1); color: rgb(146, 64, 14); font-size: 10px; font-weight: 750; padding: 3px 6px; }
+.exceptionsEmpty { margin: 0; color: var(--muted); font-size: 13px; }
+.exceptionsEmpty button { margin-left: 8px; border: 0; background: transparent; color: rgb(var(--portal-accent-rgb)); cursor: pointer; font: inherit; font-weight: 750; }
+.exceptionsMore { color: var(--muted); font-size: 11px; font-weight: 750; }

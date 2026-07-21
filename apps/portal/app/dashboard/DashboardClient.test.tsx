@@ -7,6 +7,11 @@ import DashboardClient from './DashboardClient';
 const retry = vi.fn();
 const useDashboardData = vi.fn();
 
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: undefined }),
+  queryOptions: (options: unknown) => options,
+}));
+
 vi.mock('./useDashboardData', () => ({
   useDashboardData: (...args: unknown[]) => useDashboardData(...args),
 }));

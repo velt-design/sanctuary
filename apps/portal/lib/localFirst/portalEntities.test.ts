@@ -291,7 +291,6 @@ describe('portalEntities', () => {
       siteAddress: '2 New St',
       region: 'South',
       quoteRef: 'Q-2002',
-      nextActionDate: '2026-03-25',
     }, { contactId });
 
     const snapshot = queryClient.getQueryData<ProjectPageSnapshotResponse>(qk.projects.snapshot(hostKey, projectId));
@@ -303,7 +302,7 @@ describe('portalEntities', () => {
       siteAddress: '2 New St',
       region: 'South',
       quoteRef: 'Q-2002',
-      nextActionDate: '2026-03-25',
+      nextActionDate: '2026-03-20',
     });
     expect(queryClient.getQueryData<Project>(qk.projects.detail(hostKey, projectId))).toEqual(
       expect.objectContaining({

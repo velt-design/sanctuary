@@ -13,15 +13,20 @@ function queryResult(result: { data: unknown; error: unknown }) {
   const builder: Record<string, unknown> = {};
   builder.select = vi.fn(() => builder);
   builder.eq = vi.fn(() => builder);
+  builder.limit = vi.fn(() => builder);
+  builder.order = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(async () => result);
+  builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve);
   return builder;
 }
 
 function createClient(projectRow: Record<string, unknown>, detail: Record<string, unknown> | null = null) {
   const projectQuery = queryResult({ data: projectRow, error: null });
   const estimateQuery = queryResult({ data: detail, error: null });
+  const emptyQuery = queryResult({ data: [], error: null });
   return {
-    from: vi.fn((table: string) => table === 'projects' ? projectQuery : estimateQuery),
+    from: vi.fn((table: string) => table === 'projects' ? projectQuery : table === 'estimates' ? estimateQuery : emptyQuery),
+    rpc: vi.fn(async () => ({ data: [], error: null })),
   } as any;
 }
 
@@ -55,6 +60,7 @@ function quoteRow(overrides: Record<string, unknown> = {}) {
 function projectRow(estimates: unknown[], quoteVersions: unknown[] = []) {
   return {
     id: UUID.project,
+    pipeline_stage: 'NEW',
     estimates,
     quotes: quoteVersions.length ? [{ id: UUID.quoteParent, quote_ref: 'Q-0100', quoteVersions }] : [],
   };
@@ -80,7 +86,10 @@ describe('getProjectCommandCentre', () => {
     const client = createClient(projectRow([]));
     const result = await getProjectCommandCentre(`proj_${UUID.project}`, client);
     expect(result?.currentDesign).toMatchObject({ source: 'none', designState: 'none' });
-    expect(client.from).toHaveBeenCalledTimes(1);
+    expect(client.from).not.toHaveBeenCalledWith('estimates');
+    const projectSelect = client.from.mock.results[0].value.select.mock.calls[0][0] as string;
+    expect(projectSelect).toContain('pipeline_stage');
+    expect(projectSelect).not.toMatch(/pipeline_stage,\s*status,/);
   });
 
   it('returns stored estimate price and current costing without running costing', async () => {
@@ -157,7 +166,7 @@ describe('getProjectCommandCentre', () => {
       price: { source: 'quote', totalIncGstCents: 175_000 },
       warnings: ['source_design_unavailable'],
     });
-    expect(client.from).toHaveBeenCalledTimes(1);
+    expect(client.from).not.toHaveBeenCalledWith('estimates');
   });
 
   it('never falls back to estimate price when the selected quote price is invalid', async () => {

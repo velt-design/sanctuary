@@ -53,7 +53,10 @@ describe('GET /api/staff/v1/projects/[projectId]/command-centre', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
     expect(res.headers.get('x-portal-request-id')).toBe('req_command');
-    expect(getProjectCommandCentre).toHaveBeenCalledWith(projectId, expect.anything());
+    expect(getProjectCommandCentre).toHaveBeenCalledWith(projectId, expect.anything(), {
+      userId: 'user-1',
+      isAdmin: false,
+    });
     await expect(res.json()).resolves.toEqual(response);
   });
 
@@ -65,6 +68,7 @@ describe('GET /api/staff/v1/projects/[projectId]/command-centre', () => {
     const mod = await import('./route');
     const res = await mod.GET(new Request(`http://localhost/api/staff/v1/projects/${projectId}/command-centre`), context);
     expect(res.status).toBe(status);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     expect(getProjectCommandCentre).not.toHaveBeenCalled();
   });
 
@@ -73,6 +77,7 @@ describe('GET /api/staff/v1/projects/[projectId]/command-centre', () => {
     const mod = await import('./route');
     const res = await mod.GET(new Request(`http://localhost/api/staff/v1/projects/${projectId}/command-centre`), context);
     expect(res.status).toBe(404);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
 
   it('returns a stable 500 when any bounded read fails', async () => {
@@ -81,6 +86,7 @@ describe('GET /api/staff/v1/projects/[projectId]/command-centre', () => {
     const mod = await import('./route');
     const res = await mod.GET(new Request(`http://localhost/api/staff/v1/projects/${projectId}/command-centre`), context);
     expect(res.status).toBe(500);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     await expect(res.json()).resolves.toEqual({ error: 'Failed to load project command centre' });
     errorSpy.mockRestore();
   });

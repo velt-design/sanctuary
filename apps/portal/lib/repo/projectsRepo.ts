@@ -214,7 +214,6 @@ export async function createProject(data: {
     region: project.region ?? null,
     site_address: project.siteAddress ?? project.address ?? null,
     pipeline_stage: (project.status ?? 'NEW') as any,
-    follow_up_date: null,
     deposit_amount_cents: typeof project.depositAmountCents === 'number' && Number.isFinite(project.depositAmountCents) ? Math.round(project.depositAmountCents) : null,
     deposit_paid_date: typeof project.depositPaidDate === 'string' ? project.depositPaidDate : null,
     final_payment_date: typeof project.finalPaymentDate === 'string' ? project.finalPaymentDate : null,
@@ -245,8 +244,6 @@ export async function upsertProject(project: Project): Promise<Project> {
   if (!projectName) throw new Error('Project name is required.');
 
   const contactUuid = project.contactId ? uuidFromAppId(project.contactId, 'ct') : null;
-  const followUpDate = (project.nextActionDate ?? project.followUpDate) || null;
-
   const payload: any = {
     id: uuid,
     contact_id: contactUuid,
@@ -256,7 +253,6 @@ export async function upsertProject(project: Project): Promise<Project> {
     site_address:
       typeof project.siteAddress === 'string' ? project.siteAddress.trim() || null : typeof project.address === 'string' ? project.address.trim() || null : null,
     pipeline_stage: (project.status ?? 'NEW') as any,
-    follow_up_date: typeof followUpDate === 'string' ? followUpDate : null,
     deposit_amount_cents:
       typeof project.depositAmountCents === 'number' && Number.isFinite(project.depositAmountCents)
         ? Math.round(project.depositAmountCents)

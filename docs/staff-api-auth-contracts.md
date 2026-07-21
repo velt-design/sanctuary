@@ -7,7 +7,8 @@ This doc is the current-state reference for staff, admin, and public-token route
 - Staff workflow routes live mainly under `apps/portal/app/api/staff/v1` plus older staff-owned routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, `apps/portal/app/api/estimates`, and `apps/portal/app/api/quotes`.
 - `GET /api/staff/v1/projects/index?archive=active|archived|all` is the staff-authenticated Projects-list read model. It uses `requireStaffContext()`, returns project/contact row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - `GET /api/staff/v1/projects/[projectId]/summary` is the staff-authenticated direct-link shell read. It returns only the RLS-visible project/contact summary needed to make the header and tabs useful while the existing complete snapshot query continues; it is always `private, no-store`.
-- `GET /api/staff/v1/projects/[projectId]/command-centre` is the staff-authenticated Project Overview read model. It uses `requireStaffContext()` and the auth-bound client, resolves quote/estimate precedence and exact source/price ownership on the server, returns only bounded normalized facts, and is always `private, no-store`.
+- `GET /api/staff/v1/projects/[projectId]/command-centre` is the staff-authenticated Project Overview read model. It uses `requireStaffContext()` and the auth-bound client, resolves quote/estimate truth plus canonical owners/actions/conflicts/audit on the server, returns only bounded normalized facts, and is always `private, no-store`.
+- `GET /api/staff/v1/staff-directory`, `PATCH .../command-centre/owners`, `POST .../command-centre/primary-action/commands`, and `GET /api/staff/v1/dashboard/project-exceptions` own Stage 2 staff-directory, command, and exception contracts. Project-owner changes are admin-only and accept only the approved Jordan/JP/Joe/Bruce keys. Every success and error is `private, no-store`; mutations require UUID command IDs and optimistic versions.
 - `GET /api/staff/v1/contacts/index` is the staff-authenticated Contacts-list read model. It uses `requireStaffContext()` and the canonical paginated contact loader, returns row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - Admin routes live under `apps/portal/app/api/admin` and must enforce admin role checks.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/api/quotes`.
@@ -40,7 +41,7 @@ Verified-claims auth was measured as an alternative. In the current fresh-server
 
 - Auth-bound staff/admin server routes should use the Supabase client returned by `requireStaffContext()` or `requireAdminContext()`.
 - Browser UI should use API routes, query helpers, or local-first mutation layers rather than direct table writes.
-- Service-role access is server-only. It is reserved for admin tooling, imports, public token flows, automation, and intentional RLS bypasses.
+- Service-role access is server-only. It is reserved for admin tooling, imports, public token flows, automation, server-owned compatibility projection, and intentional RLS bypasses. The Stage 2 project-action route uses it only after a committed/auth-bound command to update the non-authoritative Schedule projection through an RPC revoked from `authenticated`.
 - Service-role keys must never reach client components, browser bundles, public props, logs, or generated documents.
 - Run `npm run service-role:changed` before handoff when touching service-role access. `npm run service-role:report` is the broad advisory inventory; `apps/portal/lib/supabaseClient.boundaries.test.ts` is the narrower portal-only hard allowlist.
 - When adding tables, pair route changes with ordered forward migrations, RLS/grants, and the relevant feature doc.
@@ -71,6 +72,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Validate JSON with `parseJsonBody()` before reading request payload fields.
 - Complete project snapshots reject an errored subordinate relationship read. Network or database failure must remain a refresh failure with Retry, not a fresh response containing misleading empty workflow arrays.
 - Command-centre reads likewise reject an errored bounded relationship or selected-estimate detail read. Missing exact quote source and missing stored quote price are successful explicit unavailable states, not opportunities to substitute another estimate.
+- Command-centre mutations return stable `400`/`403`/`404`/`409`/`500` failures. If the database command committed but the refreshed read fails, return `200` with `committed: true` and `refreshRequired: true`; clients must refresh and must not repeat the command.
 - Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
 
 ## Route Ownership

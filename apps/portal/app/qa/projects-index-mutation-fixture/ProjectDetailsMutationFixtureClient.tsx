@@ -1,6 +1,6 @@
 'use client';
 
-import ProjectDetailsSidebarClient from '@/components/projects/ProjectPage/ProjectDetailsSidebar.client';
+import ProjectStatusDetailsCard from '@/components/projects/ProjectPage/tabs/overview/ProjectStatusDetailsCard';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import styles from './projectsIndexMutationFixture.module.css';
 
@@ -26,7 +26,7 @@ export default function ProjectDetailsMutationFixtureClient() {
       <p className={styles.explanation}>
         This sample mounts the production user-owned queue, retry state, and project-details editor.
       </p>
-      <ProjectDetailsSidebarClient project={FIXTURE_PROJECT} />
+      <ProjectStatusDetailsCard project={FIXTURE_PROJECT} host="fixture" />
     </section>
   );
 }

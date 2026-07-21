@@ -1,7 +1,7 @@
 # Project Operational Command Centre V1
 
 Status: Authoritative product contract  
-Programme stage: Product definition complete; Stage 1 implemented in the working tree
+Programme stage: Stage 1 committed at `8770198f`; Stage 2 implementation in progress
 V1 lifecycle scope: Lead received through quote outcome  
 Staff-facing default tab: `Overview`  
 Related documents:
@@ -58,7 +58,7 @@ V1 must not create a separate layout for each role. Permissions may alter sensit
 - The staff-facing default tab label becomes `Overview`.
 - The internal `activity` tab key may remain if that preserves routes, links, tests, and lazy-loading boundaries.
 - Existing notes, stage tasks, current-design information, and activity capability are retained, reorganised, or linked.
-- Existing Designs, Quotes, Invoices, Job Packs, Emails, and Details workflows remain specialist destinations.
+- Existing Designs, Quotes, Invoices, conditional Job Packs, and Emails workflows remain specialist destinations with their current URL keys. Project details are consolidated into Overview.
 
 ## 3. Staff decisions supported by V1
 
@@ -83,7 +83,7 @@ The Overview must answer:
 
 The Overview must help administration decide:
 
-- Does the project have a Sales Owner?
+- Does the project have a Project Owner?
 - Is initial contact or follow-up overdue?
 - Is the customer contact information usable?
 - Is the site address verified?
@@ -179,7 +179,7 @@ The portal lacks enough trustworthy evidence to determine a state. Unknown must 
 
 The sections appear in this order:
 
-1. Project identity and lifecycle header.
+1. Project identity/navigation header and Overview status/details card.
 2. Critical exceptions strip.
 3. Current design and commercial record.
 4. Primary next action.
@@ -187,11 +187,11 @@ The sections appear in this order:
 6. Latest customer communication.
 7. Meaningful project timeline.
 
-### 5.1 Project identity and lifecycle header
+### 5.1 Project identity, navigation, status, and details
 
 #### Purpose
 
-Confirm project identity and expose the broad lifecycle and responsible people before staff act.
+Confirm project identity and ownership in the fixed header, then expose editable project facts and lifecycle state in Overview before staff act.
 
 #### Information displayed
 
@@ -202,9 +202,7 @@ Confirm project identity and expose the broad lifecycle and responsible people b
 - Site-address verification state.
 - Quote reference when available.
 - Existing pipeline stage.
-- Sales Owner.
-- Design Owner when applicable.
-- Estimating Owner when applicable.
+- Project Owner.
 - Last successful Overview refresh time.
 
 #### Primary actions
@@ -226,32 +224,30 @@ Confirm project identity and expose the broad lifecycle and responsible people b
 
 Always visible.
 
-- Sales Owner is shown for every active lead-to-quote project.
-- Design Owner appears when design work has started.
-- Estimating Owner appears when estimating work has started.
-- Missing owners are shown explicitly, not omitted.
+- Project Owner is shown from lead through deposit and remains visible afterward when assigned.
+- The approved owner choices are Jordan, JP, Joe, and Bruce.
+- A missing owner is shown explicitly, not omitted.
 
 #### Desktop
 
-One compact header band:
+One fixed sticky header and one Overview card:
 
-- Identity and customer actions on the left.
-- Stage and owner information on the right.
-- The header must not repeat the complete Details table.
+- Header top row: identity, Project Owner, Projects, Design Workbench, and the admin delete action.
+- Header bottom row: horizontally scrollable specialist tabs using the established URL keys.
+- Overview Status & Details: current stage, contact, site, region, and shared project/quote reference, with local-first detail editing.
+- The lifecycle pipeline is not repeated in the header.
 
 #### Tablet
 
-- Identity first.
-- Stage and Sales Owner immediately visible.
-- Secondary owner information wraps into a second row.
-- Contact actions remain directly accessible.
+- Identity and Project Owner remain in the header.
+- Status & Details spans the Overview row above commercial and primary-action cards.
+- Tabs remain horizontally scrollable and keyboard accessible.
 
 #### Mobile
 
-- Project and customer name first.
-- Stage and Sales Owner beneath.
-- Large Call, Email, and Map actions.
-- Secondary owners available in a compact Owners section.
+- Project name and Project Owner remain in the sticky header.
+- Header tabs scroll horizontally without widening the page.
+- Status & Details, commercial state, and primary action stack in that order with stage and core facts always visible.
 
 #### Loading
 
@@ -505,9 +501,7 @@ Answer what Sanctuary must do next, who owns it, and when it is due.
 - Source:
   - Automated workflow task.
   - Quote follow-up task.
-  - Stage action.
   - Manual action.
-  - Approval or blocker-resolution action.
 - Direct workflow link when one exists.
 - Short context or required outcome.
 - Last changed by and changed time.
@@ -1039,33 +1033,29 @@ These conditions require review rather than a latest-record fallback.
 
 ## 9. Ownership
 
-### 9.1 Required owners
+### 9.1 Required owner
 
-- Sales Owner is required for every active lead-to-quote project.
-- Design Owner becomes required when design work starts.
-- Estimating Owner becomes required when estimating work starts.
-- One person may hold several roles.
-- Project Manager ownership is outside V1.
+- `new`, `contacted`, `site_visit`, `quoting`, `sent`, and `deposit` require one Project Owner.
+- `scheduled`, `completed`, and `paid` retain and display an existing assignment but do not create a missing-owner exception.
+- The owner roster is Jordan, JP, Joe, and Bruce.
+- Project Manager or specialist-role ownership is outside V1.
 
 ### 9.2 Owner display
 
 Display:
 
 - Name.
-- Role on this project.
+- Project Owner label.
 - Missing state.
 - Change action, subject to permission.
 
-Do not store owner display names as project copies. Resolve names from the canonical user or staff directory.
+Store a stable approved owner key and resolve its display label from the canonical owner roster.
 
 ### 9.3 When a workflow starts
 
-Stage 0 must define reliable repository evidence for:
+Owner applicability follows the pipeline-stage table in 9.1. It is not inferred from notes, project creator, task author, quote sender, or a manually selected workstream state.
 
-- Design work started.
-- Estimating work started.
-
-The implementation must not infer these solely from arbitrary notes or a manually selected workstream state.
+Owner backfill prefers the legacy Sales assignment, then Design and Estimating, only when the active assignee name maps to Jordan, JP, Joe, or Bruce. Unknown identities remain unassigned rather than being guessed.
 
 ### 9.4 Missing owner behaviour
 
@@ -1073,6 +1063,8 @@ The implementation must not infer these solely from arbitrary notes or a manuall
 - Provide `Assign owner`.
 - Include the project in an exception queue.
 - Do not universally block project editing.
+
+Admins may assign, reassign, or unassign the Project Owner. Staff cannot change project ownership. Action reassignment remains a separate staff capability.
 
 ## 10. Primary next action
 
@@ -1094,40 +1086,32 @@ When the customer owes a decision, a Sanctuary staff member still owns the dated
 
 A primary-action candidate may come from:
 
-1. A required approval action.
-2. A blocker-resolution action.
-3. An open automation task.
-4. An open quote follow-up task.
-5. An incomplete stage action with a direct workflow action.
-6. A manual project action.
+1. An open automation `tasks` record.
+2. An open `followup_tasks` record.
+3. A canonical manual project action.
 
 Exclude:
 
 - Personal dashboard reminders.
+- Project checklist and stage actions.
 - Completed tasks.
-- Project checklist evidence that has no staff action.
+- Skipped tasks.
+- Undated tasks from automatic selection; expose them as selectable work requiring a due date.
 - Generic status labels.
+- Approval and blocker-resolution actions until Stage 5.
 
 ### 10.3 Selection precedence
 
-Select the highest applicable candidate:
+Open automation and follow-up candidates always precede manual candidates. Within each source class select:
 
-1. Required approval blocking the current next step.
-2. Active blocker-resolution action.
-3. Overdue customer-facing action.
-4. Other overdue action.
-5. Action due today.
-6. Earliest future due action.
-7. Stage-derived default action.
-8. Manual action.
+1. Overdue customer-facing action.
+2. Other overdue action.
+3. Action due today.
+4. Earliest future action.
 
-For equal precedence:
+Break ties by earliest exact due time, oldest creation time, then stable source kind and ID. A manual action wins automatically only when no qualifying automation or follow-up candidate exists.
 
-1. Explicitly selected or pinned action.
-2. Earliest due date.
-3. Oldest creation time.
-
-Stage 0 may refine the technical selector, but it may not change the product requirement that one action is shown and source tasks are not duplicated.
+Customer-facing task types are `REVIEW_NEW_LEAD`, `BOOK_SITE_VISIT`, `ATTEND_SITE_VISIT`, `FINALIZE_SEND_QUOTE`, `FOLLOWUP_CALL`, `FOLLOWUP_EMAIL`, `SCHEDULE_INSTALL_WINDOW`, `CONFIRM_FINAL_SCHEDULE`, and `RESEND_EMAIL`. Manual Call, Site visit, Quote, and Follow-up categories are customer-facing.
 
 ### 10.4 Automation and manual control
 
@@ -1136,7 +1120,10 @@ Stage 0 may refine the technical selector, but it may not change the product req
 - Authorised staff may create a manual action.
 - Selecting a primary action does not delete other tasks.
 - A manual change records actor and time.
-- Automation must not silently replace an explicitly selected action unless it is completed, cancelled, or invalidated.
+- Creating a manual action selects it and records the current outranking-candidate hash.
+- A later higher-ranked candidate or material ranking change creates a conflict; a lower-ranked candidate does not.
+- During conflict, regular staff may complete the selected action but may not reschedule, reassign, reselect, or change criticality.
+- An admin resolves conflict by retaining the selected action or selecting a current outranking candidate. Retaining records the new outranking hash.
 
 ### 10.5 Owner resolution
 
@@ -1144,18 +1131,19 @@ Use:
 
 1. Explicit source-task assignee.
 2. Explicit manual-action owner.
-3. Appropriate project owner:
-   - Sales action -> Sales Owner.
-   - Design action -> Design Owner.
-   - Estimating action -> Estimating Owner.
+3. The single Project Owner, regardless of action category.
 4. Unassigned.
+
+An invalid, deleted, or banned source assignee is treated as unassigned before applying the role fallback.
 
 ### 10.6 Due date
 
 - Every primary action requires a due date or due time.
-- The data model must store an unambiguous timestamp or a date with an explicit Sanctuary due-time rule.
+- Store unambiguous `timestamptz` values.
 - Display and overdue calculations use `Pacific/Auckland`.
-- The lead-response SLA and normal-overdue escalation thresholds are business settings requiring Jordan's confirmation before Stage 2.
+- Staff-entered dates resolve to 5:00pm Auckland time, including daylight saving. Exact source timestamps remain exact.
+- `REVIEW_NEW_LEAD` is due at 5:00pm on the next business day, excluding weekends, national/Auckland holidays, and company closures.
+- The contacted-project follow-up remains two business days and is persisted as a follow-up task rather than a project-column write.
 
 ### 10.7 Completion
 
@@ -1173,13 +1161,14 @@ Completion must:
 - Update the owning source where supported.
 - Preserve prior due date and actor in history.
 - If a linked source cannot be rescheduled, create a clearly related replacement action rather than silently rewriting unrelated task data.
-- Repeated rescheduling may require a reason; the threshold is an open business decision.
+- The third and every later lifetime reschedule requires a reason.
 
 ### 10.9 Reassignment
 
 - Update the source owner where supported.
 - Otherwise update the canonical primary-action assignment.
 - Preserve assignment history.
+- Any staff member may reassign the current action to any active staff member. This permission is separate from project-owner permissions.
 
 ### 10.10 No primary action
 
@@ -1217,6 +1206,13 @@ V1 must preserve the distinction between:
 
 The primary action references existing tasks where possible. It is not a fifth general task list.
 
+### 10.13 Severity and audit
+
+- Overdue actions remain amber regardless of elapsed time.
+- Red/critical is explicit only. Setting or clearing it requires a reason and audit event.
+- Completion, rescheduling, reassignment, selection, conflict resolution, critical changes, manual creation, and owner changes are audited.
+- Full audit data is retained. Project Overview displays the latest five events inline and the latest 20 in recent history.
+
 ## 11. V1 workstreams
 
 ### 11.1 Shared workstream rules
@@ -1253,7 +1249,7 @@ Show whether Sanctuary has established personal contact and a clear customer-fac
 #### Canonical evidence
 
 - Pipeline stage.
-- Sales Owner.
+- Project Owner.
 - Primary next action.
 - Personal customer communication.
 - Site-visit progress.
@@ -1300,7 +1296,7 @@ Show whether Sanctuary has established personal contact and a clear customer-fac
 
 #### Warnings
 
-- Sales Owner missing.
+- Project Owner missing.
 - No primary next action.
 - No personal contact.
 - Normal action overdue.
@@ -1308,7 +1304,7 @@ Show whether Sanctuary has established personal contact and a clear customer-fac
 
 #### Owner
 
-Sales Owner.
+Project Owner.
 
 #### Actions and links
 
@@ -1404,7 +1400,7 @@ Those may become project-specific controls in later lifecycle work.
 
 #### Owner
 
-Sales Owner until a reliable Design or Estimating ownership transition occurs.
+Project Owner.
 
 #### Actions and links
 
@@ -1432,7 +1428,7 @@ Show whether a reliable estimate-backed design and customer price exist for the 
 - Costing freshness.
 - Estimate warnings and validation.
 - Estimate editability and quote lock.
-- Design and Estimating Owners.
+- Project Owner.
 
 #### Derived states
 
@@ -1478,8 +1474,7 @@ Show whether a reliable estimate-backed design and customer price exist for the 
 
 #### Warnings
 
-- Design Owner missing after design starts.
-- Estimating Owner missing after estimating starts.
+- Project Owner missing.
 - Costing may be stale.
 - Newer unquoted estimate exists.
 - Design summary incomplete.
@@ -1487,9 +1482,7 @@ Show whether a reliable estimate-backed design and customer price exist for the 
 
 #### Owner
 
-- Design Owner for design issues.
-- Estimating Owner for pricing and costing issues.
-- The same person may hold both roles.
+- Project Owner, with an explicit source-task assignee taking precedence for the primary action when present.
 
 #### Actions and links
 
@@ -1580,7 +1573,7 @@ Show the current customer-facing commercial outcome and next commercial action.
 
 #### Owner
 
-Sales Owner for customer progression. Estimating Owner for pricing correction.
+Project Owner for progression, with the explicit source-task assignee owning specialist pricing correction when present.
 
 #### Actions and links
 
@@ -1772,8 +1765,7 @@ Implement only after Stage 0 verifies deterministic evidence.
 
 | Condition | Behaviour |
 | --- | --- |
-| Sales Owner missing | Assign owner; include in exception queue |
-| Design or Estimating Owner missing when relevant | Assign owner |
+| Project Owner missing from lead through deposit | Assign owner; include in exception queue |
 | No primary next action | Set or select action; include in exception queue |
 | Normal action overdue | Show due severity and action |
 | No personal customer contact | Make or log contact |
@@ -1900,9 +1892,7 @@ Stage 0 must verify every path and schema assumption against the current reposit
 | Costing freshness | Estimate pricing metadata | Estimate persistence and calculator outcome | Expose read-only |
 | Estimate lock | Quote-backed editability rules | Estimate domain | Expose read-only |
 | Quote send result | Quote send logs and owning email result | Quote domain and email/outbox records | New summary read model |
-| Sales Owner | Canonical project-owner record | Legacy owner fields may exist | Stage 0 deployment and usage check |
-| Design Owner | Canonical project owner or design request | Legacy field and Design List designer may differ | Stage 0 precedence decision |
-| Estimating Owner | Canonical project-owner record | No approved source yet | Likely schema work |
+| Project Owner | `project_owner_assignments` approved owner key | Legacy Sales/Design/Estimating role rows remain rollback evidence | Stage 2 single-owner migration |
 | Primary next action | Existing source task plus canonical selector | Project next-action fields, automation tasks, follow-up tasks | Architecture decision and likely schema work |
 | Primary-action owner | Source task or project owner | Existing tasks can have assignee; current project snapshot does not | New read model |
 | Workstream state | Derived server helper | No existing canonical V1 helper | New read model; no status table |
@@ -1944,9 +1934,7 @@ Do not store independent copies of:
 
 V1 may add controlled editing for:
 
-- Sales Owner.
-- Design Owner when applicable.
-- Estimating Owner when applicable.
+- Project Owner.
 - Selected primary next action.
 - Primary-action owner.
 - Due date or due time.
@@ -2050,9 +2038,9 @@ At least five pilot staff across different office roles must complete this test 
 
 ### 20.3 Ownership and primary action
 
-16. Every active lead-to-quote project can display a Sales Owner or explicit missing-owner state.
-17. Design and Estimating Owners appear only when their workflows have started.
-18. One person may hold multiple owner roles.
+16. Every project from lead through deposit displays one Project Owner or an explicit missing-owner state.
+17. The only selectable Project Owners are Jordan, JP, Joe, and Bruce.
+18. No project displays multiple project-owner roles.
 19. No project displays more than one primary action.
 20. A linked source task is not copied into a duplicate independent task.
 21. Manual action selection records actor and time.
@@ -2143,7 +2131,7 @@ At least five pilot staff across different office roles must complete this test 
 - Draft indicative estimate exists.
 - Automated acknowledgement exists.
 - No personal contact.
-- No Sales Owner.
+- No Project Owner.
 - No primary next action.
 
 #### Expected current design
@@ -2169,7 +2157,7 @@ At least five pilot staff across different office roles must complete this test 
 
 #### Expected warnings or exceptions
 
-- Sales Owner missing.
+- Project Owner missing.
 - No next action.
 - No personal contact.
 - Address not verified.
@@ -2182,7 +2170,7 @@ At least five pilot staff across different office roles must complete this test 
 #### Input records
 
 - Verified full address.
-- Sales Owner assigned.
+- Project Owner assigned.
 - Required site visit completed, or explicitly not required with reason.
 - One active estimate.
 - Costing current.
@@ -2211,7 +2199,7 @@ At least five pilot staff across different office roles must complete this test 
 
 #### Expected warnings or exceptions
 
-- None, unless Design or Estimating Owner is required and missing.
+- None, unless the Project Owner is missing.
 
 ---
 
@@ -2383,7 +2371,7 @@ At least five pilot staff across different office roles must complete this test 
 
 - Active lead-to-quote project.
 - Personal contact has occurred.
-- No Sales Owner.
+- No Project Owner.
 
 #### Expected current design
 
@@ -2403,7 +2391,7 @@ At least five pilot staff across different office roles must complete this test 
 
 #### Expected warnings or exceptions
 
-- Sales Owner missing.
+- Project Owner missing.
 - Assign Owner action.
 - Project appears in exception queue.
 
@@ -2414,7 +2402,7 @@ At least five pilot staff across different office roles must complete this test 
 #### Input records
 
 - Active project.
-- Sales Owner exists.
+- Project Owner exists.
 - No open candidate and no selected manual action.
 
 #### Expected current design
@@ -2506,24 +2494,12 @@ At least five pilot staff across different office roles must complete this test 
 
 These decisions require business judgement before the relevant implementation stage. Repository inspection alone cannot decide them.
 
-### Before Stage 2
+### Stage 2 decisions resolved
 
-1. Lead-response SLA:
-   - What duration applies?
-   - Does it run only during business hours?
-   - Which enquiry types have different targets?
-
-2. Overdue severity:
-   - When does a normal overdue action become a critical red exception?
-   - Should critical actions have an explicit critical flag, a rule-based category, or both?
-
-3. Repeated rescheduling:
-   - After how many reschedules is a reason mandatory?
-   - When should a manager or director see the pattern?
-
-4. Owner reassignment:
-   - May all staff reassign any project owner?
-   - Or should owner reassignment be limited to admin/directors and self-assignment?
+1. Lead response is due by 5:00pm Auckland time on the next business day; weekends, national/Auckland holidays, and company closures are excluded.
+2. Normal overdue remains amber. Critical is explicit only and requires a reason to set or clear.
+3. The third and every later reschedule requires a reason.
+4. Admins manage the single Project Owner from the Jordan/JP/Joe/Bruce roster. All staff may reassign the current action to an active staff member unless a selection conflict freezes the control.
 
 ### Before Stage 3
 

@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import ProjectDetailsSidebarClient from './ProjectDetailsSidebar.client';
+import ProjectStatusDetailsCard from './tabs/overview/ProjectStatusDetailsCard';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import type { PortalProjectDetailsDraft } from '@/lib/localFirst/projectDetails';
 
@@ -62,6 +62,10 @@ vi.mock('@/lib/localFirst/projectDetails', async (importOriginal) => {
   };
 });
 
+vi.mock('./tabs/overview/ProjectStageControl', () => ({
+  default: ({ stage }: { stage: string }) => <div data-testid="stage-control">{stage}</div>,
+}));
+
 const project = {
   id: 'proj_1',
   name: 'Original project',
@@ -98,7 +102,7 @@ function findButton(container: Element, label: string): HTMLButtonElement | null
   return Array.from(container.querySelectorAll('button')).find((node) => node.textContent?.trim() === label) ?? null;
 }
 
-describe('ProjectDetailsSidebarClient', () => {
+describe('ProjectStatusDetailsCard details editing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.clearWorkingCopy.mockReset().mockResolvedValue(undefined);
@@ -126,9 +130,9 @@ describe('ProjectDetailsSidebarClient', () => {
   });
 
   it('queues autosaved project details in the user-owned local-first runtime', async () => {
-    const rendered = renderIntoDocument(<ProjectDetailsSidebarClient project={project} />);
+    const rendered = renderIntoDocument(<ProjectStatusDetailsCard project={project} host="host" />);
 
-    click(findButton(rendered.container, 'Edit'));
+    click(findButton(rendered.container, 'Edit details'));
     changeValue(rendered.container.querySelector('#projectName'), 'Updated project');
 
     await act(async () => {
@@ -166,9 +170,9 @@ describe('ProjectDetailsSidebarClient', () => {
         releaseWorkingCopy = resolve;
       }),
     );
-    const rendered = renderIntoDocument(<ProjectDetailsSidebarClient project={project} />);
+    const rendered = renderIntoDocument(<ProjectStatusDetailsCard project={project} host="host" />);
 
-    click(findButton(rendered.container, 'Edit'));
+    click(findButton(rendered.container, 'Edit details'));
     changeValue(rendered.container.querySelector('#siteAddress'), '99 Client Road');
     click(findButton(rendered.container, 'Done'));
 
@@ -199,9 +203,8 @@ describe('ProjectDetailsSidebarClient', () => {
       siteAddress: '1 Example St',
       region: 'North',
       quoteRef: 'Q-1001',
-      nextActionDate: '2026-04-03',
     };
-    const rendered = renderIntoDocument(<ProjectDetailsSidebarClient project={project} />);
+    const rendered = renderIntoDocument(<ProjectStatusDetailsCard project={project} host="host" />);
 
     await act(async () => {
       await Promise.resolve();
@@ -230,10 +233,11 @@ describe('ProjectDetailsSidebarClient', () => {
   });
 
   it('refreshes confirmed details when a new project prop arrives', () => {
-    const rendered = renderIntoDocument(<ProjectDetailsSidebarClient project={project} />);
+    const rendered = renderIntoDocument(<ProjectStatusDetailsCard project={project} host="host" />);
 
     rendered.rerender(
-      <ProjectDetailsSidebarClient
+      <ProjectStatusDetailsCard
+        host="host"
         project={{
           ...project,
           siteAddress: '25 Updated Avenue',

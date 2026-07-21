@@ -137,21 +137,20 @@ function designRequestTaskKey(projectUuid: string, requestVersion: number): stri
   return `design_request:${projectUuid}:v${requestVersion}`;
 }
 
-async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: number, requestStatus: DesignRequestStatus, nowIso: string) {
+async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: number, requestStatus: DesignRequestStatus) {
   const supabase = await getSupabaseServerAuth();
   const idempotencyKey = designRequestTaskKey(projectUuid, requestVersion);
   const taskStatus = requestStatus === 'DONE' ? 'DONE' : requestStatus === 'CANCELLED' ? 'SKIPPED' : 'OPEN';
-  const taskPatch: Record<string, unknown> = {
-    status: taskStatus,
-    completed_at: requestStatus === 'DONE' || requestStatus === 'CANCELLED' ? nowIso : null,
-  };
-
-  const taskRes = await supabase
-    .from('tasks')
-    .update(taskPatch as any)
-    .eq('project_id', projectUuid)
-    .eq('type', 'CREATE_DESIGN_PACKAGE')
-    .eq('idempotency_key', idempotencyKey);
+  const taskRes = await supabase.rpc('project_command_sync_design_task', {
+    p_project_id: projectUuid,
+    p_operation: 'set_status',
+    p_idempotency_key: idempotencyKey,
+    p_title: null,
+    p_details: null,
+    p_due_at: null,
+    p_status: taskStatus,
+    p_meta: null,
+  });
 
   if (taskRes.error) {
     console.error('[design_packages] failed to sync companion task', taskRes.error);
@@ -161,12 +160,16 @@ async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: 
 async function syncDesignRequestTaskPriority(projectUuid: string, requestVersion: number, dueAt: string | null) {
   const supabase = await getSupabaseServerAuth();
   const idempotencyKey = designRequestTaskKey(projectUuid, requestVersion);
-  const taskRes = await supabase
-    .from('tasks')
-    .update({ due_at: dueAt } as any)
-    .eq('project_id', projectUuid)
-    .eq('type', 'CREATE_DESIGN_PACKAGE')
-    .eq('idempotency_key', idempotencyKey);
+  const taskRes = await supabase.rpc('project_command_sync_design_task', {
+    p_project_id: projectUuid,
+    p_operation: 'set_due',
+    p_idempotency_key: idempotencyKey,
+    p_title: null,
+    p_details: null,
+    p_due_at: dueAt,
+    p_status: null,
+    p_meta: null,
+  });
 
   if (taskRes.error) {
     console.error('[design_packages] failed to sync companion task priority', taskRes.error);
@@ -617,25 +620,22 @@ export async function createDesignRequest(params: {
 
   const requestUuid = String(insertRes.data.id);
   const taskKey = designRequestTaskKey(projectUuid, previewData.nextVersion);
-  const taskRes = await supabase.from('tasks').upsert(
-    {
-      project_id: projectUuid,
-      type: 'CREATE_DESIGN_PACKAGE',
-      status: 'OPEN',
-      title: `Create design package v${previewData.nextVersion}`,
-      details: trimString(params.requestNote) ?? null,
-      due_at: dueAt,
-      meta: {
-        source: 'design_packages',
-        requestId: requestUuid,
-        estimateId: estimateUuid,
-        requestVersion: previewData.nextVersion,
-        priorityTier: selectedTier,
-      },
-      idempotency_key: taskKey,
-    } as any,
-    { onConflict: 'idempotency_key' },
-  );
+  const taskRes = await supabase.rpc('project_command_sync_design_task', {
+    p_project_id: projectUuid,
+    p_operation: 'upsert',
+    p_idempotency_key: taskKey,
+    p_title: `Create design package v${previewData.nextVersion}`,
+    p_details: trimString(params.requestNote) ?? null,
+    p_due_at: dueAt,
+    p_status: 'OPEN',
+    p_meta: {
+      source: 'design_packages',
+      requestId: requestUuid,
+      estimateId: estimateUuid,
+      requestVersion: previewData.nextVersion,
+      priorityTier: selectedTier,
+    },
+  });
   if (taskRes.error) {
     console.error('[design_packages] failed to create companion task', taskRes.error);
   }
@@ -690,7 +690,7 @@ export async function markDesignRequestStarted(requestId: string): Promise<{ req
 
   const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'IN_PROGRESS', nowDate().toISOString());
+  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'IN_PROGRESS');
 
   return { requestId: appRequestId(requestUuid) };
 }
@@ -712,7 +712,7 @@ export async function markDesignRequestDone(requestId: string): Promise<{ reques
 
   const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'DONE', nowIso);
+  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'DONE');
 
   return { requestId: appRequestId(requestUuid), projectUuid: current.project_id };
 }
@@ -744,7 +744,7 @@ export async function setDesignRequestStatus(
 
   const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
-  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), nextStatus, nowIso);
+  await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), nextStatus);
   return { ok: true, requestId: appRequestId(requestUuid) };
 }
 

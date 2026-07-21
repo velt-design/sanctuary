@@ -35,6 +35,10 @@ function deferred<T>() {
 
 const fakeAuth = {
   auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'auth-user-1' } }, error: null })) },
+  rpc: vi.fn(async () => ({
+    data: [{ user_id: 'auth-user-1', display_name: 'Alex Staff', email: 'alex@example.com', access_role: 'staff' }],
+    error: null,
+  })),
 };
 
 describe('getProjectPageSnapshot', () => {
@@ -43,6 +47,7 @@ describe('getProjectPageSnapshot', () => {
     fromMock.mockReset();
     logPortalServerError.mockReset();
     fakeAuth.auth.getUser.mockClear();
+    fakeAuth.rpc.mockClear();
   });
 
   it('returns a snapshot without scheduling invoice retries during read', async () => {
@@ -94,7 +99,13 @@ describe('getProjectPageSnapshot', () => {
       error: null,
     });
 
-    fromMock.mockReturnValueOnce(projectQuery).mockReturnValueOnce(relatedQuery);
+    fromMock
+      .mockReturnValueOnce(projectQuery)
+      .mockReturnValueOnce(relatedQuery)
+      .mockReturnValueOnce(createQuery({
+        data: { owner_key: 'jordan' },
+        error: null,
+      }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -120,6 +131,7 @@ describe('getProjectPageSnapshot', () => {
         contactPhone: '021',
         siteAddress: '123 Test St',
         hasJobPacks: true,
+        owner: { key: 'jordan', displayName: 'Jordan' },
       },
       pipeline: {
         stage: 'new',
@@ -129,9 +141,10 @@ describe('getProjectPageSnapshot', () => {
     expect(snapshot?.emails).toHaveLength(1);
     expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
     expect(snapshot?.activity).toHaveLength(1);
-    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenCalledTimes(3);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
     expect(relatedQuery.eq).toHaveBeenCalledWith('quotes.acceptedVersions.status', 'ACCEPTED');
     expect(relatedQuery.eq).toHaveBeenCalledWith('openInvoices.status', 'OPEN');
     expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
@@ -158,7 +171,7 @@ describe('getProjectPageSnapshot', () => {
         site_address: '5 Direct Road',
       },
       error: null,
-    }));
+    })).mockReturnValueOnce(createQuery({ data: [], error: null }));
 
     const { getProjectPageSummary } = await import('./getProjectPageSnapshot');
     const summary = await getProjectPageSummary(
@@ -181,8 +194,9 @@ describe('getProjectPageSnapshot', () => {
       emails: [],
       notes: [],
     });
-    expect(fromMock).toHaveBeenCalledOnce();
-    expect(fromMock).toHaveBeenCalledWith('projects');
+    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'project_owner_assignments');
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
   });
 
@@ -193,7 +207,8 @@ describe('getProjectPageSnapshot', () => {
 
     fromMock
       .mockReturnValueOnce(createQuery(projectResult.promise))
-      .mockReturnValueOnce(createQuery(relatedResult.promise));
+      .mockReturnValueOnce(createQuery(relatedResult.promise))
+      .mockReturnValueOnce(createQuery({ data: [], error: null }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const pendingSnapshot = getProjectPageSnapshot(
@@ -203,9 +218,10 @@ describe('getProjectPageSnapshot', () => {
       'auth-user-1',
     );
 
-    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(fromMock).toHaveBeenCalledTimes(3);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
+    expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
 
     projectResult.resolve({
       data: {
@@ -247,7 +263,9 @@ describe('getProjectPageSnapshot', () => {
         pipeline_stage: 'NEW',
       },
       error: null,
-    })).mockReturnValueOnce(createQuery({ data: null, error: relatedError }));
+    }))
+      .mockReturnValueOnce(createQuery({ data: null, error: relatedError }))
+      .mockReturnValueOnce(createQuery({ data: [], error: null }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = getProjectPageSnapshot(

@@ -2,15 +2,10 @@
 
 import dynamic from 'next/dynamic';
 import type { QueryClient } from '@tanstack/react-query';
-import styles from './ProjectPage.module.css';
+import type { ProjectTabKey } from '@/lib/projects/projectTabs';
+import styles from './projectTabModules.module.css';
 
-export type ProjectTabModuleKey =
-  | 'activity'
-  | 'estimates'
-  | 'quotes'
-  | 'invoices'
-  | 'job-packs'
-  | 'emails';
+export type ProjectTabModuleKey = ProjectTabKey;
 
 const loaders = {
   activity: () => import('./tabs/OverviewTab'),

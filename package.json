@@ -109,6 +109,7 @@
     "test:portal:browser": "npm run portal:fixture-env && playwright test playwright/portal.drawing-workbench.spec.ts playwright/portal.command-centre.spec.ts --project=portal-fixture",
     "test:portal:browser:headed": "npm run portal:fixture-env && playwright test playwright/portal.drawing-workbench.spec.ts playwright/portal.command-centre.spec.ts --project=portal-fixture --headed",
     "test:portal:browser:auth": "npm run portal:auth-env && playwright test playwright/portal.auth.setup.ts --project=setup",
+    "test:portal:command-centre:auth": "npm run portal:auth-env && playwright test playwright/portal.command-centre-auth.spec.ts --project=portal-chromium",
     "prepare": "husky || true",
     "portal:scenarios:ensure": "tsx scripts/ensure-portal-scenarios.ts",
     "portal:agent-scenarios": "npm run portal:auth-env && npx playwright test playwright/portal.agent-scenarios.spec.ts --project=portal-chromium",

@@ -13,6 +13,7 @@ import {
   type TaskKey,
 } from '@/lib/projects/pipelineDefinition';
 import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
+import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 
 const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
 
@@ -146,6 +147,16 @@ function relationRows(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
 }
 
+async function loadProjectHeaderOwner(client: SupabaseClient, projectUuid: string): Promise<ProjectPageSnapshot['project']['owner']> {
+  const assignment = await client
+    .from('project_owner_assignments')
+    .select('owner_key')
+    .eq('project_id', projectUuid)
+    .maybeSingle();
+  if (assignment.error) throw new Error(assignment.error.message ?? 'Failed to load project owner');
+  return projectOwnerOption(assignment.data?.owner_key) ?? undefined;
+}
+
 function mapProjectSummary(projectRow: any, fallbackProjectId: string): {
   project: ProjectPageSnapshot['project'];
   stage: ProjectPageSnapshot['pipeline']['stage'];
@@ -207,11 +218,10 @@ export async function getProjectPageSummary(
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
 
-  const projectRes = await client
-    .from('projects')
-    .select('*,contact:contacts(*)')
-    .eq('id', projectUuid)
-    .maybeSingle();
+  const [projectRes, owner] = await Promise.all([
+    client.from('projects').select('*,contact:contacts(*)').eq('id', projectUuid).maybeSingle(),
+    loadProjectHeaderOwner(client, projectUuid),
+  ]);
   if (projectRes?.error) {
     logSnapshotError(diagnostics, 'project summary query failed', projectRes.error, 'projects');
     throw new Error('Failed to load project summary');
@@ -220,7 +230,7 @@ export async function getProjectPageSummary(
 
   const summary = mapProjectSummary(projectRes.data, projectId);
   return {
-    project: summary.project,
+    project: { ...summary.project, ...(owner ? { owner } : null) },
     pipeline: { stage: summary.stage },
     tasks: { stage: summary.stage, items: [] },
     activity: [],
@@ -244,7 +254,7 @@ export async function getProjectPageSnapshot(
   // rows are embedded through their declared foreign keys in one PostgREST
   // request, avoiding a browser-open path with many HTTP round trips while
   // retaining auth-bound RLS on every relation.
-  const [projectRes, relatedRes] = await Promise.all([
+  const [projectRes, relatedRes, owner] = await Promise.all([
     client
       .from('projects')
       .select('*,contact:contacts(*)')
@@ -266,6 +276,7 @@ export async function getProjectPageSnapshot(
       .limit(1, { referencedTable: 'jobPacks' })
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
       .maybeSingle(),
+    loadProjectHeaderOwner(client, projectUuid),
   ]);
 
   const projectRow = projectRes?.data ?? null;
@@ -336,6 +347,7 @@ export async function getProjectPageSnapshot(
   return {
     project: {
       ...summary.project,
+      ...(owner ? { owner } : null),
       ...(hasJobPacks ? { hasJobPacks } : null),
     },
     pipeline: {

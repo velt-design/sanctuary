@@ -99,7 +99,6 @@ export default function LocalFirstPortalMutations() {
                 siteAddress: payload.draft.siteAddress,
                 region: payload.draft.region,
                 quoteRef: payload.draft.quoteRef,
-                nextActionDate: payload.draft.nextActionDate,
               },
               contact: {
                 name: payload.draft.contactName,

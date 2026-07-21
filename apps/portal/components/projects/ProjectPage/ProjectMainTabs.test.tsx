@@ -4,9 +4,6 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectMainTabs from './ProjectMainTabs';
 
 const replaceMock = vi.fn();
-const prefetchQueryMock = vi.fn();
-const preloadModuleMock = vi.fn();
-const preloadProjectDetailsMock = vi.fn();
 let mockSearchParams = 'tab=estimates';
 
 vi.mock('next/navigation', () => ({
@@ -15,39 +12,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mockSearchParams),
 }));
 
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    prefetchQuery: prefetchQueryMock,
-  }),
-}));
-
 vi.mock('./projectTabModules', () => ({
   OverviewTab: ({ snapshotContentReady }: { snapshotContentReady: boolean }) => (
     <div data-testid="overview-tab" data-snapshot-ready={String(snapshotContentReady)} />
   ),
   EmailsTab: () => <div data-testid="emails-tab" />,
-  EstimatesTab: () => <div data-testid="estimates-tab" />,
+  EstimatesTab: () => <div data-testid="estimates-tab" data-configurator-location="inline" />,
   InvoicesTab: () => <div data-testid="invoices-tab" />,
   JobPacksTab: () => <div data-testid="job-packs-tab" />,
   QuotesTab: () => <div data-testid="quotes-tab" />,
-  preloadProjectTab: (...args: unknown[]) => preloadModuleMock(...args),
-}));
-
-vi.mock('./projectDetailsModule', () => ({
-  LazyProjectDetailsSidebar: () => <div data-testid="details-tab" />,
-  preloadProjectDetails: (...args: unknown[]) => preloadProjectDetailsMock(...args),
-}));
-
-vi.mock('@/lib/queries/invoices', () => ({
-  depositInvoicesByProjectQueryOptions: () => ({}),
-}));
-
-vi.mock('@/lib/queries/projectEstimates', () => ({
-  estimateMetasByProjectQueryOptions: () => ({}),
-}));
-
-vi.mock('@/lib/queries/quotes', () => ({
-  quoteVersionsByProjectQueryOptions: () => ({}),
 }));
 
 vi.mock('@/lib/supabase/browserClient', () => ({
@@ -56,19 +29,9 @@ vi.mock('@/lib/supabase/browserClient', () => ({
 }));
 
 const snapshot = {
-  project: {
-    id: 'proj_1',
-    name: 'Deck Build',
-    stage: 'lead',
-    hasJobPacks: true,
-  },
-  pipeline: {
-    stage: 'lead',
-  },
-  tasks: {
-    stage: 'lead',
-    items: [],
-  },
+  project: { id: 'proj_1', name: 'Deck Build', stage: 'lead', hasJobPacks: true },
+  pipeline: { stage: 'lead' },
+  tasks: { stage: 'lead', items: [] },
   activity: [],
   emails: [],
   notes: [],
@@ -77,136 +40,71 @@ const snapshot = {
 describe('ProjectMainTabs', () => {
   beforeEach(() => {
     replaceMock.mockReset();
-    prefetchQueryMock.mockReset();
-    preloadModuleMock.mockReset();
-    preloadProjectDetailsMock.mockReset();
     mockSearchParams = 'tab=estimates';
-    window.sessionStorage.clear();
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('does not render the removed Files tab', () => {
+  it('renders the requested tab at full width without a nested tab bar or details tab', () => {
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
 
-    const tabButtons = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
-
-    expect(tabButtons).toContain('Designs');
-    expect(tabButtons).toContain('Quotes');
-    expect(tabButtons).toContain('Invoices');
-    expect(tabButtons).toContain('Job Packs');
-    expect(tabButtons).toContain('Emails');
-    expect(tabButtons).not.toContain('Files');
-    expect(rendered.container.textContent).not.toContain('Upload and manage project files once storage is wired up.');
+    expect(rendered.container.querySelector('[data-testid="estimates-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[role="tablist"]')).toBeNull();
+    expect(rendered.container.textContent).not.toContain('Details');
+    expect(rendered.container.querySelector('[data-project-tab-body="estimates"]')).not.toBeNull();
 
     rendered.unmount();
   });
 
-  it('renders Overview as the first tab while preserving the activity key', () => {
+  it('keeps the Designs configurator in the inline tab fallback', () => {
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
-
-    const tabButtons = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
-
-    expect(tabButtons[0]).toBe('Overview');
-
+    expect(rendered.container.querySelector('[data-configurator-location="inline"]')).not.toBeNull();
     rendered.unmount();
   });
 
-  it('renders Details only when the stacked layout asks for it', () => {
-    const wide = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
-    const wideButtons = Array.from(wide.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
-    expect(wideButtons).not.toContain('Details');
-    wide.unmount();
-
-    const stacked = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="estimates" />);
-    const stackedButtons = Array.from(stacked.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
-    expect(stackedButtons).toContain('Details');
-    stacked.unmount();
-  });
-
-  it('renders project details from the Details tab when stacked', () => {
-    mockSearchParams = 'tab=details';
-    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="activity" />);
-
-    expect(rendered.container.querySelector('[data-testid="details-tab"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="overview-tab"]')).toBeNull();
-
-    rendered.unmount();
-  });
-
-  it('coerces the Details tab back to the activity-key Overview when details are in the desktop rail', () => {
-    mockSearchParams = 'tab=details';
+  it('normalizes an invalid tab to Overview while preserving the activity key', () => {
+    mockSearchParams = 'tab=details&campaign=winter';
     const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="details" />);
 
     expect(rendered.container.querySelector('[data-testid="overview-tab"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="details-tab"]')).toBeNull();
-    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity');
+    expect(rendered.container.querySelector('[data-project-active-tab="activity"]')).not.toBeNull();
 
     rendered.unmount();
   });
 
-  it('renders Overview during summary state so its independent command read can settle', () => {
+  it('normalizes unavailable Job Packs to Overview', () => {
+    mockSearchParams = 'tab=job-packs';
+    const rendered = renderIntoDocument(
+      <ProjectMainTabs snapshot={{ ...snapshot, project: { ...snapshot.project, hasJobPacks: false } }} tab="job-packs" />,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="overview-tab"]')).not.toBeNull();
+    rendered.unmount();
+  });
+
+  it('preserves quote Edit and Preview controls and unknown query parameters', () => {
+    mockSearchParams = 'tab=quotes&quoteId=quote_1&campaign=winter';
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="quotes" />);
+    const preview = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Preview',
+    );
+
+    act(() => preview?.click());
+    expect(replaceMock).toHaveBeenCalledWith(
+      '/staff/projects/proj_1?tab=quotes&quoteId=quote_1&campaign=winter&quotePreview=1',
+    );
+    rendered.unmount();
+  });
+
+  it('renders Overview during summary state so its independent read can settle', () => {
     mockSearchParams = 'tab=activity';
     const rendered = renderIntoDocument(
       <ProjectMainTabs snapshot={snapshot} snapshotContentReady={false} snapshotState="summary" tab="activity" />,
     );
 
-    expect(rendered.container.querySelector('[data-project-tab-awaiting-snapshot="activity"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="overview-tab"]')?.getAttribute('data-snapshot-ready')).toBe('false');
-
-    rendered.unmount();
-  });
-
-  it('preloads both tab code and tab data from user intent', () => {
-    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
-    const quotes = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
-      (node) => node.textContent?.trim() === 'Quotes',
-    );
-
-    act(() => {
-      quotes?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    });
-
-    expect(preloadModuleMock).toHaveBeenCalledWith('quotes', expect.objectContaining({
-      host: 'host',
-      projectId: 'proj_1',
-    }));
-
-    rendered.unmount();
-  });
-
-  it('preloads the Overview workflow through the preserved activity key', () => {
-    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
-    const activity = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
-      (node) => node.textContent?.trim() === 'Overview',
-    );
-
-    act(() => {
-      activity?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-    });
-
-    expect(preloadModuleMock).toHaveBeenCalledWith('activity', expect.objectContaining({
-      host: 'host',
-      projectId: 'proj_1',
-    }));
-
-    rendered.unmount();
-  });
-
-  it('preloads the responsive Details workflow from user intent', () => {
-    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="estimates" />);
-    const details = Array.from(rendered.container.querySelectorAll('[role="tab"]')).find(
-      (node) => node.textContent?.trim() === 'Details',
-    );
-
-    act(() => {
-      details?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    });
-
-    expect(preloadProjectDetailsMock).toHaveBeenCalledOnce();
-    expect(preloadModuleMock).not.toHaveBeenCalledWith('details', expect.anything());
     rendered.unmount();
   });
 });

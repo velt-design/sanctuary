@@ -1,7 +1,6 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { getTaskDefinition } from '@/lib/projects/pipelineDefinition';
-import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -172,25 +171,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         stage: 'SCHEDULED',
         payload: {},
       });
-    }
-  }
-
-  if (definition.key === 'reminder' && completed) {
-    const projectPatch: Record<string, any> = {
-      follow_up_date: null,
-      next_action_date: null,
-    };
-    let payload = { ...projectPatch };
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      const updateRes = await supabase.from('projects').update(payload).eq('id', projectUuid);
-      if (!updateRes.error) break;
-      const missing = missingColumnFromError(updateRes.error);
-      if (missing && missing in payload) {
-        delete payload[missing];
-        if (!Object.keys(payload).length) break;
-        continue;
-      }
-      return jsonError(updateRes.error.message ?? 'Failed to clear reminder date', 500);
     }
   }
 

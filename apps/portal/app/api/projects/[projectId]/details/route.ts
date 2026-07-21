@@ -112,12 +112,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
   const quoteRefField = readStringField(projectBody, ['quoteRef', 'quote_ref']);
   if (quoteRefField.has) projectPatch.quote_ref = quoteRefField.value || null;
 
-  const nextActionField = readDateField(projectBody, ['nextActionDate', 'next_action_date', 'followUpDate', 'follow_up_date']);
-  if (nextActionField.has) {
-    if (!nextActionField.valid) return jsonError('Invalid nextActionDate (expected YYYY-MM-DD)', 400);
-    projectPatch.follow_up_date = nextActionField.value;
-    projectPatch.next_action_date = nextActionField.value;
-  }
+  // Stage 2 makes the command-centre action projection server-owned. Ignore
+  // stale queued clients that still send these compatibility fields so their
+  // unrelated detail edits can complete without overwriting canonical state.
 
   const archivedField = readDateField(projectBody, ['archivedAt', 'archived_at']);
   // Track that archived_at was REQUESTED so we can detect the silent

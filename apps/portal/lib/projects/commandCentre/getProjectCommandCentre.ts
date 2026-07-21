@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { computeEstimateEditability } from '@/lib/estimates/editability';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { resolveCommandCentreSelection } from './resolve';
+import { getProjectCommandOperations } from './getProjectCommandOperations';
 import {
   resolveCommandCentreCostingState,
   summarizeCommandCentreDesign,
@@ -19,6 +20,7 @@ import type {
 
 const PROJECT_COMMAND_CENTRE_SELECT = `
   id,
+  pipeline_stage,
   estimates(id,project_id,created_at,status,version,summary_json),
   quotes(
     id,
@@ -221,6 +223,7 @@ function quoteDeliveryState(quote: CommandCentreQuoteCandidate): CommandCentreDe
 export async function getProjectCommandCentre(
   projectId: string,
   supabase: SupabaseClient,
+  viewer: { userId: string; isAdmin: boolean } = { userId: '', isAdmin: false },
 ): Promise<ProjectCommandCentreResponse | null> {
   let projectUuid: string;
   try {
@@ -238,6 +241,7 @@ export async function getProjectCommandCentre(
   if (!projectResult.data) return null;
 
   const projectRow = projectResult.data as AnyRecord;
+  const stage = String(projectRow.pipeline_stage ?? 'new').trim().toLowerCase();
   const quotes = normalizeQuoteRows(projectRow);
   const estimates = normalizeEstimateRows(projectRow, quotes);
   const selection = resolveCommandCentreSelection({ estimates, quoteVersions: quotes });
@@ -270,9 +274,17 @@ export async function getProjectCommandCentre(
   const basePath = `/staff/projects/${encodeURIComponent(projectId)}`;
   const estimate = selection.estimate;
   const quote = selection.quote;
+  const operations = await getProjectCommandOperations({
+    projectUuid,
+    stage,
+    supabase,
+    viewerUserId: viewer.userId,
+    isAdmin: viewer.isAdmin,
+  });
   return {
     projectId,
     generatedAt: new Date().toISOString(),
+    operations,
     currentDesign: {
       source: selection.source,
       statusLabel: status.label,

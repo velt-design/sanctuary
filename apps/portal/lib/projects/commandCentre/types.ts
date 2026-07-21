@@ -82,9 +82,135 @@ export type ProjectCommandCentreCurrentDesign = {
   };
 };
 
+export type ProjectOwnerKey = 'jordan' | 'jp' | 'joe' | 'bruce';
+
+export type ProjectOwnerOption = {
+  key: ProjectOwnerKey;
+  displayName: string;
+};
+
+export type ProjectCommandActionSourceKind = 'automation_task' | 'quote_followup' | 'manual';
+
+export type ProjectCommandActionCategory =
+  | 'Call'
+  | 'Site visit'
+  | 'Design'
+  | 'Estimate'
+  | 'Quote'
+  | 'Follow-up'
+  | 'Other';
+
+export type ProjectCommandStaffSummary = {
+  userId: string;
+  displayName: string;
+  email: string | null;
+  accessRole: 'admin' | 'staff';
+};
+
+export type ProjectCommandOwnerSummary = {
+  owner: ProjectOwnerOption | null;
+  required: boolean;
+  missing: boolean;
+  version: string | null;
+  permissions: {
+    canManage: boolean;
+  };
+};
+
+type ProjectCommandActionOwnerSummary = {
+  userId: string | null;
+  displayName: string;
+};
+
+type ProjectCommandActionReference = {
+  sourceKind: ProjectCommandActionSourceKind;
+  sourceId: string;
+};
+
+export type ProjectCommandActionSummary = ProjectCommandActionReference & {
+  title: string;
+  category: ProjectCommandActionCategory;
+  sourceLabel: string;
+  sourceType: string | null;
+  owner: ProjectCommandActionOwnerSummary | null;
+  ownerSource: 'source_assignee' | 'project_owner' | 'unassigned';
+  dueAt: string | null;
+  dueState: 'overdue' | 'today' | 'tomorrow' | 'future' | 'needs_due_date';
+  dueLabel: string;
+  isCustomerFacing: boolean;
+  isCritical: boolean;
+  criticalReason: string | null;
+  rescheduleCount: number;
+  createdAt: string;
+  updatedAt: string;
+  requiresDueDate: boolean;
+  isExplicitlySelected: boolean;
+  selectionBaselineHash: string;
+};
+
+export type ProjectCommandSelectionConflict = {
+  current: ProjectCommandActionSummary;
+  challenger: ProjectCommandActionSummary;
+  outrankingCandidates: ProjectCommandActionSummary[];
+  challengerCount: number;
+  candidateRevision: string;
+};
+
+export type ProjectCommandAuditEntry = {
+  id: string;
+  eventType: string;
+  actor: ProjectCommandStaffSummary | null;
+  reason: string | null;
+  createdAt: string;
+  source: ProjectCommandActionReference | null;
+};
+
+export type ProjectCommandActionPermissions = {
+  canCreate: boolean;
+  canSelect: boolean;
+  canComplete: boolean;
+  canReschedule: boolean;
+  canReassign: boolean;
+  canSetCritical: boolean;
+  canResolveConflict: boolean;
+};
+
+export type ProjectCommandCentreOperations = {
+  owner: ProjectCommandOwnerSummary;
+  primaryAction: ProjectCommandActionSummary | null;
+  candidates: ProjectCommandActionSummary[];
+  candidateCount: number;
+  candidateRevision: string;
+  manualSelectionBaselineHash: string;
+  selectionConflict: ProjectCommandSelectionConflict | null;
+  permissions: ProjectCommandActionPermissions;
+  audit: ProjectCommandAuditEntry[];
+  exceptions: {
+    missingOwner: boolean;
+    noPrimaryAction: boolean;
+    selectionConflict: boolean;
+  };
+};
+
 export type ProjectCommandCentreResponse = {
   projectId: string;
   currentDesign: ProjectCommandCentreCurrentDesign;
+  operations: ProjectCommandCentreOperations;
+  generatedAt: string;
+};
+
+export type ProjectCommandException = {
+  projectId: string;
+  projectName: string;
+  stage: string;
+  reasons: Array<'selection_conflict' | 'no_action' | 'missing_owner'>;
+  href: string;
+};
+
+export type ProjectCommandExceptionsResponse = {
+  counts: Record<ProjectCommandException['reasons'][number], number>;
+  projects: ProjectCommandException[];
+  totalProjects: number;
   generatedAt: string;
 };
 

@@ -14,6 +14,11 @@ import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/serve
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { isUuid } from '@/lib/supabase/mappers';
 import type { ProjectStatus } from '@/lib/types/project';
+import {
+  insertAutomationFollowupTask as insertFollowupTask,
+  nextPortalBusinessDueAt,
+  upsertAutomationTask as upsertTask,
+} from './taskPersistence';
 
 type PostgrestErrorLike = {
   code?: string | null;
@@ -281,37 +286,6 @@ async function ensureEmailTemplateSeed(templateId: string, subject: string): Pro
   if (res.error) throw res.error;
 }
 
-async function upsertTask(params: {
-  projectId: string;
-  type:
-    | 'CREATE_DESIGN_PACKAGE'
-    | 'REVIEW_NEW_LEAD'
-    | 'BOOK_SITE_VISIT'
-    | 'ATTEND_SITE_VISIT'
-    | 'FINALIZE_SEND_QUOTE'
-    | 'SCHEDULE_INSTALL_WINDOW'
-    | 'UPLOAD_COMPLETION_PHOTOS';
-  title: string;
-  dueAt?: string | null;
-  details?: string | null;
-  meta?: Record<string, unknown>;
-  idempotencyKey: string;
-}): Promise<void> {
-  const payload: any = {
-    project_id: params.projectId,
-    type: params.type,
-    status: 'OPEN',
-    title: params.title,
-    due_at: params.dueAt ?? null,
-    details: params.details ?? null,
-    meta: params.meta ?? {},
-    idempotency_key: params.idempotencyKey,
-  };
-
-  const { error } = await supabaseServiceRole.from('tasks').upsert(payload, { onConflict: 'idempotency_key' });
-  if (error) throw error;
-}
-
 async function insertEmailOutbox(params: {
   projectId: string;
   contactId: string | null;
@@ -421,26 +395,6 @@ async function ensureFollowupPlanActive(projectId: string, quoteUuid: string | n
   }
 
   throw insertRes.error;
-}
-
-async function insertFollowupTask(params: {
-  planId: string;
-  projectId: string;
-  type: 'FOLLOWUP_CALL' | 'FOLLOWUP_EMAIL';
-  dueAt: string;
-  idempotencyKey: string;
-}): Promise<void> {
-  const { error } = await supabaseServiceRole.from('followup_tasks').insert({
-    plan_id: params.planId,
-    project_id: params.projectId,
-    type: params.type,
-    status: 'OPEN',
-    due_at: params.dueAt,
-    idempotency_key: params.idempotencyKey,
-  } as any);
-  if (!error) return;
-  if (isUniqueViolation(error)) return;
-  throw error;
 }
 
 async function cancelFollowupsForProject(projectId: string, reason: string): Promise<void> {
@@ -570,17 +524,6 @@ async function ensureUnscheduledSiteVisit(projectId: string): Promise<void> {
   await upsertSiteVisitEvent(projectId, { status: 'UNSCHEDULED', scheduled_start: null, scheduled_end: null });
 }
 
-async function setProjectNextAction(projectId: string, nextActionAt: string | null, nextActionType: string | null): Promise<void> {
-  const { error } = await supabaseServiceRole
-    .from('projects')
-    .update({ next_action_at: nextActionAt, next_action_type: nextActionType } as any)
-    .eq('id', projectId);
-  if (!error) return;
-  const pg = toPostgrestError(error);
-  if (pg?.code === 'PGRST204') return;
-  throw error;
-}
-
 class AutomationRunner {
   async emitEvent(params: {
     type: string;
@@ -690,7 +633,7 @@ class AutomationRunner {
     const contactName = contact?.name ?? '';
     const projectName = project.name ?? '';
 
-    const due = withUtcHour(addBusinessDays(now(), 1), 9).toISOString();
+    const due = await nextPortalBusinessDueAt(1, now());
     await upsertTask({
       projectId,
       type: 'REVIEW_NEW_LEAD',
@@ -723,8 +666,16 @@ class AutomationRunner {
     const contact = project.contact_id ? await loadContact(project.contact_id) : null;
     if (!contact) return;
 
-    const nextActionAt = withUtcHour(addBusinessDays(now(), 2), 9).toISOString();
-    await setProjectNextAction(projectId, nextActionAt, 'CALL');
+    const nextActionAt = await nextPortalBusinessDueAt(2, now());
+    const plan = await ensureFollowupPlanActive(projectId, null);
+    if (!plan) return;
+    await insertFollowupTask({
+      planId: plan.id,
+      projectId,
+      type: 'FOLLOWUP_CALL',
+      dueAt: nextActionAt,
+      idempotencyKey: makeIdempotencyKey([projectId, 'followup', 'FOLLOWUP_CALL', 'mark_contacted']),
+    });
 
     if (contact.email && contact.email.trim()) {
       const templateId = 'EMAIL_CONTACTED_CONFIRM_RANGE';

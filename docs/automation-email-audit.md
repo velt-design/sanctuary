@@ -12,7 +12,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 
 ## Ownership
 
-- Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`.
+- Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; canonical task/follow-up persistence and business-calendar due dates live in `taskPersistence.ts`.
 - Automation cache keys: `apps/portal/lib/cache/automationCache.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
 - Shared provider contract: `packages/email-provider` (`@sp/email-provider`).
@@ -46,6 +46,10 @@ Event handlers can:
 - create or update site visit events
 - create quote follow-up plans and tasks
 - cancel open follow-ups when pipeline stage changes make them irrelevant
+
+`REVIEW_NEW_LEAD` is persisted with a 5:00pm Auckland next-business-day due timestamp using weekend, national/Auckland holiday, and company-closure data. Marking a project contacted persists the existing two-business-day cadence as `FOLLOWUP_CALL`; AutomationRunner no longer writes project next-action columns. Open automation/follow-up rows are canonical command-centre candidates.
+
+Canonical task/follow-up tables are select-only to authenticated portal users. Automation persistence stays in the server-only service-role adapter, while Design Package task creation/status/due changes use the bounded `project_command_sync_design_task` RPC instead of direct authenticated table writes.
 
 Marketing enquiry routes can create public lead/enquiry records and send or log autoresponder email behavior. Keep public marketing writes narrow and server-owned.
 

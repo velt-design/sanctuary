@@ -28,6 +28,16 @@ vi.mock('./overview/ProjectCurrentDesignCommercialCard', () => ({
   ),
 }));
 
+vi.mock('./overview/ProjectPrimaryActionCard', () => ({
+  default: () => <section data-testid="mock-primary-action">Primary action</section>,
+}));
+
+vi.mock('./overview/ProjectStatusDetailsCard', () => ({
+  default: ({ project }: { project: { contactName?: string } }) => (
+    <section data-testid="mock-status-details">{project.contactName}</section>
+  ),
+}));
+
 import OverviewTab from './OverviewTab';
 
 const snapshot = {
@@ -60,24 +70,32 @@ function queryState(overrides: Record<string, unknown> = {}) {
 }
 
 describe('OverviewTab', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     document.body.innerHTML = '';
     useQueryMock.mockReset();
+    await Promise.all([
+      import('./overview/ProjectCurrentDesignCommercialCard'),
+      import('./overview/ProjectPrimaryActionCard'),
+      import('./overview/ProjectStatusDetailsCard'),
+    ]);
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('renders commercial, customer, activity, and task context after fresh reads', () => {
+  it('renders status/details, commercial, primary action, activity, and tasks after fresh reads', async () => {
     useQueryMock.mockReturnValue(queryState({
       data: { currentDesign: { source: 'estimate' } },
     }));
     const rendered = renderIntoDocument(
       <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
     );
+    await act(async () => { await Promise.resolve(); });
     expect(rendered.container.querySelector('[data-testid="mock-current-design"]')?.getAttribute('data-source')).toBe('estimate');
-    expect(rendered.container.textContent).toContain('Aroha Smith');
+    expect(rendered.container.querySelector('[data-testid="mock-status-details"]')?.textContent).toContain('Aroha Smith');
+    expect(rendered.container.querySelector('[data-testid="mock-primary-action"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-stage3-workstreams-slot]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-notes-panel"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-tasks-panel"]')).not.toBeNull();
     rendered.unmount();
@@ -95,7 +113,7 @@ describe('OverviewTab', () => {
     rendered.unmount();
   });
 
-  it('retains cached commercial data and exposes Retry after a refresh failure', () => {
+  it('retains cached commercial data and exposes Retry after a refresh failure', async () => {
     const refetch = vi.fn();
     useQueryMock.mockReturnValue(queryState({
       data: { currentDesign: { source: 'sent_quote' } },
@@ -106,6 +124,7 @@ describe('OverviewTab', () => {
     const rendered = renderIntoDocument(
       <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
     );
+    await act(async () => { await Promise.resolve(); });
     expect(rendered.container.querySelector('[data-command-centre-state="stale"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-current-design"]')).not.toBeNull();
     act(() => {
@@ -115,7 +134,7 @@ describe('OverviewTab', () => {
     rendered.unmount();
   });
 
-  it('keeps cached commercial data visible during a background refresh', () => {
+  it('keeps cached commercial data visible during a background refresh', async () => {
     useQueryMock.mockReturnValue(queryState({
       data: { currentDesign: { source: 'draft_quote' } },
       isFetching: true,
@@ -123,6 +142,7 @@ describe('OverviewTab', () => {
     const rendered = renderIntoDocument(
       <OverviewTab snapshot={snapshot} snapshotContentReady snapshotState="fresh" host="host" />,
     );
+    await act(async () => { await Promise.resolve(); });
     expect(rendered.container.querySelector('[data-command-centre-state="refreshing"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-current-design"]')).not.toBeNull();
     rendered.unmount();

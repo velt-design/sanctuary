@@ -14,6 +14,7 @@ import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { patchProjectTasksSnapshot } from '@/lib/localFirst/portalEntities';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import { fetchProjectCommandCentre, runProjectActionCommand } from '@/lib/projects/commandCentre/client';
 import {
   restoreManualTask,
   withManualTaskCompletion,
@@ -331,16 +332,15 @@ export default function ProjectTasksSidebarClient({
     setStageModalError(null);
 
     try {
-      const detailsRes = await fetch(`/api/projects/${encodeURIComponent(projectId)}/details`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ project: { nextActionDate: dateValue } }),
+      const commandCentre = await fetchProjectCommandCentre(projectId);
+      await runProjectActionCommand(projectId, {
+        command: 'create_manual',
+        commandId: crypto.randomUUID(),
+        title: pendingAction.kind === 'call_later' ? 'Call customer again' : 'Follow up with customer',
+        category: pendingAction.kind === 'call_later' ? 'Call' : 'Follow-up',
+        dueDate: dateValue,
+        expectedCandidateRevision: commandCentre.operations.candidateRevision,
       });
-      if (!detailsRes.ok) {
-        const body = await detailsRes.json().catch(() => null);
-        const msg = typeof body?.error === 'string' ? body.error : 'Failed to set reminder date';
-        throw new Error(msg);
-      }
 
       const taskKey =
         pendingAction.kind === 'call_later'

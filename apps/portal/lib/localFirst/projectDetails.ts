@@ -11,7 +11,6 @@ export type PortalProjectDetailsDraft = {
   siteAddress: string;
   region: string;
   quoteRef: string;
-  nextActionDate: string;
 };
 
 export type PortalProjectDetailsUpdateMutationPayload = {
@@ -34,7 +33,6 @@ export function normalizeProjectDetailsDraft(draft: PortalProjectDetailsDraft): 
     siteAddress: draft.siteAddress.trim(),
     region: draft.region.trim(),
     quoteRef: draft.quoteRef.trim(),
-    nextActionDate: draft.nextActionDate.trim(),
   };
 }
 
@@ -63,7 +61,6 @@ export function patchProjectDetailsCaches(
           siteAddress: normalized.siteAddress || undefined,
           region: normalized.region || undefined,
           quoteRef: normalized.quoteRef || undefined,
-          nextActionDate: normalized.nextActionDate || undefined,
         },
       },
     };
@@ -79,8 +76,6 @@ export function patchProjectDetailsCaches(
       quoteRef: normalized.quoteRef || undefined,
       siteAddress: normalized.siteAddress || undefined,
       address: normalized.siteAddress || undefined,
-      nextActionDate: normalized.nextActionDate || null,
-      followUpDate: normalized.nextActionDate || null,
       clientName: normalized.contactName || currentProject.clientName,
       email: normalized.contactEmail || currentProject.email,
       phone: normalized.contactPhone || currentProject.phone,
@@ -95,8 +90,6 @@ export function patchProjectDetailsCaches(
     quoteRef: normalized.quoteRef || undefined,
     siteAddress: normalized.siteAddress || undefined,
     address: normalized.siteAddress || undefined,
-    nextActionDate: normalized.nextActionDate || null,
-    followUpDate: normalized.nextActionDate || null,
     clientName: normalized.contactName || currentProject.clientName,
     email: normalized.contactEmail || currentProject.email,
     phone: normalized.contactPhone || currentProject.phone,
@@ -117,8 +110,6 @@ export function patchProjectDetailsCaches(
             quoteRef: normalized.quoteRef || undefined,
             siteAddress: normalized.siteAddress || undefined,
             address: normalized.siteAddress || undefined,
-            nextActionDate: normalized.nextActionDate || null,
-            followUpDate: normalized.nextActionDate || null,
             clientName: normalized.contactName || project.clientName,
           }
         : project,

@@ -1,94 +1,40 @@
 'use client';
 
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import { PIPELINE_STAGE_LABELS } from '@/lib/projects/pipelineDefinition';
 import ProjectHeader from './ProjectHeader';
 import ProjectPageShell from './ProjectPageShell';
-import ProjectPipelineBar from './ProjectPipelineBar';
-import { useProjectHeaderLayout } from './useProjectHeaderLayout';
 import styles from './ProjectPage.module.css';
-
-function cx(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(' ');
-}
 
 export default function ProjectPageFrame({
   snapshot,
+  host,
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
   onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
+  host: string;
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
   onProjectAccessEnding?: (status: number) => void;
 }) {
-  const {
-    containerRef,
-    createHandleClickHandler,
-    createHandleKeyDownHandler,
-    createHandlePointerDownHandler,
-    displayMode,
-    isDesktopLayout,
-    isResizing,
-  } = useProjectHeaderLayout();
-  const isCollapsed = displayMode === 'collapsed';
-  const isStickyMasthead = isDesktopLayout && (displayMode === 'compact' || displayMode === 'collapsed');
-  const handleClassName = cx(styles.mastheadResizeHandle, isCollapsed && styles.mastheadResizeHandleCollapsed);
-
   return (
     <div
-      ref={containerRef}
-      className={cx(styles.pageFrame, isResizing && styles.pageFrameResizing)}
+      className={styles.pageFrame}
       data-project-page-frame="true"
-      data-project-masthead-mode={displayMode}
-      data-project-masthead-sticky={isStickyMasthead ? 'true' : undefined}
+      data-project-masthead-sticky="true"
     >
       <div
-        className={cx(styles.pageFrameMastheadSlot, isStickyMasthead && styles.pageFrameMastheadSlotSticky)}
-        data-project-masthead-slot={displayMode}
-        data-project-masthead-slot-sticky={isStickyMasthead ? 'true' : undefined}
+        className={`${styles.pageFrameMastheadSlot} ${styles.pageFrameMastheadSlotSticky}`}
+        data-project-masthead-slot="fixed"
+        data-project-masthead-slot-sticky="true"
       >
-        {displayMode !== 'collapsed' ? (
-          <ProjectHeader
-            project={snapshot.project}
-            currentStage={snapshot.pipeline.stage}
-            mode={displayMode === 'compact' ? 'compact' : 'expanded'}
-            pipeline={
-              displayMode === 'expanded' ? (
-                <ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} compact />
-              ) : undefined
-            }
-          />
-        ) : null}
-
-        {isDesktopLayout ? (
-          isCollapsed ? (
-            <button
-              type="button"
-              className={handleClassName}
-              aria-expanded="false"
-              aria-label="Expand project header"
-              data-project-masthead-collapsed="true"
-              data-project-masthead-handle="true"
-              onClick={createHandleClickHandler()}
-              onKeyDown={createHandleKeyDownHandler()}
-              onPointerDown={createHandlePointerDownHandler()}
-            />
-          ) : (
-            <div
-              className={handleClassName}
-              aria-hidden="true"
-              data-project-masthead-handle="true"
-              onPointerDown={createHandlePointerDownHandler()}
-            />
-          )
-        ) : null}
+        <ProjectHeader project={snapshot.project} host={host} tab={tab} />
       </div>
 
-      <div className={cx(styles.pageFrameBody, isDesktopLayout && styles.pageFrameBodyDesktop)}>
+      <div className={styles.pageFrameBody}>
         <ProjectPageShell
           snapshot={snapshot}
           snapshotContentReady={snapshotContentReady}

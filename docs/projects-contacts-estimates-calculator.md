@@ -57,7 +57,7 @@ Keep contact fields, project fields, and estimate snapshot fields distinct. Esti
 
 Project opening has five explicit read states: `pending` for a direct link with no known summary, `summary` while authenticated summary fields are visible, `fresh` after the full snapshot arrives, `refresh-failed` when known data remains visible with Retry, and `unavailable` after a `401`, `403`, or `404` response. Access-ending responses must hide known project data. Debug exports are fresh-snapshot-only. The Projects list includes the lightweight project shell in its normal bundle and gives the rendered instant view to a tiny Projects-layout navigation boundary, which updates browser history and keeps the current-user cached summary visible while the existing authenticated snapshot query completes. On a direct link without list cache, `GET /api/staff/v1/projects/[projectId]/summary` supplies only the RLS-visible project/contact shell; the complete snapshot still refreshes through its existing query and key in parallel. The shell must not be hidden behind an intent-time dynamic import: a brief hover or direct click still needs immediate useful content. Browser Back clears that instant view and lets Next restore its own retained list route; server-rendered React nodes are never treated as a reusable cache. The persistent boundary makes browser Back reliable without importing project-opening code into Design Workbench.
 
-Project rows preload the route and existing full-snapshot query on hover, keyboard focus, touch, or pointer-down. There is no automatic first-three-project fan-out. The activity-key Overview is the default workflow and a real lazy boundary; its local loading state appears only inside the already-usable project frame. Emails, Estimates, Quotes, Invoices, and Job Packs are separate lazy code boundaries; hovering or focusing one preloads its exact code and owned query data. The responsive Details panel is also a shared lazy boundary: desktop loads it when the rail is actually rendered, while the narrow-layout Details tab preloads it from intent. Overview can load its independent command-centre read during the summary state, while its notes/tasks region and Emails remain explicitly updating until the full snapshot is ready and never turn placeholder empty arrays into a false empty state.
+Project rows preload the route and existing full-snapshot query on hover, keyboard focus, touch, or pointer-down. There is no automatic first-three-project fan-out. The activity-key Overview is the default workflow and a real lazy boundary; its local loading state appears only inside the already-usable project frame. Emails, Estimates, Quotes, Invoices, and Job Packs are separate lazy code boundaries. One fixed sticky project header owns the shared tab registry and preloads exact tab code/data from hover, focus, touch, or pointer-down. The active workflow then occupies the full project-page width. Project details and stage correction live in Overview at every breakpoint; there is no side rail or responsive Details tab. Overview can load its independent command-centre read during the summary state, while its notes/tasks region and Emails remain explicitly updating until the full snapshot is ready and never turn placeholder empty arrays into a false empty state.
 
 - Pipeline stages and task definitions live in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Manual task completion is stored in `project_task_checks`.
@@ -65,7 +65,7 @@ Project rows preload the route and existing full-snapshot query on hover, keyboa
 - Action tasks link into owned workflows such as site visits, estimates, schedule, invoices, and job packs.
 - Snapshot readiness comes from portal data such as booked site visits, generated estimates, accepted quotes, open deposit invoices, scheduled install items, and generated job packs.
 - Stage action routes under `apps/portal/app/api/staff/v1/projects/[projectId]/action` own staff workflow side effects.
-- The project page Tasks panel is rendered inside the activity-key Overview (`OverviewTab.tsx`), not in the side rails. The side rails own the project details panel only.
+- The project page Tasks panel and consolidated Status & Details card are rendered inside the activity-key Overview (`OverviewTab.tsx`).
 
 Do not hard-code duplicate pipeline or task rules in components. Update the pipeline definition and snapshot mapping together when task behavior changes.
 
@@ -161,12 +161,12 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 `Overview` is the staff-facing default project tab while the internal URL/query key remains `activity` for compatibility. It is a lazy workflow boundary and composes small owners:
 
 - `ProjectCurrentDesignCommercialCard` reads one normalized, server-owned current-design response.
-- `OverviewCustomerContext` reuses current project/contact summary fields.
+- `ProjectStatusDetailsCard` combines stage, contact, project, site, region, and reference facts without duplicating the former Details and Customer Context surfaces. It reuses the existing local-first detail draft owner.
 - `ProjectNotesPanel` remains the wider project-note/activity column.
-- `ProjectTasksSidebarClient` remains the compact stage-task action rail.
-- Project details remain in the desktop rail and move to the dedicated `Details` tab on stacked layouts.
+- `ProjectTasksSidebarClient` remains the compact stage-task action card below the operational row.
+- `ProjectStageControl` uses the existing authoritative stage-correction mutation, requires explicit Apply, and requires `RESET` for rollback.
 
-The project header, full snapshot, responsive Details behavior, specialist tabs, and user-owned QueryClient remain unchanged. Overview may render during the project `summary` state because its commercial request is independent; notes and tasks remain explicitly updating until the complete snapshot is ready.
+The project header is fixed and sticky: identity, single owner, project/workbench/admin actions are on its top row and the current specialist tabs are on its horizontally scrollable bottom row. The old pipeline, rail sizing, panel drag/drop, collapsible header, and layout-local-storage behavior are retired. The full snapshot, specialist lazy boundaries, URL keys, and user-owned QueryClient remain unchanged. Overview may render during the project `summary` state because its commercial request is independent; notes and tasks remain explicitly updating until the complete snapshot is ready.
 
 ### Overview and current-design precedence
 
@@ -191,7 +191,9 @@ The strict selection owner is `apps/portal/lib/projects/commandCentre/resolve.ts
 - Accepted quote plus a newer unrelated estimate keeps the accepted quote/source authoritative and exposes the newer estimate separately.
 - Multiple accepted quotes select the newest deterministically and emit an integrity warning.
 
-`GET /api/staff/v1/projects/[projectId]/command-centre` owns the bounded auth-bound read. `qk.projects.commandCentre(host, projectId)` owns its user-scoped browser cache. The query is immediately stale and refetches when Overview remounts, so returning from a specialist tab refreshes commercial state without adding cache logic to `QuotesTab.tsx` or `EstimatesTab.tsx`. A `401`, `403`, or `404` hides the command centre and project snapshot and clears protected project-domain query families for the current host.
+`GET /api/staff/v1/projects/[projectId]/command-centre` owns the bounded auth-bound commercial, owner, primary-action, conflict, and recent-audit read. `qk.projects.commandCentre(host, projectId)` owns its user-scoped browser cache. The query is immediately stale and refetches when Overview remounts, so returning from a specialist tab refreshes state without adding cache logic to `QuotesTab.tsx` or `EstimatesTab.tsx`. A `401`, `403`, or `404` hides the command centre and project snapshot and clears protected project-domain query families for the current host.
+
+The project header shows one Project Owner. Overview places the primary-action card beside the design/commercial card and owns pessimistic owner/action mutations. The owner is required from lead through deposit and is selected from Jordan, JP, Joe, or Bruce by an admin. Project Details treats next action as Overview-managed and excludes it from local-first API payloads. Stage-reminder choices create canonical manual actions; stage checks remain a separate checklist domain. Dashboard Project Exceptions is independent of personal reminders.
 
 Notes data:
 

@@ -1,10 +1,10 @@
 # Project Operational Command Centre Roadmap
 
 Status: Active programme tracker  
-Current stage: Stage 1 complete in the working tree
+Current stage: Stage 2 implementation and verification
 Product definition: Complete  
-Implementation: Stage 1 complete; not published
-Next action: Review Stage 1 evidence, then explicitly approve or revise Stage 2 before implementation
+Implementation: Stage 1 committed locally at `8770198f`; Stage 2 repository implementation complete and awaiting environment gates
+Next action: Apply the ordered Stage 2 migration in a disposable/staging Supabase environment, then run authenticated real-project Playwright with a dedicated safe mutation project
 
 ## Index
 
@@ -133,7 +133,7 @@ Read-only information derived from existing trusted data wherever possible.
 
 #### Status
 
-Complete in the working tree; not published.
+Complete in local commit `8770198f`; not published.
 
 ---
 
@@ -141,7 +141,7 @@ Complete in the working tree; not published.
 
 #### Outcome
 
-- Reliable Sales, Design, and Estimating ownership where applicable.
+- One reliable Project Owner from lead through deposit, chosen from Jordan, JP, Joe, or Bruce.
 - One primary next action per active project.
 - Owner, due state, completion, rescheduling, and reassignment.
 - No-owner and no-action dashboard exceptions.
@@ -169,7 +169,7 @@ Ownership, primary-action selection, controlled actions, audit history, and dash
 
 #### Status
 
-Not started.
+Repository implementation complete. The product contract, canonical migration, selector/domain APIs, project/dashboard UI, automation cutover, compatibility projection, legacy writer retirement, and repository-local gates are complete. Stage completion remains Yellow until the migration passes an executable PostgreSQL/Supabase smoke and authenticated real-project Playwright passes with provisioned staff credentials and a dedicated safe mutation project.
 
 ---
 
@@ -318,8 +318,8 @@ Not started.
 | --- | --- | --- | --- |
 | Product definition | Complete | - | Vision, V1 specification, roadmap, and Stage 0 prompt approved |
 | Stage 0: Repository assessment | Complete | - | Repository-grounded architecture, ownership, boundary, risk, and Stage 1 sequence recorded against baseline `ea1641c6` |
-| Stage 1: Read-only shell | Complete in working tree | Not published | Strict read model/API/query, Overview UI, legacy retirement, deterministic fixtures, focused/project/browser/performance tests, typecheck, lint, isolated production build, and unchanged bundle-budget assertions |
-| Stage 2: Ownership and primary action | Not started | - | - |
+| Stage 1: Read-only shell | Complete in `8770198f` | Not published | Strict read model/API/query, Overview UI, legacy retirement, deterministic fixtures, focused/project/browser/performance tests, typecheck, lint, isolated production build, and unchanged bundle-budget assertions |
+| Stage 2: Ownership and primary action | Repository complete; environment gates pending | - | Canonical ownership/actions/audit migration, selector, APIs, Overview/header/dashboard UI, automation persistence extraction, and legacy writer retirement implemented. Local evidence: 335/335 project tests, 18/18 fixture Playwright checks, full typecheck/lint, isolated 66-page production build, unchanged six-route bundle budgets, architecture/docs/dead-code guards. Executable migration smoke and authenticated real-project Playwright remain required. |
 | Stage 3: Lead-to-quote workstreams | Not started | - | - |
 | Stage 4: Communication and timeline | Not started | - | - |
 | Stage 5: Exceptions and approvals | Not started | - | - |
@@ -359,14 +359,14 @@ Not started.
 
 ```text
 Stage completed: Stage 1 - Read-only Command Centre shell
-Pull request: None; working-tree implementation only, not published
-Repository baseline: ea1641c6c6647d22603d07b9f980cc3a1dad95fc
+Pull request: None; committed locally, not published
+Repository baseline: 8770198f
 Product behaviour delivered: Overview default label; strict current quote/estimate, source, price, delivery, and costing-freshness read model; existing customer context, notes, tasks, Details, and specialist workflows retained
 Verification completed: selector/loader/route/component/access tests; 322 project tests; 15 browser checks passed with 1 conditional workbench skip; 9 fixture performance checks; repository typecheck and lint; isolated production build; all unchanged bundle budgets; docs, architecture, file, ownership, and strict dead-code reports
 Known limitations: authenticated smoke and production performance could not be rerun locally because PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD were unavailable; the canonical build preflight was correctly blocked by the user's pre-existing port-3001 dev server, so the same production build and budget assertions ran against an isolated Next output directory
 Architecture document updates: Stage 0 repository contract completed and Stage 1 implementation/evidence recorded
-Roadmap updates: Stage 0 and Stage 1 complete; Stage 2 remains unapproved
-Next approved stage: None. Stage 2 requires explicit approval.
+Roadmap updates: Stage 0 and Stage 1 complete; Stage 2 baseline begins at `8770198f`
+Next approved stage: Stage 2 - Ownership and primary next action.
 ```
 
 ## Stage handoff template

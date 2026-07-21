@@ -6,15 +6,25 @@ import PipelineCountsCard from './_components/PipelineCountsCard';
 import RecentActivityCard from './_components/RecentActivityCard';
 import DashboardTasksCard from './_components/DashboardTasksCard.client';
 import dash from './dashboard.module.css';
+import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
+import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
 
 export default function DashboardView({
   data,
   state = 'fresh',
   onRetry,
+  projectExceptions,
+  projectExceptionsPending = false,
+  projectExceptionsError = false,
+  onRetryProjectExceptions,
 }: {
   data: DashboardData;
   state?: 'cached' | 'fresh' | 'refresh-failed';
   onRetry?: () => void;
+  projectExceptions?: ProjectCommandExceptionsResponse;
+  projectExceptionsPending?: boolean;
+  projectExceptionsError?: boolean;
+  onRetryProjectExceptions?: () => void;
 }) {
   return (
     <main
@@ -41,6 +51,13 @@ export default function DashboardView({
           <PipelineCountsCard counts={data.pipelineCounts} />
 
           <KpiStrip kpis={data.kpis} />
+
+          <ProjectExceptionsCard
+            data={projectExceptions}
+            pending={projectExceptionsPending}
+            failed={projectExceptionsError}
+            onRetry={onRetryProjectExceptions}
+          />
 
           <div className={dash.grid}>
             <RecentActivityCard items={data.recentActivity} />

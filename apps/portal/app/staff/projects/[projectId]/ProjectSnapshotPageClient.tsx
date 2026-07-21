@@ -193,6 +193,7 @@ export default function ProjectSnapshotPageClient({
       ) : null}
       <ProjectPageFrame
         snapshot={snapshot}
+        host={host}
         snapshotContentReady={snapshotContentReady}
         snapshotState={loadState}
         tab={tab}
