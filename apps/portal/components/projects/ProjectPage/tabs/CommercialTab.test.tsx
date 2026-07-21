@@ -65,6 +65,9 @@ describe('CommercialTab', () => {
     expect(replace).toHaveBeenCalledWith(
       '/staff/projects/proj_1?tab=invoices&quoteId=q_1&createFromEstimateId=est_1&campaign=winter',
     );
+    expect(invoices?.getAttribute('aria-selected')).toBe('true');
+    expect(rendered.container.querySelector('[data-testid="invoices-subview"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="quotes-subview"]')).toBeNull();
     rendered.unmount();
   });
 

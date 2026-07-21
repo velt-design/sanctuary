@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import { coerceProjectTab } from '@/lib/projects/projectTabs';
+import { coerceProjectTab, type ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import layout from './ProjectPage.module.css';
 import {
   CommercialTab,
@@ -17,6 +17,7 @@ export default function ProjectMainTabs({
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
+  optimisticTab,
   onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
@@ -24,10 +25,11 @@ export default function ProjectMainTabs({
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  optimisticTab?: ProjectNavigationTabKey | null;
   onProjectAccessEnding?: (status: number) => void;
 }) {
   const searchParams = useSearchParams();
-  const requestedTab = searchParams.get('tab') ?? tab;
+  const requestedTab = optimisticTab ?? searchParams.get('tab') ?? tab;
   const activeTab = coerceProjectTab(requestedTab, Boolean(snapshot.project.hasJobPacks));
 
   return (

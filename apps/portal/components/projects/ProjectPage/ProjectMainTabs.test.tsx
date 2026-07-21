@@ -84,6 +84,17 @@ describe('ProjectMainTabs', () => {
     rendered.unmount();
   });
 
+  it('renders an optimistic tab body before the URL state settles', () => {
+    mockSearchParams = 'tab=activity';
+    const rendered = renderIntoDocument(
+      <ProjectMainTabs host="host" snapshot={snapshot} tab="activity" optimisticTab="job-packs" />,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="job-packs-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-project-tab-body="job-packs"]')).not.toBeNull();
+    rendered.unmount();
+  });
+
   it('renders Overview during summary state so its independent read can settle', () => {
     mockSearchParams = 'tab=activity';
     const rendered = renderIntoDocument(

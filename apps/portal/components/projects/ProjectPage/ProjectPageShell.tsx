@@ -1,6 +1,7 @@
 'use client';
 
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
+import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import ProjectMainTabs from './ProjectMainTabs';
 import styles from './ProjectPage.module.css';
 
@@ -10,6 +11,7 @@ export default function ProjectPageShell({
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
+  optimisticTab,
   onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
@@ -17,6 +19,7 @@ export default function ProjectPageShell({
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
+  optimisticTab?: ProjectNavigationTabKey | null;
   onProjectAccessEnding?: (status: number) => void;
 }) {
   return (
@@ -27,6 +30,7 @@ export default function ProjectPageShell({
         snapshotContentReady={snapshotContentReady}
         snapshotState={snapshotState}
         tab={tab}
+        optimisticTab={optimisticTab}
         onProjectAccessEnding={onProjectAccessEnding}
       />
     </section>

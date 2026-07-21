@@ -7,6 +7,7 @@ const port = Number.parseInt(process.env.PORTAL_PLAYWRIGHT_PORT ?? String(DEFAUL
 const baseURL = process.env.PORTAL_BASE_URL?.trim() || `http://127.0.0.1:${port}`;
 const portalPlaywrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim() || DEFAULT_PORTAL_PLAYWRIGHT_DIST_DIR;
 const useProductionPortal = process.env.PORTAL_PLAYWRIGHT_PRODUCTION === '1';
+const portalStaffStorageState = process.env.PORTAL_STAFF_STORAGE_STATE?.trim() || 'playwright/.auth/portal-staff.json';
 
 export default defineConfig({
   testDir: './playwright',
@@ -51,7 +52,7 @@ export default defineConfig({
       name: 'portal-chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/portal-staff.json',
+        storageState: portalStaffStorageState,
       },
       dependencies: ['setup'],
     },

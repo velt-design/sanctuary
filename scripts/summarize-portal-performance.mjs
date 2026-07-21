@@ -20,11 +20,24 @@ const runs = files.map((file) => {
 
 const budgetPath = path.resolve('playwright/portal.performance.budgets.json');
 const budgets = JSON.parse(fs.readFileSync(budgetPath, 'utf8'));
+const journeyPrefix = process.env.PORTAL_PERF_JOURNEY_PREFIX?.trim();
 const aggregateBudgets = [...budgets.warmJourneys, ...budgets.interactions]
-  .filter((budget) => budget.enforced && budget.aggregation === 'p75')
+  .filter((budget) =>
+    budget.enforced &&
+    budget.aggregation === 'p75' &&
+    (!journeyPrefix || budget.name.startsWith(journeyPrefix)),
+  )
   .reduce((byName, budget) => byName.set(budget.name, budget), new Map());
 
 const expectedNames = runs[0].journeys.map((journey) => journey.name).sort();
+const reportedNames = journeyPrefix
+  ? expectedNames.filter((name) => name.startsWith(journeyPrefix))
+  : expectedNames;
+for (const name of aggregateBudgets.keys()) {
+  if (!expectedNames.includes(name)) {
+    throw new Error(`Every enforced p75 journey must be present in all five runs; missing ${name}.`);
+  }
+}
 for (const [index, run] of runs.entries()) {
   const names = run.journeys.map((journey) => journey.name).sort();
   if (JSON.stringify(names) !== JSON.stringify(expectedNames)) {
@@ -46,7 +59,7 @@ const lines = [
   '| --- | --- | ---: | ---: | ---: | ---: | ---: | :---: | :---: |',
 ];
 
-for (const name of expectedNames) {
+for (const name of reportedNames) {
   const samples = runs.map((run) => run.journeys.find((journey) => journey.name === name));
   const stat = (field, fraction) => percentile(samples.map((sample) => Number(sample[field]) || 0), fraction);
   const feedback = [0.5, 0.75, 0.95].map((fraction) => stat('feedbackMs', fraction));
