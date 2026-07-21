@@ -3,7 +3,13 @@
 import { useCallback, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { coerceProjectTab, getAvailableProjectTabs, type ProjectTabKey } from '@/lib/projects/projectTabs';
+import {
+  coerceProjectTab,
+  getAvailableProjectTabs,
+  isProjectNavigationTabSelected,
+  type ProjectNavigationTabKey,
+  type ProjectTabKey,
+} from '@/lib/projects/projectTabs';
 import { preloadProjectTab } from './projectTabModules';
 import styles from './ProjectPage.module.css';
 
@@ -40,7 +46,7 @@ export default function ProjectTabNavigation({
     replaceTab(activeTab);
   }, [activeTab, replaceTab, requestedTab]);
 
-  const prefetch = (tab: ProjectTabKey) => {
+  const prefetch = (tab: ProjectNavigationTabKey) => {
     void preloadProjectTab(tab, { host, projectId, queryClient });
   };
 
@@ -48,7 +54,7 @@ export default function ProjectTabNavigation({
     <nav className={styles.headerTabsScroller} aria-label="Project sections">
       <div className={styles.headerTabs} role="tablist" aria-label="Project tabs">
         {tabs.map((tab) => {
-          const selected = tab.key === activeTab;
+          const selected = isProjectNavigationTabSelected(tab.navigationKey, activeTab);
           return (
             <button
               key={tab.key}
@@ -56,8 +62,8 @@ export default function ProjectTabNavigation({
               className={`${styles.headerTab} ${selected ? styles.headerTabActive : ''}`}
               aria-selected={selected}
               role="tab"
-              onClick={() => replaceTab(tab.key)}
-              onFocus={() => prefetch(tab.key)}
+              onClick={() => replaceTab(tab.navigationKey)}
+              onFocus={() => prefetch(tab.navigationKey)}
               onKeyDown={(event) => {
                 if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
                 event.preventDefault();
@@ -72,10 +78,10 @@ export default function ProjectTabNavigation({
                 const nextTab = tabs[nextIndex];
                 const nextButton = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex];
                 nextButton?.focus();
-                replaceTab(nextTab.key);
+                replaceTab(nextTab.navigationKey);
               }}
-              onMouseEnter={() => prefetch(tab.key)}
-              onPointerDown={() => prefetch(tab.key)}
+              onMouseEnter={() => prefetch(tab.navigationKey)}
+              onPointerDown={() => prefetch(tab.navigationKey)}
             >
               {tab.label}
             </button>

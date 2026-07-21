@@ -1,3 +1,4 @@
+import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import ProjectPageFrame from './ProjectPageFrame';
@@ -56,13 +57,34 @@ describe('ProjectPageFrame', () => {
     expect(rendered.container.querySelector('[data-project-masthead-slot-sticky="true"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Test project');
     expect(rendered.container.textContent).toContain('Jordan');
+    expect(rendered.container.textContent).not.toContain('Alex');
+    expect(rendered.container.textContent).not.toContain('North');
     expect(rendered.container.textContent).toContain('Projects');
     expect(rendered.container.textContent).toContain('Design Workbench');
-    expect(rendered.container.textContent).toContain('Delete project');
+    expect(rendered.container.textContent).toContain('More');
+    expect(rendered.container.textContent).not.toContain('Delete project');
     expect(rendered.container.querySelector('[data-testid="header-tabs"]')?.getAttribute('data-tab')).toBe('estimates');
     expect(rendered.container.querySelector('[data-testid="mock-project-shell"]')).not.toBeNull();
     expect(rendered.container.querySelector('[role="separator"]')).toBeNull();
     expect(rendered.container.querySelector('[data-project-pipeline]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('opens and dismisses the accessible project actions menu with the keyboard', () => {
+    const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot} host="host" tab="estimates" />);
+    const moreButton = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'More');
+    expect(moreButton?.getAttribute('aria-haspopup')).toBe('menu');
+
+    act(() => moreButton?.click());
+    const menu = rendered.container.querySelector('[role="menu"]');
+    expect(menu?.getAttribute('aria-label')).toBe('Project actions');
+    expect(menu?.textContent).toContain('Delete project');
+
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+    expect(rendered.container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(moreButton);
 
     rendered.unmount();
   });

@@ -13,6 +13,19 @@
   box-shadow: 0 6px 18px rgba(var(--portal-text-rgb), 0.08);
 }
 
+.commandBarEmbedded {
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.commandBarEmbedded .commandBarIdentity > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .commandBarIdentity,
 .commandBarIdentity > div {
   min-width: 0;
@@ -62,6 +75,7 @@
 }
 
 .commandBarProject:focus-visible,
+.commandBarDesignSelector:focus-visible,
 .commandBarModeButton:focus-visible,
 .commandBarModeActive:focus-visible,
 .commandBarSave:focus-visible {
@@ -145,6 +159,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.commandBarDraftStatusCompact {
+  flex: 0 0 auto;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.commandBarDraftStatusHelpCompact {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.commandBarEmbedded .commandBarMeta {
+  flex: 1 1 auto;
+  margin-top: 0;
+}
+
+.commandBarDesignSelector {
+  width: clamp(150px, 16vw, 220px);
+  min-height: 32px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 8px;
+  padding: 5px 28px 5px 8px;
+  background: rgb(var(--portal-bg-surface-rgb));
+  color: rgb(var(--portal-text-rgb));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .commandBarModeActive {
@@ -349,6 +397,10 @@
     flex: 0 1 auto;
     flex-wrap: wrap;
   }
+
+  .commandBarEmbedded {
+    flex-wrap: nowrap;
+  }
 }
 
 @container (max-width: 779px) {
@@ -405,6 +457,56 @@
   .commandBarDraftStatusHelp {
     overflow: visible;
     white-space: normal;
+  }
+
+  .commandBarEmbedded {
+    align-items: center;
+    gap: 6px 8px;
+    padding: 6px 8px;
+  }
+
+  .commandBarEmbedded .commandBarIdentity {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .commandBarEmbedded .commandBarIdentity > div {
+    display: flex;
+    align-items: center;
+    gap: 3px 7px;
+    flex-wrap: wrap;
+  }
+
+  .commandBarEmbedded .commandBarMeta {
+    display: flex;
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+    margin: 0;
+  }
+
+  .commandBarEmbedded .commandBarDraftStatus,
+  .commandBarEmbedded .commandBarDraftStatusError {
+    display: flex;
+    grid-column: auto;
+    grid-row: auto;
+    width: auto;
+    margin: 0;
+  }
+
+  .commandBarEmbedded .commandBarActions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .commandBarEmbedded .commandBarSave {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .commandBarDesignSelector {
+    width: min(190px, 48vw);
   }
 }
 

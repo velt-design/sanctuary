@@ -86,6 +86,7 @@ type SaveCalculatorEstimateInput = {
   activeEditEstimateId: string;
   activeModuleIndex: number;
   callbacks: SaveCalculatorEstimateCallbacks;
+  createNewEstimate?: boolean;
   criticalWarningCount: number;
   draftEntityKey: string;
   draftSessionKey: string;
@@ -238,6 +239,7 @@ export async function saveCalculatorEstimate(
       activeDraftEstimateMetaId: input.activeDraftEstimateMetaId,
       estimateMetas: cachedEstimateMetas,
       resolveEstimateId,
+      createNewEstimate: input.createNewEstimate,
     });
     const { estimateIdToUpdate } = estimateTarget;
     const canonicalEditEstimateId = estimateTarget.canonicalEditEstimateId ?? '';

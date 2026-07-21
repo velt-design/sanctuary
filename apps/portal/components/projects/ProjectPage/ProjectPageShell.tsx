@@ -6,12 +6,14 @@ import styles from './ProjectPage.module.css';
 
 export default function ProjectPageShell({
   snapshot,
+  host,
   snapshotContentReady = true,
   snapshotState = 'fresh',
   tab,
   onProjectAccessEnding,
 }: {
   snapshot: ProjectPageSnapshot;
+  host: string;
   snapshotContentReady?: boolean;
   snapshotState?: ProjectSnapshotLoadState;
   tab: string;
@@ -21,6 +23,7 @@ export default function ProjectPageShell({
     <section className={styles.fullWidthShell} data-project-page-shell="true">
       <ProjectMainTabs
         snapshot={snapshot}
+        host={host}
         snapshotContentReady={snapshotContentReady}
         snapshotState={snapshotState}
         tab={tab}

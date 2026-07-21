@@ -54,6 +54,16 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('data-tab="activity"');
   });
 
+  it('coerces the retired Emails tab back to activity', async () => {
+    const ui = (await ProjectDetailPage({
+      params: Promise.resolve({ projectId: 'proj_1' }),
+      searchParams: Promise.resolve({ tab: 'emails' }),
+    })) as ReactElement;
+    const markup = renderToStaticMarkup(ui);
+
+    expect(markup).toContain('data-tab="activity"');
+  });
+
   it('accepts invoices through the shared project-tab contract', async () => {
     const ui = (await ProjectDetailPage({
       params: Promise.resolve({ projectId: 'proj_1' }),

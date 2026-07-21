@@ -11,6 +11,7 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 ## Ownership
 
 - Staff quote UI: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.
+- Project Commercial composition and Quotes/Invoices navigation: `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`.
 - Staff quote APIs: `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Quote domain helpers: `apps/portal/lib/quotes`.
 - Deposit invoice domain helpers: `apps/portal/lib/invoices`.
@@ -35,6 +36,8 @@ For table/RPC ownership, write paths, access boundaries, and migration sources, 
 ## Quote Lifecycle
 
 The project page's Overview surfaces the current design and commercial record through the dedicated server-owned command-centre read model. It selects accepted > sent > draft, excludes declined quotes, uses only the selected quote's exact source estimate, and reads only that quote's raw stored total. The precedence rules and source-of-truth notes live in `docs/projects-contacts-estimates-calculator.md` under "Overview and current-design precedence". When changing quote status semantics, accept/decline behaviour, send logs, or quote totals, double-check that read model continues to reflect the right historical source without estimate fallback.
+
+The project header exposes one Commercial tab. Its accessible inner switch keeps Quotes and Invoices as separate lazy owners and preserves the existing `tab=quotes` and `tab=invoices` URLs. `QuotesTab.tsx` continues to own quote state and side effects; `CommercialTab.tsx` owns only composition, Edit/Preview URL state, and navigation. Switching to Invoices clears `quotePreview` but preserves selected quote, create-from-estimate, and unrelated query context. Email audit data and quote/invoice delivery side effects remain available through their domain records and APIs even though the standalone project Emails tab is retired.
 
 
 

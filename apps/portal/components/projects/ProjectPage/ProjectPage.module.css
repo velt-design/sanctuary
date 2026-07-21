@@ -28,61 +28,47 @@
   position: sticky;
   top: 0;
   z-index: 12;
-  margin-bottom: 12px;
-  padding-bottom: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 2px;
   background: var(--page-bg);
 }
 
 .masthead {
   display: grid;
-  gap: 10px;
+  grid-template-areas: 'identity tabs actions';
+  grid-template-columns: minmax(180px, 1fr) minmax(0, auto) auto;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 54px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--bg);
-  padding: 12px 14px 10px;
-}
-
-.mastheadTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px 14px;
-  flex-wrap: wrap;
+  padding: 6px 10px;
 }
 
 .mastheadIdentity {
-  flex: 1 1 420px;
+  grid-area: identity;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
-.mastheadTitleRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-}
-
 .mastheadTitle {
+  min-width: 0;
   margin: 0;
-  font-size: 20px;
+  overflow: hidden;
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.1;
   letter-spacing: 0.01em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
-}
-
-.mastheadMeta {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .mastheadOwners {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 12px;
-  margin-top: 7px;
+  flex: 0 0 auto;
 }
 
 .mastheadOwner {
@@ -101,19 +87,77 @@
 }
 
 .mastheadActions {
+  position: relative;
+  grid-area: actions;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .mastheadAction {
-  padding: 6px 10px;
-  font-size: 10px;
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.mastheadMoreAction {
+  min-width: 54px;
+}
+
+.mastheadMoreActionMobileOnly {
+  display: none;
+}
+
+.mastheadMoreMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 172px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgb(var(--portal-bg-surface-rgb));
+  box-shadow: 0 12px 28px rgba(var(--portal-text-rgb), 0.16);
+}
+
+.mastheadMoreMenu a,
+.mastheadMoreMenu button {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 9px 11px;
+  background: transparent;
+  color: rgb(var(--portal-text-rgb));
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+}
+
+.mastheadMoreMenu a:hover,
+.mastheadMoreMenu a:focus-visible,
+.mastheadMoreMenu button:hover,
+.mastheadMoreMenu button:focus-visible {
+  background: rgba(var(--portal-text-rgb), 0.055);
+  outline: none;
+}
+
+.mastheadMoreMenuDanger {
+  color: rgb(185, 28, 28) !important;
+}
+
+.mastheadMoreMenuWorkbench {
+  display: none;
 }
 
 .headerTabsScroller {
+  grid-area: tabs;
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
@@ -125,8 +169,6 @@
   align-items: end;
   gap: 4px;
   min-width: max-content;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
 }
 
 .headerTab {
@@ -140,9 +182,25 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  padding: 8px 12px;
+  padding: 7px 9px;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+@media (max-width: 1199px) {
+  .masthead {
+    grid-template-areas:
+      'identity actions'
+      'tabs tabs';
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 0;
+    padding-bottom: 4px;
+  }
+
+  .headerTabs {
+    border-top: 1px solid var(--border);
+    padding-top: 3px;
+  }
 }
 
 .headerTab:hover {
@@ -183,13 +241,6 @@
   border-radius: 14px;
   background: var(--bg);
   overflow: clip;
-}
-
-.projectTabToolbar {
-  display: flex;
-  justify-content: flex-end;
-  border-bottom: 1px solid var(--border);
-  padding: 10px 14px;
 }
 
 .projectTabBody {
@@ -290,33 +341,39 @@
   }
 
   .pageFrameMastheadSlotSticky {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .masthead {
     border-radius: 10px;
-    padding: 10px 10px 6px;
-  }
-
-  .mastheadIdentity {
-    flex-basis: 100%;
+    gap: 4px 8px;
+    padding: 5px 7px 3px;
   }
 
   .mastheadTitle {
-    font-size: 17px;
-  }
-
-  .mastheadActions {
-    justify-content: flex-start;
+    font-size: 15px;
   }
 
   .mastheadAction {
-    min-height: 34px;
+    min-height: 30px;
+    padding-inline: 7px;
+  }
+
+  .mastheadWorkbenchAction {
+    display: none;
+  }
+
+  .mastheadMoreMenuWorkbench {
+    display: block;
+  }
+
+  .mastheadMoreActionMobileOnly {
+    display: inline-flex;
   }
 
   .headerTab {
-    min-height: 40px;
-    padding-inline: 11px;
+    min-height: 34px;
+    padding: 6px 9px;
   }
 
   .projectTabBody {

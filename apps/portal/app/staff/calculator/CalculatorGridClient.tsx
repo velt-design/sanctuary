@@ -218,6 +218,10 @@ import {
   deriveCalculatorResultFreshness,
 } from './calculatorResultFreshness';
 import { useCalculatorCostingRequest } from './useCalculatorCostingRequest';
+import {
+  resolveCalculatorWorkspaceRoute,
+  type CalculatorProjectWorkspace,
+} from './calculatorWorkspace';
 
 type MaterialsExplainApiResponse = {
   output: {
@@ -457,9 +461,11 @@ const POWDERCOAT_STANDARD_COLOURS = [
 export default function CalculatorGridClient({
   email: emailProp,
   role: roleProp,
+  workspace,
 }: {
   email?: string;
   role?: 'admin' | 'staff';
+  workspace?: CalculatorProjectWorkspace;
 }) {
   const { email: sessionEmail, role: sessionRole } = usePortalSession();
   const email = typeof emailProp === 'string' ? emailProp : (sessionEmail ?? '');
@@ -469,11 +475,18 @@ export default function CalculatorGridClient({
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const toast = useToast();
-  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const projectId = searchParams.get('projectId') ?? '';
-  const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
-  const editEstimateId = searchParams.get('editEstimateId') ?? '';
-  const shouldOpenActiveDraft = searchParams.get('openActiveDraft') === '1';
+  const workspaceRoute = resolveCalculatorWorkspaceRoute(searchParams, workspace);
+  const hostKey = useMemo(
+    () => workspaceRoute.host || supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown',
+    [workspaceRoute.host],
+  );
+  const {
+    createNewEstimate,
+    editEstimateId,
+    fromEstimateId,
+    projectId,
+    shouldOpenActiveDraft,
+  } = workspaceRoute;
   const projectEstimatesQuery = useQuery({
     ...estimateMetasByProjectQueryOptions(hostKey, projectId),
     enabled: Boolean(projectId),
@@ -581,11 +594,12 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     const nextEditEstimateId = editEstimateId.trim();
-    if (!nextEditEstimateId) return;
+    if (!nextEditEstimateId && !workspace) return;
     setEditSessionEstimateId(nextEditEstimateId);
-  }, [editEstimateId]);
+  }, [editEstimateId, workspace]);
 
   useEffect(() => {
+    if (workspace) return;
     if (!draftHydrated || !projectId || activeEditEstimateId || fromEstimateId) return;
     if (restoredFromLocalDraft && !shouldOpenActiveDraft) return;
     if (!activeDraftEstimateMeta) return;
@@ -595,7 +609,7 @@ export default function CalculatorGridClient({
     qs.delete('fromEstimateId');
     qs.delete('openActiveDraft');
     router.replace(`/staff/calculator?${qs.toString()}`);
-  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, restoredFromLocalDraft, router, searchParams, shouldOpenActiveDraft]);
+  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, restoredFromLocalDraft, router, searchParams, shouldOpenActiveDraft, workspace]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -633,7 +647,7 @@ export default function CalculatorGridClient({
             const msg = `Design ${estimate.versionLabel} is locked and can no longer be edited.`;
             setDraftNotice(msg);
             toast.error(msg);
-            if (projectId) {
+            if (projectId && !workspace) {
               router.replace(
                 `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
                   resolvedEditEstimateId || activeEditEstimateId,
@@ -679,7 +693,7 @@ export default function CalculatorGridClient({
         toast.error(msg);
       }
     })();
-  }, [acceptExternalDraft, activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, restoredFromLocalDraft, router, toast]);
+  }, [acceptExternalDraft, activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, restoredFromLocalDraft, router, toast, workspace]);
 
   const pergolas = useMemo(() => calculatorPergolaOptions(values), [values]);
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
@@ -2423,7 +2437,8 @@ export default function CalculatorGridClient({
   const statusActionHandlers: Record<CalculatorQuoteStatusActionKey, () => void> = {
     selectProject: () => setProjectPickerOpen(true),
     openProject: () => {
-      if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
+      if (workspace) workspace.onOpenProject();
+      else if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
     },
     openIssues: () => setIssuesOpen(true),
     openInfills: () => setInfillsOpen(true),
@@ -2480,11 +2495,14 @@ export default function CalculatorGridClient({
           createDesignRequest,
           saveMode,
         },
+        createNewEstimate,
         result,
         resultModules,
         values,
       });
       if (outcome) {
+        setEditSessionEstimateId(outcome.estimateId);
+        workspace?.onEstimateSaved(outcome.estimateId);
         setConfirmOpen(false);
         setSaveOutcome(outcome);
         toast.success('Design saved on this device.');
@@ -2495,6 +2513,7 @@ export default function CalculatorGridClient({
       activeDraftEstimateMeta?.id,
       activeEditEstimateId,
       criticalUiWarnings.length,
+      createNewEstimate,
       draftEntityKey,
       draftSessionKey,
       email,
@@ -2510,6 +2529,7 @@ export default function CalculatorGridClient({
       resultModules,
       toast,
       values,
+      workspace,
     ],
   );
 
@@ -4014,10 +4034,17 @@ export default function CalculatorGridClient({
     hasInfills: infillsState.items.length > 0,
   };
 
+  const CalculatorRoot = workspace ? 'section' : 'main';
+
   return (
-    <main className={`${styles.page} ${styles.previewPage}${previewSplit.isDragging ? ` ${styles.previewPageResizing}` : ''}`}>
+    <CalculatorRoot
+      className={`${styles.page} ${styles.previewPage}${workspace ? ` ${styles.embeddedPage}` : ''}${previewSplit.isDragging ? ` ${styles.previewPageResizing}` : ''}`}
+      data-calculator-workspace={workspace ? 'project' : 'standalone'}
+    >
       <div className={styles.previewFrame}>
         <CalculatorCommandBar
+          variant={workspace ? 'embedded' : 'standalone'}
+          designNavigation={workspace?.designNavigation}
           projectLabel={project ? project.projectName ?? project.name ?? 'Select project' : 'Select project'}
           isEditingDesign={isEditingDesign}
           activeModuleLabel={activeModuleLabel}
@@ -4026,13 +4053,18 @@ export default function CalculatorGridClient({
           resultFreshness={resultFreshness}
           localDraftStatus={localDraftStatus}
           blockerCount={quoteStatusUi.blockerCount}
-          onSelectProject={() => setProjectPickerOpen(true)}
+          onSelectProject={workspace ? undefined : () => setProjectPickerOpen(true)}
           saveLabel={generateField?.actionLabel ?? 'Save'}
           saveDisabled={!generateField || Boolean(generateField.disabled)}
           onSave={() => void generateField?.onAction?.()}
           saveError={generateField?.error}
         />
-        <div className={styles.split} ref={previewSplit.splitRef} style={previewSplit.splitStyle}>
+        <div
+          className={styles.split}
+          ref={previewSplit.splitRef}
+          style={previewSplit.splitStyle}
+          data-calculator-split="true"
+        >
           <div className={styles.leftCol}>
             <div className={styles.configurationWorkspace}>
               <CalculatorModuleNavigator
@@ -4631,14 +4663,16 @@ export default function CalculatorGridClient({
         outcome={saveOutcome}
         onDismiss={() => setSaveOutcome(null)}
       />
-      <CalculatorProjectPicker
-        open={projectPickerOpen}
-        hostKey={hostKey}
-        selectedProjectId={projectId}
-        onClose={() => setProjectPickerOpen(false)}
-        onSelect={handleProjectSelect}
-      />
-    </main>
+      {!workspace ? (
+        <CalculatorProjectPicker
+          open={projectPickerOpen}
+          hostKey={hostKey}
+          selectedProjectId={projectId}
+          onClose={() => setProjectPickerOpen(false)}
+          onSelect={handleProjectSelect}
+        />
+      ) : null}
+    </CalculatorRoot>
   );
 }
 

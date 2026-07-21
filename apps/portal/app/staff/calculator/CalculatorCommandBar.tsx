@@ -4,6 +4,8 @@ import {
   type CalculatorResultFreshness,
 } from './calculatorResultFreshness';
 import CalculatorDraftStatus from './CalculatorDraftStatus';
+import CalculatorDesignNavigationSelect from './CalculatorDesignNavigationSelect';
+import type { CalculatorDesignNavigation } from './calculatorWorkspace';
 import type { CalculatorLocalDraftStatus } from './useCalculatorDraftSession';
 
 export type CalculatorUiMode = 'basic' | 'advanced';
@@ -17,11 +19,13 @@ type CalculatorCommandBarProps = {
   resultFreshness: CalculatorResultFreshness;
   localDraftStatus: CalculatorLocalDraftStatus;
   blockerCount: number;
-  onSelectProject: () => void;
+  onSelectProject?: () => void;
   saveLabel: string;
   saveDisabled: boolean;
   onSave: () => void;
   saveError?: string;
+  variant?: 'standalone' | 'embedded';
+  designNavigation?: CalculatorDesignNavigation;
 };
 
 export default function CalculatorCommandBar({
@@ -38,24 +42,40 @@ export default function CalculatorCommandBar({
   saveDisabled,
   onSave,
   saveError,
+  variant = 'standalone',
+  designNavigation,
 }: CalculatorCommandBarProps) {
   const freshnessLabel = calculatorResultFreshnessLabel(resultFreshness);
+  const embedded = variant === 'embedded';
 
   return (
-    <header className={styles.commandBar} data-calculator-command-bar>
+    <header className={`${styles.commandBar}${embedded ? ` ${styles.commandBarEmbedded}` : ''}`} data-calculator-command-bar>
       <div className={styles.commandBarIdentity}>
         <div>
-          <h1 className={styles.commandBarTitle}>Calculator</h1>
+          {embedded && designNavigation ? (
+            <CalculatorDesignNavigationSelect navigation={designNavigation} className={styles.commandBarDesignSelector} />
+          ) : (
+            <h1 className={styles.commandBarTitle}>Calculator</h1>
+          )}
           <div className={styles.commandBarMeta}>
-            <button type="button" className={styles.commandBarProject} onClick={onSelectProject}>
-              {projectLabel}
-            </button>
-            <span aria-hidden="true">·</span>
+            {!embedded && onSelectProject ? (
+              <button
+                type="button"
+                className={styles.commandBarProject}
+                data-calculator-project-picker="enabled"
+                onClick={onSelectProject}
+              >
+                {projectLabel}
+              </button>
+            ) : !embedded ? (
+              <span className={styles.commandBarProject} data-calculator-project-picker="fixed">{projectLabel}</span>
+            ) : null}
+            {!embedded ? <span aria-hidden="true">·</span> : null}
             <span>{isEditingDesign ? 'Editing draft' : 'New design'}</span>
             <span aria-hidden="true">·</span>
             <span>{activeModuleLabel}</span>
           </div>
-          <CalculatorDraftStatus status={localDraftStatus} />
+          <CalculatorDraftStatus status={localDraftStatus} compact={embedded} />
         </div>
       </div>
 

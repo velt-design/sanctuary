@@ -28,8 +28,9 @@ The main UX standard:
 1. **Project Page Command Centre**
    - Goal: make the project page the clearest operational hub.
    - Improve current status, next action, latest note/activity, current design/quote state, and obvious primary actions.
-   - Stage 1 complete: the activity-key default is now labelled Overview; a strict server-owned card shows exact current design, quote/estimate version, stored customer price, delivery, costing freshness, source failures, and newer-estimate context. Existing customer context, notes, tasks, specialist tabs, and responsive Details remain available.
+   - Stage 1 complete: the activity-key default is now labelled Overview; a strict server-owned card shows exact current design, quote/estimate version, stored customer price, delivery, costing freshness, source failures, and newer-estimate context. Customer context, notes, tasks, and specialist workflows remain available.
    - Stage 2 implemented locally and in verification: the project header shows one canonical Project Owner from the approved Jordan/JP/Joe/Bruce roster; Overview derives one primary action from project tasks, follow-up tasks, or controlled manual actions; conflicts, critical reasons, compact audit history, and dashboard project exceptions are surfaced. Authenticated real-project Playwright remains the completion gate.
+   - Project shell Slices 1-2 implemented locally: the page is full width with project facts and stage in Overview; the authoritative Calculator replaces the legacy Designs/configurator surface; Quotes and Invoices share Commercial; the Emails UI is retired while delivery/audit data and side effects remain unchanged.
 
 2. **Activity System V2**
    - Goal: turn activity into a useful cross-workflow timeline, not just a note list.

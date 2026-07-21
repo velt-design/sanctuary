@@ -71,16 +71,25 @@ export function resolveCalculatorEstimateTarget({
   activeDraftEstimateMetaId,
   estimateMetas,
   resolveEstimateId,
+  createNewEstimate = false,
 }: {
   activeEditEstimateId: string;
   activeDraftEstimateMetaId?: string | null;
   estimateMetas: EstimateMetaTarget[];
   resolveEstimateId: (estimateId: string) => string | null | undefined;
+  createNewEstimate?: boolean;
 }): {
   activeDraftEstimateId: string;
   estimateIdToUpdate: string;
   canonicalEditEstimateId: string | null;
 } {
+  if (createNewEstimate) {
+    return {
+      activeDraftEstimateId: '',
+      estimateIdToUpdate: '',
+      canonicalEditEstimateId: null,
+    };
+  }
   const activeDraftEstimateId = estimateMetas.find((estimate) => estimate.isActiveDraft)?.id ?? activeDraftEstimateMetaId ?? '';
   const estimateIdToUpdate = activeEditEstimateId || activeDraftEstimateId;
   const resolvedEditEstimateId = estimateIdToUpdate ? resolveEstimateId(estimateIdToUpdate) : null;

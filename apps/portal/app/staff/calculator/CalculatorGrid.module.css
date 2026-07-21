@@ -25,6 +25,20 @@
   container-name: calculator-page;
 }
 
+.embeddedPage {
+  height: max(640px, calc(100dvh - var(--project-page-masthead-height, 140px) - 48px));
+  min-height: 640px;
+  padding: 0;
+}
+
+@media (max-width: 1119px) {
+  .embeddedPage {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+}
+
 @media (max-width: 1119px) {
   .previewPage {
     scroll-padding-top: 180px;

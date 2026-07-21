@@ -144,6 +144,20 @@ describe('calculator save workflow helpers', () => {
       estimateIdToUpdate: 'local-estimate:edit',
       canonicalEditEstimateId: 'estimate-server',
     });
+
+    expect(
+      resolveCalculatorEstimateTarget({
+        activeEditEstimateId: 'estimate-draft',
+        activeDraftEstimateMetaId: 'estimate-draft',
+        estimateMetas: [{ id: 'estimate-draft', isActiveDraft: true }],
+        resolveEstimateId: () => 'estimate-draft',
+        createNewEstimate: true,
+      }),
+    ).toEqual({
+      activeDraftEstimateId: '',
+      estimateIdToUpdate: '',
+      canonicalEditEstimateId: null,
+    });
   });
 
   it('keeps project snapshot validation and redirect URLs stable', () => {

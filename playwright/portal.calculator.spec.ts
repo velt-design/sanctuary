@@ -16,6 +16,7 @@ if (!scenario || scenario.fixtureRevision !== CALCULATOR_MULTI_MODULE_SCENARIO_R
 const projectId = scenario.projectId as string;
 const estimateId = scenario.estimateId as string;
 const calculatorRoute = `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(estimateId)}`;
+const projectCalculatorRoute = `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(estimateId)}`;
 const previewSplitStorageKey = 'sanctuary-portal:calculator:previewRightWidthPx:v2';
 
 async function clearPreviewSplitPreference(page: Page) {
@@ -164,6 +165,77 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     const customerEx = parseCurrency(await pricing.getByText(/^Customer price \(ex GST\)/).innerText());
     expect(customerEx).toBe(Math.round(expectedCustomerEx));
     expect(customerInc).toBe(Math.round(expectedCustomerInc));
+  });
+});
+
+test('real project route embeds the seeded Calculator without a project picker', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
+    await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('tab', { name: 'Calculator' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-calculator-project-picker="fixed"]')).toBeVisible();
+    await expect(page.locator('[data-calculator-project-picker="enabled"]')).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`tab=estimates.*estimateId=${encodeURIComponent(estimateId)}`));
+  });
+});
+
+test('project Calculator keeps compact sticky chrome across supported widths', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
+    await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
+
+    for (const width of [1600, 1366, 1024, 768, 390]) {
+      await page.setViewportSize({ width, height: width >= 1366 ? 1000 : 844 });
+      const masthead = page.locator('[aria-label="Project summary"]');
+      const commandBar = page.locator('[data-calculator-command-bar]');
+      await expect(masthead).toBeVisible();
+      await expect(commandBar).toBeVisible();
+      await expect(page.getByLabel('Design version')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Save', exact: true }).first()).toBeVisible();
+
+      const metrics = await page.evaluate(() => {
+        const mastheadElement = document.querySelector<HTMLElement>('[aria-label="Project summary"]');
+        const commandElement = document.querySelector<HTMLElement>('[data-calculator-command-bar]');
+        const workspaceElement = document.querySelector<HTMLElement>('[data-calculator-split="true"]');
+        if (!mastheadElement || !commandElement || !workspaceElement) return null;
+        const mastheadBox = mastheadElement.getBoundingClientRect();
+        const commandBox = commandElement.getBoundingClientRect();
+        const workspaceBox = workspaceElement.getBoundingClientRect();
+        return {
+          mastheadHeight: Math.round(mastheadBox.height),
+          commandHeight: Math.round(commandBox.height),
+          chromeHeight: Math.round(workspaceBox.top - mastheadBox.top),
+          mastheadPosition: getComputedStyle(mastheadElement.parentElement as HTMLElement).position,
+          horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        };
+      });
+      expect(metrics).not.toBeNull();
+      expect(metrics?.mastheadPosition).toBe('sticky');
+      expect(metrics?.horizontalOverflow ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(1);
+      if (width >= 1366) {
+        expect(metrics?.mastheadHeight ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(64);
+        expect(metrics?.commandHeight ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(60);
+        expect(metrics?.chromeHeight ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(145);
+      }
+    }
+
+    const designSelector = page.getByLabel('Design version');
+    const currentDesignValue = await designSelector.inputValue();
+    await designSelector.selectOption('new');
+    await expect(page).toHaveURL(/newDesign=1/);
+    await designSelector.selectOption(currentDesignValue);
+    await expect(page).toHaveURL(new RegExp(`estimateId=${encodeURIComponent(estimateId)}`));
+
+    const moreButton = page.getByRole('button', { name: 'More', exact: true });
+    await moreButton.click();
+    await expect(page.getByRole('menu', { name: 'Project actions' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu', { name: 'Project actions' })).toHaveCount(0);
   });
 });
 

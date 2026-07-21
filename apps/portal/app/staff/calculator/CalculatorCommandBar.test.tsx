@@ -51,4 +51,35 @@ describe('CalculatorCommandBar', () => {
     expect(markup).toContain('disabled=""');
     expect(markup).toContain('Fix inputs.');
   });
+
+  it('renders fixed project identity without a picker in embedded mode', () => {
+    const markup = renderBar({ onSelectProject: undefined });
+    expect(markup).toContain('data-calculator-project-picker="fixed"');
+    expect(markup).not.toContain('data-calculator-project-picker="enabled"');
+  });
+
+  it('uses compact project design navigation without duplicating the Calculator or project heading', () => {
+    const markup = renderBar({
+      variant: 'embedded',
+      onSelectProject: undefined,
+      designNavigation: {
+        value: 'draft:est_1',
+        stateLabel: 'Current draft · V2',
+        options: [
+          { value: 'draft:est_1', label: 'Current draft · V2' },
+          { value: 'new', label: 'Start a blank design' },
+        ],
+        onChange: vi.fn(),
+      },
+    });
+
+    expect(markup).toContain('aria-label="Design version"');
+    expect(markup).toContain('Current draft · V2');
+    expect(markup).toContain('Editing draft');
+    expect(markup).toContain('Pergola 1 · Module 1');
+    expect(markup).not.toContain('<h1');
+    expect(markup).not.toContain('Agent Project');
+    expect(markup).toContain('Saved locally');
+    expect(markup).toContain('title="Browser draft only — use Save to update the estimate."');
+  });
 });

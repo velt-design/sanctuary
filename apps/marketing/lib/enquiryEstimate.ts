@@ -5,9 +5,9 @@ export type MoneyRange = {
   highIncGst: number;
 };
 
-// 2026-06-26: marketing-email quote multiplier set to 1.25 (25% markup). The
-// portal-side `QUOTE_MARGIN_MULTIPLIER` in `EstimatesTab.tsx` also stays at
-// 1.25; that's the staff-quote markup, a different surface.
+// 2026-06-26: marketing-email quote multiplier set to 1.25 (25% markup).
+// Staff Calculator pricing is authoritative for project estimates and remains
+// a separate surface from this indicative marketing range.
 export const QUOTE_MULTIPLIER = 1.25;
 const UPLIFT_MAX = 1.15; // baseline -> +15%
 

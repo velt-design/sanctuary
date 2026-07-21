@@ -37,13 +37,13 @@ describe('ProjectTabNavigation', () => {
     document.body.innerHTML = '';
   });
 
-  it('shows all current tabs, including Invoices and conditional Job Packs', () => {
+  it('shows the four navigation owners with conditional Job Packs', () => {
     const rendered = renderIntoDocument(
       <ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" />,
     );
     const labels = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent?.trim());
 
-    expect(labels).toEqual(['Overview', 'Designs', 'Quotes', 'Invoices', 'Job Packs', 'Emails']);
+    expect(labels).toEqual(['Overview', 'Calculator', 'Commercial', 'Job Packs']);
     expect(rendered.container.querySelector('[aria-selected="true"]')?.textContent).toContain('Overview');
     rendered.unmount();
   });
@@ -70,16 +70,36 @@ describe('ProjectTabNavigation', () => {
     const rendered = renderIntoDocument(
       <ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" />,
     );
-    const quotes = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
-      .find((tab) => tab.textContent?.trim() === 'Quotes');
+    const commercial = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+      .find((tab) => tab.textContent?.trim() === 'Commercial');
 
     act(() => {
-      quotes?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-      quotes?.click();
+      commercial?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      commercial?.click();
     });
 
     expect(preloadMock).toHaveBeenCalledWith('quotes', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
     expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=quotes');
+    rendered.unmount();
+  });
+
+  it('marks Commercial selected for the invoices compatibility route', () => {
+    mockSearchParams = 'tab=invoices';
+    const rendered = renderIntoDocument(
+      <ProjectTabNavigation hasJobPacks host="host" initialTab="invoices" projectId="proj_1" />,
+    );
+
+    expect(rendered.container.querySelector('[aria-selected="true"]')?.textContent).toContain('Commercial');
+    rendered.unmount();
+  });
+
+  it('normalizes the retired Emails route to Overview', () => {
+    mockSearchParams = 'tab=emails&campaign=winter';
+    const rendered = renderIntoDocument(
+      <ProjectTabNavigation hasJobPacks host="host" initialTab="emails" projectId="proj_1" />,
+    );
+
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity&campaign=winter');
     rendered.unmount();
   });
 });

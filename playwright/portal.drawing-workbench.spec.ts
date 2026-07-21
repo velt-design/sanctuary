@@ -34,8 +34,9 @@ async function openDrawingWorkbench(page: Page) {
   const explicitUrl = process.env.PORTAL_DRAWING_URL?.trim();
   if (explicitUrl) {
     await page.goto(explicitUrl);
-    await expect(page.getByRole('tab', { name: 'Designs' })).toBeVisible({ timeout: 60_000 });
-    await page.getByRole('tab', { name: 'Designs' }).click();
+    const workbenchLink = page.getByRole('link', { name: 'Design Workbench' });
+    if (await workbenchLink.isVisible().catch(() => false)) await workbenchLink.click();
+    await expect(page.getByRole('region', { name: 'Drawing workbench' }).first()).toBeVisible({ timeout: 60_000 });
     return;
   }
 
@@ -53,9 +54,9 @@ async function openDrawingWorkbench(page: Page) {
     await rows.nth(index).click();
     await page.waitForLoadState('networkidle');
 
-    const designsTab = page.getByRole('tab', { name: 'Designs' });
-    await expect(designsTab).toBeVisible({ timeout: 30_000 });
-    await designsTab.click();
+    const workbenchLink = page.getByRole('link', { name: 'Design Workbench' });
+    await expect(workbenchLink).toBeVisible({ timeout: 30_000 });
+    await workbenchLink.click();
 
     const hasWorkbench = await page.getByRole('region', { name: 'Drawing workbench' }).first().isVisible().catch(() => false);
     const hasEmptyDrawing = await page.getByText('No plan or section drawing is available for this design.').first().isVisible().catch(() => false);

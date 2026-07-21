@@ -53,21 +53,21 @@ Required owner and guardrail docs are:
 
 The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the internal default tab key `activity`. The staff-facing label is `Overview`; preserving the key keeps URLs, old links, lazy-loading boundaries, and tests compatible.
 
-`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns one fixed sticky header and the full-width body. `ProjectTabNavigation.tsx` owns the shared tab registry, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering and quote Edit/Preview controls. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
+`ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns one fixed sticky header and the full-width body. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Quotes/Invoices composition and quote Edit/Preview URL state without taking over either subview's side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
 The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
 
-Specialist workflows remain separate lazy tabs:
+The current lazy navigation owners are:
 
-- Designs (`estimates` key).
-- Quotes.
-- Invoices.
+- Calculator (`estimates` key), embedded with fixed project context.
+- Commercial (`quotes` navigation key), with separate Quotes and Invoices inner views retaining their route keys.
 - Job Packs when available.
-- Emails.
+
+The project Emails UI is retired; `tab=emails` normalizes to Overview. Durable email audit data, preview APIs, snapshot fields, and quote/invoice delivery side effects are unchanged. The separate Design Workbench route remains available from the project header.
 
 Project details and stage correction are part of Overview at every width. The pipeline is no longer rendered in the header.
 
-Stage 1 does not add logic to `QuotesTab.tsx` or `EstimatesTab.tsx`.
+Stage 1 did not add logic to the specialist tabs. The later shell Slice 2 retired the legacy Estimates/Configurator owner in favour of the authoritative Calculator and deliberately left the critical `QuotesTab.tsx` mutation boundary unchanged.
 
 ## 4. Existing current-design resolution
 
@@ -344,7 +344,7 @@ Stage 1 verification completed on 2026-07-20:
 - Never select declined quotes.
 - Never fall back from quote source or quote price to an estimate.
 - Read stored estimate summary and freshness; do not run costing.
-- Keep existing project identity, notes, tasks, lazy boundaries, URL keys, and specialist tabs while consolidating details and stage correction into Overview.
+- Keep existing project identity, notes, tasks, lazy boundaries, and compatible URL keys while consolidating details and stage correction into Overview.
 - Clear protected user-owned caches on command-centre access-ending responses.
 - Remove the legacy fallback resolver/summarizer/bar after zero-consumer proof.
 - Make no Stage 1 migration or specialist mutation change.
@@ -353,7 +353,7 @@ Stage 1 verification completed on 2026-07-20:
 - Store staff dates at 5:00pm Auckland and preserve source timestamps.
 - Keep overdue amber; critical is explicit and reasoned.
 - Keep the compatibility projection service-owned and non-authoritative.
-- Keep QuotesTab, EstimatesTab, workbench/drawings, geometry, and costing inputs unchanged in Stage 2.
+- The command-centre Stage 2 kept specialist workflows, workbench/drawings, geometry, and costing inputs unchanged. The later project-shell Slice 2 replaced only the obsolete project Estimates/Configurator composition with the authoritative Calculator; it did not change costing inputs or the separate Workbench route.
 
 ## 22. Unresolved technical questions
 

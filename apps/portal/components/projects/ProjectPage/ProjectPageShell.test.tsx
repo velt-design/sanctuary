@@ -21,7 +21,7 @@ describe('ProjectPageShell', () => {
   });
 
   it('renders one full-width tab surface without rails, drop zones, or resize handles', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot} tab="quotes" />);
+    const rendered = renderIntoDocument(<ProjectPageShell host="host" snapshot={snapshot} tab="quotes" />);
 
     expect(rendered.container.querySelector('[data-project-page-shell="true"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="project-main-tabs"]')?.getAttribute('data-tab')).toBe('quotes');

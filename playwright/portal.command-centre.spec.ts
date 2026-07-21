@@ -216,6 +216,10 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(fixture).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Aroha Smith - Takapuna' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Calculator' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Commercial' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Emails' })).toHaveCount(0);
     await expect(page.locator('[data-project-status-details="true"]')).toContainText('Sent');
     await expect(page.locator('[data-primary-action-card="true"]')).toBeVisible();
     await expect(page.locator('[data-project-rail]')).toHaveCount(0);
@@ -230,7 +234,7 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
   });
 }
 
-test('moves between header tabs while preserving unrelated project query parameters', async ({ page }) => {
+test('moves into Commercial while preserving unrelated project query parameters', async ({ page }) => {
   await page.route('**/api/staff/v1/projects/proj_fixture_shell/command-centre', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -243,8 +247,71 @@ test('moves between header tabs while preserving unrelated project query paramet
     });
   });
   await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=activity&campaign=winter`);
-  await page.getByRole('tab', { name: 'Emails' }).click();
-  await expect(page).toHaveURL(/tab=emails/);
+  await page.getByRole('tab', { name: 'Commercial' }).click();
+  await expect(page).toHaveURL(/tab=quotes/);
   await expect(page).toHaveURL(/campaign=winter/);
-  await expect(page.getByRole('tab', { name: 'Emails' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Commercial' })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('normalizes the retired Emails project URL to Overview', async ({ page }) => {
+  await page.route('**/api/staff/v1/projects/proj_fixture_shell/command-centre', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        projectId: 'proj_fixture_shell',
+        currentDesign: null,
+        operations: commandCentreActionFixtures.empty,
+        generatedAt: new Date().toISOString(),
+      }),
+    });
+  });
+
+  await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=emails&campaign=winter`);
+  await expect(page).toHaveURL(/tab=activity/);
+  await expect(page).toHaveURL(/campaign=winter/);
+  await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('shows historical project designs as locked Calculator revision sources', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/projects/proj_fixture_shell/estimates', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        estimates: [{
+          id: 'est_history',
+          projectId: 'proj_fixture_shell',
+          createdAt: '2026-07-20T00:00:00.000Z',
+          status: 'draft',
+          summary: {},
+          versionLabel: 'V1',
+          isActiveDraft: false,
+          hasSentQuote: true,
+          jobPackEligible: false,
+          jobPackGeneratedAt: null,
+          jobPackQuoteVersionId: null,
+        }],
+      }),
+    });
+  });
+
+  await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=estimates&estimateId=est_history`);
+  await expect(page.getByRole('tab', { name: 'Calculator' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-calculator-locked-source="true"]')).toContainText('cannot be edited directly');
+  await expect(page.getByRole('button', { name: 'Start revision' })).toBeVisible();
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(horizontalOverflow).toBe(false);
+});
+
+test('keeps invoice URLs inside the Commercial tab owner', async ({ page }) => {
+  await page.route('**/api/staff/v1/projects/proj_fixture_shell/invoices', async (route) => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ invoices: [] }) });
+  });
+
+  await page.goto(`${PROJECT_SHELL_FIXTURE_PATH}?tab=invoices&quoteId=q_1&campaign=winter`);
+  await expect(page.getByRole('tab', { name: 'Commercial' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Invoices' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('No invoices yet')).toBeVisible();
+  await expect(page).toHaveURL(/quoteId=q_1/);
+  await expect(page).toHaveURL(/campaign=winter/);
 });
