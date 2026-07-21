@@ -35,6 +35,11 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
               </Link>
             </div>
             <div>
+              <Link href="/pergola-guides" className="lg:hover:opacity-80">
+                Pergola Guides
+              </Link>
+            </div>
+            <div>
               <Link href="/contact" className="lg:hover:opacity-80">
                 Contact
               </Link>

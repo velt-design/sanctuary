@@ -50,6 +50,10 @@ The ten-route SEO landing-page programme is the second approved adoption. It use
 
 The programme routes are listed in `docs/landing-pages/seo-landing-page-programme.md`. They share the architectural system without sharing substantial copy: each has a distinct search intent, metadata identity, H1, section narrative, project selection and FAQ set. Every route retains `#4f5748` olive green as the action accent; burgundy and purple are not part of this adoption.
 
+`/pergola-guides` is the programme's approved public directory. It presents all ten routes as an editorial design library grouped into three decision-led chapters: planning the project, choosing form and structure, and comparing scope and components. The page owns its metadata, `CollectionPage`, ordered `ItemList` and breadcrumb schema through `apps/marketing/app/pergola-guides/`; the typed directory content in `apps/marketing/data/pergolaGuides.ts` is the single owner of guide names, routes and summaries.
+
+The directory is self-canonical, indexable, included in the public sitemap and linked from the existing footer. Its footer change is limited to one discovery link; the established footer layout, reviews, social links and contact action are unchanged. The route retains the same square-cornered, rule-led foundation and `#4f5748` olive accent as the programme pages.
+
 The public homepage remains outside this adoption and retains its established implementation.
 
 ## Verification
@@ -60,4 +64,4 @@ The public homepage remains outside this adoption and retains its established im
 - `npm run build:marketing`
 - `git diff --quiet HEAD -- <public-boundary-files>` to prove public presentation source parity.
 
-The Playwright lane checks the standalone catalogue and unchanged homepage plus every SEO programme route at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible FAQ/schema parity.
+The Playwright lane checks the standalone catalogue and unchanged homepage plus every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity.

@@ -19,6 +19,18 @@ This document tracks the ten approved Sanctuary marketing landing pages. Pages a
 | 9 | Acrylic Pergolas vs Louvre Roofs | `/acrylic-pergolas-vs-louvre-roofs` | Complete | Decision-led comparison with all product and performance claims gated for review. |
 | 10 | Commercial Pergolas Auckland | `/commercial-pergolas-auckland` | Complete | Hospitality and selected commercial scope, coordination and operational context. |
 
+## Public guide directory
+
+`/pergola-guides` is the public, indexable directory for all ten programme pages. It is designed as a decision-led library rather than a flat SEO sitemap:
+
+- Plan the project: broad Auckland pergolas, custom pergolas, outdoor rooms and commercial pergolas.
+- Choose form and structure: aluminium, gable and pitched pergolas.
+- Compare scope and components: cost, blinds and acrylic-versus-louvre roof behaviour.
+
+The directory uses the approved architectural editorial foundation, retains `#4f5748` olive green as its only action accent and is discoverable from the public footer and sitemap. A typed data owner keeps all ten route labels, summaries and destinations aligned with the rendered directory and ordered `ItemList` schema.
+
+Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It verifies one H1, self-canonical indexable metadata, exactly ten direct guide links, three chapters, resolving destinations, ordered schema, footer and sitemap discovery, loaded imagery, green accent and no horizontal overflow. The expanded marketing browser suite passes 100 of 100 checks, and the production build statically generates `/pergola-guides`. Visual evidence is stored in `artifacts/marketing-seo-landing/pergola-guides/`.
+
 ## Page 1 decisions
 
 - `/pergolas-auckland` is self-canonical and included in the public sitemap because it is a distinct, indexable broad-service page.
