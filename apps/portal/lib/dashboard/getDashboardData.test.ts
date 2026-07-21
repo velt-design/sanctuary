@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getDashboardSnapshotCached = vi.fn();
 const listRecentProjectNoteActivity = vi.fn();
 const listVisibleDashboardTasks = vi.fn();
-const listDashboardNewLeads = vi.fn();
 const listDashboardRecentEstimates = vi.fn();
 
 vi.mock('./getDashboardSnapshotCached', () => ({
@@ -19,7 +18,6 @@ vi.mock('./tasks', () => ({
 }));
 
 vi.mock('./operationalLists', () => ({
-  listDashboardNewLeads: (...args: unknown[]) => listDashboardNewLeads(...args),
   listDashboardRecentEstimates: (...args: unknown[]) => listDashboardRecentEstimates(...args),
 }));
 
@@ -33,7 +31,6 @@ describe('getDashboardData', () => {
     getDashboardSnapshotCached.mockReset();
     listRecentProjectNoteActivity.mockReset();
     listVisibleDashboardTasks.mockReset();
-    listDashboardNewLeads.mockReset();
     listDashboardRecentEstimates.mockReset();
 
     getDashboardSnapshotCached.mockResolvedValue({
@@ -65,14 +62,6 @@ describe('getDashboardData', () => {
         updatedAt: '2026-05-30T00:00:00.000Z',
       },
     ]);
-    listDashboardNewLeads.mockResolvedValue([
-      {
-        projectId: 'proj_lead',
-        projectName: 'Oldest Lead',
-        createdAt: '2026-05-01T00:00:00.000Z',
-        href: '/staff/projects/proj_lead',
-      },
-    ]);
     listDashboardRecentEstimates.mockResolvedValue([
       {
         estimateId: 'est_1',
@@ -95,14 +84,12 @@ describe('getDashboardData', () => {
     expect(getDashboardSnapshotCached).toHaveBeenCalledWith('today');
     expect(listRecentProjectNoteActivity).toHaveBeenCalledTimes(1);
     expect(listRecentProjectNoteActivity).toHaveBeenCalledWith(expect.anything(), 8);
-    expect(listDashboardNewLeads).toHaveBeenCalledTimes(1);
     expect(listDashboardRecentEstimates).toHaveBeenCalledTimes(1);
     expect(listVisibleDashboardTasks).toHaveBeenCalledWith(expect.anything(), 'user_1');
     expect(data.kpis.actionsDue).toBe(1);
     expect(data.pipelineCounts.NEW).toBe(2);
     expect(data.recentActivity).toHaveLength(1);
     expect(data.personalTasks).toHaveLength(1);
-    expect(data.newLeads[0]?.projectName).toBe('Oldest Lead');
     expect(data.recentEstimates[0]?.customerPriceIncGst).toBe(1437.5);
   });
 

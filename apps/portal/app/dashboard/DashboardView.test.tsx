@@ -68,16 +68,6 @@ const data: DashboardData = {
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
   pipelineCounts: {},
-  newLeads: [
-    {
-      projectId: 'proj_lead',
-      projectName: 'Oldest Lead',
-      contactName: 'Jamie Client',
-      siteAddress: 'Auckland',
-      createdAt: '2026-03-28T00:00:00.000Z',
-      href: '/staff/projects/proj_lead',
-    },
-  ],
   recentEstimates: [
     {
       estimateId: 'est_123',
@@ -123,7 +113,6 @@ describe('DashboardView', () => {
     expect(markup).toContain('Quick actions');
     expect(markup).toContain('Pipeline');
     expect(markup).toContain('Attention Today');
-    expect(markup).toContain('New Leads');
     expect(markup).toContain('Recent Estimates');
     expect(markup).toContain('Project Action Queue');
     expect(markup).toContain('Recent Activity');
@@ -151,21 +140,27 @@ describe('DashboardView', () => {
     expect(noteIndex).toBeLessThan(authorIndex);
   });
 
-  it('prioritizes pipeline before operational overview and action queue', () => {
+  it('prioritizes the overview before the ordered operations row', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
 
     const pipelineIndex = markup.indexOf('Pipeline');
     const attentionIndex = markup.indexOf('Attention Today');
-    const queueIndex = markup.indexOf('Project Action Queue');
     const activityIndex = markup.indexOf('Recent Activity');
+    const queueIndex = markup.indexOf('Project Action Queue');
+    const estimatesIndex = markup.indexOf('Recent Estimates');
+    const tasksIndex = markup.indexOf('My Tasks');
 
     expect(pipelineIndex).toBeGreaterThan(-1);
     expect(attentionIndex).toBeGreaterThan(-1);
+    expect(estimatesIndex).toBeGreaterThan(-1);
     expect(queueIndex).toBeGreaterThan(-1);
     expect(activityIndex).toBeGreaterThan(-1);
+    expect(tasksIndex).toBeGreaterThan(-1);
     expect(pipelineIndex).toBeLessThan(attentionIndex);
-    expect(attentionIndex).toBeLessThan(queueIndex);
-    expect(queueIndex).toBeLessThan(activityIndex);
+    expect(attentionIndex).toBeLessThan(activityIndex);
+    expect(activityIndex).toBeLessThan(queueIndex);
+    expect(queueIndex).toBeLessThan(estimatesIndex);
+    expect(estimatesIndex).toBeLessThan(tasksIndex);
   });
 
   it('does not render retired exceptions, installs, or misleading quote labels', () => {
@@ -175,6 +170,7 @@ describe('DashboardView', () => {
     expect(markup).not.toContain('Installs this week');
     expect(markup).not.toContain('Upcoming Installs');
     expect(markup).not.toContain('Quotes to send');
+    expect(markup).not.toContain('New Leads');
     expect(markup).toContain('Projects in quoting');
   });
 

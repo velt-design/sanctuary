@@ -19,6 +19,20 @@ const mobileNavItems = [
 
 const HEADER_SCROLL_THRESHOLD_PX = 12;
 const HEADER_DIRECTION_SAMPLE_COUNT = 2;
+const HERO_HEADER_SOLID_SCROLL_PX = 24;
+const heroOverlayRoutes = new Set([
+  '/pergola-guides',
+  '/pergolas-auckland',
+  '/custom-pergolas-auckland',
+  '/aluminium-pergolas-auckland',
+  '/pergola-cost-auckland',
+  '/gable-pergolas-auckland',
+  '/pitched-pergolas-auckland',
+  '/outdoor-rooms-auckland',
+  '/pergolas-with-blinds',
+  '/acrylic-pergolas-vs-louvre-roofs',
+  '/commercial-pergolas-auckland',
+]);
 
 function DesktopQuickEstimateCta({ disableExpand }: { disableExpand?: boolean }) {
   const [expanded, setExpanded] = useState(false);
@@ -41,8 +55,10 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const [startHeaderVisible, setStartHeaderVisible] = useState(false);
   const [startHeaderSuppressed, setStartHeaderSuppressed] = useState(false);
+  const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
   const pathname = usePathname();
   const isStartRoute = pathname?.startsWith('/start') ?? false;
+  const isHeroOverlayRoute = heroOverlayRoutes.has(pathname ?? '');
   const startModalSuppressedRef = useRef(false);
   const scrollStateRef = useRef({
     lastY: 0,
@@ -111,6 +127,30 @@ export default function Header() {
       window.removeEventListener(START_MODAL_VISIBILITY_EVENT, onModalVisibility);
     };
   }, [hideStartHeader, isStartRoute]);
+
+  useEffect(() => {
+    if (!isHeroOverlayRoute) {
+      setHeroHeaderScrolled(false);
+      return;
+    }
+
+    let rafId = 0;
+    const syncHeroHeader = () => {
+      rafId = 0;
+      setHeroHeaderScrolled(window.scrollY > HERO_HEADER_SOLID_SCROLL_PX);
+    };
+    const scheduleHeroHeaderSync = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(syncHeroHeader);
+    };
+
+    syncHeroHeader();
+    window.addEventListener('scroll', scheduleHeroHeaderSync, { passive: true });
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', scheduleHeroHeaderSync);
+    };
+  }, [isHeroOverlayRoute, pathname]);
 
   useEffect(() => {
     if (!isStartRoute) return;
@@ -225,6 +265,8 @@ export default function Header() {
 
   const headerClassName = [
     'site',
+    isHeroOverlayRoute ? 'site--hero-overlay' : '',
+    isHeroOverlayRoute && heroHeaderScrolled ? 'site--hero-scrolled' : '',
     isStartRoute ? 'site--start-scroll' : '',
     isStartRoute && startHeaderVisible && !startHeaderSuppressed ? 'site--start-visible' : '',
     isStartRoute && startHeaderSuppressed ? 'site--start-suppressed' : '',
@@ -234,7 +276,10 @@ export default function Header() {
 
   return (
     <>
-      <header className={headerClassName}>
+      <header
+        className={headerClassName}
+        data-hero-navigation={isHeroOverlayRoute ? (heroHeaderScrolled ? 'solid' : 'overlay') : undefined}
+      >
         <div className="container navbar">
           <Link href="/" className="site-brand" aria-label="Sanctuary Pergolas home">
             SANCTUARY&nbsp;PERGOLAS

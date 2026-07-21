@@ -57,6 +57,32 @@ body:has(.acrylic-landing) header.site {
   font-family: "Inter Variable", Arial, sans-serif;
 }
 
+@media (min-width: 901px) {
+  body:has(.acrylic-landing) header.site.site--hero-overlay:not(.site--hero-scrolled) {
+    border-bottom-color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+    color: #fff;
+    backdrop-filter: none;
+  }
+
+  body:has(.acrylic-landing) header.site.site--hero-overlay:not(.site--hero-scrolled) :is(.site-brand, .navlink-btn) {
+    color: #fff;
+  }
+
+  body:has(.acrylic-landing) header.site.site--hero-overlay:not(.site--hero-scrolled) .navlink-btn:hover {
+    color: #fff;
+  }
+
+  .acrylic-landing[data-seo-landing] .acrylic-hero {
+    min-height: min(calc(78vh + var(--header-height)), calc(820px + var(--header-height)));
+    margin-top: 0;
+  }
+
+  .acrylic-landing[data-seo-landing] .acrylic-hero__shade {
+    background: linear-gradient(180deg, rgba(10, 12, 9, 0.46), rgba(10, 12, 9, 0.16) 22%, rgba(10, 12, 9, 0.78));
+  }
+}
+
 body:has(.acrylic-landing) header.site .site-brand {
   font-family: "Instrument Sans Variable", "Helvetica Neue", sans-serif;
   font-weight: 650;

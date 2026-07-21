@@ -43,7 +43,6 @@ const data: DashboardData = {
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
   pipelineCounts: {},
-  newLeads: [],
   recentEstimates: [],
   recentActivity: [],
   personalTasks: [],

@@ -5,7 +5,7 @@ import { getDashboardSnapshotCached } from './getDashboardSnapshotCached';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { listRecentProjectNoteActivity } from './activity';
 import { listVisibleDashboardTasks } from './tasks';
-import { listDashboardNewLeads, listDashboardRecentEstimates } from './operationalLists';
+import { listDashboardRecentEstimates } from './operationalLists';
 
 type SnapshotKpis = {
   actions_due?: number;
@@ -99,9 +99,8 @@ function toSiteVisitId(value: unknown): string {
 }
 
 export async function getDashboardData(opts: { queueMode: QueueMode; userId?: string | null }): Promise<DashboardData> {
-  const [snapshot, newLeads, recentEstimates, recentActivity, personalTasks] = await Promise.all([
+  const [snapshot, recentEstimates, recentActivity, personalTasks] = await Promise.all([
     getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>,
-    listDashboardNewLeads(supabaseServiceRole),
     listDashboardRecentEstimates(supabaseServiceRole),
     listRecentProjectNoteActivity(supabaseServiceRole, 8),
     opts.userId ? listVisibleDashboardTasks(supabaseServiceRole, opts.userId) : Promise.resolve([]),
@@ -215,7 +214,6 @@ export async function getDashboardData(opts: { queueMode: QueueMode; userId?: st
     schedule,
     siteVisits,
     pipelineCounts,
-    newLeads,
     recentEstimates,
     recentActivity,
     personalTasks,

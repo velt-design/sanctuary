@@ -220,28 +220,34 @@
   background: var(--ui-status-warning-bg) !important;
 }
 
-.overviewGrid,
-.operationsGrid {
+.workspaceGrid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(250px, 0.7fr);
+  grid-template-areas:
+    'attention activity tasks'
+    'queue estimates tasks';
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: var(--ui-space-3);
   min-width: 0;
+  min-height: 0;
   align-items: stretch;
-}
-
-.overviewGrid { grid-template-columns: minmax(240px, 0.82fr) minmax(260px, 1fr) minmax(300px, 1.16fr); }
-.operationsGrid {
-  grid-template-columns: minmax(0, 1.8fr) minmax(300px, 0.8fr);
-  height: clamp(380px, 48dvh, 500px);
 }
 
 .card {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   border-color: var(--ui-border-strong) !important;
   background: var(--ui-surface-primary) !important;
   box-shadow: none !important;
 }
+
+.attentionCard { grid-area: attention; }
+.estimatesCard { grid-area: estimates; }
+.queueCard { grid-area: queue; container: dashboard-queue / inline-size; }
+.activityCard { grid-area: activity; container: dashboard-activity / inline-size; }
+.tasksCard { grid-area: tasks; container: dashboard-tasks / inline-size; }
 
 .cardHeader {
   display: flex !important;
@@ -506,6 +512,8 @@
 
 .activityList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .activityList li:nth-child(odd) { border-right: var(--ui-border-width) solid var(--ui-border); }
+.activityCard .activityList { grid-template-columns: minmax(0, 1fr); }
+.activityCard .activityList li:nth-child(odd) { border-right: 0; }
 .activityItem {
   display: grid;
   gap: var(--ui-space-1);
@@ -562,22 +570,112 @@
 .taskList { border-top: 0; }
 .taskBubble { min-width: 0; }
 
+@container dashboard-queue (max-width: 680px) {
+  .queueRow {
+    grid-template-columns: minmax(88px, 0.58fr) minmax(130px, 1fr) minmax(92px, auto);
+    gap: var(--ui-space-2);
+  }
+
+  .queueRow > :nth-child(3) { display: none; }
+}
+
+@container dashboard-queue (max-width: 540px) {
+  .queueHeader { align-items: flex-start !important; }
+  .queueFilters { width: 100%; }
+  .queueFilters a { flex: 1 1 0; text-align: center; }
+}
+
+@container dashboard-tasks (max-width: 250px) {
+  .taskComposer { grid-template-columns: minmax(0, 1fr); }
+  .taskAddButton { width: 100%; }
+}
+
+@media (min-width: 1181px) {
+  .page {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--ui-space-3);
+    height: 100dvh;
+    min-height: 0;
+    padding: var(--ui-space-3) var(--ui-space-5);
+    overflow: hidden;
+  }
+
+  .hero { padding-bottom: var(--ui-space-2); }
+  .hero :global([data-page-header-variant='dashboard']) h1 {
+    font-size: clamp(76px, 5vw, 92px);
+  }
+
+  .quickActions,
+  .dateTile { padding: var(--ui-space-2); }
+  .quickAction { min-height: 46px; }
+  .dateTile strong { font-size: 44px; }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .layout {
+    flex: 1 1 auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+  .content,
+  .layout,
+  .workspaceGrid { gap: 10px; }
+
+  .pipelineCard .cardHeader { min-height: 42px; }
+  .pipelineCell { min-height: 50px; padding-block: 6px; }
+
+  .attentionCard .attentionList {
+    height: 100%;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+  }
+  .attentionCard .attentionItem { height: 100%; }
+  .attentionItem { min-height: 55px; }
+  .operationalRow { min-height: 49px; }
+  .queueRow { min-height: 52px; }
+  .activityItem { min-height: 88px; }
+}
+
 @media (max-width: 1180px) {
   .heroTools { grid-template-columns: minmax(260px, 1fr) 104px; min-width: min(410px, 100%); }
   .quickAction { grid-template-columns: 20px minmax(0, 1fr); padding-inline: var(--ui-space-2); }
   .quickAction svg { width: 19px; height: 19px; }
-  .overviewGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .overviewGrid > :last-child { grid-column: 1 / -1; }
+  .workspaceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'attention activity'
+      'queue queue'
+      'estimates tasks';
+    grid-template-rows: auto;
+  }
+  .queueCard {
+    height: min(400px, 52dvh);
+  }
+  .activityCard,
+  .tasksCard { height: min(380px, 48dvh); }
 }
 
 @media (max-width: 900px) {
   .hero :global([data-page-header-variant='dashboard']) > div:last-child { flex-direction: column; }
   .hero :global([data-page-header-variant='dashboard']) h1 { font-size: 68px; }
   .heroTools { width: 100%; min-width: 0; }
-  .overviewGrid,
-  .operationsGrid { grid-template-columns: minmax(0, 1fr); height: auto; }
-  .overviewGrid > :last-child { grid-column: auto; }
-  .operationsGrid > :first-child { max-height: 520px; }
+  .workspaceGrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'attention'
+      'activity'
+      'queue'
+      'estimates'
+      'tasks';
+  }
+  .queueCard {
+    height: auto;
+    max-height: 520px;
+  }
+  .activityCard,
+  .tasksCard { height: auto; }
   .queueRow { grid-template-columns: minmax(100px, 0.6fr) minmax(160px, 1fr) minmax(100px, auto); }
   .queueRow > :nth-child(3) { display: none; }
 }
@@ -604,8 +702,7 @@
   .dateTile strong { font-size: 44px; }
   .content,
   .layout,
-  .overviewGrid,
-  .operationsGrid { gap: var(--ui-space-3); }
+  .workspaceGrid { gap: var(--ui-space-3); }
   .pipelineGrid { min-width: 738px; }
   .pipelineCell { min-height: 58px; padding-inline: var(--ui-space-2); }
   .pipelineCount { font-size: 25px; }

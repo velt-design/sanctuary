@@ -79,7 +79,7 @@ export default function DashboardTasksCard({ initialTasks }: { initialTasks: Das
   }
 
   return (
-    <section className={`${styles.section} ${dash.card}`} aria-label="My Tasks">
+    <section className={`${styles.section} ${dash.card} ${dash.tasksCard}`} aria-label="My Tasks">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>My Tasks</h2>

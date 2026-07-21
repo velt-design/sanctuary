@@ -5,7 +5,7 @@ import dash from '../dashboard.module.css';
 
 export default function AttentionTodayCard({ items }: { items: DashboardAttentionItem[] }) {
   return (
-    <section className={`${styles.section} ${dash.card}`} aria-label="Attention Today">
+    <section className={`${styles.section} ${dash.card} ${dash.attentionCard}`} aria-label="Attention Today">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Attention Today</h2>

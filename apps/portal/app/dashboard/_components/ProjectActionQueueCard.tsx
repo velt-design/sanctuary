@@ -48,7 +48,7 @@ export default function ProjectActionQueueCard({
 }) {
   const today = ymdInAuckland(updatedAtIso);
   return (
-    <section className={`${styles.section} ${dash.card}`} aria-label="Project Action Queue">
+    <section className={`${styles.section} ${dash.card} ${dash.queueCard}`} aria-label="Project Action Queue">
       <div className={`${styles.sectionHeader} ${dash.cardHeader} ${dash.queueHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Project Action Queue</h2>

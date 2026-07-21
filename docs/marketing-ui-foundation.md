@@ -54,6 +54,8 @@ The programme routes are listed in `docs/landing-pages/seo-landing-page-programm
 
 The directory is self-canonical, indexable, included in the public sitemap and linked from the existing footer. Its footer change is limited to one discovery link; the established footer layout, reviews, social links and contact action are unchanged. The route retains the same square-cornered, rule-led foundation and `#4f5748` olive accent as the programme pages.
 
+The ten programme routes and `/pergola-guides` use the foundation navigation-state contract on desktop. At the top of the page, the hero begins at the viewport edge beneath a transparent header with white navigation and a fine light rule. After a deliberate scroll, the header returns to the solid canvas, dark text and blur treatment. At 900px and below, the established solid collapsed header and mobile menu remain unchanged; the hero begins below that header. Keep this route-scoped in the shared header and landing-page CSS rather than changing homepage or unrelated public routes.
+
 The public homepage remains outside this adoption and retains its established implementation.
 
 ## Verification
@@ -64,4 +66,4 @@ The public homepage remains outside this adoption and retains its established im
 - `npm run build:marketing`
 - `git diff --quiet HEAD -- <public-boundary-files>` to prove public presentation source parity.
 
-The Playwright lane checks the standalone catalogue and unchanged homepage plus every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity.
+The Playwright lane checks the standalone catalogue and unchanged homepage plus every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity. The hero-navigation matrix additionally proves every programme route has true desktop image/header overlap, transparent top and solid scrolled states, and the unchanged solid collapsed treatment at tablet and mobile widths.

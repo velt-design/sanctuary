@@ -13,6 +13,7 @@ fs.mkdirSync(evidenceDir, { recursive: true });
 
 const evidenceByPage = new WeakMap<Page, PortalBrowserEvidence>();
 const viewports = [
+  { name: '1920x940', width: 1920, height: 940 },
   { name: '1440x1000', width: 1440, height: 1000 },
   { name: '1280x800', width: 1280, height: 800 },
   { name: '1024x900', width: 1024, height: 900 },
@@ -51,6 +52,44 @@ async function expectNoLegacyRoundedSurfaces(root: Locator) {
   expect(offenders).toEqual([]);
 }
 
+async function expectSingleScreenDesktopLayout(page: Page, root: Locator) {
+  const [attentionBox, estimatesBox, queueBox, activityBox, tasksBox] = await Promise.all([
+    root.getByRole('region', { name: 'Attention Today' }).boundingBox(),
+    root.getByRole('region', { name: 'Recent Estimates' }).boundingBox(),
+    root.getByRole('region', { name: 'Project Action Queue' }).boundingBox(),
+    root.getByRole('region', { name: 'Recent Activity' }).boundingBox(),
+    root.getByRole('region', { name: 'My Tasks' }).boundingBox(),
+  ]);
+
+  expect(attentionBox).not.toBeNull();
+  expect(estimatesBox).not.toBeNull();
+  expect(queueBox).not.toBeNull();
+  expect(activityBox).not.toBeNull();
+  expect(tasksBox).not.toBeNull();
+  if (!attentionBox || !estimatesBox || !queueBox || !activityBox || !tasksBox) return;
+
+  expect(Math.abs(attentionBox.y - activityBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(attentionBox.y - tasksBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(queueBox.y - estimatesBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(queueBox.width - activityBox.width)).toBeLessThanOrEqual(1);
+  expect(attentionBox.y + attentionBox.height).toBeLessThanOrEqual(queueBox.y + 1);
+  expect(queueBox.x + queueBox.width).toBeLessThanOrEqual(estimatesBox.x + 1);
+  expect(activityBox.x + activityBox.width).toBeLessThanOrEqual(tasksBox.x + 1);
+  expect(Math.abs(queueBox.y + queueBox.height - (tasksBox.y + tasksBox.height))).toBeLessThanOrEqual(1);
+
+  const dimensions = await page.evaluate(() => ({
+    viewportHeight: window.innerHeight,
+    documentHeight: document.documentElement.scrollHeight,
+  }));
+  const workspaceBottom = Math.max(
+    queueBox.y + queueBox.height,
+    activityBox.y + activityBox.height,
+    tasksBox.y + tasksBox.height,
+  );
+  expect(workspaceBottom).toBeLessThanOrEqual(dimensions.viewportHeight + 1);
+  expect(dimensions.documentHeight).toBeLessThanOrEqual(dimensions.viewportHeight + 1);
+}
+
 async function openDashboard(page: Page) {
   await page.goto('about:blank');
   await page.goto('/dashboard');
@@ -72,7 +111,7 @@ test('Dashboard concept refinement is responsive and keeps operational links int
     const root = await openDashboard(page);
     await expect(root.getByRole('region', { name: 'Pipeline counts' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'Attention Today' })).toBeVisible();
-    await expect(root.getByRole('region', { name: 'New Leads' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'New Leads' })).toHaveCount(0);
     await expect(root.getByRole('region', { name: 'Recent Estimates' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'Project Action Queue' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'Recent Activity' })).toBeVisible();
@@ -85,6 +124,7 @@ test('Dashboard concept refinement is responsive and keeps operational links int
     await expect(root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link')).toHaveCount(9);
     await expectNoDocumentOverflow(page);
     await expectNoLegacyRoundedSurfaces(root);
+    if (viewport.width >= 1280) await expectSingleScreenDesktopLayout(page, root);
     await capturePortalEvidenceScreenshot(page, {
       path: path.join(evidenceDir, `dashboard-${viewport.name}.png`),
       fullPage: viewport.width >= 768,

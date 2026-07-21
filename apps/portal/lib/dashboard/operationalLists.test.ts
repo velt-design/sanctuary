@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { listDashboardNewLeads, listDashboardRecentEstimates } from './operationalLists';
+import { listDashboardRecentEstimates } from './operationalLists';
 
 function queryResult(data: unknown[]) {
   const query: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -11,30 +11,6 @@ function queryResult(data: unknown[]) {
 }
 
 describe('dashboard operational lists', () => {
-  it('loads the oldest active New projects with linked contact context', async () => {
-    const projects = queryResult([
-      {
-        id: '00000000-0000-4000-8000-000000000001',
-        name: 'Auckland Pergola',
-        site_address: '1 Queen Street',
-        created_at: '2026-07-01T00:00:00.000Z',
-        contact: { name: 'Alex Client' },
-      },
-    ]);
-    const client = { from: vi.fn(() => projects) } as any;
-
-    const result = await listDashboardNewLeads(client);
-
-    expect(projects.eq).toHaveBeenCalledWith('pipeline_stage', 'NEW');
-    expect(projects.is).toHaveBeenCalledWith('archived_at', null);
-    expect(projects.order).toHaveBeenCalledWith('created_at', { ascending: true });
-    expect(result[0]).toMatchObject({
-      projectName: 'Auckland Pergola',
-      contactName: 'Alex Client',
-      siteAddress: '1 Queen Street',
-    });
-  });
-
   it('derives Recent Estimates customer prices from true cost using the canonical quote pricing sequence', async () => {
     const estimates = queryResult([
       {

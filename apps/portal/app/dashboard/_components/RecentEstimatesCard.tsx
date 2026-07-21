@@ -23,7 +23,7 @@ function updatedLabel(value: string): string {
 
 export default function RecentEstimatesCard({ items }: { items: DashboardRecentEstimate[] }) {
   return (
-    <section className={`${styles.section} ${dash.card}`} aria-label="Recent Estimates">
+    <section className={`${styles.section} ${dash.card} ${dash.estimatesCard}`} aria-label="Recent Estimates">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Estimates</h2>

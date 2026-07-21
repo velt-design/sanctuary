@@ -11,6 +11,13 @@
   color: var(--color-inverse-text);
 }
 
+@media (min-width: 901px) {
+  .guide-hub-hero {
+    min-height: 100svh;
+    margin-top: 0;
+  }
+}
+
 .guide-hub-hero__copy {
   min-width: 0;
   display: flex;
@@ -95,6 +102,16 @@
 .guide-hub-hero__image {
   object-fit: cover;
   object-position: 50% 48%;
+}
+
+.guide-hub-hero__figure::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 auto;
+  height: 12rem;
+  background: linear-gradient(180deg, rgba(10, 12, 9, 0.55), transparent);
+  pointer-events: none;
 }
 
 .guide-hub-hero__figure::after {

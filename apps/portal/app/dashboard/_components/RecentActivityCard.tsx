@@ -31,7 +31,7 @@ function activityTimeLabel(value: string): string {
 
 export default function RecentActivityCard({ items }: { items: DashboardRecentActivityItem[] }) {
   return (
-    <section className={`${styles.section} ${dash.card}`} aria-label="Recent Activity">
+    <section className={`${styles.section} ${dash.card} ${dash.activityCard}`} aria-label="Recent Activity">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Activity</h2>

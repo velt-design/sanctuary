@@ -38,15 +38,6 @@ export interface WorkQueueItem {
   lastActivityAt?: string | null; // ISO
 }
 
-export interface DashboardNewLead {
-  projectId: string;
-  projectName: string;
-  contactName?: string | null;
-  siteAddress?: string | null;
-  createdAt: string;
-  href: string;
-}
-
 export interface DashboardRecentEstimate {
   estimateId: string;
   projectId: string;
@@ -125,7 +116,6 @@ export interface DashboardData {
   schedule: ScheduleSnapshot;
   siteVisits: SiteVisitsSnapshot;
   pipelineCounts: PipelineCounts;
-  newLeads: DashboardNewLead[];
   recentEstimates: DashboardRecentEstimate[];
   recentActivity: DashboardRecentActivityItem[];
   personalTasks: DashboardPersonalTask[];
