@@ -1,6 +1,6 @@
 # Marketing UI Foundation
 
-Status: Current foundation with one approved public-route adoption.
+Status: Current foundation with approved public-route adoptions.
 
 This document owns the Architectural Editorial UI system demonstrated at the standalone internal route `/__foundation/marketing`. It is an image-led, square-cornered, restrained reference for future explicitly approved marketing work. Public routes adopt it only through separately approved, route-scoped migrations.
 
@@ -46,6 +46,12 @@ Analytics, consent, pixels, structured data, project content, reviews, enquiry f
 
 The route defines the same semantic tokens locally and may restyle the existing global header and mobile-menu chrome only while `.acrylic-landing` is present. Its approved copy, canonical URL, metadata, FAQ schema, project links, attribution, secure attachment upload, enquiry API contract, consent behavior, and form-state logic remain owned by the landing page and existing marketing integrations. Homepage and other public-route presentation remain outside this adoption.
 
+The ten-route SEO landing-page programme is the second approved adoption. It uses the config-driven owners in `apps/marketing/components/seo-landing/` for the page shell, editorial blocks, responsive comparison matrix, structured data, conversion section and route-configured enquiry copy. Route content and metadata remain in each route folder, while the existing enquiry API, attachment, attribution, privacy and conversion-event contracts remain unchanged.
+
+The programme routes are listed in `docs/landing-pages/seo-landing-page-programme.md`. They share the architectural system without sharing substantial copy: each has a distinct search intent, metadata identity, H1, section narrative, project selection and FAQ set. Every route retains `#4f5748` olive green as the action accent; burgundy and purple are not part of this adoption.
+
+The public homepage remains outside this adoption and retains its established implementation.
+
 ## Verification
 
 - `npx vitest run apps/marketing/app/%5F%5Ffoundation/marketing/foundationAccess.test.ts`
@@ -54,4 +60,4 @@ The route defines the same semantic tokens locally and may restyle the existing 
 - `npm run build:marketing`
 - `git diff --quiet HEAD -- <public-boundary-files>` to prove public presentation source parity.
 
-The Playwright lane checks the standalone catalogue and unchanged homepage at desktop, tablet, and mobile widths; catalogue patterns and form states; horizontal overflow; mobile-menu keyboard behavior and focus; `noindex`; and sitemap exclusion.
+The Playwright lane checks the standalone catalogue and unchanged homepage plus every SEO programme route at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible FAQ/schema parity.

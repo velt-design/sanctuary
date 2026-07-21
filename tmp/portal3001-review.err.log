@@ -54,3 +54,179 @@ To fix this, make sure your Cache-Control headers allow revalidation of chunks a
     at renderNodeDestructive (C:\Users\Jorda\OneDrive\Documents\GitHub\sanctuary\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.dev.js:2:201175)
     at renderNode (C:\Users\Jorda\OneDrive\Documents\GitHub\sanctuary\node_modules\next\dist\compiled\next-server\app-page-turbo.runtime.dev.js:2:213093)
 [portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/dashboard' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'CLS', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'CLS', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'CLS', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'CLS', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'CLS', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'FCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'TTFB', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'CLS', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital { code: 'PGRST205', metric: 'LCP', routeTemplate: '/staff/projects' }
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'CLS',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'LCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'TTFB',
+  routeTemplate: '/staff/projects/[projectId]'
+}
+[portal_performance] failed to retain Web Vital {
+  code: 'PGRST205',
+  metric: 'FCP',
+  routeTemplate: '/staff/projects/[projectId]'
+}

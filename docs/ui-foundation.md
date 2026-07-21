@@ -16,7 +16,7 @@ The active checkpoint order is Shell, Projects Index, Project Detail, Contacts, 
 - Reusable controls and form fields: `apps/portal/components/ui/foundation/FoundationControls.tsx`
 - Server-compatible page layout, cards, badges, tables, empty/loading states, and sticky actions: `apps/portal/components/ui/foundation/FoundationSurfaces.tsx`
 - Interactive pagination, search/filter, selectable-table, destructive-confirmation, and unsaved-change owners: their named modules in `apps/portal/components/ui/foundation/`
-- Information, warning, error/blocking, data-state, calculator, financial, permission, and task/schedule feedback: `apps/portal/components/ui/foundation/FoundationFeedback.tsx`
+- Lightweight information, warning, error/blocking alerts and alert actions: `apps/portal/components/ui/foundation/FoundationAlert.tsx`; richer data-state, calculator, financial, permission, and task/schedule feedback: `apps/portal/components/ui/foundation/FoundationFeedback.tsx`
 - Focus-managed portal drawer: `apps/portal/components/ui/drawer/Drawer.tsx`; focus trap shared with the existing modal through `apps/portal/components/ui/focusTrap.ts`
 - Keyboard-operable overflow menu: `apps/portal/components/ui/foundation/OverflowMenu.tsx`
 - Detail-page tabs, key-value and metric groups, action panels, timelines, and task rows: `apps/portal/components/ui/foundation/FoundationOperational.tsx`
@@ -62,6 +62,8 @@ New Project, Drafting Queue, Running Jobs, Imports, Pricebook, and Access use th
 Dashboard is the final migrated checkpoint. It composes stage-colour pipeline cells, orange-edged KPI links, semantic exception badges, flat activity rows, and the shared accessible `TaskRow` control without restoring rounded cards or pills. The page retains cached/fresh/failure states, workflow links, personal-task optimistic mutations, a bounded desktop operational viewport, one-column mobile flow, and the server-total exception count.
 
 The canonical `/login` and `/access-status` routes use the same hard-edge Foundation tokens through `PublicAuthShell`; `/staff/login` remains a query-preserving redirect. Generic page-message and pending-state surfaces share that token owner, so authentication, failure, and loading states do not reintroduce the retired rounded-card layer.
+
+The replacement is also complete at source level for active portal presentation: route and shared-surface CSS use semantic `--ui-*` roles directly, static presentation has moved out of JSX into named owners, and obsolete standalone quote/estimate, project stylesheet, warning, and chevron implementations have been deleted. Runtime geometry, user-selected crew colours, and the separately owned design-workbench drawing surface remain data/specialist concerns rather than compatibility exceptions.
 
 ## Change Rules
 
@@ -109,6 +111,7 @@ Temporary exceptions must be recorded as `pending` with a named owner and remova
 - `npx playwright test playwright/portal.remaining-routes-ui.spec.ts --project=portal-chromium --no-deps` for New Project, settled Drafting Queue/Running Jobs data, Imports, all Pricebook panels, Access, and canonical quote redirects
 - `npx playwright test playwright/portal.dashboard-ui.spec.ts --project=portal-chromium --no-deps` for settled Dashboard data, responsive/zoom geometry, reduced motion, and read-only workflow links
 - `npx playwright test playwright/portal.public-auth-ui.spec.ts --project=portal-chromium --no-deps` for credential-free Login, Access Status, `/staff/login` redirect, responsive/zoom geometry, and reduced motion
+- `npx vitest run playwright/support/portalRouteCatalog.test.ts` proves that the catalogue exactly matches all 36 `apps/portal/app/**/page.tsx` routes, including authenticated, public-auth, diagnostics, and redirect-only entries
 - Browser matrix: 1440x1000, 1280x800, 1024x900, 768x1024, 390x844, and 720x500 with 200% zoom simulation. Assert document overflow, major-section overlap, cropped controls, heading semantics, focus return, reduced motion, and action/stage contrast.
 - Portal browser specs use `playwright/support/portalBrowserEvidence.ts`. Named screenshot capture keeps the real caret state so evidence collection cannot introduce a hydration mismatch.
 - `npx tsc -p apps/portal/tsconfig.json --noEmit --incremental false`

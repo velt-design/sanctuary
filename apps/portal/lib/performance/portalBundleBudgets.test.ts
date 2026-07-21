@@ -88,6 +88,26 @@ describe('portal route bundle budgets', () => {
     expect(report.lazy.largestEntry?.rawBytes).toBe(30);
   });
 
+  it('does not charge route entry CSS again when a lazy manifest repeats it', () => {
+    const { nextDir, config } = fixture();
+    write(path.join(nextDir, config.clientReferenceManifest), `globalThis.__RSC_MANIFEST = {
+      "/staff/example/page": {
+        clientModules: { a: { async: false, chunks: ["/_next/static/a.js"] } },
+        entryCSSFiles: { layout: [{ path: "static/entry.css", inlined: false }] }
+      }
+    };`);
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      lazy: { files: ['static/entry.css', 'static/lazy.js'] },
+    }));
+    write(path.join(nextDir, 'static/entry.css'), Buffer.alloc(30, 3));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.initial.rawBytes).toBe(10);
+    expect(report.lazy.rawBytes).toBe(20);
+    expect(report.lazy.entries[0]?.files.map((file) => file.file)).toEqual(['static/lazy.js']);
+  });
+
   it('reports changed manifest paths with the fresh-build recovery command', () => {
     const { nextDir, config } = fixture();
     config.clientReferenceManifest = 'server/app/staff/example/moved.js';

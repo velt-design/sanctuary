@@ -1,7 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/foundation/FoundationControls';
-import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import { AlertActionButton, AlertBanner } from '@/components/ui/foundation/FoundationAlert';
 import styles from './SiteVisitsFeedback.module.css';
 
 export function SiteVisitsRefreshFeedback({
@@ -18,7 +17,7 @@ export function SiteVisitsRefreshFeedback({
     <AlertBanner
       tone={hasSnapshot ? 'warning' : 'error'}
       title={hasSnapshot ? 'Site visits refresh failed' : 'Site visits unavailable'}
-      action={<Button variant="secondary" onClick={onRetry}>Retry</Button>}
+      action={<AlertActionButton onClick={onRetry}>Retry</AlertActionButton>}
     >
       {hasSnapshot ? 'Showing the last saved schedule. Retry when the connection is available.' : 'No site visit data could be loaded.'}
     </AlertBanner>
@@ -31,7 +30,7 @@ export function SiteVisitsActionError({ error, onDismiss }: { error: string | nu
     <AlertBanner
       tone="error"
       title="Booking error"
-      action={<Button variant="secondary" onClick={onDismiss}>Dismiss</Button>}
+      action={<AlertActionButton onClick={onDismiss}>Dismiss</AlertActionButton>}
     >
       <span className={styles.errorCopy}>{error}</span>
     </AlertBanner>

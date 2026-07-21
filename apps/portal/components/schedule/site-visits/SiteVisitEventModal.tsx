@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
-import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
+import { AlertBanner } from '@/components/ui/foundation/FoundationAlert';
 import type { SiteVisitCalendarItem, SiteVisitCalendarPerson } from '@/lib/types/siteVisits';
 import sharedStyles from '@/app/staff/schedule/schedule.module.css';
 import modalStyles from './SiteVisitEventModal.module.css';

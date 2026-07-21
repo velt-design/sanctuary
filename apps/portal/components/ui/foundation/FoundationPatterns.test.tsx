@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AlertBanner, DataStatePanel, FinancialSummary, PermissionBlockedControl, TaskScheduleFeedback } from './FoundationFeedback';
+import { AlertActionButton } from './FoundationAlert';
 import { SearchFilterBar } from './SearchFilterBar';
 import { SelectionTable } from './SelectionTable';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
@@ -42,7 +43,7 @@ describe('production foundation patterns', () => {
 
   it('renders non-colour status semantics, permissions, and NZ financial formatting', () => {
     const rendered = renderIntoDocument(<div>
-      <AlertBanner tone="error" title="Refresh failed">Cached data remains visible.</AlertBanner>
+      <AlertBanner tone="error" title="Refresh failed" action={<AlertActionButton>Retry</AlertActionButton>}>Cached data remains visible.</AlertBanner>
       <DataStatePanel state="conflict" />
       <PermissionBlockedControl label="Approve quote" reason="Admin permission required" />
       <TaskScheduleFeedback state="blocked">Schedule conflict</TaskScheduleFeedback>
@@ -50,6 +51,7 @@ describe('production foundation patterns', () => {
     </div>);
     expect(rendered.container.querySelectorAll('[role="alert"]')).toHaveLength(3);
     expect((rendered.container.querySelector('button[disabled]') as HTMLButtonElement).disabled).toBe(true);
+    expect((rendered.container.querySelector('button:not([disabled])') as HTMLButtonElement).type).toBe('button');
     expect(rendered.container.textContent).toContain('$78,940');
     expect(rendered.container.textContent).toContain('42.7%');
     rendered.unmount();

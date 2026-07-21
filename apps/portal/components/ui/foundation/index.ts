@@ -38,14 +38,13 @@ export { SearchFilterBar, type FilterDefinition, type FilterOption } from './Sea
 export { SelectionTable, type SelectionTableRow } from './SelectionTable';
 export { DestructiveConfirmation } from './DestructiveConfirmation';
 export { useUnsavedChangesGuard } from './useUnsavedChangesGuard';
+export { AlertActionButton, AlertBanner, type AlertTone } from './FoundationAlert';
 export {
-  AlertBanner,
   CalculatorNotice,
   DataStatePanel,
   FinancialSummary,
   PermissionBlockedControl,
   TaskScheduleFeedback,
-  type AlertTone,
   type CalculatorNoticeTone,
   type DataStateKind,
 } from './FoundationFeedback';

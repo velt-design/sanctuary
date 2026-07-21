@@ -1,10 +1,3 @@
-.alert { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: var(--ui-space-3); border: var(--ui-border-width) solid var(--notice-border); border-left-width: var(--ui-status-edge); background: var(--notice-bg); padding: var(--ui-space-3); color: var(--ui-text); font-family: var(--ui-font-body); font-size: var(--ui-font-size-small); line-height: 1.45; }
-.alert[data-tone='info'] { --notice-bg: var(--ui-status-info-bg); --notice-border: var(--ui-status-info-border); }
-.alert[data-tone='warning'] { --notice-bg: var(--ui-status-warning-bg); --notice-border: var(--ui-status-warning-border); }
-.alert[data-tone='error'], .alert[data-tone='blocking'] { --notice-bg: var(--ui-status-error-bg); --notice-border: var(--ui-status-error-border); }
-.alert > svg { width: 20px; height: 20px; color: var(--notice-border); }
-.alert strong { display: block; color: var(--ui-text-strong); }
-.action { align-self: center; }
 .dataState { min-height: 112px; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-4); border: var(--ui-border-width) solid var(--ui-border); border-left-width: var(--ui-status-edge); padding: var(--ui-space-4); background: var(--ui-surface-primary); color: var(--ui-text); }
 .dataState[data-state='error'], .dataState[data-state='conflict'] { border-left-color: var(--ui-status-error-border); }
 .dataState[data-state='stale'] { border-left-color: var(--ui-status-warning-border); }
@@ -23,8 +16,8 @@
 .task[data-state='saving'] > span, .task[data-state='retry'] > span { background: var(--ui-status-warning-border); }
 .task[data-state='blocked'] > span { background: var(--ui-status-error-border); }
 @media (max-width: 767px) {
-  .alert, .dataState { grid-template-columns: 24px minmax(0, 1fr); }
-  .alert .action, .dataState > button { grid-column: 1 / -1; }
+  .dataState { grid-template-columns: 24px minmax(0, 1fr); }
+  .dataState > button { grid-column: 1 / -1; }
   .financial { grid-template-columns: 1fr 1fr; }
   .financial > div:nth-child(2) { border-right: 0; }
   .financial > div:nth-child(n + 3) { border-top: var(--ui-border-width) solid var(--ui-border); }

@@ -17,6 +17,15 @@ type AcrylicPergolaEnquiryFormProps = {
   heading?: string;
   intro?: string;
   submitLabel?: string;
+  roofPreference?: {
+    label: string;
+    detailKey: 'acrylicOption' | 'roofPreference';
+    options: ReadonlyArray<{
+      label: string;
+      value: string;
+      roofMaterials: ReadonlyArray<string>;
+    }>;
+  };
 };
 
 const pergolaForms = [
@@ -27,7 +36,18 @@ const pergolaForms = [
   ['unsure', 'Unsure'],
 ] as const;
 
-const acrylicOptions = ['Clear', 'Light grey', 'Dark grey', 'Opal', 'Combination roof', 'Unsure'];
+const acrylicRoofPreference = {
+  label: 'Preferred acrylic option',
+  detailKey: 'acrylicOption' as const,
+  options: [
+    { label: 'Clear', value: 'Clear', roofMaterials: ['acrylic'] },
+    { label: 'Light grey', value: 'Light grey', roofMaterials: ['acrylic'] },
+    { label: 'Dark grey', value: 'Dark grey', roofMaterials: ['acrylic'] },
+    { label: 'Opal', value: 'Opal', roofMaterials: ['acrylic'] },
+    { label: 'Combination roof', value: 'Combination roof', roofMaterials: ['acrylic', 'timber'] },
+    { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
+  ],
+} satisfies NonNullable<AcrylicPergolaEnquiryFormProps['roofPreference']>;
 const priorities = [
   'Retain daylight',
   'Rain protection',
@@ -80,6 +100,7 @@ export default function AcrylicPergolaEnquiryForm({
   heading = 'Request an initial estimate',
   intro = 'Share your suburb, approximate dimensions and a few photos of the area. Tell us what matters most, whether that is preserving daylight, adding rain cover, reducing glare or creating a more sheltered outdoor room.',
   submitLabel = 'Request my initial estimate',
+  roofPreference = acrylicRoofPreference,
 }: AcrylicPergolaEnquiryFormProps = {}) {
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -153,7 +174,8 @@ export default function AcrylicPergolaEnquiryForm({
       const attachments = await uploadEnquiryAttachments(files);
       const selectedPriorities = formData.getAll('priorities').map(String);
       const selectedAccessories = formData.getAll('accessories').map(String);
-      const acrylicOption = String(formData.get('acrylicOption') ?? '');
+      const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
+      const selectedRoofOption = roofPreference.options.find((option) => option.value === selectedRoofPreference);
       const enquiryType = String(formData.get('enquiryType') ?? '');
       const attribution = getBrowserMarketingAttribution();
       const addOns = {
@@ -164,11 +186,7 @@ export default function AcrylicPergolaEnquiryForm({
         acrylicInfillPanels: selectedAccessories.includes('Acrylic infill panels'),
         other: selectedAccessories.includes('Other'),
       };
-      const roofMaterials = acrylicOption === 'Combination roof'
-        ? ['acrylic', 'timber']
-        : acrylicOption
-          ? ['acrylic']
-          : [];
+      const roofMaterials = selectedRoofOption ? [...selectedRoofOption.roofMaterials] : [];
 
       const preferredStyle = String(formData.get('style') ?? '');
       const response = await fetch('/api/enquiry', {
@@ -191,7 +209,7 @@ export default function AcrylicPergolaEnquiryForm({
           addOns,
           files: attachments,
           projectDetails: {
-            acrylicOption: acrylicOption || null,
+            [roofPreference.detailKey]: selectedRoofPreference || null,
             attachment: String(formData.get('attachment') ?? '') || null,
             priorities: selectedPriorities,
             accessories: selectedAccessories,
@@ -295,10 +313,10 @@ export default function AcrylicPergolaEnquiryForm({
         </div>
 
         <div className="acrylic-form__field acrylic-form__field--wide">
-          <label htmlFor="acrylic-enquiry-roof">Preferred acrylic option <span>Optional</span></label>
-          <select id="acrylic-enquiry-roof" name="acrylicOption" defaultValue="">
+          <label htmlFor="acrylic-enquiry-roof">{roofPreference.label} <span>Optional</span></label>
+          <select id="acrylic-enquiry-roof" name="roofPreference" defaultValue="">
             <option value="">Choose if known</option>
-            {acrylicOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            {roofPreference.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
 

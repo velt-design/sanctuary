@@ -1,25 +1,10 @@
 import type { ReactNode } from 'react';
-import { AlertCircle, AlertTriangle, Clock3, CloudOff, Info, RefreshCw } from 'lucide-react';
+import { AlertCircle, Clock3, CloudOff, RefreshCw } from 'lucide-react';
 import { Button } from './FoundationControls';
+import { AlertBanner } from './FoundationAlert';
 import styles from './FoundationFeedback.module.css';
 
-export type AlertTone = 'info' | 'warning' | 'error' | 'blocking';
-export function AlertBanner({ tone = 'info', title, children, action }: {
-  tone?: AlertTone;
-  title: string;
-  children?: ReactNode;
-  action?: ReactNode;
-}) {
-  const Icon = tone === 'info' ? Info : tone === 'warning' ? AlertTriangle : AlertCircle;
-  const urgent = tone === 'error' || tone === 'blocking';
-  return (
-    <aside className={styles.alert} data-tone={tone} role={urgent ? 'alert' : 'status'} aria-live={urgent ? undefined : 'polite'}>
-      <Icon aria-hidden="true" />
-      <div><strong>{title}</strong>{children ? <div>{children}</div> : null}</div>
-      {action ? <div className={styles.action}>{action}</div> : null}
-    </aside>
-  );
-}
+export { AlertBanner, type AlertTone } from './FoundationAlert';
 
 export type DataStateKind = 'empty' | 'filtered-empty' | 'error' | 'unavailable' | 'stale' | 'conflict';
 const DATA_STATE_COPY: Record<DataStateKind, { title: string; description: string }> = {

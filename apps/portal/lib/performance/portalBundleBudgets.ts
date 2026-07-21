@@ -59,6 +59,7 @@ export class PortalBundleBudgetError extends Error {
 
 type ClientReferenceManifest = {
   clientModules?: Record<string, { async?: boolean; chunks?: string[] }>;
+  entryCSSFiles?: Record<string, Array<string | { path: string; inlined?: boolean }>>;
 };
 type ReactLoadableManifest = Record<string, { id?: string | number; files?: string[] }>;
 
@@ -214,6 +215,12 @@ function initialFiles(manifest: ClientReferenceManifest): string[] {
   return Object.values(manifest.clientModules ?? {}).flatMap((entry) => entry.async === false ? entry.chunks ?? [] : []);
 }
 
+function initialCssFiles(manifest: ClientReferenceManifest): string[] {
+  return Object.values(manifest.entryCSSFiles ?? {}).flatMap((entries) =>
+    entries.map((entry) => typeof entry === 'string' ? entry : entry.path),
+  );
+}
+
 function lazyEntries(nextDir: string, manifest: ReactLoadableManifest): PortalLazyChunkMetric[] {
   return Object.entries(manifest)
     .map(([key, entry]) => {
@@ -308,13 +315,22 @@ export function analyzePortalBundleRoute(options: {
   if (!fs.existsSync(nextDir)) throw new PortalBundleBudgetError(missingArtifact(nextDir));
   const config = options.config;
   const budgets = { ...config.budgets, ...(options.budgets ?? {}) };
-  const initial = uniqueMetrics(nextDir, initialFiles(readClientManifest(nextDir, config)));
+  const clientManifest = readClientManifest(nextDir, config);
+  const initial = uniqueMetrics(nextDir, initialFiles(clientManifest));
+  // Turbopack can repeat layout/page CSS in a dynamic import's loadable entry.
+  // Those files are already linked by the route and must not be charged again
+  // as lazy bytes. Keep the established initial-JS metric unchanged while
+  // using the complete initially loaded set for lazy-entry de-duplication.
+  const initiallyLoaded = uniqueMetrics(nextDir, [
+    ...initial.map((file) => file.file),
+    ...initialCssFiles(clientManifest),
+  ]);
   const entries = uniqueLazyEntries(excludeInitialChunks(
     [
       ...lazyEntries(nextDir, readLoadableManifest(nextDir, config)),
       ...turbopackLazyEntries(nextDir, initial),
     ],
-    initial,
+    initiallyLoaded,
   ));
   const lazy = uniqueMetrics(nextDir, entries.flatMap((entry) => entry.files.map((file) => file.file)));
   const topContributors = uniqueMetrics(nextDir, [...initial, ...lazy].map((file) => file.file))
