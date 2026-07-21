@@ -17,8 +17,8 @@ vi.mock('./useDashboardData', () => ({
 }));
 
 vi.mock('./DashboardView', () => ({
-  default: ({ data, state, onRetry }: { data: DashboardData; state: string; onRetry: () => void }) => (
-    <main data-dashboard-state={state} data-project-count={data.kpis.newLeads}>
+  default: ({ data, queueMode, state, onRetry }: { data: DashboardData; queueMode: string; state: string; onRetry: () => void }) => (
+    <main data-dashboard-state={state} data-project-count={data.kpis.newLeads} data-queue-mode={queueMode}>
       <h1>Dashboard</h1>
       <button type="button" onClick={onRetry}>Retry saved dashboard</button>
     </main>
@@ -43,6 +43,8 @@ const data: DashboardData = {
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
   pipelineCounts: {},
+  newLeads: [],
+  recentEstimates: [],
   recentActivity: [],
   personalTasks: [],
 };
@@ -77,6 +79,7 @@ describe('DashboardClient', () => {
     expect(useDashboardData).toHaveBeenCalledWith('next7');
     expect(rendered.container.querySelector('[data-dashboard-state="fresh"]')).not.toBeNull();
     expect(rendered.container.firstElementChild?.getAttribute('data-project-count')).toBe('2');
+    expect(rendered.container.firstElementChild?.getAttribute('data-queue-mode')).toBe('next7');
     rendered.unmount();
   });
 

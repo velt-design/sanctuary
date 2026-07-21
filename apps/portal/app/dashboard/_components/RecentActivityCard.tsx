@@ -35,15 +35,13 @@ export default function RecentActivityCard({ items }: { items: DashboardRecentAc
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Recent Activity</h2>
-          <div className={`${styles.muted} ${dash.cardSubheading}`}>
-            Latest project notes.
-          </div>
+          <div className={`${styles.muted} ${dash.cardSubheading}`}>Latest project notes.</div>
         </div>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody}`}>
         {items.length ? (
           <ul className={dash.activityList}>
-            {items.map((item) => (
+            {items.slice(0, 6).map((item) => (
               <li key={item.id}>
                 <Link href={item.href} className={dash.activityItem}>
                   <div className={dash.activityHeaderRow}>

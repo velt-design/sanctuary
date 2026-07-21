@@ -16,7 +16,7 @@ export default function DashboardPendingView({
       data-dashboard-state={failed ? 'refresh-failed' : 'pending'}
       data-dashboard-background-ready="false"
     >
-      <PageHeader title="Dashboard" />
+      <PageHeader variant="dashboard" title="Dashboard" eyebrow="Welcome back" />
 
       <div className={dash.pendingLayout}>
         <section className={dash.pendingCard} role="status" aria-live="polite">
@@ -26,7 +26,7 @@ export default function DashboardPendingView({
           <p className={dash.pendingDescription}>
             {failed
               ? 'The portal could not refresh this information. You can try again without leaving the page.'
-              : 'The latest pipeline, activity, and tasks will appear here shortly.'}
+              : 'The latest pipeline, project actions, leads, estimates, activity, and tasks will appear here shortly.'}
           </p>
           {failed && onRetry ? (
             <button type="button" className={stateStyles.secondaryAction} onClick={onRetry}>

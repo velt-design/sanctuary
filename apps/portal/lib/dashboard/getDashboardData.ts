@@ -1,10 +1,11 @@
-import type { DashboardData, QueueMode, WorkQueueItem } from './types';
+import type { DashboardAttentionItem, DashboardData, QueueMode, WorkQueueItem } from './types';
 import { projectsHref, scheduleHref, siteVisitsHref } from './links';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { getDashboardSnapshotCached } from './getDashboardSnapshotCached';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { listRecentProjectNoteActivity } from './activity';
 import { listVisibleDashboardTasks } from './tasks';
+import { listDashboardNewLeads, listDashboardRecentEstimates } from './operationalLists';
 
 type SnapshotKpis = {
   actions_due?: number;
@@ -98,9 +99,11 @@ function toSiteVisitId(value: unknown): string {
 }
 
 export async function getDashboardData(opts: { queueMode: QueueMode; userId?: string | null }): Promise<DashboardData> {
-  const [snapshot, recentActivity, personalTasks] = await Promise.all([
+  const [snapshot, newLeads, recentEstimates, recentActivity, personalTasks] = await Promise.all([
     getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>,
-    listRecentProjectNoteActivity(supabaseServiceRole),
+    listDashboardNewLeads(supabaseServiceRole),
+    listDashboardRecentEstimates(supabaseServiceRole),
+    listRecentProjectNoteActivity(supabaseServiceRole, 8),
     opts.userId ? listVisibleDashboardTasks(supabaseServiceRole, opts.userId) : Promise.resolve([]),
   ]);
 
@@ -108,51 +111,37 @@ export async function getDashboardData(opts: { queueMode: QueueMode; userId?: st
   const attentionCounts = snapshot?.attention_counts ?? {};
   const oldestOverdueDays = typeof attentionCounts.oldest_overdue_days === 'number' ? attentionCounts.oldest_overdue_days : null;
 
-  const attention = [
+  const attention: DashboardAttentionItem[] = [
     {
       key: 'overdue',
-      label: 'Overdue actions',
+      label: 'Project actions overdue',
       count: asNumber(attentionCounts.overdue_actions),
-      severity: 'high',
+      tone: 'urgent',
       helperText: oldestOverdueDays ? `Oldest overdue: ${oldestOverdueDays} days` : undefined,
       href: projectsHref({ nextActionDue: true, due: 'overdue' }),
     },
     {
       key: 'due_today',
-      label: 'Due today',
+      label: 'Project actions due today',
       count: asNumber(attentionCounts.due_today),
-      severity: 'medium',
+      tone: 'warning',
       href: projectsHref({ nextActionDue: true, due: 'today' }),
-    },
-    {
-      key: 'unscheduled_estimates',
-      label: 'Unscheduled jobs with estimates',
-      count: asNumber(attentionCounts.unscheduled_estimates ?? attentionCounts.unscheduled_approved),
-      severity: 'medium',
-      href: scheduleHref('board'),
     },
     {
       key: 'site_visits_to_book',
       label: 'Site visits to book',
       count: asNumber(attentionCounts.site_visits_to_book),
-      severity: 'medium',
+      tone: 'warning',
       href: siteVisitsHref(),
     },
     {
-      key: 'quotes_to_send',
-      label: 'Quotes to send',
+      key: 'projects_in_quoting',
+      label: 'Projects in quoting',
       count: asNumber(attentionCounts.quotes_to_send),
-      severity: 'medium',
+      tone: 'neutral',
       href: projectsHref({ status: 'QUOTING' }),
     },
-    {
-      key: 'email_failures',
-      label: 'Email failures',
-      count: asNumber(attentionCounts.email_failures),
-      severity: 'low',
-      href: projectsHref({ email: 'failed' }),
-    },
-  ] as const;
+  ];
 
   const workQueue: WorkQueueItem[] = (snapshot?.work_queue ?? []).map((row) => ({
     projectId: toProjectId(row.project_id),
@@ -221,11 +210,13 @@ export async function getDashboardData(opts: { queueMode: QueueMode; userId?: st
       quotesToSend: asNumber(kpis.quotes_to_send),
       installsThisWeek: asNumber(kpis.installs_this_week),
     },
-    attention: attention as any,
+    attention,
     workQueue,
     schedule,
     siteVisits,
     pipelineCounts,
+    newLeads,
+    recentEstimates,
     recentActivity,
     personalTasks,
   };

@@ -107,7 +107,6 @@ export default function ProjectPrimaryActionCard({
       queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, projectId) }),
       queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
-      queryClient.invalidateQueries({ queryKey: qk.dashboard.projectExceptions() }),
     ]);
     if (response.refreshRequired) {
       setMessage('Saved. Refresh the Overview to load the confirmed state.');

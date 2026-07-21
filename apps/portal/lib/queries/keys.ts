@@ -6,7 +6,6 @@ export const qk = {
   },
   dashboard: {
     data: (queueMode: QueueMode) => ['dashboard', 'data', queueMode] as const,
-    projectExceptions: () => ['dashboard', 'project-exceptions'] as const,
   },
   contacts: {
     list: (host: string) => ['contacts', host, 'list'] as const,

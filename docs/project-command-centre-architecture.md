@@ -280,7 +280,7 @@ Implemented component boundaries:
 - Project Header: project identity, owner, actions, and the horizontally scrollable tab navigation.
 - `overview/ProjectPrimaryActionCard.tsx`: owner/action/conflict/manual/history controls.
 - Project Header: always-visible single Project Owner summary.
-- Dashboard `ProjectExceptionsCard.tsx`: bounded deduplicated lead-to-quote exceptions; personal reminders remain independent. The response may scan hundreds of active projects, so related-table `.in(...)` filters use the shared bounded ID-chunk reader while the payload remains capped and reports the uncapped total.
+- Dashboard Project Action Queue: read-only bounded projection of canonical primary actions, filtered by Today, Next 7 days, or All due. Personal reminders remain independent. The legacy project-exceptions endpoint remains available as a bounded diagnostic read, but the staff Dashboard no longer queries or renders it because missing owner/action adoption across historical projects is not a useful home-page workload.
 
 The `activity` module loader now resolves to `OverviewTab`; the old Activity component, three-query snapshot bar, fallback resolver, and summarizer are removed after consumer search proved no remaining code consumer.
 

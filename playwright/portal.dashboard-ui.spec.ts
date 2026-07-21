@@ -58,13 +58,11 @@ async function openDashboard(page: Page) {
   const root = page.locator('[data-ui-foundation-consumer="dashboard"]:visible');
   await expect(root).toBeVisible({ timeout: 60_000 });
   await expect(root).toHaveAttribute('data-dashboard-state', /fresh|refresh-failed/, { timeout: 60_000 });
-  const exceptions = root.locator('[data-dashboard-project-exceptions="true"]');
-  await expect(exceptions).toBeVisible({ timeout: 60_000 });
-  await expect(exceptions).not.toContainText('Loading project exceptions', { timeout: 60_000 });
+  await expect(root.getByRole('region', { name: 'Project Action Queue' })).toBeVisible({ timeout: 60_000 });
   return root;
 }
 
-test('Dashboard is responsive, hard-edge, and keeps read-only workflow links intact', async ({ page }) => {
+test('Dashboard concept refinement is responsive and keeps operational links intact', async ({ page }) => {
   await page.route('**/api/staff/v1/performance/web-vitals', (route) => route.fulfill({ status: 204, body: '' }));
   const evidence = installPortalBrowserEvidence(page);
   evidenceByPage.set(page, evidence);
@@ -73,9 +71,18 @@ test('Dashboard is responsive, hard-edge, and keeps read-only workflow links int
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     const root = await openDashboard(page);
     await expect(root.getByRole('region', { name: 'Pipeline counts' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'Attention Today' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'New Leads' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'Recent Estimates' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'Project Action Queue' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'Recent Activity' })).toBeVisible();
-    await expect(root.getByRole('region', { name: 'Tasks' })).toBeVisible();
-    await expect(root.getByText('Actions due', { exact: true })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'My Tasks' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'Quick actions' })).toBeVisible();
+    await expect(root.getByText('Project Exceptions', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Installs this week', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Upcoming Installs', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Quotes to send', { exact: true })).toHaveCount(0);
+    await expect(root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link')).toHaveCount(9);
     await expectNoDocumentOverflow(page);
     await expectNoLegacyRoundedSurfaces(root);
     await capturePortalEvidenceScreenshot(page, {
@@ -103,7 +110,7 @@ test('Dashboard is responsive, hard-edge, and keeps read-only workflow links int
     path: path.join(evidenceDir, 'dashboard-390x844-activity.png'),
     fullPage: false,
   });
-  const tasks = reducedMotionRoot.getByRole('region', { name: 'Tasks' });
+  const tasks = reducedMotionRoot.getByRole('region', { name: 'My Tasks' });
   await tasks.scrollIntoViewIfNeeded();
   await capturePortalEvidenceScreenshot(page, {
     path: path.join(evidenceDir, 'dashboard-390x844-tasks.png'),

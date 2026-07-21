@@ -9,8 +9,8 @@ vi.mock('@/components/navigation/ProjectsIndexLink', () => ({
 
 vi.mock('./_components/DashboardTasksCard.client', () => ({
   default: (props: { initialTasks: Array<{ title: string; completedAt?: string | null }> }) => (
-    <section aria-label="Tasks">
-      <h2>Tasks</h2>
+    <section aria-label="My Tasks">
+      <h2>My Tasks</h2>
       {props.initialTasks.map((task) => (
         <div key={task.title} style={{ textDecoration: task.completedAt ? 'line-through' : undefined }}>
           {task.title}
@@ -28,7 +28,22 @@ const data: DashboardData = {
     quotesToSend: 1,
     installsThisWeek: 3,
   },
-  attention: [],
+  attention: [
+    {
+      key: 'overdue',
+      label: 'Project actions overdue',
+      count: 4,
+      href: '/staff/projects?nextActionDue=true&due=overdue',
+      tone: 'urgent',
+    },
+    {
+      key: 'projects_in_quoting',
+      label: 'Projects in quoting',
+      count: 1,
+      href: '/staff/projects?status=QUOTING',
+      tone: 'neutral',
+    },
+  ],
   workQueue: [
     {
       projectId: 'proj_123',
@@ -53,6 +68,28 @@ const data: DashboardData = {
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
   pipelineCounts: {},
+  newLeads: [
+    {
+      projectId: 'proj_lead',
+      projectName: 'Oldest Lead',
+      contactName: 'Jamie Client',
+      siteAddress: 'Auckland',
+      createdAt: '2026-03-28T00:00:00.000Z',
+      href: '/staff/projects/proj_lead',
+    },
+  ],
+  recentEstimates: [
+    {
+      estimateId: 'est_123',
+      projectId: 'proj_123',
+      projectName: 'Beach House',
+      versionLabel: 'V3',
+      status: 'draft',
+      customerPriceIncGst: 143750,
+      updatedAt: '2026-04-02T09:00:00.000Z',
+      href: '/staff/projects/proj_123?tab=estimates&estimateId=est_123',
+    },
+  ],
   recentActivity: [
     {
       id: 'note_1',
@@ -78,27 +115,32 @@ const data: DashboardData = {
 };
 
 describe('DashboardView', () => {
-  it('renders pipeline, kpis, recent activity, and personal tasks', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+  it('renders the concept-led operational dashboard sections', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
 
     expect(markup).toContain('Dashboard');
+    expect(markup).toContain('Welcome back');
+    expect(markup).toContain('Quick actions');
     expect(markup).toContain('Pipeline');
-    expect(markup).toContain('Actions due');
+    expect(markup).toContain('Attention Today');
+    expect(markup).toContain('New Leads');
+    expect(markup).toContain('Recent Estimates');
+    expect(markup).toContain('Project Action Queue');
     expect(markup).toContain('Recent Activity');
     expect(markup).toContain('Beach House');
     expect(markup).toContain('Project note');
     expect(markup).toContain('Client prefers a darker roof finish.');
-    expect(markup).toContain('Tasks');
+    expect(markup).toContain('My Tasks');
     expect(markup).toContain('Call supplier');
   });
 
   it('renders recent activity with category, project, note, and author hierarchy', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
 
-    const labelIndex = markup.indexOf('Project note');
-    const projectIndex = markup.indexOf('Beach House');
-    const noteIndex = markup.indexOf('Client prefers a darker roof finish.');
-    const authorIndex = markup.indexOf('Added by Alex');
+    const labelIndex = markup.lastIndexOf('Project note');
+    const projectIndex = markup.indexOf('Beach House', labelIndex);
+    const noteIndex = markup.indexOf('Client prefers a darker roof finish.', projectIndex);
+    const authorIndex = markup.indexOf('Added by Alex', noteIndex);
 
     expect(labelIndex).toBeGreaterThan(-1);
     expect(projectIndex).toBeGreaterThan(-1);
@@ -109,33 +151,35 @@ describe('DashboardView', () => {
     expect(noteIndex).toBeLessThan(authorIndex);
   });
 
-  it('prioritizes pipeline before kpis and activity before tasks', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+  it('prioritizes pipeline before operational overview and action queue', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
 
     const pipelineIndex = markup.indexOf('Pipeline');
-    const kpiIndex = markup.indexOf('Actions due');
+    const attentionIndex = markup.indexOf('Attention Today');
+    const queueIndex = markup.indexOf('Project Action Queue');
     const activityIndex = markup.indexOf('Recent Activity');
-    const tasksIndex = markup.indexOf('Tasks');
 
     expect(pipelineIndex).toBeGreaterThan(-1);
-    expect(kpiIndex).toBeGreaterThan(-1);
+    expect(attentionIndex).toBeGreaterThan(-1);
+    expect(queueIndex).toBeGreaterThan(-1);
     expect(activityIndex).toBeGreaterThan(-1);
-    expect(tasksIndex).toBeGreaterThan(-1);
-    expect(pipelineIndex).toBeLessThan(kpiIndex);
-    expect(activityIndex).toBeLessThan(tasksIndex);
+    expect(pipelineIndex).toBeLessThan(attentionIndex);
+    expect(attentionIndex).toBeLessThan(queueIndex);
+    expect(queueIndex).toBeLessThan(activityIndex);
   });
 
-  it('does not render the retired operational dashboard sections', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+  it('does not render retired exceptions, installs, or misleading quote labels', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
 
-    expect(markup).not.toContain('Attention');
-    expect(markup).not.toContain('Work Queue');
-    expect(markup).not.toContain('Install schedule');
-    expect(markup).not.toContain('Site visits');
+    expect(markup).not.toContain('Project Exceptions');
+    expect(markup).not.toContain('Installs this week');
+    expect(markup).not.toContain('Upcoming Installs');
+    expect(markup).not.toContain('Quotes to send');
+    expect(markup).toContain('Projects in quoting');
   });
 
   it('marks cached data as updating without hiding it', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} state="cached" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" state="cached" />);
 
     expect(markup).toContain('data-dashboard-state="cached"');
     expect(markup).toContain('data-dashboard-background-ready="false"');
@@ -145,7 +189,7 @@ describe('DashboardView', () => {
 
   it('keeps known data and offers Retry after a refresh failure', () => {
     const markup = renderToStaticMarkup(
-      <DashboardView data={data} state="refresh-failed" onRetry={() => undefined} />,
+      <DashboardView data={data} queueMode="today" state="refresh-failed" onRetry={() => undefined} />,
     );
 
     expect(markup).toContain('data-dashboard-state="refresh-failed"');

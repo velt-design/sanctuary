@@ -5,8 +5,6 @@ import type { QueueMode } from '@/lib/dashboard/types';
 import DashboardPendingView from './DashboardPendingView';
 import DashboardView from './DashboardView';
 import { useDashboardData } from './useDashboardData';
-import { useQuery } from '@tanstack/react-query';
-import { dashboardProjectExceptionsQueryOptions } from '@/lib/queries/dashboard';
 
 export default function DashboardClient({
   queueMode,
@@ -14,7 +12,6 @@ export default function DashboardClient({
   queueMode: QueueMode;
 }) {
   const dashboard = useDashboardData(queueMode);
-  const exceptions = useQuery(dashboardProjectExceptionsQueryOptions());
 
   if (dashboard.state === 'unavailable') {
     return (
@@ -47,12 +44,9 @@ export default function DashboardClient({
   return (
     <DashboardView
       data={dashboard.data}
+      queueMode={queueMode}
       state={visibleState}
       onRetry={() => void dashboard.retry()}
-      projectExceptions={exceptions.data}
-      projectExceptionsPending={exceptions.isPending}
-      projectExceptionsError={exceptions.isError}
-      onRetryProjectExceptions={() => void exceptions.refetch()}
     />
   );
 }

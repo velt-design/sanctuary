@@ -4,29 +4,27 @@ export type QueueMode = 'today' | 'next7' | 'alldue';
 
 export type ProjectStatus = CoreProjectStatus;
 
-type AttentionKey =
+type DashboardAttentionKey =
   | 'overdue'
   | 'due_today'
-  | 'unscheduled_estimates'
   | 'site_visits_to_book'
-  | 'quotes_to_send'
-  | 'email_failures';
+  | 'projects_in_quoting';
 
-type Severity = 'high' | 'medium' | 'low';
+type DashboardAttentionTone = 'urgent' | 'warning' | 'neutral';
 
-export interface DashboardKpis {
+interface DashboardKpis {
   actionsDue: number; // today + overdue
   newLeads: number; // status=NEW
-  quotesToSend: number; // TODO: wire to quotes/estimates when available
-  installsThisWeek: number; // scheduled start in next 7 days
+  quotesToSend: number; // legacy snapshot key: projects in QUOTING, not quote readiness
+  installsThisWeek: number; // retained API contract; intentionally not rendered on Dashboard
 }
 
-interface AttentionItem {
-  key: AttentionKey;
+export interface DashboardAttentionItem {
+  key: DashboardAttentionKey;
   label: string;
   count: number;
   href: string;
-  severity: Severity;
+  tone: DashboardAttentionTone;
   helperText?: string;
 }
 
@@ -38,6 +36,26 @@ export interface WorkQueueItem {
   nextActionLabel?: string | null;
   nextActionDueDate?: string | null; // YYYY-MM-DD
   lastActivityAt?: string | null; // ISO
+}
+
+export interface DashboardNewLead {
+  projectId: string;
+  projectName: string;
+  contactName?: string | null;
+  siteAddress?: string | null;
+  createdAt: string;
+  href: string;
+}
+
+export interface DashboardRecentEstimate {
+  estimateId: string;
+  projectId: string;
+  projectName: string;
+  versionLabel: string;
+  status: 'draft';
+  customerPriceIncGst: number | null;
+  updatedAt: string;
+  href: string;
 }
 
 interface ScheduleStartingItem {
@@ -102,11 +120,13 @@ export interface DashboardPersonalTask {
 export interface DashboardData {
   updatedAtIso: string;
   kpis: DashboardKpis;
-  attention: AttentionItem[];
+  attention: DashboardAttentionItem[];
   workQueue: WorkQueueItem[];
   schedule: ScheduleSnapshot;
   siteVisits: SiteVisitsSnapshot;
   pipelineCounts: PipelineCounts;
+  newLeads: DashboardNewLead[];
+  recentEstimates: DashboardRecentEstimate[];
   recentActivity: DashboardRecentActivityItem[];
   personalTasks: DashboardPersonalTask[];
 }

@@ -59,7 +59,17 @@ Schedule Board, Gantt, Site Visits, and the legacy fallback share the full-width
 
 New Project, Drafting Queue, Running Jobs, Imports, Pricebook, and Access use the Foundation canvas, form controls, status edges, and hard-edge working surfaces. Drafting Queue and Running Jobs retain their shared spreadsheet viewport, zoom, local editing, and internal horizontal containment. Pricebook retains all three admin data owners behind an accessible tab/panel relationship. Large related-record reads use bounded ID-filter chunks so production-scale project inventories do not exceed PostgREST request-line limits.
 
-Dashboard is the final migrated checkpoint. It composes stage-colour pipeline cells, orange-edged KPI links, semantic exception badges, flat activity rows, and the shared accessible `TaskRow` control without restoring rounded cards or pills. The page retains cached/fresh/failure states, workflow links, personal-task optimistic mutations, a bounded desktop operational viewport, one-column mobile flow, and the server-total exception count.
+Dashboard is the final migrated checkpoint. It uses the dashboard-only display header, three real quick actions, a compact nine-stage pipeline, dense operational panels, flat activity rows, and the shared accessible `TaskRow` control without restoring rounded cards or pills. The page retains cached/fresh/failure states, workflow links, personal-task optimistic mutations, a bounded desktop action queue, internal horizontal pipeline containment, and a one-column mobile flow.
+
+### Dashboard data contract
+
+- Pipeline is a raw count of active, non-archived `projects.pipeline_stage` rows across all nine canonical stages. It is an inventory overview, not a health score or a recent-period metric.
+- Attention Today contains only four defined signals: overdue and due-today Project Command Centre actions from the service-owned project next-action projection; unscheduled `site_visit_events`; and the raw count of projects in `QUOTING`. The last signal is deliberately labelled **Projects in quoting**, not `Quotes to send`, because stage membership does not prove a quote is ready.
+- New Leads lists the oldest active projects in `NEW`, with the linked contact or site context when available. Its total is the same canonical New-stage pipeline count.
+- Recent Estimates lists the most recently updated non-archived draft estimates. Its displayed customer price is derived from `total_true_cost_ex_gst` through `calculateStaffCustomerPriceFromCostEx`, the same pricing sequence used by staff quote creation; `summary_json.total` is not treated as customer price.
+- Project Action Queue is the selected Project Command Centre action projection ordered by due date and bounded by Today, Next 7 days, or All due. Category, project, client, stage, and due date are read-only links back to the project owner.
+- My Tasks contains only the authenticated user's dashboard reminders. Recent Activity contains only non-deleted project notes attached to active projects.
+- Project Exceptions and install/starting-soon data are intentionally absent from the staff home page. Margin, health, fake progress, notification counts, and inferred quote-readiness metrics are also out of scope until a canonical operational owner exists.
 
 The canonical `/login` and `/access-status` routes use the same hard-edge Foundation tokens through `PublicAuthShell`; `/staff/login` remains a query-preserving redirect. Generic page-message and pending-state surfaces share that token owner, so authentication, failure, and loading states do not reintroduce the retired rounded-card layer.
 
@@ -94,7 +104,7 @@ Status meanings: `migrated` means the named active layer has no legacy presentat
 | Calculator | specialist command/configuration presentation | Foundation density, controls, feedback, panels, and approved geometry-status chips | Migrated |
 | Schedule / Tasks | rounded Board/Gantt/Site Visit cards, pill controls, and inline popover styling | hard-edge Foundation canvas, controls, feedback, semantic status edges, dialogs, and portal popovers | Migrated |
 | Remaining staff routes and settings | legacy route presentation | Foundation project form, shared spreadsheet, admin data surfaces, accessible Pricebook tabs, canonical quote redirects | Migrated |
-| Dashboard | legacy dashboard composition | dashboard header, stage cells, KPI links, semantic badges, flat activity, shared task rows | Migrated |
+| Dashboard | legacy dashboard composition and exceptions feed | dashboard hero/quick actions, nine stage cells, attention/leads/estimates/action queue, flat activity, shared task rows | Migrated |
 | Public staff auth, access, and page states | rounded gradient cards, pill actions, and rounded loading blocks | hard-edge `PublicAuthShell`, semantic status edges, Foundation controls and reduced-motion skeletons | Migrated |
 | Compatibility URLs | standalone or superseded route presentation | server redirects to the canonical Dashboard, Login, Calculator, Running Jobs, Commercial, or Job Packs owner | Migrated (redirect-only) |
 

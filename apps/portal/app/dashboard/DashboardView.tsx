@@ -1,30 +1,25 @@
-import type { DashboardData } from '@/lib/dashboard/types';
-import PageHeader from '@/components/layout/PageHeader';
+import type { DashboardData, QueueMode } from '@/lib/dashboard/types';
 import stateStyles from '@/components/page-state/PageState.module.css';
-import KpiStrip from './_components/KpiStrip';
 import PipelineCountsCard from './_components/PipelineCountsCard';
 import RecentActivityCard from './_components/RecentActivityCard';
 import DashboardTasksCard from './_components/DashboardTasksCard.client';
 import dash from './dashboard.module.css';
-import ProjectExceptionsCard from './_components/ProjectExceptionsCard';
-import type { ProjectCommandExceptionsResponse } from '@/lib/projects/commandCentre/types';
+import DashboardHero from './_components/DashboardHero';
+import AttentionTodayCard from './_components/AttentionTodayCard';
+import NewLeadsCard from './_components/NewLeadsCard';
+import RecentEstimatesCard from './_components/RecentEstimatesCard';
+import ProjectActionQueueCard from './_components/ProjectActionQueueCard';
 
 export default function DashboardView({
   data,
+  queueMode,
   state = 'fresh',
   onRetry,
-  projectExceptions,
-  projectExceptionsPending = false,
-  projectExceptionsError = false,
-  onRetryProjectExceptions,
 }: {
   data: DashboardData;
+  queueMode: QueueMode;
   state?: 'cached' | 'fresh' | 'refresh-failed';
   onRetry?: () => void;
-  projectExceptions?: ProjectCommandExceptionsResponse;
-  projectExceptionsPending?: boolean;
-  projectExceptionsError?: boolean;
-  onRetryProjectExceptions?: () => void;
 }) {
   return (
     <main
@@ -33,7 +28,7 @@ export default function DashboardView({
       data-dashboard-state={state}
       data-dashboard-background-ready={state === 'fresh' ? 'true' : 'false'}
     >
-      <PageHeader title="Dashboard" />
+      <DashboardHero updatedAtIso={data.updatedAtIso} />
 
       <div className={dash.content}>
         {state === 'cached' ? (
@@ -51,19 +46,18 @@ export default function DashboardView({
         <div className={dash.layout}>
           <PipelineCountsCard counts={data.pipelineCounts} />
 
-          <KpiStrip kpis={data.kpis} />
+          <div className={dash.overviewGrid}>
+            <AttentionTodayCard items={data.attention} />
+            <NewLeadsCard items={data.newLeads} totalCount={data.pipelineCounts.NEW ?? data.kpis.newLeads} />
+            <RecentEstimatesCard items={data.recentEstimates} />
+          </div>
 
-          <ProjectExceptionsCard
-            data={projectExceptions}
-            pending={projectExceptionsPending}
-            failed={projectExceptionsError}
-            onRetry={onRetryProjectExceptions}
-          />
-
-          <div className={dash.grid}>
-            <RecentActivityCard items={data.recentActivity} />
+          <div className={dash.operationsGrid}>
+            <ProjectActionQueueCard items={data.workQueue} queueMode={queueMode} updatedAtIso={data.updatedAtIso} />
             <DashboardTasksCard initialTasks={data.personalTasks} />
           </div>
+
+          <RecentActivityCard items={data.recentActivity} />
         </div>
       </div>
     </main>
