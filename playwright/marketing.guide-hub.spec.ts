@@ -8,14 +8,19 @@ const description = 'Explore Sanctuary Pergolas guides to planning, forms, mater
 const expectedGuides = [
   { number: '01', href: '/pergolas-auckland', title: 'Pergolas Auckland' },
   { number: '02', href: '/custom-pergolas-auckland', title: 'Custom Pergolas Auckland' },
-  { number: '03', href: '/aluminium-pergolas-auckland', title: 'Aluminium Pergolas Auckland' },
-  { number: '04', href: '/pergola-cost-auckland', title: 'Pergola Cost Auckland' },
-  { number: '05', href: '/gable-pergolas-auckland', title: 'Gable Pergolas Auckland' },
-  { number: '06', href: '/pitched-pergolas-auckland', title: 'Pitched Pergolas Auckland' },
-  { number: '07', href: '/outdoor-rooms-auckland', title: 'Outdoor Rooms Auckland' },
-  { number: '08', href: '/pergolas-with-blinds', title: 'Pergolas With Blinds' },
-  { number: '09', href: '/acrylic-pergolas-vs-louvre-roofs', title: 'Acrylic Pergolas vs Louvre Roofs' },
-  { number: '10', href: '/commercial-pergolas-auckland', title: 'Commercial Pergolas Auckland' },
+  { number: '03', href: '/outdoor-rooms-auckland', title: 'Outdoor Rooms Auckland' },
+  { number: '04', href: '/commercial-pergolas-auckland', title: 'Commercial Pergolas Auckland' },
+  { number: '05', href: '/aluminium-pergolas-auckland', title: 'Aluminium Pergolas Auckland' },
+  { number: '06', href: '/gable-pergolas-auckland', title: 'Gable Pergolas Auckland' },
+  { number: '07', href: '/pitched-pergolas-auckland', title: 'Pitched Pergolas Auckland' },
+  { number: '08', href: '/pergola-cost-auckland', title: 'Pergola Cost Auckland' },
+  { number: '09', href: '/pergolas-with-blinds', title: 'Pergolas With Blinds' },
+  { number: '10', href: '/acrylic-pergolas-vs-louvre-roofs', title: 'Acrylic Pergolas vs Louvre Roofs' },
+] as const;
+const expectedChapterNumbers = [
+  { id: 'plan-the-project', numbers: ['01', '02', '03', '04'] },
+  { id: 'choose-form-and-structure', numbers: ['05', '06', '07'] },
+  { id: 'compare-scope-and-components', numbers: ['08', '09', '10'] },
 ] as const;
 const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
@@ -60,6 +65,18 @@ for (const viewport of viewports) {
       await expect(link).toContainText(guide.title);
     }
 
+    const renderedGuides = await main.locator('[data-guide-link]').evaluateAll((links) => links.map((link) => ({
+      number: link.querySelector('.guide-hub-card__number')?.textContent?.trim(),
+      href: link.getAttribute('href'),
+      title: link.querySelector('.guide-hub-card__heading strong')?.textContent?.trim(),
+    })));
+    expect(renderedGuides).toEqual(expectedGuides.map((guide) => ({ ...guide })));
+
+    for (const chapter of expectedChapterNumbers) {
+      const numbers = await main.locator(`#${chapter.id} .guide-hub-card__number`).allTextContents();
+      expect(numbers).toEqual([...chapter.numbers]);
+    }
+
     await expect.poll(() => main.locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     expect(await main.evaluate((element) => getComputedStyle(element).getPropertyValue('--color-accent-olive').trim())).toBe('#4f5748');
@@ -74,7 +91,11 @@ for (const viewport of viewports) {
     if (capture) {
       await mkdir(evidenceDirectory, { recursive: true });
       await page.screenshot({ path: path.join(evidenceDirectory, `${viewport.name}-top.png`) });
-      await page.locator('#choose-form-and-structure').scrollIntoViewIfNeeded();
+      await page.locator('#plan-the-project').scrollIntoViewIfNeeded();
+      if (viewport.width > 900) {
+        await expect(page.locator('header.site')).toHaveAttribute('data-hero-navigation', 'solid');
+      }
+      await page.waitForTimeout(650);
       await page.screenshot({ path: path.join(evidenceDirectory, `${viewport.name}-library.png`) });
     }
   });

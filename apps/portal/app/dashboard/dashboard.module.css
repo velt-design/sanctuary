@@ -33,13 +33,12 @@
   padding-bottom: var(--ui-space-3);
 }
 
-.hero :global([data-page-header-variant='dashboard']) > div:last-child {
-  align-items: stretch;
+.hero :global([data-page-header-variant='dashboard']) [data-page-header-row='true'] {
+  align-items: center;
 }
 
-.hero :global([data-page-header-variant='dashboard']) > div:last-child > div:first-child {
-  align-self: end;
-  padding-bottom: var(--ui-space-1);
+.hero :global([data-page-header-variant='dashboard']) [data-page-header-identity='true'] {
+  align-self: center;
 }
 
 .hero :global([data-page-header-variant='dashboard']) h1 {
@@ -65,9 +64,11 @@
 }
 
 .heroTools {
+  container-type: inline-size;
   display: grid;
-  grid-template-columns: minmax(300px, 1fr) 116px;
-  min-width: min(460px, 100%);
+  grid-template-columns: minmax(0, 1fr) clamp(88px, 8vw, 116px);
+  width: 100%;
+  min-width: 0;
   border: var(--ui-border-width) solid var(--ui-border-strong);
   background: var(--ui-surface-primary);
 }
@@ -169,6 +170,22 @@
 .dateTile b { align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); }
 .dateTile small { grid-column: 1 / -1; font-weight: 800; }
 
+@container (max-width: 440px) {
+  .quickActions {
+    gap: var(--ui-space-1);
+    padding: 6px;
+  }
+  .quickActionGrid { gap: var(--ui-space-1); }
+  .quickAction {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 3px;
+    padding-inline: var(--ui-space-1);
+    text-align: center;
+  }
+  .quickAction span { white-space: nowrap; }
+}
+
 .content,
 .layout,
 .pendingLayout {
@@ -238,7 +255,7 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-color: var(--ui-border-strong) !important;
+  border-color: var(--ui-border) !important;
   background: var(--ui-surface-primary) !important;
   box-shadow: none !important;
 }
@@ -256,22 +273,23 @@
   justify-content: space-between;
   gap: var(--ui-space-3);
   min-height: 48px;
-  border-bottom: var(--ui-status-edge) solid var(--ui-action) !important;
-  background: var(--ui-surface-inverse) !important;
+  border-bottom: var(--ui-border-width) solid var(--ui-border) !important;
+  background: var(--ui-surface-secondary) !important;
   padding: var(--ui-space-2) var(--ui-space-3) !important;
 }
 
 .cardHeader h2 {
-  color: var(--ui-text-inverse) !important;
-  font-family: var(--ui-font-display) !important;
-  font-size: var(--ui-font-size-section) !important;
-  font-weight: 600 !important;
+  color: var(--ui-text-strong) !important;
+  font-family: var(--ui-font-body) !important;
+  font-size: var(--ui-font-size-small) !important;
+  font-weight: 800 !important;
+  letter-spacing: var(--ui-letter-spacing-label);
   line-height: var(--ui-line-height-heading) !important;
   text-transform: uppercase;
 }
 
 .cardSubheading {
-  color: color-mix(in srgb, var(--ui-text-inverse) 68%, transparent) !important;
+  color: var(--ui-text-muted) !important;
   font-size: var(--ui-font-size-caption) !important;
 }
 
@@ -284,14 +302,25 @@
 .cardBodyNoScroll { overflow: hidden; }
 .sectionMeta {
   flex: 0 0 auto;
-  color: color-mix(in srgb, var(--ui-text-inverse) 72%, transparent);
+  color: var(--ui-text-muted);
   font-size: var(--ui-font-size-caption);
   font-weight: 700;
   letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
 }
 
-.pipelineCard { border-color: var(--ui-border-strong) !important; }
+.pipelineCard { border-color: var(--ui-border) !important; }
+.pipelineCard .cardHeader,
+.tasksCard .cardHeader {
+  border-bottom-color: var(--ui-border-inverse) !important;
+  background: var(--ui-surface-inverse) !important;
+}
+.pipelineCard .cardHeader h2,
+.tasksCard .cardHeader h2 { color: var(--ui-text-inverse) !important; }
+.pipelineCard .sectionMeta,
+.tasksCard .cardSubheading {
+  color: color-mix(in srgb, var(--ui-text-inverse) 72%, transparent) !important;
+}
 .pipelineStrip {
   width: 100%;
   min-width: 0;
@@ -336,7 +365,7 @@
   outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
   outline-offset: -2px;
 }
-.pipelineCellActive { border-bottom-color: var(--ui-action); }
+.pipelineCellActive { border-bottom-color: transparent; }
 .pipelineLabel {
   color: var(--ui-text-muted);
   font-size: 10px;
@@ -417,7 +446,9 @@
   font-size: var(--ui-font-size-caption);
   line-height: 1.35;
 }
-.rowArrow { color: var(--ui-action-text); font-weight: 800; }
+.rowArrow { color: var(--ui-text-subtle); font-weight: 800; }
+.attentionItem:hover .rowArrow,
+.attentionItem:focus-visible .rowArrow { color: var(--ui-action-text); }
 
 .operationalRow {
   display: grid;
@@ -465,9 +496,10 @@
 .queueHeader { flex-wrap: wrap; }
 .queueFilters { display: flex; align-items: center; gap: var(--ui-space-1); }
 .queueFilters a {
-  border: var(--ui-border-width) solid color-mix(in srgb, var(--ui-text-inverse) 36%, transparent);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  background: var(--ui-surface-primary);
   padding: 5px 8px;
-  color: color-mix(in srgb, var(--ui-text-inverse) 74%, transparent);
+  color: var(--ui-text-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: var(--ui-letter-spacing-label);
@@ -658,7 +690,6 @@
 }
 
 @media (max-width: 900px) {
-  .hero :global([data-page-header-variant='dashboard']) > div:last-child { flex-direction: column; }
   .hero :global([data-page-header-variant='dashboard']) h1 { font-size: 68px; }
   .heroTools { width: 100%; min-width: 0; }
   .workspaceGrid {

@@ -76,7 +76,7 @@ export default function PageHeader({
   const hasActions = Boolean(back || primaryAction || (secondaryActions && secondaryActions.length) || right || meta);
 
   const actions = hasActions ? (
-    <div className={styles.right}>
+    <div className={styles.right} data-page-header-actions="true">
       {meta ? <div className={styles.meta}>{meta}</div> : null}
       {back ? (
         usesFoundation ? (
@@ -149,8 +149,8 @@ export default function PageHeader({
           ))}
         </nav>
       ) : null}
-      <div className={styles.row}>
-        <div className={styles.identity}>
+      <div className={cx(styles.row, Boolean(utility) && styles.rowWithUtility)} data-page-header-row="true">
+        <div className={styles.identity} data-page-header-identity="true">
           {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
           <div className={styles.titleLine}>
             {createElement(`h${headingLevel}`, { className: styles.title }, title)}
@@ -159,12 +159,8 @@ export default function PageHeader({
           {description ?? subtitle ? <div className={styles.subtitle}>{description ?? subtitle}</div> : null}
         </div>
 
-        {utility ? (
-          <div className={styles.rightStack}>
-            <div className={styles.utility}>{utility}</div>
-            {actions}
-          </div>
-        ) : actions}
+        {utility ? <div className={styles.utility} data-page-header-utility="true">{utility}</div> : null}
+        {actions}
       </div>
     </header>
   );

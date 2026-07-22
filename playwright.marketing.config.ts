@@ -5,7 +5,7 @@ const baseURL = process.env.MARKETING_BASE_URL?.trim() || `http://127.0.0.1:${po
 
 export default defineConfig({
   testDir: './playwright',
-  testMatch: /marketing\.(?:foundation|acrylic-foundation|acrylic-copy-variant|guide-hub|hero-navigation|seo-landing|seo-programme)\.spec\.ts/,
+  testMatch: /marketing\.(?:foundation|acrylic-foundation|acrylic-copy-variant|guide-hub|hero-navigation|seo-copy-hygiene|seo-landing|seo-programme)\.spec\.ts/,
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

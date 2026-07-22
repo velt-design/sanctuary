@@ -1,13 +1,20 @@
-.root { display: grid; gap: 10px; }
+.root { container-type: inline-size; display: grid; gap: 10px; }
 .row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.rowWithUtility {
+  display: grid;
+  grid-template-areas: 'identity utility actions';
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 28vw) minmax(0, 1fr);
+  align-items: center;
+}
 .identity { min-width: 0; flex: 1 1 220px; display: grid; gap: 6px; }
+.rowWithUtility .identity { grid-area: identity; align-self: center; width: 100%; }
 .titleLine { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
 .title { margin: 0; font-size: clamp(26px, 4vw, 32px); line-height: 0.98; font-weight: 700; letter-spacing: -0.04em; color: var(--ui-text-strong); }
 .subtitle { font-size: 14px; line-height: 1.5; color: var(--ui-text-muted); }
 .meta { color: var(--ui-text-muted); font-size: 13px; }
 .right { min-width: 0; display: flex; align-items: center; justify-content: flex-end; flex: 1 1 auto; flex-wrap: wrap; gap: 8px; }
-.rightStack { min-width: min(440px, 100%); display: grid; flex: 1 1 440px; justify-items: end; gap: var(--ui-space-2); }
-.utility { width: min(440px, 100%); min-width: 0; }
+.rowWithUtility .right { grid-area: actions; align-self: center; width: 100%; }
+.utility { grid-area: utility; justify-self: center; width: min(440px, 100%); min-width: 0; }
 
 .breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); }
 .breadcrumbs > * { color: inherit; text-decoration: none; }
@@ -22,11 +29,23 @@
 .variantDetail .title { font-size: var(--ui-font-size-detail-title); line-height: var(--ui-line-height-heading); letter-spacing: 0; }
 .actionDisabled { opacity: 0.48; pointer-events: none; }
 
+@container (max-width: 960px) {
+  .rowWithUtility {
+    grid-template-areas:
+      'identity'
+      'utility'
+      'actions';
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .rowWithUtility .right { justify-content: flex-start; }
+  .utility { width: min(560px, 100%); }
+}
+
 @media (max-width: 767px) {
   .row { flex-direction: column; align-items: stretch; }
   .identity { flex-basis: auto; width: 100%; }
   .right { justify-content: flex-start; }
-  .rightStack { width: 100%; min-width: 0; flex-basis: auto; justify-items: stretch; }
   .utility { width: 100%; }
   .variantDashboard .title { font-size: 56px; }
   .variantIndex .title { font-size: 34px; }

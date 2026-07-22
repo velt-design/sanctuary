@@ -22,7 +22,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
     eyebrow: 'Start with the whole brief',
     title: 'Plan the project',
     introduction:
-      'Use these guides when the important decision is the overall room, site response or project type—not one isolated component.',
+      'Use these guides when the important decision is the overall room, site response or project type, rather than one isolated component.',
     guides: [
       {
         number: '01',
@@ -41,7 +41,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
           'How a bespoke pergola develops from the house, outdoor area, constraints and way the finished space should be used.',
       },
       {
-        number: '07',
+        number: '03',
         href: '/outdoor-rooms-auckland',
         title: 'Outdoor Rooms Auckland',
         prompt: 'Design the life below the roof',
@@ -49,7 +49,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
           'Plan a more complete outdoor room around shelter, warmth, lighting, services, furniture and changing seasons.',
       },
       {
-        number: '10',
+        number: '04',
         href: '/commercial-pergolas-auckland',
         title: 'Commercial Pergolas Auckland',
         prompt: 'Coordinate operation and delivery',
@@ -67,7 +67,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
       'Use these guides to understand how frame material and roof geometry influence proportion, drainage, volume and connection to the building.',
     guides: [
       {
-        number: '03',
+        number: '05',
         href: '/aluminium-pergolas-auckland',
         title: 'Aluminium Pergolas Auckland',
         prompt: 'Understand the frame',
@@ -75,7 +75,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
           'Explore how aluminium structure, spans, posts, finishes and junctions contribute to a durable architectural pergola.',
       },
       {
-        number: '05',
+        number: '06',
         href: '/gable-pergolas-auckland',
         title: 'Gable Pergolas Auckland',
         prompt: 'Plan ridge, eaves and volume',
@@ -83,7 +83,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
           'Consider the height, symmetry, light and spatial character created by a roof rising to a central ridge.',
       },
       {
-        number: '06',
+        number: '07',
         href: '/pitched-pergolas-auckland',
         title: 'Pitched Pergolas Auckland',
         prompt: 'Follow one roof plane',
@@ -101,7 +101,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
       'Use these guides when cost, roof behaviour or a changing edge is the decision that will set the direction of the wider design.',
     guides: [
       {
-        number: '04',
+        number: '08',
         href: '/pergola-cost-auckland',
         title: 'Pergola Cost Auckland',
         prompt: 'Compare scope before price',
@@ -109,7 +109,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
           'See which design and delivery choices shape project cost, and what information makes an early estimate more useful.',
       },
       {
-        number: '08',
+        number: '09',
         href: '/pergolas-with-blinds',
         title: 'Pergolas With Blinds',
         prompt: 'Plan the changing edge',
@@ -117,7 +117,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
           'Consider blinds as part of the architecture, including wind, low sun, privacy, openings and how the edge works when raised.',
       },
       {
-        number: '09',
+        number: '10',
         href: '/acrylic-pergolas-vs-louvre-roofs',
         title: 'Acrylic Pergolas vs Louvre Roofs',
         prompt: 'Compare roof behaviour',

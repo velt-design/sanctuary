@@ -98,6 +98,16 @@ describe('PageHeader', () => {
     );
     expect(rendered.container.textContent).toContain('Portal search');
     expect(rendered.container.textContent).toContain('New project');
+    const row = rendered.container.querySelector('[data-page-header-row="true"]');
+    expect(Array.from(row?.children ?? []).map((child) => (
+      child.hasAttribute('data-page-header-identity')
+        ? 'identity'
+        : child.hasAttribute('data-page-header-utility')
+          ? 'utility'
+          : child.hasAttribute('data-page-header-actions')
+            ? 'actions'
+            : 'unknown'
+    ))).toEqual(['identity', 'utility', 'actions']);
     rendered.unmount();
   });
 });

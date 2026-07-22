@@ -52,6 +52,51 @@ async function expectNoLegacyRoundedSurfaces(root: Locator) {
   expect(offenders).toEqual([]);
 }
 
+async function expectRefinedOperationalHierarchy(page: Page, root: Locator, verifyDesktopChrome: boolean) {
+  const attentionHeader = root.getByRole('region', { name: 'Attention Today' }).locator(':scope > div').first();
+  const pipelineHeader = root.getByRole('region', { name: 'Pipeline counts' }).locator(':scope > div').first();
+  const tasksHeader = root.getByRole('region', { name: 'My Tasks' }).locator(':scope > div').first();
+  const queueFilters = root.getByRole('region', { name: 'Project Action Queue' }).getByRole('navigation', { name: 'Project action queue range' });
+  const quickAction = root.getByRole('region', { name: 'Quick actions' }).getByRole('link').first();
+
+  await expect(attentionHeader).toHaveCSS('background-color', 'rgb(235, 226, 215)');
+  await expect(attentionHeader).toHaveCSS('border-bottom-color', 'rgb(201, 194, 183)');
+  await expect(attentionHeader).toHaveCSS('border-bottom-width', '1px');
+  await expect(attentionHeader.getByRole('heading', { name: 'Attention Today' })).toHaveCSS('color', 'rgb(17, 17, 15)');
+  await expect(pipelineHeader).toHaveCSS('background-color', 'rgb(11, 11, 10)');
+  await expect(pipelineHeader.getByRole('heading', { name: 'Pipeline' })).toHaveCSS('color', 'rgb(248, 244, 236)');
+  await expect(tasksHeader).toHaveCSS('background-color', 'rgb(11, 11, 10)');
+  await expect(tasksHeader.getByRole('heading', { name: 'My Tasks' })).toHaveCSS('color', 'rgb(248, 244, 236)');
+  await expect(queueFilters.getByRole('link', { name: 'Today' })).toHaveCSS('background-color', 'rgb(240, 90, 0)');
+  await expect(quickAction).toHaveCSS('background-color', 'rgb(11, 11, 10)');
+
+  const pipelineEdges = await root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link').evaluateAll((links) =>
+    links.map((link) => getComputedStyle(link).borderBottomColor),
+  );
+  expect(pipelineEdges.every((colour) => colour === 'rgba(0, 0, 0, 0)')).toBe(true);
+
+  if (verifyDesktopChrome) {
+    await expect(page.locator('[data-portal-sidebar-panel="true"] > div').first()).toHaveCSS('background-color', 'rgb(11, 11, 10)');
+  }
+}
+
+async function expectOperationalInteractionFeedback(root: Locator) {
+  const firstPipelineStage = root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link').first();
+  await expect(firstPipelineStage).toHaveAttribute('href', '/staff/projects?status=new');
+  await firstPipelineStage.hover();
+  await expect(firstPipelineStage).toHaveCSS('border-bottom-color', 'rgb(240, 90, 0)');
+
+  const firstAttentionItem = root.getByRole('region', { name: 'Attention Today' }).getByRole('link').first();
+  const attentionArrow = firstAttentionItem.locator('span').last();
+  await expect(attentionArrow).toHaveCSS('color', 'rgb(136, 135, 126)');
+  await firstAttentionItem.hover();
+  await expect(attentionArrow).toHaveCSS('color', 'rgb(139, 60, 0)');
+
+  await expect(
+    root.getByRole('region', { name: 'Project Action Queue' }).getByRole('link', { name: 'All due' }),
+  ).toHaveAttribute('href', '/dashboard?queue=alldue');
+}
+
 async function expectSingleScreenDesktopLayout(page: Page, root: Locator) {
   const [attentionBox, estimatesBox, queueBox, activityBox, tasksBox] = await Promise.all([
     root.getByRole('region', { name: 'Attention Today' }).boundingBox(),
@@ -124,11 +169,13 @@ test('Dashboard concept refinement is responsive and keeps operational links int
     await expect(root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link')).toHaveCount(9);
     await expectNoDocumentOverflow(page);
     await expectNoLegacyRoundedSurfaces(root);
+    await expectRefinedOperationalHierarchy(page, root, viewport.width >= 1280);
     if (viewport.width >= 1280) await expectSingleScreenDesktopLayout(page, root);
     await capturePortalEvidenceScreenshot(page, {
       path: path.join(evidenceDir, `dashboard-${viewport.name}.png`),
       fullPage: viewport.width >= 768,
     });
+    if (viewport.name === '1920x940') await expectOperationalInteractionFeedback(root);
   }
 
   await page.setViewportSize({ width: 720, height: 500 });
