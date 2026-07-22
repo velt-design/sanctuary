@@ -43,9 +43,9 @@ The premium is justified through the total outcome:
 - a guided process from site information through design, quote, refinement and installation; and
 - proof that reduces risk: drawings or renders, photos of comparable projects, clear inclusions, documented specifications and verified warranty information.
 
-Do not lead with material thickness, technical specifications or the word “premium” alone. Lead with the life and design outcome, then substantiate it.
+Do not lead with material thickness, technical specifications or the word "premium" alone. Lead with the life and design outcome, then substantiate it.
 
-### The customer’s real purchase
+### The customer's real purchase
 
 Customers are buying five things at once:
 
@@ -61,7 +61,7 @@ Customers are buying five things at once:
 
 ### Tier 1: More usable outdoor living
 
-This is the broadest and most frequently expressed customer need. Customers talk about covering a deck, creating an outdoor room, entertaining, leaving doors open, fitting a table and barbecue, and using the area “all year round”.
+This is the broadest and most frequently expressed customer need. Customers talk about covering a deck, creating an outdoor room, entertaining, leaving doors open, fitting a table and barbecue, and using the area "all year round".
 
 **Core angle:** Make an underused deck a sheltered extension of everyday living.
 
@@ -87,11 +87,11 @@ A large share of serious enquiries concern how the pergola meets the house: roof
 - Planned to complement the house from both the deck and the street.
 - Colour, roof form, post placement and finishing details considered together.
 
-Do not imply that every site can achieve post-free spans, a particular roof connection or any requested form. Use “subject to site conditions, design and engineering” where relevant.
+Do not imply that every site can achieve post-free spans, a particular roof connection or any requested form. Use "subject to site conditions, design and engineering" where relevant.
 
 ### Tier 1: Shelter without sacrificing light
 
-Customers commonly fear that a new roof will darken the lounge, block sunlight, remove the view of the sky or create a hot “glasshouse” effect. This is not a secondary technical question; it is a central buying tension.
+Customers commonly fear that a new roof will darken the lounge, block sunlight, remove the view of the sky or create a hot "glasshouse" effect. This is not a secondary technical question; it is a central buying tension.
 
 **Core angle:** Add cover while protecting the bright, open quality of the home.
 
@@ -106,11 +106,11 @@ Avoid quantified UV, heat or light-performance figures until the exact product, 
 
 ### Tier 2: Premium design and finish
 
-Customers who progress often care about visual weight, clean lines, matching colours, discreet fixings, pane layout, roof style and a result that looks substantial. “Premium” works when translated into visible decisions.
+Customers who progress often care about visual weight, clean lines, matching colours, discreet fixings, pane layout, roof style and a result that looks substantial. "Premium" works when translated into visible decisions.
 
 **Core angle:** A considered addition with a clean, resolved finish.
 
-Prove this with project photography, close-up details, drawings, material samples, finish options and specific explanations. Replace vague claims such as “superior craftsmanship” with concrete evidence.
+Prove this with project photography, close-up details, drawings, material samples, finish options and specific explanations. Replace vague claims such as "superior craftsmanship" with concrete evidence.
 
 ### Tier 2: A clear, consultative path to the right design
 
@@ -145,7 +145,7 @@ Sanctuary should win through **fit, clarity, design judgement and proof**, not c
 
 **Desired outcome:** A covered area for meals, entertaining, children, pets, relaxing or leaving doors open more often.
 
-**Typical language:** “cover our deck”, “use it all year round”, “shelter from sun and rain”, “usable when it’s raining”, “more weather protection”.
+**Typical language:** "cover our deck", "use it all year round", "shelter from sun and rain", "usable when it's raining", "more weather protection".
 
 **Buying triggers:** A wet season, summer heat, an upcoming event, a renovation, new outdoor furniture, a growing family or frustration that a large deck is rarely used.
 
@@ -159,7 +159,7 @@ Sanctuary should win through **fit, clarity, design judgement and proof**, not c
 
 **Desired outcome:** A pergola that looks intentional and visually integrated, with clean sightlines and considered colours and details.
 
-**Typical language:** “fit in with the house”, “colour match the existing joinery”, “look more balanced on the façade”, “no posts in the middle”, “leave it open as much as possible”, “what will it look like?”
+**Typical language:** "fit in with the house", "colour match the existing joinery", "look more balanced on the facade", "no posts in the middle", "leave it open as much as possible", "what will it look like?"
 
 **Buying triggers:** Exterior renovation, new deck, landscaping, replacement of an unattractive timber or ageing cover, or seeing a Sanctuary project with a similar house style.
 
@@ -173,7 +173,7 @@ Sanctuary should win through **fit, clarity, design judgement and proof**, not c
 
 **Desired outcome:** Confidence that the selected solution will deliver the right appearance, fit, inclusions and long-term value.
 
-**Typical language:** “what exactly is included?”, “just want to make sure we’ve covered everything”, “we can’t decide until we compare the options”, “do the costs remain the same?”, “we can’t buy totally unseen”.
+**Typical language:** "what exactly is included?", "just want to make sure we've covered everything", "we can't decide until we compare the options", "do the costs remain the same?", "we can't buy totally unseen".
 
 **Buying triggers:** Receipt of multiple quotes, a recommendation, viewing a completed project, a site visit or a design that finally resolves the home-specific problem.
 
@@ -246,7 +246,7 @@ Treat these as signs to move from education to a concrete next step:
 - asks detailed questions about design, house connection, materials or inclusions;
 - requests a revised quote or chooses an option;
 - involves a partner, builder, architect or body corporate; or
-- says “we’d like to go ahead”, “keen to proceed” or “what are the next steps?”
+- says "we'd like to go ahead", "keen to proceed" or "what are the next steps?"
 
 Do not mistake early measurements or a quote request alone for a guaranteed high-value lead. Use them to invite the next commitment.
 
@@ -256,16 +256,16 @@ Do not mistake early measurements or a quote request alone for a guaranteed high
 
 | Objection | What the customer is really asking | Best response pattern | Best evidence | Avoid |
 |---|---|---|---|---|
-| **“The price is too high.”** | Is the difference worth it, and can the outcome fit my budget? | Acknowledge the constraint. Explain the specific cost drivers—size, bay count, roof form, blinds, access, drainage or complexity. Offer a revised dimension, staged extra or alternative configuration without stripping out the core outcome. | Side-by-side scope, drawings, current itemised quote, comparable project | Discounting immediately; “you get what you pay for”; vague quality claims |
-| **“I’m comparing quotes.”** | Are these genuinely like for like? | Re-state exactly what Sanctuary includes and excludes. Explain material, configuration and installation differences in plain language. Invite the customer to compare the finished outcome, not only the headline total. | Inclusion checklist, option comparison, photos, verified warranty | Attacking competitors; unsupported superiority claims |
-| **“I can’t picture the design.”** | Will it look right and work with my home? | Show a render, drawing, marked-up photo or similar completed home. Explain roofline, posts, colour, infills and drainage. Offer a revision or site meeting around the unresolved point. | Visuals, samples, before/after projects | “Trust us”; forcing acceptance before design clarity |
-| **“Will it make the house dark or too hot?”** | Am I solving one problem by creating another? | Acknowledge the trade-off. Compare clear and tinted options around natural light, glare, appearance, dirt visibility and desired shade. Relate the decision to room orientation and how the area is used. | Approved product data, physical samples, relevant installed examples | Unverified UV/heat percentages; pretending one tint is universally best |
-| **“What material should I choose?”** | I do not understand the practical differences. | Translate each option into visible and everyday consequences. Use a simple comparison and recommend based on the customer’s priorities. | Current specifications, samples, project photos | Jargon dumps; calling acrylic “glass”; unsupported lifespan claims |
-| **“Will it leak or handle the weather?”** | Can I trust the result in real conditions? | Clarify the intended level of protection and the limits created by open sides, existing gutters, house connections and consent restrictions. Explain drainage and flashing decisions. Assess the site rather than guaranteeing a universal outcome. | Site assessment, drawings, drainage details, approved warranty, service process | “Waterproof”, “leak-free” or “built for any weather” without substantiation |
-| **“Do I need consent?”** | Will this create cost, delay or compliance risk? | Say that requirements depend on the complete design and site, not one dimension alone. Explain what can be assessed now, what must be confirmed and what documentation Sanctuary can supply or coordinate. | Current regulatory advice, plans, engineering and council documentation | Blanket “under X m² means no consent” claims; legal certainty without review |
-| **“Is it strong enough for this site or span?”** | Can I avoid posts without compromising safety? | Explain that post placement, spans and fixings are site- and design-dependent. Confirm only what the reviewed design or engineering supports. Offer the cleanest feasible alternative. | Site measurements, engineering, approved span tables, fixing details | Universal wind-speed, wind-zone or maximum-span claims |
-| **“What does the warranty cover?”** | What happens if something fails? | Provide the current written warranty and separate Sanctuary workmanship coverage from any manufacturer product warranty. State duration, coverage, exclusions and claim process exactly. | Current signed-off warranty documents | Combining different warranties; using historical terms from old quotes |
-| **“We’re not ready / need partner approval.”** | Help us decide without pressure. | Give a concise comparison, visuals and a clear re-entry point. Confirm which details can remain flexible and what would need to be decided before scheduling. | One-page option summary, similar projects, current quote validity | Repeated pressure, false scarcity, treating delay as rejection |
+| **"The price is too high."** | Is the difference worth it, and can the outcome fit my budget? | Acknowledge the constraint. Explain the specific cost drivers—size, bay count, roof form, blinds, access, drainage or complexity. Offer a revised dimension, staged extra or alternative configuration without stripping out the core outcome. | Side-by-side scope, drawings, current itemised quote, comparable project | Discounting immediately; "you get what you pay for"; vague quality claims |
+| **"I'm comparing quotes."** | Are these genuinely like for like? | Re-state exactly what Sanctuary includes and excludes. Explain material, configuration and installation differences in plain language. Invite the customer to compare the finished outcome, not only the headline total. | Inclusion checklist, option comparison, photos, verified warranty | Attacking competitors; unsupported superiority claims |
+| **"I can't picture the design."** | Will it look right and work with my home? | Show a render, drawing, marked-up photo or similar completed home. Explain roofline, posts, colour, infills and drainage. Offer a revision or site meeting around the unresolved point. | Visuals, samples, before/after projects | "Trust us"; forcing acceptance before design clarity |
+| **"Will it make the house dark or too hot?"** | Am I solving one problem by creating another? | Acknowledge the trade-off. Compare clear and tinted options around natural light, glare, appearance, dirt visibility and desired shade. Relate the decision to room orientation and how the area is used. | Approved product data, physical samples, relevant installed examples | Unverified UV/heat percentages; pretending one tint is universally best |
+| **"What material should I choose?"** | I do not understand the practical differences. | Translate each option into visible and everyday consequences. Use a simple comparison and recommend based on the customer's priorities. | Current specifications, samples, project photos | Jargon dumps; calling acrylic "glass"; unsupported lifespan claims |
+| **"Will it leak or handle the weather?"** | Can I trust the result in real conditions? | Clarify the intended level of protection and the limits created by open sides, existing gutters, house connections and consent restrictions. Explain drainage and flashing decisions. Assess the site rather than guaranteeing a universal outcome. | Site assessment, drawings, drainage details, approved warranty, service process | "Waterproof", "leak-free" or "built for any weather" without substantiation |
+| **"Do I need consent?"** | Will this create cost, delay or compliance risk? | Say that requirements depend on the complete design and site, not one dimension alone. Explain what can be assessed now, what must be confirmed and what documentation Sanctuary can supply or coordinate. | Current regulatory advice, plans, engineering and council documentation | Blanket "under X m2 means no consent" claims; legal certainty without review |
+| **"Is it strong enough for this site or span?"** | Can I avoid posts without compromising safety? | Explain that post placement, spans and fixings are site- and design-dependent. Confirm only what the reviewed design or engineering supports. Offer the cleanest feasible alternative. | Site measurements, engineering, approved span tables, fixing details | Universal wind-speed, wind-zone or maximum-span claims |
+| **"What does the warranty cover?"** | What happens if something fails? | Provide the current written warranty and separate Sanctuary workmanship coverage from any manufacturer product warranty. State duration, coverage, exclusions and claim process exactly. | Current signed-off warranty documents | Combining different warranties; using historical terms from old quotes |
+| **"We're not ready / need partner approval."** | Help us decide without pressure. | Give a concise comparison, visuals and a clear re-entry point. Confirm which details can remain flexible and what would need to be decided before scheduling. | One-page option summary, similar projects, current quote validity | Repeated pressure, false scarcity, treating delay as rejection |
 
 The most productive objection responses are not clever rebuttals. They **reduce uncertainty with a fact, a visual, a design change or a clear next step**.
 
@@ -277,67 +277,67 @@ Use these phrases and constructions as raw language cues. Preserve their directn
 
 ### Outdoor use and weather
 
-- “cover our deck”
-- “use it all year round”
-- “usable when it’s raining”
-- “shelter from sun and rain”
-- “more weather protection”
-- “stop rain coming in”
-- “open to the elements”
-- “wind and rain”
-- “an outdoor room”
-- “enough room for the table and barbecue”
+- "cover our deck"
+- "use it all year round"
+- "usable when it's raining"
+- "shelter from sun and rain"
+- "more weather protection"
+- "stop rain coming in"
+- "open to the elements"
+- "wind and rain"
+- "an outdoor room"
+- "enough room for the table and barbecue"
 
 ### Light, heat and openness
 
-- “keep the light coming into the house”
-- “as much light as possible”
-- “see the sky”
-- “don’t want the lounge to get too dark”
-- “minimal light restriction”
-- “don’t want it to feel like a glasshouse”
-- “too hot to sit under”
-- “leave it open as much as possible”
-- “no posts in the middle”
+- "keep the light coming into the house"
+- "as much light as possible"
+- "see the sky"
+- "don't want the lounge to get too dark"
+- "minimal light restriction"
+- "don't want it to feel like a glasshouse"
+- "too hot to sit under"
+- "leave it open as much as possible"
+- "no posts in the middle"
 
 ### Design and fit
 
-- “fit in with the house”
-- “look more balanced on the façade”
-- “colour match the existing joinery”
-- “what will it look like?”
-- “something similar”
-- “the design looks good to me”
-- “keep the overhang look”
-- “a cleaner look”
-- “top-quality finish”
+- "fit in with the house"
+- "look more balanced on the facade"
+- "colour match the existing joinery"
+- "what will it look like?"
+- "something similar"
+- "the design looks good to me"
+- "keep the overhang look"
+- "a cleaner look"
+- "top-quality finish"
 
 ### Value, trust and decision-making
 
-- “what exactly is included?”
-- “just want to make sure we’ve covered everything”
-- “we can’t make a decision until we compare the options”
-- “we can’t buy totally unseen”
-- “photos of something like our setup”
-- “what would this have included?”
-- “rough idea” or “ballpark”
-- “is that including GST?”
-- “we’d like to proceed, but just have a few questions”
+- "what exactly is included?"
+- "just want to make sure we've covered everything"
+- "we can't make a decision until we compare the options"
+- "we can't buy totally unseen"
+- "photos of something like our setup"
+- "what would this have included?"
+- "rough idea" or "ballpark"
+- "is that including GST?"
+- "we'd like to proceed, but just have a few questions"
 
 ### Commitment and urgency
 
-- “we’d like to go ahead”
-- “keen to proceed”
-- “we want to get this underway”
-- “what are the next steps?”
-- “what is the lead time?”
-- “as soon as possible”
-- “before Christmas” or another real deadline
-- “what is the deposit amount?”
+- "we'd like to go ahead"
+- "keen to proceed"
+- "we want to get this underway"
+- "what are the next steps?"
+- "what is the lead time?"
+- "as soon as possible"
+- "before Christmas" or another real deadline
+- "what is the deposit amount?"
 
 ### How to turn customer language into copy
 
-Use the customer’s tension before Sanctuary’s solution:
+Use the customer's tension before Sanctuary's solution:
 
 > **Want to cover the deck without making the lounge feel dark?** Sanctuary designs each pergola around the home, the light and how the outdoor area will be used.
 
@@ -365,7 +365,7 @@ Answer the main question immediately. Then request the minimum information neede
 
 Explain why the visit matters and make booking simple.
 
-> A site visit is the next step so we can confirm the roof connection, post positions and the most accurate design and quote. Send your address and phone number and we’ll arrange a suitable time.
+> A site visit is the next step so we can confirm the roof connection, post positions and the most accurate design and quote. Send your address and phone number and we'll arrange a suitable time.
 
 Only call the visit free when the current fee and service area have been verified.
 
@@ -373,13 +373,13 @@ Only call the visit free when the current fee and service area have been verifie
 
 Name the exact design concern and show how it will be resolved.
 
-> We can revise the layout to keep the area as open as possible. We’ll confirm whether that post can be removed once the roof structure and span have been checked.
+> We can revise the layout to keep the area as open as possible. We'll confirm whether that post can be removed once the roof structure and span have been checked.
 
 ### Option or material explanation
 
 Use a small number of decision criteria, not a technical lecture.
 
-> The main choice is between maximum natural light and a little more tint and glare control. We’ll show you both options on comparable projects so you can judge the look as well as the specification.
+> The main choice is between maximum natural light and a little more tint and glare control. We'll show you both options on comparable projects so you can judge the look as well as the specification.
 
 ### Quote presentation
 
@@ -392,15 +392,15 @@ A strong quote message should state:
 - current timing; and
 - the exact next step.
 
-> Attached is the revised design and quote. It includes the pergola structure, roofing, guttering and installation; the blinds are shown as a separate option. The wider version adds another structural bay, which is the main reason for the price difference. Let us know which option you prefer and we’ll confirm the next step.
+> Attached is the revised design and quote. It includes the pergola structure, roofing, guttering and installation; the blinds are shown as a separate option. The wider version adds another structural bay, which is the main reason for the price difference. Let us know which option you prefer and we'll confirm the next step.
 
 ### Commitment and scheduling
 
 Progression-associated messages make the transaction trigger explicit and confirm receipt quickly.
 
-> Once the agreed deposit is received, we’ll add the project to the schedule and confirm what happens next.
+> Once the agreed deposit is received, we'll add the project to the schedule and confirm what happens next.
 
-> We’ve received your deposit and your project is now booked in. We’ll update you with the installation window and any final design decisions still required.
+> We've received your deposit and your project is now booked in. We'll update you with the installation window and any final design decisions still required.
 
 Deposit percentage, balance timing and scheduling policy must be current before use.
 
@@ -408,7 +408,7 @@ Deposit percentage, balance timing and scheduling policy must be current before 
 
 Use a low-pressure status question and give the customer a useful reason to respond.
 
-> Just checking whether you’re still planning to go ahead, or whether you’d like us to update the design, price or timing first.
+> Just checking whether you're still planning to go ahead, or whether you'd like us to update the design, price or timing first.
 
 > Once the deck work is complete, let us know and we can pick the project up from there.
 
@@ -428,7 +428,7 @@ Never manufacture scarcity or recycle an old lead-time statement.
 
 Sanctuary should sound like a **calm, practical design specialist**: confident without swagger, premium without pretension, technically capable without jargon, and friendly without becoming casual or vague.
 
-Use New Zealand English: “colour”, “metres”, “organise”, “custom-designed”, “building consent”, “quote” and “GST”.
+Use New Zealand English: "colour", "metres", "organise", "custom-designed", "building consent", "quote" and "GST".
 
 ### Preferred vocabulary
 
@@ -452,15 +452,15 @@ Use carefully and only with proof:
 
 ### Writing rules
 
-1. **Lead with the customer’s desired change.** Product and material details come second.
+1. **Lead with the customer's desired change.** Product and material details come second.
 2. **Name the trade-off honestly.** Light versus shade, openness versus enclosure, span versus supports, size versus budget.
-3. **Use specific nouns and verbs.** “Confirm the roof connection” is stronger than “explore your vision”.
+3. **Use specific nouns and verbs.** "Confirm the roof connection" is stronger than "explore your vision".
 4. **Give one primary next step.** Do not end with several competing calls to action.
 5. **Reduce ambiguity.** State what is included, what depends on site review and what the customer needs to supply.
-6. **Use proof beside the claim.** Pair “designed to fit the home” with a drawing, project image or design explanation.
+6. **Use proof beside the claim.** Pair "designed to fit the home" with a drawing, project image or design explanation.
 7. **Keep sentences short.** Especially in ads, forms, quote emails and objection responses.
 8. **Write for a considered purchase.** Do not force artificial urgency or impulse-buy language.
-9. **Treat “premium” as an outcome.** Show cleaner integration, clearer scope and a better-resolved finish.
+9. **Treat "premium" as an outcome.** Show cleaner integration, clearer scope and a better-resolved finish.
 10. **Use technical detail only when it helps a decision.** Translate every specification into its practical consequence.
 
 ### CTA hierarchy
@@ -471,7 +471,7 @@ Use carefully and only with proof:
 
 **Late stage:** Approve the revised quote; confirm the deposit; secure a place in the schedule.
 
-Prefer these over “Learn more”, “Enquire now” or “Contact us”.
+Prefer these over "Learn more", "Enquire now" or "Contact us".
 
 ---
 
@@ -490,7 +490,7 @@ These claim families are strongly supported and relatively low-risk when accurat
 - Quotes should explain inclusions, exclusions and options before the customer proceeds.
 - Sanctuary can share comparable completed projects when image permissions and relevance are confirmed.
 
-Phrase benefits as intent or outcome, not absolutes: “designed to keep the area bright” is safer than “will not reduce indoor light”.
+Phrase benefits as intent or outcome, not absolutes: "designed to keep the area bright" is safer than "will not reduce indoor light".
 
 ### Conditionally usable after current operational verification
 
@@ -514,10 +514,10 @@ Do not publish these without an approved source matched to the exact product and
 
 - warranty duration, scope, exclusions and whether it covers materials, workmanship, electrical work, coatings or manufacturer products;
 - exact UV-blocking, heat-reduction or light-transmission percentages;
-- wind-speed ratings, suitability for every wind zone or “NZ conditions” claims;
+- wind-speed ratings, suitability for every wind zone or "NZ conditions" claims;
 - maximum unsupported spans or claims that posts can be removed;
-- waterproof, leak-free, fully weather-tight or “dry in all weather” promises;
-- product lifespan, sealant life, maintenance intervals or “maintenance-free” claims;
+- waterproof, leak-free, fully weather-tight or "dry in all weather" promises;
+- product lifespan, sealant life, maintenance intervals or "maintenance-free" claims;
 - structural, engineering, fire, code or compliance claims;
 - blanket statements that a pergola below a particular area does not require consent;
 - direct product superiority or performance comparisons;
@@ -539,28 +539,28 @@ Anonymous customer-language research is not permission to publish a testimonial.
 
 ## 10. Language and Positioning to Avoid
 
-Avoid generic outdoor-living clichés unless a brief deliberately calls for them:
+Avoid generic outdoor-living cliches unless a brief deliberately calls for them:
 
-- “transform your backyard”
-- “create your own private sanctuary”
-- “the ultimate outdoor oasis”
-- “seamless indoor-outdoor flow”
-- “entertain in style”
-- “bring your dream to life”
-- “where luxury meets functionality”
-- “built to withstand anything”
-- “unmatched quality” or “best in class”
+- "transform your backyard"
+- "create your own private sanctuary"
+- "the ultimate outdoor oasis"
+- "seamless indoor-outdoor flow"
+- "entertain in style"
+- "bring your dream to life"
+- "where luxury meets functionality"
+- "built to withstand anything"
+- "unmatched quality" or "best in class"
 
 Avoid positioning Sanctuary as:
 
 - the cheapest or most affordable option;
 - a kitset, materials-only or one-size-fits-all supplier;
-- a generic “luxury lifestyle” brand with no design substance;
+- a generic "luxury lifestyle" brand with no design substance;
 - universally better than louvres, glass or every competing system;
 - able to solve every site without assessment;
 - certain about council, engineering, wind or waterproofing from a photo alone.
 
-Do not overuse “premium”. Do not call acrylic “glass”. Do not promise “no posts”, “no leaks”, “no maintenance”, “no consent” or a fixed installation time without verification.
+Do not overuse "premium". Do not call acrylic "glass". Do not promise "no posts", "no leaks", "no maintenance", "no consent" or a fixed installation time without verification.
 
 ---
 
@@ -636,19 +636,19 @@ Google users usually have active intent. Match the exact problem or service quer
 
 > Compare roof, tint and blind options with clear scope and a tailored quote. Request a site visit in **[verified service area]**.
 
-Landing-page message must mirror the ad group. A “pergola with blinds” ad should land on a page that immediately shows blinds, weather/privacy use cases, options, proof and the correct CTA.
+Landing-page message must mirror the ad group. A "pergola with blinds" ad should land on a page that immediately shows blinds, weather/privacy use cases, options, proof and the correct CTA.
 
-Use current price or “free site visit” language only in short-lived ads tied to verified terms. Consider negative keywords for DIY, kitset, wholesale materials, free plans, cheapest-only searches and locations outside the service area—only where Sanctuary does not serve those needs.
+Use current price or "free site visit" language only in short-lived ads tied to verified terms. Consider negative keywords for DIY, kitset, wholesale materials, free plans, cheapest-only searches and locations outside the service area—only where Sanctuary does not serve those needs.
 
 ### Meta Ads
 
-Meta is interruption-based. Lead with a recognisable frustration or a visual contrast, not “we build pergolas”.
+Meta is interruption-based. Lead with a recognisable frustration or a visual contrast, not "we build pergolas".
 
 **Best creative territories:**
 
 1. **Rain to usable room:** exposed deck versus sheltered everyday use.
 2. **Cover without darkness:** exterior pergola plus interior view showing retained brightness.
-3. **Designed to belong:** before/after façade, roofline and colour integration.
+3. **Designed to belong:** before/after facade, roofline and colour integration.
 4. **Open sightlines:** thoughtful post placement and uncluttered space, with appropriate site-dependent wording.
 5. **Blinds and side protection:** wind, rain, privacy and evening use.
 6. **Replacement transformation:** ageing structure replaced by a cleaner design.
@@ -672,7 +672,7 @@ Meta is interruption-based. Lead with a recognisable frustration or a visual con
 
 For retargeting, move from inspiration to certainty: show quote inclusions, design revisions, option comparisons, the process, verified warranty and current scheduling information.
 
-Lead forms should capture service location, photos, rough dimensions, desired use, main concern and timeframe. The thank-you screen should state the next step precisely rather than saying only “we’ll be in touch”.
+Lead forms should capture service location, photos, rough dimensions, desired use, main concern and timeframe. The thank-you screen should state the next step precisely rather than saying only "we'll be in touch".
 
 Do not use quantified performance, warranty, consent, wind or waterproof claims in creative unless that exact claim has current written approval.
 
@@ -680,7 +680,7 @@ Do not use quantified performance, warranty, consent, wind or waterproof claims 
 
 Brochures should be visually led and organised around customer decisions, not a long company history. Use this order: desired outcome, project examples, design choices, process, proof, claim-approved specifications and next step.
 
-Sales emails should answer the customer’s main question in the first sentence, explain one or two relevant trade-offs, and end with a single action. Proposal cover notes should make scope and differences between options unmistakable.
+Sales emails should answer the customer's main question in the first sentence, explain one or two relevant trade-offs, and end with a single action. Proposal cover notes should make scope and differences between options unmistakable.
 
 ---
 
