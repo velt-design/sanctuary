@@ -356,7 +356,7 @@ export default function PergolasAucklandPage() {
           <header className="acrylic-section__header acrylic-section__header--wide">
             <Eyebrow className="acrylic-eyebrow">Continue with the decision that matters</Eyebrow>
             <Heading id="continue-the-brief">Use the specialist guides without losing the whole project</Heading>
-            <p>This page owns the broad Auckland service. The next guides go deeper only where the brief needs it.</p>
+            <p>This guide provides an overview of Sanctuary's Auckland pergola design and installation service. Continue with the specialist guides where the brief needs more detail.</p>
           </header>
           <div className="acrylic-form-grid">
             <Link className="acrylic-form-card" href="/custom-pergolas-auckland"><h3>Complex or architect-led work</h3><p>Resolve difficult connections, irregular sites, restricted posts, spans, changing levels and renovation coordination.</p><span>Open the custom pergola guide</span></Link>
@@ -447,7 +447,6 @@ export default function PergolasAucklandPage() {
         </Container>
       </Section>
 
-      <a className="acrylic-sticky-cta" href="#project-details">Send project details</a>
     </main>
   );
 }

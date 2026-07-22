@@ -519,6 +519,29 @@ describe('LocalFirstPortalMutations', () => {
     unmount();
   });
 
+  it('keeps blocked quote handoffs as local-first conflicts instead of retrying', async () => {
+    const body = { error: 'Quote handoff blocked: Pool blind needs valid dimensions.' };
+    mocks.resolveLocalFirstId.mockReturnValueOnce('estimate-1');
+    mocks.apiJson.mockRejectedValueOnce(apiError(body.error, 422, body));
+    const { handler, unmount } = renderAndGetHandler('portal.quote.createFromEstimate');
+
+    const result = await handler({
+      payload: {
+        localQuoteId: 'local-quote:blocked',
+        projectId: 'project-1',
+        estimateId: 'local-estimate:1',
+      },
+    });
+
+    expect(result).toEqual({
+      kind: 'conflict',
+      message: body.error,
+      serverSnapshot: body,
+    });
+    expect(mocks.registerLocalFirstIdAlias).not.toHaveBeenCalled();
+    unmount();
+  });
+
   it('keeps locked quote draft updates as local-first conflicts', async () => {
     const body = { error: 'Quote is locked' };
     mocks.resolveLocalFirstId.mockReturnValueOnce('quote-1');

@@ -5,6 +5,7 @@ type PergolaGuide = {
   prompt: string;
   summary: string;
   role: 'service' | 'product-guide' | 'decision-guide';
+  label: 'Service guide' | 'Planning guide' | 'Material guide' | 'Roof-form guide' | 'Cost guide' | 'Integration guide' | 'Comparison guide';
 };
 
 type PergolaGuideChapter = {
@@ -40,6 +41,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'A broad planning guide to roof form, daylight, weather edges and the relationship between a pergola and the home.',
         role: 'service',
+        label: 'Service guide',
       },
       {
         number: '02',
@@ -49,6 +51,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'How a bespoke pergola develops from the house, outdoor area, constraints and way the finished space should be used.',
         role: 'service',
+        label: 'Service guide',
       },
       {
         number: '03',
@@ -58,6 +61,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'Plan a more complete outdoor room around shelter, warmth, lighting, services, furniture and changing seasons.',
         role: 'service',
+        label: 'Planning guide',
       },
       {
         number: '04',
@@ -67,6 +71,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'A project guide for hospitality, workplace and customer-facing outdoor areas with commercial use and coordination needs.',
         role: 'service',
+        label: 'Service guide',
       },
     ],
   },
@@ -84,8 +89,9 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         title: 'Aluminium Pergolas Auckland',
         prompt: 'Understand the frame',
         summary:
-          'Explore how aluminium structure, spans, posts, finishes and junctions contribute to a durable architectural pergola.',
+          'Explore how aluminium structure, spans, posts, finishes and junctions shape an architectural pergola.',
         role: 'product-guide',
+        label: 'Material guide',
       },
       {
         number: '06',
@@ -95,6 +101,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'Consider the height, symmetry, light and spatial character created by a roof rising to a central ridge.',
         role: 'product-guide',
+        label: 'Roof-form guide',
       },
       {
         number: '07',
@@ -104,6 +111,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'Understand when a single-slope roof can make a clean connection while managing height, fall, drainage and daylight.',
         role: 'product-guide',
+        label: 'Roof-form guide',
       },
     ],
   },
@@ -123,6 +131,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'See which design and delivery choices shape project cost, and what information makes an early estimate more useful.',
         role: 'decision-guide',
+        label: 'Cost guide',
       },
       {
         number: '09',
@@ -132,6 +141,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'Consider blinds as part of the architecture, including wind, low sun, privacy, openings and how the edge works when raised.',
         role: 'product-guide',
+        label: 'Integration guide',
       },
       {
         number: '10',
@@ -141,6 +151,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         summary:
           'Compare fixed acrylic roofing and opening louvres through daylight, rain detailing, ventilation, maintenance and use.',
         role: 'decision-guide',
+        label: 'Comparison guide',
       },
     ],
   },

@@ -6,16 +6,16 @@ const route = '/pergola-guides';
 const title = 'Pergola Design Guides | Sanctuary Pergolas';
 const description = 'Explore Sanctuary Pergolas guides to planning, forms, materials, cost, blinds, outdoor rooms and commercial pergola projects in Auckland.';
 const expectedGuides = [
-  { number: '01', href: '/pergolas-auckland', title: 'Pergolas Auckland' },
-  { number: '02', href: '/custom-pergolas-auckland', title: 'Custom Pergolas Auckland' },
-  { number: '03', href: '/outdoor-rooms-auckland', title: 'Outdoor Rooms Auckland' },
-  { number: '04', href: '/commercial-pergolas-auckland', title: 'Commercial Pergolas Auckland' },
-  { number: '05', href: '/aluminium-pergolas-auckland', title: 'Aluminium Pergolas Auckland' },
-  { number: '06', href: '/gable-pergolas-auckland', title: 'Gable Pergolas Auckland' },
-  { number: '07', href: '/pitched-pergolas-auckland', title: 'Pitched Pergolas Auckland' },
-  { number: '08', href: '/pergola-cost-auckland', title: 'Pergola Cost Auckland' },
-  { number: '09', href: '/pergolas-with-blinds', title: 'Pergolas With Blinds' },
-  { number: '10', href: '/acrylic-pergolas-vs-louvre-roofs', title: 'Acrylic Pergolas vs Louvre Roofs' },
+  { number: '01', href: '/pergolas-auckland', title: 'Pergolas Auckland', label: 'Service guide' },
+  { number: '02', href: '/custom-pergolas-auckland', title: 'Custom Pergolas Auckland', label: 'Service guide' },
+  { number: '03', href: '/outdoor-rooms-auckland', title: 'Outdoor Rooms Auckland', label: 'Planning guide' },
+  { number: '04', href: '/commercial-pergolas-auckland', title: 'Commercial Pergolas Auckland', label: 'Service guide' },
+  { number: '05', href: '/aluminium-pergolas-auckland', title: 'Aluminium Pergolas Auckland', label: 'Material guide' },
+  { number: '06', href: '/gable-pergolas-auckland', title: 'Gable Pergolas Auckland', label: 'Roof-form guide' },
+  { number: '07', href: '/pitched-pergolas-auckland', title: 'Pitched Pergolas Auckland', label: 'Roof-form guide' },
+  { number: '08', href: '/pergola-cost-auckland', title: 'Pergola Cost Auckland', label: 'Cost guide' },
+  { number: '09', href: '/pergolas-with-blinds', title: 'Pergolas With Blinds', label: 'Integration guide' },
+  { number: '10', href: '/acrylic-pergolas-vs-louvre-roofs', title: 'Acrylic Pergolas vs Louvre Roofs', label: 'Comparison guide' },
 ] as const;
 const expectedChapterNumbers = [
   { id: 'plan-the-project', numbers: ['01', '02', '03', '04'] },
@@ -65,12 +65,14 @@ for (const viewport of viewports) {
       await expect(link, `${guide.title} should be linked once`).toHaveCount(1);
       await expect(link).toContainText(guide.number);
       await expect(link).toContainText(guide.title);
+      await expect(link).toContainText(guide.label);
     }
 
     const renderedGuides = await main.locator('[data-guide-link]').evaluateAll((links) => links.map((link) => ({
       number: link.querySelector('.guide-hub-card__number')?.textContent?.trim(),
       href: link.getAttribute('href'),
       title: link.querySelector('.guide-hub-card__heading strong')?.textContent?.trim(),
+      label: link.querySelector('.guide-hub-card__heading small')?.textContent?.trim(),
     })));
     expect(renderedGuides).toEqual(expectedGuides.map((guide) => ({ ...guide })));
 
@@ -136,7 +138,8 @@ test('all ten guide destinations, sitemap entry, footer discovery and ordered sc
     url: `https://www.sanctuarypergolas.co.nz${guide.href}`,
   })));
 
-  const historicBrochure = await request.get('/downloads/Sanctuary-Pergolas-Brochure.pdf');
+  const historicBrochure = await request.get('/downloads/Sanctuary-Pergolas-Brochure.pdf', { maxRedirects: 0 });
+  expect(historicBrochure.status()).toBe(308);
   expect(historicBrochure.headers()['x-robots-tag']).toContain('noindex');
   await page.goto('/products/pergolas/gable');
   await expect(page.locator('a[href="/downloads/Sanctuary-Pergolas-Brochure.pdf"]')).toHaveCount(0);

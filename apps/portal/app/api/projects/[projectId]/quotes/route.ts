@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { isQuoteHandoffBlockedError } from '@/lib/quotes/mapping';
 import { createQuoteFromEstimate, listQuoteVersionsForProject } from '@/lib/quotes/server';
 
 export const runtime = 'nodejs';
@@ -42,6 +43,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonOk({ quoteVersion }, 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to create quote';
+    if (isQuoteHandoffBlockedError(err)) return jsonError(msg, 422);
     return jsonError(msg, 500);
   }
 }

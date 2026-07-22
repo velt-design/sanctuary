@@ -8,7 +8,11 @@ import {
 import type { Estimate } from '@/lib/types/estimate';
 import { priceAllBlinds, type BlindLineItemInput } from '@sp/costing';
 import type { QuoteLineItem } from './types';
-import { calculateStaffCustomerPriceFromCostEx, roundQuoteMoney } from './pricing';
+import {
+  calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffQuoteDiscountPct,
+  roundQuoteMoney,
+} from './pricing';
 import { lineTotalCents, toCents } from './utils';
 import {
   formatDimension,
@@ -169,8 +173,13 @@ type ModuleField = {
   value: string | null;
 };
 
-function lineUnitPriceIncFromCostEx(costEx: number): number {
-  return toCents(calculateStaffCustomerPriceFromCostEx(costEx)?.incGst ?? 0);
+function lineUnitPriceIncFromCostEx(costEx: number, quoteDiscountPct: number): number {
+  return toCents(calculateStaffCustomerPriceFromCostEx(costEx, quoteDiscountPct)?.incGst ?? 0);
+}
+
+function withQuoteDiscountDescription(description: string, quoteDiscountPct: number): string {
+  if (quoteDiscountPct <= 0) return description;
+  return `${description}\n- Quote discount: ${quoteDiscountPct}% applied`;
 }
 
 function normalizeComparisonValue(value: string | null): string | null {
@@ -324,14 +333,48 @@ function buildLegacyCoreDescription(modules: CalculatorModuleInputs[]): string {
   return lines.join('\n');
 }
 
-export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Omit<QuoteLineItem, 'id'>[]; coreTotalIncCents: number } {
+type QuoteMappingBlockingIssue = {
+  code: 'INVALID_BLIND';
+  message: string;
+};
+
+type QuoteEstimateMapping = {
+  items: Omit<QuoteLineItem, 'id'>[];
+  coreTotalIncCents: number;
+  blockingIssues: QuoteMappingBlockingIssue[];
+};
+
+export class QuoteHandoffBlockedError extends Error {
+  readonly code = 'QUOTE_HANDOFF_BLOCKED';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuoteHandoffBlockedError';
+  }
+}
+
+export function isQuoteHandoffBlockedError(error: unknown): error is QuoteHandoffBlockedError {
+  return error instanceof QuoteHandoffBlockedError
+    || Boolean(error && typeof error === 'object' && (error as { code?: unknown }).code === 'QUOTE_HANDOFF_BLOCKED');
+}
+
+export function assertQuoteEstimateMappingReady(mapping: QuoteEstimateMapping): void {
+  if (!mapping.blockingIssues.length) return;
+  throw new QuoteHandoffBlockedError(
+    `Quote handoff blocked: ${mapping.blockingIssues.map((issue) => issue.message).join(' ')}`,
+  );
+}
+
+export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstimateMapping {
   const inputs = normaliseCalculatorInputs((estimate as any).inputs);
+  const quoteDiscountPct = normalizeStaffQuoteDiscountPct(inputs?.quoteDiscountPct);
   const modules = inputs?.modules ?? [];
   const outputs = ((estimate as any)?.outputs ?? {}) as any;
   const snapshotPergolas = Array.isArray(outputs?.pergolas) ? outputs.pergolas : [];
   const snapshotShared = outputs?.siteShared ?? outputs?.shared ?? null;
   const inputPergolas = buildInputPergolaModules(inputs);
   const lineItems: Omit<QuoteLineItem, 'id'>[] = [];
+  const blockingIssues: QuoteMappingBlockingIssue[] = [];
   let coreTotalIncCents = 0;
 
   if (snapshotPergolas.length > 0) {
@@ -367,11 +410,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
         ? roundQuoteMoney(pergolaCostEx + sharedCostEx)
         : pergolaCostEx;
 
-      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(lineCostEx);
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(lineCostEx, quoteDiscountPct);
       const qty = 1;
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
-        description,
+        description: withQuoteDiscountDescription(description, quoteDiscountPct),
         qty,
         unitPriceIncGstCents,
         lineTotalIncGstCents,
@@ -382,10 +425,13 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
 
     if (showSharedLine) {
       const qty = 1;
-      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(sharedCostEx);
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(sharedCostEx, quoteDiscountPct);
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
-        description: ['Site costs', '- Shared install, travel, and extras'].join('\n'),
+        description: withQuoteDiscountDescription(
+          ['Site costs', '- Shared install, travel, and extras'].join('\n'),
+          quoteDiscountPct,
+        ),
         qty,
         unitPriceIncGstCents,
         lineTotalIncGstCents,
@@ -398,10 +444,10 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
   if (lineItems.length === 0) {
     const legacyCoreCostEx = toNumber(outputs?.totals?.cost_ex_gst);
     const safeLegacyCoreCostEx = Number.isFinite(legacyCoreCostEx) && legacyCoreCostEx > 0 ? legacyCoreCostEx : 0;
-    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(safeLegacyCoreCostEx);
+    const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(safeLegacyCoreCostEx, quoteDiscountPct);
     const qty = 1;
     lineItems.push({
-      description: buildLegacyCoreDescription(modules),
+      description: withQuoteDiscountDescription(buildLegacyCoreDescription(modules), quoteDiscountPct),
       qty,
       unitPriceIncGstCents,
       lineTotalIncGstCents: lineTotalCents(qty, unitPriceIncGstCents),
@@ -438,8 +484,15 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
 
     const pricing = priceAllBlinds(pricingInputs);
     pricing.items.forEach((priced, idx) => {
+      if (priced.errors.length) {
+        blockingIssues.push({
+          code: 'INVALID_BLIND',
+          message: `${priced.label?.trim() || `Blind ${idx + 1}`} needs valid dimensions and selections before a quote can be created.`,
+        });
+        return;
+      }
       const qty = 1;
-      const unitPrice = priced.errors.length ? 0 : priced.blindSellIncCents;
+      const unitPrice = priced.blindSellIncCents;
       const source = pricingInputs[idx];
       lineItems.push({
         description: buildBlindDescription(source ?? {
@@ -459,5 +512,5 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
     });
   }
 
-  return { items: lineItems, coreTotalIncCents };
+  return { items: lineItems, coreTotalIncCents, blockingIssues };
 }

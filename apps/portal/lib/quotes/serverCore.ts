@@ -12,7 +12,7 @@ import {
   applyDepositPercentToTerms,
   normalizeDepositPercent,
 } from './defaults';
-import { buildQuoteLineItemsFromEstimate } from './mapping';
+import { assertQuoteEstimateMappingReady, buildQuoteLineItemsFromEstimate } from './mapping';
 import {
   buildQuotePricingSourceCopyFromEstimate,
   buildQuotePricingSourceCopyFromQuoteVersion,
@@ -347,6 +347,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
   const versionNumber = await nextVersionNumber(quote.id);
 
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  assertQuoteEstimateMappingReady(mapping);
   const items = mapping.items.map((item, idx) => ({ ...item, sortOrder: idx }));
   const totals = totalsFromLineItems(
     items.map((item) => ({
@@ -559,6 +560,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
   const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
 
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  assertQuoteEstimateMappingReady(mapping);
   const generatedDetail: QuoteVersionDetail = {
     ...currentDetail,
     sourceEstimateVersionId: estimateVersionId,
@@ -694,6 +696,7 @@ export async function previewDraftQuoteRefreshFromEstimate(
   const estimateLabelRaw = estimateLabels.get(estimateUuid) ?? currentDetail.sourceEstimateVersionLabel;
   const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  assertQuoteEstimateMappingReady(mapping);
 
   const generatedDetail: QuoteVersionDetail = {
     ...currentDetail,

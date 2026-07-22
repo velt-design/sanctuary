@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_STAFF_QUOTE_DISCOUNT_PCT,
   STAFF_CUSTOMER_PRICE_MULTIPLIER,
   calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffQuoteDiscountPct,
 } from './pricing';
 
 describe('calculateStaffCustomerPriceFromCostEx', () => {
@@ -22,6 +24,21 @@ describe('calculateStaffCustomerPriceFromCostEx', () => {
 
   it('keeps zero as a valid price', () => {
     expect(calculateStaffCustomerPriceFromCostEx(0)).toEqual({ exGst: 0, incGst: 0 });
+  });
+
+  it('applies the quote discount after markup and before GST', () => {
+    expect(calculateStaffCustomerPriceFromCostEx(100, 10)).toEqual({
+      exGst: 112.5,
+      incGst: 129.38,
+    });
+  });
+
+  it('normalises quote discounts to the supported commercial range', () => {
+    expect(MAX_STAFF_QUOTE_DISCOUNT_PCT).toBe(80);
+    expect(normalizeStaffQuoteDiscountPct('-5')).toBe(0);
+    expect(normalizeStaffQuoteDiscountPct('5.5')).toBe(5.5);
+    expect(normalizeStaffQuoteDiscountPct('not a number')).toBe(0);
+    expect(normalizeStaffQuoteDiscountPct('90')).toBe(80);
   });
 
   it.each([null, undefined, Number.NaN, Number.POSITIVE_INFINITY])(

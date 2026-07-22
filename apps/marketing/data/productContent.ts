@@ -3,18 +3,18 @@ import type { ProductContent } from '@/components/ProductDetails';
 export const productContent: Record<string, ProductContent> = {
   'led-strip-lighting': {
     overview:
-      'LED strip lighting creates a soft perimeter glow that defines your outdoor room after dark. Tape recesses into slim channels or hides behind pelmets so the diodes are never in view—only a continuous wash of light.',
+      'LED strip lighting creates a soft perimeter glow that defines your outdoor room after dark. Tape recesses into slim channels or hides behind pelmets so the diodes are not in view, leaving a continuous wash of light.',
     atAGlance: [
       'Soft, uniform perimeter glow',
       'Channels with diffusers to hide diodes',
       '24V drivers mounted in protected spots',
       'Dimmable warm/neutral white options',
-      'Very low power and long life',
+      'Output, power and operating life confirmed for the selected tape and driver',
     ],
     howItWorks:
       '24V LED tape runs from weather‑protected drivers with smooth dimming. Diffusers even out output and wiring conceals within the frame. Colour temperature can be warm for ambience or neutral for task edges.',
     whyItsGood: [
-      'Flattering, efficient and highly controllable',
+      'Dimming and zoning can be selected around the lighting plan',
       'Avoids tabletop glare and harsh spots',
       'Defines edges for safe steps and circulation',
       'Layers beautifully with downlights',
@@ -33,17 +33,17 @@ export const productContent: Record<string, ProductContent> = {
     ],
     performance: [
       'Soft, even glow without diode spotting',
-      'Excellent ambient layer with very low power consumption',
+      'Ambient output depends on the selected tape, diffuser, spacing and controls',
     ],
     recommendedFor: [
       'Evening entertaining and safe circulation',
       'Pairing with downlights to layer light',
     ],
-    notIdealFor: ['Task lighting on its own—combine with downlights'],
+    notIdealFor: ['Task lighting on its own; combine with downlights'],
     upgradePath: ['Add scenes and sensors; expand to steps and paths'],
     bestPairedWith: ['A few downlights for tasks', 'Dimmers/scenes to set mood'],
     indicativePerformance: [
-      'Output ~500–1200 lm/m depending on tape and diffuser',
+      'Output, power draw and operating-life data confirmed from the selected tape and driver documents',
       'IP rating and channel type matched to exposure',
     ],
   },
@@ -59,7 +59,7 @@ export const productContent: Record<string, ProductContent> = {
     howItWorks:
       '24V or mains drivers mount in protected cavities; sealed luminaires and cabling are rated for exterior use. Circuits can be dimmed independently and colour temperature tuned warm for relaxed dining or neutral for tasks.',
     whyItsGood: [
-      'Efficient LEDs sip power and run cool for long life',
+      'Output, beam, power and operating-life data can be checked for the selected fitting',
       'Keeps ceilings clean with recessed trims',
       'Lights surfaces without harsh hot spots or glare',
       'Pairs well with strip lighting for layered scenes',
@@ -76,7 +76,7 @@ export const productContent: Record<string, ProductContent> = {
     ],
     performance: [
       'Even, low‑glare illumination for tasks and dining',
-      'Low power draw with long service life',
+      'Power draw and operating life follow the selected fitting documentation',
       'Complements strip lighting for layered scenes',
     ],
     recommendedFor: [
@@ -84,7 +84,7 @@ export const productContent: Record<string, ProductContent> = {
       'Paths and steps needing safe, even light',
     ],
     notIdealFor: [
-      'Broad ambient wash on its own—pair with strip for ambience',
+      'Broad ambient wash on its own; pair with strip for ambience',
     ],
     install: [
       'Current lead time and installation sequence confirmed for the selected fittings and electrical scope',
@@ -100,50 +100,50 @@ export const productContent: Record<string, ProductContent> = {
       'Sensors or scenes for convenience',
     ],
     indicativePerformance: [
-      'Per fitting ~300–900 lm depending on model and beam angle',
+      'Per-fitting output, power and beam data confirmed from the selected product documentation',
       'Spacing, beam angle and dimming confirmed from the lighting plan and selected fittings',
     ],
     faqs: [
       {
         q: 'Will they attract bugs?',
-        a: 'Warm colour temperature and modest output reduce attraction compared with brighter, cooler lamps.',
+        a: 'Insect activity depends on the site, season and selected light source. Choose colour temperature, output and placement as part of the lighting plan rather than relying on a universal result.',
       },
       {
         q: 'Can I add later?',
-        a: 'Yes. Plan cable paths in advance so a licensed electrician can retrofit fittings cleanly.',
+        a: 'Later additions may be possible where suitable cable paths, cavities and electrical capacity have been planned. A licensed electrician should confirm the retrofit scope.',
       },
     ],
   },
   'patio-heaters': {
     overview:
-      'Electric patio heaters extend the season by warming people and surfaces directly rather than the air. Infrared elements mount to beams or walls and focus heat where you sit, so comfort arrives quickly on cool evenings.',
+      'Electric patio heaters can add targeted radiant warmth to selected seating zones. The heater type, output, position, controls and mounting clearances need to be confirmed for the outdoor area and exact product.',
     atAGlance: [
-      'Fast, targeted radiant warmth for seating zones',
-      'Clean, electric heat—no gas bottles or open flame',
-      'Output sizes matched to area and exposure',
-      'Works best when paired with blinds or screens',
+      'Targeted radiant warmth for selected seating zones',
+      'Electric units without on-site gas-bottle storage',
+      'Output and coverage checked against current manufacturer data',
+      'Blind, screen and heater clearances coordinated where combined',
     ],
     howItWorks:
-      'Quartz or ceramic emitters sit behind reflectors and are angled to wash heat over seating and tables. Zones are switched so you heat only what you use, and clearances follow manufacturer guidelines.',
+      'The selected emitter and reflector direct radiant heat toward a planned seating zone. Mounting, aiming, switching and clearances follow the current instructions for the exact heater.',
     whyItsGood: [
-      'Immediate comfort on cool evenings without waiting for the air to warm',
+      'Targeted radiant output directed toward the planned seating zone',
       'No LPG storage, fumes or open flames to manage',
-      'Discreet fixtures that colour‑match the frame',
-      'Simple switches, dimmers or remotes for control',
+      'Housing finish and visual integration checked against the frame',
+      'Switch, dimmer or remote options confirmed for the selected heater',
     ],
     structureMaterials: [
       'Electric infrared heaters with adjustable brackets',
-      'Powder‑coated housings to match frame colours',
+      'Housing and finish options documented for the selected heater',
       'Dedicated circuits and compliant exterior wiring',
     ],
     options: [
-      'Output levels tuned to area size and exposure',
-      'Wall switch, dimmer or remote control options',
+      'Output selected against the seating layout, exposure and manufacturer coverage data',
+      'Wall switch, dimmer or remote controls where supported by the selected unit',
       'Zoned layouts so you heat only the areas in use',
     ],
     performance: [
-      'Fast, targeted radiant warmth to people and surfaces',
-      'Efficient when paired with blinds or screens to hold heat',
+      'Radiant output directed toward the planned seating zone',
+      'Coverage and comfort depend on output, placement, exposure and surrounding edges',
       'No open flame or LPG storage requirements',
     ],
     recommendedFor: [
@@ -157,15 +157,15 @@ export const productContent: Record<string, ProductContent> = {
       'Current lead time and installation sequence confirmed for the selected heaters and electrical scope',
     ],
     maintenance: [
-      'Wipe lenses and grilles periodically',
-      'Check operation at the start of each season',
+      'Cleaning, inspection and service follow the current instructions for the selected heater',
+      'Electrical checks are completed by an appropriately licensed person where required',
     ],
     upgradePath: [
       'Add sensors or timers and integrate with lighting scenes',
     ],
     bestPairedWith: [
       'Drop‑down blinds to help hold warmth',
-      'Dimmers for fine‑tuned comfort control',
+      'Compatible controls documented for the selected heater',
     ],
     indicativePerformance: [
       'Output, coverage, clearances and controls confirmed from current manufacturer data for the selected unit',
@@ -207,7 +207,7 @@ export const productContent: Record<string, ProductContent> = {
     ],
     options: [
       'Acrylic: clear, light grey, dark grey or opal roofing, subject to the current product range and manufacturer data for the selected sheet',
-      'Solid: insulated panels with timber sarking for a more enclosed ceiling and stronger shade response',
+      'Solid: insulated panels with timber sarking for a more enclosed ceiling and opaque shade condition',
       'Combination: solid roof areas with acrylic skylight strips to balance daylight and shade across different zones',
     ],
     performance: [
@@ -266,7 +266,7 @@ export const productContent: Record<string, ProductContent> = {
     ],
     options: [
       'Acrylic: clear, light grey, dark grey or opal roofing across both roof planes, subject to the current product range and manufacturer data.',
-      'Solid: insulated panels with timber sarking for a more enclosed ceiling and stronger shade response.',
+      'Solid: insulated panels with timber sarking for a more enclosed ceiling and opaque shade condition.',
       'Combination: Solid and acrylic roof zones can be arranged around different daylight, shade and ceiling priorities.',
       'Gable infill: Open, slatted or acrylic end treatments can be considered around outlook, openness and exposure.',
     ],
@@ -302,20 +302,20 @@ export const productContent: Record<string, ProductContent> = {
       'Corner geometry resolved for the site exposure',
       'Powder‑coated aluminium frame with clean soffit',
       'Integrates well with complex façades',
-      'Lighting and blinds options for comfort',
+      'Lighting and blind integration can be considered for the selected systems',
     ],
     howItWorks:
       'A central ridge and diagonal hips transfer loads to perimeter beams and posts. Custom flashings step roof sheets around hips while maintaining drainage. Posts can offset to suit doors and paths.',
     whyItsGood: [
       'Multiple roof planes can distribute drainage around the perimeter where the site supports it',
       'Hips and corner connections are resolved as part of the complete structure',
-      'Premium architectural silhouette with tidy soffit',
+      'A composed roof silhouette with a clearly defined soffit edge',
       'Material and finish selections can respond to coastal maintenance requirements',
     ],
     structureMaterials: [
       'Four‑sided roof with ridge and hip beams',
       'Powder‑coated aluminium frame and posts',
-      'Concealed brackets for clean lines',
+      'Bracket and fixing details resolved for the completed structure',
       'Custom flashings around hips to manage water',
     ],
     options: [
@@ -327,7 +327,7 @@ export const productContent: Record<string, ProductContent> = {
     performance: [
       'Roof falls, gutters, outlets and discharge paths are documented for the completed geometry',
       'Project-specific engineering for hips, corners and connections',
-      'Crisp, tidy soffit with concealed fixings',
+      'Soffit and fixing appearance follow the completed structure and selected details',
       'Finish and maintenance requirements confirmed for the site environment',
     ],
     recommendedFor: [
@@ -364,7 +364,7 @@ export const productContent: Record<string, ProductContent> = {
       'Defined aluminium perimeter edge',
       'Posts proportioned for the completed structure',
       'Fixed acrylic roof with product-specific daylight characteristics',
-      'Integrated gutter and downpipe',
+      'Gutter and downpipe coordinated within the completed design',
       'Lighting and blinds fit discreetly',
     ],
     howItWorks:
@@ -378,8 +378,8 @@ export const productContent: Record<string, ProductContent> = {
     structureMaterials: [
       'Aluminium perimeter frame and posts sized for the completed design',
       'Acrylic roof set into the frame',
-      'Integrated gutter and downpipe',
-      'Durable powder‑coated finishes',
+      'Gutter and downpipe details resolved for the completed design',
+      'Powder-coated finish selected with current care requirements',
     ],
     options: [
       'Clear or softly tinted acrylic sheets',
@@ -423,7 +423,7 @@ export const productContent: Record<string, ProductContent> = {
       },
       {
         q: 'Can gutters hide in the frame?',
-        a: 'Yes—gutter and downpipe integrate within the perimeter for a tidy look.',
+        a: 'They can be coordinated within the perimeter where the completed member sizes, roof fall, outlets, access and discharge path allow it.',
       },
     ],
   },
@@ -448,7 +448,7 @@ export const productContent: Record<string, ProductContent> = {
     structureMaterials: [
       'Aluminium perimeter frame with adjustable brackets',
       'Timber or aluminium slats in several profiles',
-      'Durable exterior finishes and fixings',
+      'Exterior finishes and fixings selected for the material and site exposure',
     ],
     options: [
       'Vertical or horizontal orientation; mixed‑density layouts',
@@ -489,7 +489,7 @@ export const productContent: Record<string, ProductContent> = {
       },
       {
         q: 'Can I mix timber and aluminium?',
-        a: 'Yes. Frames are compatible with both, so you can mix materials while keeping a consistent look.',
+        a: 'Timber and aluminium can be considered together where their profiles, fixings, movement, finishes and care requirements are compatible with the completed screen design.',
       },
     ],
   },
@@ -499,7 +499,7 @@ export const productContent: Record<string, ProductContent> = {
     atAGlance: [
       'Clear or tinted edge treatment with project-specific shelter effects',
       'Clear or tinted acrylic in slim frames',
-      'Fixed, removable or sliding configurations',
+      'Fixed, removable or sliding configurations where supported by the selected panel system',
       'Panel, frame and fixing details selected for the opening',
       'Can be coordinated with blinds or services where appropriate',
     ],
@@ -516,7 +516,7 @@ export const productContent: Record<string, ProductContent> = {
       'Mullions and fixings sized for the opening and exposure',
     ],
     options: [
-      'Fixed, removable or sliding panel configurations',
+      'Fixed, removable or sliding panel configurations where supported by the selected system',
       'Tint choices considered around privacy, outlook and daylight',
       'Trickle vents for controlled air movement where required',
     ],
@@ -530,7 +530,7 @@ export const productContent: Record<string, ProductContent> = {
       'View corridors where transparency matters',
     ],
     notIdealFor: [
-      'Full thermal insulation—consider glazing or insulated panels instead',
+      'Full thermal insulation; consider glazing or insulated panels instead',
     ],
     install: ['The current lead time and on-site sequence are confirmed for the selected panel system and measured openings'],
     maintenance: [
@@ -538,7 +538,7 @@ export const productContent: Record<string, ProductContent> = {
     ],
     upgradePath: [
       'Pair with blinds for extra sun control',
-      'Add heaters for winter use',
+      'Coordinate a selected heater with panel and structure clearances',
     ],
     bestPairedWith: [
       'Services planned around the panel clearances and selected products',
@@ -555,7 +555,7 @@ export const productContent: Record<string, ProductContent> = {
       },
       {
         q: 'Can I remove panels seasonally?',
-        a: 'Removable and sliding configurations are available so you can open up spaces when conditions allow.',
+        a: 'A removable or sliding arrangement may be possible where the selected panel system, opening, fixings and safe handling requirements support it.',
       },
     ],
   },

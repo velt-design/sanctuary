@@ -126,6 +126,7 @@ describe('calculator quote status UI helpers', () => {
       hasProject: true,
       projectHasContact: false,
       hasModuleErrors: true,
+      invalidBlindCount: 2,
       engineError: null,
       resultFreshness: 'calculating',
       infillItems: [draftInfill],
@@ -133,12 +134,13 @@ describe('calculator quote status UI helpers', () => {
     });
 
     expect(ui.hasStatusBlockers).toBe(true);
-    expect(ui.blockerCount).toBe(4);
+    expect(ui.blockerCount).toBe(5);
     expect(ui.anyInfillDraft).toBe(true);
     expect(ui.items).toMatchObject([
       { id: 'project', level: 'ok', detail: 'Attached' },
       { id: 'contact', level: 'block', detail: 'Missing contact on project', actionKey: 'openProject' },
       { id: 'inputs', level: 'block', detail: 'Fix validation errors', actionKey: 'openIssues' },
+      { id: 'blinds', level: 'block', detail: '2 blinds need valid dimensions and selections', actionKey: 'openBlinds' },
       { id: 'engine', level: 'block', detail: 'Updating...' },
       { id: 'infills', level: 'block', detail: 'Finish required infill shape fields', actionKey: 'openInfills' },
     ]);
@@ -150,6 +152,7 @@ describe('calculator quote status UI helpers', () => {
       hasProject: false,
       projectHasContact: false,
       hasModuleErrors: false,
+      invalidBlindCount: 0,
       engineError: 'Costing failed',
       resultFreshness: 'error',
       infillItems: [],
@@ -160,6 +163,7 @@ describe('calculator quote status UI helpers', () => {
       { id: 'project', level: 'block', detail: 'Select a project', actionKey: 'selectProject' },
       { id: 'contact', level: 'review', detail: '—' },
       { id: 'inputs', level: 'ok', detail: 'OK' },
+      { id: 'blinds', level: 'ok', detail: 'OK' },
       { id: 'engine', level: 'block', detail: 'Costing failed' },
       { id: 'infills', level: 'ok', detail: 'OK' },
     ]);

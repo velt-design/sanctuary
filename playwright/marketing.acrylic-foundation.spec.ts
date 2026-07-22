@@ -48,9 +48,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
     }
 
-    if (viewport.width <= 720) {
-      await expect(page.getByRole('link', { name: 'Request an estimate', exact: true })).toBeVisible();
-    }
+    await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
 
     if (capturePhase) {
       await mkdir(evidenceDirectory, { recursive: true });

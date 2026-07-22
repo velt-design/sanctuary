@@ -31,6 +31,8 @@ describe('CalculatorConfigurationForm', () => {
         label: 'Roof Length (m)',
         type: 'number',
         value: 'invalid',
+        min: 0,
+        max: 80,
         error: 'Enter a valid roof length between the supported limits.',
       },
       { id: 'blindsList', label: 'Blinds', type: 'custom', content: <button type="button">Configure</button> },
@@ -63,6 +65,8 @@ describe('CalculatorConfigurationForm', () => {
     expect(document.querySelector('[data-field-part="toggle"]')).toBeNull();
 
     const lengthInput = document.querySelector('#lengthM') as HTMLInputElement;
+    expect(lengthInput.min).toBe('0');
+    expect(lengthInput.max).toBe('80');
     expect(lengthInput.getAttribute('aria-describedby')).toBe('lengthM-error');
     expect(document.querySelector('[data-field-part="error"]')?.textContent).toBe(
       'Enter a valid roof length between the supported limits.',

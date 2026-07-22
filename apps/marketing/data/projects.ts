@@ -90,7 +90,7 @@ const baseProjects: Project[] = [
     description: [
       'The brief for this Warkworth home was to create a proper outdoor room beside the house: sheltered enough to use often, open enough to stay connected to the garden, and detailed so it felt like a permanent part of the property.',
       'We built a freestanding gable structure beside the home rather than relying on the existing house for support. The matte black frame and COLORSTEEL FlaxPod Matte roof give the room a crisp architectural profile, while clear acrylic glazing through the roof and gable ends keeps daylight moving through the space.',
-      'Completed in November 2025, the project also included a new deck and fireplace, turning the covered area into a complete outdoor living space. Warm cedar tongue-and-groove lining, pendant lighting and recessed lights finish the room for dining, lounging and year-round entertaining.',
+      'Completed in November 2025, the project also included a new deck and fireplace, turning the covered area into a complete outdoor living space. Warm cedar tongue-and-groove lining, pendant lighting and recessed lights finish the room for dining and lounging.',
     ],
     stats: {
       width: '5.0 m',
@@ -252,7 +252,7 @@ const baseProjects: Project[] = [
     blurb:
       'Budget-balanced pitched pergola in Slate Blue Matt, installed as part of a mini golf course renovation on Tamaki Drive.',
     description: [
-      'Lilliput Mini Golf brought us in as part of a wider refresh of their Tamaki Drive site. The brief was to create a simple, durable pergola that would cover key circulation and seating without competing with the course layout or blowing the budget.',
+      'Lilliput Mini Golf brought us in as part of a wider refresh of their Tamaki Drive site. The brief was to create a simple pergola that would cover key circulation and seating without competing with the course layout or blowing the budget.',
       'We worked alongside the client’s architect and engineer to land on a clean pitched frame that could pick up existing foundations and clear services. Several iterations pared the structure back to only what mattered: span, head height and a roof profile that sat comfortably against the clubhouse.',
       'Our role on this project focused on supply and installation of the structure itself, coordinating closely with other trades so cladding, lighting and course upgrades could plug in once the frame was complete.',
     ],
@@ -268,7 +268,7 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Integrate a new pergola into an existing mini golf course without blocking key sightlines or making the site feel enclosed. The structure needed to be robust, simple to maintain and tuned carefully to budget.',
+          'Integrate a new pergola into an existing mini golf course without blocking key sightlines or making the site feel enclosed. The structure needed to be straightforward and tuned carefully to budget.',
           'Multiple size and layout options were explored with the design team before settling on a clean, pitched frame that could sit neatly alongside the clubhouse and work with existing levels.',
         ],
         bullets: [
@@ -283,9 +283,9 @@ const baseProjects: Project[] = [
           'The primary frame combines steel for the main spans with aluminium beams and purlins, bringing strength where it is needed and lightweight elements elsewhere. Connections are kept honest and readable so the structure feels intentional rather than decorative.',
         ],
         bullets: [
-          'Steel and aluminium frame tuned for span and durability',
+          'Steel and aluminium frame tuned for the required spans',
           'Dulux Slate Blue Matt powder coat for a calm, coastal tone',
-          'Simple detailing so maintenance stays straightforward for the venue',
+          'Simple detailing coordinated with the venue renovation',
         ],
       },
       {
@@ -294,7 +294,7 @@ const baseProjects: Project[] = [
           'Acrylic roof panels keep rain off walkways and seating while letting plenty of daylight through to the course. The shallow 8° pitch keeps the profile low against the clubhouse roofline while still shedding water cleanly.',
         ],
         bullets: [
-          'Acrylic roofing matched to coastal conditions',
+          'Acrylic roofing over the covered circulation and seating',
           '8° roof pitch to sit under existing building lines',
           'Perimeter flashings ready for future cladding and lighting',
         ],
@@ -342,48 +342,25 @@ const baseProjects: Project[] = [
     tags: ['Coastal', 'Screens', 'Perimeter'],
     sections: [
       {
-        title: 'Design brief',
+        title: 'Design response',
         paragraphs: [
-          'Keep the horizon open, integrate blinds that disappear when not needed and avoid bulky bracing that would catch the wind.',
-          'Structure needed to cantilever over an existing low balustrade so every kilo counted while shipping.',
+          'The design extends the living space onto the deck while keeping the coastal outlook open. A box-perimeter frame was selected after pitched and perimeter options were considered against the existing facade.',
         ],
         bullets: [
-          'Transport-friendly modular frame',
-          'Exposed-site wind conditions identified in the project brief',
-          'Low profile perimeter gutters',
+          '5.0 m by 4.0 m recorded footprint',
+          '2.8 m recorded height',
+          'Perimeter form aligned with the house geometry',
         ],
       },
       {
-        title: 'Structure & finishes',
+        title: 'Roof line and screens',
         paragraphs: [
-          '220 mm perimeter beams wrap a cavity big enough for wiring, gutters and blind heads. Posts are recessed into the cladding line to keep the deck open.',
+          'The taller perimeter beam conceals the recorded 4 degree roof fall and gutters so the outside edge reads as a clean horizontal line. Screen integration is included in the published project record.',
         ],
         bullets: [
-          'Dulux Protexture in Seashell Satin',
-          'Stainless fixings selected for the project',
-          'Custom stainless spigots for balustrade transitions',
-        ],
-      },
-      {
-        title: 'Roof & infill',
-        paragraphs: [
-          'A shallow fall drains to two rain heads tucked against the house. We left access hatches inside the beams so filters can be cleaned without removing panels.',
-        ],
-        bullets: [
-          'Insulated aluminium roof panels',
-          'Perimeter gutters coordinated for the coastal site',
-          'Future provision for glass skylight inserts',
-        ],
-      },
-      {
-        title: 'Screens, lighting & extras',
-        paragraphs: [
-          'Mesh blinds, heaters and strip lighting are all concealed in the beam cavity, leaving the view untouched when everything is retracted.',
-        ],
-        bullets: [
-          'Somfy RTS blinds with severe-wind mode',
-          'Infrared heaters on timer relays',
-          'LED strips recessed into the beam lower face',
+          '4 degree roof fall recorded for the project',
+          'Gutters concealed behind the perimeter beam line',
+          'Screens coordinated with the covered deck',
         ],
       },
     ],
@@ -421,45 +398,23 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Cover the courtyard, keep head height generous and maintain seating count. We also had to reduce reverberation so conversations at the banquette stayed comfortable.',
+          'Cover the restaurant courtyard while preserving the villa-style facade and the established rhythm of the building gables.',
         ],
         bullets: [
-          'Two structural zones with shared detailing',
-          'Acoustic lining allowance',
-          'Service access for landlord plant',
+          'Two-zone gable cover',
+          '25 degree roof pitch matched to the existing building',
+          'Covered hospitality courtyard',
         ],
       },
       {
-        title: 'Structure & finishes',
+        title: 'Structure and integration',
         paragraphs: [
-          'Steel portals carry aluminium perimeter beams that hide drainage and cabling. Posts land on new pile caps tied around existing services.',
+          'Steel and aluminium framing carries the acrylic roof out from the existing roofline. Screens and lighting were integrated into the completed hospitality setting.',
         ],
         bullets: [
-          'Two-pack coating to match venue brand palette',
-          'Hidden cleats to clamp signage and heaters',
-          'Slip-resistant decking upgrades under dripline',
-        ],
-      },
-      {
-        title: 'Roof & infill',
-        paragraphs: [
-          'Insulated panels soften rain noise and keep the heat from building during afternoon service. We added a central skylight over the planters to balance daylight.',
-        ],
-        bullets: [
-          '50 mm insulated roofing panels',
-          'Frameless skylight over planting zone',
-          'Box gutters feeding existing stormwater risers',
-        ],
-      },
-      {
-        title: 'Screens, lighting & extras',
-        paragraphs: [
-          'Every blind, heater and strip is DMX-addressable so staff can set presets for brunch, dinner or live music.',
-        ],
-        bullets: [
-          'DMX-linked RGBW strips and spotlights',
-          'Somfy blinds with crash rails',
-          'Heatstrip Classic heaters across the leaners',
+          '10.09 m by 6.7 m recorded footprint',
+          'Acrylic roof over the two gable zones',
+          'Lighting and screens included in the published project record',
         ],
       },
     ],
@@ -496,45 +451,23 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Deliver cover over the service platform without blocking signal sightlines or interfering with pantographs.',
+          'JCY Architects engaged Sanctuary to help deliver a covered path between key circulation routes at the KiwiRail head office.',
         ],
         bullets: [
-          'Minimum 4 m clear internal height',
-          'No columns within 1.2 m of rail centreline',
-          'Impact resistant cladding to 2.4 m',
+          'Architect-led canopy design',
+          'Dry connection between circulation routes',
+          'Integrated strip lighting',
         ],
       },
       {
-        title: 'Structure & finishes',
+        title: 'Structure and roof',
         paragraphs: [
-          'Hot-dip galvanised steel portals support aluminium secondary framing. All hardware uses tamper-proof heads per KiwiRail spec.',
+          'The completed canopy uses aluminium and acrylic to keep the long walkway visually light, with strip lighting incorporated for the day-and-night setting.',
         ],
         bullets: [
-          'AS/NZS 1170 wind design for open terrain',
-          'Polyaspartic top coat in KiwiRail signal grey',
-          'Integrated cable trays with lockable covers',
-        ],
-      },
-      {
-        title: 'Roof & infill',
-        paragraphs: [
-          'Longrun roofing with acoustic blanket and translucent panels over entry bays keeps the platform bright during the day.',
-        ],
-        bullets: [
-          'ColorCote aluminium roofing',
-          'Polycarbonate daylight panels every third bay',
-          'Oversize gutters with debris screens',
-        ],
-      },
-      {
-        title: 'Screens, lighting & extras',
-        paragraphs: [
-          'Lighting meets EN 12464 lux levels for maintenance areas. Sensors dim fittings when the platform is empty to save energy.',
-        ],
-        bullets: [
-          '0-10V dimmable LED batons',
-          'Occupancy and daylight sensors',
-          'Allowances for CCTV and PA raceways',
+          '30.0 m recorded length',
+          '3.0 m recorded depth',
+          '5 degree recorded pitch',
         ],
       },
     ],
@@ -569,45 +502,34 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Create shade without closing off the cliff-face view and coordinate the finish and fixings for the exposed coastal site.',
+          'Cover the patio and add a carport while working around the existing house geometry and retaining light through the adjoining circulation and entry areas.',
         ],
         bullets: [
-          'No intermediate columns',
-          'Automation for high wind events',
-          'Screens that disappear when lowered',
+          '108 square metre recorded covered area',
+          'Patio and carport combined in one project',
+          'Mesh blinds included along one side',
         ],
       },
       {
-        title: 'Structure & finishes',
+        title: 'Roof composition',
         paragraphs: [
-          'We used aluminium portals locked into the deck bearer line to avoid introducing new penetrations through the existing waterproofing.',
+          'Insulated roof panels with timber sarking create a ceiling-like finish above the dining area. Opal acrylic and timber battens retain softer daylight around circulation and the front door, with light grey acrylic used in another part of the cover.',
         ],
         bullets: [
-          'Powder-coated finish selected for the project',
-          'Stainless fixings with nylon isolators',
-          'Recessed base plates behind balustrade line',
+          'Insulated roof panels over the dining zone',
+          'Opal and light grey acrylic in daylight-sensitive areas',
+          'Timber battens used with the opal acrylic section',
         ],
       },
       {
-        title: 'Roof & infill',
+        title: 'Screening and outlook',
         paragraphs: [
-          'Twinwall polycarbonate keeps the space bright while reducing weight on the deck.',
+          'Mesh blinds were added along one side for wind protection and privacy, while the mixed roof composition keeps the view and connection to the outdoors open.',
         ],
         bullets: [
-          'Twinwall polycarbonate infill',
-          'Vented ridge flashing',
-          'Gutters tied into deck outlets',
-        ],
-      },
-      {
-        title: 'Screens, lighting & extras',
-        paragraphs: [
-          'Screens, sensors and lighting all feed back to a single handheld remote so the clients can react quickly to the westerly.',
-        ],
-        bullets: [
-          'Somfy RTS controls for screens',
-          'Integrated wind/rain sensors',
-          'Warm-white wall lights at each post',
+          'Mesh blind integration',
+          'Privacy from neighbouring properties',
+          'Open outlook retained beyond the covered area',
         ],
       },
     ],
@@ -629,7 +551,7 @@ const baseProjects: Project[] = [
     blurb: 'Aluminium gable canopy with dark-tint acrylic roofing, adding a sheltered outdoor zone to a specialty dessert cafe.',
     description: [
       'The client reached out to add a sheltered space to their beautiful specialty dessert cafe (highly recommended). We were able to do this while matching the existing architectural style and colours so the new structure feels like it has always been there.',
-      'The canopy uses an all-aluminium frame with dark-tint acrylic roofing. This blocks a good amount of sun and heat so the space stays usable through summer, while still letting in daylight and keeping the cafe frontage bright.',
+      'The canopy uses an all-aluminium frame with dark-tint acrylic roofing. The darker roof changes the shade and light character beneath the canopy while still allowing daylight through and keeping the cafe frontage visually open.',
     ],
     stats: {
       width: '9.0 m',
@@ -643,45 +565,23 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Provide cover for customers queuing along the footpath while keeping the shopfront visible and on-brand.',
+          'Add a sheltered outdoor space to the specialty dessert cafe while matching the existing architectural style and colours.',
         ],
         bullets: [
-          'Minimal posts in the pedestrian zone',
-          'Match existing copper signage details',
-          'Allow for future heaters',
+          'Commercial cafe setting',
+          'Existing frontage kept visually open',
+          'New canopy coordinated with the building style',
         ],
       },
       {
-        title: 'Structure & finishes',
+        title: 'Structure and roof',
         paragraphs: [
-          'Perimeter beam bolts back to the facade and transfers loads to two planter-mounted posts. Finish is anodised bronze to tie into the cafe palette.',
+          'An all-aluminium frame forms the gable canopy, with dark-tint acrylic roofing selected for the covered outdoor area.',
         ],
         bullets: [
-          'Anodised bronze powder coat',
-          'Hidden drainage into council cesspits',
-          'Slim mullions to frame the sliders',
-        ],
-      },
-      {
-        title: 'Roof & infill',
-        paragraphs: [
-          'Laminated glass roof panels keep the interior bright. A perimeter gutter falls to a single downpipe tucked behind the sign blade.',
-        ],
-        bullets: [
-          '12.76 mm laminated glass roof',
-          'Continuous box gutter with overflow',
-          'Acoustic interlayer to reduce street noise',
-        ],
-      },
-      {
-        title: 'Screens, lighting & extras',
-        paragraphs: [
-          'Frameless sliders stack to one side during calm days and close off the space on windy afternoons.',
-        ],
-        bullets: [
-          'Frameless sliding glass doors',
-          'Dimmable downlights tied into cafe lighting circuit',
-          'Prewire for future heaters under the beam',
+          '9.0 m by 4.0 m recorded footprint',
+          '30 degree recorded gable pitch',
+          'Dark-tint acrylic roof',
         ],
       },
     ],
@@ -703,7 +603,7 @@ const baseProjects: Project[] = [
     blurb: 'Hipped courtyard pergola with opal acrylic roofing, blending a fresh structure into a Tuscan-style home.',
     description: [
       'This hipped pergola replaces an older structure of the same footprint. The clients were happy with the existing layout but wanted a fresh look that would marry a contemporary frame with their Tuscan-style home.',
-      'We set out a new 8 m by 5 m cover at 3 m height, using opal acrylic roofing over the courtyard to soften light and keep the space comfortable in all seasons. The result is a bright, sheltered outdoor room the clients love to use year-round.',
+      'We set out a new 8 m by 5 m cover at 3 m height, using opal acrylic roofing over the courtyard to diffuse the light. The result is a bright, sheltered outdoor room that retains the established footprint.',
     ],
     stats: {
       width: '8.0 m',
@@ -717,45 +617,23 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Create an outdoor room that feels like an extension of the lodge interior, complete with fireplace and AV.',
+          'Replace the older pergola on the same footprint, giving the courtyard a fresh structure that still suits the Tuscan-style home.',
         ],
         bullets: [
-          'Coordinate with stonemason programme',
-          'Keep beams free of visible wiring',
-          'Manage debris from native canopy',
+          'Existing 8.0 m by 5.0 m footprint retained',
+          '3.0 m recorded height',
+          'Contemporary frame coordinated with the house',
         ],
       },
       {
-        title: 'Structure & finishes',
+        title: 'Hip roof and light',
         paragraphs: [
-          'Posts bolt to the concrete podium and wrap steel cores with stained cedar cladding. Ceiling lining is tongue-and-groove cedar to match interior joinery.',
+          'A 5 degree hip roof uses opal acrylic over the courtyard, diffusing daylight while providing overhead shelter within the familiar layout.',
         ],
         bullets: [
-          'Cedar soffit with concealed fixings',
-          'Powder-coated aluminium fascia in FlaxPod',
-          'Access hatch for fireplace fan service',
-        ],
-      },
-      {
-        title: 'Roof & infill',
-        paragraphs: [
-          'Hip roof with insulated panels keeps the lanai temperate. Leaf guards snap out for cleaning after storms.',
-        ],
-        bullets: [
-          'Insulated roofing panels with sarking underside',
-          'Oversize gutters with removable grates',
-          'Ridge vent to purge smoke from fireplace',
-        ],
-      },
-      {
-        title: 'Screens, lighting & extras',
-        paragraphs: [
-          'Lighting is layered between ridge uplights and soffit downlights. Speakers and projector cabling are hidden for movie nights.',
-        ],
-        bullets: [
-          'Speaker prewire terminated in bench cabinet',
-          'Dimmable soffit downlights',
-          'Provision for clear PVC drops if required later',
+          'Opal acrylic roofing',
+          '5 degree recorded pitch',
+          'Hip form over the courtyard',
         ],
       },
     ],

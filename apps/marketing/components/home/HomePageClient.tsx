@@ -91,12 +91,12 @@ export default function HomePageClient({
           <div className="home-section__inner" style={MATERIALS_COPY_STYLE}>
             <p className="home-section__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Materials</p>
             <h2 className="home-section__title mt-3 max-w-[24ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
-              Bright and open, or cool and shaded - dial it in with materials.
+              More open to daylight, or more enclosed and shaded - choose materials in context.
             </h2>
             <p className="home-section__copy mt-6 max-w-[76ch] text-[17px] leading-[1.66] text-muted">
-              Material choice sets the tone for the entire pergola - how light moves through it, how warm it feels, how much upkeep it asks for, and how it will age over time.{` `}
-              <span className="text-ink">Acrylic keeps spaces bright and open. Timber adds warmth and texture. Combination systems balance both.</span>{` `}
-              Aluminium stays crisp and architectural, with colour options that sit quietly alongside your exterior palette.
+              Material choice shapes how the pergola reads overhead, how daylight reaches the adjoining rooms, and which product-specific care requirements apply.{` `}
+              <span className="text-ink">Acrylic can retain a view of the sky. Timber lining adds visual warmth and texture. Combination roofs place different conditions over different zones.</span>{` `}
+              Aluminium gives the structure a crisp architectural character, with colour options selected alongside the exterior palette.
             </p>
           </div>
         </section>

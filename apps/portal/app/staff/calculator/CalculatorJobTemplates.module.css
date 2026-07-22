@@ -1,0 +1,62 @@
+.card {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(280px, 1.4fr);
+  gap: 10px;
+  align-items: end;
+  margin: 0 12px 10px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: 10px;
+  background: var(--ui-surface-secondary);
+}
+
+.copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.copy strong {
+  color: var(--ui-text-strong);
+  font-size: 11px;
+}
+
+.copy span {
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.actions select,
+.actions button {
+  min-height: 34px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
+  color: var(--ui-text-strong);
+  font: inherit;
+  font-size: 10px;
+}
+
+.actions select {
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.actions button {
+  padding: 0 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .card,
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}

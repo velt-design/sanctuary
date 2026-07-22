@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { isQuoteHandoffBlockedError } from '@/lib/quotes/mapping';
 import { previewDraftQuoteRefreshFromEstimate, refreshDraftQuoteVersionFromEstimate } from '@/lib/quotes/server';
 import { NextResponse } from 'next/server';
 
@@ -13,6 +14,7 @@ function quoteErrorResponse(err: unknown, fallback: string) {
   if (message === 'Quote not found') return jsonError(message, 404);
   if (message === 'Estimate not found') return jsonError(message, 404);
   if (message === 'Quote is locked') return quoteLockedResponse(message);
+  if (isQuoteHandoffBlockedError(err)) return jsonError(message, 422);
   return jsonError(message, 500);
 }
 

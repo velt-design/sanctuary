@@ -4,6 +4,7 @@ import type { CalculatorInputs } from '@/lib/types/calculator';
 import { ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY } from './drawingEdits';
 import {
   ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY,
+  ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY,
   buildModuleCostInputsFromCalculatorInputs,
   buildEstimatePayloadPreservingCurrentPricing,
   buildEstimatePayloadFromSiteCosting,
@@ -223,12 +224,14 @@ describe('costingPayload', () => {
         modules: [{ ...inputs.modules[0]!, projectionM: '8' }],
       },
       pricingChanged: true,
+      preserveReason: 'Customer-approved historical price.',
     });
 
     expect((payload.inputs as any).modules[0].projectionM).toBe('8');
     expect(payload.outputs.totals).toEqual({ cost_ex_gst: 175, cost_inc_gst: 201.25 });
     expect(payload.outputs[ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY]).toEqual({ noteOverride: 'Custom note' });
     expect(payload.outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]).toBe('stale');
+    expect(payload.outputs[ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY]).toBe('Customer-approved historical price.');
     expect(payload.configVersions).toEqual({ manifest: 'm1', rules: 'r1' });
   });
 

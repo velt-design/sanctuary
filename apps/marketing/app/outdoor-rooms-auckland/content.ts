@@ -50,10 +50,10 @@ export const outdoorRoomsConfig = {
       { title: 'Comfort changes through the day', text: 'Sun direction, shade, airflow, surfaces and edge protection influence how the room feels at different times.' },
       { title: 'Features need project-specific checks', text: 'Heating, fireplaces, kitchens, electrical work and enclosure may require product, professional or approval coordination for the actual design.' },
     ], links: [{ href: '/products/screens-walls/drop-down-blinds', label: 'Review outdoor blinds' }, { href: '/products/lighting-heating/downlights', label: 'Review integrated downlights' }] },
-    { kind: 'link-cards', id: 'room-next-decisions', tone: 'neutral', eyebrow: 'Continue the room brief', title: 'Take each layer to the guide that owns it', items: [
+    { kind: 'link-cards', id: 'room-next-decisions', tone: 'neutral', eyebrow: 'Continue the room brief', title: 'Explore each layer in more detail', items: [
       { title: 'Plan an exposed edge', text: 'Map low sun, wind and privacy before deciding where a blind belongs.', href: '/pergolas-with-blinds', linkLabel: 'Open the blinds guide' },
       { title: 'Compare roof behaviour', text: 'Separate fixed cover and opening-roof priorities before comparing proposals.', href: '/acrylic-pergolas-vs-louvre-roofs', linkLabel: 'Open the roof comparison' },
-      { title: 'Define the complete investment', text: 'Take structure, surfaces, edges and services to the cluster cost owner.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
+      { title: 'Define the complete investment', text: 'Compare how structure, surfaces, edges and services affect scope in the Pergola Cost guide.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
     ] },
     { kind: 'faq', id: 'outdoor-rooms-faq', tone: 'elevated', eyebrow: 'Questions beyond the roof', title: 'What to resolve when planning an Auckland outdoor room', intro: 'The final recommendation depends on the activities, site, products and completed design.', items: faqItems },
   ],

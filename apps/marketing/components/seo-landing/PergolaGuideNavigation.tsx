@@ -1,12 +1,6 @@
 import Link from 'next/link';
 import { findPergolaGuide, pergolaGuideEditorialReview, pergolaGuides } from '@/data/pergolaGuides';
 
-const roleLabels = {
-  service: 'Service guide',
-  'product-guide': 'Product guide',
-  'decision-guide': 'Decision guide',
-} as const;
-
 export default function PergolaGuideNavigation({ route }: { route: string }) {
   const currentIndex = pergolaGuides.findIndex((guide) => guide.href === route);
   const current = findPergolaGuide(route);
@@ -33,7 +27,7 @@ export default function PergolaGuideNavigation({ route }: { route: string }) {
           </Link>
         ) : <span className="seo-guide-progression__empty" aria-hidden="true" />}
         <Link href="/pergola-guides" className="seo-guide-progression__hub">
-          <small>{roleLabels[current.role]}</small>
+          <small>{current.label}</small>
           <span>{current.number} of {String(pergolaGuides.length).padStart(2, '0')}</span>
         </Link>
         {next ? (

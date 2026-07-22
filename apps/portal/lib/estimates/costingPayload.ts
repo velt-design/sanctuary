@@ -16,6 +16,7 @@ export type EstimateSaveMode = 'preserve_current' | 'reprice_latest';
 type EstimatePricingSyncState = 'current' | 'stale';
 
 export const ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY = 'pricing_sync_state';
+export const ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY = 'pricing_preserve_reason';
 
 const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
 const FLASHING_EDGE_ALLOWANCE_M = 0.1;
@@ -30,6 +31,7 @@ const COST_OUTPUT_KEYS = new Set([
   'siteShared',
   'shared',
   ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY,
+  ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY,
 ]);
 
 function toNumber(value: unknown): number {
@@ -451,10 +453,12 @@ export function buildEstimatePayloadPreservingCurrentPricing(args: {
   basePayload: PortalEstimatePayload;
   inputs: CalculatorInputs;
   pricingChanged: boolean;
+  preserveReason?: string;
 }): PortalEstimatePayload {
   const outputs = cloneRecord((args.basePayload.outputs ?? {}) as AnyRecord) ?? {};
   if (args.pricingChanged) {
     outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY] = 'stale' satisfies EstimatePricingSyncState;
+    outputs[ESTIMATE_PRICING_PRESERVE_REASON_OUTPUT_KEY] = args.preserveReason?.trim() ?? '';
   }
 
   return {

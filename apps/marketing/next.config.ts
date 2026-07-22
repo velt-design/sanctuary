@@ -78,10 +78,6 @@ const nextConfig: NextConfig = {
       { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=2592000' },
     ];
 
-    const imageOptimizerCacheHeaders: { key: string; value: string }[] = [
-      { key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=31536000' },
-    ];
-
     return [
       {
         source: '/downloads/Sanctuary-Pergolas-Brochure.pdf',
@@ -98,10 +94,6 @@ const nextConfig: NextConfig = {
       {
         source: '/videos/:path*',
         headers: [...securityHeaders, ...mediaCacheHeaders],
-      },
-      {
-        source: '/_next/image',
-        headers: [...securityHeaders, ...imageOptimizerCacheHeaders],
       },
       {
         source: '/runtime-ga.js',
@@ -123,8 +115,6 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // Retire the outdated brochure in favour of the governed web guide library.
-      { source: '/downloads/Sanctuary-Pergolas-Brochure.pdf', destination: '/pergola-guides', permanent: true },
       // Core marketing pages
       { source: '/about-us', destination: '/', permanent: true },
       { source: '/gallery', destination: '/projects', permanent: true },
@@ -160,6 +150,19 @@ const nextConfig: NextConfig = {
       { source: '/admin', destination: 'https://portal.sanctuarypergolas.co.nz/admin', permanent: true },
       { source: '/admin/:path*', destination: 'https://portal.sanctuarypergolas.co.nz/admin/:path*', permanent: true },
     ];
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Preserve the historic URL while allowing its 308 response to carry X-Robots-Tag.
+        {
+          source: '/downloads/Sanctuary-Pergolas-Brochure.pdf',
+          destination: '/api/retired-pergola-brochure',
+        },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
   },
 };
 

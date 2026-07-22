@@ -9,6 +9,7 @@ import {
   duplicateCalculatorModule,
   moveCalculatorModule,
   removeCalculatorModule,
+  renameCalculatorPergola,
 } from './calculatorModuleNavigation';
 
 function makeInputs(): CalculatorInputs {
@@ -73,6 +74,19 @@ describe('calculatorModuleNavigation', () => {
     expect(result.values.pergolas?.at(-1)).toEqual({ id: 'pergola-3', label: 'Pergola 3' });
     expect(result.values.modules.at(-1)).toMatchObject({ pergolaId: 'pergola-3', lengthM: '6', projectionM: '3' });
     expect(result.activeModuleIndex).toBe(3);
+  });
+
+  it('renames a pergola without changing its stable id or module assignment', () => {
+    const values = makeInputs();
+    const result = renameCalculatorPergola(values, 'pergola-2', 'Pool cover');
+
+    expect(result.pergolas).toContainEqual({ id: 'pergola-2', label: 'Pool cover' });
+    expect(result.modules[2].pergolaId).toBe('pergola-2');
+    expect(buildCalculatorModuleNavigatorModel({
+      values: result,
+      activeModuleIndex: 2,
+      errorsByModule: [{}, {}, {}],
+    }).activeModuleLabel).toBe('Pool cover · Module 1');
   });
 
   it('deep-duplicates a module, regenerates nested ids, and selects the copy', () => {

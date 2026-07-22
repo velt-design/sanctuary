@@ -17,6 +17,7 @@ type CalculatorModuleNavigatorProps = {
   onSelectModule: (moduleIndex: number) => void;
   onAddModule: (pergolaId: string) => void;
   onAddPergola: () => void;
+  onRenamePergola: (pergolaId: string, label: string) => void;
   onDuplicateModule: (moduleIndex: number) => void;
   onMoveModule: (moduleIndex: number, targetPergolaId: string) => void;
   onRemoveModule: (moduleIndex: number) => void;
@@ -29,6 +30,7 @@ export default function CalculatorModuleNavigator({
   onSelectModule,
   onAddModule,
   onAddPergola,
+  onRenamePergola,
   onDuplicateModule,
   onMoveModule,
   onRemoveModule,
@@ -117,7 +119,19 @@ export default function CalculatorModuleNavigator({
           {model.groups.map((group) => (
             <section key={group.pergolaId} className={styles.group} aria-labelledby={`${surface}-${group.pergolaId}-heading`}>
               <div className={styles.groupHeader}>
-                <h3 id={`${surface}-${group.pergolaId}-heading`} className={styles.groupTitle}>{group.label}</h3>
+                <h3 id={`${surface}-${group.pergolaId}-heading`} className={styles.groupTitle}>
+                  <input
+                    key={`${group.pergolaId}:${group.label}`}
+                    type="text"
+                    defaultValue={group.label}
+                    aria-label={`Name for ${group.label}`}
+                    maxLength={80}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.currentTarget.blur();
+                    }}
+                    onBlur={(event) => onRenamePergola(group.pergolaId, event.currentTarget.value)}
+                  />
+                </h3>
                 <button
                   type="button"
                   className={styles.addModuleButton}

@@ -31,7 +31,9 @@ This document tracks the ten approved Sanctuary marketing landing pages. Pages a
 
 The directory uses the approved architectural editorial foundation, retains `#4f5748` olive green as its only action accent and is discoverable from the public footer and sitemap. A typed data owner keeps all ten route labels, summaries and destinations aligned with the rendered directory and ordered `ItemList` schema.
 
-Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It verifies one H1, self-canonical indexable metadata, exactly ten direct guide links, three chapters, resolving destinations, ordered schema, footer and sitemap discovery, loaded imagery, green accent and no horizontal overflow. The current hub and guide suite passes 76 of 76 checks, with four additional technical SEO, brochure-retirement and copy-governance checks passing. The claims regression reads every indexable sitemap route rather than only the guide pages. The production build statically generates `/pergola-guides`. Visual evidence is stored in `artifacts/marketing-seo-landing/pergola-guides/`.
+The rendered cards use Service, Planning, Material, Roof-form, Cost, Integration and Comparison guide labels rather than treating material, form and integration guides as product pages.
+
+Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It verifies one H1, self-canonical indexable metadata, exactly ten direct guide links, three chapters, resolving destinations, ordered schema, footer and sitemap discovery, loaded imagery, green accent and no horizontal overflow. The final-refinement regression also verifies direct 200 responses, unique metadata and headings, Open Graph identity, one form and final CTA per route, no sticky CTA, no FAQ schema and no customer-facing page-ownership language. The claims regression reads every indexable sitemap route rather than only the guide pages. The production build statically generates `/pergola-guides`. Visual evidence is stored in `artifacts/marketing-seo-landing/pergola-guides/`.
 
 ## Page 1 decisions
 
@@ -39,7 +41,7 @@ Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It 
 - The page reuses the approved architectural editorial foundation and existing enquiry API, attachment, attribution, privacy and conversion-event contracts.
 - Green remains the accent through the approved olive/green foundation token. No burgundy or purple accent has been introduced.
 - The narrative is intentionally broader than `/acrylic-roof-pergolas-auckland`: it begins with use, house integration and site conditions, then compares roof form, roof approach, open edges, process and complete scope.
-- Internal links connect the broad service page to the custom, product, cost, project and enquiry owners without creating redirect chains.
+- Internal links connect the broad service page to the relevant custom, product, cost, project and enquiry routes without creating redirect chains.
 - Structured data uses `WebPage`, `Service` and `BreadcrumbList`. FAQ content remains visible but is not marked up as `FAQPage`; no rating, review, offer or price schema is added.
 - The existing landing-page enquiry form now accepts a route-owned roof-preference configuration. The acrylic route keeps its acrylic-specific options; the broad page offers acrylic, solid or lined, combination and unsure choices while preserving the same API and tracking behavior.
 
@@ -154,8 +156,12 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 - All ten routes are self-canonical, indexable, present in the public sitemap and generated statically.
 - Each route has a unique metadata title, description and H1; no route repeats an H1 or H2 from any earlier programme page or the approved acrylic reference.
 - Every route uses `WebPage` and `BreadcrumbList` schema. Only service-role pages add `Service`; visible FAQ content is not marked up as `FAQPage`. Existing enquiry, attachment and attribution integration remains intact.
+- The broad `/pergolas-auckland` service page and bespoke `/custom-pergolas-auckland` service page remain separate. Their customer-facing copy no longer discusses search intent, page ownership or cluster management.
+- The fixed-acrylic product page points to the comparison and cost guides instead of repeating their complete process, cost and generic FAQ content.
+- Homepage roof comparisons use written product and assembly considerations rather than unsupported one-to-five performance scores.
+- Current guide and project evidence no longer exposes contradictory legacy specifications for Good Home, KiwiRail, Tindalls Bay, Atelier Shu, Muriwai or Waiheke.
 - Every route exposes the 22 July 2026 editorial review date and reviewer in visible copy and structured data without presenting that date as approval of pending claims.
-- The historic brochure endpoint permanently redirects to the governed guide library, and product downloads no longer present it as current guidance.
+- The historic brochure endpoint permanently redirects to the governed guide library through a response that carries `X-Robots-Tag: noindex, nofollow`, and product downloads no longer present it as current guidance.
 - Known unapproved timing, warranty and performance statements are checked across every indexable marketing route in the generated sitemap.
 - Responsive browser coverage spans 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844 with no horizontal overflow.
 - The approved olive green remains the sole action accent. No burgundy or purple theme was introduced.

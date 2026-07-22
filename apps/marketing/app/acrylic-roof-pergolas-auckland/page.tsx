@@ -9,7 +9,6 @@ import {
   Container,
   Eyebrow,
   Heading,
-  ProcessSteps,
   Section,
   Text,
   TextLink,
@@ -23,8 +22,6 @@ import {
   comfortResponses,
   faqItems,
   pergolaForms,
-  priceFactors,
-  processSteps,
   sanctuaryReasons,
   tintOptions,
   weatherDetails,
@@ -83,19 +80,6 @@ const projectProof = [
 });
 
 export default function AcrylicRoofPergolasAucklandPage() {
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqItems.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.answer.join('\n\n'),
-      },
-    })),
-  };
-
   return (
     <main className="acrylic-landing" data-marketing-foundation-page>
       <JsonLd
@@ -108,7 +92,24 @@ export default function AcrylicRoofPergolasAucklandPage() {
             description: metadata.description,
             primaryImageOfPage: absoluteUrl(heroImage),
           },
-          faqSchema,
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: absoluteUrl('/'),
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: 'Acrylic Roof Pergolas Auckland',
+                item: absoluteUrl(route),
+              },
+            ],
+          },
         ]}
       />
 
@@ -311,33 +312,28 @@ export default function AcrylicRoofPergolasAucklandPage() {
         </Container>
       </Section>
 
-      <Section tone="warm" className="acrylic-section acrylic-section--process" aria-labelledby="project-process">
-        <Container width="wide">
-          <header className="acrylic-section__header">
-            <Eyebrow className="acrylic-eyebrow">A considered path to site</Eyebrow>
-            <Heading id="project-process">From initial enquiry to installation</Heading>
-          </header>
-          <ProcessSteps items={processSteps.map(([title, copy]) => ({ title, copy }))} />
-        </Container>
-      </Section>
-
-      <Section className="acrylic-section" aria-labelledby="price-guidance">
+      <Section tone="warm" className="acrylic-section acrylic-section--process" aria-labelledby="product-evidence">
         <Container width="wide">
           <div className="acrylic-intro-grid">
             <div>
-              <Eyebrow className="acrylic-eyebrow">Price guidance</Eyebrow>
-              <Heading id="price-guidance">What affects the cost of an acrylic roof pergola?</Heading>
-              <p className="acrylic-lead">A useful price cannot be based on roof area alone.</p>
-              <p>Two acrylic pergolas with similar footprints may have materially different costs because the structure, house connection, access and detailing are different.</p>
+              <Eyebrow className="acrylic-eyebrow">Current product evidence</Eyebrow>
+              <Heading id="product-evidence">Name the exact fixed-roof assembly in the proposal</Heading>
+              <p className="acrylic-lead">Clear, grey and opal describe the visual family, not the complete specification.</p>
+              <p>The proposal should identify the roof product and the surrounding structure that make up the finished Sanctuary system.</p>
             </div>
             <div className="acrylic-price-grid">
-              {priceFactors.map(([title, text]) => <article key={title}><h3>{title}</h3><p>{text}</p></article>)}
+              <article><h3>Exact roof product</h3><p>Confirm the manufacturer, product, grade, thickness, tint and profile being supplied, together with any product-specific limitations.</p></article>
+              <article><h3>Complete assembly</h3><p>Record the frame, supports, roof fall, joints, transitions, flashings, gutters, outlets and house connection that apply to the project.</p></article>
+              <article><h3>Care and warranty documents</h3><p>Use the current cleaning and maintenance instructions for the selected products, and identify which product, coating and workmanship terms apply.</p></article>
+              <article><h3>Project conditions</h3><p>Confirm site access, structural or engineering requirements, product availability and the project-specific programme before work begins.</p></article>
             </div>
           </div>
           <aside className="acrylic-quote-note">
-            <p>An initial estimate is most useful when it allows the homeowner to compare like with like.</p>
-            <p>When reviewing quotes, confirm whether the price includes the aluminium frame, acrylic roofing, flashings, gutters, downpipes, foundations, site access, electrical work, engineering, consent work and GST.</p>
-            <p>A bespoke aluminium pergola is unlikely to be the right option for someone seeking only the lowest-cost temporary cover. It is more appropriate for homeowners comparing permanent, site-specific structures and wanting the result to integrate with the house.</p>
+            <p>For broader planning, use the dedicated comparison and cost guides rather than treating this product page as a complete quote checklist.</p>
+            <nav className="acrylic-inline-links" aria-label="Related comparison and cost guides">
+              <Link href="/acrylic-pergolas-vs-louvre-roofs">Compare fixed roofs with a louvre proposal</Link>
+              <Link href="/pergola-cost-auckland">Review scope and quote comparison</Link>
+            </nav>
           </aside>
         </Container>
       </Section>
@@ -403,8 +399,6 @@ export default function AcrylicRoofPergolasAucklandPage() {
           <AcrylicPergolaEnquiryForm />
         </Container>
       </Section>
-
-      <a className="acrylic-sticky-cta" href="#estimate">Request an estimate</a>
     </main>
   );
 }

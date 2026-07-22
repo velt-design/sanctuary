@@ -39,6 +39,7 @@ import { apiJson } from '@/lib/repo/apiClient';
 import { getProject } from '@/lib/repo/projectsRepo';
 import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
+import { MAX_STAFF_QUOTE_DISCOUNT_PCT } from '@/lib/quotes/pricing';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -146,6 +147,8 @@ import {
 } from './calculatorInputs';
 import { useCalculatorDraftSession } from './useCalculatorDraftSession';
 import CalculatorModuleNavigator from './CalculatorModuleNavigator';
+import CalculatorJobTemplatePicker from './CalculatorJobTemplatePicker';
+import { applyCalculatorJobTemplate, type CalculatorJobTemplateKey } from './calculatorJobTemplates';
 import {
   addCalculatorModule,
   addCalculatorPergola,
@@ -153,6 +156,7 @@ import {
   calculatorPergolaOptions,
   duplicateCalculatorModule,
   moveCalculatorModule,
+  renameCalculatorPergola,
   removeCalculatorModule,
 } from './calculatorModuleNavigation';
 import {
@@ -207,6 +211,8 @@ import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommand
 import CalculatorConfigurationForm from './CalculatorConfigurationForm';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import CalculatorPricingSummary, { type CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
+import CalculatorPergolaPricingBreakdown from './CalculatorPergolaPricingBreakdown';
+import CalculatorActualCostReview from './CalculatorActualCostReview';
 import {
   CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX,
   useCalculatorPreviewSplit,
@@ -871,6 +877,14 @@ export default function CalculatorGridClient({
   const handleAddPergola = useCallback(() => {
     commitModuleMutation(addCalculatorPergola(values, activeModuleIndex));
   }, [activeModuleIndex, commitModuleMutation, values]);
+
+  const handleRenamePergola = useCallback((pergolaId: string, label: string) => {
+    setValues(renameCalculatorPergola(values, pergolaId, label));
+  }, [setValues, values]);
+
+  const handleApplyJobTemplate = useCallback((templateKey: CalculatorJobTemplateKey) => {
+    setValues(applyCalculatorJobTemplate(values, activeModuleIndex, templateKey));
+  }, [activeModuleIndex, setValues, values]);
 
   const handleDuplicateModule = useCallback((moduleIndex: number) => {
     commitModuleMutation(duplicateCalculatorModule(values, activeModuleIndex, moduleIndex));
@@ -1722,6 +1736,7 @@ export default function CalculatorGridClient({
   const [infillCostDetailsOpen, setInfillCostDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
+  const [pricingPreserveReason, setPricingPreserveReason] = useState('');
   const [confirmRequestDesign, setConfirmRequestDesign] = useState(false);
   const [confirmRequestDesignPriority, setConfirmRequestDesignPriority] = useState<DesignRequestPriorityTier>('UNPRICED');
   const [saveOutcome, setSaveOutcome] = useState<CalculatorEstimateSaveOutcome | null>(null);
@@ -2428,12 +2443,13 @@ export default function CalculatorGridClient({
         hasProject: Boolean(project),
         projectHasContact,
         hasModuleErrors,
+        invalidBlindCount: blindsUi.rows.filter((row) => row.hasErrors).length,
         engineError,
         resultFreshness,
         infillItems: infillsState.items,
         infillUiById,
       }),
-    [engineError, hasModuleErrors, infillUiById, infillsState.items, project, projectHasContact, projectId, resultFreshness],
+    [blindsUi.rows, engineError, hasModuleErrors, infillUiById, infillsState.items, project, projectHasContact, projectId, resultFreshness],
   );
   const statusActionHandlers: Record<CalculatorQuoteStatusActionKey, () => void> = {
     selectProject: () => setProjectPickerOpen(true),
@@ -2442,6 +2458,12 @@ export default function CalculatorGridClient({
       else if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
     },
     openIssues: () => setIssuesOpen(true),
+    openBlinds: () => {
+      const element = document.getElementById('blindsList');
+      element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const firstInvalidBlind = element?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      firstInvalidBlind?.focus({ preventScroll: true });
+    },
     openInfills: () => setInfillsOpen(true),
   };
   const statusItems: StatusItem[] = quoteStatusUi.items.map((item) => ({
@@ -2463,9 +2485,11 @@ export default function CalculatorGridClient({
     async ({
       createDesignRequest = null,
       saveMode,
+      preserveReason,
     }: {
       createDesignRequest?: { priorityTier: DesignRequestPriorityTier } | null;
       saveMode?: EstimateSaveMode;
+      preserveReason?: string;
     } = {}) => {
       setGenerateError(null);
       const outcome = await saveCalculatorEstimate({
@@ -2495,6 +2519,7 @@ export default function CalculatorGridClient({
         request: {
           createDesignRequest,
           saveMode,
+          preserveReason,
         },
         createNewEstimate,
         result,
@@ -3860,11 +3885,25 @@ export default function CalculatorGridClient({
     },
     {
       id: 'quoteDiscountPct',
-      label: 'Discount (%)',
+      label: `Discount (0–${MAX_STAFF_QUOTE_DISCOUNT_PCT}%)`,
       type: 'number',
       value: values.quoteDiscountPct,
-      onChange: (v) => setJobField('quoteDiscountPct', String(v)),
-      helperText: 'Quote-only (not in true cost)',
+      min: 0,
+      max: 80,
+      onChange: (v) => {
+        const raw = String(v);
+        if (!raw.trim()) {
+          setJobField('quoteDiscountPct', '');
+          return;
+        }
+        const parsed = Number.parseFloat(raw);
+        if (!Number.isFinite(parsed)) return;
+        setJobField(
+          'quoteDiscountPct',
+          String(Math.min(MAX_STAFF_QUOTE_DISCOUNT_PCT, Math.max(0, parsed))),
+        );
+      },
+      helperText: '0–80%. Applies to pergola and shared site selling prices; blinds and lighting stay at listed price.',
     },
 
     // === Computed outputs ===
@@ -4010,6 +4049,7 @@ export default function CalculatorGridClient({
 
   const closeSaveConfirmDialog = () => {
     setConfirmOpen(false);
+    setPricingPreserveReason('');
     setGenerateError(null);
   };
 
@@ -4032,6 +4072,7 @@ export default function CalculatorGridClient({
     installDays: crewDays,
     blindCustomerPriceExGst: addonsTotals.blinds.ex,
     blindCustomerPriceIncGst: addonsTotals.blinds.inc,
+    quoteDiscountPct: values.quoteDiscountPct,
     hasInfills: infillsState.items.length > 0,
   };
 
@@ -4077,11 +4118,16 @@ export default function CalculatorGridClient({
                 onSelectModule={setActiveModuleIndex}
                 onAddModule={handleAddModule}
                 onAddPergola={handleAddPergola}
+                onRenamePergola={handleRenamePergola}
                 onDuplicateModule={handleDuplicateModule}
                 onMoveModule={handleMoveModule}
                 onRemoveModule={handleRemoveModule}
               />
               <CalculatorPricingSummary {...pricingSummaryProps} variant="compact" />
+              <CalculatorJobTemplatePicker
+                activeModuleLabel={moduleNavigatorModel.activeModuleLabel}
+                onApply={handleApplyJobTemplate}
+              />
               <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
             </div>
           </div>
@@ -4111,6 +4157,8 @@ export default function CalculatorGridClient({
           >
             <div className={styles.previewSummary}>
               <CalculatorPricingSummary {...pricingSummaryProps} />
+              <CalculatorPergolaPricingBreakdown result={result} quoteDiscountPct={values.quoteDiscountPct} />
+              {isEditingDesign ? <CalculatorActualCostReview estimateId={activeEditEstimateId} /> : null}
               <ModuleViewsCard
                 moduleLabel={activeModuleLabel}
                 view={moduleViewsTab}
@@ -4636,6 +4684,7 @@ export default function CalculatorGridClient({
             infoUiWarnings,
           },
           confirmAcknowledgeWarnings,
+          pricingPreserveReason,
           confirmRequestDesign,
           confirmRequestDesignPriority,
           generateError,
@@ -4643,6 +4692,7 @@ export default function CalculatorGridClient({
           hasStatusBlockers,
           hasResult: resultFreshness === 'current',
           onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
+          onPricingPreserveReasonChange: setPricingPreserveReason,
           onConfirmRequestDesignChange: (checked) => {
             setConfirmRequestDesign(checked);
             if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
@@ -4652,6 +4702,7 @@ export default function CalculatorGridClient({
             void saveDesign({
               createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
               saveMode: isEditingDesign ? 'preserve_current' : 'reprice_latest',
+              preserveReason: isEditingDesign ? pricingPreserveReason : undefined,
             }),
           onRepriceLatest: () => void saveDesign({ saveMode: 'reprice_latest' }),
         }}

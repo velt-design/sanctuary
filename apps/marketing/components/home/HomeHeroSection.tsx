@@ -31,7 +31,7 @@ export default function HomeHeroSection({ blurDataUrl, reviewRating, reviewCount
           Architectural pergolas tailored to Kiwi homes.
         </h1>
         <p className="home-hero__copy">
-          Designed for New Zealand conditions, tailored on site, and installed by the Sanctuary team once your build is ready.
+          Designed around the home and site conditions, tailored for the agreed project, and installed by the Sanctuary team once the build is ready.
         </p>
         <div className="home-hero__actions" aria-label="Homepage actions">
           <Link href="/contact" className="home-hero__cta home-hero__cta--primary">

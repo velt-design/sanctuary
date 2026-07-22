@@ -54,13 +54,13 @@ export const processSteps = [
 export const materialItems = [
   {
     name: 'Aluminium',
-    guidance: 'Crisp, durable structure with powder-coated colours chosen to sit quietly alongside the home.',
+    guidance: 'Crisp structure with powder-coated colours selected for the design, site exposure and the home.',
     image: '/images/project-riverhead-gable-02.jpg',
     alt: 'Black aluminium pergola structure in Riverhead',
   },
   {
     name: 'Acrylic roofing',
-    guidance: 'Clear or tinted cover that protects from weather while preserving useful daylight.',
+    guidance: 'Fixed clear, opal or tinted roofing with daylight and solar characteristics tied to the exact sheet.',
     image: '/images/product-gable-01.jpg',
     alt: 'Acrylic roof over an outdoor courtyard',
   },
@@ -81,7 +81,7 @@ export const materialItems = [
 export const roofForms = [
   {
     title: 'Pitched',
-    copy: 'A clean single fall for narrow eaves and efficient spans.',
+    copy: 'A clean single roof plane coordinated with available height, fall and drainage.',
     href: '/products/pergolas/pitched',
   },
   {

@@ -77,7 +77,7 @@ export default async function HomeV2Page() {
                 Architectural pergolas tailored to Kiwi homes.
               </Heading>
               <Text size="large" className={styles.heroText}>
-                Bespoke design and permanent construction for year-round outdoor living.
+                Bespoke fixed-roof design and permanent construction tailored to the home and site.
               </Text>
               <div className={styles.heroActions} aria-label="Homepage V2 actions">
                 <Button href="/contact">Start your project</Button>
@@ -192,7 +192,7 @@ export default async function HomeV2Page() {
       <FullBleedStatement
         image="/images/timber-gable-ceiling.jpg"
         alt="Timber-lined Riverhead gable roof framing blue sky and treetops"
-        eyebrow="Year-round outdoor living"
+        eyebrow="A more sheltered outdoor room"
         heading="Shelter without losing the view."
         copy="Permanent construction, warm materials and integrated light extend the home outdoors."
         action={{ label: 'See the Riverhead project', href: '/projects/riverhead-gable-pavilion' }}

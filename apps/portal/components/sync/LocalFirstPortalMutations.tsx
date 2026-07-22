@@ -54,6 +54,10 @@ function isEstimateBlockedConflict(error: unknown): error is ApiError {
   );
 }
 
+function isQuoteHandoffBlockedConflict(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 422;
+}
+
 function isValidationConflict(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 400 || error.status === 403 || error.status === 409 || error.status === 423);
 }
@@ -344,25 +348,36 @@ export default function LocalFirstPortalMutations() {
           } as const;
         }
 
-        const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/projects/${encodeURIComponent(payload.projectId)}/quotes`, {
-          method: 'POST',
-          body: JSON.stringify({ estimateVersionId: resolvedEstimateId }),
-          skipSaveTracking: true,
-        });
+        try {
+          const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/projects/${encodeURIComponent(payload.projectId)}/quotes`, {
+            method: 'POST',
+            body: JSON.stringify({ estimateVersionId: resolvedEstimateId }),
+            skipSaveTracking: true,
+          });
 
-        if (!res.quoteVersion) throw new Error('Quote not created');
-        replaceQuoteDetailCache(queryClient, hostKey, payload.projectId, payload.localQuoteId, res.quoteVersion);
-        await registerLocalFirstIdAlias(payload.localQuoteId, res.quoteVersion.id);
-        void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
-          includeQuotes: true,
-          includeEstimates: true,
-          includeProjectDetail: false,
-        });
+          if (!res.quoteVersion) throw new Error('Quote not created');
+          replaceQuoteDetailCache(queryClient, hostKey, payload.projectId, payload.localQuoteId, res.quoteVersion);
+          await registerLocalFirstIdAlias(payload.localQuoteId, res.quoteVersion.id);
+          void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
+            includeQuotes: true,
+            includeEstimates: true,
+            includeProjectDetail: false,
+          });
 
-        return {
-          kind: 'success',
-          clearWorkingCopy: true,
-        } as const;
+          return {
+            kind: 'success',
+            clearWorkingCopy: true,
+          } as const;
+        } catch (error) {
+          if (isQuoteHandoffBlockedConflict(error)) {
+            return {
+              kind: 'conflict',
+              message: error.message,
+              serverSnapshot: error.body,
+            } as const;
+          }
+          throw error;
+        }
       },
     );
 

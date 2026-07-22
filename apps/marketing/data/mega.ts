@@ -17,7 +17,7 @@ export const sections: MegaSection[] = [
       {
         title: 'Pitched pergola →',
         href: '/products/pergolas/pitched',
-        desc: 'Clean lines for narrow eaves. Efficient spans. Strong aluminium frame.',
+        desc: 'A clean single roof plane coordinated with eaves, height, fall and drainage.',
         icon: 'square'
       },
       {

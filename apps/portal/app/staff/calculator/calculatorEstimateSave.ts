@@ -16,6 +16,7 @@ import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
   buildEstimatePayloadFromDetail,
+  buildQuoteHandoffPreviewFromEstimateDetail,
   buildNextEstimateVersionLabel,
   buildOptimisticEstimateDetail,
   createLocalEstimateId,
@@ -52,6 +53,7 @@ type WarningForPayload = { level: 'critical' | 'review' | 'info'; message: strin
 type SaveCalculatorEstimateRequest = {
   createDesignRequest?: { priorityTier: DesignRequestPriorityTier } | null;
   saveMode?: EstimateSaveMode;
+  preserveReason?: string;
 };
 
 type SaveCalculatorEstimateCallbacks = {
@@ -67,6 +69,7 @@ export type CalculatorEstimateSaveOutcome = {
   operation: 'created' | 'updated';
   saveMode: EstimateSaveMode;
   pricingChanged: boolean;
+  quotePreview: ReturnType<typeof buildQuoteHandoffPreviewFromEstimateDetail>;
 };
 
 type SaveCalculatorEstimateServices = {
@@ -266,10 +269,15 @@ export async function saveCalculatorEstimate(
     if (estimateIdToUpdate && effectiveSaveMode === 'preserve_current') {
       const currentInputs = calculatorInputsFromEstimateDetail(currentEstimate!);
       const pricingChanged = hasPricingAffectingCalculatorInputChanges(currentInputs, input.values);
+      if (pricingChanged && (input.request?.preserveReason?.trim().length ?? 0) < 10) {
+        callbacks.fail('Enter a reason for keeping stored costing, or choose Reprice and save.');
+        return null;
+      }
       const estimatePayload = buildEstimatePayloadPreservingCurrentPricing({
         basePayload: buildEstimatePayloadFromDetail(currentEstimate!),
         inputs: input.values,
         pricingChanged,
+        preserveReason: input.request?.preserveReason,
       });
 
       const optimisticEstimate = await writeOptimisticEstimate({
@@ -314,6 +322,7 @@ export async function saveCalculatorEstimate(
         operation: 'updated',
         saveMode: effectiveSaveMode,
         pricingChanged,
+        quotePreview: buildQuoteHandoffPreviewFromEstimateDetail(optimisticEstimate),
       };
     }
 
@@ -420,6 +429,7 @@ export async function saveCalculatorEstimate(
         operation: 'updated',
         saveMode: effectiveSaveMode,
         pricingChanged: false,
+        quotePreview: buildQuoteHandoffPreviewFromEstimateDetail(optimisticEstimate),
       };
     }
 
@@ -466,6 +476,7 @@ export async function saveCalculatorEstimate(
       operation: 'created',
       saveMode: effectiveSaveMode,
       pricingChanged: false,
+      quotePreview: buildQuoteHandoffPreviewFromEstimateDetail(optimisticEstimate),
     };
   } catch (err) {
     callbacks.fail(err instanceof Error ? err.message : 'Failed to save design');

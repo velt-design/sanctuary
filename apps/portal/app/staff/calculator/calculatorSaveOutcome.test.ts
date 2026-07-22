@@ -9,6 +9,7 @@ const outcome: CalculatorEstimateSaveOutcome = {
   operation: 'updated',
   saveMode: 'preserve_current',
   pricingChanged: true,
+  quotePreview: { lineItems: [], totalIncGstCents: 0, blockingIssues: [] },
 };
 
 describe('calculator save outcome UI', () => {
@@ -45,5 +46,22 @@ describe('calculator save outcome UI', () => {
     expect(preserved.quoteDetail).toContain('not the Live calculator preview');
     expect(repriced.costingDetail).toContain('Live calculator costing result');
     expect(repriced.quoteDetail).toContain('customer-pricing rules');
+  });
+
+  it('blocks handoff when the saved quote mapping has a commercial blocker', () => {
+    const blocked = buildCalculatorSaveOutcomeUi(
+      {
+        ...outcome,
+        quotePreview: {
+          lineItems: [],
+          totalIncGstCents: 0,
+          blockingIssues: ['Pool blind needs valid dimensions and selections before a quote can be created.'],
+        },
+      },
+      { status: 'synced' },
+    );
+
+    expect(blocked.quoteDisabled).toBe(true);
+    expect(blocked.quoteBlockedDetail).toContain('Pool blind');
   });
 });

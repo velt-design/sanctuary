@@ -22,7 +22,7 @@ type CalculatorUiWarningGroups = {
   warningsHelperText: string | undefined;
 };
 
-export type CalculatorQuoteStatusActionKey = 'selectProject' | 'openProject' | 'openIssues' | 'openInfills';
+export type CalculatorQuoteStatusActionKey = 'selectProject' | 'openProject' | 'openIssues' | 'openBlinds' | 'openInfills';
 
 type CalculatorQuoteStatusItem = {
   id: string;
@@ -103,6 +103,7 @@ export function buildCalculatorQuoteStatusUi({
   hasProject,
   projectHasContact,
   hasModuleErrors,
+  invalidBlindCount,
   engineError,
   resultFreshness,
   infillItems,
@@ -112,6 +113,7 @@ export function buildCalculatorQuoteStatusUi({
   hasProject: boolean;
   projectHasContact: boolean;
   hasModuleErrors: boolean;
+  invalidBlindCount: number;
   engineError: string | null | undefined;
   resultFreshness: CalculatorResultFreshness;
   infillItems: InfillLineItem[];
@@ -142,6 +144,16 @@ export function buildCalculatorQuoteStatusUi({
       detail: hasModuleErrors ? 'Fix validation errors' : 'OK',
       actionLabel: hasModuleErrors ? 'View errors' : undefined,
       actionKey: hasModuleErrors ? 'openIssues' : undefined,
+    },
+    {
+      id: 'blinds',
+      label: 'Blinds priced',
+      level: invalidBlindCount > 0 ? 'block' : 'ok',
+      detail: invalidBlindCount > 0
+        ? `${invalidBlindCount} blind${invalidBlindCount === 1 ? '' : 's'} need valid dimensions and selections`
+        : 'OK',
+      actionLabel: invalidBlindCount > 0 ? 'Review blinds' : undefined,
+      actionKey: invalidBlindCount > 0 ? 'openBlinds' : undefined,
     },
     {
       id: 'engine',

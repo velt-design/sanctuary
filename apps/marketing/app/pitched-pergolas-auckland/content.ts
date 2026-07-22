@@ -52,7 +52,7 @@ export const pitchedPergolasConfig = {
     { kind: 'link-cards', id: 'pitched-next-decisions', tone: 'neutral', eyebrow: 'Compare before choosing', title: 'Place the single plane in the wider brief', items: [
       { title: 'Compare a central ridge', text: 'Review the added volume and end condition of a gable pergola.', href: '/gable-pergolas-auckland', linkLabel: 'Open the gable guide' },
       { title: 'Resolve difficult high and low edges', text: 'Use the custom guide for constrained attachments, level changes, longer openings and renovation coordination.', href: '/custom-pergolas-auckland', linkLabel: 'Open the custom guide' },
-      { title: 'Compare the complete scope', text: 'Take price, drainage responsibilities and approval allowances to the cluster cost owner.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
+      { title: 'Compare the complete scope', text: 'Review price factors, drainage responsibilities and approval allowances in the Pergola Cost guide.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
     ] },
     { kind: 'faq', id: 'pitched-faq', tone: 'elevated', eyebrow: 'Questions along the roof plane', title: 'What to confirm before choosing a pitched pergola', intro: 'The final section depends on the house, site, selected products and completed design.', items: faqItems },
   ],

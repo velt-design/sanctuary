@@ -272,7 +272,7 @@ describe('saveCalculatorEstimate', () => {
         activeEditEstimateId: 'estimate-1',
         isEditingDesign: true,
         loadedEstimateDetail: makeEstimateDetail({ isLocked: true }),
-        request: { saveMode: 'preserve_current' },
+        request: { saveMode: 'preserve_current', preserveReason: 'Customer-approved historical price.' },
         result: null,
         resultModules: [],
       },
@@ -281,6 +281,34 @@ describe('saveCalculatorEstimate', () => {
 
     expect(harness.callbacks.fail).toHaveBeenCalledWith(
       'This design is locked because it has been sent with a quote and can no longer be edited.',
+    );
+    expect(saved.outcome).toBeNull();
+    expect(harness.services.enqueueMutation).not.toHaveBeenCalled();
+  });
+
+  it('requires a meaningful reason before changed inputs can keep stored costing', async () => {
+    const previousInputs = makeInputs();
+    const nextInputs = {
+      ...previousInputs,
+      modules: [{ ...previousInputs.modules[0]!, projectionM: '8' }],
+    };
+    const harness = makeHarness({ estimateMetas: [makeMeta('estimate-1', 'V2')] });
+
+    const saved = await saveWithDefaults(
+      {
+        activeEditEstimateId: 'estimate-1',
+        isEditingDesign: true,
+        loadedEstimateDetail: makeEstimateDetail({ inputs: previousInputs }),
+        request: { saveMode: 'preserve_current', preserveReason: 'Too short' },
+        result: null,
+        resultModules: [],
+        values: nextInputs,
+      },
+      harness,
+    );
+
+    expect(harness.callbacks.fail).toHaveBeenCalledWith(
+      'Enter a reason for keeping stored costing, or choose Reprice and save.',
     );
     expect(saved.outcome).toBeNull();
     expect(harness.services.enqueueMutation).not.toHaveBeenCalled();
@@ -299,7 +327,7 @@ describe('saveCalculatorEstimate', () => {
         activeEditEstimateId: 'estimate-1',
         isEditingDesign: true,
         loadedEstimateDetail: makeEstimateDetail({ inputs: previousInputs }),
-        request: { saveMode: 'preserve_current' },
+        request: { saveMode: 'preserve_current', preserveReason: 'Customer-approved historical price.' },
         result: null,
         resultModules: [],
         values: nextInputs,
@@ -331,14 +359,17 @@ describe('saveCalculatorEstimate', () => {
       }),
     });
     expect(harness.services.clearWorkingCopy).toHaveBeenCalledWith('calculator:draft:test');
-    expect(saved.outcome).toEqual({
+    expect(saved.outcome).toEqual(expect.objectContaining({
       estimateId: 'estimate-1',
       projectId: 'project-1',
       versionLabel: 'V2',
       operation: 'updated',
       saveMode: 'preserve_current',
       pricingChanged: true,
-    });
+      quotePreview: expect.objectContaining({ lineItems: expect.any(Array) }),
+    }));
+    expect(saved.outcome?.quotePreview.lineItems.length).toBeGreaterThan(0);
+    expect(saved.outcome?.quotePreview.totalIncGstCents).toBeGreaterThan(0);
   });
 
   it('rebuilds site-costing payloads for reprice edit saves', async () => {
@@ -369,14 +400,15 @@ describe('saveCalculatorEstimate', () => {
         }),
       }),
     });
-    expect(saved.outcome).toEqual({
+    expect(saved.outcome).toEqual(expect.objectContaining({
       estimateId: 'estimate-1',
       projectId: 'project-1',
       versionLabel: 'V2',
       operation: 'updated',
       saveMode: 'reprice_latest',
       pricingChanged: false,
-    });
+      quotePreview: expect.objectContaining({ lineItems: expect.any(Array) }),
+    }));
   });
 
   it('creates a local estimate, prepends optimistic cache state, and preserves the next version label', async () => {
@@ -405,14 +437,15 @@ describe('saveCalculatorEstimate', () => {
         createDesignRequest: null,
       }),
     });
-    expect(saved.outcome).toEqual({
+    expect(saved.outcome).toEqual(expect.objectContaining({
       estimateId: 'local-estimate:test',
       projectId: 'project-1',
       versionLabel: 'V4',
       operation: 'created',
       saveMode: 'reprice_latest',
       pricingChanged: false,
-    });
+      quotePreview: expect.objectContaining({ lineItems: expect.any(Array) }),
+    }));
   });
 
   it('passes calculator-generated design request payloads through estimate create mutations', async () => {

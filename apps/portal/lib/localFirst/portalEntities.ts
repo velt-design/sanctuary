@@ -8,7 +8,7 @@ import { upsertContactAcrossIndexCaches } from '../queries/contactsIndex';
 import { patchProjectSnapshot } from '../queries/projectCache';
 import type { ProjectNote, ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
 import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS, applyDepositPercentToTerms } from '../quotes/defaults';
-import { buildQuoteLineItemsFromEstimate } from '../quotes/mapping';
+import { assertQuoteEstimateMappingReady, buildQuoteLineItemsFromEstimate } from '../quotes/mapping';
 import type { QuoteLineItem, QuoteVersion, QuoteVersionDetail } from '../quotes/types';
 import { totalsFromLineItems } from '../quotes/utils';
 import type { Contact } from '../types/contact';
@@ -219,6 +219,39 @@ function toLegacyEstimate(detail: EstimateDetail): Estimate | null {
   };
 }
 
+type QuoteHandoffPreview = {
+  lineItems: Array<{
+    description: string;
+    qty: number;
+    unitPriceIncGstCents: number;
+    lineTotalIncGstCents: number;
+  }>;
+  totalIncGstCents: number;
+  blockingIssues: string[];
+};
+
+export function buildQuoteHandoffPreviewFromEstimateDetail(detail: EstimateDetail): QuoteHandoffPreview {
+  const estimate = toLegacyEstimate(detail);
+  if (!estimate) {
+    return {
+      lineItems: [],
+      totalIncGstCents: 0,
+      blockingIssues: ['The saved estimate snapshot is unavailable for quote handoff.'],
+    };
+  }
+  const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  return {
+    lineItems: mapping.items.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: item.lineTotalIncGstCents,
+    })),
+    totalIncGstCents: mapping.items.reduce((sum, item) => sum + item.lineTotalIncGstCents, 0),
+    blockingIssues: mapping.blockingIssues.map((issue) => issue.message),
+  };
+}
+
 function quoteProjectFieldsFromEstimate(detail: EstimateDetail): QuoteVersionDetail['project'] {
   const snapshot = asRecord(detail.calculatorSnapshot);
   const outputs = asRecord(snapshot?.outputs);
@@ -375,7 +408,9 @@ export function buildOptimisticQuoteDetail(args: {
   const quoteRef = quoteProject.quoteRef ?? '';
   const versionNumber = nextQuoteVersionNumber(args.existingQuotes);
 
-  const mappedItems = estimate ? buildQuoteLineItemsFromEstimate(estimate).items : [];
+  const mapping = estimate ? buildQuoteLineItemsFromEstimate(estimate) : null;
+  if (mapping) assertQuoteEstimateMappingReady(mapping);
+  const mappedItems = mapping?.items ?? [];
   const lineItems: QuoteLineItem[] = mappedItems.map((item, idx) => ({
     id: `${args.quoteVersionId}:line:${idx + 1}`,
     description: item.description,

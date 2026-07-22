@@ -66,6 +66,7 @@ function renderSave(overrides?: Partial<Parameters<typeof SaveConfirmationConten
         infoUiWarnings: [],
       }}
       confirmAcknowledgeWarnings={false}
+      pricingPreserveReason=""
       confirmRequestDesign={false}
       confirmRequestDesignPriority="UNPRICED"
       generateError={null}
@@ -73,6 +74,7 @@ function renderSave(overrides?: Partial<Parameters<typeof SaveConfirmationConten
       hasStatusBlockers={false}
       hasResult
       onConfirmAcknowledgeWarningsChange={noop}
+      onPricingPreserveReasonChange={noop}
       onConfirmRequestDesignChange={noop}
       onConfirmRequestDesignPriorityChange={noop}
       onCancel={noop}
@@ -140,8 +142,10 @@ describe('CalculatorSaveDialogs', () => {
     expect(markup).toContain('Review (acknowledge to continue)');
     expect(markup).toContain('Info');
     expect(markup).toContain('I acknowledge the review warnings');
-    expect(markup).toContain('Save design — keep stored costing');
+    expect(markup).toContain('Reason for keeping stored costing');
+    expect(markup).toContain('Keep stored costing');
     expect(markup).toContain('Reprice and save');
+    expect(markup).toContain('Repricing is recommended.');
     expect(markup).toContain('Save failed.');
   });
 
@@ -157,7 +161,12 @@ describe('CalculatorSaveDialogs', () => {
         infoUiWarnings: [],
       },
     });
-    const enabledMarkup = renderSave({ isEditingDesign: true, pricingComparison, confirmAcknowledgeWarnings: true });
+    const enabledMarkup = renderSave({
+      isEditingDesign: true,
+      pricingComparison,
+      confirmAcknowledgeWarnings: true,
+      pricingPreserveReason: 'Manager approved historical price.',
+    });
 
     expect(staleMarkup).toContain('disabled=""');
     expect(criticalMarkup).toContain('Critical warning.');

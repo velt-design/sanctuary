@@ -78,6 +78,8 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Command-centre reads likewise reject an errored bounded relationship or selected-estimate detail read. Missing exact quote source and missing stored quote price are successful explicit unavailable states, not opportunities to substitute another estimate.
 - Command-centre mutations return stable `400`/`403`/`404`/`409`/`500` failures. If the database command committed but the refreshed read fails, return `200` with `committed: true` and `refreshRequired: true`; clients must refresh and must not repeat the command.
 - Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
+- Estimate actual-cost calibration uses `requireStaffContext()` and the returned auth-bound client. Blank or non-negative actuals may be saved as a draft; completing a review requires materials, install, and overhead. Invalid payloads return `400`, missing estimates return `404`, and table/schema failures remain `500`.
+- Quote create and estimate-refresh routes return `422` when the shared estimate-to-quote mapper reports a commercial blocker such as an invalid blind. This validation failure must not be treated as a transient server error or silently replaced with a zero-dollar line.
 
 ## Route Ownership
 

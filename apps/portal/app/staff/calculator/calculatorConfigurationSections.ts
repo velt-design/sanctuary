@@ -11,6 +11,8 @@ export type CalculatorConfigurationField = {
   onChange?: (next: string | boolean) => void;
   options?: FieldOption[];
   disabled?: boolean;
+  min?: number | string;
+  max?: number | string;
   helperText?: string;
   error?: string;
   onAction?: () => void;

@@ -248,3 +248,18 @@ export function removeCalculatorModule(
 export function calculatorPergolaOptions(values: CalculatorInputs): CalculatorPergola[] {
   return normalizePergolasForUi(values.pergolas);
 }
+
+export function renameCalculatorPergola(
+  values: CalculatorInputs,
+  pergolaId: string,
+  nextLabel: string,
+): CalculatorInputs {
+  const pergolas = normalizePergolasForUi(values.pergolas);
+  const index = pergolas.findIndex((pergola) => pergola.id === pergolaId);
+  if (index < 0) return values;
+  const trimmed = nextLabel.trim();
+  if (!trimmed || trimmed === pergolas[index]?.label) return { ...values, pergolas };
+  const updated = pergolas.slice();
+  updated[index] = { ...updated[index], label: trimmed };
+  return { ...values, pergolas: updated };
+}

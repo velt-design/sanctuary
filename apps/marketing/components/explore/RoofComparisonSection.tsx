@@ -7,10 +7,10 @@ import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 type RoofTypeFitId = 'acrylic' | 'timber' | 'combo';
 
-type RoofTypeFitMeters = {
-  daylight: 1 | 2 | 3 | 4 | 5;
-  heatGlare: 1 | 2 | 3 | 4 | 5;
-  rainNoise: 1 | 2 | 3 | 4 | 5;
+type RoofTypeFitConsiderations = {
+  daylight: string;
+  heatGlare: string;
+  rainNoise: string;
 };
 
 type RoofTypeFitMedia = {
@@ -20,18 +20,30 @@ type RoofTypeFitMedia = {
   playbackRate: number;
 };
 
-const ROOF_TYPE_FIT_CONFIG: Record<RoofTypeFitId, { label: string; meters: RoofTypeFitMeters }> = {
+const ROOF_TYPE_FIT_CONFIG: Record<RoofTypeFitId, { label: string; considerations: RoofTypeFitConsiderations }> = {
   acrylic: {
     label: 'Acrylic',
-    meters: { daylight: 5, heatGlare: 3, rainNoise: 2 },
+    considerations: {
+      daylight: 'Depends on the exact clear, opal or tinted sheet and the roof composition.',
+      heatGlare: 'Confirm product-specific solar data, then assess orientation, roof depth and adjoining rooms.',
+      rainNoise: 'Depends on the selected sheet, supports, roof geometry and complete installed assembly.',
+    },
   },
   timber: {
     label: 'Timber sarking',
-    meters: { daylight: 2, heatGlare: 5, rainNoise: 5 },
+    considerations: {
+      daylight: 'Solid roof zones change overhead daylight. Review any acrylic zones and nearby windows together.',
+      heatGlare: 'Thermal and shade behaviour depend on the roofing, insulation, lining and site conditions.',
+      rainNoise: 'Sound depends on the full roof build-up, spans, fixings and junction details.',
+    },
   },
   combo: {
     label: 'Combination',
-    meters: { daylight: 4, heatGlare: 4, rainNoise: 4 },
+    considerations: {
+      daylight: 'Acrylic and solid zones can be positioned around different daylight needs.',
+      heatGlare: 'Assess each roof zone and transition against sun direction, shade and adjoining rooms.',
+      rainNoise: 'Different roof zones can sound different; confirm the complete assembly rather than a category score.',
+    },
   },
 };
 
@@ -69,17 +81,14 @@ const ROOF_TYPE_FIT_COPY: Record<RoofTypeFitId, string> = {
 };
 
 const ROOF_TYPE_FIT_ROWS: Array<{
-  key: keyof RoofTypeFitMeters;
+  key: keyof RoofTypeFitConsiderations;
   label: string;
 }> = [
   { key: 'daylight', label: 'Daylight' },
-  { key: 'heatGlare', label: 'Heat & glare' },
-  { key: 'rainNoise', label: 'Rain-noise' },
+  { key: 'heatGlare', label: 'Shade, heat & glare' },
+  { key: 'rainNoise', label: 'Rain sound' },
 ];
 
-const ROOF_TYPE_BAR_FILLED_COLOR = '#3a3d44';
-const ROOF_TYPE_BAR_UNFILLED_COLOR = '#dfe2e6';
-const ROOF_TYPE_BAR_UNFILLED_BORDER_COLOR = '#cfd3d8';
 const ROOF_TYPE_TOGGLE_ACTIVE_COLOR = BRAND_ACCENT_HEX;
 const INITIAL_VIDEO_READY_STATE: Record<RoofTypeFitId, boolean> = {
   acrylic: false,
@@ -242,7 +251,7 @@ export default function RoofComparisonSection({ debug, className, variant = 'def
                 <div className="roof-comparison__heading">
                   <p className="roof-comparison__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Roof response</p>
                   <h3 className="roof-comparison__title mt-[10px] text-balance text-[clamp(26px,3.1vw,44px)] font-semibold leading-[1.06] tracking-[-0.018em] text-ink">
-                    Compare how each roof type performs.
+                    Compare what each roof type asks you to consider.
                   </h3>
                 </div>
 
@@ -296,47 +305,11 @@ export default function RoofComparisonSection({ debug, className, variant = 'def
                   )}
                 >
                   {ROOF_TYPE_FIT_ROWS.map((row) => {
-                    const level = selectedConfig.meters[row.key];
-                    const fillPercent = (level / 5) * 100;
+                    const consideration = selectedConfig.considerations[row.key];
                     return (
-                      <div key={row.key} className="roof-comparison__meter-row grid grid-cols-1 gap-y-[14px] sm:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] sm:items-center sm:gap-x-3 sm:gap-y-0">
+                      <div key={row.key} className="roof-comparison__meter-row grid grid-cols-1 gap-y-[10px] border-b border-page/70 pb-4 sm:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] sm:items-start sm:gap-x-5 sm:gap-y-0">
                         <span className="roof-comparison__meter-label text-[14px] font-medium uppercase tracking-[0.05em] text-ink md:text-[15px]">{row.label}</span>
-
-                        <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full">
-                          <div className="relative h-[7px] md:h-[8px]">
-                            <div className="absolute inset-0 grid grid-cols-5 gap-1.5">
-                              {Array.from({ length: 5 }, (_, index) => (
-                                <span
-                                  key={`${row.key}-base-${index}`}
-                                  className="border [border-width:var(--bw)]"
-                                  style={{
-                                    backgroundColor: ROOF_TYPE_BAR_UNFILLED_COLOR,
-                                    borderColor: ROOF_TYPE_BAR_UNFILLED_BORDER_COLOR,
-                                  }}
-                                />
-                              ))}
-                            </div>
-
-                            <div
-                              className="absolute inset-0 grid grid-cols-5 gap-1.5"
-                              style={{
-                                clipPath: `inset(0 ${100 - fillPercent}% 0 0)`,
-                                transition: prefersReducedMotion ? 'none' : 'clip-path 260ms cubic-bezier(0.22, 0.61, 0.36, 1)',
-                              }}
-                            >
-                              {Array.from({ length: 5 }, (_, index) => (
-                                <span
-                                  key={`${row.key}-fill-${index}`}
-                                  className="border [border-width:var(--bw)]"
-                                  style={{
-                                    backgroundColor: ROOF_TYPE_BAR_FILLED_COLOR,
-                                    borderColor: ROOF_TYPE_BAR_FILLED_COLOR,
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
+                        <p className="m-0 text-[15px] leading-[1.5] text-muted md:text-[16px]">{consideration}</p>
                       </div>
                     );
                   })}

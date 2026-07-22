@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QuoteHandoffBlockedError } from '@/lib/quotes/mapping';
 
 const requireStaffSession = vi.fn();
 const parseJsonBody = vi.fn();
@@ -68,5 +69,21 @@ describe('POST /api/quotes/[quoteVersionId]/refresh-from-estimate', () => {
 
     expect(res.status).toBe(423);
     await expect(res.json()).resolves.toEqual({ error: 'Quote is locked', code: 'QUOTE_LOCKED' });
+  });
+
+  it('returns 422 when the source estimate has blocked quote lines', async () => {
+    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' } });
+    parseJsonBody.mockResolvedValue({ ok: true, body: { estimateVersionId: 'est_2' } });
+    refreshDraftQuoteVersionFromEstimate.mockRejectedValue(
+      new QuoteHandoffBlockedError('Quote handoff blocked: Pool blind needs valid dimensions.'),
+    );
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/quotes/qv_1/refresh-from-estimate', { method: 'POST' }), {
+      params: Promise.resolve({ quoteVersionId: 'qv_1' }),
+    });
+
+    expect(res.status).toBe(422);
+    await expect(res.json()).resolves.toEqual({ error: 'Quote handoff blocked: Pool blind needs valid dimensions.' });
   });
 });

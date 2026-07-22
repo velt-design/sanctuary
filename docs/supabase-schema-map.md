@@ -34,6 +34,7 @@ Tables/RPCs:
 - `contacts`
 - `projects`
 - `estimates`
+- `estimate_cost_actuals`
 - `project_task_checks`
 - `project_notes`
 - `portal_users`
@@ -47,6 +48,7 @@ Primary write path:
 
 - Contact/project create and update routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, and `apps/portal/app/api/staff/v1/projects`.
 - Estimate create/update routes under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`, usually reached through local-first mutation handlers.
+- Staff actual-cost calibration reads/writes use `/api/staff/v1/estimates/[estimateId]/actual-costs`, the request's auth-bound Supabase client, and `apps/portal/lib/estimateActuals/server.ts`. The comparison always reads the frozen estimate snapshot; it does not invoke a costing engine or reprice history.
 - Project task action routes and project snapshot action routes under `apps/portal/app/api/staff/v1/projects`.
 - Project notes (Activity tab) writes through `apps/portal/app/api/staff/v1/projects/[projectId]/notes` and `[noteId]`, reached through `portal.project.note.{create,update,delete}` local-first handlers.
 - Portal user creation through auth/admin helpers and invite/admin tooling, not general staff UI table writes.
@@ -66,6 +68,7 @@ Access rule:
 - `portal_users` gates staff/admin access and must remain server/admin governed.
 - `portal_search_v1()` is executable only by `authenticated` and `service_role`, remains `SECURITY INVOKER`, reports `has_portal_access()` in-band, and relies on Projects/Contacts RLS. `portal_search_document()` and `portal_search_bigrams()` are immutable, data-free helpers with the same execute grants. Projects materializes `portal_search_document` and `portal_search_bigrams`; Contacts also materializes `portal_search_name_bigrams` for linked-project discovery. GIN indexes cover those generated columns so RLS planning does not fall back to rebuilding arrays per row. The Projects and Contacts `portal_access_all` policies retain the same authenticated `has_portal_access()` decision for every operation but wrap the stable helper in a scalar `SELECT` so PostgreSQL evaluates it once per statement. Browser code must continue to use the staff API rather than call these RPCs directly.
 - Estimate writes must preserve quote-backed edit locks such as `ESTIMATE_LOCKED`.
+- `estimate_cost_actuals` is one staff-owned downstream record per estimate. Authenticated table access is RLS-gated through `has_portal_access()`; insert/update must stamp `updated_by = auth.uid()`. The ordered owner migration is `supabase/migrations/20260722_000005_estimate_cost_actuals.sql`.
 - `project_notes` row-level security restricts inserts to the authenticated portal user (the row's `author_id` must equal `auth.uid()`); updates and deletes are restricted to the author or any admin (`is_portal_admin()`). Notes are soft-deleted (`deleted_at`); queries that surface notes to staff filter `deleted_at IS NULL`.
 
 Migration source:

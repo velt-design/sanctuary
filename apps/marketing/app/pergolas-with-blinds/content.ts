@@ -36,8 +36,8 @@ export const pergolasWithBlindsConfig = {
     ] },
     { kind: 'projects', id: 'blind-projects', eyebrow: 'Completed edges, different reasons', title: 'Blinds respond to the brief, not a standard elevation', intro: 'These Sanctuary projects show screened edges serving residential, coastal and hospitality settings.', items: [
       { slug: 'tindalls-bay-pavilion', label: 'Wind and neighbouring outlook', summary: 'Mesh blinds were used along one side of a 108 square metre patio and carport project to address wind and privacy while retaining the coastal view.', facts: ['Targeted treatment on one edge', 'Mixed roof and blind scope'] },
-      { slug: 'waiheke-holiday-home', label: 'Concealed when open', summary: 'The perimeter beams on a 5.0 by 4.0 metre deck cover were planned with space for blind heads so the horizon stays clear when the edge is open.', facts: ['20 m² coastal deck cover', 'Blind heads coordinated with perimeter'] },
-      { slug: 'goodhome-commercial-terrace', label: 'A changing hospitality edge', summary: 'Blinds form part of a 67.7 square metre restaurant courtyard with roof, lighting and service requirements.', facts: ['10.09 x 6.7 m courtyard', 'Commercial controls and access context'] },
+      { slug: 'waiheke-holiday-home', label: 'Screens within a clean perimeter', summary: 'Screen integration forms part of this 5.0 by 4.0 metre deck cover, where the perimeter beam conceals the recorded roof fall and gutters.', facts: ['20 m² coastal deck cover', 'Screens included in the published project record'] },
+      { slug: 'goodhome-commercial-terrace', label: 'A changing hospitality edge', summary: 'Screens form part of a 67.7 square metre restaurant courtyard with its acrylic roof and lighting.', facts: ['10.09 x 6.7 m courtyard', 'Screens and lighting included in the published project record'] },
     ] },
     { kind: 'decision-cards', id: 'blind-decisions', tone: 'warm', eyebrow: 'Specify the moving boundary', title: 'Four decisions determine how the edge behaves', intro: 'Each choice should describe both the lowered condition and the open condition.', items: [
       { title: 'Purpose and direction', outcome: 'A clear reason for each blind instead of blanket enclosure.', consider: 'Wind direction, solar angle, privacy line, activity zone, season and time of day.' },
@@ -51,9 +51,9 @@ export const pergolasWithBlindsConfig = {
       { title: 'Products need exact guidance', text: 'Operating limits, controls, care and warranty conditions must come from the selected supplier documentation.' },
     ], links: [{ href: '/products/screens-walls/drop-down-blinds', label: 'Review drop-down blinds' }, { href: '/outdoor-rooms-auckland', label: 'Plan the complete outdoor room' }] },
     { kind: 'link-cards', id: 'blind-next-decisions', tone: 'neutral', eyebrow: 'Continue the edge brief', title: 'Keep the moving edge connected to the whole room', items: [
-      { title: 'Review the current blind product', text: 'Take system, operation and current specification questions to the product owner page.', href: '/products/screens-walls/drop-down-blinds', linkLabel: 'Open the blind product' },
+      { title: 'Review the current blind product', text: 'See current system, operation and specification guidance on the drop-down blind product page.', href: '/products/screens-walls/drop-down-blinds', linkLabel: 'Open the blind product' },
       { title: 'Plan the whole outdoor room', text: 'Coordinate furniture, services, roof and every open edge around how the room is used.', href: '/outdoor-rooms-auckland', linkLabel: 'Open the outdoor room guide' },
-      { title: 'Compare the complete scope', text: 'Take structural, electrical and installation allowances to the cluster cost owner.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
+      { title: 'Compare the complete scope', text: 'Review structural, electrical and installation allowances in the Pergola Cost guide.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
     ] },
     { kind: 'faq', id: 'pergolas-with-blinds-faq', tone: 'elevated', eyebrow: 'Questions about changing the edge', title: 'What to resolve before adding blinds to an Auckland pergola', intro: 'The answer depends on the opening, site exposure, selected system and completed pergola design.', items: faqItems },
   ],

@@ -22,7 +22,7 @@ export default function TimberSection() {
         },
         {
           label: 'Comfort',
-          text: 'Strong heat and glare reduction, plus noticeably softer rain noise than clear roofing alone.',
+          text: 'Shade, thermal and rain-sound behaviour depend on the complete roof build-up, including the roofing, insulation, lining and junctions.',
         },
         {
           label: 'Light',
@@ -30,7 +30,7 @@ export default function TimberSection() {
         },
         {
           label: 'Maintenance',
-          text: 'Requires periodic oiling or staining plus routine cleaning to maintain appearance over time.',
+          text: 'Cleaning and finish care should follow the current written guidance for the selected timber, coating and roof assembly.',
         },
       ]}
     />

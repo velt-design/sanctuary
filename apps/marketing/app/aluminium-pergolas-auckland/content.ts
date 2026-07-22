@@ -56,10 +56,10 @@ export const aluminiumPergolasConfig = {
       { title: 'Do not generalise coastal performance', text: 'Exposure, coating system, detailing, maintenance and product exclusions need to be checked for the actual property.' },
       { title: 'Do not detach warranty from product', text: 'The final scope should name the exact frame finish, roof products and current written warranties that apply.' },
     ], links: [{ href: '/custom-pergolas-auckland', label: 'Review the custom design approach' }, { href: '/pergolas-auckland', label: 'Review the broad planning guide' }] },
-    { kind: 'link-cards', id: 'aluminium-next-decisions', tone: 'neutral', eyebrow: 'Continue the specification', title: 'Take form, complexity and cost to their owner pages', items: [
+    { kind: 'link-cards', id: 'aluminium-next-decisions', tone: 'neutral', eyebrow: 'Continue the specification', title: 'Explore form, complexity and cost in more detail', items: [
       { title: 'Compare gable and pitched forms', text: 'See how ridge, pitch, fall and available height change the role of the aluminium frame.', href: '/gable-pergolas-auckland', linkLabel: 'Open the form guides' },
       { title: 'Resolve difficult connections', text: 'Use the custom guide for restricted posts, longer openings, changing levels and renovation coordination.', href: '/custom-pergolas-auckland', linkLabel: 'Open the custom guide' },
-      { title: 'Compare complete scope', text: 'Move price questions to the guide that owns inclusions, exclusions and estimate evidence.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
+      { title: 'Compare complete scope', text: 'Review inclusions, exclusions and the information needed for a useful estimate in the Pergola Cost guide.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
     ] },
     { kind: 'faq', id: 'aluminium-faq', tone: 'elevated', eyebrow: 'Material questions in context', title: 'What to confirm before specifying an aluminium pergola', intro: 'These answers stay general until the site, structure, finish and exact products are known.', items: faqItems },
   ],

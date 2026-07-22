@@ -66,6 +66,7 @@ function renderNavigator(overrides: Partial<Parameters<typeof CalculatorModuleNa
     onSelectModule: vi.fn(),
     onAddModule: vi.fn(),
     onAddPergola: vi.fn(),
+    onRenamePergola: vi.fn(),
     onDuplicateModule: vi.fn(),
     onMoveModule: vi.fn(),
     onRemoveModule: vi.fn(),
@@ -106,6 +107,16 @@ describe('CalculatorModuleNavigator', () => {
     const rail = document.querySelector('aside[aria-label="Module navigator"]') as HTMLElement;
     expect(rail.textContent).toContain('No modules in this pergola.');
     expect(rail.querySelector('button[aria-label="Add module to Pergola 2"]')).not.toBeNull();
+  });
+
+  it('commits a pergola name when the editable heading loses focus', () => {
+    const { props } = renderNavigator();
+    const input = document.querySelector('aside[aria-label="Module navigator"] input[aria-label="Name for Pergola 1"]') as HTMLInputElement;
+    act(() => {
+      input.value = 'Front patio';
+      input.dispatchEvent(new Event('focusout', { bubbles: true }));
+    });
+    expect(props.onRenamePergola).toHaveBeenCalledWith('pergola-1', 'Front patio');
   });
 
   it('selects modules and exposes fresh add and duplicate actions', () => {

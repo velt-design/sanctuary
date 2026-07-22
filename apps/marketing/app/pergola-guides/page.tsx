@@ -20,12 +20,6 @@ import './pergola-guides.css';
 
 const route = '/pergola-guides';
 const heroImage = '/images/project-warkworth-outdoor-room-01.jpg';
-const guideRoleLabels = {
-  service: 'Service guide',
-  'product-guide': 'Product guide',
-  'decision-guide': 'Decision guide',
-} as const;
-
 export const metadata: Metadata = {
   title: { absolute: 'Pergola Design Guides | Sanctuary Pergolas' },
   description:
@@ -199,7 +193,7 @@ export default function PergolaGuidesPage() {
                 >
                   <span className="guide-hub-card__number">{guide.number}</span>
                   <span className="guide-hub-card__heading">
-                    <small>{guideRoleLabels[guide.role]}</small>
+                    <small>{guide.label}</small>
                     <em>{guide.prompt}</em>
                     <strong>{guide.title}</strong>
                   </span>

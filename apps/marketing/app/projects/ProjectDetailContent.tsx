@@ -99,7 +99,10 @@ export default function ProjectDetailContent({
   ].filter(item => item.value);
 
   const TitleTag = titleAs;
-  const detailGallery = project.gallery.filter(image => image.src !== project.heroImage.src);
+  const leadHeroSlide = heroSlides[0] || project.heroImage;
+  const detailGallery = project.gallery.filter(image => (
+    image.src !== project.heroImage.src && image.src !== leadHeroSlide.src
+  ));
   const activeHeroSlide = heroSlides[activeSlide] || project.heroImage;
 
   return (

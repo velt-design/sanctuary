@@ -73,7 +73,7 @@ const copyTexts: HomePageContent['copyTexts'] = [
   'We deliver a clear design pack with drawings, key dimensions, beam sizes, roof fall and finishes. Lighting and screens are integrated. Approval locks scope for fabrication and a smooth installation.',
   'Your deposit secures the agreed production slot and materials. The team confirms the current programme for the completed scope and keeps the site start visible as preparation progresses.',
   'We protect surfaces, set out posts and beams, check fixings and complete the house junction to the agreed design. Wiring is concealed where the documented structure and trade scope allow it.',
-  "We advise on cleaning and maintenance so the structure and roofing keep performing well, and we send through your warranty certificate for your records. Before we leave, we make sure you're happy with the result and know how to get in touch if anything needs attention.",
+  "We provide the current care guidance and written warranty terms that apply to the agreed workmanship and selected products. Before we leave, we complete the final checks and make sure you know how to get in touch if anything needs attention.",
 ];
 
 const featuredProjectSlugs = [

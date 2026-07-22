@@ -181,6 +181,28 @@
   border-top: var(--ui-border-width) solid var(--ui-border);
 }
 
+.groupTitle input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-control);
+  padding: 4px 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.groupTitle input:hover {
+  border-color: var(--ui-border);
+}
+
+.groupTitle input:focus {
+  border-color: var(--ui-focus-colour);
+  background: var(--ui-surface-primary);
+  outline: none;
+}
+
 .moduleActions button {
   flex: 1 1 0;
   min-width: 0;

@@ -133,18 +133,18 @@ export const customPergolasConfig = {
         { title: 'Resolve responsibilities and scope', copy: 'Drawings, selections, assumptions, inclusions, exclusions and project-specific checks are brought into an agreed design and quotation.' },
       ],
     },
-    { kind: 'link-cards', id: 'custom-next-decisions', tone: 'neutral', eyebrow: 'Continue the brief', title: 'Take the next question to the page that owns it', intro: 'Keep the bespoke problem separate from detailed cost, form, room and commercial-coordination decisions.', items: [
+    { kind: 'link-cards', id: 'custom-next-decisions', tone: 'neutral', eyebrow: 'Continue the brief', title: 'Continue with the guide that answers the next question', intro: 'Keep the bespoke problem separate from detailed cost, form, room and commercial-coordination decisions.', items: [
       { title: 'Compare a defined project scope', text: 'See which inputs make an early cost discussion useful and which items must be shown in the total.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
       { title: 'Test a central ridge', text: 'Review how ridge height, pitch, eaves and end conditions shape a gable around the existing architecture.', href: '/gable-pergolas-auckland', linkLabel: 'Open the gable guide' },
       { title: 'Test a single roof plane', text: 'Review how the high edge, low edge, fall and drainage direction affect a mono-pitched connection.', href: '/pitched-pergolas-auckland', linkLabel: 'Open the pitched guide' },
       { title: 'Plan the whole outdoor room', text: 'Coordinate shelter, furniture, services and changing edges around the life below the roof.', href: '/outdoor-rooms-auckland', linkLabel: 'Open the outdoor room guide' },
-      { title: 'Coordinate a commercial project', text: 'Take operating constraints, stakeholder interfaces, access and handover requirements to the commercial service owner.', href: '/commercial-pergolas-auckland', linkLabel: 'Open the commercial guide' },
+      { title: 'Coordinate a commercial project', text: 'Review operating constraints, stakeholder interfaces, access and handover requirements in the commercial pergola guide.', href: '/commercial-pergolas-auckland', linkLabel: 'Open the commercial guide' },
     ] },
     { kind: 'link-cards', id: 'custom-product-context', tone: 'warm', eyebrow: 'Current product pages', title: 'Take product-level questions to the configuration being considered', intro: 'These pages describe current gable, pitched, box-perimeter and acrylic roof information. The custom review remains responsible for resolving non-standard junctions, supports and geometry.', items: [
       { title: 'Gable pergola configuration', text: 'Review Sanctuary\'s current gable product presentation before testing bespoke ridge, end and connection conditions.', href: '/products/pergolas/gable', linkLabel: 'Open the gable product' },
       { title: 'Pitched pergola configuration', text: 'Review Sanctuary\'s current pitched product presentation before testing bespoke high-edge, low-edge and drainage conditions.', href: '/products/pergolas/pitched', linkLabel: 'Open the pitched product' },
       { title: 'Box-perimeter configuration', text: 'Review the fixed-roof perimeter form before testing bespoke internal geometry, post positions and concealed drainage conditions.', href: '/products/pergolas/box-perimeter', linkLabel: 'Open box-perimeter' },
-      { title: 'Acrylic roof approach', text: 'Review the fixed acrylic roof owner page before testing bespoke glazing zones, daylight, house junctions and drainage.', href: '/acrylic-roof-pergolas-auckland', linkLabel: 'Open the acrylic page' },
+      { title: 'Acrylic roof approach', text: 'Review Sanctuary fixed acrylic roof options before testing bespoke glazing zones, daylight, house junctions and drainage.', href: '/acrylic-roof-pergolas-auckland', linkLabel: 'Open the acrylic page' },
     ] },
     {
       kind: 'faq', id: 'custom-pergolas-faq', tone: 'elevated', eyebrow: 'Questions about bespoke work', title: 'What to resolve when the answer is site-specific',

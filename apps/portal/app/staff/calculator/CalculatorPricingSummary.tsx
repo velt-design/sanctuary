@@ -4,7 +4,10 @@ import {
   calculatorResultFreshnessLabel,
   type CalculatorResultFreshness,
 } from './calculatorResultFreshness';
-import { calculateStaffCustomerPriceFromCostEx } from '@/lib/quotes/pricing';
+import {
+  calculateStaffCustomerPriceFromCostEx,
+  normalizeStaffQuoteDiscountPct,
+} from '@/lib/quotes/pricing';
 import styles from './CalculatorPricingSummary.module.css';
 
 export type CalculatorPricingSummaryProps = {
@@ -21,6 +24,7 @@ export type CalculatorPricingSummaryProps = {
   installDays?: number;
   blindCustomerPriceExGst?: number;
   blindCustomerPriceIncGst?: number;
+  quoteDiscountPct?: string | number;
   hasInfills: boolean;
 };
 
@@ -67,9 +71,14 @@ export default function CalculatorPricingSummary({
   installDays,
   blindCustomerPriceExGst,
   blindCustomerPriceIncGst,
+  quoteDiscountPct,
   hasInfills,
 }: CalculatorPricingSummaryProps) {
-  const customerPrice = calculateStaffCustomerPriceFromCostEx(internalTrueCostExGst);
+  const normalizedDiscountPct = normalizeStaffQuoteDiscountPct(quoteDiscountPct);
+  const customerPrice = calculateStaffCustomerPriceFromCostEx(internalTrueCostExGst, normalizedDiscountPct);
+  const undiscountedCustomerPrice = normalizedDiscountPct > 0
+    ? calculateStaffCustomerPriceFromCostEx(internalTrueCostExGst)
+    : null;
   const isLastValid = resultFreshness !== 'current' && customerPrice !== null;
   const customerPriceLabel = isLastValid
     ? 'Last valid customer price (inc GST)'
@@ -92,7 +101,7 @@ export default function CalculatorPricingSummary({
         </div>
         <div className={styles.compactMeta}>
           <span>Ex GST {formatCustomerPrice(customerPrice?.exGst)}</span>
-          <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
+          <span>{normalizedDiscountPct > 0 ? `${normalizedDiscountPct}% discount` : calculatorResultFreshnessLabel(resultFreshness)}</span>
         </div>
       </section>
     );
@@ -121,7 +130,16 @@ export default function CalculatorPricingSummary({
         <span className={styles.heroLabel}>{customerPriceLabel}</span>
         <strong className={styles.heroValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
         <span className={styles.heroEx}>Customer price (ex GST) {formatCustomerPrice(customerPrice?.exGst)}</span>
-        <span className={styles.heroExplanation}>1.25× internal true cost · pergola only</span>
+        <span className={styles.heroExplanation}>
+          {normalizedDiscountPct > 0
+            ? `${normalizedDiscountPct}% quote discount applied to pergola and site price`
+            : '1.25× internal true cost · pergola only'}
+        </span>
+        {undiscountedCustomerPrice ? (
+          <span className={styles.heroExplanation}>
+            Before discount {formatCustomerPrice(undiscountedCustomerPrice.incGst)} inc GST
+          </span>
+        ) : null}
       </div>
 
       <div className={styles.internalSection}>

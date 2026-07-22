@@ -43,6 +43,7 @@ type SaveConfirmationContentProps = {
   pricingComparison: CalculatorPricingComparison | null;
   warnings: WarningGroups;
   confirmAcknowledgeWarnings: boolean;
+  pricingPreserveReason: string;
   confirmRequestDesign: boolean;
   confirmRequestDesignPriority: DesignRequestPriorityTier;
   generateError: string | null;
@@ -50,6 +51,7 @@ type SaveConfirmationContentProps = {
   hasStatusBlockers: boolean;
   hasResult: boolean;
   onConfirmAcknowledgeWarningsChange: (checked: boolean) => void;
+  onPricingPreserveReasonChange: (reason: string) => void;
   onConfirmRequestDesignChange: (checked: boolean) => void;
   onConfirmRequestDesignPriorityChange: (tier: DesignRequestPriorityTier) => void;
   onCancel: () => void;
@@ -110,6 +112,7 @@ export function SaveConfirmationContent({
   pricingComparison,
   warnings,
   confirmAcknowledgeWarnings,
+  pricingPreserveReason,
   confirmRequestDesign,
   confirmRequestDesignPriority,
   generateError,
@@ -117,12 +120,21 @@ export function SaveConfirmationContent({
   hasStatusBlockers,
   hasResult,
   onConfirmAcknowledgeWarningsChange,
+  onPricingPreserveReasonChange,
   onConfirmRequestDesignChange,
   onConfirmRequestDesignPriorityChange,
   onCancel,
   onSave,
   onRepriceLatest,
 }: SaveConfirmationContentProps) {
+  const pricingInputsChanged = Boolean(isEditingDesign && pricingComparison?.pricingInputsChanged);
+  const commonSaveDisabled =
+    warnings.criticalUiWarnings.length > 0 ||
+    hasStatusBlockers ||
+    (warnings.reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
+    !hasResult ||
+    isGenerating;
+
   return (
     <>
       <div className={styles.modalHeader}>
@@ -152,7 +164,21 @@ export function SaveConfirmationContent({
         </section>
 
         {isEditingDesign && pricingComparison ? (
-          <PricingComparisonSection comparison={pricingComparison} />
+          <>
+            <PricingComparisonSection comparison={pricingComparison} />
+            {pricingInputsChanged ? (
+              <label className={dialogStyles.preserveReason}>
+                <span>Reason for keeping stored costing</span>
+                <textarea
+                  value={pricingPreserveReason}
+                  onChange={(event) => onPricingPreserveReasonChange(event.target.value)}
+                  placeholder="Example: customer-approved historical price; manager approval recorded in project notes"
+                  rows={3}
+                />
+                <small>Required only if you keep the older costing. Repricing is recommended.</small>
+              </label>
+            ) : null}
+          </>
         ) : (
           <section className={styles.modalSection} aria-label="Costing summary">
             <h3 className={styles.modalSectionTitle}>Internal costing</h3>
@@ -236,34 +262,43 @@ export function SaveConfirmationContent({
         <button type="button" className={styles.modalButtonSecondary} onClick={onCancel} disabled={isGenerating}>
           Cancel
         </button>
-        <button
-          type="button"
-          className={styles.modalButtonPrimary}
-          disabled={
-            warnings.criticalUiWarnings.length > 0 ||
-            hasStatusBlockers ||
-            (warnings.reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
-            !hasResult ||
-            isGenerating
-          }
-          onClick={onSave}
-        >
-          {isEditingDesign ? 'Save design — keep stored costing' : 'Save design'}
-        </button>
-        {isEditingDesign ? (
+        {pricingInputsChanged ? (
           <button
             type="button"
             className={styles.modalButtonSecondary}
-            disabled={
-              warnings.criticalUiWarnings.length > 0 ||
-              hasStatusBlockers ||
-              (warnings.reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
-              !hasResult ||
-              isGenerating
-            }
+            disabled={commonSaveDisabled || pricingPreserveReason.trim().length < 10}
+            onClick={onSave}
+          >
+            Keep stored costing
+          </button>
+        ) : null}
+        {isEditingDesign ? (
+          <button
+            type="button"
+            className={pricingInputsChanged ? styles.modalButtonPrimary : styles.modalButtonSecondary}
+            disabled={commonSaveDisabled}
             onClick={onRepriceLatest}
           >
             Reprice and save
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.modalButtonPrimary}
+            disabled={commonSaveDisabled}
+            onClick={onSave}
+          >
+            Save design
+          </button>
+        )}
+        {isEditingDesign && !pricingInputsChanged ? (
+          <button
+            type="button"
+            className={styles.modalButtonPrimary}
+            disabled={commonSaveDisabled}
+            onClick={onSave}
+          >
+            Save design — keep stored costing
           </button>
         ) : null}
       </div>

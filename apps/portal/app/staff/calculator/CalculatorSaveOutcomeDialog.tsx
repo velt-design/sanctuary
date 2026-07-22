@@ -10,6 +10,14 @@ import { buildCalculatorEstimateHandoffRoutes } from './calculatorSaveWorkflow';
 import sharedStyles from './CalculatorGrid.module.css';
 import styles from './CalculatorSaveOutcomeDialog.module.css';
 
+function formatMoney(cents: number): string {
+  return new Intl.NumberFormat('en-NZ', {
+    style: 'currency',
+    currency: 'NZD',
+    minimumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 export default function CalculatorSaveOutcomeDialog({
   outcome,
   onDismiss,
@@ -26,6 +34,7 @@ export default function CalculatorSaveOutcomeDialog({
   if (!outcome) return null;
 
   const ui = buildCalculatorSaveOutcomeUi(outcome, syncState);
+  const quotePreviewBlocked = outcome.quotePreview.blockingIssues.length > 0;
   const routes = buildCalculatorEstimateHandoffRoutes(outcome.projectId, outcome.estimateId);
   const navigate = (href: string) => {
     onDismiss();
@@ -63,6 +72,34 @@ export default function CalculatorSaveOutcomeDialog({
           <h3 className={sharedStyles.modalSectionTitle}>Next: customer quote</h3>
           <p className={styles.detail}>{ui.quoteDetail}</p>
           {ui.quoteBlockedDetail ? <p className={styles.blockedNote}>{ui.quoteBlockedDetail}</p> : null}
+          {outcome.quotePreview.lineItems.length ? (
+            <div className={styles.preview}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Quote line</th>
+                    <th>Qty</th>
+                    <th>Amount inc GST</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {outcome.quotePreview.lineItems.map((item, index) => (
+                    <tr key={`${index}:${item.description}`}>
+                      <td><pre>{item.description}</pre></td>
+                      <td>{item.qty}</td>
+                      <td>{formatMoney(item.lineTotalIncGstCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th colSpan={2}>{quotePreviewBlocked ? 'Mapped subtotal — quote blocked' : 'Customer quote total'}</th>
+                    <th>{formatMoney(outcome.quotePreview.totalIncGstCents)}</th>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : null}
         </section>
       </div>
 

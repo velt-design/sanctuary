@@ -4,7 +4,7 @@ Status: active approval register for public marketing copy.
 
 Public copy must not state a numeric or categorical claim from this register until the evidence, limitation, owner and review date are complete. Internal estimate data, project notes and old sales copy are not approval by themselves.
 
-The July 2026 guide-cluster pass removed ungoverned headline durations, combined warranty durations, category-wide UV and heat outcomes, generic span ranges, numeric wind thresholds, broad maintenance comparisons and absolute wind or rain language from indexable marketing pages. A browser regression reads every route in the generated sitemap. Those surfaces now use proposal-stage or exact-product wording until an owner approves evidence here. The outdated brochure endpoint is retired to the governed web guide library rather than treated as current claim evidence.
+The July 2026 guide-cluster pass removed ungoverned headline durations, combined warranty durations, category-wide UV and heat outcomes, generic span ranges, numeric wind thresholds, broad maintenance comparisons and absolute wind or rain language from indexable marketing pages. The final refinement also replaced homepage material scores with written considerations, qualified lighting and heater performance, aligned linked project detail with the current project summaries and removed unsupported blind-control detail. A browser regression reads every route in the generated sitemap. Those surfaces now use proposal-stage or exact-product wording until an owner approves evidence here. The outdated brochure endpoint is retired to the governed web guide library rather than treated as current claim evidence.
 
 | Claim area | Public wording status | Evidence required | Important limitation | Approval owner | Review date | Applies to |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -18,6 +18,7 @@ The July 2026 guide-cluster pass removed ungoverned headline durations, combined
 | Wind, span and structural capacity | Project-specific. Do not publish a general threshold. | Project engineering or approved system documentation for the exact assembly. | Site exposure, geometry, connection, material and loads determine the answer. | Sanctuary design lead and project engineer | Per project | Aluminium, form, custom and commercial pages |
 | Coastal suitability and maintenance | Pending approval. Use conditional project language only. | Coating-system documentation and current care schedule by exposure zone. | Finish, cut edges, dissimilar metals, cleaning and local exposure matter. | Sanctuary product lead | Pending | Aluminium and product pages |
 | Consent or approval outcome | Project-specific. Do not promise exemption or approval. | Current planning and building-control advice for the actual site and design. | Size, height, boundary, attachment, use and existing conditions can change requirements. | Sanctuary design lead and relevant authority | Per project | All service and guide pages |
+| Published project dimensions and accessory detail | Use only the current project record and avoid stronger hidden legacy detail. | Approved project file, drawings or as-built record for each published example. | KiwiRail currently records a 30.0 m by 3.0 m plan and 115 m² total area; the basis of the larger total needs confirmation. Screen or blind product and control detail must not be inferred from a generic project tag. | Sanctuary project and marketing leads | Pending for identified records | Project pages and guide evidence cards |
 
 ## Editorial fallback
 
@@ -25,6 +26,6 @@ When an approved claim is unavailable:
 
 - explain which project variables change the answer;
 - state what Sanctuary needs to assess it;
-- link to the page that owns the decision;
+- link to the relevant guide, product or service page;
 - avoid a placeholder number or an implied guarantee; and
 - record the approval dependency in this register rather than hiding it in page copy.

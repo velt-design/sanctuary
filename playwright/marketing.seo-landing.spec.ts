@@ -76,9 +76,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
     }
 
-    if (viewport.width <= 720) {
-      await expect(page.getByRole('link', { name: 'Send project details', exact: true })).toBeVisible();
-    }
+    await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
 
     if (capturePhase) {
       await mkdir(evidenceDirectory, { recursive: true });
@@ -131,6 +129,12 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
   await page.locator('#acrylic-enquiry-email').fill('test@example.com');
   await page.locator('#acrylic-enquiry-suburb').fill('Auckland');
   await page.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
+  await page.locator('#acrylic-enquiry-files').setInputFiles({
+    name: 'deck-context.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from('project context image'),
+  });
+  await expect(page.getByRole('list', { name: 'Selected files' })).toContainText('deck-context.jpg');
   await page.getByRole('button', { name: 'Send my project details' }).click();
 
   await expect(page.getByText('Thanks, we have received your project details.')).toBeVisible();
@@ -138,6 +142,7 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
     page: route,
     source: 'website',
     roofMaterials: ['acrylic', 'timber'],
+    files: [{ name: 'deck-context.jpg', size: 21, type: 'image/jpeg' }],
     projectDetails: { roofPreference: 'Combination roofing' },
   });
 });
@@ -211,7 +216,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
     }
 
-    if (viewport.width <= 720) await expect(page.getByRole('link', { name: 'Request a design review', exact: true }).last()).toBeVisible();
+    await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
 
     if (capturePhase) {
       await mkdir(customEvidenceDirectory, { recursive: true });

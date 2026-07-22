@@ -28,6 +28,8 @@ type FieldTileProps = {
   onAction?: () => void;
   actionLabel?: string;
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
+  min?: number | string;
+  max?: number | string;
   step?: number | string;
   appearance?: 'default' | 'configuration';
 };
@@ -48,6 +50,8 @@ export default function FieldTile({
   onAction,
   actionLabel,
   inputMode,
+  min,
+  max,
   step,
   appearance = 'default',
 }: FieldTileProps) {
@@ -136,6 +140,8 @@ export default function FieldTile({
           }}
           disabled={disabled}
           inputMode={inputMode}
+          min={type === 'number' ? min : undefined}
+          max={type === 'number' ? max : undefined}
           step={type === 'number' ? step : undefined}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}

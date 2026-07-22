@@ -57,7 +57,7 @@ export const commercialPergolasConfig = {
       { title: 'Confirm scope and approvals', copy: 'Document drawings, products, responsibilities, professional inputs, inclusions, exclusions, programme assumptions and sign-offs.' },
       { title: 'Install and hand over', copy: 'Sequence procurement and site work around the agreed operating constraints, coordinate connected trades, then provide the agreed completion and product information.' },
     ] },
-    { kind: 'link-cards', id: 'commercial-next-decisions', tone: 'neutral', eyebrow: 'Continue the procurement brief', title: 'Keep specialist questions with their owner pages', items: [
+    { kind: 'link-cards', id: 'commercial-next-decisions', tone: 'neutral', eyebrow: 'Continue the procurement brief', title: 'Continue with the relevant specialist guidance', items: [
       { title: 'Resolve a bespoke interface', text: 'Use the custom guide for difficult connections, restricted supports and consultant-led geometry.', href: '/custom-pergolas-auckland', linkLabel: 'Open the custom guide' },
       { title: 'Compare commercial scope', text: 'Use the cost guide to align inclusions, exclusions, access, approvals and connected trades.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
       { title: 'Review completed work', text: 'See dimensions, constraints and design responses in the project library.', href: '/projects', linkLabel: 'Browse projects' },

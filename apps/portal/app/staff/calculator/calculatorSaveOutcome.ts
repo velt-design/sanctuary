@@ -1,7 +1,7 @@
 import type { LocalFirstEntitySyncState } from '@/lib/localFirst/types';
 import type { CalculatorEstimateSaveOutcome } from './calculatorEstimateSave';
 
-export type CalculatorSaveOutcomeUi = {
+type CalculatorSaveOutcomeUi = {
   syncLabel: string;
   syncDetail: string;
   syncTone: 'neutral' | 'success' | 'warning' | 'danger';
@@ -58,6 +58,7 @@ export function buildCalculatorSaveOutcomeUi(
   })();
 
   const preservedChanged = outcome.saveMode === 'preserve_current' && outcome.pricingChanged;
+  const quotePreviewBlocked = outcome.quotePreview.blockingIssues.length > 0;
   return {
     ...sync,
     costingDetail: preservedChanged
@@ -67,11 +68,13 @@ export function buildCalculatorSaveOutcomeUi(
         : 'The design was saved using the Live calculator costing result.',
     quoteDetail: preservedChanged
       ? 'A quote created now will use the stored costing basis, not the Live calculator preview.'
-      : 'Quotes applies the existing customer-pricing rules to this saved design.',
+      : 'The quote applies the existing customer-pricing rules to this saved design.',
     quoteDisabled:
-      syncState.status === 'idle' || syncState.status === 'error' || syncState.status === 'conflict',
+      quotePreviewBlocked || syncState.status === 'idle' || syncState.status === 'error' || syncState.status === 'conflict',
     quoteBlockedDetail:
-      syncState.status === 'idle'
+      quotePreviewBlocked
+        ? outcome.quotePreview.blockingIssues.join(' ')
+        : syncState.status === 'idle'
         ? 'Wait for the saved design’s sync state before creating a quote.'
         : syncState.status === 'error' || syncState.status === 'conflict'
           ? 'Resolve the sync issue before creating a quote from this design.'

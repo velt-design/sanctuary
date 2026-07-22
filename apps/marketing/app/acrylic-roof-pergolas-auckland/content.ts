@@ -231,29 +231,6 @@ export const sanctuaryReasons = [
   },
 ];
 
-export const processSteps = [
-  ['Initial enquiry', 'Tell Sanctuary where the project is, how the space is used and what you want the roof to achieve. You do not need to know the final form or tint before making contact.'],
-  ['Early dimensions, photos or plans', 'Provide approximate width, projection and height where possible. Photos from the garden and from inside the adjoining rooms are especially useful. Include architectural plans, renovation drawings or sketches if available.'],
-  ['Initial estimate', 'Sanctuary reviews the information and prepares an initial estimate based on the known scope and stated assumptions. This is an early guide rather than the final construction quotation.'],
-  ['Site visit and design development', 'If the initial range is suitable, the next stage is a site assessment and more detailed design discussion. This is where dimensions, sun, roofline, connections, post locations, drainage, access and material choices can be reviewed in context.'],
-  ['Final quotation', 'Once the scope has been developed, Sanctuary prepares a final quotation setting out the agreed structure, roofing, finishes, accessories, inclusions, exclusions and relevant assumptions.'],
-  ['Fabrication and installation', 'After approval and any required preliminary work, the pergola is prepared and installed in accordance with the agreed design. The current programme should be confirmed for the particular project rather than assumed from a standard timeframe.'],
-] as const;
-
-export const priceFactors = [
-  ['Dimensions and spans', 'Width, projection, height and post spacing influence the amount of material and the structural requirements.'],
-  ['Pergola form', 'A mono-pitched roof is different to fabricate and detail from a gable, hip or box-perimeter structure.'],
-  ['Aluminium profile sizes', 'Larger spans, fewer posts or more exposed conditions may require different members, connections or supporting structure.'],
-  ['Attached or freestanding construction', 'An attached structure requires assessment of the house connection and flashing. A freestanding structure may require additional posts, beams or foundations.'],
-  ['Site access', 'Restricted access, upper-level work, difficult material movement or protection of finished landscaping can affect the installation scope.'],
-  ['Wind exposure', 'Coastal, elevated or exposed sites may require additional engineering, fixings or structural capacity.'],
-  ['Acrylic selection', 'Product, thickness, tint, profile and supplier can affect material cost. The selected acrylic should be stated clearly in the quotation.'],
-  ['Flashing and drainage', 'Custom flashings, gutters, downpipes, discharge points and modifications to existing drainage can change the scope.'],
-  ['Foundations', 'The required solution depends on whether posts meet a deck, concrete slab, pavers, garden ground or another existing structure.'],
-  ['Blinds, lighting, heaters and infills', 'Accessories affect both product cost and the design work required to integrate them. Electrical work, controls, wiring and final connections should be identified separately where applicable.'],
-  ['Consent and engineering', 'Professional design, producer statements, council applications or other approval work may add cost where required.'],
-] as const;
-
 export const faqItems = [
   {
     question: 'Are acrylic roof pergolas waterproof?',
@@ -318,39 +295,10 @@ export const faqItems = [
     ],
   },
   {
-    question: 'Do acrylic pergolas require building consent in Auckland?',
-    answer: [
-      'Some roofed structures may fall within an exemption, while others may require building consent, professional design or site-specific advice.',
-      'The final position depends on the property, dimensions, area, height, connection and design. Planning controls may also apply.',
-      'Sanctuary can review the early information and identify where further assessment is likely to be required. The final approval pathway should be confirmed for the completed design.',
-    ],
-  },
-  {
-    question: 'How much does an acrylic roof pergola cost?',
-    answer: [
-      'Cost depends on dimensions, pergola form, structural spans, profile sizes, house connection, access, foundations, wind exposure, acrylic product, flashing, drainage, accessories and any consent or engineering work.',
-      'Send approximate dimensions, photos and the project suburb for an initial estimate.',
-    ],
-  },
-  {
     question: 'How should I clean an acrylic pergola roof?',
     answer: [
       'Follow the maintenance instructions supplied for the exact acrylic product.',
       'As a general principle, use soft, non-abrasive cleaning equipment and avoid harsh solvents or abrasive products that may mark the surface. Safe cleaning methods and access should be confirmed with the product supplier and Sanctuary.',
-    ],
-  },
-  {
-    question: 'Which parts of Auckland does Sanctuary service?',
-    answer: [
-      'Sanctuary is Auckland based.',
-      'Include the project suburb in your enquiry so the team can confirm whether the address is within the current service area and whether travel or access considerations apply.',
-    ],
-  },
-  {
-    question: 'How long does an acrylic pergola project take?',
-    answer: [
-      'The programme depends on design development, approvals, engineering, material availability, fabrication requirements, site access and the current installation schedule.',
-      'Sanctuary should provide a project-specific indication once the early scope is understood.',
     ],
   },
 ];

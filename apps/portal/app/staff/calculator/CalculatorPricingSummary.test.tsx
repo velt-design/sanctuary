@@ -17,6 +17,7 @@ const baseProps = {
   installDays: 2,
   blindCustomerPriceExGst: 400,
   blindCustomerPriceIncGst: 460,
+  quoteDiscountPct: '0',
   hasInfills: true,
 };
 
@@ -49,6 +50,20 @@ describe('CalculatorPricingSummary', () => {
     expect(container.textContent).toContain('Blind customer price (inc GST)$460.00');
     expect(container.textContent).toContain('Configured (see BOM)');
     expect(container.textContent).toContain('excluded from pergola true cost');
+
+    unmount();
+  });
+
+  it('shows the discounted pergola price and its undiscounted basis', () => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary {...baseProps} quoteDiscountPct="10" />,
+    );
+
+    expect(container.textContent).toContain('Customer price (inc GST)$129');
+    expect(container.textContent).toContain('Customer price (ex GST) $113');
+    expect(container.textContent).toContain('10% quote discount applied to pergola and site price');
+    expect(container.textContent).toContain('Before discount $144 inc GST');
+    expect(container.textContent).toContain('Blind customer price (inc GST)$460.00');
 
     unmount();
   });

@@ -52,7 +52,7 @@ export const gablePergolasConfig = {
     { kind: 'link-cards', id: 'gable-next-decisions', tone: 'neutral', eyebrow: 'Compare before choosing', title: 'Place the gable decision in the wider brief', items: [
       { title: 'Compare a single roof plane', text: 'Review the quieter silhouette and one-direction fall of a mono-pitched pergola.', href: '/pitched-pergolas-auckland', linkLabel: 'Open the pitched guide' },
       { title: 'Resolve a difficult gable connection', text: 'Use the custom guide when ridge, supports, levels or the existing roof make the obvious section unworkable.', href: '/custom-pergolas-auckland', linkLabel: 'Open the custom guide' },
-      { title: 'Compare the complete scope', text: 'Take price, inclusions and approval allowances to the cluster cost owner.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
+      { title: 'Compare the complete scope', text: 'Review price factors, inclusions and approval allowances in the Pergola Cost guide.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
     ] },
     { kind: 'faq', id: 'gable-faq', tone: 'elevated', eyebrow: 'Questions about the central ridge', title: 'What to resolve before choosing a gable pergola', intro: 'The final answer depends on the house, dimensions, products and completed design.', items: faqItems },
   ],

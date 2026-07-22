@@ -45,6 +45,8 @@ Workbench pricing is intentionally disconnected in the 2026-06-11 breakaway pass
 
 Workbench must not own pricing policy. Costing must not solve geometry. Portal may orchestrate, adapt, persist, and show status, but it must not duplicate package truth or reintroduce calculator-shaped inputs into live workbench runtime.
 
+Calculator quote discount remains a selling-price policy outside true-cost calculation. The shared portal quote-pricing helper applies it only after the `1.25x` cost-to-sell step and before GST; quote mapping and calculator customer-price displays consume the same helper. Actual-cost calibration is also downstream: it compares staff-entered actuals with frozen estimate outputs and must never mutate historical costing inputs or outputs.
+
 `packages/costing/src/commercial` exports the first shadow contract (`CommercialDesignInputV1`) and the calculator field-ownership map. Do not make saved estimates, quote totals, public outputs, or job-pack pricing consume the commercial boundary until an explicit rollout task lands.
 
 `apps/portal/lib/estimates/commercialDesignPayload.ts` is the first portal-side shadow adapter. It converts current calculator inputs, plus an optional existing `SiteOutputV1`, into `CommercialDesignInputV1` for future comparison work. It is callable-only: it must not write saved estimate outputs, change quote totals, or replace the live `calculateSiteCostV1` path until a later explicit integration task.
