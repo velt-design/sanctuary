@@ -1,7 +1,7 @@
 {
   "productTargets": {
     "feedbackMsMax": 100,
-    "warmTabFeedbackMsMax": 250,
+    "warmTabFeedbackMsMax": 100,
     "cachedContentMsMax": 500,
     "longestTaskMsMax": 50
   },
@@ -69,11 +69,42 @@
   ],
   "interactions": [
     {
-      "name": "project-tab-details",
+      "name": "project-tab-calculator",
       "route": "/staff/projects/[projectId]",
-      "feedbackMsMax": 250,
+      "feedbackMsMax": 100,
       "usefulContentMsMax": 500,
-      "productFeedbackMsMax": 250,
+      "enforced": true,
+      "aggregation": "p75"
+    },
+    {
+      "name": "project-tab-commercial-quotes",
+      "route": "/staff/projects/[projectId]",
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
+    },
+    {
+      "name": "project-tab-commercial-invoices",
+      "route": "/staff/projects/[projectId]",
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
+    },
+    {
+      "name": "project-tab-overview",
+      "route": "/staff/projects/[projectId]",
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
+      "enforced": true,
+      "aggregation": "p75"
+    },
+    {
+      "name": "project-tab-job-packs",
+      "route": "/staff/projects/[projectId]",
+      "feedbackMsMax": 100,
+      "usefulContentMsMax": 500,
       "enforced": true,
       "aggregation": "p75"
     },

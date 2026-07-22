@@ -38,10 +38,16 @@ export default function CommercialTab({
   const quoteView: QuoteView = searchParams.get('quotePreview') === '1' ? 'preview' : 'edit';
   const quoteIdFromUrl = useMemo(() => searchParams.get('quoteId')?.trim() || null, [searchParams]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteIdFromUrl);
+  const [optimisticView, setOptimisticView] = useState<CommercialView | null>(null);
+  const activeView = optimisticView ?? view;
 
   useEffect(() => {
     if (quoteIdFromUrl) setSelectedQuoteId(quoteIdFromUrl);
   }, [quoteIdFromUrl]);
+
+  useEffect(() => {
+    setOptimisticView(null);
+  }, [view]);
 
   const replaceParams = (update: (query: URLSearchParams) => void) => {
     const query = new URLSearchParams(searchParams.toString());
@@ -50,6 +56,7 @@ export default function CommercialTab({
   };
 
   const setView = (nextView: CommercialView) => {
+    setOptimisticView(nextView);
     replaceParams((query) => {
       query.set('tab', nextView);
       if (nextView === 'invoices') query.delete('quotePreview');
@@ -80,20 +87,20 @@ export default function CommercialTab({
   };
 
   return (
-    <div className={styles.container} data-project-commercial-view={view}>
+    <div className={styles.container} data-project-commercial-view={activeView}>
       <div className={styles.toolbar}>
         <TabNavigation
           items={[
             { key: 'quotes', label: 'Quotes' },
             { key: 'invoices', label: 'Invoices' },
           ]}
-          selectedKey={view}
+          selectedKey={activeView}
           onSelect={setView}
           onIntent={preload}
           ariaLabel="Commercial sections"
         />
 
-        {view === 'quotes' ? (
+        {activeView === 'quotes' ? (
           <div className={styles.quoteViews} role="group" aria-label="Quote view">
             {(['edit', 'preview'] as const).map((value) => {
               const disabled = value === 'preview' && !selectedQuoteId;
@@ -116,7 +123,7 @@ export default function CommercialTab({
         ) : null}
       </div>
 
-      {view === 'quotes' ? (
+      {activeView === 'quotes' ? (
         <QuotesTab
           projectId={projectId}
           selectedQuoteId={selectedQuoteId}

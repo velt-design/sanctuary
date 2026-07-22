@@ -67,8 +67,15 @@ describe('ProjectTabNavigation', () => {
   });
 
   it('navigates and preloads from pointer or keyboard focus intent', () => {
+    const onTabSelect = vi.fn();
     const rendered = renderIntoDocument(
-      <ProjectTabNavigation hasJobPacks host="host" initialTab="activity" projectId="proj_1" />,
+      <ProjectTabNavigation
+        hasJobPacks
+        host="host"
+        initialTab="activity"
+        projectId="proj_1"
+        onTabSelect={onTabSelect}
+      />,
     );
     const commercial = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
       .find((tab) => tab.textContent?.trim() === 'Commercial');
@@ -80,6 +87,7 @@ describe('ProjectTabNavigation', () => {
 
     expect(preloadMock).toHaveBeenCalledWith('quotes', expect.objectContaining({ host: 'host', projectId: 'proj_1' }));
     expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=quotes');
+    expect(onTabSelect).toHaveBeenCalledWith('quotes');
     rendered.unmount();
   });
 

@@ -22,11 +22,17 @@ vi.mock('@/components/ui/toast/ToastProvider', () => ({
 vi.mock('@/lib/repo/projectsRepo', () => ({ deleteProject: vi.fn() }));
 
 vi.mock('./ProjectTabNavigation', () => ({
-  default: ({ initialTab }: { initialTab: string }) => <nav data-testid="header-tabs" data-tab={initialTab}>Tabs</nav>,
+  default: ({ initialTab, optimisticTab, onTabSelect }: any) => (
+    <nav data-testid="header-tabs" data-tab={initialTab} data-optimistic-tab={optimisticTab ?? ''}>
+      <button type="button" onClick={() => onTabSelect?.('job-packs')}>Job Packs</button>
+    </nav>
+  ),
 }));
 
 vi.mock('./ProjectPageShell', () => ({
-  default: () => <section data-testid="mock-project-shell">Shell</section>,
+  default: ({ optimisticTab }: any) => (
+    <section data-testid="mock-project-shell" data-optimistic-tab={optimisticTab ?? ''}>Shell</section>
+  ),
 }));
 
 const snapshot = {
@@ -86,6 +92,18 @@ describe('ProjectPageFrame', () => {
     expect(rendered.container.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(moreButton);
 
+    rendered.unmount();
+  });
+
+  it('shares optimistic tab intent between the masthead and body', () => {
+    const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot} host="host" tab="activity" />);
+    const jobPacks = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'Job Packs');
+
+    act(() => jobPacks?.click());
+
+    expect(rendered.container.querySelector('[data-testid="header-tabs"]')?.getAttribute('data-optimistic-tab')).toBe('job-packs');
+    expect(rendered.container.querySelector('[data-testid="mock-project-shell"]')?.getAttribute('data-optimistic-tab')).toBe('job-packs');
     rendered.unmount();
   });
 });

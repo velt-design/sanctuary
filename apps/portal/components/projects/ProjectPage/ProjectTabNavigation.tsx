@@ -18,11 +18,15 @@ export default function ProjectTabNavigation({
   host,
   initialTab,
   projectId,
+  optimisticTab,
+  onTabSelect,
 }: {
   hasJobPacks: boolean;
   host: string;
   initialTab: string;
   projectId: string;
+  optimisticTab?: ProjectNavigationTabKey | null;
+  onTabSelect?: (tab: ProjectNavigationTabKey) => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -31,7 +35,8 @@ export default function ProjectTabNavigation({
   const requestedTab = searchParams.get('tab') ?? initialTab;
   const activeTab = coerceProjectTab(requestedTab, hasJobPacks);
   const tabs = getAvailableProjectTabs(hasJobPacks);
-  const selectedNavigationKey = tabs.find((item) => isProjectNavigationTabSelected(item.navigationKey, activeTab))?.navigationKey
+  const selectedTab = optimisticTab ?? activeTab;
+  const selectedNavigationKey = tabs.find((item) => isProjectNavigationTabSelected(item.navigationKey, selectedTab))?.navigationKey
     ?? 'activity';
 
   const replaceTab = useCallback((nextTab: ProjectTabKey) => {
@@ -52,12 +57,17 @@ export default function ProjectTabNavigation({
     void preloadProjectTab(tab, { host, projectId, queryClient });
   };
 
+  const selectTab = (tab: ProjectNavigationTabKey) => {
+    onTabSelect?.(tab);
+    replaceTab(tab);
+  };
+
   return (
     <TabNavigation
       ariaLabel="Project sections"
       items={tabs.map((item) => ({ key: item.navigationKey, label: item.label, controls: 'project-tab-content' }))}
       selectedKey={selectedNavigationKey}
-      onSelect={replaceTab}
+      onSelect={selectTab}
       onIntent={prefetch}
     />
   );

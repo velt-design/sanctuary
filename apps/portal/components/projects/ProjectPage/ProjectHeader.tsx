@@ -1,4 +1,5 @@
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
+import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import ProjectTabNavigation from './ProjectTabNavigation';
 import ProjectHeaderActions from './ProjectHeaderActions';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
@@ -9,10 +10,14 @@ export default function ProjectHeader({
   project,
   host,
   tab,
+  optimisticTab,
+  onTabSelect,
 }: {
   project: ProjectPageSnapshot['project'];
   host: string;
   tab: string;
+  optimisticTab?: ProjectNavigationTabKey | null;
+  onTabSelect?: (tab: ProjectNavigationTabKey) => void;
 }) {
   return (
     <Card className={styles.masthead} padding="none" aria-label="Project summary" data-ui-foundation="true">
@@ -31,7 +36,14 @@ export default function ProjectHeader({
           <div className={styles.mastheadTracker}><ProjectStageTracker currentStage={project.stage} /></div>
         </div>
       </div>
-      <ProjectTabNavigation hasJobPacks={Boolean(project.hasJobPacks)} host={host} initialTab={tab} projectId={project.id} />
+      <ProjectTabNavigation
+        hasJobPacks={Boolean(project.hasJobPacks)}
+        host={host}
+        initialTab={tab}
+        projectId={project.id}
+        optimisticTab={optimisticTab}
+        onTabSelect={onTabSelect}
+      />
     </Card>
   );
 }

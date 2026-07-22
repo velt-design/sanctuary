@@ -139,6 +139,31 @@ async function discoverFirstProjectDetailRoute(browser: Browser, authenticatedPa
   }
 }
 
+async function discoverGeneratedJobPackProjectRoute(): Promise<string> {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  expect(supabaseUrl, 'SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL is required to discover conditional Job Packs coverage.').toBeTruthy();
+  expect(serviceRoleKey, 'SUPABASE_SERVICE_ROLE_KEY is required to discover conditional Job Packs coverage.').toBeTruthy();
+
+  const endpoint = new URL('/rest/v1/job_pack_generations', String(supabaseUrl));
+  endpoint.searchParams.set('select', 'project_id');
+  endpoint.searchParams.set('order', 'created_at.desc');
+  endpoint.searchParams.set('limit', '1');
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: String(serviceRoleKey),
+      authorization: `Bearer ${serviceRoleKey}`,
+    },
+  });
+  expect(response.ok, `Job Packs performance prerequisite query failed with ${response.status}.`).toBe(true);
+  const rows = await response.json() as Array<{ project_id?: unknown }>;
+  const projectId = typeof rows[0]?.project_id === 'string' ? rows[0].project_id : '';
+  expect(projectId, 'The authenticated performance database needs at least one generated job pack.').toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+  return `/staff/projects/proj_${projectId}`;
+}
+
 async function measureColdProjectDetail(page: Page, route: string) {
   const budget = routeBudget('project-detail-cold');
   const probe = await beginPortalJourney(page, { cold: true });
@@ -149,7 +174,7 @@ async function measureColdProjectDetail(page: Page, route: string) {
   ).toBeVisible({ timeout: 60_000 });
   const feedbackMs = elapsedJourneyMs(probe);
   await expect(page.locator('[data-project-shell-ready="true"]')).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible({ timeout: 60_000 });
   const usefulContentMs = elapsedJourneyMs(probe);
   await expect(page.locator('[data-project-background-ready="true"]')).toBeVisible({ timeout: 60_000 });
   const backgroundSettledMs = await waitForBackgroundSettled(page, probe);
@@ -255,10 +280,27 @@ async function measureInteraction(
 }
 
 function journeyContentWithinTarget(name: string, usefulContentMs: number): boolean {
-  if (name === 'project-tab-details') {
+  if (name.startsWith('project-tab-')) {
     return usefulContentMs <= budgets.productTargets.cachedContentMsMax;
   }
   return true;
+}
+
+async function measureProjectTab(
+  page: Page,
+  name: string,
+  tab: Locator,
+  usefulContentReady: () => Promise<unknown>,
+) {
+  await expect(tab).toBeVisible({ timeout: 60_000 });
+  await tab.hover();
+  await measureInteraction(
+    page,
+    name,
+    () => tab.click(),
+    () => expect(tab).toHaveAttribute('aria-selected', 'true'),
+    usefulContentReady,
+  );
 }
 
 async function firstProjectOpenLink(page: Page): Promise<Locator> {
@@ -329,7 +371,7 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
     () => page.waitForURL(/\/staff\/projects\/[^/?]+(?:\?|$)/),
     async () => {
       await expect(page.locator('[data-project-shell-ready="true"]')).toBeVisible();
-      await expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible();
     },
     async () => {
       await expect(page.locator('[data-project-background-ready="true"]')).toBeVisible({ timeout: 60_000 });
@@ -349,16 +391,74 @@ test('captures warm navigation and project tab metrics', async ({ page }) => {
   const reopen = await firstProjectOpenLink(page);
   await reopen.hover();
   await reopen.click();
-  await expect(page.getByRole('region', { name: 'Project tabs' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible({ timeout: 60_000 });
 
-  const detailsTab = page.getByRole('tab', { name: 'Details', exact: true });
-  await detailsTab.hover();
-  await measureInteraction(
+  const calculatorTab = page.getByRole('tab', { name: 'Calculator', exact: true });
+  await measureProjectTab(
     page,
-    'project-tab-details',
-    () => detailsTab.click(),
-    () => expect(detailsTab).toHaveAttribute('aria-selected', 'true'),
-    () => expect(page.locator('[data-project-tab-body="details"]')).toBeVisible(),
+    'project-tab-calculator',
+    calculatorTab,
+    async () => {
+      await expect(page.locator('[data-project-tab-body="estimates"]')).toBeVisible();
+      await expect(page.locator('[data-project-calculator], [data-project-tab-loading="estimates"]').first()).toBeVisible();
+    },
+  );
+
+  const commercialTab = page.getByRole('tab', { name: 'Commercial', exact: true });
+  await measureProjectTab(
+    page,
+    'project-tab-commercial-quotes',
+    commercialTab,
+    async () => {
+      await expect(page.locator('[data-project-tab-body="quotes"]')).toBeVisible();
+      await expect(
+        page.locator('[data-project-commercial-view="quotes"], [data-project-tab-loading="quotes"]').first(),
+      ).toBeVisible();
+    },
+  );
+
+  const invoicesTab = page.getByRole('tab', { name: 'Invoices', exact: true });
+  await measureProjectTab(
+    page,
+    'project-tab-commercial-invoices',
+    invoicesTab,
+    async () => {
+      await expect(page.locator('[data-project-commercial-view="invoices"]')).toBeVisible();
+    },
+  );
+
+  const overviewTab = page.getByRole('tab', { name: 'Overview', exact: true });
+  await measureProjectTab(
+    page,
+    'project-tab-overview',
+    overviewTab,
+    async () => {
+      await expect(page.locator('[data-project-tab-body="activity"]')).toBeVisible();
+      await expect(page.locator('[data-project-overview="true"]')).toBeVisible();
+    },
+  );
+
+  let jobPacksTab = page.getByRole('tab', { name: 'Job Packs', exact: true });
+  if (await jobPacksTab.count() === 0) {
+    await page.goto(await discoverGeneratedJobPackProjectRoute());
+    await expect(page.locator('[data-project-shell-ready="true"]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible({ timeout: 60_000 });
+    jobPacksTab = page.getByRole('tab', { name: 'Job Packs', exact: true });
+  }
+  await expect(
+    jobPacksTab,
+    'The authenticated performance project needs generated job packs so the conditional current tab is measured.',
+  ).toBeVisible({ timeout: 60_000 });
+  await measureProjectTab(
+    page,
+    'project-tab-job-packs',
+    jobPacksTab,
+    async () => {
+      await expect(page.locator('[data-project-tab-body="job-packs"]')).toBeVisible();
+      await expect(
+        page.locator('[data-project-tab-loading="job-packs"], [data-project-tab-body="job-packs"] h3').first(),
+      ).toBeVisible();
+    },
   );
 });
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import ProjectHeader from './ProjectHeader';
 import ProjectPageShell from './ProjectPageShell';
@@ -23,6 +24,11 @@ export default function ProjectPageFrame({
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const mastheadRef = useRef<HTMLDivElement | null>(null);
+  const [optimisticTab, setOptimisticTab] = useState<ProjectNavigationTabKey | null>(null);
+
+  useEffect(() => {
+    setOptimisticTab(null);
+  }, [tab]);
 
   useEffect(() => {
     const frame = frameRef.current;
@@ -48,7 +54,13 @@ export default function ProjectPageFrame({
         data-project-masthead-slot="fixed"
         data-project-masthead-slot-sticky="true"
       >
-        <ProjectHeader project={snapshot.project} host={host} tab={tab} />
+        <ProjectHeader
+          project={snapshot.project}
+          host={host}
+          tab={tab}
+          optimisticTab={optimisticTab}
+          onTabSelect={setOptimisticTab}
+        />
       </div>
 
       <div className={styles.pageFrameBody}>
@@ -58,6 +70,7 @@ export default function ProjectPageFrame({
           snapshotContentReady={snapshotContentReady}
           snapshotState={snapshotState}
           tab={tab}
+          optimisticTab={optimisticTab}
           onProjectAccessEnding={onProjectAccessEnding}
         />
       </div>
