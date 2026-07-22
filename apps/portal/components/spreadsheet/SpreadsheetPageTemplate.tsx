@@ -10,7 +10,7 @@ import {
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import PageHeader from '../layout/PageHeader';
+import StaffPageHeader from '../layout/StaffPageHeader';
 import { editingSessionKey, focusEditorForTrigger } from './editorFocus';
 import { useSpreadsheetShell, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
 import { useSpreadsheetOptimisticEditing } from './useSpreadsheetOptimisticEditing';
@@ -341,7 +341,7 @@ export default function SpreadsheetPageTemplate<
 
   return (
     <main className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`} data-ui-foundation-consumer="spreadsheet">
-      {embedded ? null : <PageHeader title={adapter.title} />}
+      {embedded ? null : <StaffPageHeader title={adapter.title} />}
 
       <div className={styles.stack}>
         <section ref={sectionRef} className={styles.section}>

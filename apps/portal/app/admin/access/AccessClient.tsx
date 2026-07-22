@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import styles from './access.module.css';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
@@ -356,7 +356,7 @@ export default function AccessClient() {
 
   return (
     <div className={styles.page} data-ui-foundation-consumer="admin-access">
-      <PageHeader title="Access" />
+      <StaffPageHeader title="Access" />
       <div className={styles.card}>
         <p className={styles.intro}>
           Create a portal user (or update an existing one) with a temporary password. The user can log in immediately.

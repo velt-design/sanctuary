@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import HeaderActions from '@/components/layout/HeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import styles from './ProjectsIndexPendingFrame.module.css';
 
 export default function ProjectsIndexPendingFrame() {
@@ -14,7 +14,7 @@ export default function ProjectsIndexPendingFrame() {
       data-projects-index-background-ready="false"
       aria-label="Opening projects"
     >
-      <PageHeader
+      <StaffPageHeader
         variant="index"
         title="Projects"
         right={

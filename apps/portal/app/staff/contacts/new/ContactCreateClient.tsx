@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import HeaderActions from '@/components/layout/HeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
 import { Button, Input } from '@/components/ui/foundation/FoundationControls';
@@ -41,7 +41,7 @@ export default function ContactCreateClient() {
 
   return (
     <PageLayout className={styles.page}>
-      <PageHeader
+      <StaffPageHeader
         variant="detail"
         title="New Contact"
         description="Create a customer record that can be linked to enquiries and projects."

@@ -65,8 +65,9 @@ The script uses the portal-owned pipeline definition for stage normalization; th
 
 ## Spreadsheet Behavior
 
-Running Jobs shares the spreadsheet shell with Design List. It should keep:
+Running Jobs shares the spreadsheet shell with Drafting Queue. It should keep:
 
+- The shared searchable staff header when rendered as a standalone route; embedded spreadsheet surfaces remain headerless.
 - Frozen first column.
 - Stable widths and zoom behavior.
 - Optimistic edits with conflict handling.

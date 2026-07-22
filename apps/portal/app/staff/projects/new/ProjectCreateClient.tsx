@@ -8,7 +8,7 @@ import { listContacts } from '@/lib/repo/contactsRepo';
 import { createProject } from '@/lib/repo/projectsRepo';
 import type { Contact } from '@/lib/types/contact';
 import styles from './ProjectCreateClient.module.css';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -108,7 +108,7 @@ export default function ProjectCreateClient() {
 
   return (
     <PageLayout className={styles.page} data-ui-foundation-consumer="project-create">
-      <PageHeader
+      <StaffPageHeader
         variant="detail"
         title="New Project"
         description="Create the project record and link its primary customer contact."

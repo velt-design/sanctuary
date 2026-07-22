@@ -62,12 +62,19 @@ The ten programme routes and `/pergola-guides` additionally use the approved her
 
 The public homepage content and layout remain on their established implementation; only its shared header presentation is part of this adoption.
 
+`/home-v2` is an approved comparison route for evaluating a second homepage composition before any migration of `/`. It reuses the production foundation primitives, project data, curated review content, live Google rating source, shared header and footer, analytics, consent and existing `/contact` enquiry destination. Its hero is included in the shared header's desktop overlay allowlist, while tablet and mobile keep the solid 64px header.
+
+The comparison route owns its content and scoped tokens under `apps/marketing/app/home-v2/`. It is `noindex, nofollow`, canonicalises to `/`, and remains absent from the sitemap, manifest, header, footer and public homepage links. Do not redirect, relink or replace `/` with this route without explicit approval. The established owners `apps/marketing/app/page.tsx`, `apps/marketing/app/home.css` and `apps/marketing/components/home/**` remain unchanged.
+
+Root height and overflow normalisation on a comparison route must preserve the shared mobile-menu and consent locks. The V2 browser suite opens the mobile menu from a non-zero scroll position and verifies that the document stays fixed, Escape restores focus, and the prior reading position returns when the menu closes.
+
 ## Verification
 
 - `npx vitest run apps/marketing/app/%5F%5Ffoundation/marketing/foundationAccess.test.ts`
 - `npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false`
 - `npm run test:marketing:browser`
 - `npm run build:marketing`
+- `npx playwright test playwright/marketing.home-v2.spec.ts --config=playwright.marketing.config.ts`
 - Shared-header Playwright coverage at desktop and mobile widths, including geometry, green accent, keyboard focus, and representative public-route screenshots.
 
-The Playwright lane checks the standalone catalogue, shared header, homepage, every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity. The hero-navigation matrix additionally proves every programme route has true desktop image/header overlap, no canvas gap at the fold, a viewport-centred Projects/Products gap, the guide hero split on that same centreline, transparent top and solid scrolled states, and the solid collapsed treatment at tablet and mobile widths.
+The Playwright lane checks the standalone catalogue, shared header, homepage, homepage comparison, every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity. The homepage comparison suite additionally proves `/home-v2` is unlisted and noindex, retains its live review and enquiry paths, loads all imagery, uses the correct responsive header states and leaves the established homepage composition intact. The hero-navigation matrix proves every programme route has true desktop image/header overlap, no canvas gap at the fold, a viewport-centred Projects/Products gap, the guide hero split on that same centreline, transparent top and solid scrolled states, and the solid collapsed treatment at tablet and mobile widths.

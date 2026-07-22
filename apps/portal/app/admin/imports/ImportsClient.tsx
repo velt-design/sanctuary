@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { importExportFile, readJsonFile, type ImportResult } from '@/lib/export/json';
@@ -180,7 +180,7 @@ export default function ImportsClient() {
 
   return (
     <main className={styles.page} data-ui-foundation-consumer="imports">
-      <PageHeader
+      <StaffPageHeader
         title="Imports"
         right={
           <HeaderActions>

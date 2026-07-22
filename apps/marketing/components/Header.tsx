@@ -21,6 +21,7 @@ const HEADER_SCROLL_THRESHOLD_PX = 12;
 const HEADER_DIRECTION_SAMPLE_COUNT = 2;
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
 const heroOverlayRoutes = new Set([
+  '/home-v2',
   '/pergola-guides',
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
@@ -46,6 +47,7 @@ export default function Header() {
   const startModalSuppressedRef = useRef(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
+  const mobileMenuScrollYRef = useRef(0);
   const scrollStateRef = useRef({
     lastY: 0,
     upDelta: 0,
@@ -236,16 +238,47 @@ export default function Header() {
 
   useEffect(() => {
     const body = document.body;
+    const preserveDocumentScroll = mobileMenuOpen && pathname === '/home-v2';
+    const scrollY = preserveDocumentScroll ? mobileMenuScrollYRef.current : 0;
+    const previousInlineStyle = preserveDocumentScroll
+      ? {
+          position: body.style.position,
+          top: body.style.top,
+          left: body.style.left,
+          right: body.style.right,
+          width: body.style.width,
+        }
+      : null;
+
     body.classList.toggle('no-scroll', mobileMenuOpen);
     body.classList.toggle('mobile-menu-open', mobileMenuOpen);
+
+    if (preserveDocumentScroll) {
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.width = '100%';
+    }
+
     return () => {
       body.classList.remove('no-scroll', 'mobile-menu-open');
+
+      if (previousInlineStyle) {
+        body.style.position = previousInlineStyle.position;
+        body.style.top = previousInlineStyle.top;
+        body.style.left = previousInlineStyle.left;
+        body.style.right = previousInlineStyle.right;
+        body.style.width = previousInlineStyle.width;
+        window.scrollTo(0, scrollY);
+      }
     };
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, pathname]);
 
   const handleCircleToggle = () => {
     const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 721px)').matches;
     if (isDesktop) return; // no toggle on desktop; menu is always visible
+    if (!mobileMenuOpen) mobileMenuScrollYRef.current = window.scrollY;
     setMobileMenuOpen((open) => !open);
   };
 

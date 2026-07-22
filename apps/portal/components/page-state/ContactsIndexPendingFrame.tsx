@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import HeaderActions from '@/components/layout/HeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import styles from './ProjectsIndexPendingFrame.module.css';
 
 export default function ContactsIndexPendingFrame() {
@@ -14,7 +14,7 @@ export default function ContactsIndexPendingFrame() {
       data-contacts-index-background-ready="false"
       aria-label="Opening contacts"
     >
-      <PageHeader
+      <StaffPageHeader
         title="Contacts"
         right={
           <HeaderActions className={styles.actions}>

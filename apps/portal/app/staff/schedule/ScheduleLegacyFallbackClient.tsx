@@ -18,7 +18,7 @@ import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
@@ -1332,7 +1332,7 @@ export default function ScheduleLegacyFallbackClient({
   if (!hydrated) {
     return (
       <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <PageHeader
+        <StaffPageHeader
           title="Schedule"
           right={
             <HeaderActions>
@@ -1364,7 +1364,7 @@ export default function ScheduleLegacyFallbackClient({
 
     return (
       <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <PageHeader
+        <StaffPageHeader
           title="Schedule"
           right={
             <HeaderActions>
@@ -1429,7 +1429,7 @@ export default function ScheduleLegacyFallbackClient({
 
   return (
     <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-      <PageHeader
+      <StaffPageHeader
         title="Schedule"
         right={
           <HeaderActions>

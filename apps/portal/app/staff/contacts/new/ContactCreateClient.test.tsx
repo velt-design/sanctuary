@@ -68,10 +68,9 @@ describe('ContactCreateClient', () => {
   it('creates contacts through the contacts API, upserts caches, and redirects to the detail page', async () => {
     const rendered = renderIntoDocument(<ContactCreateClient />);
 
-    const inputs = rendered.container.querySelectorAll('input');
-    const nameInput = inputs[0] as HTMLInputElement;
-    const emailInput = inputs[1] as HTMLInputElement;
-    const phoneInput = inputs[2] as HTMLInputElement;
+    const nameInput = rendered.container.querySelector('#displayName') as HTMLInputElement;
+    const emailInput = rendered.container.querySelector('#email') as HTMLInputElement;
+    const phoneInput = rendered.container.querySelector('#phone') as HTMLInputElement;
     const form = rendered.container.querySelector('form');
 
     await act(async () => {
@@ -115,8 +114,7 @@ describe('ContactCreateClient', () => {
     );
 
     const rendered = renderIntoDocument(<ContactCreateClient />);
-    const inputs = rendered.container.querySelectorAll('input');
-    const nameInput = inputs[0] as HTMLInputElement;
+    const nameInput = rendered.container.querySelector('#displayName') as HTMLInputElement;
     const form = rendered.container.querySelector('form');
 
     await act(async () => {

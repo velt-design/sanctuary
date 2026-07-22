@@ -37,7 +37,7 @@ import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { newId } from '@/lib/utils/id';
@@ -2886,7 +2886,7 @@ export default function ScheduleClient({
   if (!hydrated || waitingForBoardSnapshot) {
     return (
       <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <PageHeader
+        <StaffPageHeader
           title="Schedule"
           right={
             <HeaderActions>
@@ -2918,7 +2918,7 @@ export default function ScheduleClient({
 
     return (
       <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-        <PageHeader
+        <StaffPageHeader
           title="Schedule"
           right={
             <HeaderActions>
@@ -2983,7 +2983,7 @@ export default function ScheduleClient({
 
   return (
     <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-      <PageHeader
+      <StaffPageHeader
         title="Schedule"
         right={
           <HeaderActions>

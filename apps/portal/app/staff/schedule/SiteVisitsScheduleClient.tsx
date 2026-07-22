@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
@@ -48,7 +48,7 @@ export default function SiteVisitsScheduleClient() {
 
   return (
     <PageLayout width="full" density="compact" data-ui-foundation-consumer="schedule" className={cx(styles.page, styles.pageLocked)}>
-      <PageHeader
+      <StaffPageHeader
         title="Schedule"
         right={
           <HeaderActions>

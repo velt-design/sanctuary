@@ -5,7 +5,7 @@ import MaterialsClient from '../admin/costs/materials/MaterialsClient';
 import ActionsClient from '../admin/costs/actions/ActionsClient';
 import OverheadsClient from '../admin/costs/overheads/OverheadsClient';
 import styles from './pricebook.module.css';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import type { DriverCurvePoint } from '@/lib/costing/overrides';
 
 type MaterialsItem = Parameters<typeof MaterialsClient>[0]['items'];
@@ -73,7 +73,7 @@ export default function PricebookHub(props: PricebookHubProps) {
 
   return (
     <div className={styles.page} data-ui-foundation-consumer="pricebook">
-      <PageHeader title="Pricebook" />
+      <StaffPageHeader title="Pricebook" />
       <div className={styles.tabs} role="tablist" aria-label="Pricebook tabs">
         {tabs.map((tab) => (
           <button

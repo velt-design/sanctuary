@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
@@ -51,7 +51,7 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
       data-contacts-index-state={contactsIndex.state}
       data-contacts-index-background-ready={contactsIndex.backgroundReady ? 'true' : 'false'}
     >
-      <PageHeader
+      <StaffPageHeader
         variant="index"
         title="Contacts"
         description="Search customer records, review linked projects, or add a new enquiry contact."

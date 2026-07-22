@@ -80,8 +80,8 @@ export function ImageNarrative({ image, alt, eyebrow, heading, children }: { ima
   return <div className={styles.narrative}><Figure image={image} alt={alt} /><div className={styles.narrativeCopy}><Eyebrow>{eyebrow}</Eyebrow><Heading>{heading}</Heading>{children}</div></div>;
 }
 
-export function FullBleedStatement({ image, alt, eyebrow, heading, copy, action }: { image: string; alt: string; eyebrow: string; heading: string; copy: string; action?: { label: string; href: string } }) {
-  return <section className={styles.fullBleed}><div className={styles.fullBleedImage}><Figure image={image} alt={alt} priority /></div><Container width="wide" className={styles.fullBleedContent}><Eyebrow>{eyebrow}</Eyebrow><Heading variant="page">{heading}</Heading><Text size="large">{copy}</Text>{action && <TextLink href={action.href}>{action.label}</TextLink>}</Container></section>;
+export function FullBleedStatement({ image, alt, eyebrow, heading, copy, action, priority = false }: { image: string; alt: string; eyebrow: string; heading: string; copy: string; action?: { label: string; href: string }; priority?: boolean }) {
+  return <section className={styles.fullBleed}><div className={styles.fullBleedImage}><Figure image={image} alt={alt} priority={priority} sizes="100vw" /></div><Container width="wide" className={styles.fullBleedContent}><Eyebrow>{eyebrow}</Eyebrow><Heading variant="page">{heading}</Heading><Text size="large">{copy}</Text>{action && <TextLink href={action.href}>{action.label}</TextLink>}</Container></section>;
 }
 
 export function StaggeredGallery({ items }: { items: Array<{ image: string; alt: string; title: string; detail?: string; href?: string }> }) {
@@ -93,7 +93,7 @@ export function SpecificationRows({ rows }: { rows: Array<{ label: string; value
 }
 
 export function MaterialPalette({ items }: { items: Array<{ name: string; guidance: string; image: string; alt: string }> }) {
-  return <div className={styles.materialGrid}>{items.map((item) => <article className={styles.material} key={item.name}><div className={styles.materialImage}><Figure image={item.image} alt={item.alt} ratio="standard" /></div><div className={styles.materialCopy}><Heading as="h3" variant="card">{item.name}</Heading><Text size="small">{item.guidance}</Text></div></article>)}</div>;
+  return <div className={styles.materialGrid}>{items.map((item) => <article className={styles.material} key={item.name}><div className={styles.materialImage}><Figure image={item.image} alt={item.alt} ratio="standard" sizes="(max-width: 640px) 96px, (max-width: 900px) 112px, 176px" /></div><div className={styles.materialCopy}><Heading as="h3" variant="card">{item.name}</Heading><Text size="small">{item.guidance}</Text></div></article>)}</div>;
 }
 
 export function ProjectStory({ image, alt, title, metadata, copy, href }: { image: string; alt: string; title: string; metadata: string[]; copy: string; href: string }) {

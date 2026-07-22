@@ -191,7 +191,7 @@ describe('ContactDetailClient', () => {
     changeValue(rendered.container.querySelector('[aria-label="Contact name"]'), 'Instant Taylor');
     click(findButton(rendered.container, 'Done'));
 
-    expect(rendered.container.querySelector('input')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Contact name"]')).toBeNull();
     expect(rendered.container.textContent).toContain('Instant Taylor');
     expect(mocks.enqueue).not.toHaveBeenCalled();
 

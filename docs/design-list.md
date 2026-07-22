@@ -1,6 +1,6 @@
-# Design List
+# Drafting Queue
 
-The Design List is the portal replacement for the old operational design spreadsheet.
+The Drafting Queue is the portal replacement for the old operational design spreadsheet.
 
 ## Ownership
 
@@ -12,7 +12,7 @@ The Design List is the portal replacement for the old operational design spreads
 - Companion task command: `project_command_sync_design_task` from `20260720_000008_project_command_centre_stage2.sql`.
 - Schema ownership map: `docs/supabase-schema-map.md`.
 
-The route and internal module names still use `design-packages`, but the user-facing page name is Design List.
+The route and internal module names still use `design-packages`, but the user-facing page name is Drafting Queue.
 
 ## Data Model
 
@@ -68,8 +68,9 @@ Creating, starting, reprioritising, completing, or cancelling a request keeps it
 
 ## Spreadsheet Behavior
 
-The Design List shares the spreadsheet shell with Running Jobs. It should keep:
+The Drafting Queue shares the spreadsheet shell with Running Jobs. It should keep:
 
+- The shared searchable staff header when rendered as a standalone route; embedded spreadsheet surfaces remain headerless.
 - Spreadsheet keyboard/navigation behavior.
 - Optimistic cell editing.
 - Conflict-aware saves.

@@ -9,13 +9,20 @@ import {
   UserRound,
 } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
 } from 'react';
+import {
+  shouldHandleRouteTransitionClick,
+  shouldStartRouteTransitionForHref,
+  usePortalRouteTransition,
+} from '@/components/page-state/PortalRouteTransition';
 import { ProjectStageBadge } from '@/components/ui/foundation';
 import {
   PORTAL_SEARCH_MAX_LENGTH,
@@ -28,6 +35,7 @@ import styles from './GlobalPortalSearch.module.css';
 
 type SearchState = 'idle' | 'loading' | 'results' | 'empty' | 'error';
 type SearchResult = PortalProjectSearchResult | PortalContactSearchResult;
+const SEARCH_NAVIGATION_TIMEOUT_MS = 8000;
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -41,9 +49,25 @@ function resultDescription(result: SearchResult): string {
   return [result.email, result.phone, result.address].filter(Boolean).join(' · ');
 }
 
+function resultIsCurrent(href: string, pathname: string | null): boolean {
+  if (!pathname) return false;
+  try {
+    return new URL(href, 'https://portal.local').pathname === pathname;
+  } catch {
+    return false;
+  }
+}
+
 export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcutEnabled?: boolean }) {
+  const routeTransition = usePortalRouteTransition();
+  const pathname = routeTransition.pathname
+    ?? (typeof window === 'undefined' ? null : window.location.pathname);
+  const routeKey = routeTransition.routeKey
+    || (typeof window === 'undefined' ? '' : `${window.location.pathname}?${window.location.search.slice(1)}`);
+  const { beginRouteTransition } = routeTransition;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const navigationStartRouteKeyRef = useRef<string | null>(null);
   const listboxId = useId();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -51,8 +75,31 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
   const [projects, setProjects] = useState<PortalProjectSearchResult[]>([]);
   const [contacts, setContacts] = useState<PortalContactSearchResult[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
   const trimmedQuery = query.trim();
   const results = useMemo<SearchResult[]>(() => [...projects, ...contacts], [contacts, projects]);
+
+  const resetSearch = useCallback(() => {
+    setQuery('');
+    setOpen(false);
+    setState('idle');
+    setProjects([]);
+    setContacts([]);
+    setActiveIndex(-1);
+    setNavigatingHref(null);
+    navigationStartRouteKeyRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!navigatingHref || navigationStartRouteKeyRef.current === null) return;
+    if (navigationStartRouteKeyRef.current !== routeKey) resetSearch();
+  }, [navigatingHref, resetSearch, routeKey]);
+
+  useEffect(() => {
+    if (!navigatingHref) return;
+    const timeout = window.setTimeout(() => setNavigatingHref(null), SEARCH_NAVIGATION_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [navigatingHref]);
 
   useEffect(() => {
     if (!shortcutEnabled) return;
@@ -140,9 +187,37 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
     }
   };
 
+  const handleNavigationClick = (
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string,
+    label: string,
+  ) => {
+    if (!shouldHandleRouteTransitionClick(event, event.currentTarget)) {
+      setOpen(false);
+      return;
+    }
+    if (!shouldStartRouteTransitionForHref(href)) {
+      event.preventDefault();
+      resetSearch();
+      return;
+    }
+
+    navigationStartRouteKeyRef.current = routeKey;
+    setNavigatingHref(href);
+    setOpen(true);
+    beginRouteTransition({
+      href,
+      label,
+      source: 'global-portal-search',
+      control: event.currentTarget,
+    });
+  };
+
   const renderResult = (result: SearchResult, index: number) => {
     const description = resultDescription(result);
     const optionId = `${listboxId}-option-${index}`;
+    const current = resultIsCurrent(result.href, pathname);
+    const pending = navigatingHref === result.href;
     return (
       <Link
         id={optionId}
@@ -150,10 +225,19 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
         href={result.href}
         role="option"
         aria-selected={activeIndex === index}
+        aria-current={current ? 'page' : undefined}
         className={styles.result}
         data-active={activeIndex === index ? 'true' : undefined}
+        data-current={current ? 'true' : undefined}
         onMouseEnter={() => setActiveIndex(index)}
-        onClick={() => setOpen(false)}
+        onClick={(event) => {
+          if (current) {
+            event.preventDefault();
+            resetSearch();
+            return;
+          }
+          handleNavigationClick(event, result.href, result.name);
+        }}
       >
         <span className={styles.resultIcon} aria-hidden="true">
           {result.kind === 'project' ? <FolderKanban /> : <UserRound />}
@@ -162,8 +246,14 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
           <strong>{result.name}</strong>
           {description ? <small>{description}</small> : null}
         </span>
-        {result.kind === 'project' ? (
-          result.archived ? <span className={styles.archived}>Archived</span> : <ProjectStageBadge stage={result.stage} compact />
+        {result.kind === 'project' || current || pending ? (
+          <span className={styles.resultMeta}>
+            {result.kind === 'project' ? (
+              result.archived ? <span className={styles.archived}>Archived</span> : <ProjectStageBadge stage={result.stage} compact />
+            ) : null}
+            {current ? <span className={styles.current}>Current</span> : null}
+            {pending ? <span className={styles.pending} role="status"><LoaderCircle aria-hidden="true" /> Opening</span> : null}
+          </span>
         ) : null}
       </Link>
     );
@@ -173,7 +263,12 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
   const activeOptionId = activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined;
 
   return (
-    <div className={styles.root} ref={rootRef} data-global-portal-search="true">
+    <div
+      className={styles.root}
+      ref={rootRef}
+      data-global-portal-search="true"
+      data-global-portal-search-pathname={pathname ?? undefined}
+    >
       <div className={styles.inputShell}>
         <Search aria-hidden="true" />
         <input
@@ -193,10 +288,11 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
           onChange={(event) => {
             setQuery(event.target.value);
             setOpen(true);
+            setNavigatingHref(null);
           }}
           onKeyDown={onInputKeyDown}
         />
-        {state === 'loading' ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <kbd>Ctrl K</kbd>}
+        {state === 'loading' || navigatingHref ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <kbd>Ctrl K</kbd>}
       </div>
 
       {showPanel ? (
@@ -217,7 +313,7 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
             id={listboxId}
             role="listbox"
             aria-label="Portal search results"
-            aria-busy={state === 'loading'}
+            aria-busy={state === 'loading' || Boolean(navigatingHref)}
             className={styles.resultsList}
           >
             {state === 'results' ? (
@@ -244,13 +340,21 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
           {state === 'results' ? (
             <div className={styles.viewAllLinks}>
               {projects.length ? (
-                <Link className={styles.viewAll} href={`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`} onClick={() => setOpen(false)}>
-                  View all matching projects <ArrowRight aria-hidden="true" />
+                <Link
+                  className={styles.viewAll}
+                  href={`/staff/projects?q=${encodeURIComponent(trimmedQuery)}`}
+                  onClick={(event) => handleNavigationClick(event, `/staff/projects?q=${encodeURIComponent(trimmedQuery)}`, 'matching projects')}
+                >
+                  {navigatingHref === `/staff/projects?q=${encodeURIComponent(trimmedQuery)}` ? 'Opening projects' : 'View all matching projects'} <ArrowRight aria-hidden="true" />
                 </Link>
               ) : null}
               {contacts.length ? (
-                <Link className={styles.viewAll} href={`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`} onClick={() => setOpen(false)}>
-                  View all matching contacts <ArrowRight aria-hidden="true" />
+                <Link
+                  className={styles.viewAll}
+                  href={`/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`}
+                  onClick={(event) => handleNavigationClick(event, `/staff/contacts?q=${encodeURIComponent(trimmedQuery)}`, 'matching contacts')}
+                >
+                  {navigatingHref === `/staff/contacts?q=${encodeURIComponent(trimmedQuery)}` ? 'Opening contacts' : 'View all matching contacts'} <ArrowRight aria-hidden="true" />
                 </Link>
               ) : null}
             </div>

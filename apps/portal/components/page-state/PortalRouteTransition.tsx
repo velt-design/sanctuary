@@ -33,6 +33,9 @@ type PortalRouteTransitionContextValue = {
   beginInstantRoute: (route: PortalInstantRoute) => void;
   finishInstantRoute: (route: PortalInstantRoute) => void;
   instantRoute: PortalInstantRoute | null;
+  pendingHref: string | null;
+  pathname: string | null;
+  routeKey: string;
 };
 
 type RouteTransitionClickEvent = {
@@ -50,6 +53,9 @@ const PortalRouteTransitionContext = createContext<PortalRouteTransitionContextV
   beginInstantRoute: () => {},
   finishInstantRoute: () => {},
   instantRoute: null,
+  pendingHref: null,
+  pathname: null,
+  routeKey: '',
 });
 
 function routeKeyFor(pathname: string | null, searchParams: { toString(): string }): string {
@@ -112,6 +118,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
   const [visible, setVisible] = useState(false);
   const [ariaLabel, setAriaLabel] = useState(DEFAULT_MESSAGE);
   const [instantRoute, setInstantRoute] = useState<PortalInstantRoute | null>(null);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const clearTimer = useCallback((timerRef: { current: number | null }) => {
     if (timerRef.current === null) return;
@@ -150,6 +157,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     activeRef.current = false;
     clearTimer(maxTimerRef);
     clearBusyControl();
+    setPendingHref(null);
     setVisible(false);
   }, [clearBusyControl, clearTimer]);
 
@@ -159,6 +167,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
       if (!shouldStartRouteTransitionForHref(input.href)) return;
 
       activeRef.current = true;
+      setPendingHref(input.href);
       setAriaLabel(input.label ? `Preparing ${input.label}` : DEFAULT_MESSAGE);
       clearTimer(maxTimerRef);
       markBusyControl(input.control);
@@ -224,8 +233,11 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
       beginInstantRoute,
       finishInstantRoute,
       instantRoute,
+      pendingHref,
+      pathname,
+      routeKey,
     }),
-    [beginInstantRoute, beginRouteTransition, finishInstantRoute, instantRoute],
+    [beginInstantRoute, beginRouteTransition, finishInstantRoute, instantRoute, pendingHref, pathname, routeKey],
   );
 
   return (

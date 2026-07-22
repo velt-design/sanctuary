@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import HeaderActions from '@/components/layout/HeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import PortalIndexLink from '@/components/navigation/PortalIndexLink';
 import { Button, ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
 import { AlertBanner, TaskScheduleFeedback } from '@/components/ui/foundation/FoundationFeedback';
@@ -67,7 +67,7 @@ export function ContactDetailsView({
 
   return (
     <PageLayout className={styles.page}>
-      <PageHeader
+      <StaffPageHeader
         variant="detail"
         title={displayed.displayName || contact.displayName}
         description="Customer details and linked project history."
@@ -201,7 +201,7 @@ export function ContactDetailsView({
 function ContactDetailState({ title, description }: { title: string; description: string }) {
   return (
     <PageLayout className={styles.page}>
-      <PageHeader
+      <StaffPageHeader
         variant="detail"
         title="Contact"
         breadcrumbs={[{ label: 'Contacts', href: '/staff/contacts' }, { label: 'Contact' }]}

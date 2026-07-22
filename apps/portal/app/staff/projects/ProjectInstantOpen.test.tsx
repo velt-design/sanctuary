@@ -5,6 +5,7 @@ import { useProjectInstantOpen } from './ProjectInstantOpen';
 import ProjectInstantNavigationProvider from './ProjectInstantNavigation';
 
 const replace = vi.fn();
+const routeTransition = vi.hoisted(() => ({ pendingHref: null as string | null }));
 
 vi.mock('./[projectId]/ProjectSnapshotPageClient', () => ({
   default: ({ projectId, tab }: { projectId: string; tab: string }) => (
@@ -15,6 +16,10 @@ vi.mock('./[projectId]/ProjectSnapshotPageClient', () => ({
 vi.mock('next/navigation', () => ({
   usePathname: () => window.location.pathname,
   useRouter: () => ({ replace }),
+}));
+
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({ pendingHref: routeTransition.pendingHref }),
 }));
 
 function InstantOpenHarness({ onOpened }: { onOpened?: () => void }) {
@@ -43,6 +48,7 @@ function renderHarness() {
 describe('useProjectInstantOpen', () => {
   beforeEach(() => {
     replace.mockReset();
+    routeTransition.pendingHref = null;
     window.history.replaceState(null, '', '/staff/projects');
   });
 
@@ -92,6 +98,42 @@ describe('useProjectInstantOpen', () => {
     expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="settled-project"]')?.textContent)
       .toBe('Settled project route');
+    rendered.unmount();
+  });
+
+  it('releases the instant project when navigation moves to a different project pathname', () => {
+    const stableChildren = <InstantOpenHarness />;
+    const rendered = renderIntoDocument(
+      <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>,
+    );
+    act(() => rendered.container.querySelector('button')?.click());
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).not.toBeNull();
+
+    window.history.pushState(null, '', '/staff/projects/proj_2');
+    rendered.rerender(
+      <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Open project');
+    rendered.unmount();
+  });
+
+  it('releases the instant project when the portal transition targets a different pathname', () => {
+    const stableChildren = <InstantOpenHarness />;
+    const rendered = renderIntoDocument(
+      <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>,
+    );
+    act(() => rendered.container.querySelector('button')?.click());
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).not.toBeNull();
+
+    routeTransition.pendingHref = '/staff/projects/proj_2';
+    rendered.rerender(
+      <ProjectInstantNavigationProvider>{stableChildren}</ProjectInstantNavigationProvider>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.textContent).toContain('Open project');
     rendered.unmount();
   });
 });

@@ -129,6 +129,13 @@
 .resultCopy { display: grid; min-width: 0; gap: 2px; }
 .resultCopy strong { overflow: hidden; color: var(--ui-text-strong); font-size: var(--ui-font-size-small); text-overflow: ellipsis; white-space: nowrap; }
 .resultCopy small { overflow: hidden; color: var(--ui-text-muted); font-size: var(--ui-font-size-caption); text-overflow: ellipsis; white-space: nowrap; }
+.resultMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ui-space-1);
+}
 .archived {
   border: var(--ui-border-width) solid var(--ui-status-neutral-border);
   padding: 3px 6px;
@@ -137,6 +144,30 @@
   font-weight: 700;
   letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
+}
+.current,
+.pending {
+  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+  padding: 3px 6px;
+  color: var(--ui-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--ui-letter-spacing-label);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-color: var(--ui-action);
+}
+.pending svg {
+  width: 11px;
+  height: 11px;
+  animation: portal-search-spin 700ms linear infinite;
 }
 
 .viewAll {
@@ -207,5 +238,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner { animation: none; }
+  .spinner,
+  .pending svg { animation: none; }
 }

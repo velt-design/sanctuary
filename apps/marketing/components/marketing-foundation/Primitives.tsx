@@ -38,8 +38,8 @@ export function TextLink({ className, ...props }: ComponentPropsWithoutRef<typeo
 
 export function Rule({ className }: { className?: string }) { return <hr className={cn(styles.rule, className)} />; }
 
-export function Figure({ image, alt, caption, detail, ratio = 'landscape', priority = false, className }: { image: string; alt: string; caption?: string; detail?: string; ratio?: 'landscape' | 'portrait' | 'standard'; priority?: boolean; className?: string }) {
-  const imageProps: Pick<ImageProps, 'quality' | 'sizes'> = { quality: 75, sizes: '(max-width: 700px) 100vw, 66vw' };
+export function Figure({ image, alt, caption, detail, ratio = 'landscape', priority = false, sizes, className }: { image: string; alt: string; caption?: string; detail?: string; ratio?: 'landscape' | 'portrait' | 'standard'; priority?: boolean; sizes?: string; className?: string }) {
+  const imageProps: Pick<ImageProps, 'quality' | 'sizes'> = { quality: 75, sizes: sizes ?? '(max-width: 700px) 100vw, 66vw' };
   return (
     <figure className={cn(styles.figure, className)}>
       <div className={cn(styles.figureMedia, ratio === 'portrait' && styles.figurePortrait, ratio === 'landscape' && styles.figureLandscape)}>
