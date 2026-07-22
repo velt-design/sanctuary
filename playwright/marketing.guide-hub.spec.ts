@@ -54,6 +54,8 @@ for (const viewport of viewports) {
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', description);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
     await expect(page.getByRole('heading', { level: 1, name: 'Find the guide for the decision in front of you' })).toBeVisible();
+    await expect(page.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
+    await expect(page.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('[data-guide-link]')).toHaveCount(expectedGuides.length);
     await expect(main.getByRole('navigation', { name: 'Guide chapters' }).locator('a')).toHaveCount(3);
@@ -119,11 +121,13 @@ test('all ten guide destinations, sitemap entry, footer discovery and ordered sc
       return Array.isArray(parsed) ? parsed : [parsed];
     }) as Array<{
       '@type'?: string;
+      dateModified?: string;
+      reviewedBy?: { name?: string };
       numberOfItems?: number;
       itemListElement?: Array<{ position: number; name: string; url: string }>;
     }>;
   const itemList = jsonLd.find((node) => node['@type'] === 'ItemList');
-  expect(jsonLd.find((node) => node['@type'] === 'CollectionPage')).toBeDefined();
+  expect(jsonLd.find((node) => node['@type'] === 'CollectionPage')).toMatchObject({ dateModified: '2026-07-22', reviewedBy: { name: 'Sanctuary Pergolas' } });
   expect(itemList?.numberOfItems).toBe(expectedGuides.length);
   expect(itemList?.itemListElement).toEqual(expectedGuides.map((guide, index) => ({
     '@type': 'ListItem',
@@ -131,4 +135,12 @@ test('all ten guide destinations, sitemap entry, footer discovery and ordered sc
     name: guide.title,
     url: `https://www.sanctuarypergolas.co.nz${guide.href}`,
   })));
+
+  const historicBrochure = await request.get('/downloads/Sanctuary-Pergolas-Brochure.pdf');
+  expect(historicBrochure.headers()['x-robots-tag']).toContain('noindex');
+  await page.goto('/products/pergolas/gable');
+  await expect(page.locator('a[href="/downloads/Sanctuary-Pergolas-Brochure.pdf"]')).toHaveCount(0);
+  const currentGuideLinks = page.locator('a[href="/pergola-guides"]', { hasText: 'Pergola Design Guides' });
+  expect(await currentGuideLinks.count()).toBeGreaterThan(0);
+  await expect(currentGuideLinks.first()).toContainText('Pergola Design Guides');
 });

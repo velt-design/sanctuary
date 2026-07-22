@@ -51,12 +51,12 @@ export const sections: MegaSection[] = [
       {
         title: 'Acrylic infill panels →',
         href: '/products/screens-walls/acrylic-infill-panels',
-        desc: 'Clear or tinted panels for wind and rain while keeping light.'
+        desc: 'Clear or tinted panels that add edge shelter while keeping useful daylight.'
       },
       {
         title: 'Drop-down blinds →',
         href: '/products/screens-walls/drop-down-blinds',
-        desc: 'Block wind and low sun. Manual or motorised options.'
+        desc: 'Adjustable low-sun, privacy and edge-exposure control. Manual or motorised options.'
       }
     ]
   },

@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import {
   PORTAL_SEARCH_GROUP_LIMIT,
@@ -9,11 +10,40 @@ import {
   type PortalProjectSearchResult,
 } from './portalSearchContract';
 
-const PER_FIELD_LIMIT = PORTAL_SEARCH_GROUP_LIMIT * 2;
-const PROJECT_SELECT = 'id,name,quote_ref,site_address,pipeline_stage,archived_at,contact_id,contact:contacts(id,name)';
-const CONTACT_SELECT = 'id,name,email,phone,address';
+type PortalSearchRpcRow = {
+  access_granted?: unknown;
+  entity_kind?: unknown;
+  entity_id?: unknown;
+  name?: unknown;
+  reference?: unknown;
+  site_address?: unknown;
+  contact_name?: unknown;
+  pipeline_stage?: unknown;
+  archived_at?: unknown;
+  email?: unknown;
+  phone?: unknown;
+  address?: unknown;
+};
 
-type SearchRow = Record<string, unknown>;
+export class PortalSearchAccessError extends Error {
+  readonly status: 401 | 403;
+
+  constructor(status: 401 | 403) {
+    super(status === 401 ? 'Unauthorized' : 'Forbidden');
+    this.name = 'PortalSearchAccessError';
+    this.status = status;
+  }
+}
+
+function isUnauthenticatedRpcError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const message = typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
+  return code === 'PGRST301'
+    || code === 'PGRST302'
+    || (code === '42501' && message.includes('portal_search_v1'));
+}
 
 function textValue(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -21,32 +51,9 @@ function textValue(value: unknown): string | null {
   return trimmed || null;
 }
 
-function normaliseForRanking(value: string | null | undefined): string {
-  return (value ?? '').trim().toLocaleLowerCase('en-NZ');
-}
-
-export function escapePortalSearchPattern(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
-
-function fieldRank(value: string | null | undefined, query: string, fieldPriority: number): number {
-  const candidate = normaliseForRanking(value);
-  if (!candidate) return Number.POSITIVE_INFINITY;
-  if (candidate === query) return fieldPriority;
-  if (candidate.startsWith(query)) return 10 + fieldPriority;
-  if (candidate.split(/\s+/).some((part) => part.startsWith(query))) return 20 + fieldPriority;
-  if (candidate.includes(query)) return 30 + fieldPriority;
-  return Number.POSITIVE_INFINITY;
-}
-
-function relationContactName(value: unknown): string | null {
-  const relation = Array.isArray(value) ? value[0] : value;
-  if (!relation || typeof relation !== 'object') return null;
-  return textValue((relation as SearchRow).name);
-}
-
-function mapProject(row: SearchRow): PortalProjectSearchResult | null {
-  const uuid = textValue(row.id);
+function mapProject(row: PortalSearchRpcRow): PortalProjectSearchResult | null {
+  if (row.entity_kind !== 'project') return null;
+  const uuid = textValue(row.entity_id);
   const name = textValue(row.name);
   if (!uuid || !name) return null;
   const id = appIdFromUuid('proj', uuid);
@@ -55,16 +62,17 @@ function mapProject(row: SearchRow): PortalProjectSearchResult | null {
     id,
     href: `/staff/projects/${encodeURIComponent(id)}`,
     name,
-    reference: textValue(row.quote_ref),
+    reference: textValue(row.reference),
     siteAddress: textValue(row.site_address),
-    contactName: relationContactName(row.contact),
+    contactName: textValue(row.contact_name),
     stage: normalizePipelineStageKey(textValue(row.pipeline_stage)) ?? 'new',
     archived: Boolean(textValue(row.archived_at)),
   };
 }
 
-function mapContact(row: SearchRow): PortalContactSearchResult | null {
-  const uuid = textValue(row.id);
+function mapContact(row: PortalSearchRpcRow): PortalContactSearchResult | null {
+  if (row.entity_kind !== 'contact') return null;
+  const uuid = textValue(row.entity_id);
   const name = textValue(row.name);
   if (!uuid || !name) return null;
   const id = appIdFromUuid('ct', uuid);
@@ -79,39 +87,13 @@ function mapContact(row: SearchRow): PortalContactSearchResult | null {
   };
 }
 
-async function searchColumn(
-  client: SupabaseClient,
-  table: 'projects' | 'contacts',
-  select: string,
-  column: string,
-  pattern: string,
-): Promise<SearchRow[]> {
-  const result = await client.from(table).select(select).ilike(column, pattern).limit(PER_FIELD_LIMIT);
-  if (result.error) throw result.error;
-  return (result.data ?? []) as unknown as SearchRow[];
-}
-
-async function projectsForContacts(
-  client: SupabaseClient,
-  contactIds: string[],
-): Promise<SearchRow[]> {
-  if (!contactIds.length) return [];
-  const result = await client
-    .from('projects')
-    .select(PROJECT_SELECT)
-    .in('contact_id', contactIds)
-    .limit(PER_FIELD_LIMIT);
-  if (result.error) throw result.error;
-  return (result.data ?? []) as unknown as SearchRow[];
-}
-
-function uniqueMapped<T extends { id: string }>(rows: SearchRow[], map: (row: SearchRow) => T | null): T[] {
-  const mapped = new Map<string, T>();
-  for (const row of rows) {
-    const result = map(row);
-    if (result && !mapped.has(result.id)) mapped.set(result.id, result);
+function uniqueBounded<T extends { id: string }>(items: Array<T | null>): T[] {
+  const unique = new Map<string, T>();
+  for (const item of items) {
+    if (item && !unique.has(item.id)) unique.set(item.id, item);
+    if (unique.size === PORTAL_SEARCH_GROUP_LIMIT) break;
   }
-  return Array.from(mapped.values());
+  return Array.from(unique.values());
 }
 
 export async function searchPortal(
@@ -119,74 +101,28 @@ export async function searchPortal(
   rawQuery: string,
 ): Promise<{ projects: PortalProjectSearchResult[]; contacts: PortalContactSearchResult[] }> {
   const query = rawQuery.trim();
-  const rankedQuery = normaliseForRanking(query);
-  const pattern = `%${escapePortalSearchPattern(query)}%`;
+  const result = await client.rpc('portal_search_v1', {
+    search_query: query,
+    result_limit: PORTAL_SEARCH_GROUP_LIMIT,
+  });
+  if (result.error) {
+    if (isUnauthenticatedRpcError(result.error)) throw new PortalSearchAccessError(401);
+    throw result.error;
+  }
 
-  const contactNamePromise = searchColumn(client, 'contacts', CONTACT_SELECT, 'name', pattern);
-  const [
-    projectNames,
-    projectReferences,
-    projectAddresses,
-    contactNames,
-    contactEmails,
-    contactPhones,
-    contactAddresses,
-  ] = await Promise.all([
-    searchColumn(client, 'projects', PROJECT_SELECT, 'name', pattern),
-    searchColumn(client, 'projects', PROJECT_SELECT, 'quote_ref', pattern),
-    searchColumn(client, 'projects', PROJECT_SELECT, 'site_address', pattern),
-    contactNamePromise,
-    searchColumn(client, 'contacts', CONTACT_SELECT, 'email', pattern),
-    searchColumn(client, 'contacts', CONTACT_SELECT, 'phone', pattern),
-    searchColumn(client, 'contacts', CONTACT_SELECT, 'address', pattern),
-  ]);
+  const rows = Array.isArray(result.data) ? result.data as PortalSearchRpcRow[] : [];
+  const accessRow = rows.find((row) => row.entity_kind == null);
+  if (!accessRow) throw new Error('portal_search_v1 did not return its access result');
+  if (accessRow.access_granted !== true) throw new PortalSearchAccessError(403);
+  return {
+    projects: uniqueBounded(rows.map(mapProject)),
+    contacts: uniqueBounded(rows.map(mapContact)),
+  };
+}
 
-  const linkedProjects = await projectsForContacts(
-    client,
-    contactNames.map((row) => textValue(row.id)).filter((id): id is string => Boolean(id)),
-  );
-
-  const projects = uniqueMapped(
-    [...projectNames, ...projectReferences, ...projectAddresses, ...linkedProjects],
-    mapProject,
-  )
-    .sort((a, b) => {
-      const aRank = Math.min(
-        fieldRank(a.name, rankedQuery, 0),
-        fieldRank(a.reference, rankedQuery, 1),
-        fieldRank(a.siteAddress, rankedQuery, 2),
-        fieldRank(a.contactName, rankedQuery, 3),
-      );
-      const bRank = Math.min(
-        fieldRank(b.name, rankedQuery, 0),
-        fieldRank(b.reference, rankedQuery, 1),
-        fieldRank(b.siteAddress, rankedQuery, 2),
-        fieldRank(b.contactName, rankedQuery, 3),
-      );
-      return aRank - bRank || a.name.localeCompare(b.name, 'en-NZ', { sensitivity: 'base' });
-    })
-    .slice(0, PORTAL_SEARCH_GROUP_LIMIT);
-
-  const contacts = uniqueMapped(
-    [...contactNames, ...contactEmails, ...contactPhones, ...contactAddresses],
-    mapContact,
-  )
-    .sort((a, b) => {
-      const aRank = Math.min(
-        fieldRank(a.name, rankedQuery, 0),
-        fieldRank(a.email, rankedQuery, 1),
-        fieldRank(a.phone, rankedQuery, 2),
-        fieldRank(a.address, rankedQuery, 3),
-      );
-      const bRank = Math.min(
-        fieldRank(b.name, rankedQuery, 0),
-        fieldRank(b.email, rankedQuery, 1),
-        fieldRank(b.phone, rankedQuery, 2),
-        fieldRank(b.address, rankedQuery, 3),
-      );
-      return aRank - bRank || a.name.localeCompare(b.name, 'en-NZ', { sensitivity: 'base' });
-    })
-    .slice(0, PORTAL_SEARCH_GROUP_LIMIT);
-
-  return { projects, contacts };
+// This intentionally avoids the general staff API auth helper's two preliminary
+// provider calls. The single SECURITY INVOKER RPC verifies portal membership and
+// performs the RLS-protected read using this request's cookie-bound access token.
+export async function searchPortalForRequest(rawQuery: string) {
+  return searchPortal(await getSupabaseServerAuth(), rawQuery);
 }

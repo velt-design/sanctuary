@@ -288,10 +288,10 @@ export default async function HomeV2Page() {
           </div>
           <SpecificationRows
             rows={[
-              { label: 'Typical on-site build', value: '1-5 days' },
-              { label: 'Typical lead time', value: '6-8 weeks from sign-off' },
+              { label: 'Current programme', value: 'Confirmed in the project proposal' },
+              { label: 'On-site sequence', value: 'Resolved for the agreed scope and access' },
               { label: 'Roof forms', value: 'Pitched, gable, hip and box perimeter' },
-              { label: 'Warranty', value: '10 years' },
+              { label: 'Warranty information', value: 'Written terms supplied for the project and selected products' },
             ]}
           />
         </Container>

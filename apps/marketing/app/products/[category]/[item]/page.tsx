@@ -26,14 +26,14 @@ const nonPergolaExtras = [
     name: 'Acrylic infill panels',
     href: '/products/screens-walls/acrylic-infill-panels',
     blurb:
-      'block wind and rain while preserving views and daylight so edges stay usable year‑round.',
+      'add shelter at selected edges while preserving views and daylight. Panel layout and open junctions determine the result.',
   },
   {
     id: 'drop-down-blinds',
     name: 'Drop-down blinds',
     href: '/products/screens-walls/drop-down-blinds',
     blurb:
-      'give on‑demand control of wind, rain and low sun. Fabrics range from clear PVC for weather blocking to open‑weave meshes that cut glare while keeping the view.',
+      'give adjustable control of low sun, privacy and exposure at selected edges. The selected fabric and guide system determine the result.',
   },
   {
     id: 'downlights',
@@ -297,8 +297,9 @@ export default function ProductItemPage() {
                   src={productImages[activeIdx] || productImages[0]}
                   alt={`${data.item.title.replace(/\s*→\s*$/, '')} main image`}
                   fill
-                  sizes="100vw"
+                  sizes="(max-width: 960px) calc(100vw - 32px), 1px"
                   priority
+                  loading="eager"
                   style={{ objectFit: 'cover', objectPosition: getImageObjectPosition(activeIdx) }}
                 />
                 )}
@@ -321,7 +322,7 @@ export default function ProductItemPage() {
                       src={src}
                       alt={`${data.item.title.replace(/\s*→\s*$/, '')} thumbnail ${idx + 1}`}
                       fill
-                      sizes="50vw"
+                      sizes="(max-width: 960px) calc(50vw - 24px), 1px"
                       style={{ objectFit: 'cover', objectPosition: getImageObjectPosition(idx) }}
                     />
                   </button>
@@ -339,6 +340,7 @@ export default function ProductItemPage() {
                     fill
                     sizes="(max-width: 960px) 100vw, 66vw"
                     priority={idx === 0}
+                    loading={idx === 0 ? 'eager' : 'lazy'}
                     style={{
                       objectFit: 'cover',
                       objectPosition: getImageObjectPosition(idx),
@@ -613,17 +615,12 @@ export default function ProductItemPage() {
                               </Link>
                             </li>
                             <li>
-                              <Link
-                                href="/downloads/Sanctuary-Pergolas-Brochure.pdf"
-                                className="product-download"
-                                target="_blank"
-                                rel="noreferrer"
-                              >
+                              <Link href="/pergola-guides" className="product-download">
                                 <span className="product-download__icon" aria-hidden="true" />
                                 <span className="product-download__body">
-                                  <span className="product-download__title">Sanctuary Brochure</span>
+                                  <span className="product-download__title">Pergola Design Guides</span>
                                   <span className="product-download__desc">
-                                    Overview of pergola styles, options and finishes to share with clients.
+                                    Current planning, form, material and scope guidance on the website.
                                   </span>
                                 </span>
                               </Link>

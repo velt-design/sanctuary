@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 30,
-    qualities: [45, 50, 55, 60, 65, 75],
+    qualities: [45, 50, 55, 60, 65, 72, 75],
   },
   async headers() {
     const securityHeaders: { key: string; value: string }[] = [
@@ -84,6 +84,10 @@ const nextConfig: NextConfig = {
 
     return [
       {
+        source: '/downloads/Sanctuary-Pergolas-Brochure.pdf',
+        headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+      {
         source: '/careers/:path*',
         headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },
@@ -119,6 +123,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Retire the outdated brochure in favour of the governed web guide library.
+      { source: '/downloads/Sanctuary-Pergolas-Brochure.pdf', destination: '/pergola-guides', permanent: true },
       // Core marketing pages
       { source: '/about-us', destination: '/', permanent: true },
       { source: '/gallery', destination: '/projects', permanent: true },

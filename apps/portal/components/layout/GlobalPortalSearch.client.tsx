@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 import {
   ArrowRight,
   FolderKanban,
@@ -31,6 +32,13 @@ import {
   type PortalProjectSearchResult,
   type PortalSearchResponse,
 } from '@/lib/search/portalSearchContract';
+import { qk } from '@/lib/queries/keys';
+import {
+  normalizePortalSearchQuery,
+  portalSearchQueryOptions,
+  PORTAL_SEARCH_DEBOUNCE_MS,
+} from '@/lib/queries/portalSearch';
+import { useOptionalPortalQueryClient } from '@/lib/react-query/PortalQueryClientContext';
 import styles from './GlobalPortalSearch.module.css';
 
 type SearchState = 'idle' | 'loading' | 'results' | 'empty' | 'error';
@@ -58,7 +66,13 @@ function resultIsCurrent(href: string, pathname: string | null): boolean {
   }
 }
 
-export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcutEnabled?: boolean }) {
+function ActiveGlobalPortalSearch({
+  queryClient,
+  shortcutEnabled = true,
+}: {
+  queryClient: QueryClient;
+  shortcutEnabled?: boolean;
+}) {
   const routeTransition = usePortalRouteTransition();
   const pathname = routeTransition.pathname
     ?? (typeof window === 'undefined' ? null : window.location.pathname);
@@ -70,21 +84,50 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
   const navigationStartRouteKeyRef = useRef<string | null>(null);
   const listboxId = useId();
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const [state, setState] = useState<SearchState>('idle');
-  const [projects, setProjects] = useState<PortalProjectSearchResult[]>([]);
-  const [contacts, setContacts] = useState<PortalContactSearchResult[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
   const trimmedQuery = query.trim();
+  const normalizedQuery = normalizePortalSearchQuery(trimmedQuery);
+  const searchEnabled = normalizedQuery.length >= PORTAL_SEARCH_MIN_LENGTH;
+  const exactCachedResponse = searchEnabled
+    ? queryClient.getQueryData<PortalSearchResponse>(qk.search.portal(normalizedQuery))
+    : undefined;
+  const requestQuery = exactCachedResponse ? normalizedQuery : debouncedQuery;
+  const searchQuery = useQuery({
+    ...portalSearchQueryOptions(requestQuery),
+    enabled: searchEnabled && requestQuery.length >= PORTAL_SEARCH_MIN_LENGTH,
+    placeholderData: (previousData) => previousData,
+  });
+  const response = searchEnabled ? searchQuery.data : undefined;
+  const projects = useMemo(
+    () => Array.isArray(response?.projects) ? response.projects : [],
+    [response],
+  );
+  const contacts = useMemo(
+    () => Array.isArray(response?.contacts) ? response.contacts : [],
+    [response],
+  );
   const results = useMemo<SearchResult[]>(() => [...projects, ...contacts], [contacts, projects]);
+  const responseQuery = response ? normalizePortalSearchQuery(response.query) : '';
+  const showingPreviousResults = Boolean(response && responseQuery !== normalizedQuery);
+  const waitingForDebounce = searchEnabled && requestQuery !== normalizedQuery;
+  const refreshing = searchEnabled && (waitingForDebounce || searchQuery.isFetching);
+  const refreshFailed = Boolean(searchQuery.isError && response && !showingPreviousResults);
+  const hasResults = results.length > 0;
+  const state: SearchState = !searchEnabled
+    ? 'idle'
+    : searchQuery.isError && (!response || showingPreviousResults)
+      ? 'error'
+      : response
+        ? hasResults ? 'results' : 'empty'
+        : 'loading';
 
   const resetSearch = useCallback(() => {
     setQuery('');
+    setDebouncedQuery('');
     setOpen(false);
-    setState('idle');
-    setProjects([]);
-    setContacts([]);
     setActiveIndex(-1);
     setNavigatingHref(null);
     navigationStartRouteKeyRef.current = null;
@@ -125,42 +168,17 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
 
   useEffect(() => {
     setActiveIndex(-1);
-    if (trimmedQuery.length < PORTAL_SEARCH_MIN_LENGTH) {
-      setState('idle');
-      setProjects([]);
-      setContacts([]);
+    if (!searchEnabled) {
+      setDebouncedQuery('');
       return;
     }
 
-    const controller = new AbortController();
-    setState('loading');
-    const timeout = window.setTimeout(async () => {
-      try {
-        const response = await fetch(`/api/staff/v1/search?q=${encodeURIComponent(trimmedQuery)}`, {
-          cache: 'no-store',
-          credentials: 'same-origin',
-          signal: controller.signal,
-        });
-        const payload = await response.json() as Partial<PortalSearchResponse> & { error?: string };
-        if (!response.ok) throw new Error(payload.error || 'Search failed');
-        const nextProjects = Array.isArray(payload.projects) ? payload.projects : [];
-        const nextContacts = Array.isArray(payload.contacts) ? payload.contacts : [];
-        setProjects(nextProjects);
-        setContacts(nextContacts);
-        setState(nextProjects.length || nextContacts.length ? 'results' : 'empty');
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        setProjects([]);
-        setContacts([]);
-        setState('error');
-      }
-    }, 220);
-
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [trimmedQuery]);
+    const timeout = window.setTimeout(
+      () => setDebouncedQuery(normalizedQuery),
+      PORTAL_SEARCH_DEBOUNCE_MS,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [normalizedQuery, searchEnabled]);
 
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -268,6 +286,10 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
       ref={rootRef}
       data-global-portal-search="true"
       data-global-portal-search-pathname={pathname ?? undefined}
+      data-global-search-state={state}
+      data-global-search-query={normalizedQuery}
+      data-global-search-response-query={responseQuery || undefined}
+      data-global-search-refreshing={refreshing ? 'true' : 'false'}
     >
       <div className={styles.inputShell}>
         <Search aria-hidden="true" />
@@ -292,7 +314,7 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
           }}
           onKeyDown={onInputKeyDown}
         />
-        {state === 'loading' || navigatingHref ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <kbd>Ctrl K</kbd>}
+        {state === 'loading' || refreshing || navigatingHref ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <kbd>Ctrl K</kbd>}
       </div>
 
       {showPanel ? (
@@ -309,11 +331,17 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
           {state === 'error' ? (
             <div className={`${styles.message} ${styles.error}`} role="alert">Search is unavailable. Try again.</div>
           ) : null}
+          {state === 'results' && refreshing ? (
+            <div className={styles.refreshStatus} role="status">Updating results…</div>
+          ) : null}
+          {state === 'results' && refreshFailed ? (
+            <div className={`${styles.refreshStatus} ${styles.refreshError}`} role="alert">Could not refresh. Showing recent results.</div>
+          ) : null}
           <div
             id={listboxId}
             role="listbox"
             aria-label="Portal search results"
-            aria-busy={state === 'loading' || Boolean(navigatingHref)}
+            aria-busy={state === 'loading' || refreshing || Boolean(navigatingHref)}
             className={styles.resultsList}
           >
             {state === 'results' ? (
@@ -366,4 +394,37 @@ export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcu
       ) : null}
     </div>
   );
+}
+
+function StaticGlobalPortalSearch() {
+  return (
+    <div
+      className={styles.root}
+      data-global-portal-search="true"
+      data-global-search-state="idle"
+      data-global-search-query=""
+      data-global-search-refreshing="false"
+    >
+      <div className={styles.inputShell}>
+        <Search aria-hidden="true" />
+        <input
+          type="search"
+          maxLength={PORTAL_SEARCH_MAX_LENGTH}
+          placeholder="Search projects and contacts…"
+          aria-label="Search projects and contacts"
+          aria-expanded="false"
+          aria-haspopup="listbox"
+          role="combobox"
+          readOnly
+        />
+        <kbd>Ctrl K</kbd>
+      </div>
+    </div>
+  );
+}
+
+export default function GlobalPortalSearch({ shortcutEnabled = true }: { shortcutEnabled?: boolean }) {
+  const queryClient = useOptionalPortalQueryClient();
+  if (!queryClient) return <StaticGlobalPortalSearch />;
+  return <ActiveGlobalPortalSearch queryClient={queryClient} shortcutEnabled={shortcutEnabled} />;
 }

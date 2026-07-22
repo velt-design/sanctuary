@@ -164,9 +164,9 @@ export const faqItems = [
     ],
   },
   {
-    question: 'Does Sanctuary design and install custom aluminium pergolas?',
+    question: 'Does Sanctuary design and install aluminium pergolas?',
     answer: [
-      'Yes. Sanctuary designs and installs bespoke aluminium pergolas around the home, site and intended use. The final structure may also incorporate steel where the project design requires it.',
+      'Yes. Sanctuary designs and installs aluminium pergolas around the home, site and intended use. The final structure may also incorporate steel where the project design requires it.',
       'Roof form, frame colour, post placement, drainage and integrated options are developed as parts of one design.',
     ],
   },
@@ -189,34 +189,6 @@ export const faqItems = [
     answer: [
       'These options can be considered where they suit the structure and selected products. Blinds or screens may help an exposed edge, while lighting and heating can support evening or cooler-season use.',
       'Mounting, wiring, controls, drainage and clearances are best planned before fabrication.',
-    ],
-  },
-  {
-    question: 'How much does a custom pergola cost in Auckland?',
-    answer: [
-      'Cost depends on the complete scope, including dimensions, spans, roof form, materials, connections, foundations, drainage, access, integrated options and any engineering or approval work.',
-      'Send the suburb, photos and rough dimensions for a useful first indication based on the information available and clearly stated assumptions.',
-    ],
-  },
-  {
-    question: 'Will my pergola need building consent?',
-    answer: [
-      'Requirements depend on the property and completed design, not one dimension alone. Area, height, structure, house connection, site conditions and planning controls may all be relevant.',
-      'Sanctuary can review the early information and identify where further assessment is likely to be needed. The final pathway must be confirmed for the actual project.',
-    ],
-  },
-  {
-    question: 'How long does design and installation take?',
-    answer: [
-      'Timing varies with design development, site assessment, engineering or approvals, material availability, fabrication, access and the current installation programme.',
-      'A project-specific indication can be provided once the early scope is understood. A fixed timeframe should not be assumed before then.',
-    ],
-  },
-  {
-    question: 'Does Sanctuary work on commercial pergola projects?',
-    answer: [
-      'Sanctuary works on residential and selected commercial projects. Commercial scope, coordination, access and operational requirements need to be understood before suitability is confirmed.',
-      'Include the site, intended use and any plans or professional-team information with the enquiry.',
     ],
   },
   {

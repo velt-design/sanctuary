@@ -9,6 +9,7 @@ import {
   uploadEnquiryAttachments,
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
+import type { EnquiryBriefField } from '@/components/seo-landing/types';
 
 type RequiredField = 'enquiryType' | 'name' | 'phone' | 'email' | 'suburb' | 'message';
 type FieldErrors = Partial<Record<RequiredField | 'files', string>>;
@@ -17,6 +18,9 @@ type AcrylicPergolaEnquiryFormProps = {
   heading?: string;
   intro?: string;
   submitLabel?: string;
+  messageLabel?: string;
+  messagePlaceholder?: string;
+  briefFields?: readonly EnquiryBriefField[];
   roofPreference?: {
     label: string;
     detailKey: 'acrylicOption' | 'roofPreference';
@@ -100,6 +104,9 @@ export default function AcrylicPergolaEnquiryForm({
   heading = 'Request an initial estimate',
   intro = 'Share your suburb, approximate dimensions and a few photos of the area. Tell us what matters most, whether that is preserving daylight, adding rain cover, reducing glare or creating a more sheltered outdoor room.',
   submitLabel = 'Request my initial estimate',
+  messageLabel = 'Brief project description',
+  messagePlaceholder = 'Tell us how you use the space, which rooms sit beside it and what you would like the roof to improve.',
+  briefFields = [],
   roofPreference = acrylicRoofPreference,
 }: AcrylicPergolaEnquiryFormProps = {}) {
   const [files, setFiles] = useState<File[]>([]);
@@ -189,6 +196,9 @@ export default function AcrylicPergolaEnquiryForm({
       const roofMaterials = selectedRoofOption ? [...selectedRoofOption.roofMaterials] : [];
 
       const preferredStyle = String(formData.get('style') ?? '');
+      const pageSpecificDetails = Object.fromEntries(
+        briefFields.map((field) => [field.name, String(formData.get(field.name) ?? '').trim() || null]),
+      );
       const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -215,6 +225,7 @@ export default function AcrylicPergolaEnquiryForm({
             accessories: selectedAccessories,
             consentStatus: String(formData.get('consentStatus') ?? '').trim() || null,
             timeframe: String(formData.get('timeframe') ?? '').trim() || null,
+            ...pageSpecificDetails,
           },
           utm: attribution.utm,
           attribution,
@@ -280,8 +291,8 @@ export default function AcrylicPergolaEnquiryForm({
         </div>
 
         <div className="acrylic-form__field acrylic-form__field--wide">
-          <label htmlFor="acrylic-enquiry-message">Brief project description <span aria-hidden="true">*</span></label>
-          <textarea id="acrylic-enquiry-message" name="message" rows={5} required placeholder="Tell us how you use the space, which rooms sit beside it and what you would like the roof to improve." aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? fieldErrorId('message') : undefined} onChange={() => clearFieldError('message')} />
+          <label htmlFor="acrylic-enquiry-message">{messageLabel} <span aria-hidden="true">*</span></label>
+          <textarea id="acrylic-enquiry-message" name="message" rows={5} required placeholder={messagePlaceholder} aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? fieldErrorId('message') : undefined} onChange={() => clearFieldError('message')} />
           {errors.message ? <p className="acrylic-form__error" id={fieldErrorId('message')}>{errors.message}</p> : null}
         </div>
 
@@ -293,6 +304,22 @@ export default function AcrylicPergolaEnquiryForm({
             <label>Height in metres<input name="heightM" inputMode="decimal" placeholder="Unknown" /></label>
           </div>
         </fieldset>
+
+        {briefFields.map((field) => (
+          <div className={`acrylic-form__field${field.wide ? ' acrylic-form__field--wide' : ''}`} key={field.name}>
+            <label htmlFor={`acrylic-enquiry-${field.name}`}>{field.label} <span>Optional</span></label>
+            {field.type === 'textarea' ? (
+              <textarea id={`acrylic-enquiry-${field.name}`} name={field.name} rows={4} placeholder={field.placeholder} />
+            ) : field.type === 'select' ? (
+              <select id={`acrylic-enquiry-${field.name}`} name={field.name} defaultValue="">
+                <option value="">Choose if known</option>
+                {field.options?.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : (
+              <input id={`acrylic-enquiry-${field.name}`} name={field.name} placeholder={field.placeholder} />
+            )}
+          </div>
+        ))}
 
         <div className="acrylic-form__field">
           <label htmlFor="acrylic-enquiry-style">Preferred pergola form <span>Optional</span></label>

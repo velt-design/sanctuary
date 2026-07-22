@@ -30,37 +30,10 @@ const faqItems = [
     ],
   },
   {
-    question: 'Do I need to know the roof form before making an enquiry?',
-    answer: [
-      'No. It is enough to explain what the space needs to do, what should remain open and which conditions are causing the problem today.',
-      'Sanctuary can then compare pitched, gable, hip or box-perimeter forms against the available height, house geometry, drainage and desired character.',
-    ],
-  },
-  {
     question: 'Can different roof materials be combined in one custom pergola?',
     answer: [
       'Acrylic and solid roof zones can be considered together where different parts of the space need different light or shade conditions. The junction, drainage and appearance need to be designed as part of the complete roof.',
       'The selected products and their current written information should be confirmed in the final scope.',
-    ],
-  },
-  {
-    question: 'Can blinds, lighting and heating be designed in from the start?',
-    answer: [
-      'These options can be considered where they suit the structure and selected products. Planning them early allows mounting positions, wiring, controls, clearances and visual alignment to be coordinated before fabrication.',
-    ],
-  },
-  {
-    question: 'How much does a custom pergola cost in Auckland?',
-    answer: [
-      'Cost depends on the defined scope, including dimensions, spans, form, roof materials, connection, foundations, drainage, access, finish, integrated options and any engineering or approval work.',
-      'A useful first indication needs the project suburb, photos and rough dimensions, with assumptions stated clearly.',
-    ],
-  },
-  {
-    question: 'Will a custom pergola require building consent?',
-    answer: [
-      'Requirements depend on the property and completed design. Area, height, structure, attachment and planning controls may all be relevant.',
-      'Sanctuary can identify likely checks from the early information, but the approval pathway must be confirmed for the actual project.',
     ],
   },
   {
@@ -84,12 +57,12 @@ export const customPergolasConfig = {
     imageAlt: 'Custom aluminium pergola connection and roof form beside an Auckland home',
     objectPosition: '50% 44%',
     eyebrow: 'Custom pergolas in Auckland',
-    title: 'When the house is not standard, the pergola should not be either',
-    intro: 'Sanctuary develops the structure around the actual home, the outdoor room and the constraints that make the site specific. Custom means the decisions are connected, not simply that more options are added.',
-    primaryCta: 'Show us the site',
+    title: 'Custom pergolas for sites where the obvious answer does not fit',
+    intro: 'Sanctuary develops bespoke pergolas around difficult connections, irregular footprints, restricted post positions, changing levels and the work already happening around the home. The design can coordinate with a renovation, new build or architect-led brief from the start.',
+    primaryCta: 'Request a design review',
     secondaryCta: 'See what gets tailored',
     secondaryHref: '#custom-decisions',
-    proof: ['Designed to the actual site', 'Roof, structure and edges resolved together', 'One design-to-installation scope'],
+    proof: ['Difficult connections resolved early', 'Posts, spans and levels coordinated', 'Plans and project teams welcomed'],
   },
   blocks: [
     {
@@ -105,20 +78,20 @@ export const customPergolasConfig = {
       image: { src: '/images/project-ardmore-carport-04.jpg', alt: 'Top view of custom pergola roof geometry within a box-perimeter frame', objectPosition: '50% 46%' },
       lead: 'Good custom work starts by noticing the conditions a generic plan would ignore.',
       items: [
-        { title: 'Existing geometry', text: 'Roof pitch, eaves, corners, door heads and cladding junctions set the physical context for the new structure.' },
-        { title: 'Movement and views', text: 'Doors, steps, furniture, garden paths and outlooks show where posts or screens would become disruptive.' },
+        { title: 'Existing geometry', text: 'Roof pitch, eaves, corners, door heads, cladding junctions and changing levels set the physical context for the new structure.' },
+        { title: 'Movement and restricted posts', text: 'Doors, steps, furniture, garden paths and outlooks show where posts or screens would interrupt the space and where a different span strategy needs investigation.' },
         { title: 'Light and exposure', text: 'Orientation, adjoining windows, wind and low sun help decide where openness, shade or edge protection matters most.' },
-        { title: 'Access and construction', text: 'Ground conditions, existing decks, services and site access influence foundations, sequencing and the feasible scope.' },
+        { title: 'Project coordination', text: 'Ground conditions, existing decks, services, renovation sequencing, architectural drawings and site access influence the feasible scope and who needs to resolve each interface.' },
       ],
     },
     {
       kind: 'projects', id: 'custom-project-evidence', eyebrow: 'Site-specific decisions, built', title: 'Four projects with four different reasons to be custom',
       intro: 'The common thread is not one roof style. It is a design response shaped by the existing place and the intended use.',
       items: [
-        { slug: 'tindalls-bay-pavilion', label: 'Layered home and mixed roof zones', summary: 'The patio and carport weave around the existing house using insulated panels, acrylic zones, timber battens and mesh blinds where each condition calls for a different response.' },
-        { slug: 'warkworth-outdoor-room', label: 'A complete freestanding room', summary: 'The gable structure, clear glazing, solid roof zone, cedar lining, deck and fireplace were developed as one outdoor-room project beside the home.' },
-        { slug: 'ardmore-box-carport', label: 'Gable geometry inside a box frame', summary: 'A wide vehicle cover combines a defined perimeter, internal gable form, steel beams, aluminium rafters, acrylic roofing and integrated lighting.' },
-        { slug: 'goodhome-commercial-terrace', label: 'Existing architecture extended', summary: 'A two-zone gable roof follows the building pitch and facade rhythm while coordinating a large covered hospitality courtyard.' },
+        { slug: 'tindalls-bay-pavilion', label: 'Layered home and mixed roof zones', summary: 'A 108 square metre patio and carport response uses insulated panels, acrylic zones, timber battens and blinds where the existing home creates different conditions.', facts: ['108 m² across patio and carport', 'Mixed roof and edge treatments'] },
+        { slug: 'warkworth-outdoor-room', label: 'A complete freestanding room', summary: 'The 5.0 by 6.0 metre gable, clear glazing, solid roof zone, cedar lining, deck and fireplace were developed as one freestanding outdoor room.', facts: ['5.0 x 6.0 m footprint', '4.1 m high with a 30 degree roof'] },
+        { slug: 'ardmore-box-carport', label: 'Gable geometry inside a box frame', summary: 'A 54.3 square metre vehicle cover combines a defined perimeter, internal gable, steel beams, aluminium rafters, acrylic roofing and integrated lighting.', facts: ['8.77 x 6.19 m footprint', 'Steel and aluminium structure'] },
+        { slug: 'goodhome-commercial-terrace', label: 'Existing architecture extended', summary: 'A 10.09 by 6.7 metre, two-zone gable follows the building pitch and facade rhythm across a hospitality courtyard.', facts: ['67.7 m² covered area', '25 degree gable aligned to the facade'] },
       ],
     },
     {
@@ -126,7 +99,7 @@ export const customPergolasConfig = {
       intro: 'Each choice affects the next. The work is to resolve the system, not to assemble a shopping list.',
       items: [
         { title: 'Form and proportion', outcome: 'A roof shape and volume that respond to the existing house, available height and intended presence.', consider: 'Pitch, ridge or low-edge height, roof depth, surrounding rooflines and how the structure is seen from inside.' },
-        { title: 'Structure and openings', outcome: 'Posts and beams arranged around circulation, views, furniture and the feasible span.', consider: 'Loads, supports, foundations, house connection, site exposure and any engineering required for the completed design.' },
+        { title: 'Structure and restricted posts', outcome: 'Posts and beams arranged around circulation, views, furniture and the feasible span rather than a default grid.', consider: 'Loads, supports, foundations, house connection, site exposure and any engineering required for the completed design.' },
         { title: 'Light and roof zones', outcome: 'Acrylic, solid or combined roofing placed according to the conditions needed below and beside the roof.', consider: 'Orientation, direct sun, adjoining glazing, total roof depth, underside character and product-specific information.' },
         { title: 'Edges and integration', outcome: 'Drainage, blinds, screens, lighting and heating coordinated with the frame instead of added after fabrication.', consider: 'Wind direction, privacy, low sun, mounting, wiring, controls, gutters, downpipes and discharge.' },
       ],
@@ -155,25 +128,24 @@ export const customPergolasConfig = {
       intro: 'Each stage adds the evidence needed for the next decision.',
       items: [
         { title: 'Show the whole context', copy: 'Send the suburb, photos, rough dimensions and the practical outcome. Include views from inside and any plans if they are available.' },
-        { title: 'Frame the real design problem', copy: 'Sanctuary identifies the relationships and constraints that matter, plus any missing information needed before useful options can be compared.' },
-        { title: 'Develop the connected options', copy: 'Form, structure, roofing, drainage, edges and integrated features are assessed in the context of the site rather than as independent upgrades.' },
-        { title: 'Resolve and document the scope', copy: 'Drawings, selections, assumptions, inclusions, exclusions and project-specific checks are brought into an agreed design and quotation.' },
-        { title: 'Prepare and install', copy: 'After approval and required preliminary work, the pergola is prepared and installed to the agreed scope. Timing is confirmed for the actual project.' },
+        { title: 'Map constraints and interfaces', copy: 'Sanctuary identifies restricted posts, connection limits, level changes, spans, drainage and the work that needs coordination with an architect, builder or engineer.' },
+        { title: 'Develop the connected response', copy: 'Form, structure, roofing, drainage, edges and integrated features are tested together, with open technical questions kept visible.' },
+        { title: 'Resolve responsibilities and scope', copy: 'Drawings, selections, assumptions, inclusions, exclusions and project-specific checks are brought into an agreed design and quotation.' },
       ],
     },
-    {
-      kind: 'scope', id: 'custom-scope', eyebrow: 'Price reflects the defined design', title: 'Custom cost is the sum of project decisions, not a premium label',
-      lead: 'A more tailored project may be simple or complex. Cost follows what the site and agreed outcome actually require.',
-      paragraphs: ['A useful estimate states what is known and assumed. A final quotation should make it possible to understand where the scope comes from.'],
-      factors: [
-        ['Geometry and spans', 'Dimensions, height, roof form and the feasible support layout define the structural starting point.'],
-        ['Materials and finish', 'Roof zones, framing, lining, colour and visible detailing shape both cost and architectural character.'],
-        ['Connections and foundations', 'Attachment, freestanding supports, existing decks and ground conditions change the work below and beside the roof.'],
-        ['Integrated requirements', 'Drainage, blinds, screens, electrical provisions, engineering, documentation and access add project-specific scope.'],
-      ],
-      checklistLead: 'Compare whether each proposal describes the same custom outcome.',
-      checklist: ['Agreed dimensions and roof geometry', 'Frame, roofing, lining and finish', 'Posts, foundations and house connections', 'Drainage and discharge responsibilities', 'Screens, blinds and electrical options', 'Engineering or approval work where applicable', 'Site access, assumptions and exclusions', 'GST, revision status and the next action'],
-    },
+    { kind: 'link-cards', id: 'custom-next-decisions', tone: 'neutral', eyebrow: 'Continue the brief', title: 'Take the next question to the page that owns it', intro: 'Keep the bespoke problem separate from detailed cost, form, room and commercial-coordination decisions.', items: [
+      { title: 'Compare a defined project scope', text: 'See which inputs make an early cost discussion useful and which items must be shown in the total.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
+      { title: 'Test a central ridge', text: 'Review how ridge height, pitch, eaves and end conditions shape a gable around the existing architecture.', href: '/gable-pergolas-auckland', linkLabel: 'Open the gable guide' },
+      { title: 'Test a single roof plane', text: 'Review how the high edge, low edge, fall and drainage direction affect a mono-pitched connection.', href: '/pitched-pergolas-auckland', linkLabel: 'Open the pitched guide' },
+      { title: 'Plan the whole outdoor room', text: 'Coordinate shelter, furniture, services and changing edges around the life below the roof.', href: '/outdoor-rooms-auckland', linkLabel: 'Open the outdoor room guide' },
+      { title: 'Coordinate a commercial project', text: 'Take operating constraints, stakeholder interfaces, access and handover requirements to the commercial service owner.', href: '/commercial-pergolas-auckland', linkLabel: 'Open the commercial guide' },
+    ] },
+    { kind: 'link-cards', id: 'custom-product-context', tone: 'warm', eyebrow: 'Current product pages', title: 'Take product-level questions to the configuration being considered', intro: 'These pages describe current gable, pitched, box-perimeter and acrylic roof information. The custom review remains responsible for resolving non-standard junctions, supports and geometry.', items: [
+      { title: 'Gable pergola configuration', text: 'Review Sanctuary\'s current gable product presentation before testing bespoke ridge, end and connection conditions.', href: '/products/pergolas/gable', linkLabel: 'Open the gable product' },
+      { title: 'Pitched pergola configuration', text: 'Review Sanctuary\'s current pitched product presentation before testing bespoke high-edge, low-edge and drainage conditions.', href: '/products/pergolas/pitched', linkLabel: 'Open the pitched product' },
+      { title: 'Box-perimeter configuration', text: 'Review the fixed-roof perimeter form before testing bespoke internal geometry, post positions and concealed drainage conditions.', href: '/products/pergolas/box-perimeter', linkLabel: 'Open box-perimeter' },
+      { title: 'Acrylic roof approach', text: 'Review the fixed acrylic roof owner page before testing bespoke glazing zones, daylight, house junctions and drainage.', href: '/acrylic-roof-pergolas-auckland', linkLabel: 'Open the acrylic page' },
+    ] },
     {
       kind: 'faq', id: 'custom-pergolas-faq', tone: 'elevated', eyebrow: 'Questions about bespoke work', title: 'What to resolve when the answer is site-specific',
       intro: 'These answers describe the design approach. The final response depends on the actual property and agreed project.', items: faqItems,
@@ -182,13 +154,22 @@ export const customPergolasConfig = {
   finalCta: {
     eyebrow: 'Bring the awkward parts', title: 'The useful first message shows what makes the site specific',
     text: 'Do not crop out the roofline, corner, doorway or level change that makes the project difficult. Those details help Sanctuary understand why a custom response may be worthwhile.',
-    button: 'Show us the site', checklistTitle: 'Useful context includes',
-    checklist: ['Project suburb', 'Wide photos of the house and outdoor area', 'Views from inside adjoining rooms', 'Rough width, projection and height', 'Known constraints or existing structures', 'How the space should be used', 'Plans or sketches, if available', 'Desired timeframe, if known'],
+    button: 'Request a design review', checklistTitle: 'Useful context includes',
+    checklist: ['Project address and current stage', 'Wide photos of the house and outdoor area', 'Plans, sketches or renovation drawings', 'Rough width, projection and height', 'Restricted posts, spans or level changes', 'Intended use and integrated features', 'Architect, designer or builder involvement', 'Desired timeframe, if known'],
   },
   form: {
     ariaLabel: 'Custom pergola project enquiry form', eyebrow: 'Start with the real site', heading: 'Send your custom pergola brief',
     intro: 'Share photos, rough dimensions and the reason a standard answer may not work. Explain what should improve, what must stay open and any constraints you already know about.',
-    submitLabel: 'Show us the site',
+    submitLabel: 'Request a design review',
+    messageLabel: 'Why does the site need a custom response?',
+    messagePlaceholder: 'Describe the difficult connection, irregular footprint, restricted post position, changing level, span or coordination issue that shapes the project.',
+    briefFields: [
+      { name: 'siteAddress', label: 'Project address', type: 'text', placeholder: 'Street address, if you are ready to share it', wide: true },
+      { name: 'projectStage', label: 'Project stage', type: 'select', options: ['Early feasibility', 'Concept design', 'Architectural plans underway', 'Consent or documentation underway', 'Ready for a detailed proposal'] },
+      { name: 'professionalInvolvement', label: 'Professional involvement', type: 'text', placeholder: 'Architect, designer, builder or engineer, if involved' },
+      { name: 'knownConstraints', label: 'Known site and connection constraints', type: 'textarea', placeholder: 'Include restricted posts, spans, levels, services, access, renovation sequencing or existing structure.', wide: true },
+      { name: 'intendedUse', label: 'Intended use of the finished space', type: 'text', placeholder: 'For example: dining, cooking, poolside or commercial service', wide: true },
+    ],
     roofPreference: {
       label: 'Possible roof approach', detailKey: 'roofPreference', options: [
         { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },

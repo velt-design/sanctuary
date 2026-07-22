@@ -1,5 +1,7 @@
 # SEO Landing Page Programme
 
+The current guide-cluster page roles and rewrite decisions are recorded in [Pergola Guide Cluster Improvement](pergola-guide-cluster-improvement.md). The requirement-by-requirement state is recorded in the [Pergola Guide Cluster Completion Audit](pergola-guide-cluster-completion-audit.md). Public pricing, warranty, timing, performance and product-position statements are governed by the [Marketing Claims Register](../marketing-claims-register.md).
+
 Status: Active implementation checklist.
 
 This document tracks the ten approved Sanctuary marketing landing pages. Pages are built and proved one at a time. A page is complete only after content, claim, SEO, conversion, responsive, link, schema, typecheck, browser and production-build checks pass.
@@ -11,7 +13,7 @@ This document tracks the ten approved Sanctuary marketing landing pages. Pages a
 | 1 | Pergolas Auckland | `/pergolas-auckland` | Complete | Broad category entry point. Starts with the relationship between the outdoor room, adjoining home and site; introduces form, roofing, edges, scope and process. |
 | 2 | Custom Pergolas Auckland | `/custom-pergolas-auckland` | Complete | Bespoke design and site-specific problem solving. |
 | 3 | Aluminium Pergolas Auckland | `/aluminium-pergolas-auckland` | Complete | Aluminium structure, architectural detailing and material decisions. |
-| 4 | Pergola Cost Auckland | `/pergola-cost-auckland` | Complete | Scope, cost drivers, quotation comparison and qualification. No price is published without approval. |
+| 4 | Pergola Cost Auckland | `/pergola-cost-auckland` | Awaiting pricing approval | Scope, cost drivers, quotation comparison and qualification are complete. Numerical guidance needs a dated approved price set. |
 | 5 | Gable Pergolas Auckland | `/gable-pergolas-auckland` | Complete | Gable form, height, proportion and integration with the existing roofline. |
 | 6 | Pitched Pergolas Auckland | `/pitched-pergolas-auckland` | Complete | Mono-pitched form, height constraints, drainage and restrained house connection. |
 | 7 | Outdoor Rooms Auckland | `/outdoor-rooms-auckland` | Complete | Complete room planning across roof, edges, lighting, heating and use. |
@@ -29,7 +31,7 @@ This document tracks the ten approved Sanctuary marketing landing pages. Pages a
 
 The directory uses the approved architectural editorial foundation, retains `#4f5748` olive green as its only action accent and is discoverable from the public footer and sitemap. A typed data owner keeps all ten route labels, summaries and destinations aligned with the rendered directory and ordered `ItemList` schema.
 
-Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It verifies one H1, self-canonical indexable metadata, exactly ten direct guide links, three chapters, resolving destinations, ordered schema, footer and sitemap discovery, loaded imagery, green accent and no horizontal overflow. The expanded marketing browser suite passes 100 of 100 checks, and the production build statically generates `/pergola-guides`. Visual evidence is stored in `artifacts/marketing-seo-landing/pergola-guides/`.
+Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It verifies one H1, self-canonical indexable metadata, exactly ten direct guide links, three chapters, resolving destinations, ordered schema, footer and sitemap discovery, loaded imagery, green accent and no horizontal overflow. The current hub and guide suite passes 76 of 76 checks, with four additional technical SEO, brochure-retirement and copy-governance checks passing. The claims regression reads every indexable sitemap route rather than only the guide pages. The production build statically generates `/pergola-guides`. Visual evidence is stored in `artifacts/marketing-seo-landing/pergola-guides/`.
 
 ## Page 1 decisions
 
@@ -37,8 +39,8 @@ Focused browser QA covers 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844. It 
 - The page reuses the approved architectural editorial foundation and existing enquiry API, attachment, attribution, privacy and conversion-event contracts.
 - Green remains the accent through the approved olive/green foundation token. No burgundy or purple accent has been introduced.
 - The narrative is intentionally broader than `/acrylic-roof-pergolas-auckland`: it begins with use, house integration and site conditions, then compares roof form, roof approach, open edges, process and complete scope.
-- Internal links point only to current, resolving product, project, privacy and acrylic-page routes. Future programme routes are not linked before they exist.
-- Structured data is limited to `WebPage`, `Service` and visible `FAQPage` content. No rating, review, offer or price schema is added.
+- Internal links connect the broad service page to the custom, product, cost, project and enquiry owners without creating redirect chains.
+- Structured data uses `WebPage`, `Service` and `BreadcrumbList`. FAQ content remains visible but is not marked up as `FAQPage`; no rating, review, offer or price schema is added.
 - The existing landing-page enquiry form now accepts a route-owned roof-preference configuration. The acrylic route keeps its acrylic-specific options; the broad page offers acrylic, solid or lined, combination and unsure choices while preserving the same API and tracking behavior.
 
 ## Claims and assets requiring verification
@@ -52,7 +54,7 @@ These items are deliberately omitted or stated conditionally until approved evid
 - Span, post-free, wind-zone, coastal, engineering or structural-performance claims.
 - Waterproof, watertight, leak-proof, heat, UV, durability, coating, lifespan or maintenance-performance claims.
 - Product manufacturers, profiles, thicknesses, warranties and availability.
-- Any comparison claim about louvre roofs before the comparison page receives technical and claim review.
+- Any categorical Sanctuary louvre-supply claim until the current product-range position is formally approved.
 - Testimonials, ratings or review schema not already verified and eligible for use.
 
 Existing project photography and project facts come from `apps/marketing/data/projects.ts`. No stock or AI-generated project imagery is used.
@@ -67,7 +69,7 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 - Full marketing browser suite: 31 of 31 passed.
 - Production marketing build: passed; `/pergolas-auckland` generated as a static route.
 - Visual evidence: `artifacts/marketing-seo-landing/pergolas-auckland/` includes top, project-proof, roof-option and form captures at all four widths.
-- Verified: one H1, self-canonical URL, explicit index/follow, sitemap inclusion, `WebPage`/`Service`/visible `FAQPage` schema, resolving internal links, form validation, route attribution, green accent, no horizontal overflow and materially distinct copy from the acrylic reference route.
+- Verified: one H1, self-canonical URL, explicit index/follow, sitemap inclusion, `WebPage`/`Service`/`BreadcrumbList` schema, no FAQ schema, resolving internal links, form validation, route attribution, green accent, no horizontal overflow and materially distinct copy from the acrylic reference route.
 
 ### Page 2: Custom Pergolas Auckland
 
@@ -75,8 +77,8 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 - Sequential Page 1–2 browser contract: 14 of 14 passed across 1440, 1024, 768 and 390 pixel widths.
 - Full marketing browser suite: 38 of 38 passed.
 - Production marketing build: passed; `/custom-pergolas-auckland` generated as a static route.
-- Visual evidence: `artifacts/marketing-seo-landing/custom-pergolas-auckland/` includes hero, project-proof, bespoke-decision and form captures at all four widths.
-- Verified: self-canonical indexable metadata, sitemap inclusion, visible FAQ/schema parity, resolving links, enquiry attribution, configured roof preference, green accent, no overflow and no repeated H1/H2 or material 10-word shingle overlap with Page 1.
+- Visual evidence: `artifacts/marketing-seo-landing/custom-pergolas-auckland/` includes hero, project-proof, bespoke-decision, product-context and form captures at all four widths.
+- Verified: self-canonical indexable metadata, sitemap inclusion, visible FAQ content without FAQ schema, resolving links, enquiry attribution, page-specific project fields, green accent, no overflow and no repeated H1/H2 or material 10-word shingle overlap with Page 1.
 - Distinct narrative: custom work is presented as resolving the joins between site constraints, geometry, structure, light and scope, not as a generic premium upgrade list.
 
 ### Page 3: Aluminium Pergolas Auckland
@@ -151,7 +153,10 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 
 - All ten routes are self-canonical, indexable, present in the public sitemap and generated statically.
 - Each route has a unique metadata title, description and H1; no route repeats an H1 or H2 from any earlier programme page or the approved acrylic reference.
-- Every route uses visible `WebPage`, `Service` and FAQ content with FAQ schema parity, resolving internal links and the existing enquiry/attachment/attribution integration.
+- Every route uses `WebPage` and `BreadcrumbList` schema. Only service-role pages add `Service`; visible FAQ content is not marked up as `FAQPage`. Existing enquiry, attachment and attribution integration remains intact.
+- Every route exposes the 22 July 2026 editorial review date and reviewer in visible copy and structured data without presenting that date as approval of pending claims.
+- The historic brochure endpoint permanently redirects to the governed guide library, and product downloads no longer present it as current guidance.
+- Known unapproved timing, warranty and performance statements are checked across every indexable marketing route in the generated sitemap.
 - Responsive browser coverage spans 1440 x 1000, 1024 x 768, 768 x 1024 and 390 x 844 with no horizontal overflow.
 - The approved olive green remains the sole action accent. No burgundy or purple theme was introduced.
 

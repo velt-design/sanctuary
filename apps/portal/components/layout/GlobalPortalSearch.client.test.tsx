@@ -1,6 +1,8 @@
 import { act } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
+import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
 import GlobalPortalSearch from './GlobalPortalSearch.client';
 
 const navigation = vi.hoisted(() => ({
@@ -47,40 +49,63 @@ function inputText(input: HTMLInputElement, value: string) {
   });
 }
 
+let queryClient: QueryClient;
+
+function renderSearch() {
+  return renderIntoDocument(
+    <QueryClientProvider client={queryClient}>
+      <PortalQueryClientScope client={queryClient}>
+        <GlobalPortalSearch />
+      </PortalQueryClientScope>
+    </QueryClientProvider>,
+  );
+}
+
+async function flushQueryNotifications() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.resolve();
+  });
+}
+
+function searchResponse(query = 're', projectName = 'Remuera Residence') {
+  return {
+    query,
+    projects: [{
+      kind: 'project',
+      id: 'proj_1',
+      href: '/staff/projects/proj_1',
+      name: projectName,
+      reference: 'Q-1010',
+      siteAddress: 'Remuera, Auckland',
+      contactName: 'Alex Mason',
+      stage: 'quoting',
+      archived: false,
+    }],
+    contacts: [{
+      kind: 'contact',
+      id: 'ct_1',
+      href: '/staff/contacts/ct_1',
+      name: 'Rebecca Stone',
+      email: 'rebecca@example.com',
+      phone: '021 555 0101',
+      address: null,
+    }],
+    generatedAt: '2026-07-22T00:00:00.000Z',
+  };
+}
+
 describe('GlobalPortalSearch', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
     navigation.pathname = '/staff/dashboard';
     navigation.search = '';
     navigation.beginRouteTransition.mockReset();
     window.history.replaceState(null, '', navigation.pathname);
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        query: 're',
-        projects: [{
-          kind: 'project',
-          id: 'proj_1',
-          href: '/staff/projects/proj_1',
-          name: 'Remuera Residence',
-          reference: 'Q-1010',
-          siteAddress: 'Remuera, Auckland',
-          contactName: 'Alex Mason',
-          stage: 'quoting',
-          archived: false,
-        }],
-        contacts: [{
-          kind: 'contact',
-          id: 'ct_1',
-          href: '/staff/contacts/ct_1',
-          name: 'Rebecca Stone',
-          email: 'rebecca@example.com',
-          phone: '021 555 0101',
-          address: null,
-        }],
-        generatedAt: '2026-07-22T00:00:00.000Z',
-      }),
-    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(searchResponse())));
   });
 
   afterEach(() => {
@@ -90,7 +115,7 @@ describe('GlobalPortalSearch', () => {
   });
 
   it('opens from the global shortcut and explains the two-character threshold', () => {
-    const rendered = renderIntoDocument(<GlobalPortalSearch />);
+    const rendered = renderSearch();
     const input = rendered.container.querySelector('input') as HTMLInputElement;
     act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })));
     expect(document.activeElement).toBe(input);
@@ -99,16 +124,19 @@ describe('GlobalPortalSearch', () => {
   });
 
   it('debounces grouped results and starts keyboard navigation with visible feedback', async () => {
-    const rendered = renderIntoDocument(<GlobalPortalSearch />);
+    const rendered = renderSearch();
     const input = rendered.container.querySelector('input') as HTMLInputElement;
     act(() => input.focus());
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(221);
+      vi.advanceTimersByTime(101);
       await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
       await Promise.resolve();
     });
+    await flushQueryNotifications();
 
     expect(fetch).toHaveBeenCalledWith('/api/staff/v1/search?q=re', expect.objectContaining({ cache: 'no-store' }));
     expect(rendered.container.textContent).toContain('Remuera Residence');
@@ -128,16 +156,19 @@ describe('GlobalPortalSearch', () => {
   });
 
   it('keeps the query during mouse navigation and clears it when the route settles', async () => {
-    const rendered = renderIntoDocument(<GlobalPortalSearch />);
+    const rendered = renderSearch();
     const input = rendered.container.querySelector('input') as HTMLInputElement;
     act(() => input.focus());
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(221);
+      vi.advanceTimersByTime(101);
       await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
       await Promise.resolve();
     });
+    await flushQueryNotifications();
 
     act(() => (rendered.container.querySelector('[role="option"]') as HTMLAnchorElement).click());
     expect(input.value).toBe('re');
@@ -145,7 +176,13 @@ describe('GlobalPortalSearch', () => {
 
     navigation.pathname = '/staff/projects/proj_1';
     window.history.pushState(null, '', navigation.pathname);
-    rendered.rerender(<GlobalPortalSearch />);
+    rendered.rerender(
+      <QueryClientProvider client={queryClient}>
+        <PortalQueryClientScope client={queryClient}>
+          <GlobalPortalSearch />
+        </PortalQueryClientScope>
+      </QueryClientProvider>,
+    );
 
     expect(input.value).toBe('');
     expect(rendered.container.querySelector('[role="listbox"]')).toBeNull();
@@ -155,16 +192,19 @@ describe('GlobalPortalSearch', () => {
   it('marks the current result and closes cleanly without starting navigation', async () => {
     navigation.pathname = '/staff/projects/proj_1';
     window.history.replaceState(null, '', navigation.pathname);
-    const rendered = renderIntoDocument(<GlobalPortalSearch />);
+    const rendered = renderSearch();
     const input = rendered.container.querySelector('input') as HTMLInputElement;
     act(() => input.focus());
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(221);
+      vi.advanceTimersByTime(101);
       await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
       await Promise.resolve();
     });
+    await flushQueryNotifications();
 
     const current = rendered.container.querySelector('[role="option"][aria-current="page"]') as HTMLAnchorElement;
     expect(current.textContent).toContain('Current');
@@ -177,13 +217,87 @@ describe('GlobalPortalSearch', () => {
   });
 
   it('closes the result panel with Escape without clearing the query', () => {
-    const rendered = renderIntoDocument(<GlobalPortalSearch />);
+    const rendered = renderSearch();
     const input = rendered.container.querySelector('input') as HTMLInputElement;
     act(() => input.focus());
     inputText(input, 'deck');
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
     expect(input.value).toBe('deck');
     expect(rendered.container.querySelector('[role="listbox"]')).toBeNull();
+    rendered.unmount();
+  });
+
+  it('serves a repeated exact query from the user cache without another debounce or request', async () => {
+    const rendered = renderSearch();
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    inputText(input, 're');
+
+    await act(async () => {
+      vi.advanceTimersByTime(101);
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    await flushQueryNotifications();
+    expect(rendered.container.textContent).toContain('Remuera Residence');
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    inputText(input, '');
+    inputText(input, 'RE');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.textContent).toContain('Remuera Residence');
+    expect(rendered.container.textContent).not.toContain('Searching the portal');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+  });
+
+  it('keeps prior results visible while an uncached query refreshes', async () => {
+    let finishRefresh: ((response: Response) => void) | null = null;
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(Response.json(searchResponse()))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { finishRefresh = resolve; }));
+
+    const rendered = renderSearch();
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    act(() => input.focus());
+    inputText(input, 're');
+    await act(async () => {
+      vi.advanceTimersByTime(101);
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    await flushQueryNotifications();
+
+    inputText(input, 'rem');
+    expect(rendered.container.textContent).toContain('Remuera Residence');
+    expect(rendered.container.textContent).toContain('Updating results');
+
+    await act(async () => {
+      vi.advanceTimersByTime(101);
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(rendered.container.textContent).toContain('Remuera Residence');
+
+    await act(async () => {
+      finishRefresh?.(Response.json(searchResponse('rem', 'Remuera Courtyard')));
+      await Promise.resolve();
+      await Promise.resolve();
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+    await flushQueryNotifications();
+    expect(rendered.container.textContent).toContain('Remuera Courtyard');
+    expect(rendered.container.textContent).not.toContain('Updating results');
     rendered.unmount();
   });
 });

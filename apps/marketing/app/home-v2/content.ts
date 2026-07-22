@@ -1,8 +1,8 @@
 export const proofPoints = [
-  { value: '1-5', label: 'days on site' },
-  { value: '6-8', label: 'week lead time' },
   { value: '4', label: 'roof forms' },
-  { value: '10', label: 'year warranty' },
+  { value: '10', label: 'design guides' },
+  { value: '3', label: 'planning chapters' },
+  { value: '1', label: 'connected brief' },
 ] as const;
 
 export const designPrinciples = [
@@ -43,11 +43,11 @@ export const processSteps = [
   },
   {
     title: 'Installation',
-    copy: 'The Sanctuary team sets out and builds the structure, typically over one to five days.',
+    copy: 'The Sanctuary team sets out and builds the structure to the signed-off design and agreed site sequence.',
   },
   {
     title: 'Completion and support',
-    copy: 'We complete final checks, explain care and remain available under the ten-year warranty.',
+    copy: 'We complete final checks and provide the care, workmanship and manufacturer information that applies to the project.',
   },
 ] as const;
 

@@ -1,6 +1,10 @@
 import type { QueueMode } from '@/lib/dashboard/types';
 
 export const qk = {
+  search: {
+    portal: (query: string) => ['portalSearch', query] as const,
+    portalPrefix: () => ['portalSearch'] as const,
+  },
   staff: {
     directory: (host: string) => ['staff', host, 'directory'] as const,
   },

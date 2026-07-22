@@ -4,6 +4,7 @@ type PergolaGuide = {
   title: string;
   prompt: string;
   summary: string;
+  role: 'service' | 'product-guide' | 'decision-guide';
 };
 
 type PergolaGuideChapter = {
@@ -14,6 +15,13 @@ type PergolaGuideChapter = {
   introduction: string;
   guides: PergolaGuide[];
 };
+
+export const pergolaGuideEditorialReview = {
+  reviewer: 'Sanctuary Pergolas',
+  date: '2026-07-22',
+  dateLabel: '22 July 2026',
+  note: 'Pricing, warranty and technical performance remain subject to current written project and product evidence.',
+} as const;
 
 export const pergolaGuideChapters: PergolaGuideChapter[] = [
   {
@@ -31,6 +39,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Begin with the whole brief',
         summary:
           'A broad planning guide to roof form, daylight, weather edges and the relationship between a pergola and the home.',
+        role: 'service',
       },
       {
         number: '02',
@@ -39,6 +48,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Resolve a site-specific design',
         summary:
           'How a bespoke pergola develops from the house, outdoor area, constraints and way the finished space should be used.',
+        role: 'service',
       },
       {
         number: '03',
@@ -47,6 +57,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Design the life below the roof',
         summary:
           'Plan a more complete outdoor room around shelter, warmth, lighting, services, furniture and changing seasons.',
+        role: 'service',
       },
       {
         number: '04',
@@ -55,6 +66,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Coordinate operation and delivery',
         summary:
           'A project guide for hospitality, workplace and customer-facing outdoor areas with commercial use and coordination needs.',
+        role: 'service',
       },
     ],
   },
@@ -73,6 +85,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Understand the frame',
         summary:
           'Explore how aluminium structure, spans, posts, finishes and junctions contribute to a durable architectural pergola.',
+        role: 'product-guide',
       },
       {
         number: '06',
@@ -81,6 +94,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Plan ridge, eaves and volume',
         summary:
           'Consider the height, symmetry, light and spatial character created by a roof rising to a central ridge.',
+        role: 'product-guide',
       },
       {
         number: '07',
@@ -89,6 +103,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Follow one roof plane',
         summary:
           'Understand when a single-slope roof can make a clean connection while managing height, fall, drainage and daylight.',
+        role: 'product-guide',
       },
     ],
   },
@@ -107,6 +122,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Compare scope before price',
         summary:
           'See which design and delivery choices shape project cost, and what information makes an early estimate more useful.',
+        role: 'decision-guide',
       },
       {
         number: '09',
@@ -115,6 +131,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         prompt: 'Plan the changing edge',
         summary:
           'Consider blinds as part of the architecture, including wind, low sun, privacy, openings and how the edge works when raised.',
+        role: 'product-guide',
       },
       {
         number: '10',
@@ -122,7 +139,8 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         title: 'Acrylic Pergolas vs Louvre Roofs',
         prompt: 'Compare roof behaviour',
         summary:
-          'Compare fixed acrylic roofing and opening louvres through daylight, rain protection, ventilation, maintenance and use.',
+          'Compare fixed acrylic roofing and opening louvres through daylight, rain detailing, ventilation, maintenance and use.',
+        role: 'decision-guide',
       },
     ],
   },
@@ -131,3 +149,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
 export const pergolaGuides = pergolaGuideChapters
   .flatMap((chapter) => chapter.guides)
   .sort((left, right) => left.number.localeCompare(right.number));
+
+export function findPergolaGuide(href: string) {
+  return pergolaGuides.find((guide) => guide.href === href);
+}

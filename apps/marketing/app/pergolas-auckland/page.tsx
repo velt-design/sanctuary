@@ -16,7 +16,9 @@ import {
 } from '@/components/marketing-foundation';
 import { projects } from '@/data/projects';
 import { absoluteUrl } from '@/lib/seo';
+import { pergolaGuideEditorialReview } from '@/data/pergolaGuides';
 import AcrylicPergolaEnquiryForm from '../acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
+import PergolaGuideNavigation from '@/components/seo-landing/PergolaGuideNavigation';
 import {
   conditionalDecisions,
   designOutcomes,
@@ -31,29 +33,30 @@ import {
   scopeFactors,
 } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
+import '../../components/seo-landing/seo-landing.css';
 import './pergolas-auckland.css';
 
 const route = '/pergolas-auckland';
 const heroImage = '/images/project-riverhead-gable-01.jpg';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Pergolas Auckland | Custom Design & Installation' },
-  description: 'Explore custom pergolas for Auckland homes. Compare roof forms, materials, light, weather edges and project scope, then send photos for a site-specific first assessment.',
+  title: { absolute: 'Pergolas Auckland | Design, Build & Installation' },
+  description: 'Plan an Auckland pergola around the home, outdoor area and intended use. Compare roof forms, materials and project scope, then share the site for an initial assessment.',
   alternates: { canonical: route },
   openGraph: {
     type: 'website',
     url: route,
     title: 'Pergolas for Auckland Homes, Designed From the House Out',
-    description: 'A practical guide to planning a custom pergola around the home, the outdoor room and the conditions that reach the site.',
+    description: 'A practical guide to planning a pergola around the home, the outdoor room and the conditions that reach the site.',
     images: [{
       url: heroImage,
-      alt: 'Custom poolside gable pergola beside an Auckland home',
+      alt: 'Poolside gable pergola beside an Auckland home',
     }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Pergolas for Auckland Homes, Designed From the House Out',
-    description: 'Compare roof form, material, daylight, shelter and scope before planning a custom Auckland pergola.',
+    description: 'Compare roof form, material, daylight, shelter and scope before planning an Auckland pergola.',
     images: [heroImage],
   },
 };
@@ -63,21 +66,25 @@ const projectProof = [
     slug: 'warkworth-outdoor-room',
     label: 'Freestanding gable outdoor room',
     summary: 'A freestanding gable structure combines clear acrylic glazing, a solid roof zone, cedar lining, a deck and fireplace within one complete outdoor-room design.',
+    facts: ['5.0 x 6.0 m footprint', '30 m² freestanding room'],
   },
   {
     slug: 'tindalls-bay-pavilion',
     label: 'Mixed roofing around a complex home',
     summary: 'Insulated panels, acrylic roof zones, timber battens and mesh blinds respond to different uses and light conditions across a layered patio and carport.',
+    facts: ['108 m² patio and carport scope', 'Mixed roof and edge treatments'],
   },
   {
     slug: 'muriwai-courtyard',
     label: 'A new hip roof on a familiar footprint',
     summary: 'A hipped aluminium pergola with opal acrylic roofing replaces an older structure while retaining the courtyard layout that already worked for the home.',
+    facts: ['8.0 x 5.0 m footprint', '40 m² courtyard cover'],
   },
   {
     slug: 'goodhome-commercial-terrace',
     label: 'Commercial gable integration',
     summary: 'A two-zone gable roof follows the pitch and rhythm of the existing building to create a covered hospitality courtyard with a coherent street-facing form.',
+    facts: ['10.09 x 6.7 m footprint', '67.7 m² hospitality cover'],
   },
 ].flatMap((proof) => {
   const project = projects.find((candidate) => candidate.slug === proof.slug);
@@ -85,17 +92,14 @@ const projectProof = [
 });
 
 export default function PergolasAucklandPage() {
-  const faqSchema = {
+  const breadcrumbSchema = {
     '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqItems.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.answer.join('\n\n'),
-      },
-    })),
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
+      { '@type': 'ListItem', position: 2, name: 'Pergola Guides', item: absoluteUrl('/pergola-guides') },
+      { '@type': 'ListItem', position: 3, name: 'Pergolas Auckland', item: absoluteUrl(route) },
+    ],
   };
 
   return (
@@ -109,12 +113,18 @@ export default function PergolasAucklandPage() {
             url: absoluteUrl(route),
             description: metadata.description,
             primaryImageOfPage: absoluteUrl(heroImage),
+            dateModified: pergolaGuideEditorialReview.date,
+            reviewedBy: {
+              '@type': 'Organization',
+              name: pergolaGuideEditorialReview.reviewer,
+              url: absoluteUrl('/'),
+            },
           },
           {
             '@context': 'https://schema.org',
             '@type': 'Service',
-            name: 'Custom pergola design and installation in Auckland',
-            serviceType: 'Custom pergola design and installation',
+            name: 'Pergola design, build and installation in Auckland',
+            serviceType: 'Pergola design and installation',
             areaServed: { '@type': 'City', name: 'Auckland' },
             provider: {
               '@type': 'Organization',
@@ -123,14 +133,14 @@ export default function PergolasAucklandPage() {
             },
             url: absoluteUrl(route),
           },
-          faqSchema,
+          breadcrumbSchema,
         ]}
       />
 
       <section className="acrylic-hero" aria-labelledby="pergolas-auckland-title">
         <Image
           src={heroImage}
-          alt="Custom poolside gable pergola and outdoor room beside an Auckland home"
+          alt="Poolside gable pergola and outdoor room beside an Auckland home"
           fill
           priority
           loading="eager"
@@ -140,22 +150,23 @@ export default function PergolasAucklandPage() {
         />
         <div className="acrylic-hero__shade" aria-hidden="true" />
         <Container width="wide" className="acrylic-hero__content">
-          <Eyebrow className="acrylic-eyebrow">Custom pergolas in Auckland</Eyebrow>
+          <Eyebrow className="acrylic-eyebrow">Pergola design and installation in Auckland</Eyebrow>
           <Heading as="h1" variant="page" id="pergolas-auckland-title">Pergolas for Auckland homes, designed from the house out</Heading>
           <Text size="large" className="acrylic-hero__intro">
-            Sanctuary designs and installs bespoke pergolas around the home, the site and the way the outdoor area needs to work. Start with photos and rough dimensions, not a preselected product.
+            Sanctuary designs, builds and installs pergolas across Auckland around the home, the site and the way the outdoor area needs to work. Start with photos and rough dimensions, not a preselected product.
           </Text>
           <div className="acrylic-hero__actions">
             <Button href="#project-details">Send photos and rough dimensions</Button>
             <TextLink href="#design-brief">Plan the design brief</TextLink>
           </div>
           <ul className="acrylic-hero__proof" aria-label="Sanctuary pergola approach">
-            <li>Custom form and layout</li>
+            <li>Site-specific form and layout</li>
             <li>Residential and selected commercial work</li>
             <li>Design and installation together</li>
           </ul>
         </Container>
       </section>
+      <PergolaGuideNavigation route={route} />
 
       <Section id="design-brief" className="acrylic-section acrylic-section--opening" aria-labelledby="one-connected-design">
         <Container width="wide" className="acrylic-intro-grid">
@@ -225,7 +236,7 @@ export default function PergolasAucklandPage() {
             <p>Completed projects show how form, roofing, screening and the existing building come together at full scale. They are a better starting point than choosing a detail in isolation.</p>
           </header>
           <div className="acrylic-project-grid">
-            {projectProof.map(({ project, label, summary }) => (
+            {projectProof.map(({ project, label, summary, facts }) => (
               <Link href={`/projects/${project.slug}`} className="acrylic-project-card" key={project.slug}>
                 <div className="acrylic-project-card__media">
                   <Image src={project.heroImage.src} alt={project.heroImage.alt} fill sizes="(max-width: 720px) 100vw, 50vw" />
@@ -235,6 +246,7 @@ export default function PergolasAucklandPage() {
                   <h3>{project.title}</h3>
                   <p className="acrylic-project-card__location">{project.location} · {project.roof}</p>
                   <p>{summary}</p>
+                  <ul className="seo-landing__project-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
                   <span>Review the completed project</span>
                 </div>
               </Link>
@@ -339,6 +351,21 @@ export default function PergolasAucklandPage() {
         </Container>
       </Section>
 
+      <Section tone="neutral" className="acrylic-section" aria-labelledby="continue-the-brief">
+        <Container width="wide">
+          <header className="acrylic-section__header acrylic-section__header--wide">
+            <Eyebrow className="acrylic-eyebrow">Continue with the decision that matters</Eyebrow>
+            <Heading id="continue-the-brief">Use the specialist guides without losing the whole project</Heading>
+            <p>This page owns the broad Auckland service. The next guides go deeper only where the brief needs it.</p>
+          </header>
+          <div className="acrylic-form-grid">
+            <Link className="acrylic-form-card" href="/custom-pergolas-auckland"><h3>Complex or architect-led work</h3><p>Resolve difficult connections, irregular sites, restricted posts, spans, changing levels and renovation coordination.</p><span>Open the custom pergola guide</span></Link>
+            <Link className="acrylic-form-card" href="/pergola-cost-auckland"><h3>Define a comparable scope</h3><p>See which inputs shape price and what a complete quotation should make visible.</p><span>Open the pergola cost guide</span></Link>
+            <Link className="acrylic-form-card" href="/outdoor-rooms-auckland"><h3>Plan the room below</h3><p>Coordinate use, furniture, roof, edges, light and services as one outdoor room.</p><span>Open the outdoor room guide</span></Link>
+          </div>
+        </Container>
+      </Section>
+
       <Section tone="neutral" className="acrylic-section" aria-labelledby="site-dependent">
         <Container width="wide">
           <header className="acrylic-section__header acrylic-section__header--wide">
@@ -362,7 +389,7 @@ export default function PergolasAucklandPage() {
         <Container width="wide">
           <header className="acrylic-section__header acrylic-section__header--wide">
             <Eyebrow className="acrylic-eyebrow">Questions worth resolving early</Eyebrow>
-            <Heading id="pergolas-auckland-faq">Planning a custom pergola in Auckland</Heading>
+            <Heading id="pergolas-auckland-faq">Planning a pergola in Auckland</Heading>
             <p>These answers explain the main decisions. The final recommendation still depends on the property, selected products and agreed design.</p>
           </header>
           <div className="acrylic-faq-list">
@@ -409,6 +436,12 @@ export default function PergolasAucklandPage() {
             heading="Send your pergola project details"
             intro="Add the suburb, a few photos and rough dimensions. Tell us what the outdoor area cannot do today, which rooms sit beside it and what you want the new structure to improve."
             submitLabel="Send my project details"
+            messageLabel="What should the pergola change?"
+            messagePlaceholder="Describe how you use the area, the rooms beside it and the main issue with rain, sun, wind or privacy."
+            briefFields={[
+              { name: 'siteAddress', label: 'Project address', type: 'text', placeholder: 'Street address, if you are ready to share it', wide: true },
+              { name: 'intendedUse', label: 'Intended use', type: 'text', placeholder: 'For example: dining, cooking, poolside or everyday family use', wide: true },
+            ]}
             roofPreference={generalRoofPreference}
           />
         </Container>

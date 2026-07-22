@@ -200,6 +200,16 @@
   line-height: 1.5;
 }
 .error { border-left-color: var(--ui-status-error-border); background: var(--ui-status-error-bg); }
+.refreshStatus {
+  min-height: 28px;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-status-info-bg);
+  padding: var(--ui-space-1) var(--ui-space-3);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  line-height: 20px;
+}
+.refreshError { background: var(--ui-status-warning-bg); color: var(--ui-text); }
 .keyboardHint {
   display: flex;
   align-items: center;

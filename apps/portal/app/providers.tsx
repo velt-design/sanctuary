@@ -13,6 +13,7 @@ import {
 import LocalFirstRuntime from '@/components/sync/LocalFirstRuntime';
 import LocalFirstPortalMutations from '@/components/sync/LocalFirstPortalMutations';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -37,12 +38,12 @@ function PortalDataBoundary({ children, ownerId }: { children: ReactNode; ownerI
   useEffect(() => () => queryClient.clear(), [queryClient]);
 
   const content = (
-    <>
+    <PortalQueryClientScope client={queryClient}>
       {ownerId ? <LocalFirstRuntime ownerId={ownerId} /> : null}
       {ownerId ? <LocalFirstPortalMutations /> : null}
       {children}
       {process.env.NODE_ENV === 'development' ? <ReactQueryDevtools initialIsOpen={false} /> : null}
-    </>
+    </PortalQueryClientScope>
   );
 
   if (!ownerId || !persister) {

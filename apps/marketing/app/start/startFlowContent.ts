@@ -173,7 +173,7 @@ export const startFlowContent = {
       {
         value: 'acrylic' as const,
         label: 'Acrylic',
-        description: 'Keep the space light and open while blocking UV and rain.',
+        description: 'Create a fixed overhead roof with a clear, opal or tinted daylight character.',
       },
       {
         value: 'timber' as const,

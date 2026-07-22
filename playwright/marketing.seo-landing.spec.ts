@@ -3,8 +3,8 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 const route = '/pergolas-auckland';
-const title = 'Pergolas Auckland | Custom Design & Installation';
-const description = 'Explore custom pergolas for Auckland homes. Compare roof forms, materials, light, weather edges and project scope, then send photos for a site-specific first assessment.';
+const title = 'Pergolas Auckland | Design, Build & Installation';
+const description = 'Plan an Auckland pergola around the home, outdoor area and intended use. Compare roof forms, materials and project scope, then share the site for an initial assessment.';
 const capturePhase = process.env.MARKETING_SEO_CAPTURE_PHASE?.trim();
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-seo-landing', 'pergolas-auckland');
 const viewports = [
@@ -56,7 +56,11 @@ for (const viewport of viewports) {
     await expect(page.locator('#acrylic-enquiry-roof')).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Send my project details' })).toBeVisible();
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(4);
-    await expect(main.locator('details')).toHaveCount(11);
+    await expect(main.locator('details')).toHaveCount(7);
+    await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
+    await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
+    await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
+    await expect(main.locator('.seo-landing__project-facts')).toHaveCount(4);
 
     const publicCopy = await main.innerText();
     expect(publicCopy).not.toContain('—');
@@ -79,6 +83,8 @@ for (const viewport of viewports) {
     if (capturePhase) {
       await mkdir(evidenceDirectory, { recursive: true });
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-top.png`) });
+      await main.getByRole('navigation', { name: 'Pergola guide progression' }).scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-navigation.png`) });
       await page.locator('#project-evidence').scrollIntoViewIfNeeded();
       await page.locator('.acrylic-project-card img').first().scrollIntoViewIfNeeded();
       await expect.poll(() => page.locator('.acrylic-project-card img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
@@ -136,7 +142,7 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
   });
 });
 
-test('Pergolas Auckland sitemap, internal links and FAQ schema match the page', async ({ page, request }) => {
+test('Pergolas Auckland sitemap, internal links and page schema match the service role', async ({ page, request }) => {
   await preparePage(page);
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).toContainText(route);
@@ -151,23 +157,17 @@ test('Pergolas Auckland sitemap, internal links and FAQ schema match the page', 
     expect(response.status(), `${href} should resolve`).toBeLessThan(400);
   }
 
-  const visibleQuestions = await main.locator('details summary h3').allTextContents();
-  const visibleAnswers = await main.locator('details > div').evaluateAll((answers) => answers.map((answer) => (
-    [...answer.querySelectorAll('p')].map((paragraph) => paragraph.textContent?.trim() ?? '').join('\n\n')
-  )));
   const jsonLdScripts = await page.locator('script[type="application/ld+json"]').allTextContents();
   const jsonLdNodes = jsonLdScripts.flatMap((script) => {
     const parsed = JSON.parse(script) as unknown;
     return Array.isArray(parsed) ? parsed : [parsed];
-  }) as Array<{ '@type'?: string; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
-  const faqSchema = jsonLdNodes.find((node) => node['@type'] === 'FAQPage');
+  }) as Array<{ '@type'?: string; dateModified?: string; reviewedBy?: { name?: string }; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
   const serviceSchema = jsonLdNodes.find((node) => node['@type'] === 'Service');
 
   expect(serviceSchema).toBeDefined();
-  expect(faqSchema?.mainEntity?.map((item) => item.name)).toEqual(visibleQuestions);
-  expect(faqSchema?.mainEntity?.map((item) => item.acceptedAnswer.text.replace(/\s+/g, ' ').trim())).toEqual(
-    visibleAnswers.map((answer) => answer.replace(/\s+/g, ' ').trim()),
-  );
+  expect(jsonLdNodes.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
+  expect(jsonLdNodes.find((node) => node['@type'] === 'BreadcrumbList')).toBeDefined();
+  expect(jsonLdNodes.find((node) => node['@type'] === 'WebPage')).toMatchObject({ dateModified: '2026-07-22', reviewedBy: { name: 'Sanctuary Pergolas' } });
 });
 
 const customRoute = '/custom-pergolas-auckland';
@@ -186,10 +186,15 @@ for (const viewport of viewports) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${customRoute}`);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', customDescription);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
-    await expect(page.getByRole('heading', { level: 1, name: 'When the house is not standard, the pergola should not be either' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Custom pergolas for sites where the obvious answer does not fit' })).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(4);
-    await expect(main.locator('details')).toHaveCount(10);
+    await expect(main.locator('details')).toHaveCount(6);
+    await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
+    await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
+    await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
+    await expect(main.locator('.seo-landing__project-facts')).toHaveCount(4);
+    await expect(page.locator('#acrylic-enquiry-knownConstraints')).toBeVisible();
     await expect(page.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(page.locator('#acrylic-enquiry-roof')).toHaveValue('');
 
@@ -206,17 +211,21 @@ for (const viewport of viewports) {
       await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
     }
 
-    if (viewport.width <= 720) await expect(page.getByRole('link', { name: 'Show us the site', exact: true }).last()).toBeVisible();
+    if (viewport.width <= 720) await expect(page.getByRole('link', { name: 'Request a design review', exact: true }).last()).toBeVisible();
 
     if (capturePhase) {
       await mkdir(customEvidenceDirectory, { recursive: true });
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-top.png`) });
+      await main.getByRole('navigation', { name: 'Pergola guide progression' }).scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-navigation.png`) });
       await page.locator('#custom-project-evidence').scrollIntoViewIfNeeded();
       await page.locator('.acrylic-project-card img').first().scrollIntoViewIfNeeded();
       await expect.poll(() => page.locator('.acrylic-project-card img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-proof.png`) });
       await page.locator('#custom-decisions-title').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-decisions.png`) });
+      await page.locator('#custom-product-context').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-product-context.png`) });
       await page.locator('#estimate-form-title').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(customEvidenceDirectory, `page2-${viewport.name}-form.png`) });
     }
@@ -250,26 +259,36 @@ test('Custom Pergolas Auckland enquiry preserves its route and custom brief', as
   await page.locator('#acrylic-enquiry-email').fill('test@example.com');
   await page.locator('#acrylic-enquiry-suburb').fill('Auckland');
   await page.locator('#acrylic-enquiry-message').fill('The existing roofline and corner doors make a standard cover difficult.');
+  await page.locator('#acrylic-enquiry-knownConstraints').fill('No post can sit across the corner door and the deck changes level.');
   await page.locator('#acrylic-enquiry-roof').selectOption('Acrylic roofing');
-  await page.getByRole('button', { name: 'Show us the site' }).click();
+  await page.getByRole('button', { name: 'Request a design review' }).click();
   await expect(page.getByText('Thanks, we have received your project details.')).toBeVisible();
-  expect(submittedBody).toMatchObject({ page: customRoute, source: 'website', roofMaterials: ['acrylic'], projectDetails: { roofPreference: 'Acrylic roofing' } });
+  expect(submittedBody).toMatchObject({ page: customRoute, source: 'website', roofMaterials: ['acrylic'], projectDetails: { roofPreference: 'Acrylic roofing', knownConstraints: 'No post can sit across the corner door and the deck changes level.' } });
 });
 
-test('Custom Pergolas Auckland sitemap, links and FAQ schema match the page', async ({ page, request }) => {
+test('Custom Pergolas Auckland sitemap, links and page schema match the service role', async ({ page, request }) => {
   await preparePage(page);
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).toContainText(customRoute);
   await page.goto(customRoute);
   const main = page.locator('main[data-seo-landing="custom-pergolas-auckland"]');
   const internalLinks = await main.locator('a[href^="/"]').evaluateAll((links) => [...new Set(links.map((link) => link.getAttribute('href')).filter((href): href is string => Boolean(href) && !href.includes('#')))]);
+  expect(internalLinks).toEqual(expect.arrayContaining([
+    '/pergolas-auckland',
+    '/pergola-cost-auckland',
+    '/gable-pergolas-auckland',
+    '/pitched-pergolas-auckland',
+    '/outdoor-rooms-auckland',
+    '/commercial-pergolas-auckland',
+    '/products/pergolas/gable',
+    '/products/pergolas/pitched',
+    '/products/pergolas/box-perimeter',
+  ]));
   for (const href of internalLinks) expect((await request.get(href)).status(), `${href} should resolve`).toBeLessThan(400);
 
-  const visibleQuestions = await main.locator('details summary h3').allTextContents();
-  const visibleAnswers = await main.locator('details > div').evaluateAll((answers) => answers.map((answer) => [...answer.querySelectorAll('p')].map((paragraph) => paragraph.textContent?.trim() ?? '').join('\n\n')));
-  const jsonLdNodes = (await page.locator('script[type="application/ld+json"]').allTextContents()).flatMap((script) => { const parsed = JSON.parse(script) as unknown; return Array.isArray(parsed) ? parsed : [parsed]; }) as Array<{ '@type'?: string; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
-  const faqSchema = jsonLdNodes.find((node) => node['@type'] === 'FAQPage');
+  const jsonLdNodes = (await page.locator('script[type="application/ld+json"]').allTextContents()).flatMap((script) => { const parsed = JSON.parse(script) as unknown; return Array.isArray(parsed) ? parsed : [parsed]; }) as Array<{ '@type'?: string; dateModified?: string; reviewedBy?: { name?: string }; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
   expect(jsonLdNodes.find((node) => node['@type'] === 'Service')).toBeDefined();
-  expect(faqSchema?.mainEntity?.map((item) => item.name)).toEqual(visibleQuestions);
-  expect(faqSchema?.mainEntity?.map((item) => item.acceptedAnswer.text.replace(/\s+/g, ' ').trim())).toEqual(visibleAnswers.map((answer) => answer.replace(/\s+/g, ' ').trim()));
+  expect(jsonLdNodes.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
+  expect(jsonLdNodes.find((node) => node['@type'] === 'BreadcrumbList')).toBeDefined();
+  expect(jsonLdNodes.find((node) => node['@type'] === 'WebPage')).toMatchObject({ dateModified: '2026-07-22', reviewedBy: { name: 'Sanctuary Pergolas' } });
 });

@@ -8,7 +8,7 @@ export default function AcrylicSection() {
       headingId="acrylic-heading"
       eyebrow="Roofing"
       title="Acrylic"
-      intro="Clear or tinted acrylic sheets that keep spaces bright and open while still providing rain and UV protection."
+      intro="Clear, opal or tinted acrylic sheets form a fixed overhead roof with different daylight and visual characteristics."
       bestFor="Bright, open courtyards"
       image={{
         src: '/images/dairy-flat-hero.jpg',
@@ -22,15 +22,15 @@ export default function AcrylicSection() {
         },
         {
           label: 'Comfort',
-          text: 'Strong rain protection with heat and glare control that varies by selected tint.',
+          text: 'Tint, opacity and any solid roof zones are selected around shade, glare and the rooms beside the pergola.',
         },
         {
           label: 'Light',
-          text: 'High daylight transmission; clear sheets feel almost open, while tints soften brightness.',
+          text: 'Clear, opal and tinted sheets create different daylight conditions. Exact product data should be confirmed for the selected roof.',
         },
         {
           label: 'Maintenance',
-          text: 'Low upkeep with occasional washing; avoid abrasive cleaners to preserve long-term clarity.',
+          text: 'Cleaning and care should follow the current written guidance for the exact sheet product and site exposure.',
         },
       ]}
     />

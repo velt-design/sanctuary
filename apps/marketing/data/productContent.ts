@@ -87,10 +87,10 @@ export const productContent: Record<string, ProductContent> = {
       'Broad ambient wash on its own—pair with strip for ambience',
     ],
     install: [
-      'Lead time ~1–2 weeks • Install with pergola or retrofit by electrician',
+      'Current lead time and installation sequence confirmed for the selected fittings and electrical scope',
     ],
     maintenance: [
-      'Wipe trims periodically; expect long LED life with minimal upkeep',
+      'Operating life, cleaning and replacement guidance follow the selected lighting product documentation',
     ],
     upgradePath: [
       'Add smart dimmers or scenes; pair with strip lighting for accents',
@@ -101,7 +101,7 @@ export const productContent: Record<string, ProductContent> = {
     ],
     indicativePerformance: [
       'Per fitting ~300–900 lm depending on model and beam angle',
-      'Typical spacing ~1.2–1.8 m; circuits dimmable',
+      'Spacing, beam angle and dimming confirmed from the lighting plan and selected fittings',
     ],
     faqs: [
       {
@@ -154,7 +154,7 @@ export const productContent: Record<string, ProductContent> = {
       'Fully open, windy sites without any wind management',
     ],
     install: [
-      'Lead time ~1–2 weeks • Install by licensed electrician',
+      'Current lead time and installation sequence confirmed for the selected heaters and electrical scope',
     ],
     maintenance: [
       'Wipe lenses and grilles periodically',
@@ -168,7 +168,7 @@ export const productContent: Record<string, ProductContent> = {
       'Dimmers for fine‑tuned comfort control',
     ],
     indicativePerformance: [
-      'Output ~1800–3200 W per unit; coverage ~6–12 m² in low wind',
+      'Output, coverage, clearances and controls confirmed from current manufacturer data for the selected unit',
       'Mounting height and angle tuned to seating layout',
     ],
     faqs: [
@@ -184,122 +184,122 @@ export const productContent: Record<string, ProductContent> = {
   },
   pitched: {
     overview:
-      'A pitched pergola extends your roofline with a clean single‑slope canopy that moves rain away reliably while keeping headroom where you need it. It can also pitch toward the house and mount to soffits on engineered brackets so drainage uses your house gutter—this unlocks more head height and encourages natural ventilation under the canopy. The aluminium frame stays straight and low‑maintenance for NZ wind zones and coastal conditions.',
+      'A pitched pergola extends the roofline with a clean single‑slope canopy and a deliberate drainage direction. It can fall away from the house or, where the existing structure and gutter capacity allow, pitch toward the house on project-specific brackets. The frame, connections and finish are resolved for the measured site rather than selected from a standard span or exposure claim.',
     atAGlance: [
-      'Optional houseward pitch using soffit brackets',
-      'Increased head height + better natural airflow',
-      '99% UV block; acrylic tints cut heat ~30–70%',
+      'Houseward or outward fall assessed against the measured connection',
+      'High and low edges coordinated with doors, windows and eaves',
+      'Roofing options selected around daylight, glare and shade priorities',
       'Insulated panels with timber sarking available',
-      'Acrylic skylight strips keep spaces bright',
+      'Acrylic roof zones can be considered within a combination roof',
     ],
     whyItsGood: [
-      'Choose away‑from‑house or houseward fall to suit site',
-      'Houseward pitch unlocks head height and improves convection',
-      'Acrylic roofing blocks 99% UV; tints reduce heat ~30–70%',
-      'Insulated panels with timber sarking look premium and cut heat significantly',
-      'Mix in acrylic skylight strips to keep high daylight',
+      'Roof-fall direction follows the connection, clearances and drainage context',
+      'High and low edges are set from measured site conditions',
+      'The exact acrylic product and tint determine published UV and solar-control performance',
+      'Insulated panels with timber sarking create a more enclosed ceiling character',
+      'Acrylic and solid roof zones can be combined where the brief calls for different overhead conditions',
     ],
     structureMaterials: [
       'Powder‑coated aluminium beams, rafters and posts',
-      'Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for a clean soffit',
-      'Engineered brackets and fixings suited to wind zone',
+      'Roof joiners, supports and isolation details selected for the specified roof product',
+      'Brackets and fixings resolved for the completed design and site conditions',
       'Integrated head/house flashing with movement allowance',
     ],
     options: [
-      'Acrylic: Acrylic roofing—clear, light grey, dark grey, or opal (99% UV block; ~30–70% heat reduction depending on tint; opal keeps high daylight while reducing the most heat)',
-      'Timber: Timber sarking gives a premium look with strong heat‑reduction qualities, creating a warm, comfortable outdoor space.',
-      'Combination: Mixed roof combining insulated panels and acrylic skylight strips so spaces stay bright while the timber sarking adds a premium look and strong heat‑reduction qualities for a warm, comfortable outdoor space.',
+      'Acrylic: clear, light grey, dark grey or opal roofing, subject to the current product range and manufacturer data for the selected sheet',
+      'Solid: insulated panels with timber sarking for a more enclosed ceiling and stronger shade response',
+      'Combination: solid roof areas with acrylic skylight strips to balance daylight and shade across different zones',
     ],
     performance: [
-      'Reliable fall for rain control; option to drain to house gutter',
-      'High daylight levels; opal/tints curb heat and glare',
-      'Acrylic blocks 99% UV; heat cut ~30–70% by tint selection',
-      'Insulated panels further reduce heat and soften rain noise',
-      'Strong, straight spans with low visual bulk; quiet, rattle‑free aluminium joiners on butterfly rubber',
+      'Roof fall, gutters, outlets and discharge path documented for the completed design',
+      'Daylight, glare and shade response depend on the selected roof product and tint',
+      'Published UV and solar-control performance is confirmed from current manufacturer data',
+      'Solid roof panels create a different shade, ceiling and rain-noise character from acrylic zones',
+      'Member sizes, spans, joiners and fixings are resolved for the measured site',
     ],
-    install: ['Lead time ~6–8 weeks • Install 2–5 days (houseward pitch subject to soffit/gutter assessment)'],
-    maintenance: ['Hose down periodically • Check gutters/flashings annually'],
+    install: ['The current lead time and on-site sequence are confirmed in the project proposal after site and supplier checks'],
+    maintenance: ['Cleaning and inspection follow the current written guidance for the selected roof, frame, gutters and flashings'],
     upgradePath: [],
     bestPairedWith: [],
     faqs: [
       {
         q: 'Can we pitch the roof toward the house and use the existing gutter?',
-        a: 'Yes. With engineered soffit brackets we can pitch to the house so water drains via the house gutter. This increases head height and improves natural airflow. Feasibility depends on soffit structure and gutter capacity.',
+        a: 'A houseward fall can be considered where the measured support, soffit, flashing and existing gutter capacity allow it. The connection and discharge path need to be resolved for the completed design.',
       },
       {
         q: 'How much heat is reduced with acrylic roofing?',
-        a: 'Acrylic blocks 99% of UV and cuts heat by roughly 30–70% depending on tint. Opal maintains high daylight while reducing the most heat.',
+        a: 'Solar-control and UV performance vary by the exact sheet, tint and assembly. Ask for the current manufacturer data for the roof product named in the proposal rather than relying on a category-wide percentage.',
       },
       {
         q: 'Can I combine insulated panels and skylights?',
-        a: 'Yes. We can run acrylic skylight strips through insulated panels to keep the space bright while maximising shade and heat reduction.',
+        a: 'Acrylic and solid roof zones can be considered together where different parts of the area need different daylight and shade conditions. The exact products, transitions, support and drainage need to be resolved as one roof.',
       },
       {
         q: 'Can posts move off corners?',
-        a: 'Yes. Offset layouts preserve doors and paths while keeping structure efficient.',
+        a: 'Offset post positions can be investigated where doors, paths or furniture make a corner position unsuitable. Feasibility depends on the completed structure, loads, supports and any required engineering.',
       },
     ],
   },
   gable: {
     overview:
-      'A gable pergola creates a tall, bright centrepiece with natural airflow through the ridge. It spans larger decks with ease and reads architectural without visual clutter—an aluminium frame that stays straight, finished to match your home.',
+      'A gable pergola uses two roof planes meeting at a central ridge. Ridge height, eaves, end conditions, structure and roofing are proportioned around the measured house and outdoor area.',
     atAGlance: [
-      'Peaked roof for headroom and daylight',
-      'Natural convection via open ridge line',
-      'Strong, corrosion‑resistant aluminium frame',
-      'Works well over large sliders and dining zones',
-      'Lighting, blinds and gable infills available',
+      'Central ridge creates a defined roof volume',
+      'Ridge, eaves and gable ends resolved together',
+      'Aluminium structure specified for the completed design',
+      'Openings and support positions checked against the site',
+      'Lighting, blinds and gable infills can be considered',
     ],
     howItWorks:
-      'Two roof planes meet at a central ridge. Deep aluminium beams and engineered brackets carry loads to posts; roof sheets lock into aluminium joiners sitting on long‑run butterfly rubber along each rafter to manage drainage and movement. Clear, opal or tinted sheets tune light and glare.',
+      'Two roof planes meet at a central ridge and fall toward their eaves. Beams, posts, roof supports, flashings, gutters and gable-end details are selected for the completed geometry and specified roof products.',
     whyItsGood: [
-      'Feels taller and airier than a single pitch',
-      'Handles gusty sites well with good structural depth',
-      'Daylight‑rich; glare controlled with tint and blinds',
-      'Clean, durable finish with minimal upkeep',
+      'Creates a central volume with a clearly expressed ridge and end condition',
+      'Structural depth and connections are designed for the measured site and exposure',
+      'Daylight and glare depend on the selected roofing, roof depth, orientation and any edge treatments',
+      'Finish and care requirements follow the selected coating and site exposure',
     ],
     structureMaterials: [
       'Powder‑coated aluminium beams, rafters and posts',
-      'Engineered ridge and hip components',
-      'Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for tidy soffit and drainage',
-      'Brackets and fixings specified to site wind zone',
+      'Ridge components resolved for the completed roof geometry',
+      'Roof joiners, supports and isolation details selected for the specified roof product',
+      'Brackets and fixings resolved for the completed design and site conditions',
     ],
     options: [
-      'Acrylic: Acrylic roofing—clear, light grey, dark grey, or opal across both roof planes; 99% UV block with tints to tune heat and glare.',
-      'Timber: Timber sarking roof panels give a warm, premium ceiling and strong heat‑reduction over dining and lounge zones.',
-      'Combination: Combination roof using insulated timber sarking panels with acrylic skylight strips so the ridge stays bright while seating areas stay cooler.',
-      'Gable infill: Open, slatted or acrylic infills at the gable ends to temper wind, frame views and help manage weather.',
+      'Acrylic: clear, light grey, dark grey or opal roofing across both roof planes, subject to the current product range and manufacturer data.',
+      'Solid: insulated panels with timber sarking for a more enclosed ceiling and stronger shade response.',
+      'Combination: Solid and acrylic roof zones can be arranged around different daylight, shade and ceiling priorities.',
+      'Gable infill: Open, slatted or acrylic end treatments can be considered around outlook, openness and exposure.',
     ],
     performance: [
-      'Excellent headroom and perceived volume',
-      'Natural ridge ventilation for warm‑weather comfort',
-      'Stable in variable winds; low visual clutter',
-      'Quiet, rattle‑free fastening via aluminium joiners on butterfly rubber',
+      'Headroom and perceived volume follow the final ridge and eave heights',
+      'Air movement depends on the gable-end treatment, open edges and wider site conditions',
+      'Member sizes and connections respond to the project-specific exposure',
+      'Aluminium joiners and isolation details are coordinated for the selected roof sheet',
     ],
     recommendedFor: [],
     notIdealFor: [],
-    install: ['Lead time ~6–8 weeks • Install 2–5 days'],
-    maintenance: ['Wash down periodically • Clear gutters and confirm downpipe flow'],
+    install: ['The current lead time and on-site sequence are confirmed in the project proposal after site and supplier checks'],
+    maintenance: ['Cleaning and inspection follow the current written guidance for the selected frame finish, roof products and drainage'],
     upgradePath: [],
     bestPairedWith: [],
     indicativePerformance: [],
     faqs: [
       {
         q: 'Is a gable too bright?',
-        a: 'Use opal or light tint to balance daylight and glare while keeping the space bright.',
+        a: 'Brightness depends on orientation, roof depth, the selected roof sheets and the rooms beside the pergola. Compare exact product data and test clear, opal, tinted or solid zones against the actual site.',
       },
       {
         q: 'Can I keep views through the gable?',
-        a: 'Yes. Open or clear acrylic infills maintain outlook while controlling wind and rain.',
+        a: 'Open or clear acrylic infills can maintain outlook while moderating exposure at the gable end. The panel layout and remaining openings determine the result.',
       },
     ],
   },
   hip: {
     overview:
-      'A hip pergola pitches down on all sides, wrapping the space neatly and managing wind at the corners. It integrates cleanly with complex rooflines and looks built‑in—premium and composed without fuss.',
+      'A hip pergola pitches down on all sides, wrapping the space with a composed roof edge and multiple drainage directions. It can integrate with complex rooflines when the hips, junctions, outlets and post positions are coordinated as one project-specific structure.',
     atAGlance: [
-      'Four‑sided fall controls splash and runoff',
-      'Better corner wind behaviour than a single pitch',
+      'Multiple roof falls direct water toward more than one edge',
+      'Corner geometry resolved for the site exposure',
       'Powder‑coated aluminium frame with clean soffit',
       'Integrates well with complex façades',
       'Lighting and blinds options for comfort',
@@ -307,10 +307,10 @@ export const productContent: Record<string, ProductContent> = {
     howItWorks:
       'A central ridge and diagonal hips transfer loads to perimeter beams and posts. Custom flashings step roof sheets around hips while maintaining drainage. Posts can offset to suit doors and paths.',
     whyItsGood: [
-      'All‑round fall sheds rain without splash zones',
-      'Reduced wind eddies at corners',
+      'Multiple roof planes can distribute drainage around the perimeter where the site supports it',
+      'Hips and corner connections are resolved as part of the complete structure',
       'Premium architectural silhouette with tidy soffit',
-      'Strong, recyclable and coastal‑tolerant materials',
+      'Material and finish selections can respond to coastal maintenance requirements',
     ],
     structureMaterials: [
       'Four‑sided roof with ridge and hip beams',
@@ -319,65 +319,64 @@ export const productContent: Record<string, ProductContent> = {
       'Custom flashings around hips to manage water',
     ],
     options: [
-      'Clear/opal/tinted roof mix to balance light and heat',
+      'Clear, opal, tinted or solid roof zones considered around daylight and shade',
       'Post locations to open pathways and doors',
       'Integrated downlights and perimeter strip lighting',
       'Drop‑down blinds at prevailing wind faces',
     ],
     performance: [
-      'All‑round fall controls splash and runoff',
-      'Reduced wind eddies at corners',
+      'Roof falls, gutters, outlets and discharge paths are documented for the completed geometry',
+      'Project-specific engineering for hips, corners and connections',
       'Crisp, tidy soffit with concealed fixings',
-      'Strong weathering for coastal NZ environments',
+      'Finish and maintenance requirements confirmed for the site environment',
     ],
     recommendedFor: [
       'Complex façades and corner decks',
       'Sites exposed to changeable wind directions',
     ],
     notIdealFor: ['Narrow spaces where a single pitch saves height'],
-    install: ['Lead time ~6–8 weeks • Install 3–4 days'],
-    maintenance: ['Rinse frame/roof • Check gutters and hip junctions annually'],
+    install: ['The current lead time and on-site sequence are confirmed in the project proposal after site and supplier checks'],
+    maintenance: ['Cleaning and inspection follow the current written guidance for the selected frame, roof, gutters and hip junctions'],
     upgradePath: ['Add blinds/screens and heaters for shoulder seasons'],
     bestPairedWith: [
       'Mesh blinds at windward faces',
       'Downlights over seating; strip lighting around the perimeter',
     ],
     indicativePerformance: [
-      'Typical bay ~2.7–4.2 m depending on exposure and layout',
+      'Bay sizes and member depths confirmed by the project-specific design',
       'Hip angles and sheet selection tuned to site',
     ],
     faqs: [
       {
         q: 'Is a hip darker than other roofs?',
-        a: 'Daylight remains high; use a mix of clear/opal sheets to tune brightness and glare.',
+        a: 'Daylight depends on orientation, roof depth, framing and the exact roof sheets. Clear, opal, tinted or solid zones should be assessed against the outdoor area and adjoining rooms.',
       },
       {
         q: 'Can it meet complex walls and flashings?',
-        a: 'Yes. Custom flashings step sheets cleanly around hips for a tidy, watertight junction.',
+        a: 'Custom flashings can step roof sheets around hips. The final junction and drainage details are resolved for the measured building and selected roofing.',
       },
     ],
   },
   'box-perimeter': {
     overview:
-      'Box Perimeter frames your outdoor room with a crisp, architectural edge. A deep aluminium perimeter defines the silhouette while posts anchor the corners. Acrylic roofing keeps the space bright and dry—the louvre‑like look without motors.',
+      'Box Perimeter frames the outdoor room with a crisp architectural edge. A deep aluminium perimeter defines the silhouette while the roof fall and drainage sit within the frame. Fixed acrylic roofing preserves daylight without motors or moving roof parts.',
     atAGlance: [
-      'Defined 300×50 mm perimeter edge',
-      'Bold 150×150 mm corner posts',
-      'Acrylic roof for high daylight',
+      'Defined aluminium perimeter edge',
+      'Posts proportioned for the completed structure',
+      'Fixed acrylic roof with product-specific daylight characteristics',
       'Integrated gutter and downpipe',
       'Lighting and blinds fit discreetly',
     ],
     howItWorks:
-      'A 300×50 mm aluminium perimeter carries the roof sheets within the frame. Gutters and downpipes integrate, and concealed fixings are used where feasible for a clean read. Corner posts provide stiffness and a deliberate stance.',
+      'A deep aluminium perimeter carries the fixed roof within the frame. Gutters, outlets, downpipes, posts and fixings are coordinated with the completed geometry and site conditions.',
     whyItsGood: [
       'Crisp, contemporary silhouette with strong street presence',
-      'Low‑maintenance compared to motorised louvres',
-      'Bright by day; add tint/blinds to temper glare and heat',
+      'Fixed roof with no motors or moving roof parts',
+      'Daylight and glare are addressed through the exact roof sheet, roof depth and any edge treatments',
       'Tidy junctions and integrated services',
     ],
     structureMaterials: [
-      '300×50 mm aluminium perimeter frame',
-      '150×150 mm aluminium posts',
+      'Aluminium perimeter frame and posts sized for the completed design',
       'Acrylic roof set into the frame',
       'Integrated gutter and downpipe',
       'Durable powder‑coated finishes',
@@ -386,24 +385,24 @@ export const productContent: Record<string, ProductContent> = {
       'Clear or softly tinted acrylic sheets',
       'Concealed fixings where feasible',
       'Downlights within the perimeter',
-      'Roller blinds for wind and privacy',
+      'Roller blinds considered for selected exposure and privacy priorities',
     ],
     performance: [
-      'High daylight with manageable glare using tints',
+      'Daylight and glare depend on the selected acrylic sheet, roof depth, orientation and any blinds',
       'Strong architectural definition and tidy junctions',
-      'Moderate heat control—improve with tint and blinds',
-      'Rain performance similar to standard acrylic roofs',
+      'Daylight, glare and solar response depend on the selected roof sheet and any blinds',
+      'Rain management depends on roof fall, junctions, gutters, outlets and open edges',
     ],
     recommendedFor: [
       'Street‑visible terraces and contemporary homes',
-      'Clients wanting a louvre look without motors',
+      'Clients wanting a defined perimeter around a fixed roof',
     ],
     notIdealFor: [
       'Sites needing acoustic damping or insulated panels',
       'Heritage façades that call for minimal visual change',
     ],
-    install: ['Lead time ~6 weeks • Install 2–4 days'],
-    maintenance: ['Rinse frame/roof • Clear gutters and confirm downpipe flow'],
+    install: ['The current lead time and on-site sequence are confirmed in the project proposal after site and supplier checks'],
+    maintenance: ['Cleaning and inspection follow the current written guidance for the selected frame finish, acrylic roof and drainage'],
     upgradePath: [
       'Add lighting and blinds now or later',
       'Step up to an Architectural spec with lined ceiling/insulated panels',
@@ -414,13 +413,13 @@ export const productContent: Record<string, ProductContent> = {
       'Mesh blinds at exposed faces for comfort',
     ],
     indicativePerformance: [
-      'Typical bay ~2.7–4.0 m depending on exposure and sheet spec',
-      'Foundations and fixings engineered to wind zone',
+      'Bay sizes and member depths confirmed by the project-specific design',
+      'Foundations and fixings resolved from project-specific engineering where required',
     ],
     faqs: [
       {
         q: 'Will the frame look heavy?',
-        a: 'The 300×50 profile reads crisp; choosing a colour that blends with the home reduces contrast.',
+        a: 'The visual weight depends on the final member depths, post positions, colour, roof depth and relationship to the home. Those proportions should be reviewed in the project design.',
       },
       {
         q: 'Can gutters hide in the frame?',
@@ -430,21 +429,21 @@ export const productContent: Record<string, ProductContent> = {
   },
   'slat-screens': {
     overview:
-      'Slat screens introduce privacy and wind tempering while keeping decks open and breathable. Panels are built on rigid aluminium frames and fixed with adjustable brackets between posts or pergola beams. Timber brings natural warmth; powder‑coated aluminium delivers a sharp, low‑maintenance look.',
+      'Slat screens introduce partial visual screening and edge definition while retaining openings between the slats. Panels are coordinated with the pergola frame, desired outlook and selected timber or aluminium finish.',
     atAGlance: [
-      'Adjustable privacy and wind tempering',
+      'Slat spacing selected around privacy and outlook',
       'Timber or aluminium slats in several profiles',
       'Vertical, horizontal or mixed‑density layouts',
       'Gates and service panels integrate into the run',
-      'Low‑maintenance aluminium or warm timber option',
+      'Aluminium and timber finishes with product-specific care requirements',
     ],
     howItWorks:
       'Slats run vertically or horizontally at a pitch tuned to outlook and sun path. Lower sections can run denser to hide bins or services while upper sections stay lighter to keep views and light. Matching gates and removable panels use the same profiles so utilities disappear into the design.',
     whyItsGood: [
       'Creates human‑scale boundaries without heavy walls',
       'Softens views and hides bins, heat pumps and services',
-      'Balances privacy, airflow and daylight',
-      'Timber ages gracefully; aluminium stays crisp with a quick washdown',
+      'Slat direction and spacing affect privacy, outlook, daylight and openness',
+      'Appearance and care depend on the selected material, finish and site exposure',
     ],
     structureMaterials: [
       'Aluminium perimeter frame with adjustable brackets',
@@ -457,21 +456,20 @@ export const productContent: Record<string, ProductContent> = {
       'Colour‑matched powder coat; timber oil or stain systems',
     ],
     performance: [
-      'Cuts wind and glare while retaining airflow',
-      'Delivers privacy without building solid walls',
-      'Durable, low‑maintenance aluminium option available',
+      'Wind, glare and view-through effects depend on slat direction, spacing and the actual site',
+      'Privacy changes with viewing angle, distance and light conditions',
+      'Finish performance and care follow the selected product documentation',
     ],
     recommendedFor: [
       'Screening neighbours, bins and heat pumps',
       'Defining edges and backdrops to outdoor rooms',
     ],
     notIdealFor: [
-      'Full weather blocking—choose acrylic panels or blinds instead',
+      'Projects expecting a weather seal or full enclosure from a slatted edge',
     ],
-    install: ['Lead time ~2–4 weeks • Install ~1 day'],
+    install: ['The current lead time and on-site sequence are confirmed for the selected screen system and measured openings'],
     maintenance: [
-      'Aluminium: periodic washdown',
-      'Timber: re‑oil or stain as required',
+      'Cleaning and recoating follow the current written guidance for the selected aluminium or timber finish',
     ],
     upgradePath: [
       'Combine with blinds or acrylic panels for seasonal control',
@@ -481,13 +479,13 @@ export const productContent: Record<string, ProductContent> = {
       'Downlights for evening use',
     ],
     indicativePerformance: [
-      'Typical panel width ~0.9–1.8 m based on profile and exposure',
+      'Panel width and post spacing confirmed for the selected profile, opening and exposure',
       'Fixing method and post spacing confirmed at design',
     ],
     faqs: [
       {
         q: 'Will slats rattle?',
-        a: 'Profiles and fixing methods are selected to avoid noise while allowing for movement in wind and temperature.',
+        a: 'Noise risk depends on profile, span, fixing method, clearances, exposure and installation. Ask for the exact system details and any operating or maintenance guidance that applies.',
       },
       {
         q: 'Can I mix timber and aluminium?',
@@ -497,35 +495,35 @@ export const productContent: Record<string, ProductContent> = {
   },
   'acrylic-infill-panels': {
     overview:
-      'Acrylic infill panels add year‑round usability by blocking wind and rain while preserving views. Clear or softly tinted sheets slot into slim aluminium channels with gasket isolation so they stay quiet and allow for thermal movement.',
+      'Acrylic infill panels can moderate exposed pergola edges while preserving views. Clear or softly tinted sheets sit within slim aluminium channels with isolation and movement details selected for the opening and site conditions.',
     atAGlance: [
-      'Near‑clear views with real weather protection',
+      'Clear or tinted edge treatment with project-specific shelter effects',
       'Clear or tinted acrylic in slim frames',
       'Fixed, removable or sliding configurations',
-      'Lighter and more economical than full glazing',
-      'Pairs well with heaters and blinds',
+      'Panel, frame and fixing details selected for the opening',
+      'Can be coordinated with blinds or services where appropriate',
     ],
     howItWorks:
-      'Impact‑resistant acrylic is cut to size and captured in sealed aluminium frames. Discreet mullions control deflection and optional vent trims keep air moving where needed while maintaining shelter.',
+      'The selected acrylic is cut to size and captured in aluminium frames. Mullions, fixings and optional vent trims are coordinated for the opening, exposure and required air movement.',
     whyItsGood: [
-      'Delivers shoulder‑season comfort without full glazing',
-      'Keeps light transmission high while taming wind and rain',
-      'Cleaning is simple and the result feels built‑in to the pergola',
+      'Changes the openness of a selected edge without presenting it as full glazing',
+      'Outlook, wind and wind-driven rain effects depend on panel layout, open edges and junctions',
+      'The panel and frame can be coordinated with the pergola rather than treated as an afterthought',
     ],
     structureMaterials: [
       'Clear or tinted acrylic sheets in aluminium frames',
-      'Gasket isolation for quiet, stress‑free mounting',
-      'Discreet mullions sized to exposure and spans',
+      'Gaskets, isolation and movement details selected for the exact panel system',
+      'Mullions and fixings sized for the opening and exposure',
     ],
     options: [
       'Fixed, removable or sliding panel configurations',
-      'Tint choices to balance privacy and heat',
+      'Tint choices considered around privacy, outlook and daylight',
       'Trickle vents for controlled air movement where required',
     ],
     performance: [
-      'Significant wind and rain protection',
-      'High light transmission with manageable glare using tint',
-      'Lighter and more economical than full glazing',
+      'The degree of wind and rain protection depends on panel layout, open edges and junction details',
+      'Daylight, glare and ageing performance depend on the exact acrylic product and tint',
+      'Panel dimensions, fixings and movement details follow the selected system and project design',
     ],
     recommendedFor: [
       'Exposed faces of pergolas and decks',
@@ -534,27 +532,26 @@ export const productContent: Record<string, ProductContent> = {
     notIdealFor: [
       'Full thermal insulation—consider glazing or insulated panels instead',
     ],
-    install: ['Lead time ~3–5 weeks • Install 1–2 days'],
+    install: ['The current lead time and on-site sequence are confirmed for the selected panel system and measured openings'],
     maintenance: [
-      'Wash with mild soap and a soft cloth',
-      'Avoid harsh solvents or abrasive cleaners',
+      'Cleaning follows the current written guidance for the exact acrylic sheet and frame finish',
     ],
     upgradePath: [
       'Pair with blinds for extra sun control',
       'Add heaters for winter use',
     ],
     bestPairedWith: [
-      'Heaters for winter comfort',
+      'Services planned around the panel clearances and selected products',
       'Downlights for even light without glare',
     ],
     indicativePerformance: [
-      'Typical clear panel ~1.0–1.5 m wide × ~2.0–2.4 m high depending on exposure',
-      'Mullion spacing engineered to wind zone with concealed fixings where possible',
+      'Panel sizes and mullion spacing are confirmed from the selected system and project-specific design',
+      'Fixing and movement details are coordinated with the opening and exposure',
     ],
     faqs: [
       {
         q: 'Will panels yellow over time?',
-        a: 'Quality exterior‑grade acrylic resists UV; regular cleaning with neutral pH soap keeps panels clear.',
+        a: 'Ageing and UV performance depend on the selected acrylic product. Review the current manufacturer information and follow its cleaning and maintenance instructions.',
       },
       {
         q: 'Can I remove panels seasonally?',
@@ -564,20 +561,20 @@ export const productContent: Record<string, ProductContent> = {
   },
   'drop-down-blinds': {
     overview:
-      'Drop‑down blinds give on‑demand control of wind and low sun. Fabrics range from clear PVC for weather blocking to open‑weave meshes that cut glare while keeping the view. Blinds run in side channels or stainless guides to stay steady in gusts.',
+      'Drop‑down blinds give adjustable control of low sun, privacy and exposure at selected edges. Fabrics range from clear PVC to open‑weave meshes, while side channels or guides are chosen for the measured opening and current system limits.',
     atAGlance: [
-      'On‑demand wind and low‑sun control',
+      'Adjustable low-sun, privacy and edge-exposure control',
       'Clear PVC or open‑weave meshes',
-      'Side channels or guides keep blinds steady',
+      'Side channels or guides selected for the measured opening and exact system',
       'Colour‑matched components for a built‑in look',
     ],
     howItWorks:
-      'A manual crank or motorised tube rolls the fabric into a compact headbox; side channels capture the edges and a weighted bottom bar seals to the deck. Motors can integrate with remotes, wall switches and wind sensors to protect the blind automatically.',
+      'A manual crank or motorised tube rolls the fabric into a compact headbox. Depending on the selected system, side channels or guides locate the fabric edges, and compatible controls may include remotes, wall switches or sensors.',
     whyItsGood: [
-      'Tunes comfort instantly without permanent walls',
-      'Maintains views while cutting wind and low sun',
+      'Allows a selected edge to change without becoming a permanent wall',
+      'View-through, low-sun and exposure effects depend on fabric, position and site conditions',
       'Components colour‑match the pergola for a built‑in feel',
-      'Fabrics are replaceable over time as needed',
+      'Replacement and service options depend on the selected system and supplier support',
     ],
     structureMaterials: [
       'Extruded aluminium headboxes, side channels or cable guides',
@@ -586,42 +583,41 @@ export const productContent: Record<string, ProductContent> = {
     ],
     options: [
       'Manual crank or motorised operation (remote or wall switch)',
-      'Wind sensors and group control for multiple blinds',
+      'Sensors and grouped controls where supported by the selected system',
       'Fabric openness and colours to suit privacy and outlook',
     ],
     performance: [
-      'Quick, adjustable protection from wind and low sun',
-      'Stays steady in gusts with channels or guides',
-      'Enhances warmth when paired with heaters',
+      'Adjustable response to low sun, privacy and edge exposure',
+      'Opening size and operating limits are checked against the selected system',
+      'Fabric, guides, controls and operating guidance are confirmed for the exact product',
     ],
     recommendedFor: [
       'West and north‑west faces and breezy edges',
       'Outdoor rooms needing flexible enclosure',
     ],
     notIdealFor: [
-      'Full weather sealing—use acrylic panels if permanence is required',
+      'Projects expecting a weather seal or full enclosure from a deployable blind',
     ],
-    install: ['Lead time ~2–4 weeks • Install ~1 day'],
+    install: ['The current lead time and on-site sequence are confirmed for the selected blind system and measured openings'],
     maintenance: [
-      'Hose down mesh; keep PVC clean',
-      'Ensure PVC is fully dry before rolling',
+      'Cleaning, drying and operating care follow the current written guidance for the exact fabric and blind system',
     ],
     upgradePath: [
       'Integrate with lighting and heaters',
       'Add automation and scenes for convenience',
     ],
     bestPairedWith: [
-      'Heaters for shoulder‑season warmth',
+      'Heating and electrical items coordinated with blind clearances and controls',
       'Downlights or strip lighting for night use',
     ],
     indicativePerformance: [
-      'Max width ~3.0–5.0 m based on system and exposure',
-      'Recommended wind limit set by manufacturer for side‑channel systems',
+      'Maximum opening size and operating limits are confirmed from current manufacturer data',
+      'Controls and sensor behaviour depend on the selected side-channel or guide system',
     ],
     faqs: [
       {
         q: 'Will mesh keep rain out?',
-        a: 'Mesh reduces wind and spray; clear PVC blocks rain for more complete shelter.',
+        a: 'No blind should be treated as a universal weather seal. Mesh and clear PVC respond differently, and wind-driven rain can enter at edges and openings. Confirm the selected system and its published limitations.',
       },
       {
         q: 'Do motors need power on the pergola?',

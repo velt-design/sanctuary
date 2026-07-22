@@ -3,6 +3,7 @@ import type { ContactsIndexResponse } from '@/lib/contacts/contactsIndexContract
 import type { Contact } from '@/lib/types/contact';
 import { apiJson } from '@/lib/repo/apiClient';
 import { qk } from './keys';
+import { invalidatePortalSearchQueries } from './portalSearch';
 import {
   PROJECTS_INDEX_QUERY_SCOPE,
   type ProjectsIndexArchiveFilter,
@@ -125,6 +126,7 @@ export function upsertContactAcrossIndexCaches(
         : current,
     );
   }
+  void invalidatePortalSearchQueries(queryClient, 'none');
 }
 
 export function patchContactAcrossIndexCaches(
@@ -153,6 +155,7 @@ export function patchContactAcrossIndexCaches(
         : current,
     );
   }
+  void invalidatePortalSearchQueries(queryClient, 'none');
 }
 
 export async function invalidateContactsIndexCaches(queryClient: QueryClient, host: string) {
@@ -160,5 +163,6 @@ export async function invalidateContactsIndexCaches(queryClient: QueryClient, ho
     queryClient.invalidateQueries({ queryKey: qk.contacts.indexPrefix(CONTACTS_INDEX_QUERY_SCOPE) }),
     queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) }),
     queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }),
+    invalidatePortalSearchQueries(queryClient),
   ]);
 }

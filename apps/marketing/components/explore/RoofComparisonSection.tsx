@@ -63,9 +63,9 @@ const ROOF_TYPE_FIT_MEDIA: Record<RoofTypeFitId, RoofTypeFitMedia> = {
 
 const ROOF_TYPE_FIT_COPY: Record<RoofTypeFitId, string> = {
   acrylic:
-    'Maximises daylight while filtering UV, reducing glare, and keeping the space protected from rain.',
-  timber: 'Delivers the most shade and acoustic comfort, ideal for bright north-facing decks.',
-  combo: 'Balances daylight and shade for the most versatile all-round performance.',
+    'Creates a fixed overhead roof with daylight, UV and solar characteristics that depend on the exact acrylic sheet.',
+  timber: 'Creates a solid ceiling character. Shade, thermal and acoustic behaviour depend on the complete roof specification.',
+  combo: 'Uses acrylic and solid roof zones where the brief calls for different daylight and shade conditions.',
 };
 
 const ROOF_TYPE_FIT_ROWS: Array<{

@@ -120,6 +120,7 @@ export default function ProjectDetailContent({
             alt={activeHeroSlide.alt}
             fill
             priority
+            loading="eager"
             fetchPriority="high"
             sizes="(max-width: 720px) 100vw, (max-width: 1280px) 70vw, 1200px"
             style={{ objectFit: 'cover', objectPosition: activeHeroSlide.objectPosition || 'center' }}

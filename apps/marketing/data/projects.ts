@@ -349,7 +349,7 @@ const baseProjects: Project[] = [
         ],
         bullets: [
           'Transport-friendly modular frame',
-          'Wind rating to 160 km/h gusts',
+          'Exposed-site wind conditions identified in the project brief',
           'Low profile perimeter gutters',
         ],
       },
@@ -360,7 +360,7 @@ const baseProjects: Project[] = [
         ],
         bullets: [
           'Dulux Protexture in Seashell Satin',
-          'Marine-grade stainless fixings',
+          'Stainless fixings selected for the project',
           'Custom stainless spigots for balustrade transitions',
         ],
       },
@@ -371,7 +371,7 @@ const baseProjects: Project[] = [
         ],
         bullets: [
           'Insulated aluminium roof panels',
-          'Gutters sized for coastal downpours',
+          'Perimeter gutters coordinated for the coastal site',
           'Future provision for glass skylight inserts',
         ],
       },
@@ -569,7 +569,7 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Create shade without closing off the cliff-face view and keep hardware resistant to salt spray.',
+          'Create shade without closing off the cliff-face view and coordinate the finish and fixings for the exposed coastal site.',
         ],
         bullets: [
           'No intermediate columns',
@@ -580,10 +580,10 @@ const baseProjects: Project[] = [
       {
         title: 'Structure & finishes',
         paragraphs: [
-          'We used aluminium portals locked into the deck bearer line so waterproofing could stay intact.',
+          'We used aluminium portals locked into the deck bearer line to avoid introducing new penetrations through the existing waterproofing.',
         ],
         bullets: [
-          'Marine-grade powder coat',
+          'Powder-coated finish selected for the project',
           'Stainless fixings with nylon isolators',
           'Recessed base plates behind balustrade line',
         ],

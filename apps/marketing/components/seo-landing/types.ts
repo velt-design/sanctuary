@@ -7,6 +7,16 @@ type ProjectProofItem = {
   slug: string;
   label: string;
   summary: string;
+  facts?: readonly string[];
+};
+
+export type EnquiryBriefField = {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select';
+  placeholder?: string;
+  options?: readonly string[];
+  wide?: boolean;
 };
 
 type SectionBase = {
@@ -112,6 +122,9 @@ export type SeoLandingPageConfig = {
     heading: string;
     intro: string;
     submitLabel: string;
+    messageLabel?: string;
+    messagePlaceholder?: string;
+    briefFields?: readonly EnquiryBriefField[];
     roofPreference?: {
       label: string;
       detailKey: 'acrylicOption' | 'roofPreference';

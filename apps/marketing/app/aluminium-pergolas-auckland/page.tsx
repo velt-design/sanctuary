@@ -7,10 +7,10 @@ import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Aluminium Pergolas Auckland | Custom Sanctuary Design' }, description: aluminiumPergolasConfig.description,
+  title: { absolute: 'Aluminium Pergolas Auckland | Frame & Finish Guide' }, description: aluminiumPergolasConfig.description,
   alternates: { canonical: aluminiumPergolasConfig.route },
-  openGraph: { type: 'website', url: aluminiumPergolasConfig.route, title: 'Aluminium Pergolas Designed Around the Whole Auckland Home', description: 'Understand how frame proportion, roof integration, finish and structure shape a custom aluminium pergola.', images: [{ url: aluminiumPergolasConfig.hero.image, alt: aluminiumPergolasConfig.hero.imageAlt }] },
-  twitter: { card: 'summary_large_image', title: 'Aluminium Pergolas Designed Around the Whole Auckland Home', description: 'A practical guide to the frame decisions behind a custom aluminium pergola.', images: [aluminiumPergolasConfig.hero.image] },
+  openGraph: { type: 'website', url: aluminiumPergolasConfig.route, title: 'Aluminium Pergolas Designed Around the Whole Auckland Home', description: 'Understand how frame proportion, roof integration, finish and structure shape an aluminium pergola.', images: [{ url: aluminiumPergolasConfig.hero.image, alt: aluminiumPergolasConfig.hero.imageAlt }] },
+  twitter: { card: 'summary_large_image', title: 'Aluminium Pergolas Designed Around the Whole Auckland Home', description: 'A practical guide to the frame decisions behind an aluminium pergola.', images: [aluminiumPergolasConfig.hero.image] },
 };
 
 export default function AluminiumPergolasAucklandPage() { return <SeoLandingPage config={aluminiumPergolasConfig} />; }

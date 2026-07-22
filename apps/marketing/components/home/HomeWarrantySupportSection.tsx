@@ -10,12 +10,10 @@ export default function HomeWarrantySupportSection() {
       </div>
       <div className="warranty-support__inner">
         <p className="warranty-support__body">
-          All Sanctuary Pergolas structures are backed by a 10-year warranty covering workmanship
-          and structural integrity. In the unlikely event of a leak, defect, or performance issue,
-          our team remains available long after installation is complete and will typically attend
-          site within one week to assess and resolve the matter. We stand behind every project we
-          build and take pride in providing ongoing support, ensuring your pergola continues to
-          perform as intended for years to come.
+          Warranty terms should match the project rather than one broad promise. At handover,
+          Sanctuary identifies the applicable workmanship terms and the current manufacturer
+          information for the selected roofing, finish, electrical items and accessories. The team
+          also explains care, maintenance and how to report an issue after completion.
         </p>
       </div>
     </section>

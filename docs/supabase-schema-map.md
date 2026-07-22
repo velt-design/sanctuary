@@ -39,6 +39,9 @@ Tables/RPCs:
 - `portal_users`
 - `has_portal_access()`
 - `is_portal_admin()`
+- `portal_search_v1()`
+- `portal_search_document()`
+- `portal_search_bigrams()`
 
 Primary write path:
 
@@ -54,18 +57,20 @@ Primary read path:
 - `apps/portal/lib/projects/getProjectPageSnapshot.ts`.
 - Project, contact, and estimate server/query helpers under `apps/portal/lib/projects`, `apps/portal/lib/estimates`, and related app routes.
 - Auth role lookup through `apps/portal/lib/portalAccess.ts` and server auth helpers.
+- Global Projects/Contacts discovery through `GET /api/staff/v1/search`, whose domain helper makes one auth-bound `portal_search_v1()` call.
 
 Access rule:
 
 - Staff/admin routes use `requireStaffSession`, `requireStaffContext`, `requireAdminSession`, or `requireAdminContext`.
 - Browser code should use routes, query helpers, or local-first adapters for writes.
 - `portal_users` gates staff/admin access and must remain server/admin governed.
+- `portal_search_v1()` is executable only by `authenticated` and `service_role`, remains `SECURITY INVOKER`, reports `has_portal_access()` in-band, and relies on Projects/Contacts RLS. `portal_search_document()` and `portal_search_bigrams()` are immutable, data-free index helpers with the same execute grants; they keep combined trigram and two-character literal-contains paths index-backed. Browser code must continue to use the staff API rather than call these RPCs directly.
 - Estimate writes must preserve quote-backed edit locks such as `ESTIMATE_LOCKED`.
 - `project_notes` row-level security restricts inserts to the authenticated portal user (the row's `author_id` must equal `auth.uid()`); updates and deletes are restricted to the author or any admin (`is_portal_admin()`). Notes are soft-deleted (`deleted_at`); queries that surface notes to staff filter `deleted_at IS NULL`.
 
 Migration source:
 
-- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, `20260510_000001_project_notes.sql` for the Activity tab notes table, and forward backfills such as the project-note author display-name cleanup.
+- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, `20260510_000001_project_notes.sql` for the Activity tab notes table, forward backfills such as the project-note author display-name cleanup, `20260722_000001_portal_search_v1.sql` for the bounded search RPC plus initial trigram/join indexes, and `20260722_000002_portal_search_bigram_indexes.sql` for combined trigram documents and literal two-character bigram indexes.
 - Older root files such as `supabase/contacts_projects.sql` and `supabase/portal_schema.sql` are baseline/setup references, not the preferred path for new changes.
 
 ## Quotes, Invoices, Artifacts, And Job Packs

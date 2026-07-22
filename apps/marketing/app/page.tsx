@@ -22,24 +22,24 @@ const BLUR =
 
 const featureItems: HomePageContent['featureItems'] = [
   {
-    label: 'On-site build in days',
-    bubble: 'On-site installation is typically completed in 1-5 days.',
+    label: 'Project-specific installation',
+    bubble: 'The on-site sequence is confirmed for the agreed design, access and site conditions.',
   },
   {
-    label: 'Lead time 6-8 weeks',
-    bubble: 'From sign-off to installation: typically 6-8 weeks. Timing can vary by season.',
+    label: 'Current programme confirmed',
+    bubble: 'Design, production and installation timing is confirmed against the actual scope and current schedule.',
   },
   {
-    label: 'Engineered for wind',
-    bubble: 'Designed with wind performance considered from the start, for NZ conditions.',
+    label: 'Structure checked to the site',
+    bubble: 'Loads, exposure, supports and any required engineering are resolved for the completed design.',
   },
   {
     label: '4 roof styles',
     bubble: "Choose pitched, gable, hip, or box-perimeter to suit your home's roofline.",
   },
   {
-    label: '10-year warranty',
-    bubble: 'Backed by a 10-year warranty, with support after completion.',
+    label: 'Written warranty details',
+    bubble: 'Applicable workmanship and product warranty terms are identified for the agreed project scope.',
   },
 ];
 
@@ -53,11 +53,11 @@ const processSteps: HomePageContent['processSteps'] = [
   { title: 'Design sign-off', desc: 'We present a design for you to review and approve.' },
   {
     title: 'Deposit & scheduling',
-    desc: 'Pay the deposit to secure your spot; typical lead time is 6-8 weeks.',
+    desc: 'Pay the deposit to secure the agreed production and installation programme.',
   },
   {
     title: 'On-site build',
-    desc: 'We install your pergola on site, typically within 1-5 days.',
+    desc: 'We install the pergola to the agreed design and project-specific site sequence.',
   },
   {
     title: 'Completion',
@@ -71,8 +71,8 @@ const copyTexts: HomePageContent['copyTexts'] = [
   'We price the best-fit style from your photos and dimensions, including structure, roofing and options. We explain cost drivers and alternatives. If the numbers work, we book a measured visit to refine scope.',
   'We visit your site, measure carefully and talk through how you want to use the space. We look at the size and layout, the style of your home and key views from inside and out. We then work through roof options, including timber, acrylic or a combination, to suit your goals for the space and the look of the pergola.',
   'We deliver a clear design pack with drawings, key dimensions, beam sizes, roof fall and finishes. Lighting and screens are integrated. Approval locks scope for fabrication and a smooth installation.',
-  "Your deposit secures a production slot and materials. Lead time is typically six to eight weeks. We prepare materials and confirm a firm start date two weeks before we're on site.",
-  'We protect surfaces, set out posts and beams, check fixings, and seal the house junction correctly. Wiring is concealed where possible. Most installs finish in one to five days.',
+  'Your deposit secures the agreed production slot and materials. The team confirms the current programme for the completed scope and keeps the site start visible as preparation progresses.',
+  'We protect surfaces, set out posts and beams, check fixings and complete the house junction to the agreed design. Wiring is concealed where the documented structure and trade scope allow it.',
   "We advise on cleaning and maintenance so the structure and roofing keep performing well, and we send through your warranty certificate for your records. Before we leave, we make sure you're happy with the result and know how to get in touch if anything needs attention.",
 ];
 

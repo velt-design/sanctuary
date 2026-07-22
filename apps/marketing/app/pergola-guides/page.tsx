@@ -13,13 +13,18 @@ import {
   Text,
   TextLink,
 } from '@/components/marketing-foundation';
-import { pergolaGuideChapters, pergolaGuides } from '@/data/pergolaGuides';
+import { pergolaGuideChapters, pergolaGuideEditorialReview, pergolaGuides } from '@/data/pergolaGuides';
 import { absoluteUrl } from '@/lib/seo';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import './pergola-guides.css';
 
 const route = '/pergola-guides';
 const heroImage = '/images/project-warkworth-outdoor-room-01.jpg';
+const guideRoleLabels = {
+  service: 'Service guide',
+  'product-guide': 'Product guide',
+  'decision-guide': 'Decision guide',
+} as const;
 
 export const metadata: Metadata = {
   title: { absolute: 'Pergola Design Guides | Sanctuary Pergolas' },
@@ -62,6 +67,12 @@ export default function PergolaGuidesPage() {
             description: metadata.description,
             url: absoluteUrl(route),
             primaryImageOfPage: absoluteUrl(heroImage),
+            dateModified: pergolaGuideEditorialReview.date,
+            reviewedBy: {
+              '@type': 'Organization',
+              name: pergolaGuideEditorialReview.reviewer,
+              url: absoluteUrl('/'),
+            },
           },
           {
             '@context': 'https://schema.org',
@@ -107,13 +118,17 @@ export default function PergolaGuidesPage() {
           </Text>
           <div className="guide-hub-hero__actions">
             <Button href="#guide-library">Browse all guides</Button>
-            <TextLink href="/contact">Discuss your project</TextLink>
+            <TextLink href="/pergolas-auckland">Start with the broad brief</TextLink>
           </div>
           <dl className="guide-hub-hero__facts" aria-label="Guide library overview">
             <div><dt>10</dt><dd>Design guides</dd></div>
             <div><dt>03</dt><dd>Decision chapters</dd></div>
             <div><dt>01</dt><dd>Connected brief</dd></div>
           </dl>
+          <p className="guide-hub-hero__review">
+            Editorial review: {pergolaGuideEditorialReview.reviewer} ·{' '}
+            <time dateTime={pergolaGuideEditorialReview.date}>{pergolaGuideEditorialReview.dateLabel}</time>
+          </p>
         </div>
 
         <figure className="guide-hub-hero__figure">
@@ -184,7 +199,8 @@ export default function PergolaGuidesPage() {
                 >
                   <span className="guide-hub-card__number">{guide.number}</span>
                   <span className="guide-hub-card__heading">
-                    <small>{guide.prompt}</small>
+                    <small>{guideRoleLabels[guide.role]}</small>
+                    <em>{guide.prompt}</em>
                     <strong>{guide.title}</strong>
                   </span>
                   <span className="guide-hub-card__summary">{guide.summary}</span>
@@ -205,12 +221,10 @@ export default function PergolaGuidesPage() {
             </Heading>
           </div>
           <div className="guide-hub-conversion__copy">
-            <Text size="large">
-              Send photos, rough dimensions and what you want the space to do. Sanctuary can help turn the decisions into one site-specific direction.
-            </Text>
+            <Text size="large">For a general Auckland project, begin with the broad service guide. If difficult connections, restricted posts, changing levels or consultant coordination already define the problem, begin with the custom guide.</Text>
             <div className="guide-hub-conversion__actions">
-              <Button href="/contact">Start a project brief</Button>
-              <TextLink href="/projects">View completed projects</TextLink>
+              <Button href="/pergolas-auckland">Open the broad guide</Button>
+              <TextLink href="/custom-pergolas-auckland">Open the custom guide</TextLink>
             </div>
           </div>
         </Container>

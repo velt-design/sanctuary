@@ -11,6 +11,8 @@ type ProgrammePage = {
   h1: string;
   submitLabel: string;
   faqCount: number;
+  role: 'service' | 'product-guide' | 'decision-guide';
+  briefFieldName: string;
   projectCount: number;
   captureId: string;
   comparisonId: string;
@@ -22,11 +24,13 @@ const pages: ProgrammePage[] = [
     order: 3,
     marker: 'aluminium-pergolas-auckland',
     route: '/aluminium-pergolas-auckland',
-    title: 'Aluminium Pergolas Auckland | Custom Sanctuary Design',
-    description: 'Explore custom aluminium pergolas in Auckland. Understand frame proportion, roof integration, finish, structure and project scope before requesting a site-specific assessment.',
+    title: 'Aluminium Pergolas Auckland | Frame & Finish Guide',
+    description: 'Explore aluminium pergolas in Auckland. Understand frame proportion, roof integration, finish, structure and project scope before requesting a site-specific assessment.',
     h1: 'The frame sets the rhythm long before the roof is noticed',
     submitLabel: 'Send the project outline',
-    faqCount: 9,
+    faqCount: 8,
+    role: 'product-guide',
+    briefFieldName: 'openingPriorities',
     projectCount: 4,
     captureId: 'aluminium-projects',
     comparisonId: 'aluminium-specification-title',
@@ -41,6 +45,8 @@ const pages: ProgrammePage[] = [
     h1: 'A useful pergola price starts with a defined scope, not a square-metre guess',
     submitLabel: 'Request a scoped first look',
     faqCount: 10,
+    role: 'decision-guide',
+    briefFieldName: 'siteAccess',
     projectCount: 4,
     captureId: 'cost-projects',
     comparisonId: 'cost-drivers-title',
@@ -50,11 +56,13 @@ const pages: ProgrammePage[] = [
     order: 5,
     marker: 'gable-pergolas-auckland',
     route: '/gable-pergolas-auckland',
-    title: 'Gable Pergolas Auckland | Custom Design & Installation',
-    description: 'Explore custom gable pergolas in Auckland. Understand ridge height, pitch, gable ends, roofing, drainage and house integration before planning your project.',
+    title: 'Gable Pergolas Auckland | Roof Form Guide',
+    description: 'Explore gable pergolas in Auckland. Understand ridge height, pitch, gable ends, roofing, drainage and house integration before planning your project.',
     h1: 'A gable should borrow the home’s logic, not simply copy its pitch',
     submitLabel: 'Send the gable project',
-    faqCount: 9,
+    faqCount: 7,
+    role: 'product-guide',
+    briefFieldName: 'rooflineContext',
     projectCount: 4,
     captureId: 'gable-projects',
     comparisonId: 'gable-decisions-title',
@@ -64,11 +72,13 @@ const pages: ProgrammePage[] = [
     order: 6,
     marker: 'pitched-pergolas-auckland',
     route: '/pitched-pergolas-auckland',
-    title: 'Pitched Pergolas Auckland | Custom Mono-Pitch Design',
-    description: 'Explore custom pitched pergolas in Auckland. Plan the high edge, low edge, roof fall, daylight, drainage and house connection as one restrained roof form.',
+    title: 'Pitched Pergolas Auckland | Mono-Pitch Roof Guide',
+    description: 'Explore pitched pergolas in Auckland. Plan the high edge, low edge, roof fall, daylight, drainage and house connection as one restrained roof form.',
     h1: 'One roof plane leaves nowhere for a weak line to hide',
     submitLabel: 'Send the pitched project',
-    faqCount: 9,
+    faqCount: 7,
+    role: 'product-guide',
+    briefFieldName: 'heightConstraints',
     projectCount: 4,
     captureId: 'pitched-projects',
     comparisonId: 'pitched-decisions-title',
@@ -78,11 +88,13 @@ const pages: ProgrammePage[] = [
     order: 7,
     marker: 'outdoor-rooms-auckland',
     route: '/outdoor-rooms-auckland',
-    title: 'Outdoor Rooms Auckland | Custom Design & Installation',
-    description: 'Plan a custom outdoor room in Auckland around dining, lounging, light, shelter and the home. Explore roof, edge, lighting and scope decisions with Sanctuary.',
+    title: 'Outdoor Rooms Auckland | Design & Installation',
+    description: 'Plan an outdoor room in Auckland around dining, lounging, light, shelter and the home. Explore roof, edge, lighting and scope decisions with Sanctuary.',
     h1: 'Begin with the life inside the room, not the roof above it',
     submitLabel: 'Describe the room you need',
-    faqCount: 10,
+    faqCount: 8,
+    role: 'service',
+    briefFieldName: 'furnitureAndUse',
     projectCount: 4,
     captureId: 'outdoor-room-projects',
     comparisonId: 'outdoor-room-decisions-title',
@@ -96,7 +108,9 @@ const pages: ProgrammePage[] = [
     description: 'Plan a pergola with blinds in Auckland around wind direction, low sun, privacy and open views. Explore blind integration, controls, scope and project evidence.',
     h1: 'A blind works best when the edge was designed to receive it',
     submitLabel: 'Describe the exposed edge',
-    faqCount: 10,
+    faqCount: 9,
+    role: 'product-guide',
+    briefFieldName: 'edgeCondition',
     projectCount: 3,
     captureId: 'blind-projects',
     comparisonId: 'blind-decisions-title',
@@ -110,7 +124,9 @@ const pages: ProgrammePage[] = [
     description: 'Compare acrylic pergolas and louvre roof proposals by roof behaviour, daylight, shade, rain detailing, controls, maintenance evidence and complete installed scope.',
     h1: 'Choose the roof behaviour before choosing the roof label',
     submitLabel: 'Compare your roof brief',
-    faqCount: 10,
+    faqCount: 8,
+    role: 'decision-guide',
+    briefFieldName: 'roofStates',
     projectCount: 4,
     captureId: 'acrylic-comparison-projects',
     comparisonId: 'roof-comparison-title',
@@ -124,7 +140,9 @@ const pages: ProgrammePage[] = [
     description: 'Plan a commercial pergola in Auckland around customers, staff, circulation, frontage, services, staging and clear project responsibility. Review Sanctuary project evidence.',
     h1: 'A commercial pergola has to work before, during and after service',
     submitLabel: 'Share the commercial brief',
-    faqCount: 10,
+    faqCount: 8,
+    role: 'service',
+    briefFieldName: 'operatingConstraints',
     projectCount: 4,
     captureId: 'commercial-projects',
     comparisonId: 'commercial-decisions-title',
@@ -170,6 +188,11 @@ for (const programmePage of pages) {
       await expect(main.locator('h1')).toHaveCount(1);
       await expect(main.locator('.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
       await expect(main.locator('details')).toHaveCount(programmePage.faqCount);
+      await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
+      await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
+      await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
+      await expect(main.locator('.seo-landing__project-facts')).toHaveCount(programmePage.projectCount);
+      await expect(page.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`)).toBeVisible();
       await expect(page.locator('#acrylic-enquiry-style')).toHaveValue('');
       await expect(page.locator('#acrylic-enquiry-roof')).toHaveValue('');
       const copy = await main.innerText();
@@ -226,10 +249,11 @@ for (const programmePage of pages) {
     await page.locator('#acrylic-enquiry-email').fill('test@example.com');
     await page.locator('#acrylic-enquiry-suburb').fill('Auckland');
     await page.locator('#acrylic-enquiry-message').fill('We need a site-specific design and can send photos.');
+    await page.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`).fill('Page-specific project context.');
     await page.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
     await page.getByRole('button', { name: programmePage.submitLabel }).click();
     await expect(page.getByText('Thanks, we have received your project details.')).toBeVisible();
-    expect(submittedBody).toMatchObject({ page: programmePage.route, source: 'website', roofMaterials: ['acrylic', 'timber'], projectDetails: { roofPreference: 'Combination roofing' } });
+    expect(submittedBody).toMatchObject({ page: programmePage.route, source: 'website', roofMaterials: ['acrylic', 'timber'], projectDetails: { roofPreference: 'Combination roofing', [programmePage.briefFieldName]: 'Page-specific project context.' } });
   });
 
   test(`Page ${programmePage.order} ${programmePage.marker} sitemap links and schema are sound`, async ({ page, request }) => {
@@ -240,13 +264,13 @@ for (const programmePage of pages) {
     const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]`);
     const links = await main.locator('a[href^="/"]').evaluateAll((nodes) => [...new Set(nodes.map((node) => node.getAttribute('href')).filter((href): href is string => Boolean(href) && !href.includes('#')))]);
     for (const href of links) expect((await request.get(href)).status(), `${href} should resolve`).toBeLessThan(400);
-    const questions = await main.locator('details summary h3').allTextContents();
-    const answers = await main.locator('details > div').evaluateAll((nodes) => nodes.map((node) => [...node.querySelectorAll('p')].map((paragraph) => paragraph.textContent?.trim() ?? '').join('\n\n')));
-    const jsonLd = (await page.locator('script[type="application/ld+json"]').allTextContents()).flatMap((script) => { const parsed = JSON.parse(script) as unknown; return Array.isArray(parsed) ? parsed : [parsed]; }) as Array<{ '@type'?: string; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
-    const faq = jsonLd.find((node) => node['@type'] === 'FAQPage');
-    expect(jsonLd.find((node) => node['@type'] === 'Service')).toBeDefined();
-    expect(faq?.mainEntity?.map((item) => item.name)).toEqual(questions);
-    expect(faq?.mainEntity?.map((item) => item.acceptedAnswer.text.replace(/\s+/g, ' ').trim())).toEqual(answers.map((answer) => answer.replace(/\s+/g, ' ').trim()));
+    const jsonLd = (await page.locator('script[type="application/ld+json"]').allTextContents()).flatMap((script) => { const parsed = JSON.parse(script) as unknown; return Array.isArray(parsed) ? parsed : [parsed]; }) as Array<{ '@type'?: string; dateModified?: string; reviewedBy?: { name?: string }; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
+    const service = jsonLd.find((node) => node['@type'] === 'Service');
+    if (programmePage.role === 'service') expect(service).toBeDefined();
+    else expect(service).toBeUndefined();
+    expect(jsonLd.find((node) => node['@type'] === 'FAQPage')).toBeUndefined();
+    expect(jsonLd.find((node) => node['@type'] === 'BreadcrumbList')).toBeDefined();
+    expect(jsonLd.find((node) => node['@type'] === 'WebPage')).toMatchObject({ dateModified: '2026-07-22', reviewedBy: { name: 'Sanctuary Pergolas' } });
   });
 }
 

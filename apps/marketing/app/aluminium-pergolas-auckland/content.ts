@@ -9,12 +9,11 @@ const faqItems = [
   { question: 'Is aluminium suitable for a coastal Auckland site?', answer: ['Coastal exposure should be identified early because site conditions can affect material, finish, detailing and maintenance requirements.', 'Suitability, coating performance, exclusions and care instructions must be confirmed against the actual site and selected products rather than assumed from the material name alone.'] },
   { question: 'How far can an aluminium pergola span without posts?', answer: ['A span or post-free outcome cannot be confirmed generically. It depends on dimensions, roof form, loads, exposure, support conditions, member selection and any required engineering.', 'Share the site and desired openings first so the feasible arrangement can be assessed.'] },
   { question: 'How should an aluminium pergola be maintained?', answer: ['Follow the written care information supplied for the exact frame finish, roof products and accessories. Site exposure may change the recommended frequency or method.', 'Safe access and product-approved cleaning methods should be confirmed before maintenance work begins.'] },
-  { question: 'How much does an aluminium pergola cost in Auckland?', answer: ['Cost follows the complete project, including size, spans, roof form, structural materials, roofing, finish, connections, foundations, drainage, access, options and any engineering or approval work.', 'Send photos, rough dimensions and the suburb for a first indication based on stated assumptions.'] },
 ] as const;
 
 export const aluminiumPergolasConfig = {
   marker: 'aluminium-pergolas-auckland', route: '/aluminium-pergolas-auckland',
-  description: 'Explore custom aluminium pergolas in Auckland. Understand frame proportion, roof integration, finish, structure and project scope before requesting a site-specific assessment.',
+  description: 'Explore aluminium pergolas in Auckland. Understand frame proportion, roof integration, finish, structure and project scope before requesting a site-specific assessment.',
   schemaName: 'Aluminium Pergolas Auckland', serviceName: 'Custom aluminium pergola design and installation in Auckland', serviceType: 'Aluminium pergola design and installation',
   hero: {
     image: '/images/project-ardmore-carport-03.jpg', imageAlt: 'Detailed aluminium rafters and custom pergola framing in Auckland', objectPosition: '50% 42%',
@@ -41,10 +40,10 @@ export const aluminiumPergolasConfig = {
       { title: 'Finish and hardware', text: 'Colour, visible fixings, drainage and accessory mounts influence whether the detailed result feels calm or cluttered.' },
     ] },
     { kind: 'projects', id: 'aluminium-projects', eyebrow: 'Aluminium in different architectural roles', title: 'The frame changes because the project changes', intro: 'These completed projects use aluminium within different forms, roof materials and site relationships.', items: [
-      { slug: 'dairy-flat-estate', label: 'Roofline-led gable extension', summary: 'Aluminium framing follows the form of the existing house while acrylic roofing and a gable-end infill complete the sheltered outdoor area.' },
-      { slug: 'st-heliers-townhouse', label: 'A visible custom gable end', summary: 'An open gable with bespoke aluminium end framing gives the street-facing addition a deliberate architectural identity.' },
-      { slug: 'ardmore-box-carport', label: 'Aluminium within a steel-supported frame', summary: 'Aluminium rafters and guttering sit with steel members, acrylic roofing and a box perimeter across a wide vehicle cover.' },
-      { slug: 'warkworth-outdoor-room', label: 'Frame for a complete outdoor room', summary: 'Aluminium and steel structure support a gable room with acrylic glazing, solid roofing, cedar lining and integrated interior elements.' },
+      { slug: 'dairy-flat-estate', label: 'Roofline-led gable extension', summary: 'An 8.6 by 3.3 metre aluminium frame follows the house form while acrylic roofing and a gable-end infill complete the outdoor area.', facts: ['8.6 x 3.3 m footprint', '3.0 m high gable'] },
+      { slug: 'st-heliers-townhouse', label: 'A visible custom gable end', summary: 'A 6.0 by 3.0 metre open gable uses bespoke aluminium end framing to give the street-facing addition a deliberate identity.', facts: ['18 m² covered area', 'Custom gable-end framing'] },
+      { slug: 'ardmore-box-carport', label: 'Aluminium within a steel-supported frame', summary: 'Aluminium rafters and guttering sit with steel members, acrylic roofing and a box perimeter across a 54.3 square metre vehicle cover.', facts: ['8.77 x 6.19 m footprint', 'Steel PFCs with aluminium rafters'] },
+      { slug: 'warkworth-outdoor-room', label: 'Frame for a complete outdoor room', summary: 'Aluminium and steel support a 5.0 by 6.0 metre gable room with acrylic glazing, solid roofing, cedar lining and integrated elements.', facts: ['30 m² freestanding room', '4.1 m overall height'] },
     ] },
     { kind: 'decision-cards', id: 'aluminium-specification', tone: 'warm', eyebrow: 'Specify the complete assembly', title: 'Four aluminium decisions that should not be separated', intro: 'A confident finish comes from knowing how the visible frame, hidden structure and attached systems work together.', items: [
       { title: 'Profiles and spans', outcome: 'Member sizes and layouts suited to the roof form and required openings.', consider: 'Dimensions, loads, exposure, supports and engineering for the completed design.' },
@@ -57,23 +56,18 @@ export const aluminiumPergolasConfig = {
       { title: 'Do not generalise coastal performance', text: 'Exposure, coating system, detailing, maintenance and product exclusions need to be checked for the actual property.' },
       { title: 'Do not detach warranty from product', text: 'The final scope should name the exact frame finish, roof products and current written warranties that apply.' },
     ], links: [{ href: '/custom-pergolas-auckland', label: 'Review the custom design approach' }, { href: '/pergolas-auckland', label: 'Review the broad planning guide' }] },
-    { kind: 'process', id: 'aluminium-process', eyebrow: 'From outline to fabricated frame', title: 'Resolve the visible lines before production begins', intro: 'The process brings architectural intent and buildable scope into the same set of decisions.', items: [
-      { title: 'Share the home and outdoor area', copy: 'Send the suburb, photos, rough dimensions and views from inside. Explain the openings and uses the frame needs to protect.' },
-      { title: 'Assess the likely form and constraints', copy: 'Sanctuary reviews height, roofline, connections, exposure, drainage, access and any missing site evidence.' },
-      { title: 'Develop frame and roof together', copy: 'Geometry, structure, roofing, finish and integrated options are compared as a complete assembly.' },
-      { title: 'Confirm selections and responsibilities', copy: 'The agreed design, materials, inclusions, exclusions, engineering or approval work and next steps are documented.' },
-      { title: 'Prepare and install', copy: 'The pergola is prepared and installed to the confirmed scope, with timing set for the actual project and programme.' },
+    { kind: 'link-cards', id: 'aluminium-next-decisions', tone: 'neutral', eyebrow: 'Continue the specification', title: 'Take form, complexity and cost to their owner pages', items: [
+      { title: 'Compare gable and pitched forms', text: 'See how ridge, pitch, fall and available height change the role of the aluminium frame.', href: '/gable-pergolas-auckland', linkLabel: 'Open the form guides' },
+      { title: 'Resolve difficult connections', text: 'Use the custom guide for restricted posts, longer openings, changing levels and renovation coordination.', href: '/custom-pergolas-auckland', linkLabel: 'Open the custom guide' },
+      { title: 'Compare complete scope', text: 'Move price questions to the guide that owns inclusions, exclusions and estimate evidence.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
     ] },
-    { kind: 'scope', id: 'aluminium-scope', eyebrow: 'Cost follows the assembly', title: 'Frame price cannot be separated from the roof and site', lead: 'An aluminium pergola is a complete installed structure, not a set of frame lengths priced without context.', paragraphs: ['A useful comparison checks whether geometry, structure, roofing, finish, drainage and site work describe the same outcome.'], factors: [
-      ['Frame geometry', 'Footprint, height, roof form, spans and post positions set the quantity and structural arrangement.'],
-      ['Structural mix', 'Aluminium profiles, any steel members, connections and engineering depend on the completed design.'],
-      ['Roof and drainage', 'Roof material, fall, flashings, gutters, downpipes and discharge form part of the installed assembly.'],
-      ['Finish and integrations', 'Coating, blinds, screens, lighting, heating, access and approval requirements add specific scope.'],
-    ], checklistLead: 'Ask whether the quotation identifies the exact assembly.', checklist: ['Dimensions, form and heights', 'Aluminium profiles and any steel structure', 'Roof product and roof zones', 'Frame finish and colour', 'Connections, foundations and flashings', 'Gutters, downpipes and discharge', 'Integrated features and trade responsibilities', 'Engineering, approvals, assumptions and exclusions'] },
     { kind: 'faq', id: 'aluminium-faq', tone: 'elevated', eyebrow: 'Material questions in context', title: 'What to confirm before specifying an aluminium pergola', intro: 'These answers stay general until the site, structure, finish and exact products are known.', items: faqItems },
   ],
   finalCta: { eyebrow: 'Start with the openings', title: 'Show where the frame needs to be quiet', text: 'Photos of doors, views, eaves and circulation are more useful than a preferred profile on its own. Share the whole setting so the frame can be considered in context.', button: 'Send the project outline', checklistTitle: 'Include if available', checklist: ['Project suburb', 'Wide site and house photos', 'Views from adjoining rooms', 'Rough width, depth and height', 'Doors and paths to keep clear', 'Preferred roof effect, if known', 'Finish references from the home', 'Plans or sketches'] },
-  form: { ariaLabel: 'Aluminium pergola project enquiry form', eyebrow: 'Show the frame context', heading: 'Send your aluminium pergola outline', intro: 'Add photos, rough dimensions and the openings the design needs to protect. You can leave the roof form and material undecided.', submitLabel: 'Send the project outline', roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  form: { ariaLabel: 'Aluminium pergola project enquiry form', eyebrow: 'Show the frame context', heading: 'Send your aluminium pergola outline', intro: 'Add photos, rough dimensions and the openings the design needs to protect. You can leave the roof form and material undecided.', submitLabel: 'Send the project outline', messageLabel: 'What should the frame resolve?', messagePlaceholder: 'Describe the openings, connections, views or circulation that should shape the post and beam layout.', briefFields: [
+    { name: 'openingPriorities', label: 'Openings and post positions to protect', type: 'textarea', placeholder: 'Note doors, paths, views, furniture or vehicle access that should remain clear.', wide: true },
+    { name: 'finishReference', label: 'Existing finish reference', type: 'text', placeholder: 'For example: window joinery, roof or cladding colour' },
+  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

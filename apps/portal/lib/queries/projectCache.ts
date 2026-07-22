@@ -6,6 +6,7 @@ import type { Contact } from '@/lib/types/contact';
 import { patchContactAcrossIndexCaches } from './contactsIndex';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
+import { invalidatePortalSearchQueries } from './portalSearch';
 import {
   PROJECTS_INDEX_QUERY_SCOPE,
   type ProjectsIndexArchiveFilter,
@@ -149,6 +150,7 @@ export function patchProjectListItem(
       return { ...current, projects: { ...current.projects, rows } };
     });
   }
+  void invalidatePortalSearchQueries(queryClient, 'none');
 }
 
 /**
@@ -184,6 +186,7 @@ export function upsertProjectListItem(
       };
     });
   }
+  void invalidatePortalSearchQueries(queryClient, 'none');
 }
 
 export function patchContactListItem(
@@ -214,6 +217,7 @@ export function removeProjectListItem(queryClient: QueryClient, host: string, pr
         : current,
     );
   }
+  void invalidatePortalSearchQueries(queryClient, 'none');
 }
 
 export async function invalidateProjectsIndexCaches(
@@ -227,6 +231,7 @@ export async function invalidateProjectsIndexCaches(
     options?.includeContacts
       ? queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) })
       : Promise.resolve(),
+    invalidatePortalSearchQueries(queryClient),
   ]);
 }
 
@@ -250,6 +255,7 @@ export async function invalidateProjectReadCaches(
     includeProjectDetail ? queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }) : Promise.resolve(),
+    includeProjectsList ? invalidatePortalSearchQueries(queryClient) : Promise.resolve(),
     opts?.includeQuotes ? queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(host, projectId) }) : Promise.resolve(),
     opts?.includeEstimates ? queryClient.invalidateQueries({ queryKey: qk.estimates.metaByProject(host, projectId) }) : Promise.resolve(),
   ]);

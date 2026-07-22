@@ -90,6 +90,12 @@
   text-transform: uppercase;
 }
 
+.guide-hub-hero__review {
+  margin: 1rem 0 0;
+  color: rgba(244, 244, 240, 0.58);
+  font: 500 0.68rem/1.5 var(--font-body);
+}
+
 .guide-hub-hero__figure {
   min-height: 42rem;
   position: relative;
@@ -260,6 +266,12 @@
   font: 600 0.66rem/1.35 var(--font-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.guide-hub-card__heading em {
+  color: var(--color-text-secondary);
+  font: 500 0.72rem/1.35 var(--font-body);
+  font-style: normal;
 }
 
 .guide-hub-card__heading strong {

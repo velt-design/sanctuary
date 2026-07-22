@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-07-22T04:13:05.351Z",
+  "target": {
+    "uncachedMsMax": 400,
+    "cachedMsMax": 75,
+    "debounceMs": 100
+  },
+  "apiSamples": [
+    {
+      "query": "an",
+      "wallMs": 475.4394000000002,
+      "serverMs": 462.9
+    },
+    {
+      "query": "re",
+      "wallMs": 393.1194000000005,
+      "serverMs": 375.3
+    },
+    {
+      "query": "ar",
+      "wallMs": 437.0165999999999,
+      "serverMs": 428.3
+    },
+    {
+      "query": "jo",
+      "wallMs": 363.0555999999997,
+      "serverMs": 354.8
+    },
+    {
+      "query": "ma",
+      "wallMs": 412.64810000000034,
+      "serverMs": 401.6
+    }
+  ],
+  "apiWallP75Ms": 437.0165999999999,
+  "projectedUncachedP75Ms": 537.0165999999999,
+  "uncachedUiMs": 544,
+  "cachedUiMs": 6.899999976158142,
+  "uiSearchRequests": 1
+}

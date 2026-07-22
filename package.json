@@ -87,6 +87,8 @@
     "test:portal:shell": "vitest run apps/portal/app/access-status apps/portal/app/dashboard apps/portal/app/error.test.tsx apps/portal/components/auth apps/portal/components/layout apps/portal/components/navigation apps/portal/components/page-state apps/portal/components/ui",
     "test:portal:smoke": "npm run portal:auth-runtime && npx playwright test playwright/portal.auth-routing.spec.ts --project=portal-chromium",
     "test:portal:performance": "npm run portal:auth-runtime && npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
+    "portal:search-readiness": "node scripts/check-portal-search-readiness.mjs",
+    "test:portal:search-performance": "npm run portal:search-readiness && npm run portal:auth-runtime && npx playwright test playwright/portal.search-performance.spec.ts --project=portal-chromium --no-deps",
     "test:portal:performance:capture": "npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
     "test:portal:performance:fixture": "npm run portal:fixture-env && npx playwright test playwright/portal.workbench-performance.spec.ts playwright/portal.project-mutation-performance.spec.ts --project=portal-fixture --workers=1",
     "test:watch": "vitest",

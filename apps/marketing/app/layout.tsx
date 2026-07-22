@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://www.sanctuarypergolas.co.nz'),
   title: {
     default: 'Sanctuary Pergolas',
-    template: '%s – Sanctuary Pergolas',
+    template: '%s | Sanctuary Pergolas',
   },
-  description: 'Architectural aluminium pergolas tailored to Kiwi homes. Designed on site. Built in 1–5 days. 10-year warranty.',
+  description: 'Architectural aluminium pergolas designed around New Zealand homes, outdoor spaces and project-specific requirements.',
   openGraph: {
     type: 'website',
     url: '/',

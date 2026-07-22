@@ -1,6 +1,6 @@
 export const productDescriptions: Record<string, string> = {
   // Pergolas
-  pitched: `A pitched pergola extends your roofline with a clean, single‑slope canopy that sheds water reliably and keeps headroom where you need it. Built in powder‑coated aluminium, the structure stays light, straight and corrosion‑resistant with spans engineered to your wind zone. Rafters run from a higher wall plate to a lower front beam and roof sheets lock into aluminium joiners that sit on long‑run butterfly rubber running the length of each rafter for a tidy underside.
+  pitched: `A pitched pergola extends the roofline with a clean, single‑slope canopy and a deliberate drainage direction. The measured site determines member sizes, connections, fall and finish. Rafters run between the high and low edges, while the selected roof sheets and joiners are coordinated as part of the project-specific assembly.
 
 How it works: posts set on footings or a deck subframe support beams that bolt to precision brackets. A head flashing seals to the house while allowing movement. Services, lighting and blinds can be added later without re‑framing.
 
@@ -21,8 +21,8 @@ Options
 Performance
 • Reliable single‑direction fall for rain control
 • High daylight levels; add tint for glare reduction
-• Strong, straight spans with low visual bulk
-• Quiet, rattle‑free roof fastening via aluminium joiners on butterfly rubber
+• Member sizes and spans resolved for the measured site
+• Joiners and isolation details coordinated with the selected roof sheet
 
 Choose this if
 • You want clean lines and efficient drainage under low eaves
@@ -33,7 +33,7 @@ Consider instead if
 • You need wind managed at corners and all‑round fall (see Hip)
 
 Programme
-• Lead time ~6–8 weeks • Install 2–5 days
+• Current lead time and on-site sequence confirmed in the project proposal
 
 Maintenance
 • Hose down frame/roof periodically • Check gutters/flashings annually
@@ -49,7 +49,7 @@ FAQs
 
 How it works: columns are set to centre the ridge; rafters and purlins lock into engineered brackets; roof sheets lock into aluminium joiners sitting on long‑run butterfly rubber along each rafter to manage drainage and movement. Translucent options maximise daylight; integrated lighting supports evening use.
 
-Why it’s good: the symmetrical form adds street presence, handles gusty sites well and pairs beautifully with blinds and screens. You get real headroom, excellent airflow and a refined, long‑life finish.
+Why it’s good: the symmetrical form adds architectural presence and creates a tall centre line. Structural depth, connections, infills and any blinds are resolved for the measured site and exposure.
 
 Structure & materials
 • Twin roof planes meeting at a ridge
@@ -58,17 +58,17 @@ Structure & materials
 • Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for drainage and movement
 
 Options
-• Acrylic roofing—clear, light grey, dark grey or opal across both roof planes; 99% UV block with tints to tune heat and glare
-• Timber sarking roof panels for a warm, premium ceiling and strong heat‑reduction over dining and lounge zones
+• Acrylic roofing in the current available colours, with published UV and solar-control performance confirmed for the selected sheet
+• Solid roof panels with timber sarking for a more enclosed ceiling and stronger shade response
 • Combination roof using insulated timber sarking panels with acrylic skylight strips so the ridge stays bright while seating areas stay cooler
 • Gable infills at the ends—open, slatted or acrylic—to temper wind, frame views and help manage weather
 
 Performance
 • Excellent headroom and perceived volume
 • Natural convection via ridge for warm‑weather comfort
-• Stable in gusty conditions with good structural depth
+• Structural depth and connections designed for the project-specific exposure
 • Daylight‑rich; glare managed with tint or blinds
-• Quiet, rattle‑free fastening via aluminium joiners on butterfly rubber
+• Joiners and isolation details coordinated with the selected roof sheet
 
 Recommended for
 • Larger decks and sliders needing coverage
@@ -87,7 +87,7 @@ Consider instead if
 • Height at the house is very constrained (see Pitched)
 
 Programme
-• Lead time ~6–8 weeks • Install 2–5 days
+• Current lead time and on-site sequence confirmed in the project proposal
 
 Maintenance
 • Wash down frame/roof • Clear gutters and confirm downpipe flow
@@ -100,18 +100,18 @@ Best paired with
 • Strip lighting in beams for ambient wash
 
 Indicative performance (TBC)
-• Typical ridge spans ~3.6–5.4 m depending on bay spacing/wind zone
+• Ridge spans and bay spacing confirmed by the project-specific design
 • Gable pitch and sheet type tuned to site
 
 FAQs
 • Is a gable too bright? Use opal/tint to balance light and glare.
 • Can I keep views through the gable? Yes—open or clear infills maintain outlook.`,
 
-  hip: `A hip pergola pitches down on all sides so the roof wraps the space neatly and manages wind at the corners. It integrates naturally with complex rooflines and reads like built‑in architecture. Frames are powder‑coated aluminium with concealed brackets for crisp hip lines and a clean soffit.
+  hip: `A hip pergola pitches down on all sides so the roof wraps the space with multiple drainage directions. It can integrate with complex rooflines when the hips, junctions, outlets and post positions are coordinated as one project-specific structure.
 
 How it works: a central ridge and diagonal hips transfer loads to perimeter beams and posts; custom flashings step roof sheets around the hips while maintaining drainage. Posts can offset to suit doors and paths.
 
-Why it’s good: multi‑direction fall sheds rain without splash zones, wind eddies are reduced and the silhouette looks premium without fuss. It’s strong, recyclable and made to withstand New Zealand sun and salt.
+Why it’s good: multi‑direction fall can organise runoff around the perimeter, while the hip geometry creates a composed architectural silhouette. Material, finish and maintenance requirements are selected for the site environment.
 
 Structure & materials
 • Four‑sided roof with ridge and hip beams
@@ -127,9 +127,9 @@ Options
 
 Performance
 • All‑round fall controls splash and runoff
-• Reduced wind eddies at corners
+• Project-specific engineering for hips, corners and connections
 • Premium architectural silhouette with tidy soffit
-• Strong weathering for coastal NZ environments
+• Finish and maintenance requirements confirmed for the site environment
 
 Recommended for
 • Complex façades and corner decks
@@ -147,7 +147,7 @@ Consider instead if
 • You have very tight height constraints (see Pitched)
 
 Programme
-• Lead time ~6–8 weeks • Install 3–4 days
+• Current lead time and on-site sequence confirmed in the project proposal
 
 Maintenance
 • Rinse frame/roof • Check gutters and hip junctions annually
@@ -160,7 +160,7 @@ Best paired with
 • Strip lighting around the perimeter for night definition
 
 Indicative performance (TBC)
-• Typical bay ~2.7–4.2 m depending on exposure and layout
+• Bay sizes and member depths confirmed by the project-specific design
 • Hip angles and sheet selection tuned to site
 
 FAQs
@@ -205,7 +205,7 @@ Consider instead if
 • You want deployable shade/wind control (see Drop‑down blinds)
 
 Programme
-• Lead time ~2–4 weeks • Install 1 day
+• Current lead time and on-site sequence confirmed for the selected screen system and measured openings
 
 Maintenance
 • Aluminium: periodic washdown • Timber: re‑oil/stain as required
@@ -217,14 +217,14 @@ Best paired with
 • Drop‑down blinds on the open face • Downlights for evening use
 
 Indicative performance (TBC)
-• Typical panel width ~0.9–1.8 m based on profile and exposure
+• Panel width and post spacing confirmed for the selected profile, opening and exposure
 • Fixing method and post spacing confirmed at design
 
 FAQs
 • Will slats rattle? Profiles and fixings are selected to avoid noise.
 • Can I mix timber and aluminium? Yes—frames are compatible with both.`,
 
-  'acrylic-infill-panels': `Acrylic infill panels add year‑round usability by blocking wind and rain while preserving views. Clear or softly tinted sheets slot into slim aluminium channels with gasket isolation so they stay quiet and allow for thermal movement. Panels can be fixed, removable or configured to slide depending on exposure.
+  'acrylic-infill-panels': `Acrylic infill panels can moderate exposed pergola edges while preserving views. Clear or softly tinted sheets sit within slim aluminium channels, with isolation and movement details selected for the opening and site conditions.
 
 How it works: impact‑resistant acrylic is cut to size and captured in sealed frames; discreet mullions control deflection; optional vent trims keep air moving where needed.
 
@@ -241,7 +241,7 @@ Options
 • Trickle vents for air movement where required
 
 Performance
-• Significant wind and rain protection
+• The degree of wind and rain protection depends on panel layout, open edges and junction details
 • High light transmission; manageable glare with tint
 • Lighter and more economical than full glazing
 
@@ -253,7 +253,7 @@ Not ideal for
 • Full thermal insulation—consider glazing or insulated panels instead
 
 Choose this if
-• You want near‑clear views with real weather protection
+• You want near‑clear views with added edge shelter
 • You prefer permanent, low‑maintenance enclosure over deployable blinds
 
 Consider instead if
@@ -261,7 +261,7 @@ Consider instead if
 • You need full thermal performance (consider glazing/insulated panels)
 
 Programme
-• Lead time ~3–5 weeks • Install 1–2 days
+• Current lead time and on-site sequence confirmed for the selected panel system and measured openings
 
 Maintenance
 • Wash with mild soap and soft cloth • Avoid harsh solvents
@@ -273,14 +273,14 @@ Best paired with
 • Heaters for winter comfort • Downlights for even light without glare
 
 Indicative performance (TBC)
-• Typical clear panel ~1.0–1.5 m wide × ~2.0–2.4 m high depending on exposure
-• Mullion spacing engineered to wind zone; fixings hidden where possible
+• Panel sizes and mullion spacing confirmed from the selected system and project-specific design
+• Fixing and movement details coordinated with the opening and exposure
 
 FAQs
-• Will panels yellow? Quality acrylic resists UV; clean with neutral pH soap.
+• Will panels yellow? Review the current manufacturer information for the selected acrylic and follow its cleaning instructions.
 • Can I remove panels seasonally? Removable and sliding options are available.`,
 
-  'drop-down-blinds': `Drop‑down blinds give on‑demand control of wind and low sun. Fabrics range from clear PVC for weather blocking to open‑weave meshes that cut glare while keeping the view. Blinds run in side channels or stainless guides to stay steady in gusts.
+  'drop-down-blinds': `Drop‑down blinds give adjustable control of low sun, privacy and exposure at selected edges. Fabrics range from clear PVC to open‑weave meshes, while side channels or guides are chosen for the measured opening and current system limits.
 
 How it works: a manual crank or motorised tube rolls the fabric into a compact headbox; side channels capture the edges and a weighted bottom bar seals to the deck. Motors can integrate with remotes, wall switches and wind sensors to protect the blind automatically.
 
@@ -297,8 +297,8 @@ Options
 • Fabric openness and colours to suit privacy and outlook
 
 Performance
-• Quick, adjustable protection from wind and low sun
-• Stays steady in gusts with channels or guides
+• Adjustable response to low sun, privacy and edge exposure
+• Opening size and operating limits checked against the selected system
 • Enhances warmth when paired with heaters
 
 Recommended for
@@ -317,7 +317,7 @@ Consider instead if
 • You need a completely sealed envelope (consider glazing)
 
 Programme
-• Lead time ~2–4 weeks • Install ~1 day
+• Current lead time and on-site sequence confirmed for the selected blind system and measured openings
 
 Maintenance
 • Hose down mesh • Keep PVC clean and fully dry before rolling
@@ -329,11 +329,11 @@ Best paired with
 • Heaters for shoulder‑season warmth • Downlights/strip for night use
 
 Indicative performance (TBC)
-• Max width ~3.0–5.0 m based on system and exposure
-• Recommended wind limit ~X km/h with side channels (manufacturer TBC)
+• Maximum opening size and operating limits confirmed from current manufacturer data
+• Controls and sensor behaviour depend on the selected side-channel or guide system
 
 FAQs
-• Will mesh keep rain out? Mesh reduces wind and spray; clear PVC blocks rain.
+• Will mesh keep rain out? No blind is a universal weather seal. Wind-driven rain can enter at edges and openings.
 • Do motors need power on the pergola? Yes—supply by a licensed electrician.`,
 
   // Lighting & heating
@@ -374,7 +374,7 @@ Consider instead if
 • You prefer decorative pendants (not typical outdoors)
 
 Programme
-• Lead time ~1–2 weeks • Install with pergola or retrofit by electrician
+• Current lead time and installation sequence confirmed for the selected fittings and electrical scope
 
 Maintenance
 • Wipe trims periodically • Expect long LED life with minimal upkeep
@@ -387,7 +387,7 @@ Best paired with
 
 Indicative performance (TBC)
 • Per fitting ~300–900 lm depending on model/beam angle
-• Typical spacing ~1.2–1.8 m; circuits dimmable
+• Spacing, beam angle and dimming confirmed from the lighting plan and selected fittings
 
 FAQs
 • Will they attract bugs? Warm CCT and lower output reduces attraction.
@@ -430,7 +430,7 @@ Consider instead if
 • You want decorative pendants (indoor‑style)
 
 Programme
-• Lead time ~1–2 weeks • Install with pergola or retrofit
+• Current lead time and installation sequence confirmed for the selected lighting system and electrical scope
 
 Maintenance
 • Wipe diffusers occasionally • Expect long LED lifespan
@@ -486,7 +486,7 @@ Consider instead if
 • You need full‑space heating (not typical outdoors)
 
 Programme
-• Lead time ~1–2 weeks • Install by licensed electrician
+• Current lead time and installation sequence confirmed for the selected heaters and electrical scope
 
 Maintenance
 • Wipe lenses/grilles periodically • Check operation at season start
@@ -498,7 +498,7 @@ Best paired with
 • Drop‑down blinds to hold warmth • Dimmers for comfort control
 
 Indicative performance (TBC)
-• Output ~1800–3200 W per unit; coverage ~6–12 m² in low wind
+• Output, coverage, clearances and controls confirmed from current manufacturer data for the selected unit
 • Mounting height and angle tuned to seating layout
 
 FAQs
@@ -546,7 +546,7 @@ Consider instead if
 • You prefer a traditional eave or ridge line (see Pitched/Gable)
 
 Programme
-• Lead time ~6 weeks • Install 2–4 days
+• Current lead time and on-site sequence confirmed in the project proposal after site and supplier checks
 
 Maintenance
 • Rinse the frame/roof occasionally • Clear gutters and confirm downpipe flow
@@ -560,7 +560,7 @@ Best paired with
 • Mesh blinds at exposed faces for comfort
 
 Indicative performance (TBC)
-• Typical bay ~2.7–4.0 m depending on exposure and sheet spec
+• Bay sizes and member depths confirmed by the project-specific design
 • Post foundations and fixings engineered to wind zone
 
 FAQs
