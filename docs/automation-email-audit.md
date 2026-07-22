@@ -61,7 +61,7 @@ Resend `email.sent` callbacks enter through `/api/webhooks/resend`. The route bo
 
 Forward marketing attribution is recorded as project audit events only. New enquiries store compact UTM and Google click identifiers in `enquiry_requests.raw_payload.attribution`; later high-value lifecycle events are `marketing.lead_submitted`, `marketing.site_visit_booked`, `marketing.quote_accepted`, and `marketing.deposit_received`. These rows are a foundation for later Google Ads upload, not an Ads API integration.
 
-Current website enquiry autoresponders keep the existing payload shape for preview compatibility, but new base pergola estimates are sent and stored as a single lower-only amount by setting equal low/high values. Historical rows with unequal low/high values still preview as ranges. Optional blinds remain range-based.
+Current website enquiry autoresponders keep the existing payload shape for preview compatibility, but new base pergola estimates are sent and stored as a single lower-only amount by setting equal low/high values. Historical rows with unequal low/high values still preview as ranges. Optional blinds remain range-based, use the shared corrected `@sp/costing` baseline, and persist into the generated calculator draft with No cover unless staff later selects a flashing or pelmet.
 
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 

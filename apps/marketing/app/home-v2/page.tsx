@@ -187,6 +187,7 @@ export default async function HomeV2Page() {
               alt={leadProject.heroImage.alt}
               ratio="landscape"
               className={styles.featuredProjectMedia}
+              objectPosition={leadProject.heroImage.objectPosition}
             />
             <div className={styles.featuredProjectCopy}>
               <div>
@@ -391,6 +392,7 @@ export default async function HomeV2Page() {
                 title: project.title,
                 detail: [project.location, projectDimensions(project), configuration, roofApproach].filter(Boolean).join(' / '),
                 href: `/projects/${project.slug}`,
+                objectPosition: project.heroImage.objectPosition,
               }))}
             />
           </div>

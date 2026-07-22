@@ -70,6 +70,8 @@ Quote versions copy only compact pricing source metadata from the source estimat
 
 Rollback from `workbench_solved` to `calculator_live` must not reprice or mutate sent, accepted, declined, invoiced, or job-pack-backed quote versions. Existing quote line items, totals, source metadata, PDFs, send logs, public tokens, deposit invoices, file artifacts, and job-pack generations remain historical records. New draft quote refreshes may pick up the current saved estimate/quote-version boundary only through the quote domain helpers.
 
+Blind lines are priced from the saved calculator inputs through `@sp/costing`, not from duplicated quote logic. New and refreshed draft quotes use the current corrected blind list price and include the selected roll cover, charged width, per-metre inclusive rate, and inclusive cover amount in the line description. Missing historical `rollCover` values mean No cover. Sent, accepted, declined, invoiced, or job-pack-backed quote versions remain frozen and are never repriced by this rule change.
+
 Rollout audit events for quote creation, refresh, revision, and blocked source transitions should include quote version IDs, estimate IDs, source metadata hashes, actor/request metadata, and gate codes when relevant. Never place raw public tokens, accept token hashes, service-role details, or oversized commercial payloads in audit records, PDFs, email bodies, public props, or job-pack outputs.
 
 Before enabling or rolling back `workbench_solved`, run downstream immutability checks:

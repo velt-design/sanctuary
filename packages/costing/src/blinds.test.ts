@@ -38,7 +38,7 @@ describe('blinds pricing (line items)', () => {
     expect(priced.lengthBandMm).toBe(1000);
   });
 
-  it('max cover length enforcement', () => {
+  it('max blind drop enforcement', () => {
     const priced = priceBlindLineItem({
       id: 'b3',
       system: 'OMNI',
@@ -87,6 +87,59 @@ describe('blinds pricing (line items)', () => {
     const motorLines = result.items.filter((item) => item.motorExCents > 0);
     expect(motorLines.length).toBe(2);
     expect(motorLines[0].motorExCents).toBe(motorLines[1].motorExCents);
+    expect(motorLines[0].motorIncCents).toBe(90000);
+  });
+
+  it('applies the 15% core uplift before GST', () => {
+    const priced = priceBlindLineItem({
+      id: 'core-uplift',
+      system: 'OMNI',
+      widthMm: 2000,
+      coverLengthMm: 2000,
+      fabric: 'MESH',
+      motorised: false,
+      rollCover: 'NONE',
+    });
+
+    expect(priced.baseExCents).toBe(134783);
+    expect(priced.coreSellExCents).toBe(155000);
+    expect(priced.coreSellIncCents).toBe(178250);
+    expect(priced.blindSellIncCents).toBe(178250);
+  });
+
+  it('keeps the motor and roll-cover rates fixed instead of applying the core uplift', () => {
+    const baseInput = {
+      system: 'OMNI' as const,
+      widthMm: 2000,
+      coverLengthMm: 2000,
+      fabric: 'MESH' as const,
+      motorised: false,
+    };
+    const noCover = priceBlindLineItem({ id: 'no-cover', ...baseInput, rollCover: 'NONE' });
+    const flashing = priceBlindLineItem({ id: 'flashing', ...baseInput, rollCover: 'FLASHING' });
+    const pelmet = priceBlindLineItem({ id: 'pelmet', ...baseInput, rollCover: 'PELMET' });
+    const motorised = priceBlindLineItem({ id: 'motorised', ...baseInput, motorised: true, rollCover: 'NONE' });
+
+    expect(flashing.rollCoverIncCents).toBe(8800);
+    expect(pelmet.rollCoverIncCents).toBe(29000);
+    expect(flashing.blindSellIncCents - noCover.blindSellIncCents).toBe(8800);
+    expect(pelmet.blindSellIncCents - noCover.blindSellIncCents).toBe(29000);
+    expect(motorised.blindSellIncCents - noCover.blindSellIncCents).toBe(90000);
+  });
+
+  it('prices a roll cover from entered width rather than the rounded pricing band', () => {
+    const priced = priceBlindLineItem({
+      id: 'entered-width',
+      system: 'OMNI',
+      widthMm: 2400,
+      coverLengthMm: 2000,
+      fabric: 'MESH',
+      motorised: false,
+      rollCover: 'FLASHING',
+    });
+
+    expect(priced.widthBandMm).toBe(2500);
+    expect(priced.rollCoverIncCents).toBe(10560);
   });
 
   it('fabric multipliers apply (PVC +10%, fine mesh +15%)', () => {
@@ -141,6 +194,33 @@ describe('blinds pricing (line items)', () => {
 
     const validTotal = result.items.find((i) => i.id === 'b10')?.blindSellExCents ?? 0;
     expect(result.totals.totalExCents).toBe(validTotal);
+  });
+
+  it('aggregate totals equal the sum of valid inclusive line prices', () => {
+    const result = priceAllBlinds([
+      {
+        id: 'sum-1',
+        system: 'OMNI',
+        widthMm: 2000,
+        coverLengthMm: 2000,
+        fabric: 'MESH',
+        motorised: false,
+        rollCover: 'FLASHING',
+      },
+      {
+        id: 'sum-2',
+        system: 'ZIPTRAK',
+        widthMm: 2400,
+        coverLengthMm: 2100,
+        fabric: 'PVC',
+        motorised: true,
+        rollCover: 'PELMET',
+      },
+    ]);
+
+    expect(result.totals.totalIncCents).toBe(
+      result.items.reduce((sum, item) => sum + item.blindSellIncCents, 0),
+    );
   });
 });
 

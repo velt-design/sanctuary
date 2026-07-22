@@ -2,6 +2,7 @@ export const GST_RATE = 0.15;
 
 export type BlindSystemType = 'ZIPTRAK' | 'OMNI';
 export type BlindFabric = 'MESH' | 'PVC' | 'FINE_MESH' | 'NONE';
+export type BlindRollCover = 'NONE' | 'FLASHING' | 'PELMET';
 
 export type BlindLineItemInput = {
   id: string;
@@ -11,6 +12,7 @@ export type BlindLineItemInput = {
   coverLengthMm: number | null;
   fabric: BlindFabric;
   motorised: boolean | null;
+  rollCover?: BlindRollCover;
 };
 
 export type BlindLineItemPricing = {
@@ -25,7 +27,13 @@ export type BlindLineItemPricing = {
   lengthBandMm: number;
   baseExCents: number;
   fabricMultiplier: number;
+  coreSellExCents: number;
+  coreSellIncCents: number;
   motorExCents: number;
+  motorIncCents: number;
+  rollCover: BlindRollCover;
+  rollCoverExCents: number;
+  rollCoverIncCents: number;
   blindSellExCents: number;
   blindSellIncCents: number;
   warnings: string[];
@@ -43,8 +51,15 @@ export type BlindPricingResult = {
 };
 
 const DIMENSION_ROUNDING_INCREMENT_MM = 3;
+export const BLIND_CORE_SELL_UPLIFT = 1.15;
 const MOTOR_ADDON_INC_CENTS = 90000;
 const MOTOR_ADDON_EX_CENTS = Math.round(MOTOR_ADDON_INC_CENTS / (1 + GST_RATE));
+
+export const BLIND_ROLL_COVER_RATES_INC_CENTS_PER_METRE: Record<BlindRollCover, number> = {
+  NONE: 0,
+  FLASHING: 4400,
+  PELMET: 14500,
+};
 
 const FABRIC_MULTIPLIERS: Record<Exclude<BlindFabric, 'NONE'>, number> = {
   MESH: 1.0,
@@ -135,18 +150,33 @@ export function getMotorExCents(motorised: boolean | null): number {
   return motorised ? MOTOR_ADDON_EX_CENTS : 0;
 }
 
+export function normalizeBlindRollCover(value: unknown): BlindRollCover {
+  if (value === 'FLASHING' || value === 'PELMET') return value;
+  return 'NONE';
+}
+
+export function getBlindRollCoverRateIncCents(rollCover: BlindRollCover): number {
+  return BLIND_ROLL_COVER_RATES_INC_CENTS_PER_METRE[rollCover];
+}
+
+export function priceBlindRollCoverIncCents(rollCover: BlindRollCover, widthMm: number | null): number {
+  if (!Number.isFinite(widthMm ?? NaN) || (widthMm ?? 0) <= 0) return 0;
+  return roundCents(getBlindRollCoverRateIncCents(rollCover) * Number(widthMm) / 1000);
+}
+
 export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPricing {
   const errors: string[] = [];
   const warnings: string[] = [];
 
   const widthMm = input.widthMm;
   const coverLengthMm = input.coverLengthMm;
+  const rollCover = normalizeBlindRollCover(input.rollCover);
 
   if (!Number.isFinite(widthMm ?? NaN) || (widthMm ?? 0) <= 0) {
-    errors.push('Enter width and cover length');
+    errors.push('Enter width and blind drop');
   }
   if (!Number.isFinite(coverLengthMm ?? NaN) || (coverLengthMm ?? 0) <= 0) {
-    if (!errors.length) errors.push('Enter width and cover length');
+    if (!errors.length) errors.push('Enter width and blind drop');
   }
 
   const effectiveWidthMm = roundUpToIncrementMm(Number(widthMm ?? 0));
@@ -157,7 +187,7 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
     errors.push(`Exceeds max width; split into multiple blinds.`);
   }
   if (effectiveCoverLengthMm > maxCoverLengthMm) {
-    errors.push(`Exceeds max cover length; manual quote required.`);
+    errors.push(`Exceeds max blind drop; manual quote required.`);
   }
 
   if (errors.length) {
@@ -173,7 +203,13 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
       lengthBandMm: 0,
       baseExCents: 0,
       fabricMultiplier: getFabricMultiplier(input.fabric),
+      coreSellExCents: 0,
+      coreSellIncCents: 0,
       motorExCents: getMotorExCents(input.motorised),
+      motorIncCents: input.motorised ? MOTOR_ADDON_INC_CENTS : 0,
+      rollCover,
+      rollCoverExCents: 0,
+      rollCoverIncCents: 0,
       blindSellExCents: 0,
       blindSellIncCents: 0,
       warnings,
@@ -184,9 +220,14 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
   const { widthBandMm, lengthBandMm, baseExCents } = lookupBaseExCents(input.system, effectiveCoverLengthMm, effectiveWidthMm);
   const fabricMultiplier = getFabricMultiplier(input.fabric);
   const afterFabricExCents = roundCents(baseExCents * fabricMultiplier);
+  const coreSellExCents = roundCents(afterFabricExCents * BLIND_CORE_SELL_UPLIFT);
+  const coreSellIncCents = roundCents(coreSellExCents * (1 + GST_RATE));
   const motorExCents = getMotorExCents(input.motorised);
-  const blindSellExCents = roundCents(afterFabricExCents + motorExCents);
-  const blindSellIncCents = roundCents(blindSellExCents * (1 + GST_RATE));
+  const motorIncCents = input.motorised ? MOTOR_ADDON_INC_CENTS : 0;
+  const rollCoverIncCents = priceBlindRollCoverIncCents(rollCover, widthMm);
+  const rollCoverExCents = roundCents(rollCoverIncCents / (1 + GST_RATE));
+  const blindSellIncCents = roundCents(coreSellIncCents + motorIncCents + rollCoverIncCents);
+  const blindSellExCents = roundCents(blindSellIncCents / (1 + GST_RATE));
 
   return {
     id: input.id,
@@ -200,7 +241,13 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
     lengthBandMm,
     baseExCents,
     fabricMultiplier,
+    coreSellExCents,
+    coreSellIncCents,
     motorExCents,
+    motorIncCents,
+    rollCover,
+    rollCoverExCents,
+    rollCoverIncCents,
     blindSellExCents,
     blindSellIncCents,
     warnings,
@@ -210,10 +257,10 @@ export function priceBlindLineItem(input: BlindLineItemInput): BlindLineItemPric
 
 export function priceAllBlinds(inputs: BlindLineItemInput[]): BlindPricingResult {
   const items = inputs.map((input) => priceBlindLineItem(input));
-  const totalExCents = roundCents(
-    items.reduce((sum, item) => (item.errors.length ? sum : sum + item.blindSellExCents), 0),
+  const totalIncCents = roundCents(
+    items.reduce((sum, item) => (item.errors.length ? sum : sum + item.blindSellIncCents), 0),
   );
-  const totalIncCents = roundCents(totalExCents * (1 + GST_RATE));
+  const totalExCents = roundCents(totalIncCents / (1 + GST_RATE));
   return {
     items,
     totals: { totalExCents, totalIncCents },

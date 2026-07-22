@@ -16,6 +16,7 @@ import styles from './CalculatorGrid.module.css';
 import type {
   BlindFabric as BlindFabricInput,
   BlindLineItem,
+  BlindRollCover as BlindRollCoverInput,
   BlindSystemType as BlindSystemInput,
   CalculatorBlindsState,
   CalculatorHouseFootprintParams,
@@ -187,6 +188,7 @@ import {
 } from './calculatorFlashingUi';
 import {
   BLIND_FABRIC_OPTIONS,
+  BLIND_ROLL_COVER_OPTIONS,
   BLIND_SYSTEM_OPTIONS,
   buildCalculatorBlindsUi,
   formatBlindMetresInput,
@@ -2241,7 +2243,7 @@ export default function CalculatorGridClient({
               />
               <FieldTile
                 id={`${domIdBase}-cover`}
-                label="Cover length (m)"
+                label="Blind drop (m)"
                 type="number"
                 value={displayBlindDimensionInput(item, 'coverLengthMm')}
                 inputMode="decimal"
@@ -2264,6 +2266,14 @@ export default function CalculatorGridClient({
                 type="toggle"
                 value={item.motorised === 'YES'}
                 onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
+              />
+              <FieldTile
+                id={`${domIdBase}-roll-cover`}
+                label="Blind roll cover"
+                type="select"
+                value={item.rollCover ?? 'NONE'}
+                onChange={(v) => setBlindItem(item.id, { rollCover: v as BlindRollCoverInput })}
+                options={BLIND_ROLL_COVER_OPTIONS}
               />
               <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={row.totalExLabel} />
               <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={row.totalIncLabel} />
@@ -4103,10 +4113,7 @@ export default function CalculatorGridClient({
               />
               <CalculatorPricingSummary {...pricingSummaryProps} variant="compact" />
               <div className={styles.configurationMain} data-calculator-configuration-main>
-                <CalculatorJobTemplatePicker
-                  activeModuleLabel={moduleNavigatorModel.activeModuleLabel}
-                  onApply={handleApplyJobTemplate}
-                />
+                <CalculatorJobTemplatePicker onApply={handleApplyJobTemplate} />
                 <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
               </div>
             </div>

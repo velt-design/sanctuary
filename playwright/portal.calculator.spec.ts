@@ -305,6 +305,21 @@ test('module navigator supports fresh add, duplicate, move, and immediate draft 
   });
 });
 
+test('common job template applies to the active module without a confirmation modal', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await openCalculator(page);
+
+    await page.getByLabel('Common job template', { exact: true }).selectOption('attached_gable_acrylic');
+    await page.getByRole('button', { name: 'Apply to active module', exact: true }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Apply starting template?' })).toHaveCount(0);
+    await expect(page.getByLabel('Pergola style', { exact: true })).toHaveValue('gable');
+    await expect(page.getByLabel(/^Roof Span/)).toHaveValue('4');
+    await expectLocalDraftProtected(page);
+  });
+});
+
 test('editing save always shows stored versus live costing without creating a quote', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
@@ -503,6 +518,46 @@ for (const width of [1024, 768]) {
     });
   });
 }
+
+test('blind roll covers price live, restore from the local draft, and stay responsive', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openCalculator(page);
+
+    const blinds = page.locator('[data-calculator-configuration-section="blinds"]');
+    await blinds.getByRole('button', { name: 'Add blind', exact: true }).click();
+    await blinds.getByLabel('System', { exact: true }).selectOption('OMNI');
+    await blinds.getByLabel('Width (m)', { exact: true }).fill('2');
+    await blinds.getByLabel('Width (m)', { exact: true }).press('Tab');
+    await blinds.getByLabel('Blind drop (m)', { exact: true }).fill('2');
+    await blinds.getByLabel('Blind drop (m)', { exact: true }).press('Tab');
+
+    const rollCover = blinds.getByLabel('Blind roll cover', { exact: true });
+    await expect(rollCover).toHaveValue('NONE');
+    await expect(blinds.getByText('$1782.50', { exact: true }).first()).toBeVisible();
+
+    await rollCover.selectOption('FLASHING');
+    await expect(blinds.getByText('$1870.50', { exact: true }).first()).toBeVisible();
+    await rollCover.selectOption('PELMET');
+    await expect(blinds.getByText('$2072.50', { exact: true }).first()).toBeVisible();
+    await expectLocalDraftProtected(page);
+
+    await page.reload();
+    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    const restoredBlinds = page.locator('[data-calculator-configuration-section="blinds"]');
+    await expect(restoredBlinds.getByLabel('Blind roll cover', { exact: true })).toHaveValue('PELMET');
+    await expect(restoredBlinds.getByText('$2072.50', { exact: true }).first()).toBeVisible();
+
+    for (const width of [1600, 768, 390]) {
+      await page.setViewportSize({ width, height: width === 1600 ? 1000 : 844 });
+      await expect(restoredBlinds.getByLabel('Blind drop (m)', { exact: true })).toBeVisible();
+      await expect(restoredBlinds.getByLabel('Blind roll cover', { exact: true })).toBeVisible();
+      const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(horizontalOverflow).toBeLessThanOrEqual(1);
+    }
+  });
+});
 
 test('invalid edits retain but relabel the last valid result and block save', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {

@@ -5,7 +5,9 @@ import {
   calculatorDraftSessionKey,
   buildInfillItemsForPreset,
   calculatorInputsFromEstimateDetail,
+  makeDefaultBlindItem,
   makeDefaultModule,
+  normalizeBlindsStateForUi,
   normalizeCalculatorInputsForUi,
   normalizeInfillsStateForUi,
   normalizePanelOrientation,
@@ -210,6 +212,15 @@ describe('calculator input defaults and normalization', () => {
     expect(normalized.modules[0]?.pergolaId).toBe('pergola-main');
     expect(normalized.modules[0]?.flashings?.rows[0]?.kind).toBe('primary');
     expect(normalized.blinds?.items[0]?.system).toBe('OMNI');
+    expect(normalized.blinds?.items[0]?.rollCover).toBe('NONE');
+  });
+
+  it('keeps normalized blind state referentially stable after roll-cover defaults exist', () => {
+    const blind = makeDefaultBlindItem({ widthMm: '2000', coverLengthMm: '2000' });
+    const blinds = { items: [blind] };
+    const normalized = normalizeBlindsStateForUi(blinds);
+
+    expect(normalized).toBe(blinds);
   });
 
   it('migrates legacy estimate calculator snapshots to v2 UI inputs', () => {
@@ -262,6 +273,7 @@ describe('calculator input defaults and normalization', () => {
       system: 'ZIPTRAK',
       widthMm: '2400',
       motorised: 'NONE',
+      rollCover: 'NONE',
     });
   });
 

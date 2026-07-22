@@ -294,6 +294,7 @@ function estimateBlindsQuoteIncGst(params: {
         coverLengthMm,
         fabric: 'MESH',
         motorised: false,
+        rollCover: 'NONE',
       });
     }
   }
@@ -376,6 +377,7 @@ function buildEnquiryDraftInputs(params: {
           coverLengthMm: String(coverLengthMm),
           fabric: 'MESH',
           motorised: 'NONE',
+          rollCover: 'NONE',
         });
         blindIndex += 1;
       }

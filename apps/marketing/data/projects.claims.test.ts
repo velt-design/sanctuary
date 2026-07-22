@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '../lib/projectImageFraming';
 import { projects } from './projects';
 
 const evidenceCases = [
@@ -35,6 +36,16 @@ const evidenceCases = [
 ] as const;
 
 describe('published project evidence', () => {
+  it('keeps the Warkworth exterior framing consistent in project data', () => {
+    const project = projects.find((candidate) => candidate.slug === 'warkworth-outdoor-room');
+    expect(project?.heroImage).toMatchObject({
+      src: WARKWORTH_EXTERIOR_IMAGE,
+      objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
+    });
+    expect(project?.gallery.find((image) => image.src === WARKWORTH_EXTERIOR_IMAGE)?.objectPosition)
+      .toBe(WARKWORTH_EXTERIOR_OBJECT_POSITION);
+  });
+
   for (const evidence of evidenceCases) {
     it(`${evidence.slug} keeps its current summary and detail aligned`, () => {
       const project = projects.find((candidate) => candidate.slug === evidence.slug);

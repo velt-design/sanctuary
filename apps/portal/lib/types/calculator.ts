@@ -1,6 +1,8 @@
+import { normalizeBlindRollCover } from '@sp/costing';
 import type {
   AttachmentSide,
   AccessLevel,
+  BlindRollCover as CostingBlindRollCover,
   ExtrusionColour,
   GroundCondition,
   HeightCategory,
@@ -14,6 +16,7 @@ import type {
 
 export type BlindSystemType = 'ZIPTRAK' | 'OMNI';
 export type BlindFabric = 'MESH' | 'PVC' | 'FINE_MESH' | 'NONE';
+export type BlindRollCover = CostingBlindRollCover;
 type BlindMotorised = 'NONE' | 'YES';
 export type CalculatorDrawingRotationQuarterTurns = 0 | 1 | 2 | 3;
 export type CalculatorHouseFootprintPreset =
@@ -164,6 +167,7 @@ export type BlindLineItem = {
   coverLengthMm: string;
   fabric: BlindFabric;
   motorised: BlindMotorised;
+  rollCover?: BlindRollCover;
 };
 
 export type CalculatorBlindsState = {
@@ -445,7 +449,18 @@ function isCalculatorBlindsState(value: unknown): value is CalculatorBlindsState
 }
 
 export function normalizeBlindsState(value: unknown): CalculatorBlindsState | undefined {
-  if (isCalculatorBlindsState(value)) return value;
+  if (isCalculatorBlindsState(value)) {
+    const needsRollCoverDefaults = value.items.some(
+      (item) => item.rollCover !== normalizeBlindRollCover(item.rollCover),
+    );
+    if (!needsRollCoverDefaults) return value;
+    return {
+      items: value.items.map((item) => ({
+        ...item,
+        rollCover: normalizeBlindRollCover(item.rollCover),
+      })),
+    };
+  }
   if (!isLegacyBlindInputsV1(value)) return undefined;
   const legacy = value;
   const widths = Array.isArray(legacy.panelWidthsMm) && legacy.panelWidthsMm.length > 0 ? legacy.panelWidthsMm : [legacy.totalWidthMm];
@@ -459,6 +474,7 @@ export function normalizeBlindsState(value: unknown): CalculatorBlindsState | un
       coverLengthMm: legacy.coverLengthMm ?? '',
       fabric: (legacy.fabric ?? 'MESH') as BlindFabric,
       motorised,
+      rollCover: 'NONE' as const,
     };
   });
   return { items };

@@ -296,7 +296,7 @@ export default function AcrylicRoofPergolasAucklandPage() {
             {projectProof.map(({ project, label, summary }) => (
               <Link href={`/projects/${project.slug}`} className="acrylic-project-card" key={project.slug}>
                 <div className="acrylic-project-card__media">
-                  <Image src={project.heroImage.src} alt={project.heroImage.alt} fill sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 25vw" />
+                  <Image src={project.heroImage.src} alt={project.heroImage.alt} fill sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 25vw" style={{ objectPosition: project.heroImage.objectPosition }} />
                 </div>
                 <div className="acrylic-project-card__body">
                   <Eyebrow className="acrylic-eyebrow">{label}</Eyebrow>

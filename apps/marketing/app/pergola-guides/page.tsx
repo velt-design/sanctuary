@@ -15,11 +15,12 @@ import {
 } from '@/components/marketing-foundation';
 import { pergolaGuideChapters, pergolaGuideEditorialReview, pergolaGuides } from '@/data/pergolaGuides';
 import { absoluteUrl } from '@/lib/seo';
+import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '@/lib/projectImageFraming';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import './pergola-guides.css';
 
 const route = '/pergola-guides';
-const heroImage = '/images/project-warkworth-outdoor-room-01.jpg';
+const heroImage = WARKWORTH_EXTERIOR_IMAGE;
 export const metadata: Metadata = {
   title: { absolute: 'Pergola Design Guides | Sanctuary Pergolas' },
   description:
@@ -135,6 +136,7 @@ export default function PergolaGuidesPage() {
             fetchPriority="high"
             sizes="(max-width: 800px) 100vw, 50vw"
             className="guide-hub-hero__image"
+            style={{ objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION }}
           />
           <figcaption>
             <span>Warkworth outdoor room</span>

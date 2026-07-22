@@ -6,7 +6,13 @@ import {
   normalizeBlindsState,
 } from '@/lib/types/calculator';
 import type { Estimate } from '@/lib/types/estimate';
-import { priceAllBlinds, type BlindLineItemInput } from '@sp/costing';
+import {
+  getBlindRollCoverRateIncCents,
+  normalizeBlindRollCover,
+  priceAllBlinds,
+  type BlindLineItemInput,
+  type BlindLineItemPricing,
+} from '@sp/costing';
 import type { QuoteLineItem } from './types';
 import {
   calculateStaffCustomerPriceFromCostEx,
@@ -89,7 +95,27 @@ function buildModuleDescription(module: CalculatorModuleInputs, index: number): 
   return lines.join('\n');
 }
 
-function buildBlindDescription(item: BlindLineItemInput, idx: number, label?: string, errors?: string[]): string {
+function formatBlindWidthMetres(widthMm: number | null): string {
+  if (!Number.isFinite(widthMm ?? NaN)) return '—';
+  return (Number(widthMm) / 1000).toFixed(3).replace(/\.?0+$/, '');
+}
+
+function formatBlindRollCover(item: BlindLineItemInput, pricing?: BlindLineItemPricing): string {
+  const rollCover = normalizeBlindRollCover(item.rollCover);
+  if (rollCover === 'NONE') return 'No cover';
+  const label = rollCover === 'FLASHING' ? 'Flashing' : 'Pelmet';
+  const rate = getBlindRollCoverRateIncCents(rollCover) / 100;
+  const amount = (pricing?.rollCoverIncCents ?? 0) / 100;
+  return `${label} (${formatBlindWidthMetres(item.widthMm)}m at $${rate.toFixed(0)}/m incl GST; $${amount.toFixed(2)} incl GST)`;
+}
+
+function buildBlindDescription(
+  item: BlindLineItemInput,
+  idx: number,
+  label?: string,
+  errors?: string[],
+  pricing?: BlindLineItemPricing,
+): string {
   const lines: string[] = [];
   const title = label ? `Blind ${idx + 1} (${label})` : `Blind ${idx + 1}`;
   lines.push(title);
@@ -99,6 +125,7 @@ function buildBlindDescription(item: BlindLineItemInput, idx: number, label?: st
   }mm`);
   lines.push(`- Fabric: ${item.fabric}`);
   lines.push(`- Motorised: ${item.motorised ? 'Yes' : 'No'}`);
+  lines.push(`- Blind roll cover: ${formatBlindRollCover(item, pricing)}`);
   if (errors && errors.length) lines.push(`- Note: ${errors.join(' ')}`);
   return lines.join('\n');
 }
@@ -108,6 +135,7 @@ function isMeaningfulBlindItem(item: {
   system?: string;
   fabric?: string;
   motorised?: string | boolean | null;
+  rollCover?: string;
   widthMm?: unknown;
   coverLengthMm?: unknown;
 }): boolean {
@@ -120,10 +148,12 @@ function isMeaningfulBlindItem(item: {
   const system = typeof item.system === 'string' ? item.system.toUpperCase() : 'ZIPTRAK';
   const fabric = typeof item.fabric === 'string' ? item.fabric.toUpperCase() : 'MESH';
   const motorisedRaw = typeof item.motorised === 'string' ? item.motorised.toUpperCase() : item.motorised ? 'YES' : 'NONE';
+  const rollCover = typeof item.rollCover === 'string' ? item.rollCover.toUpperCase() : 'NONE';
   const hasNonDefault =
     system !== 'ZIPTRAK' ||
     (fabric !== 'MESH' && fabric !== 'NONE') ||
-    motorisedRaw === 'YES';
+    motorisedRaw === 'YES' ||
+    rollCover !== 'NONE';
 
   return hasLabel || hasWidth || hasCover || hasNonDefault;
 }
@@ -480,6 +510,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
       coverLengthMm: Number.isFinite(toNumber(item.coverLengthMm)) ? toNumber(item.coverLengthMm) : null,
       fabric: item.fabric,
       motorised: item.motorised === 'YES',
+      rollCover: normalizeBlindRollCover(item.rollCover),
     }));
 
     const pricing = priceAllBlinds(pricingInputs);
@@ -503,7 +534,8 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): QuoteEstima
           coverLengthMm: priced.coverLengthMm,
           fabric: 'NONE',
           motorised: null,
-        }, idx, priced.label, priced.errors),
+          rollCover: priced.rollCover,
+        }, idx, priced.label, priced.errors, priced),
         qty,
         unitPriceIncGstCents: unitPrice,
         lineTotalIncGstCents: lineTotalCents(qty, unitPrice),

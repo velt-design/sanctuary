@@ -22,6 +22,8 @@ import { calculateCostV1, calculateJobCostV1, loadCostingConfigV1 } from '@sp/co
 
 Lint blocks legacy costing engine/config copies in app paths. If you need a costing behavior change, update `packages/costing` and then update call sites.
 
+Blind customer pricing is also owned by `@sp/costing`. The banded base price receives its fabric multiplier and then a `1.15x` core selling uplift before GST. Motorisation remains a fixed `$900 inc GST` add-on. A blind-roll flashing is `$44/m inc GST` and a pelmet is `$145/m inc GST`, both charged from the entered blind width rather than the pricing-table width band; No cover adds nothing. Motor and roll-cover add-ons do not receive the core uplift. Inclusive blind totals are the quote-line authority, and aggregate ex-GST display totals are derived from those inclusive line totals so calculator and quote totals stay aligned.
+
 ## Commercial Boundary And Migration Harness
 
 The future commercial flow is geometry-first, but it remains shadow-only until an explicit integration task wires it into estimate or quote persistence:
@@ -74,7 +76,7 @@ Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-on
 
 Pitched-acrylic pergolas use a flat `$2000 ex GST` overhead total only when EVERY module is `pergola_style === 'pitched'` AND `roof_material === 'acrylic'` AND not `box_perimeter`, AND every acrylic module is at or below `3.0m` sloped `rafter_length_m`. If any module fails any of those checks (gable, hip-corner, box-perimeter, mixed/timber, or rafter > 3m), the costing engine falls back to the normal `fixed_plus_variable` overhead formula. (Tightened from "any acrylic-only" to "pitched-acrylic only" in PR-PE2 / 2026-06-16 — gable / box-perimeter / hip-corner acrylic builds carry their own per-style startup costs that the flat cap was hiding.)
 
-Website enquiry base pergola budgets use the `1.20x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range. (Reduced from `1.25x` in PR-PE1 / 2026-06-16. The marketing route also explicitly sets `post_count: 2` to match the typical "standard build" instead of inheriting the cost engine's default of 4. Portal staff customer pricing remains a separate `1.25x` surface. `apps/portal/lib/quotes/pricing.ts` owns its rounded ex-GST-then-GST sequence for both the calculator preview and quote mapping.)
+Website enquiry base pergola budgets use the `1.20x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range based on the same corrected shared blind list-price baseline, with No cover assumed. (Reduced from `1.25x` in PR-PE1 / 2026-06-16. The marketing route also explicitly sets `post_count: 2` to match the typical "standard build" instead of inheriting the cost engine's default of 4. Portal staff customer pricing remains a separate `1.25x` surface. `apps/portal/lib/quotes/pricing.ts` owns its rounded ex-GST-then-GST sequence for both the calculator preview and quote mapping.)
 
 Primary route:
 

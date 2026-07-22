@@ -5,6 +5,7 @@ type Row = Record<string, any>;
 
 const h = vi.hoisted(() => ({
   createClient: vi.fn(),
+  priceAllBlinds: vi.fn((_items: unknown[]) => ({ totals: { totalIncCents: 0 } })),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -22,7 +23,7 @@ vi.mock('@sp/costing', () => ({
   })),
   autoSplitByMaxWidth: vi.fn(),
   getBlindSystemLimits: vi.fn(() => ({ maxWidthMm: 5000, maxCoverLengthMm: 3000 })),
-  priceAllBlinds: vi.fn(() => ({ totals: { totalIncCents: 0 } })),
+  priceAllBlinds: h.priceAllBlinds,
 }));
 
 vi.mock('@/lib/enquiryBudgets', () => ({
@@ -160,6 +161,7 @@ describe('POST /api/enquiry attribution', () => {
   beforeEach(() => {
     vi.resetModules();
     h.createClient.mockReset();
+    h.priceAllBlinds.mockClear();
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.test';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
   });
@@ -181,7 +183,7 @@ describe('POST /api/enquiry attribution', () => {
           dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
           style: 'pitched',
           roofMaterials: ['acrylic'],
-          addOns: {},
+          addOns: { blinds: true },
           source: 'website',
           page: '/contact',
           utm: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'winter' },
@@ -223,6 +225,17 @@ describe('POST /api/enquiry attribution', () => {
       },
     });
     expect(JSON.stringify(db.audit_events)).not.toContain('Taylor');
+    expect(h.priceAllBlinds).toHaveBeenCalledTimes(1);
+    expect(h.priceAllBlinds.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rollCover: 'NONE' }),
+      ]),
+    );
+    expect(db.estimates[0]?.inputs.blinds.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ rollCover: 'NONE' }),
+      ]),
+    );
   });
 
   it('inlines small professional uploads as autoresponder attachments', async () => {

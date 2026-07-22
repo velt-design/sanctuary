@@ -206,6 +206,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
               coverLengthMm: '',
               fabric: 'MESH',
               motorised: 'NONE',
+              rollCover: 'FLASHING',
             },
           ],
         },
@@ -223,6 +224,36 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(() => assertQuoteEstimateMappingReady(result)).toThrow(
       'Quote handoff blocked: Pool blind needs valid dimensions and selections before a quote can be created.',
     );
+  });
+
+  it('hands the corrected blind price and roll-cover detail to quote lines', () => {
+    const base = makeEstimate();
+    const estimate = makeEstimate({
+      inputs: {
+        ...(base as any).inputs,
+        blinds: {
+          items: [
+            {
+              id: 'blind-covered',
+              label: 'Pool blind',
+              system: 'OMNI',
+              widthMm: '2000',
+              coverLengthMm: '2000',
+              fabric: 'MESH',
+              motorised: 'NONE',
+              rollCover: 'FLASHING',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate as any);
+    const blindLine = result.items.find((item) => item.description.includes('Pool blind'));
+
+    expect(blindLine?.unitPriceIncGstCents).toBe(187050);
+    expect(blindLine?.description).toContain('Blind roll cover: Flashing (2m at $44/m incl GST; $88.00 incl GST)');
+    expect(result.blockingIssues).toEqual([]);
   });
 
   it('falls back to one legacy line item and includes a warning note', () => {

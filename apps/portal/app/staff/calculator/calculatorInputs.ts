@@ -231,6 +231,7 @@ export function makeDefaultBlindItem(overrides?: Partial<BlindLineItem>): BlindL
     coverLengthMm: '',
     fabric: 'MESH',
     motorised: 'NONE',
+    rollCover: 'NONE',
     ...overrides,
   };
 }

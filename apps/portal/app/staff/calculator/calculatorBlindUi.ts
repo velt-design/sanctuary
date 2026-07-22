@@ -1,6 +1,7 @@
-import type { BlindFabric, BlindLineItem, BlindSystemType } from '@/lib/types/calculator';
+import type { BlindFabric, BlindLineItem, BlindRollCover, BlindSystemType } from '@/lib/types/calculator';
 import {
   getBlindSystemLimits,
+  normalizeBlindRollCover,
   priceAllBlinds,
   type BlindLineItemInput,
   type BlindLineItemPricing,
@@ -23,6 +24,12 @@ export const BLIND_FABRIC_OPTIONS: Array<BlindOption<BlindFabric>> = [
   { label: 'PVC', value: 'PVC' },
   { label: 'Fine mesh', value: 'FINE_MESH' },
   { label: 'None (Mesh)', value: 'NONE' },
+];
+
+export const BLIND_ROLL_COVER_OPTIONS: Array<BlindOption<BlindRollCover>> = [
+  { label: 'No cover', value: 'NONE' },
+  { label: 'Flashing ($44/m incl GST)', value: 'FLASHING' },
+  { label: 'Pelmet ($145/m incl GST)', value: 'PELMET' },
 ];
 
 type BlindStatusTone = 'error' | 'helper';
@@ -89,6 +96,7 @@ export function buildBlindInputs(items: BlindLineItem[]): BlindLineItemInput[] {
     coverLengthMm: Number.isFinite(toNumber(item.coverLengthMm)) ? toNumber(item.coverLengthMm) : null,
     fabric: item.fabric as BlindFabric,
     motorised: item.motorised === 'YES' ? true : null,
+    rollCover: normalizeBlindRollCover(item.rollCover),
   }));
 }
 
@@ -100,8 +108,8 @@ function statusMessageForErrors(priced: BlindLineItemPricing | undefined): strin
   if (errors.some((err) => err.toLowerCase().includes('max width'))) {
     return `Add another blind and keep each width within ${formatBlindMetresInput(String(limits.maxWidthMm))}m.`;
   }
-  if (errors.some((err) => err.toLowerCase().includes('max cover length'))) {
-    return `Manual quote required above ${formatBlindMetresInput(String(limits.maxCoverLengthMm))}m cover length.`;
+  if (errors.some((err) => err.toLowerCase().includes('max blind drop'))) {
+    return `Manual quote required above ${formatBlindMetresInput(String(limits.maxCoverLengthMm))}m blind drop.`;
   }
   return errors[0] ?? '';
 }

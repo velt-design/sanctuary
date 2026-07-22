@@ -46,6 +46,33 @@ async function waitForAllImages(main: Locator) {
   }
 }
 
+async function expectWarkworthGableFraming(main: Locator) {
+  const images = main.locator('img[src*="project-warkworth-outdoor-room-01"]');
+  expect(await images.count(), 'homepage V2 should render the Warkworth exterior in its featured-project placement').toBe(1);
+
+  const framing = await images.evaluateAll((elements) => elements.map((element) => {
+    const image = element as HTMLImageElement;
+    const bounds = image.getBoundingClientRect();
+    const scale = Math.max(bounds.width / image.naturalWidth, bounds.height / image.naturalHeight);
+    const renderedHeight = image.naturalHeight * scale;
+    const verticalOverflow = Math.max(0, renderedHeight - bounds.height);
+    const position = Number.parseFloat(getComputedStyle(image).objectPosition.split(' ')[1]) / 100;
+    const pergolaApexY = image.naturalHeight * (430 / 2048) * scale - verticalOverflow * position;
+
+    return {
+      objectPosition: getComputedStyle(image).objectPosition,
+      pergolaApexY,
+      frameHeight: bounds.height,
+    };
+  }));
+
+  for (const image of framing) {
+    expect(image.objectPosition).toBe('50% 18%');
+    expect(image.pergolaApexY, 'the pergola apex should retain visible sky above it').toBeGreaterThanOrEqual(20);
+    expect(image.pergolaApexY, 'the pergola apex should remain inside the crop').toBeLessThan(image.frameHeight);
+  }
+}
+
 for (const viewport of viewports) {
   test(`homepage V2 is responsive and complete at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -130,6 +157,7 @@ for (const viewport of viewports) {
     }
 
     await waitForAllImages(main);
+    await expectWarkworthGableFraming(main);
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth <= document.documentElement.clientWidth
     ))).toBe(true);
@@ -271,6 +299,49 @@ test('homepage V2 internal destinations resolve without redirect errors', async 
   }
 });
 
+test('Warkworth exterior focal framing propagates across public placements', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await preparePage(page);
+
+  for (const { destination, galleryAdvances = 0 } of [
+    { destination: '/' },
+    { destination: '/home-v2' },
+    { destination: '/projects' },
+    { destination: '/projects/warkworth-outdoor-room', galleryAdvances: 4 },
+    { destination: '/pergola-guides' },
+    { destination: '/pergolas-auckland' },
+    { destination: '/acrylic-roof-pergolas-auckland' },
+    { destination: '/acrylic-roof-pergolas-auckland-v2' },
+  ]) {
+    const response = await page.goto(destination);
+    expect(response?.ok(), `${destination} should resolve`).toBe(true);
+    for (let index = 0; index < galleryAdvances; index += 1) {
+      const nextImage = page.getByRole('button', { name: 'Next image' });
+      expect(await nextImage.count(), `${destination} should expose one project gallery control`).toBe(1);
+      await nextImage.click();
+    }
+    const images = page.locator('img[src*="project-warkworth-outdoor-room-01"]');
+    const imageCount = await images.count();
+    expect(imageCount, `${destination} should render the Warkworth exterior`).toBeGreaterThan(0);
+    await images.evaluateAll((elements) => elements.find((element) => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.width > 0 && bounds.height > 0;
+    })?.scrollIntoView({ block: 'center' }));
+    await expect.poll(
+      () => images.evaluateAll((elements) => elements.some((element) => {
+        const image = element as HTMLImageElement;
+        return image.complete && image.naturalWidth > 0;
+      })),
+      { message: `${destination} should load at least one Warkworth exterior placement` },
+    ).toBe(true);
+    const positions = await images.evaluateAll((elements) => (
+      elements.map((element) => getComputedStyle(element).objectPosition)
+    ));
+    expect(positions, `${destination} should preserve the shared upper focal position`)
+      .toEqual(positions.map(() => '50% 18%'));
+  }
+});
+
 test('homepage V2 preserves the shared mobile menu scroll lock and focus return', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
@@ -309,6 +380,7 @@ test('capture current and V2 homepage comparison evidence', async ({ page }) => 
 
   for (const viewport of [
     { name: 'desktop', width: 1440, height: 1000 },
+    { name: 'tablet', width: 768, height: 1024 },
     { name: 'mobile', width: 390, height: 844 },
   ] as const) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -337,6 +409,12 @@ test('capture current and V2 homepage comparison evidence', async ({ page }) => 
     });
 
     await waitForAllImages(main);
+    await expectWarkworthGableFraming(main);
+    const featuredProject = main.locator('section[aria-labelledby="featured-warkworth-project"]');
+    await featuredProject.scrollIntoViewIfNeeded();
+    await featuredProject.screenshot({
+      path: path.join(evidenceDirectory, `home-v2-warkworth-${viewport.name}-${viewport.width}x${viewport.height}.png`),
+    });
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
       path: path.join(evidenceDirectory, `home-v2-${viewport.name}-full-${viewport.width}x${viewport.height}.png`),

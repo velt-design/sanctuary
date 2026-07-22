@@ -1,4 +1,9 @@
 // data/projects.ts
+import {
+  WARKWORTH_EXTERIOR_IMAGE,
+  WARKWORTH_EXTERIOR_OBJECT_POSITION,
+} from '../lib/projectImageFraming';
+
 type Image = { src: string; alt: string; fallbackJpg?: string; w?: number; h?: number; objectPosition?: string };
 
 type ProjectStats = {
@@ -44,9 +49,9 @@ const baseProjects: Project[] = [
     roof: 'Gable',
     year: '2025',
     heroImage: {
-      src: '/images/project-warkworth-outdoor-room-01.jpg',
+      src: WARKWORTH_EXTERIOR_IMAGE,
       alt: 'Freestanding matte black gable outdoor room beside a Warkworth home',
-      objectPosition: '50% 34%',
+      objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
     },
     gallery: [
       {
@@ -70,9 +75,9 @@ const baseProjects: Project[] = [
         objectPosition: '56% 42%',
       },
       {
-        src: '/images/project-warkworth-outdoor-room-01.jpg',
+        src: WARKWORTH_EXTERIOR_IMAGE,
         alt: 'Exterior gable view of the freestanding Warkworth outdoor room',
-        objectPosition: '50% 34%',
+        objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
       },
       {
         src: '/images/project-warkworth-outdoor-room-06.jpg',
