@@ -1,4 +1,4 @@
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import stateStyles from '@/components/page-state/PageState.module.css';
 import dash from './dashboard.module.css';
 
@@ -16,7 +16,7 @@ export default function DashboardPendingView({
       data-dashboard-state={failed ? 'refresh-failed' : 'pending'}
       data-dashboard-background-ready="false"
     >
-      <PageHeader variant="dashboard" title="Dashboard" eyebrow="Welcome back" />
+      <StaffPageHeader variant="dashboard" title="Dashboard" eyebrow="Welcome back" />
 
       <div className={dash.pendingLayout}>
         <section className={dash.pendingCard} role="status" aria-live="polite">

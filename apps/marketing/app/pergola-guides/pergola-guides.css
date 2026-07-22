@@ -6,7 +6,7 @@
   min-height: calc(100svh - var(--header-height));
   margin-top: var(--header-height);
   display: grid;
-  grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   background: var(--color-inverse-surface);
   color: var(--color-inverse-text);
 }

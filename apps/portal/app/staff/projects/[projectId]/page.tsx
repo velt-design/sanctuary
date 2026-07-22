@@ -1,5 +1,5 @@
-import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
-import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
+import { DataStatePanel, PageLayout } from '@/components/ui/foundation';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { isProjectTabKey } from '@/lib/projects/projectTabs';
@@ -31,17 +31,20 @@ export default async function ProjectDetailPage({
   const estimateId = parseSingleSearchParam(resolvedSearchParams?.estimateId);
   if (!projectId.trim()) {
     return (
-      <main className={styles.page}>
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
-            <h1 className={styles.title}>Project unavailable</h1>
-            <p className={styles.subtitle}>Invalid project id.</p>
-            <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
-              Back to Projects
-            </ProjectsIndexLink>
-          </div>
-        </section>
-      </main>
+      <PageLayout width="full" data-ui-foundation-consumer="project-detail">
+        <StaffPageHeader
+          variant="detail"
+          eyebrow="Projects"
+          title="Project unavailable"
+          description="Invalid project id."
+          back={{ label: 'Back to Projects', href: '/staff/projects' }}
+        />
+        <DataStatePanel
+          state="unavailable"
+          title="Project unavailable"
+          description="The project link is invalid. Return to Projects and choose a record."
+        />
+      </PageLayout>
     );
   }
 

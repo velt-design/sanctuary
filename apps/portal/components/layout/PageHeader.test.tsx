@@ -86,4 +86,18 @@ describe('PageHeader', () => {
     expect(rendered.container.querySelector('h1')).toBeNull();
     rendered.unmount();
   });
+
+  it('adds the opt-in utility rail without changing the existing action contract', () => {
+    const rendered = renderIntoDocument(
+      <PageHeader
+        variant="index"
+        title="Projects"
+        utility={<label>Portal search<input /></label>}
+        primaryAction={{ label: 'New project', href: '/staff/projects/new' }}
+      />,
+    );
+    expect(rendered.container.textContent).toContain('Portal search');
+    expect(rendered.container.textContent).toContain('New project');
+    rendered.unmount();
+  });
 });

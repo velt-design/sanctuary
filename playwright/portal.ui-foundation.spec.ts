@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { capturePortalEvidenceScreenshot } from './support/portalBrowserEvidence';
 
 const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
@@ -13,7 +14,10 @@ const evidenceDir = path.resolve(process.cwd(), 'artifacts/ui-foundation-hardeni
 fs.mkdirSync(evidenceDir, { recursive: true });
 
 async function capture(page: Page, route: string, viewport: string) {
-  await page.screenshot({ path: path.join(evidenceDir, `${route}-${viewport}.png`), fullPage: true });
+  await capturePortalEvidenceScreenshot(page, {
+    path: path.join(evidenceDir, `${route}-${viewport}.png`),
+    fullPage: true,
+  });
 }
 
 async function expectNoDocumentOverflow(page: Page) {

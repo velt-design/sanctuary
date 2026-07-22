@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PortalDebugExportButton from '@/components/debug/PortalDebugExportButton';
 import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import {
   AlertBanner,
   Button,
@@ -167,7 +167,7 @@ export default function ProjectSnapshotPageClient({
         data-project-id={projectId}
         data-project-snapshot-state={loadState}
       >
-        <PageHeader
+        <StaffPageHeader
           variant="detail"
           eyebrow="Projects"
           title={title}

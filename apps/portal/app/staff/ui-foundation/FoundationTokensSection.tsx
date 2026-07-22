@@ -1,5 +1,5 @@
 import { ArrowRight, Share2 } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { Button, ProjectStageTracker } from '@/components/ui/foundation';
 import type { PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import styles from './ui-foundation.module.css';
@@ -69,8 +69,9 @@ export function FoundationTokensSection({
           <div className={styles.headerGrid}>
             <article>
               <span className={styles.patternLabel}>A. Dashboard header</span>
-              <PageHeader
+              <StaffPageHeader
                 variant="dashboard"
+                searchShortcutEnabled={false}
                 headingLevel={3}
                 title="Dashboard"
                 description="Design bold. Build better."
@@ -79,8 +80,9 @@ export function FoundationTokensSection({
             </article>
             <article>
               <span className={styles.patternLabel}>B. Projects index header</span>
-              <PageHeader
+              <StaffPageHeader
                 variant="index"
+                searchShortcutEnabled={false}
                 headingLevel={3}
                 title="Active projects"
                 count="142 projects"
@@ -92,8 +94,9 @@ export function FoundationTokensSection({
             </article>
             <article>
               <span className={styles.patternLabel}>C. Project detail header</span>
-              <PageHeader
+              <StaffPageHeader
                 variant="detail"
+                searchShortcutEnabled={false}
                 headingLevel={3}
                 title="Remuera Residence"
                 breadcrumbs={[{ label: 'Projects', href: '/staff/projects' }, { label: 'P-2307' }]}

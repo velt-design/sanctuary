@@ -100,4 +100,12 @@ describe('ContactsIndexClient', () => {
     expect(rendered.container.textContent).toContain('No contacts found.');
     rendered.unmount();
   });
+
+  it('uses a global-search handoff as the initial local filter', () => {
+    const rendered = renderIntoDocument(<ContactsIndexClient initialQuery="missing" />);
+    expect((rendered.container.querySelector('#contactSearch') as HTMLInputElement).value).toBe('missing');
+    expect(rendered.container.textContent).toContain('No contacts match your search.');
+    expect(rendered.container.textContent).not.toContain('Alex Mason');
+    rendered.unmount();
+  });
 });

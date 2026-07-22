@@ -1,7 +1,7 @@
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import ProjectTabNavigation from './ProjectTabNavigation';
 import ProjectHeaderActions from './ProjectHeaderActions';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { Card, ProjectStageBadge, ProjectStageTracker } from '@/components/ui/foundation';
 import styles from './ProjectPage.module.css';
 
@@ -17,7 +17,7 @@ export default function ProjectHeader({
   return (
     <Card className={styles.masthead} padding="none" aria-label="Project summary" data-ui-foundation="true">
       <div className={styles.mastheadBody}>
-        <PageHeader
+        <StaffPageHeader
           variant="detail"
           eyebrow={`Project ${project.quoteRef || project.id}`}
           title={project.name}

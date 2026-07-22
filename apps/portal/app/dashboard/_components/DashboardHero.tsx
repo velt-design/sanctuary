@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { CalendarDays, Calculator, FolderPlus } from 'lucide-react';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { PORTAL_TIME_ZONE } from '@/lib/format/portalDateTime';
 import dash from '../dashboard.module.css';
 
@@ -30,7 +30,7 @@ export default function DashboardHero({ updatedAtIso }: { updatedAtIso: string }
   const date = dateParts(updatedAtIso);
   return (
     <div className={dash.hero} data-dashboard-hero="true">
-      <PageHeader
+      <StaffPageHeader
         variant="dashboard"
         title="Dashboard"
         eyebrow="Welcome back"

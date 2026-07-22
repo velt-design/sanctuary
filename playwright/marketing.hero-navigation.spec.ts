@@ -17,6 +17,7 @@ const routes = [
 ] as const;
 
 const viewports = [
+  { name: '1920x1000', width: 1920, height: 1000 },
   { name: '1440x1000', width: 1440, height: 1000 },
   { name: '1024x768', width: 1024, height: 768 },
   { name: '768x1024', width: 768, height: 1024 },
@@ -60,12 +61,18 @@ for (const viewport of viewports) {
         const guideRoute = window.location.pathname === '/pergola-guides';
         const heroElement = document.querySelector<HTMLElement>(guideRoute ? '.guide-hub-hero' : '.acrylic-hero');
         const imageElement = document.querySelector<HTMLElement>(guideRoute ? '.guide-hub-hero__figure' : '.acrylic-hero__image');
-        if (!headerElement || !brandElement || !heroElement || !imageElement) return null;
+        const projectsLink = headerElement?.querySelector<HTMLElement>('a[href="/projects"]');
+        const productsLink = headerElement?.querySelector<HTMLElement>('a[href="/products"]');
+        if (!headerElement || !brandElement || !heroElement || !imageElement || !projectsLink || !productsLink) return null;
         const headerStyles = getComputedStyle(headerElement);
+        const projectsRect = projectsLink.getBoundingClientRect();
+        const productsRect = productsLink.getBoundingClientRect();
         return {
           header: headerElement.getBoundingClientRect().toJSON(),
           hero: heroElement.getBoundingClientRect().toJSON(),
           image: imageElement.getBoundingClientRect().toJSON(),
+          navGapMidpoint: (projectsRect.right + productsRect.left) / 2,
+          viewportCenter: window.innerWidth / 2,
           backgroundColor: headerStyles.backgroundColor,
           brandColor: getComputedStyle(brandElement).color,
           backdropFilter: headerStyles.backdropFilter,
@@ -75,8 +82,13 @@ for (const viewport of viewports) {
 
       if (viewport.width > 900) {
         expect(topState!.hero.top, `${route} hero should begin at the viewport top`).toBeLessThanOrEqual(1);
+        expect(topState!.hero.bottom, `${route} hero should cover the viewport with no canvas gap at the fold`).toBeGreaterThanOrEqual(viewport.height - 1);
         expect(topState!.image.top, `${route} image should extend beneath the navigation`).toBeLessThanOrEqual(1);
         expect(topState!.header.bottom, `${route} header should overlap its hero`).toBeGreaterThan(topState!.hero.top);
+        expect(Math.abs(topState!.navGapMidpoint - topState!.viewportCenter), `${route} Projects/Products gap should be centred`).toBeLessThanOrEqual(1);
+        if (route === '/pergola-guides') {
+          expect(Math.abs(topState!.image.left - topState!.viewportCenter), 'guide hero split should share the navigation centreline').toBeLessThanOrEqual(1);
+        }
         expect(topState!.backgroundColor).toBe('rgba(0, 0, 0, 0)');
         expect(topState!.brandColor).toBe('rgb(255, 255, 255)');
         expect(topState!.backdropFilter).toBe('none');

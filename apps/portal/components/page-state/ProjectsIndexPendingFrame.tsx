@@ -15,6 +15,7 @@ export default function ProjectsIndexPendingFrame() {
       aria-label="Opening projects"
     >
       <PageHeader
+        variant="index"
         title="Projects"
         right={
           <HeaderActions className={styles.actions}>

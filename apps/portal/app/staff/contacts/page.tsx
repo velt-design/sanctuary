@@ -1,5 +1,14 @@
 import ContactsIndexClient from './ContactsIndexClient';
 
-export default function ContactsPage() {
-  return <ContactsIndexClient />;
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function ContactsPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams | Promise<SearchParams>;
+}) {
+  const resolved = await searchParams;
+  const rawQuery = resolved?.q;
+  const initialQuery = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery)?.trim() ?? '';
+  return <ContactsIndexClient initialQuery={initialQuery} />;
 }

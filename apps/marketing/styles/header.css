@@ -57,9 +57,8 @@ header.site{ --navH: 82px; }
 .site-brand{letter-spacing:.04em;flex-shrink:0;display:flex;align-items:center;height:var(--navH);margin:0;line-height:1; text-transform:uppercase}
 .desktop-nav{margin-left:auto;margin-right:18px;flex:1 1 auto;min-width:0;overflow:visible}
 .desktop-nav{display:flex;align-items:center;justify-content:flex-end}
-/* Center the entire nav group within the header bar on desktop */
-.desktop-nav--center{position:absolute; left:50vw; top:0; transform:translateX(-50%); height:var(--navH); display:flex; align-items:center}
-.desktop-nav--center .nav-list{justify-content:center}
+/* Place the axis between Projects and Products at the viewport centre. */
+.desktop-nav--center{position:absolute; left:50vw; top:0; width:0; height:var(--navH); display:flex; align-items:center}
 .navlink-btn.active{color:var(--accentRed)}
 .desktop-nav-grid{position:relative; display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:18px; margin-left:auto; margin-right:18px; flex:1 1 auto; min-width:0}
 .desktop-nav-grid .nav-right .nav-list{justify-content:flex-end}
@@ -69,7 +68,12 @@ header.site{ --navH: 82px; }
 .desktop-wipe{opacity:0;pointer-events:none}
 .desktop-wipe.open{opacity:1;pointer-events:auto}
 .nav-list{list-style:none;display:flex;gap:18px;align-items:center}
-.nav-list>li{position:relative}
+.nav-list--split{position:relative;width:0;height:var(--navH);gap:0}
+.nav-list__cluster{position:absolute;top:50%;display:flex;align-items:center;gap:18px;margin:0;padding:0;list-style:none;white-space:nowrap;transform:translateY(-50%)}
+.nav-list__cluster--left{right:9px}
+.nav-list__cluster--right{left:9px}
+.nav-list>li,
+.nav-list__cluster>li{position:relative}
 .navlink-btn{background:transparent;border:0;color:inherit;cursor:pointer;
   padding:10px 10px;display:flex;align-items:center;gap:6px;border-radius:10px;font-size:14px;letter-spacing:.02em;
   /* Slow fade back to default color when hover ends */

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent }
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './ProjectsIndexClient.module.css';
-import PageHeader from '@/components/layout/PageHeader';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -298,7 +298,7 @@ export default function ProjectsIndexClient({
       data-projects-index-state={projectsIndex.state}
       data-projects-index-background-ready={projectsIndex.backgroundReady ? 'true' : 'false'}
     >
-      <PageHeader
+      <StaffPageHeader
         title="Projects"
         variant="index"
         description="Search, update and continue work across the project pipeline."

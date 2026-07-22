@@ -74,7 +74,7 @@ body:has(.acrylic-landing) header.site {
   }
 
   .acrylic-landing[data-seo-landing] .acrylic-hero {
-    min-height: min(calc(78vh + var(--header-height)), calc(820px + var(--header-height)));
+    min-height: 100svh;
     margin-top: 0;
   }
 

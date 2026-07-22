@@ -1,20 +1,20 @@
-import ProjectsIndexLink from '@/components/navigation/ProjectsIndexLink';
+import StaffPageHeader from '@/components/layout/StaffPageHeader';
+import { Card, LoadingSkeleton, PageLayout } from '@/components/ui/foundation';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 
 export default function ProjectDetailLoading() {
   return (
-    <main className={styles.page} data-project-route-pending="true">
-      <section className={styles.surface}>
-        <div className={styles.surfaceInner}>
-          <h1 className={styles.title}>Opening project...</h1>
-          <p className={styles.subtitle} role="status">
-            Preparing the project summary in the background.
-          </p>
-          <ProjectsIndexLink href="/staff/projects" className={styles.backLink}>
-            Back to Projects
-          </ProjectsIndexLink>
-        </div>
-      </section>
-    </main>
+    <PageLayout width="full" className={styles.page} data-project-route-pending="true">
+      <StaffPageHeader
+        variant="detail"
+        eyebrow="Projects"
+        title="Opening project..."
+        description="Preparing the project summary in the background."
+        back={{ label: 'Back to Projects', href: '/staff/projects' }}
+      />
+      <Card padding="compact" aria-label="Project loading">
+        <LoadingSkeleton rows={5} columns={4} label="Loading project" />
+      </Card>
+    </PageLayout>
   );
 }

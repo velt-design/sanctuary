@@ -286,18 +286,22 @@ export default function Header() {
           </Link>
           <nav aria-label="Primary" className="desktop-nav desktop-nav--center">
             <div className="desktop-wipe open">
-              <ul className="nav-list">
-                <li><Link className={`navlink-btn ${pathname === '/' ? 'active' : ''}`} href="/" aria-current={pathname === '/' ? 'page' : undefined}>Home</Link></li>
-                <li><Link className={`navlink-btn ${pathname?.startsWith('/projects') ? 'active' : ''}`} href="/projects" aria-current={pathname?.startsWith('/projects') ? 'page' : undefined}>Projects</Link></li>
-                <li>
-                  <Link id="nav-products" href="/products" className={`navlink-btn ${pathname?.startsWith('/products') ? 'active' : ''}`} aria-label="Products" aria-current={pathname?.startsWith('/products') ? 'page' : undefined}>
-                    Products
-                  </Link>
-                </li>
-                {/* Temporarily hide Resources from nav until content is ready */}
-                {/* <li><Link className={`navlink-btn ${(pathname?.startsWith('/about')||pathname?.startsWith('/blog')||pathname?.startsWith('/resources')) ? 'active' : ''}`} href="/resources" aria-current={(pathname?.startsWith('/about')||pathname?.startsWith('/blog')||pathname?.startsWith('/resources')) ? 'page' : undefined}>Resources</Link></li> */}
-                <li><Link className={`navlink-btn ${pathname?.startsWith('/contact') ? 'active' : ''}`} href="/contact" aria-current={pathname?.startsWith('/contact') ? 'page' : undefined}>Contact</Link></li>
-              </ul>
+              <div className="nav-list nav-list--split">
+                <ul className="nav-list__cluster nav-list__cluster--left">
+                  <li><Link className={`navlink-btn ${pathname === '/' ? 'active' : ''}`} href="/" aria-current={pathname === '/' ? 'page' : undefined}>Home</Link></li>
+                  <li><Link className={`navlink-btn ${pathname?.startsWith('/projects') ? 'active' : ''}`} href="/projects" aria-current={pathname?.startsWith('/projects') ? 'page' : undefined}>Projects</Link></li>
+                </ul>
+                <ul className="nav-list__cluster nav-list__cluster--right">
+                  <li>
+                    <Link id="nav-products" href="/products" className={`navlink-btn ${pathname?.startsWith('/products') ? 'active' : ''}`} aria-label="Products" aria-current={pathname?.startsWith('/products') ? 'page' : undefined}>
+                      Products
+                    </Link>
+                  </li>
+                  {/* Temporarily hide Resources from nav until content is ready */}
+                  {/* <li><Link className={`navlink-btn ${(pathname?.startsWith('/about')||pathname?.startsWith('/blog')||pathname?.startsWith('/resources')) ? 'active' : ''}`} href="/resources" aria-current={(pathname?.startsWith('/about')||pathname?.startsWith('/blog')||pathname?.startsWith('/resources')) ? 'page' : undefined}>Resources</Link></li> */}
+                  <li><Link className={`navlink-btn ${pathname?.startsWith('/contact') ? 'active' : ''}`} href="/contact" aria-current={pathname?.startsWith('/contact') ? 'page' : undefined}>Contact</Link></li>
+                </ul>
+              </div>
             </div>
           </nav>
           <div className="header-actions">

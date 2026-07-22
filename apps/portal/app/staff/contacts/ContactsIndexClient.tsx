@@ -24,8 +24,8 @@ import ContactsImportAction from './ContactsImportAction';
 import styles from './contacts.module.css';
 import { useContactsIndexData } from './useContactsIndexData';
 
-export default function ContactsIndexClient() {
-  const [query, setQuery] = useState('');
+export default function ContactsIndexClient({ initialQuery = '' }: { initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const contactsIndex = useContactsIndexData(host);
   const { finishInstantRoute } = usePortalRouteTransition();
