@@ -5,7 +5,7 @@ import { qk } from './keys';
 
 const FIVE_MINUTES = 1000 * 60 * 5;
 const THIRTY_MINUTES = 1000 * 60 * 30;
-export const PORTAL_SEARCH_DEBOUNCE_MS = 100;
+export const PORTAL_SEARCH_DEBOUNCE_MS = 50;
 
 export function normalizePortalSearchQuery(query: string): string {
   return query.trim().toLocaleLowerCase('en-NZ');

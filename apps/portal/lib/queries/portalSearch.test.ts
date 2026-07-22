@@ -30,7 +30,7 @@ describe('portal search query cache', () => {
 
   it('normalizes equivalent queries into one fresh cache entry', async () => {
     const client = createQueryClient();
-    expect(PORTAL_SEARCH_DEBOUNCE_MS).toBe(100);
+    expect(PORTAL_SEARCH_DEBOUNCE_MS).toBe(50);
     expect(normalizePortalSearchQuery('  ALEX  ')).toBe('alex');
 
     await client.fetchQuery(portalSearchQueryOptions('  ALEX  '));

@@ -9,7 +9,7 @@ import {
 
 const API_P75_WITH_DEBOUNCE_MAX_MS = 400;
 const CACHED_RESULT_MAX_MS = 75;
-const SEARCH_DEBOUNCE_MS = 100;
+const SEARCH_DEBOUNCE_MS = 50;
 const DEFAULT_QUERIES = ['an', 're', 'ar', 'jo', 'ma'];
 const artifactPath = path.resolve(
   process.cwd(),

@@ -2,6 +2,7 @@ import { act } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderIntoDocument } from '../../../../test/reactHarness';
+import { PORTAL_SEARCH_DEBOUNCE_MS } from '@/lib/queries/portalSearch';
 import { PortalQueryClientScope } from '@/lib/react-query/PortalQueryClientContext';
 import GlobalPortalSearch from './GlobalPortalSearch.client';
 
@@ -130,7 +131,7 @@ describe('GlobalPortalSearch', () => {
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(101);
+      vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
       await Promise.resolve();
       await Promise.resolve();
       vi.advanceTimersByTime(0);
@@ -162,7 +163,7 @@ describe('GlobalPortalSearch', () => {
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(101);
+      vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
       await Promise.resolve();
       await Promise.resolve();
       vi.advanceTimersByTime(0);
@@ -198,7 +199,7 @@ describe('GlobalPortalSearch', () => {
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(101);
+      vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
       await Promise.resolve();
       await Promise.resolve();
       vi.advanceTimersByTime(0);
@@ -234,7 +235,7 @@ describe('GlobalPortalSearch', () => {
     inputText(input, 're');
 
     await act(async () => {
-      vi.advanceTimersByTime(101);
+      vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
       await Promise.resolve();
       await Promise.resolve();
       vi.advanceTimersByTime(0);
@@ -267,7 +268,7 @@ describe('GlobalPortalSearch', () => {
     act(() => input.focus());
     inputText(input, 're');
     await act(async () => {
-      vi.advanceTimersByTime(101);
+      vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
       await Promise.resolve();
       await Promise.resolve();
       vi.advanceTimersByTime(0);
@@ -280,7 +281,7 @@ describe('GlobalPortalSearch', () => {
     expect(rendered.container.textContent).toContain('Updating results');
 
     await act(async () => {
-      vi.advanceTimersByTime(101);
+      vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
       await Promise.resolve();
       vi.advanceTimersByTime(0);
       await Promise.resolve();

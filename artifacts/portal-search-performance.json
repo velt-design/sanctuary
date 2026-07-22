@@ -1,41 +1,41 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-07-22T05:07:49.687Z",
+  "capturedAt": "2026-07-22T06:02:00.654Z",
   "target": {
     "uncachedMsMax": 400,
     "cachedMsMax": 75,
-    "debounceMs": 100
+    "debounceMs": 50
   },
   "apiSamples": [
     {
       "query": "an",
-      "wallMs": 644.6571000000004,
-      "serverMs": 625.8
+      "wallMs": 681.8130000000001,
+      "serverMs": 667.8
     },
     {
       "query": "re",
-      "wallMs": 401.6274999999996,
-      "serverMs": 392.2
+      "wallMs": 235.5093999999999,
+      "serverMs": 222.3
     },
     {
       "query": "ar",
-      "wallMs": 551.2081000000007,
-      "serverMs": 529.9
+      "wallMs": 339.97919999999976,
+      "serverMs": 330.2
     },
     {
       "query": "jo",
-      "wallMs": 377.3915999999999,
-      "serverMs": 369
+      "wallMs": 240.54739999999947,
+      "serverMs": 231.3
     },
     {
       "query": "ma",
-      "wallMs": 428.543200000001,
-      "serverMs": 420.2
+      "wallMs": 238.8707999999997,
+      "serverMs": 226
     }
   ],
-  "apiWallP75Ms": 551.2081000000007,
-  "projectedUncachedP75Ms": 651.2081000000007,
-  "uncachedUiMs": 567.4000000059605,
-  "cachedUiMs": 6.799999982118607,
+  "apiWallP75Ms": 339.97919999999976,
+  "projectedUncachedP75Ms": 389.97919999999976,
+  "uncachedUiMs": 334.5,
+  "cachedUiMs": 6.4000000059604645,
   "uiSearchRequests": 1
 }
