@@ -6,6 +6,8 @@ const REQUIRED_MIGRATIONS = {
   portal_search_v1: 'supabase/migrations/20260722_000001_portal_search_v1.sql',
   portal_search_bigrams: 'supabase/migrations/20260722_000002_portal_search_bigram_indexes.sql',
 };
+const REQUIRED_MATERIALIZED_MIGRATION =
+  'supabase/migrations/20260722_000003_portal_search_materialized_columns.sql';
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -127,7 +129,59 @@ async function main() {
     return;
   }
 
-  console.log('portal-search-readiness: ok (RPC and bigram optimization reject anonymous execution)');
+  let materializedResponse;
+  try {
+    materializedResponse = await fetch(
+      `${supabaseUrl}/rest/v1/projects?select=portal_search_document&limit=0`,
+      {
+        headers: {
+          apikey: anonKey,
+          authorization: `Bearer ${anonKey}`,
+        },
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+  } catch (error) {
+    fail([
+      'Could not verify the materialized portal search columns.',
+      `Original error: ${error instanceof Error ? error.message : String(error)}`,
+    ]);
+    return;
+  }
+
+  let materializedPayload = {};
+  try {
+    materializedPayload = await materializedResponse.json();
+  } catch {
+    materializedPayload = {};
+  }
+  const materializedCode = typeof materializedPayload.code === 'string'
+    ? materializedPayload.code
+    : '';
+
+  if (materializedCode === '42703' || materializedCode === 'PGRST204') {
+    fail([
+      'The configured database does not expose projects.portal_search_document.',
+      `Apply ${REQUIRED_MATERIALIZED_MIGRATION}, then rerun this command.`,
+    ]);
+    return;
+  }
+
+  if (
+    !materializedResponse.ok
+    && !(
+      (materializedResponse.status === 401 || materializedResponse.status === 403)
+      && materializedCode === '42501'
+    )
+  ) {
+    fail([
+      `Unexpected materialized-column probe response: ${materializedResponse.status} ${materializedResponse.statusText}`,
+      materializedCode ? `Provider code: ${materializedCode}` : 'Provider code was unavailable.',
+    ]);
+    return;
+  }
+
+  console.log('portal-search-readiness: ok (RPC, bigram helper, and materialized search columns are deployed)');
 }
 
 await main();

@@ -12,6 +12,16 @@ const performanceMigrationPath = resolve(
   'supabase/migrations/20260722_000002_portal_search_bigram_indexes.sql',
 );
 const performanceMigrationSql = readFileSync(performanceMigrationPath, 'utf8').toLowerCase();
+const materializedMigrationPath = resolve(
+  process.cwd(),
+  'supabase/migrations/20260722_000003_portal_search_materialized_columns.sql',
+);
+const materializedMigrationSql = readFileSync(materializedMigrationPath, 'utf8').toLowerCase();
+const rlsInitPlanMigrationPath = resolve(
+  process.cwd(),
+  'supabase/migrations/20260722_000004_portal_search_rls_initplan.sql',
+);
+const rlsInitPlanMigrationSql = readFileSync(rlsInitPlanMigrationPath, 'utf8').toLowerCase();
 
 describe('portal search migration', () => {
   it('provides one RLS-respecting authenticated operation', () => {
@@ -78,5 +88,55 @@ describe('portal search migration', () => {
     expect(performanceMigrationSql).toContain(
       'revoke all on function public.portal_search_v1(text, integer) from public, anon',
     );
+  });
+
+  it('materializes normalized documents and bigrams for planner-safe indexed reads', () => {
+    expect(materializedMigrationSql).toContain('generated always as');
+    expect(materializedMigrationSql).toContain('portal_search_document text');
+    expect(materializedMigrationSql).toContain('portal_search_bigrams text[]');
+    expect(materializedMigrationSql).toContain('portal_search_name_bigrams text[]');
+    expect(materializedMigrationSql).toContain('projects_portal_search_bigrams_materialized_idx');
+    expect(materializedMigrationSql).toContain('contacts_portal_search_bigrams_materialized_idx');
+    expect(materializedMigrationSql).toContain('contacts_portal_search_name_bigrams_materialized_idx');
+    expect(materializedMigrationSql).toContain(
+      'project.portal_search_bigrams @> array[input.normalized_query]',
+    );
+    expect(materializedMigrationSql).toContain(
+      'contact.portal_search_name_bigrams @> array[input.normalized_query]',
+    );
+    expect(materializedMigrationSql).toContain(
+      'project.portal_search_document ilike input.contains_pattern',
+    );
+  });
+
+  it('keeps materialized search on the same RLS and grant contract', () => {
+    expect(materializedMigrationSql).toContain('function public.portal_search_v1');
+    expect(materializedMigrationSql).toContain('security invoker');
+    expect(materializedMigrationSql).not.toContain('security definer');
+    expect(materializedMigrationSql).toContain('public.has_portal_access() as allowed');
+    expect(materializedMigrationSql).toContain('regexp_split_to_table');
+    expect(materializedMigrationSql).toContain(
+      'grant execute on function public.portal_search_v1(text, integer) to authenticated, service_role',
+    );
+    expect(materializedMigrationSql).toContain(
+      'revoke all on function public.portal_search_v1(text, integer) from public, anon',
+    );
+  });
+
+  it('evaluates unchanged Projects and Contacts portal access once per statement', () => {
+    for (const table of ['projects', 'contacts']) {
+      expect(rlsInitPlanMigrationSql).toContain(
+        `create policy portal_access_all on public.${table}`,
+      );
+    }
+    expect(rlsInitPlanMigrationSql.match(/to authenticated/g)).toHaveLength(2);
+    expect(
+      rlsInitPlanMigrationSql.match(/using \(\(select public\.has_portal_access\(\)\)\)/g),
+    ).toHaveLength(2);
+    expect(
+      rlsInitPlanMigrationSql.match(/with check \(\(select public\.has_portal_access\(\)\)\)/g),
+    ).toHaveLength(2);
+    expect(rlsInitPlanMigrationSql).not.toContain('security definer');
+    expect(rlsInitPlanMigrationSql).not.toContain('disable row level security');
   });
 });
