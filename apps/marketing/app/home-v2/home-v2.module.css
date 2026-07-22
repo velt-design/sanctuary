@@ -89,7 +89,7 @@
 }
 
 .heroCopy {
-  grid-column: 1 / 10;
+  grid-column: 1 / 9;
   display: grid;
   justify-items: start;
   gap: 1.5rem;
@@ -101,7 +101,7 @@
 }
 
 .heroHeading {
-  max-width: 12ch;
+  max-width: 13ch;
 }
 
 .heroText {
@@ -128,6 +128,13 @@
   color: rgba(255, 255, 255, .7);
 }
 
+.heroMicrocopy {
+  max-width: 45rem;
+  margin: -.25rem 0 0;
+  color: rgba(255, 255, 255, .7);
+  font: 500 .76rem/1.55 var(--font-body);
+}
+
 .proofRail {
   border-bottom: 1px solid var(--color-rule);
   background: var(--color-surface-elevated);
@@ -135,7 +142,7 @@
 
 .proofGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-left: 1px solid var(--color-rule);
 }
 
@@ -192,6 +199,145 @@ a.proofItem:hover {
   margin-bottom: clamp(2.75rem, 5vw, 5rem);
 }
 
+.introAction {
+  display: grid;
+  justify-items: start;
+  gap: 1.5rem;
+}
+
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1.5rem;
+}
+
+.featuredProject {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(24rem, .85fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+
+.featuredProjectMedia {
+  position: sticky;
+  top: calc(var(--header-height) + 2rem);
+}
+
+.featuredProjectCopy {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.projectFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--color-rule-strong);
+}
+
+.projectFacts div {
+  min-width: 0;
+  padding: 1rem 1rem 1rem 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.projectFacts div:not(:last-child) {
+  border-right: 1px solid var(--color-rule);
+  margin-right: 1rem;
+}
+
+.projectFacts dt,
+.projectEvidence h3,
+.finalChecklist h3 {
+  margin: 0 0 .55rem;
+  color: var(--color-text-subtle);
+  font: 600 .68rem/1.35 var(--font-body);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.projectFacts dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font: 500 .85rem/1.5 var(--font-body);
+}
+
+.projectEvidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--color-rule-strong);
+}
+
+.projectEvidence > div {
+  padding: 1.25rem 1.5rem 0 0;
+}
+
+.projectEvidence > div:first-child {
+  border-right: 1px solid var(--color-rule);
+  margin-right: 1.5rem;
+}
+
+.projectEvidence p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: 400 .86rem/1.65 var(--font-body);
+}
+
+.pathwayGrid,
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--color-rule-strong);
+  border-left: 1px solid var(--color-rule);
+}
+
+.pathwayCard,
+.guideCard {
+  min-height: 290px;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 1rem;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-right: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  color: inherit;
+  transition: background-color 160ms ease;
+}
+
+.pathwayCard:hover,
+.guideCard:hover {
+  background: var(--color-surface-elevated);
+}
+
+.pathwayCard .cardAction,
+.guideCard .cardAction {
+  margin-top: auto;
+}
+
+.cardNumber {
+  margin-bottom: clamp(1rem, 3vw, 2.5rem);
+  color: var(--color-text-subtle);
+  font: 500 .72rem/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.cardAction {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  border-bottom: 1px solid currentColor;
+  font: 600 .74rem/1.2 var(--font-body);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.cardAction::after {
+  content: "\2192";
+}
+
 .galleryHeader {
   display: flex;
   align-items: center;
@@ -238,6 +384,174 @@ a.proofItem:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.roofApproachGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--color-rule-strong);
+  border-left: 1px solid var(--color-rule);
+}
+
+.roofApproachCard {
+  min-height: 360px;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 1rem;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-right: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.roofApproachCard > :last-child {
+  margin-top: auto;
+}
+
+.materialContext {
+  display: grid;
+  gap: 2rem;
+  margin-top: clamp(2.5rem, 5vw, 4.5rem);
+}
+
+.materialContext > :last-child {
+  justify-self: start;
+}
+
+.integrationGrid {
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(30rem, 1.08fr);
+  gap: var(--grid-gap);
+  align-items: start;
+}
+
+.integrationFigure {
+  position: sticky;
+  top: calc(var(--header-height) + 2rem);
+}
+
+.integrationRows {
+  border-top: 1px solid var(--color-rule-strong);
+}
+
+.integrationRow {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1.25rem;
+  padding-block: 1.5rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.integrationRow > div {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.processAction {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.inverseIntro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(18rem, .6fr);
+  gap: var(--grid-gap);
+  align-items: end;
+  margin-bottom: clamp(2.75rem, 5vw, 5rem);
+}
+
+.inverseIntro > p {
+  margin: 0;
+  color: rgba(255, 255, 255, .68);
+  font: 400 .9rem/1.65 var(--font-body);
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid rgba(255, 255, 255, .28);
+  border-left: 1px solid rgba(255, 255, 255, .18);
+}
+
+.reviewCard {
+  min-height: 320px;
+  display: grid;
+  align-content: space-between;
+  gap: 2rem;
+  margin: 0;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-right: 1px solid rgba(255, 255, 255, .18);
+  border-bottom: 1px solid rgba(255, 255, 255, .18);
+}
+
+.reviewCard blockquote {
+  margin: 0;
+  color: var(--color-inverse-text);
+  font: 500 clamp(1.2rem, 2vw, 1.65rem)/1.35 var(--font-display);
+  letter-spacing: -.015em;
+}
+
+.reviewCard figcaption {
+  color: rgba(255, 255, 255, .62);
+  font: 600 .68rem/1.4 var(--font-body);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.guideGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.guideCard {
+  min-height: 250px;
+}
+
+.finalGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(22rem, .75fr);
+  gap: clamp(3rem, 8vw, 8rem);
+  align-items: start;
+}
+
+.finalCopy {
+  display: grid;
+  justify-items: start;
+  gap: 1.75rem;
+}
+
+.finalChecklist {
+  padding-top: .25rem;
+  border-top: 1px solid rgba(255, 255, 255, .28);
+}
+
+.finalChecklist h3 {
+  margin-top: 1.25rem;
+  color: rgba(255, 255, 255, .62);
+}
+
+.finalChecklist ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finalChecklist li {
+  padding: .9rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .16);
+  color: rgba(255, 255, 255, .82);
+  font: 400 .86rem/1.5 var(--font-body);
+}
+
+.secondaryPathways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem 1.5rem;
+}
+
+.secondaryPathways a {
+  color: var(--color-inverse-text);
+}
+
 .reviewSummary {
   display: flex;
   flex-wrap: wrap;
@@ -274,8 +588,13 @@ a.proofItem:hover {
     grid-template-columns: 1fr;
   }
 
-  .roofFigure {
+  .roofFigure,
+  .integrationFigure {
     position: static;
+  }
+
+  .integrationGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -303,7 +622,7 @@ a.proofItem:hover {
   }
 
   .proofGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .proofItem {
@@ -319,6 +638,32 @@ a.proofItem:hover {
   .introGrid > :last-child,
   .sectionIntro > :last-child {
     grid-column: 6 / 13;
+  }
+
+  .featuredProject,
+  .inverseIntro,
+  .finalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .featuredProjectMedia {
+    position: static;
+  }
+
+  .roofApproachGrid,
+  .reviewGrid,
+  .guideGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .roofApproachCard,
+  .reviewCard,
+  .guideCard {
+    min-height: 0;
+  }
+
+  .finalGrid {
+    gap: 3.5rem;
   }
 }
 
@@ -352,7 +697,7 @@ a.proofItem:hover {
   }
 
   .heroHeading {
-    max-width: 9.5ch;
+    max-width: 13ch;
   }
 
   .heroMeta {
@@ -370,8 +715,26 @@ a.proofItem:hover {
     padding: 1rem;
   }
 
-  .proofItem:last-child {
-    grid-column: 1 / -1;
+  .projectFacts,
+  .projectEvidence,
+  .pathwayGrid,
+  .guideGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .projectFacts div:not(:last-child),
+  .projectEvidence > div:first-child {
+    border-right: 0;
+    margin-right: 0;
+  }
+
+  .projectEvidence > div {
+    padding-right: 0;
+  }
+
+  .pathwayCard,
+  .guideCard {
+    min-height: 0;
   }
 
   .galleryHeader {
@@ -394,10 +757,21 @@ a.proofItem:hover {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .processAction {
+    justify-content: flex-start;
+  }
+
+  .secondaryPathways {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  a.proofItem {
+  a.proofItem,
+  .pathwayCard,
+  .guideCard {
     transition: none;
   }
 }

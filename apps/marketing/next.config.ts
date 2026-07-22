@@ -84,6 +84,10 @@ const nextConfig: NextConfig = {
         headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },
       {
+        source: '/home-v2',
+        headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+      {
         source: '/careers/:path*',
         headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },

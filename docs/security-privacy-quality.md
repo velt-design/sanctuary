@@ -20,8 +20,11 @@ Optional categories must not load before explicit consent.
 | Meta Pixel browser | marketing | `apps/marketing/components/MetaPixel.tsx`, `apps/marketing/app/runtime-meta.js/route.ts` | Browser-side lead attribution | Marketing |
 | Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Server-side lead conversion reporting | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
+| Homepage V2 interaction events | analytics | `apps/marketing/app/home-v2/HomepageInteractionTracker.tsx` | Distinguishes non-PII hero, pathway, product, project, guide and enquiry-link interactions after analytics consent | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
+
+Homepage V2 interaction events contain only the stable event name, homepage variant, link destination and optional editorial card label. They do not contain form values, photos, dimensions, contact details or other project/customer data, and the route-local listener is inactive unless analytics consent is granted.
 
 ## Portal Operational Performance Telemetry
 

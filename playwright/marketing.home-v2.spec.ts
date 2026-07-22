@@ -14,15 +14,15 @@ const viewports = [
   { name: '390x844', width: 390, height: 844 },
 ] as const;
 
-async function preparePage(page: Page) {
-  await page.addInitScript(() => {
+async function preparePage(page: Page, analytics = false) {
+  await page.addInitScript((analyticsConsent) => {
     window.localStorage.setItem('sp_consent_v1', JSON.stringify({
-      analytics: false,
+      analytics: analyticsConsent,
       marketing: false,
       updatedAt: new Date().toISOString(),
       version: 1,
     }));
-  });
+  }, analytics);
 }
 
 async function waitForImage(image: Locator, label: string) {
@@ -63,7 +63,7 @@ for (const viewport of viewports) {
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.getByRole('heading', {
       level: 1,
-      name: 'Architectural pergolas tailored to Kiwi homes.',
+      name: 'Bespoke pergolas, built around the architecture.',
     })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/i);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /nofollow/i);
@@ -78,10 +78,9 @@ for (const viewport of viewports) {
     await expect(liveRating).toHaveAttribute('href', /search\.google\.com\/local\/reviews/);
 
     const heroActions = main.getByLabel('Homepage V2 actions');
-    await expect(heroActions.getByRole('link', { name: 'Start your project', exact: true }))
+    await expect(heroActions.getByRole('link', { name: 'Get an initial project estimate', exact: true }))
       .toHaveAttribute('href', '/contact');
-    await expect(heroActions.locator('a[href="/projects"]')).toHaveText('View projects');
-    await expect(main.getByRole('link', { name: 'Start your project', exact: true })).toHaveCount(2);
+    await expect(heroActions.locator('a[href="/projects"]')).toHaveText('View completed projects');
 
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(hero).toBeVisible();
@@ -140,10 +139,11 @@ for (const viewport of viewports) {
 test('homepage V2 stays noindex and unlisted while the current homepage remains established', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
-  await page.goto(route);
+  const stagingResponse = await page.goto(route);
 
   const v2RatingLabel = await page.locator('[data-live-rating]').getAttribute('aria-label');
   expect(v2RatingLabel).toBeTruthy();
+  expect(stagingResponse?.headers()['x-robots-tag']).toBe('noindex, nofollow');
   await expect(page.locator('header.site a[href="/home-v2"]')).toHaveCount(0);
   await expect(page.locator('footer a[href="/home-v2"]')).toHaveCount(0);
 
@@ -161,6 +161,114 @@ test('homepage V2 stays noindex and unlisted while the current homepage remains 
   await expect(page.getByRole('link', { name: 'Quick Estimate' }).first()).toHaveAttribute('href', '/contact');
   await expect(page.locator('a[href="/home-v2"]')).toHaveCount(0);
   await expect(page.locator('.home-hero a[aria-label^="Rated"]')).toHaveAttribute('aria-label', v2RatingLabel!);
+});
+
+test('homepage V2 exposes the approved pathways, evidence and production-ready SEO identity', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await preparePage(page);
+  await page.goto(route);
+
+  const main = page.locator('main[data-homepage-variant="v2"]');
+  await expect(page).toHaveTitle('Architectural Pergola Design & Build | Sanctuary Pergolas');
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    'content',
+    'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas in Auckland for residential and selected commercial projects.',
+  );
+
+  await expect(main).toContainText('Sanctuary designs, builds and installs bespoke fixed-roof pergolas in Auckland');
+  await expect(main).toContainText('home or commercial site');
+  await expect(main).not.toContainText('4 roof forms');
+  await expect(main).not.toContainText('10 design guides');
+  await expect(main).not.toContainText('3 planning chapters');
+  await expect(main).not.toContainText('1 connected brief');
+
+  await expect(main.getByRole('heading', { level: 2, name: 'Warkworth Outdoor Room' })).toBeVisible();
+  await expect(main).toContainText('5.0 m × 6.0 m');
+  await expect(main).toContainText('Freestanding gable');
+  await expect(main).toContainText('Sanctuary response');
+
+  const expectedPathways = [
+    ['/pergolas-auckland', 'Plan an Auckland pergola'],
+    ['/custom-pergolas-auckland', 'Explore custom pergola design'],
+    ['/commercial-pergolas-auckland', 'Discuss a commercial project'],
+    ['/contact#contact-form', 'Send plans or a project brief'],
+  ] as const;
+  for (const [href, name] of expectedPathways) {
+    await expect(main.getByRole('link', { name })).toHaveAttribute('href', href);
+  }
+
+  for (const form of ['Pitched', 'Gable', 'Hip', 'Box perimeter']) {
+    await expect(main.getByRole('heading', { level: 3, name: form })).toBeVisible();
+  }
+  for (const roof of ['Acrylic roofing', 'Solid roofing', 'Combination roofing']) {
+    await expect(main.getByRole('heading', { level: 3, name: roof })).toBeVisible();
+  }
+  for (const option of ['Blinds and screens', 'Integrated lighting', 'Heating']) {
+    await expect(main.getByRole('heading', { level: 3, name: option })).toBeVisible();
+  }
+
+  const process = main.locator('section[aria-labelledby="design-build-process"]');
+  await expect(process.locator('ol > li')).toHaveCount(5);
+  await expect(main.locator('[data-home-review]')).toHaveCount(3);
+  await expect(main.getByRole('link', { name: 'Explore the pergola guides' })).toHaveAttribute('href', '/pergola-guides');
+  await expect(main.getByRole('link', { name: 'Send your project details' })).toHaveAttribute('href', '/contact');
+
+  const schemaTypes = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) => (
+    nodes.flatMap((node) => {
+      const parsed = JSON.parse(node.textContent || 'null');
+      const values = Array.isArray(parsed) ? parsed : [parsed];
+      return values.map((value) => value?.['@type']).filter(Boolean);
+    })
+  ));
+  expect(schemaTypes).toContain('Organization');
+  expect(schemaTypes).toContain('LocalBusiness');
+  expect(schemaTypes).toContain('WebSite');
+  expect(schemaTypes).toContain('WebPage');
+  expect(schemaTypes).not.toContain('AggregateRating');
+  expect(schemaTypes).not.toContain('Review');
+
+  const visibleCopy = await main.innerText();
+  for (const unsupportedClaim of ['10-year warranty', 'weatherproof', 'year-round protection', '1 to 5 day', '2 to 10 day', '8 to 12 week']) {
+    expect(visibleCopy.toLowerCase()).not.toContain(unsupportedClaim);
+  }
+  expect(visibleCopy).not.toContain('—');
+});
+
+test('homepage V2 records consented CTA events without customer data', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await preparePage(page, true);
+  await page.goto(route);
+  await page.evaluate(() => {
+    (window as typeof window & { dataLayer?: unknown[] }).dataLayer = [];
+  });
+
+  await page.locator('[data-homepage-event="hero_projects_click"]').click();
+  await page.waitForURL('**/projects');
+  const trackedEvent = await page.evaluate(() => (
+    (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
+      ?.find((entry) => !Array.isArray(entry) && entry.event === 'hero_projects_click')
+  ));
+
+  expect(trackedEvent).toEqual({
+    event: 'hero_projects_click',
+    homepage_variant: 'v2',
+    destination: '/projects',
+  });
+});
+
+test('homepage V2 internal destinations resolve without redirect errors', async ({ page }) => {
+  await preparePage(page);
+  await page.goto(route);
+
+  const hrefs = await page.locator('main[data-homepage-variant="v2"] a[href^="/"]').evaluateAll((links) => (
+    Array.from(new Set(links.map((link) => link.getAttribute('href')).filter((href): href is string => Boolean(href))))
+  ));
+  expect(hrefs.length).toBeGreaterThan(20);
+
+  for (const href of hrefs) {
+    const response = await page.request.get(href.split('#')[0]);
+    expect(response.status(), `${href} should resolve without an error`).toBeLessThan(400);
+  }
 });
 
 test('homepage V2 preserves the shared mobile menu scroll lock and focus return', async ({ page }) => {

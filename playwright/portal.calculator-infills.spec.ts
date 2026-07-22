@@ -77,6 +77,20 @@ async function attachCalculatorScreenshot(page: Page, testInfo: TestInfo, name: 
 
 test.describe.configure({ mode: 'serial' });
 
+test('infill deletion updates the draft immediately and remains undoable', async ({ page }, testInfo) => {
+  await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-immediate-delete' }, async () => {
+    const dialog = await openCustomInfill(page, 1600);
+    await dialog.getByRole('button', { name: 'Infill actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Delete infill?' })).toHaveCount(0);
+    await expect(dialog.getByText('Infill deleted.', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: 'Infill actions', exact: true })).toBeVisible();
+    await expect(dialog.getByText('Infill deleted.', { exact: true })).toHaveCount(0);
+  });
+});
+
 test('authenticated calculator makes system choices explicit on the supports stage', async ({ page }, testInfo) => {
   await withPortalBrowserEvidence(page, testInfo, { routeId: 'calculator', phase: 'infill-explicit-system-selection' }, async () => {
     const dialog = await openCustomInfill(page, 1600);

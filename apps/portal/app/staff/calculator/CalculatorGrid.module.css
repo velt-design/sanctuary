@@ -2685,6 +2685,12 @@
   align-items: start;
 }
 
+.configurationMain {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+}
+
 .leftCol,
 .rightCol {
   scrollbar-width: thin;

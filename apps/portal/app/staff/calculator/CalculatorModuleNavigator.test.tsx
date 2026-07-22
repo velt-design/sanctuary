@@ -144,22 +144,12 @@ describe('CalculatorModuleNavigator', () => {
     expect(props.onMoveModule).toHaveBeenCalledWith(0, 'pergola-2');
   });
 
-  it('requires destructive confirmation with browser-draft-only copy', () => {
+  it('removes the active module immediately without opening a confirmation dialog', () => {
     const { props } = renderNavigator();
     const rail = document.querySelector('aside[aria-label="Module navigator"]') as HTMLElement;
     act(() => findButton(rail, 'Remove').click());
-    const dialog = document.querySelector('[role="dialog"][aria-label="Remove module?"]') as HTMLElement;
-    expect(dialog.textContent).toContain('Remove Pergola 1 · Module 1?');
-    expect(dialog.textContent).toContain('This removes its configuration from this browser draft.');
-    expect(dialog.textContent).toContain('It will not update the estimate until you use Save.');
-    expect(dialog.textContent).toContain('Pergola 1 will also be removed because it has no other modules.');
-    act(() => findButton(dialog, 'Cancel').click());
-    expect(props.onRemoveModule).not.toHaveBeenCalled();
-
-    act(() => findButton(rail, 'Remove').click());
-    const confirmDialog = document.querySelector('[role="dialog"][aria-label="Remove module?"]') as HTMLElement;
-    act(() => findButton(confirmDialog, 'Remove module').click());
     expect(props.onRemoveModule).toHaveBeenCalledWith(0);
+    expect(document.querySelector('[role="dialog"][aria-label="Remove module?"]')).toBeNull();
   });
 
   it('opens the narrow navigator dialog, selects a module, and returns focus to the launcher', async () => {

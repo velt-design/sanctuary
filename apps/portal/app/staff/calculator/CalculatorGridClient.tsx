@@ -43,7 +43,6 @@ import { MAX_STAFF_QUOTE_DISCOUNT_PCT } from '@/lib/quotes/pricing';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
 import InfillConfiguratorDialog from './InfillConfiguratorDialog';
 import InfillEditorHeader from './InfillEditorHeader';
@@ -1624,18 +1623,10 @@ export default function CalculatorGridClient({
     });
   };
 
-  const requestDeleteInfill = (id: string) => {
-    setInfillDeleteTargetId(id);
-  };
-
-  const confirmDeleteInfill = () => {
-    if (!infillDeleteTargetId) return;
-    const currentIdx = infillsState.items.findIndex((item) => item.id === infillDeleteTargetId);
+  const deleteInfill = (infillId: string) => {
+    const currentIdx = infillsState.items.findIndex((item) => item.id === infillId);
     const infill = currentIdx >= 0 ? infillsState.items[currentIdx] : null;
-    if (!infill) {
-      setInfillDeleteTargetId(null);
-      return;
-    }
+    if (!infill) return;
 
     const nextSelection =
       currentIdx >= 0
@@ -1664,7 +1655,6 @@ export default function CalculatorGridClient({
       location: infill.location,
       shape: infill.shape.type,
     });
-    setInfillDeleteTargetId(null);
   };
 
   const undoDeleteInfill = () => {
@@ -1730,7 +1720,6 @@ export default function CalculatorGridClient({
   const [pendingInfillSelectionId, setPendingInfillSelectionId] = useState<string | null>(null);
   const [infillDraftById, setInfillDraftById] = useState<Record<string, InfillDraftEntry>>({});
   const [infillStage, setInfillStage] = useState<InfillConfiguratorStage>('opening');
-  const [infillDeleteTargetId, setInfillDeleteTargetId] = useState<string | null>(null);
   const [deletedInfill, setDeletedInfill] = useState<InfillDeletedState | null>(null);
   const [infillDuplicateOpen, setInfillDuplicateOpen] = useState(false);
   const [infillCostDetailsOpen, setInfillCostDetailsOpen] = useState(false);
@@ -1845,12 +1834,6 @@ export default function CalculatorGridClient({
       return changed ? next : prev;
     });
   }, [infillsState.items]);
-
-  useEffect(() => {
-    if (!infillDeleteTargetId) return;
-    if (infillsState.items.some((item) => item.id === infillDeleteTargetId)) return;
-    setInfillDeleteTargetId(null);
-  }, [infillDeleteTargetId, infillsState.items]);
 
   useEffect(() => {
     if (!deletedInfill) return;
@@ -2343,11 +2326,6 @@ export default function CalculatorGridClient({
     () => (selectedInfill ? infillsState.items.findIndex((item) => item.id === selectedInfill.id) : -1),
     [infillsState.items, selectedInfill],
   );
-  const infillDeleteTarget = useMemo(
-    () => (infillDeleteTargetId ? infillsState.items.find((item) => item.id === infillDeleteTargetId) ?? null : null),
-    [infillDeleteTargetId, infillsState.items],
-  );
-
   const selectedInfillUi = useMemo(
     () => (selectedInfill ? infillUiById.get(selectedInfill.id) ?? null : null),
     [selectedInfill, infillUiById],
@@ -2775,7 +2753,7 @@ export default function CalculatorGridClient({
 
   useInfillHotkeys({
     enabled: infillsOpen && Boolean(selectedInfill),
-    disableEsc: Boolean(infillDeleteTarget || infillDuplicateOpen),
+    disableEsc: infillDuplicateOpen,
     onDuplicate: () => {
       if (!selectedInfill) return;
       duplicateInfill(selectedInfill.id);
@@ -4110,7 +4088,7 @@ export default function CalculatorGridClient({
           data-calculator-split="true"
         >
           <div className={styles.leftCol}>
-            <div className={styles.configurationWorkspace}>
+            <div className={styles.configurationWorkspace} data-calculator-configuration-workspace>
               <CalculatorModuleNavigator
                 model={moduleNavigatorModel}
                 pergolas={pergolas}
@@ -4124,11 +4102,13 @@ export default function CalculatorGridClient({
                 onRemoveModule={handleRemoveModule}
               />
               <CalculatorPricingSummary {...pricingSummaryProps} variant="compact" />
-              <CalculatorJobTemplatePicker
-                activeModuleLabel={moduleNavigatorModel.activeModuleLabel}
-                onApply={handleApplyJobTemplate}
-              />
-              <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
+              <div className={styles.configurationMain} data-calculator-configuration-main>
+                <CalculatorJobTemplatePicker
+                  activeModuleLabel={moduleNavigatorModel.activeModuleLabel}
+                  onApply={handleApplyJobTemplate}
+                />
+                <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
+              </div>
             </div>
           </div>
 
@@ -4395,7 +4375,7 @@ export default function CalculatorGridClient({
       {infillsOpen ? (
         <>
         <InfillConfiguratorDialog
-          closeOnEsc={!infillDeleteTarget && !infillDuplicateOpen}
+          closeOnEsc={!infillDuplicateOpen}
           onClose={closeInfillModal}
           stage={infillStage}
           openingComplete={selectedOpeningComplete}
@@ -4416,7 +4396,7 @@ export default function CalculatorGridClient({
               onPasteGeometry={handlePasteInfillGeometry}
               onMoveUp={() => moveInfill(selectedInfill.id, -1)}
               onMoveDown={() => moveInfill(selectedInfill.id, 1)}
-              onDelete={() => requestDeleteInfill(selectedInfill.id)}
+              onDelete={() => deleteInfill(selectedInfill.id)}
             />
           ) : null}
           notice={deletedInfill ? (
@@ -4649,19 +4629,6 @@ export default function CalculatorGridClient({
             duplicateInfillBulk(selectedInfill.id, count, labelPattern);
             setInfillDuplicateOpen(false);
           }}
-        />
-        <ConfirmDialog
-          open={Boolean(infillDeleteTarget)}
-          title="Delete infill?"
-          body={
-            infillDeleteTarget
-              ? `Delete "${infillDeleteTarget.label?.trim() || 'this infill'}"? You can undo this for a few seconds.`
-              : 'Delete this infill?'
-          }
-          confirmLabel="Delete"
-          danger
-          onConfirm={confirmDeleteInfill}
-          onCancel={() => setInfillDeleteTargetId(null)}
         />
         </>
       ) : null}

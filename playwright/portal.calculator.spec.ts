@@ -275,7 +275,7 @@ test('local draft survives module switching and restores after reload', async ({
   });
 });
 
-test('module navigator supports fresh add, duplicate, move, and confirmed remove', async ({ page }, testInfo) => {
+test('module navigator supports fresh add, duplicate, move, and immediate draft removal', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await openCalculator(page);
@@ -299,14 +299,9 @@ test('module navigator supports fresh add, duplicate, move, and confirmed remove
     await expect(roofLength).toHaveValue('7.35');
 
     await navigator.getByRole('button', { name: 'Remove', exact: true }).click();
-    const removeDialog = page.getByRole('dialog', { name: 'Remove module?' });
-    await expect(removeDialog).toContainText('browser draft');
-    await removeDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(navigator.getByRole('listitem')).toHaveCount(5);
-
-    await navigator.getByRole('button', { name: 'Remove', exact: true }).click();
-    await page.getByRole('dialog', { name: 'Remove module?' }).getByRole('button', { name: 'Remove module', exact: true }).click();
     await expect(navigator.getByRole('listitem')).toHaveCount(4);
+    await expect(page.getByRole('dialog', { name: 'Remove module?' })).toHaveCount(0);
+    await expectLocalDraftProtected(page);
   });
 });
 
@@ -325,7 +320,7 @@ test('editing save always shows stored versus live costing without creating a qu
     await expect(dialog.getByText('Stored estimate', { exact: true })).toBeVisible();
     await expect(dialog.getByText('Live calculator', { exact: true })).toBeVisible();
     await expect(dialog.getByText('Cost-affecting design inputs have changed.', { exact: true })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Save design — keep stored costing', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Keep stored costing', exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Reprice and save', exact: true })).toBeVisible();
     await expect(page).toHaveURL(new RegExp('/staff/calculator'));
     await expect(page.getByText('Draft quote created locally.', { exact: false })).toHaveCount(0);

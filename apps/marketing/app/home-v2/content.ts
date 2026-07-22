@@ -1,110 +1,213 @@
+export const homepageDescription =
+  'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas in Auckland for residential and selected commercial projects.';
+
 export const proofPoints = [
-  { value: '4', label: 'roof forms' },
-  { value: '10', label: 'design guides' },
-  { value: '3', label: 'planning chapters' },
-  { value: '1', label: 'connected brief' },
+  { value: 'Auckland', label: 'based design and installation' },
+  { value: 'Built', label: 'residential and selected commercial work' },
+  { value: 'Written', label: 'project scope and warranty information' },
 ] as const;
 
 export const designPrinciples = [
   {
-    title: 'Start with the home',
-    copy: 'Rooflines, openings, views and circulation set the direction before a pergola form is chosen.',
+    title: 'Start with the home and site',
+    copy: 'Architecture, available space, orientation, exposure, access and connection points set the direction before a pergola form is chosen.',
   },
   {
-    title: 'Shape the room',
-    copy: 'Shelter, daylight and proportion are resolved around how the outdoor space should feel and function.',
+    title: 'Design around intended use',
+    copy: 'Dining, entertaining, shelter, light and privacy shape the layout while open edges remain part of the weather response.',
   },
   {
-    title: 'Resolve the details',
-    copy: 'Structure, drainage, lighting, screens and material junctions are considered as one permanent addition.',
-  },
-] as const;
-
-export const processSteps = [
-  {
-    title: 'Enquiry',
-    copy: 'Tell us about the site, how you use the space and what you want the new outdoor room to achieve.',
-  },
-  {
-    title: 'Initial estimate',
-    copy: 'We prepare an early price range from your dimensions, photos, material direction and preferred roof form.',
-  },
-  {
-    title: 'Site visit and design',
-    copy: 'We measure the site and resolve proportion, structure, drainage, views and connection to the home.',
-  },
-  {
-    title: 'Documentation and sign-off',
-    copy: 'A clear design pack records dimensions, finishes, lighting and the agreed construction scope.',
-  },
-  {
-    title: 'Manufacture',
-    copy: 'Your pergola is prepared for the site with the agreed structural and finish details.',
-  },
-  {
-    title: 'Installation',
-    copy: 'The Sanctuary team sets out and builds the structure to the signed-off design and agreed site sequence.',
-  },
-  {
-    title: 'Completion and support',
-    copy: 'We complete final checks and provide the care, workmanship and manufacturer information that applies to the project.',
+    title: 'Resolve structure and details together',
+    copy: 'Roof form, drainage, materials, lighting, blinds, heating and house connections are considered as one project-specific system.',
   },
 ] as const;
 
-export const materialItems = [
+export const visitorPathways = [
   {
-    name: 'Aluminium',
-    guidance: 'Crisp structure with powder-coated colours selected for the design, site exposure and the home.',
-    image: '/images/project-riverhead-gable-02.jpg',
-    alt: 'Black aluminium pergola structure in Riverhead',
+    eyebrow: 'Residential planning',
+    title: 'An Auckland pergola for your home',
+    copy: 'Start with the home, outdoor area and intended use, then compare the forms, roof approaches and scope that may suit.',
+    href: '/pergolas-auckland',
+    action: 'Plan an Auckland pergola',
+    event: 'residential_pathway_click',
   },
   {
-    name: 'Acrylic roofing',
-    guidance: 'Fixed clear, opal or tinted roofing with daylight and solar characteristics tied to the exact sheet.',
-    image: '/images/product-gable-01.jpg',
-    alt: 'Acrylic roof over an outdoor courtyard',
+    eyebrow: 'Custom and complex',
+    title: 'A site that needs a bespoke response',
+    copy: 'Explore unusual sites, difficult connections, larger spans, integrated structures and design-led project requirements.',
+    href: '/custom-pergolas-auckland',
+    action: 'Explore custom pergola design',
+    event: 'custom_pathway_click',
   },
   {
-    name: 'Timber sarking',
-    guidance: 'Warm, tactile lining that makes the pergola read as a permanent outdoor room.',
-    image: '/images/timber-gable-ceiling.jpg',
-    alt: 'Timber sarking beneath a gable pergola',
+    eyebrow: 'Commercial',
+    title: 'Cover for a working environment',
+    copy: 'Plan hospitality, accommodation, workplace and selected commercial projects around operations, services and delivery.',
+    href: '/commercial-pergolas-auckland',
+    action: 'Discuss a commercial project',
+    event: 'commercial_pathway_click',
   },
   {
-    name: 'Integrated features',
-    guidance: 'Lighting, blinds and heating are coordinated when they support how the space will be used.',
-    image: '/images/project-warkworth-outdoor-room-04.jpg',
-    alt: 'Integrated lighting in a finished Warkworth outdoor room',
+    eyebrow: 'Professional collaboration',
+    title: 'Plans, specifications or an early brief',
+    copy: 'Architects, designers and builders can share drawings, concepts, tender information and the responsibilities already defined.',
+    href: '/contact#contact-form',
+    action: 'Send plans or a project brief',
+    event: 'professional_pathway_click',
   },
 ] as const;
 
 export const roofForms = [
   {
     title: 'Pitched',
-    copy: 'A clean single roof plane coordinated with available height, fall and drainage.',
+    copy: 'One roof plane creates a restrained profile. It can suit attached or freestanding work where height, fall and drainage support the form.',
     href: '/products/pergolas/pitched',
   },
   {
     title: 'Gable',
-    copy: 'Height, daylight and a strong centreline for larger outdoor rooms.',
+    copy: 'A central ridge creates height and a strong centreline. Attached and freestanding versions can suit wider rooms or a house with related roof geometry.',
     href: '/products/pergolas/gable',
   },
   {
     title: 'Hip',
-    copy: 'Three-sided roof geometry for more complex house connections.',
+    copy: 'Several roof planes meet around a more enclosed geometry. Attached or freestanding designs can respond to courtyards, corners and complex rooflines.',
     href: '/products/pergolas/hip',
   },
   {
     title: 'Box perimeter',
-    copy: 'A level architectural edge that conceals the roof fall within.',
+    copy: 'A level outer edge conceals the working roof fall within. Attached and freestanding versions can suit contemporary homes and clean rectangular plans.',
     href: '/products/pergolas/box-perimeter',
   },
 ] as const;
 
-export const featuredProjectSlugs = [
-  'warkworth-outdoor-room',
-  'dairy-flat-estate',
-  'tindalls-bay-pavilion',
-  'velskov-forest',
-  'goodhome-commercial-terrace',
+export const roofApproaches = [
+  {
+    title: 'Acrylic roofing',
+    copy: 'Transparent or translucent roof zones can maintain daylight and visual openness. The exact sheet, tint, roof depth and relationship to nearby windows are selected for the project.',
+    href: '/acrylic-roof-pergolas-auckland',
+    action: 'Review acrylic roofing',
+  },
+  {
+    title: 'Solid roofing',
+    copy: 'Solid roof zones provide stronger overhead shade and can support a more ceiling-like treatment. The complete build-up, drainage and effect on adjoining rooms need early review.',
+    href: '/projects/riverhead-gable-pavilion',
+    action: 'See a solid-roof project',
+  },
+  {
+    title: 'Combination roofing',
+    copy: 'Transparent and solid zones can be coordinated to balance light, shade and architectural expression. Their junction is designed as part of the complete roof.',
+    href: '/projects/tindalls-bay-pavilion',
+    action: 'See a combination-roof project',
+  },
+] as const;
+
+export const integratedOptions = [
+  {
+    title: 'Blinds and screens',
+    copy: 'Exposure, opening size, mounting, enclosure and the selected system determine what edge protection is appropriate. Open-sided pergolas remain affected by wind-driven rain.',
+    href: '/pergolas-with-blinds',
+    action: 'Explore pergola blinds',
+  },
+  {
+    title: 'Integrated lighting',
+    copy: 'Fittings, channels, drivers, wiring and switching can be coordinated with the frame and ceiling where the design and electrical scope allow.',
+    href: '/products/lighting-heating/downlights',
+    action: 'Explore integrated lighting',
+  },
+  {
+    title: 'Heating',
+    copy: 'Heater selection depends on the area, mounting position, clearances, power and intended use. The exact product requirements are checked before installation.',
+    href: '/products/lighting-heating/patio-heaters',
+    action: 'Explore patio heating',
+  },
+] as const;
+
+export const selectedProjectProfiles = [
+  {
+    slug: 'dairy-flat-estate',
+    configuration: 'Attached gable extension',
+    roofApproach: 'Acrylic roof',
+  },
+  {
+    slug: 'tindalls-bay-pavilion',
+    configuration: 'Layered patio and carport',
+    roofApproach: 'Combination roof',
+  },
+  {
+    slug: 'velskov-forest',
+    configuration: 'Standalone pitched structure',
+    roofApproach: 'Commercial setting',
+  },
+  {
+    slug: 'goodhome-commercial-terrace',
+    configuration: 'Attached two-zone gable',
+    roofApproach: 'Acrylic roof',
+  },
+] as const;
+
+export const processSteps = [
+  {
+    title: 'Share the initial brief',
+    copy: 'Send the suburb, project photos, approximate dimensions, intended use and any preferred form or roof approach.',
+  },
+  {
+    title: 'Initial assessment',
+    copy: 'Sanctuary reviews the information, identifies a likely approach and may provide an indicative price range where the brief allows.',
+  },
+  {
+    title: 'Site review and design development',
+    copy: 'The home, site, measurements, exposure, connections, access and project requirements are assessed together.',
+  },
+  {
+    title: 'Documented scope and approval',
+    copy: 'The design, materials, exclusions, current programme, price and applicable warranty information are recorded in writing.',
+  },
+  {
+    title: 'Manufacture, installation and handover',
+    copy: 'The pergola is prepared, installed by the Sanctuary team and handed over with the care and warranty information that applies.',
+  },
+] as const;
+
+export const reviewAuthors = ['Scott Fitchett', 'Kate Walker', 'Rod Clough'] as const;
+
+export const guidePathways = [
+  {
+    title: 'Planning an Auckland pergola',
+    copy: 'Start with the home, site and intended use.',
+    href: '/pergolas-auckland',
+  },
+  {
+    title: 'Comparing pergola forms',
+    copy: 'Review pitched, gable, hip and box-perimeter geometry.',
+    href: '/pergolas-auckland#roof-form-options',
+  },
+  {
+    title: 'Comparing roof approaches',
+    copy: 'Consider acrylic, solid and combination roofing.',
+    href: '/pergolas-auckland#roofing-options',
+  },
+  {
+    title: 'Understanding pergola costs',
+    copy: 'See which inputs shape scope and an initial estimate.',
+    href: '/pergola-cost-auckland',
+  },
+  {
+    title: 'Planning blinds and enclosure',
+    copy: 'Map exposure, privacy and open-edge conditions.',
+    href: '/pergolas-with-blinds',
+  },
+  {
+    title: 'Resolving a complex project',
+    copy: 'Coordinate architecture, structure and unusual site constraints.',
+    href: '/custom-pergolas-auckland',
+  },
+] as const;
+
+export const finalEnquiryChecklist = [
+  'Project suburb',
+  'Photographs of the site and adjoining home',
+  'Approximate width and projection',
+  'How the space should be used',
+  'Preferred form or roof approach, if known',
+  'Plans or sketches, where available',
 ] as const;

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
-import ConfirmDialog from './ConfirmDialog';
 import type {
   CalculatorModuleNavigatorItem,
   CalculatorModuleNavigatorModel,
@@ -38,14 +37,8 @@ export default function CalculatorModuleNavigator({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [movingModuleIndex, setMovingModuleIndex] = useState<number | null>(null);
   const [moveTargetPergolaId, setMoveTargetPergolaId] = useState('');
-  const [removeTarget, setRemoveTarget] = useState<CalculatorModuleNavigatorItem | null>(null);
 
   const activeItem = model.items.find((item) => item.isActive) ?? model.items[0] ?? null;
-  const removeTargetGroup = removeTarget
-    ? model.groups.find((group) => group.pergolaId === removeTarget.pergolaId) ?? null
-    : null;
-  const removePrunesPergola = Boolean(removeTargetGroup && removeTargetGroup.items.length === 1);
-
   const movingItem = movingModuleIndex === null ? null : model.items[movingModuleIndex] ?? null;
   const moveTargets = useMemo(
     () => pergolas.filter((pergola) => pergola.id !== movingItem?.pergolaId),
@@ -94,8 +87,8 @@ export default function CalculatorModuleNavigator({
     if (closeAfter) setMobileOpen(false);
   };
 
-  const requestRemove = (item: CalculatorModuleNavigatorItem, closeAfter: boolean) => {
-    setRemoveTarget(item);
+  const removeModule = (moduleIndex: number, closeAfter: boolean) => {
+    onRemoveModule(moduleIndex);
     if (closeAfter) setMobileOpen(false);
   };
 
@@ -186,7 +179,7 @@ export default function CalculatorModuleNavigator({
                             <button
                               type="button"
                               className={styles.removeButton}
-                              onClick={() => requestRemove(item, closeAfter)}
+                              onClick={() => removeModule(item.moduleIndex, closeAfter)}
                               disabled={moduleCount <= 1}
                             >
                               Remove
@@ -263,22 +256,6 @@ export default function CalculatorModuleNavigator({
         {renderNavigator('mobile')}
       </Modal>
 
-      <ConfirmDialog
-        open={Boolean(removeTarget)}
-        title="Remove module?"
-        body={
-          removeTarget
-            ? `Remove ${removeTarget.label}? This removes its configuration from this browser draft. It will not update the estimate until you use Save.${removePrunesPergola ? ` ${removeTarget.pergolaLabel} will also be removed because it has no other modules.` : ''}`
-            : ''
-        }
-        confirmLabel="Remove module"
-        danger
-        onConfirm={() => {
-          if (removeTarget) onRemoveModule(removeTarget.moduleIndex);
-          setRemoveTarget(null);
-        }}
-        onCancel={() => setRemoveTarget(null)}
-      />
     </>
   );
 }
