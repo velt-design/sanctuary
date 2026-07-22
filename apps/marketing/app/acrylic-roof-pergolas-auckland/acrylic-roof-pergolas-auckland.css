@@ -50,29 +50,7 @@
 .acrylic-landing li,
 .acrylic-landing dd { line-height: 1.7; }
 
-body:has(.acrylic-landing) header.site {
-  border-bottom: 1px solid var(--color-rule, #c7cac3);
-  background: color-mix(in srgb, #e9eae6 94%, transparent);
-  backdrop-filter: blur(16px);
-  font-family: "Inter Variable", Arial, sans-serif;
-}
-
 @media (min-width: 901px) {
-  body:has(.acrylic-landing) header.site.site--hero-overlay:not(.site--hero-scrolled) {
-    border-bottom-color: rgba(255, 255, 255, 0.5);
-    background: transparent;
-    color: #fff;
-    backdrop-filter: none;
-  }
-
-  body:has(.acrylic-landing) header.site.site--hero-overlay:not(.site--hero-scrolled) :is(.site-brand, .navlink-btn) {
-    color: #fff;
-  }
-
-  body:has(.acrylic-landing) header.site.site--hero-overlay:not(.site--hero-scrolled) .navlink-btn:hover {
-    color: #fff;
-  }
-
   .acrylic-landing[data-seo-landing] .acrylic-hero {
     min-height: 100svh;
     margin-top: 0;
@@ -81,40 +59,6 @@ body:has(.acrylic-landing) header.site {
   .acrylic-landing[data-seo-landing] .acrylic-hero__shade {
     background: linear-gradient(180deg, rgba(10, 12, 9, 0.46), rgba(10, 12, 9, 0.16) 22%, rgba(10, 12, 9, 0.78));
   }
-}
-
-body:has(.acrylic-landing) header.site .site-brand {
-  font-family: "Instrument Sans Variable", "Helvetica Neue", sans-serif;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-}
-
-body:has(.acrylic-landing) header.site .navlink-btn {
-  min-height: 44px;
-  border-radius: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-}
-
-body:has(.acrylic-landing) header.site .nav-cta {
-  width: auto;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 1.25rem;
-  border: 1px solid #4f5748;
-  border-radius: 0;
-  box-shadow: none;
-  background: #4f5748 !important;
-}
-
-body:has(.acrylic-landing) header.site .nav-cta__label {
-  opacity: 1;
-  transform: none;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 
 body:has(.acrylic-landing) footer { font-family: "Inter Variable", Arial, sans-serif; }
@@ -474,44 +418,7 @@ body:has(.acrylic-landing) footer { font-family: "Inter Variable", Arial, sans-s
 }
 
 @media (max-width: 900px) {
-  body:has(.acrylic-landing) header.site .desktop-nav,
-  body:has(.acrylic-landing) header.site .nav-cta { display: none; }
-  body:has(.acrylic-landing) header.site .mobile-toggle {
-    width: auto;
-    min-width: 4.5rem;
-    height: 44px;
-    display: inline-flex;
-    border: 1px solid #aeb2aa;
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent !important;
-    color: #111210 !important;
-    font: 600 0.7rem/1 "Inter Variable", Arial, sans-serif;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  body:has(.acrylic-landing) header.site .mobile-toggle::before { content: 'Menu'; }
-  body:has(.acrylic-landing) header.site .mobile-toggle.open::before { content: 'Close'; }
-  body:has(.acrylic-landing) header.site .mobile-toggle__pulse { display: none; }
-  body:has(.acrylic-landing) .mobile-menu {
-    inset: 82px 0 auto;
-    height: auto;
-    min-height: 0;
-    display: block;
-    padding: 1rem clamp(1.25rem, 4vw, 4.5rem) 2rem;
-    border-bottom: 1px solid #aeb2aa;
-    background: #f8f8f5 !important;
-    color: #111210 !important;
-    transform: translateY(-1rem);
-    transition: transform 180ms ease, opacity 160ms ease;
-  }
-  body:has(.acrylic-landing) .mobile-menu.open { transform: translateY(0); }
-  body:has(.acrylic-landing) .mobile-menu__list { padding: 0; gap: 0; }
-  body:has(.acrylic-landing) .mobile-menu__link { min-height: 52px; padding: 0; border-bottom: 1px solid #c7cac3; color: #111210; font: 600 0.72rem/1 "Inter Variable", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; }
-  body.mobile-menu-open:has(.acrylic-landing) header.site { border-bottom: 1px solid #c7cac3 !important; background: #e9eae6 !important; }
-  body.mobile-menu-open:has(.acrylic-landing) header.site,
-  body.mobile-menu-open:has(.acrylic-landing) header.site .navbar,
-  body.mobile-menu-open:has(.acrylic-landing) header.site .site-brand { color: #111210 !important; }
+  .acrylic-landing { --header-height: 64px; }
 
   .acrylic-section__header--wide,
   .acrylic-intro-grid,
@@ -528,44 +435,8 @@ body:has(.acrylic-landing) footer { font-family: "Inter Variable", Arial, sans-s
 }
 
 @media (max-width: 720px) {
-  .acrylic-landing { --header-height: 82px; padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  .acrylic-landing { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
   body:has(.consent-banner) .acrylic-landing { padding-bottom: 0; }
-
-  body:has(.acrylic-landing) header.site .mobile-toggle {
-    width: auto;
-    min-width: 4.5rem;
-    height: 44px;
-    display: inline-flex;
-    border: 1px solid #aeb2aa;
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent !important;
-    color: #111210 !important;
-    font: 600 0.7rem/1 "Inter Variable", Arial, sans-serif;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  body:has(.acrylic-landing) header.site .mobile-toggle::before { content: 'Menu'; }
-  body:has(.acrylic-landing) header.site .mobile-toggle.open::before { content: 'Close'; }
-  body:has(.acrylic-landing) header.site .mobile-toggle__pulse { display: none; }
-  body:has(.acrylic-landing) .mobile-menu {
-    inset: 82px 0 auto;
-    height: auto;
-    min-height: 0;
-    padding: 1rem clamp(1.25rem, 4vw, 4.5rem) 2rem;
-    border-bottom: 1px solid #aeb2aa;
-    background: #f8f8f5 !important;
-    color: #111210 !important;
-    transform: translateY(-1rem);
-    transition: transform 180ms ease, opacity 160ms ease;
-  }
-  body:has(.acrylic-landing) .mobile-menu.open { transform: translateY(0); }
-  body:has(.acrylic-landing) .mobile-menu__list { padding: 0; gap: 0; }
-  body:has(.acrylic-landing) .mobile-menu__link { min-height: 52px; padding: 0; border-bottom: 1px solid #c7cac3; color: #111210; font: 600 0.72rem/1 "Inter Variable", Arial, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; }
-  body.mobile-menu-open:has(.acrylic-landing) header.site { border-bottom: 1px solid #c7cac3 !important; background: #e9eae6 !important; }
-  body.mobile-menu-open:has(.acrylic-landing) header.site,
-  body.mobile-menu-open:has(.acrylic-landing) header.site .navbar,
-  body.mobile-menu-open:has(.acrylic-landing) header.site .site-brand { color: #111210 !important; }
 
   .acrylic-section { padding-block: 4.5rem; }
   .acrylic-hero { min-height: calc(100svh - var(--header-height)); }

@@ -1,5 +1,7 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next';
+import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/inter';
 import '@/styles/tokens.css';
 import './globals.css';
 import '@/styles/header.css';

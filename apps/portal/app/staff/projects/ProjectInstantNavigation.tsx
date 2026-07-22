@@ -28,6 +28,10 @@ export default function ProjectInstantNavigationProvider({ children }: { childre
   }, [router]);
 
   useEffect(() => {
+    setInstantView(null);
+  }, [children]);
+
+  useEffect(() => {
     const handlePopState = () => {
       if (window.location.pathname === '/staff/projects') {
         setInstantView(null);

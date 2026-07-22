@@ -9,9 +9,9 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 - Route-local semantic colour, type, layout, and responsive tokens: `apps/marketing/app/%5F%5Ffoundation/marketing/catalogue.module.css`.
 - Reusable primitives, controls, and editorial patterns: `apps/marketing/components/marketing-foundation/`.
 - Live catalogue: `/__foundation/marketing`, implemented by the escaped Next.js route folder `apps/marketing/app/%5F%5Ffoundation/marketing/`.
-- Route-local fonts: Instrument Sans and Inter, loaded by the foundation layout only.
+- Shared header fonts: Instrument Sans and Inter, loaded by the public root layout; foundation routes use the same families.
 
-Public marketing tokens, global CSS, navigation, footer, homepage components, content owners, integrations, and routes remain outside this foundation and must retain their established presentation and behavior unless a later task explicitly approves migration.
+Public content owners, integrations, footer, and route layouts remain outside this foundation unless a separate task explicitly approves migration. The shared public header is an approved site-wide adoption.
 
 Use Instrument Sans for display text and Inter for body, navigation, forms, and technical information. Keep corners square, borders and dividers at 1px, shadows absent, and use olive green as the single action and conversion accent.
 
@@ -29,7 +29,7 @@ The public root layout still renders its normal chrome structurally. Route-local
 
 ## Public Boundary
 
-The following files are explicitly not foundation owners and must not be changed as a side effect of catalogue work:
+The following files are not catalogue owners and must not be changed as a side effect of catalogue-only work:
 
 - `apps/marketing/styles/tokens.css`
 - `apps/marketing/app/globals.css`
@@ -38,13 +38,13 @@ The following files are explicitly not foundation owners and must not be changed
 - `apps/marketing/components/SiteFooter.tsx`
 - `apps/marketing/components/home/**`
 
-Analytics, consent, pixels, structured data, project content, reviews, enquiry flows, and all existing public-route behavior remain untouched. A future migration requires its own approval and focused regression plan.
+Analytics, consent, pixels, structured data, project content, reviews, and enquiry flows remain untouched. Public-route migrations require their own approval and focused regression plan.
 
 ## Approved Public Adoption
 
 `/acrylic-roof-pergolas-auckland` is the first approved route-scoped adoption. It imports the foundation fonts and reusable `Container`, `Section`, `Heading`, `Eyebrow`, `Text`, `Button`, `TextLink`, and `ProcessSteps` exports, while its specialised tint comparison, project proof, FAQ, and enquiry form remain route-owned.
 
-The route defines the same semantic tokens locally and may restyle the existing global header and mobile-menu chrome only while `.acrylic-landing` is present. Its approved copy, canonical URL, metadata, FAQ schema, project links, attribution, secure attachment upload, enquiry API contract, consent behavior, and form-state logic remain owned by the landing page and existing marketing integrations. Homepage and other public-route presentation remain outside this adoption.
+The route defines the same semantic page tokens locally. Its approved copy, canonical URL, metadata, FAQ schema, project links, attribution, secure attachment upload, enquiry API contract, consent behavior, and form-state logic remain owned by the landing page and existing marketing integrations.
 
 The ten-route SEO landing-page programme is the second approved adoption. It uses the config-driven owners in `apps/marketing/components/seo-landing/` for the page shell, editorial blocks, responsive comparison matrix, structured data, conversion section and route-configured enquiry copy. Route content and metadata remain in each route folder, while the existing enquiry API, attachment, attribution, privacy and conversion-event contracts remain unchanged.
 
@@ -56,9 +56,11 @@ Guide card numbers follow their displayed reading order across the three chapter
 
 The directory is self-canonical, indexable, included in the public sitemap and linked from the existing footer. Its footer change is limited to one discovery link; the established footer layout, reviews, social links and contact action are unchanged. The route retains the same square-cornered, rule-led foundation and `#4f5748` olive accent as the programme pages. On desktop, its 50/50 hero split shares the viewport centreline with the midpoint between Projects and Products in the navigation.
 
-The ten programme routes and `/pergola-guides` use the foundation navigation-state contract on desktop. At the top of the page, the hero begins at the viewport edge beneath a transparent header with white navigation and a fine light rule, fills at least one viewport, and keeps the following section below the fold. The shared desktop navigation is centred on the midpoint of the space between Projects and Products rather than on the unequal outer link widths. After a deliberate scroll, the header returns to the solid canvas, dark text and blur treatment. At 900px and below, the established solid collapsed header and mobile menu remain unchanged; the hero begins below that header. Keep the hero-overlay behavior route-scoped in the shared header and landing-page CSS rather than changing homepage or unrelated public routes.
+The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` estimate action, and a 64px solid collapsed mobile state. Its desktop navigation is centred on the midpoint of the space between Projects and Products rather than on the unequal outer link widths. The mobile menu keeps body scroll locked, moves focus into the menu, closes with Escape, and returns focus to its trigger.
 
-The public homepage remains outside this adoption and retains its established implementation.
+The ten programme routes and `/pergola-guides` additionally use the approved hero-overlay state on desktop. At the top of those pages, the hero begins at the viewport edge beneath a transparent header with white navigation and a fine light rule, fills at least one viewport, and keeps the following section below the fold. After a deliberate scroll, the header returns to the solid canvas, dark text and blur treatment. At 900px and below the header stays solid and the hero begins below it. Keep transparent overlap limited to routes listed by the shared header; all other public routes use the same new header in its solid state.
+
+The public homepage content and layout remain on their established implementation; only its shared header presentation is part of this adoption.
 
 ## Verification
 
@@ -66,6 +68,6 @@ The public homepage remains outside this adoption and retains its established im
 - `npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false`
 - `npm run test:marketing:browser`
 - `npm run build:marketing`
-- `git diff --quiet HEAD -- <public-boundary-files>` to prove public presentation source parity.
+- Shared-header Playwright coverage at desktop and mobile widths, including geometry, green accent, keyboard focus, and representative public-route screenshots.
 
-The Playwright lane checks the standalone catalogue and unchanged homepage plus every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity. The hero-navigation matrix additionally proves every programme route has true desktop image/header overlap, no canvas gap at the fold, a viewport-centred Projects/Products gap, the guide hero split on that same centreline, transparent top and solid scrolled states, and the unchanged solid collapsed treatment at tablet and mobile widths.
+The Playwright lane checks the standalone catalogue, shared header, homepage, every SEO programme route and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity. The hero-navigation matrix additionally proves every programme route has true desktop image/header overlap, no canvas gap at the fold, a viewport-centred Projects/Products gap, the guide hero split on that same centreline, transparent top and solid scrolled states, and the solid collapsed treatment at tablet and mobile widths.

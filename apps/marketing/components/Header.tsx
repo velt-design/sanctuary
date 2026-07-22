@@ -12,8 +12,8 @@ import {
 
 const mobileNavItems = [
   { href: '/', label: 'Home' },
-  { href: '/products', label: 'Products' },
   { href: '/projects', label: 'Projects' },
+  { href: '/products', label: 'Products' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -34,22 +34,6 @@ const heroOverlayRoutes = new Set([
   '/commercial-pergolas-auckland',
 ]);
 
-function DesktopQuickEstimateCta({ disableExpand }: { disableExpand?: boolean }) {
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    if (disableExpand) return;
-    const timerId = window.setTimeout(() => setExpanded(true), 500);
-    return () => window.clearTimeout(timerId);
-  }, [disableExpand]);
-
-  return (
-    <Link href="/contact" className={`nav-cta ${expanded ? 'expanded' : ''}`}>
-      <span className="nav-cta__label">Quick Estimate</span>
-    </Link>
-  );
-}
-
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -60,6 +44,8 @@ export default function Header() {
   const isStartRoute = pathname?.startsWith('/start') ?? false;
   const isHeroOverlayRoute = heroOverlayRoutes.has(pathname ?? '');
   const startModalSuppressedRef = useRef(false);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
+  const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
   const scrollStateRef = useRef({
     lastY: 0,
     upDelta: 0,
@@ -225,11 +211,13 @@ export default function Header() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMobileMenuOpen(false);
+        mobileToggleRef.current?.focus();
       }
     };
 
     if (mobileMenuOpen) {
       document.addEventListener('keydown', handleKeyDown);
+      window.requestAnimationFrame(() => firstMobileLinkRef.current?.focus());
     }
 
     return () => document.removeEventListener('keydown', handleKeyDown);
@@ -278,6 +266,7 @@ export default function Header() {
     <>
       <header
         className={headerClassName}
+        data-header-ui="architectural-editorial"
         data-hero-navigation={isHeroOverlayRoute ? (heroHeaderScrolled ? 'solid' : 'overlay') : undefined}
       >
         <div className="container navbar">
@@ -305,11 +294,11 @@ export default function Header() {
             </div>
           </nav>
           <div className="header-actions">
-            <DesktopQuickEstimateCta
-              key={pathname}
-              disableExpand={typeof pathname === 'string' && pathname.startsWith('/contact')}
-            />
+            <Link href="/contact" className="nav-cta">
+              <span className="nav-cta__label">Quick Estimate</span>
+            </Link>
             <button
+              ref={mobileToggleRef}
               type="button"
               className={`mobile-toggle ${mobileMenuOpen ? 'open' : ''}`}
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -331,9 +320,10 @@ export default function Header() {
         >
           <nav aria-label="Mobile primary" className="mobile-nav">
             <ul className="mobile-menu__list">
-              {mobileNavItems.map((item) => (
+              {mobileNavItems.map((item, index) => (
                 <li key={item.href}>
                   <Link
+                    ref={index === 0 ? firstMobileLinkRef : undefined}
                     href={item.href}
                     className="mobile-menu__link"
                     aria-current={typeof pathname === 'string' && pathname === item.href ? 'page' : undefined}

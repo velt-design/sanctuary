@@ -242,6 +242,28 @@ body:has(.contact-page.contact-dark) header.site .site-brand{
   color:#f5f6f7 !important;
 }
 
+@media (max-width:900px){
+  body:has(.contact-page.contact-dark) header.site .mobile-toggle{
+    border-color:rgba(245,246,247,.58);
+    color:#f5f6f7 !important;
+  }
+  body:has(.contact-page.contact-dark) header.site .mobile-toggle:focus-visible{
+    outline-color:#f5f6f7;
+  }
+  body.mobile-menu-open:has(.contact-page.contact-dark) header.site{
+    background:#e9eae6 !important;
+    border-bottom-color:#c7cac3 !important;
+    color:#0f0f10 !important;
+  }
+  body.mobile-menu-open:has(.contact-page.contact-dark) header.site .site-brand,
+  body.mobile-menu-open:has(.contact-page.contact-dark) header.site .mobile-toggle{
+    color:#0f0f10 !important;
+  }
+  body.mobile-menu-open:has(.contact-page.contact-dark) header.site .mobile-toggle{
+    border-color:#aeb2aa;
+  }
+}
+
 /* Middle column: visually compress Style and Roof tiles along Y without shrinking contents */
 .contact-page.contact-dark .style-tile,
 .contact-page.contact-dark .roof-tile,

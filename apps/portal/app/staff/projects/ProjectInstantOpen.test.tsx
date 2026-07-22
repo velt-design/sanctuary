@@ -76,4 +76,22 @@ describe('useProjectInstantOpen', () => {
     expect(rendered.container.textContent).toContain('Open project');
     rendered.unmount();
   });
+
+  it('releases the instant project when the destination route children settle', () => {
+    const rendered = renderHarness();
+    act(() => rendered.container.querySelector('button')?.click());
+
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).not.toBeNull();
+
+    rendered.rerender(
+      <ProjectInstantNavigationProvider>
+        <div data-testid="settled-project">Settled project route</div>
+      </ProjectInstantNavigationProvider>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="optimistic-project"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="settled-project"]')?.textContent)
+      .toBe('Settled project route');
+    rendered.unmount();
+  });
 });

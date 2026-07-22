@@ -16,9 +16,6 @@
 
 .homepage-legacy-scope .container{max-width:1400px;width:100%;padding-inline:var(--g);margin:0 auto}
 
-/* Header position is handled globally as fixed; keep it that way on the homepage. */
-.homepage header.site{background:rgba(236,237,238,.9);backdrop-filter:blur(6px);border-bottom:var(--bw) solid var(--border); transform: translateY(calc(-1 * var(--headerHidePx, 0px))) translateZ(0); will-change: transform; transition: transform .25s ease, opacity .45s ease, background-color .5s ease, border-color .5s ease}
-.homepage.home-at-top header.site{ border-bottom: 0 !important; }
 .homepage .nav{display:flex;align-items:center;justify-content:space-between;height:var(--navH)}
 .homepage .brand{letter-spacing:.04em;font-size:14px}
 .homepage .menu{display:flex;gap:24px;align-items:center;font-size:14px;letter-spacing:.04em}

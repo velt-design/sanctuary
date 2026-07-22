@@ -98,7 +98,7 @@ for (const viewport of viewports) {
         await expect.poll(() => header.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
         await expect.poll(() => brand.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(15, 15, 16)');
       } else {
-        expect(topState!.hero.top, `${route} mobile hero should remain below the collapsed header`).toBeGreaterThanOrEqual(80);
+        expect(topState!.hero.top, `${route} mobile hero should remain below the collapsed header`).toBeGreaterThanOrEqual(63);
         expect(topState!.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
         expect(topState!.brandColor).toBe('rgb(15, 15, 16)');
         await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();

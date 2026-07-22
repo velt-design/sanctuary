@@ -44,15 +44,6 @@ export default function HomePageClient({
   useEffect(() => {
     document.body.classList.add('homepage');
 
-    const getScrollTop = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    const setAtTopClass = () => {
-      document.body.classList.toggle('home-at-top', getScrollTop() <= 0);
-    };
-
-    setAtTopClass();
-    window.addEventListener('scroll', setAtTopClass, { passive: true });
-    document.body.addEventListener('scroll', setAtTopClass, { passive: true });
-
     try {
       if (window.matchMedia('(min-width: 961px)').matches) {
         requestAnimationFrame(() => {
@@ -65,9 +56,6 @@ export default function HomePageClient({
 
     return () => {
       document.body.classList.remove('homepage');
-      document.body.classList.remove('home-at-top');
-      window.removeEventListener('scroll', setAtTopClass);
-      document.body.removeEventListener('scroll', setAtTopClass);
     };
   }, []);
 
