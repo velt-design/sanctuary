@@ -42,9 +42,8 @@ import {
   infillResultStatus,
   isInfillOpeningComplete,
 } from './infillConfiguratorPresentation';
-import PriceImpactPanel from './PriceImpactPanel';
-import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
-import ModuleViewsCard, {
+import type { StatusItem } from './QuoteStatusCard';
+import {
   canEditHouseFootprintPlan,
   type HouseFootprintEditorDragMeta,
   type HouseFootprintHandleId,
@@ -101,8 +100,6 @@ import {
   toNumber,
 } from './calculatorInputs';
 import { useCalculatorDraftSession } from './useCalculatorDraftSession';
-import CalculatorModuleNavigator from './CalculatorModuleNavigator';
-import CalculatorJobTemplatePicker from './CalculatorJobTemplatePicker';
 import { applyCalculatorJobTemplate, type CalculatorJobTemplateKey } from './calculatorJobTemplates';
 import {
   addCalculatorModule,
@@ -141,10 +138,9 @@ import {
   type CalculatorQuoteStatusActionKey,
 } from './calculatorQuoteStatusUi';
 import { CalculatorInfillTile } from './CalculatorInfillOverview';
-import CalculatorSaveDialogs, { type SaveDialogSummary } from './CalculatorSaveDialogs';
+import type { SaveDialogSummary } from './CalculatorSaveDialogs';
 import { buildCalculatorIssues } from './calculatorIssueNavigation';
-import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
-import CalculatorConfigurationForm from './CalculatorConfigurationForm';
+import type { CalculatorUiMode } from './CalculatorCommandBar';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import { buildCalculatorSiteFields } from './calculatorSiteFields';
 import { buildCalculatorStructureFields } from './calculatorStructureFields';
@@ -152,16 +148,9 @@ import {
   buildCalculatorContextFields,
   buildCalculatorWorkflowFields,
 } from './calculatorWorkflowFields';
-import CalculatorPricingSummary, { type CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
-import CalculatorItemPricingBreakdown from './CalculatorItemPricingBreakdown';
+import type { CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
 import { useCalculatorPricingPreview } from './calculatorPricingPreview';
-import CalculatorActualCostReview from './CalculatorActualCostReview';
-import {
-  CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX,
-  useCalculatorPreviewSplit,
-} from './useCalculatorPreviewSplit';
-import CalculatorProjectPicker from './CalculatorProjectPicker';
-import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
+import { useCalculatorPreviewSplit } from './useCalculatorPreviewSplit';
 import { buildCalculatorPricingComparison } from './calculatorPricingComparison';
 import {
   deriveCalculatorResultFreshness,
@@ -174,10 +163,10 @@ import {
   type CalculatorSaveContext,
 } from './useCalculatorSaveController';
 import { useCalculatorMaterialsDebug } from './useCalculatorMaterialsDebug';
-import CalculatorPreviewDetails from './CalculatorPreviewDetails';
 import { useCalculatorInfillCostComparison } from './useCalculatorInfillCostComparison';
 import { useCalculatorInfillActions } from './useCalculatorInfillActions';
-import CalculatorInfillWorkspace, { type CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
+import CalculatorWorkspaceView, { type CalculatorWorkspaceViewProps } from './CalculatorWorkspaceView';
+import type { CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
   resolveCalculatorWorkspaceRoute,
   type CalculatorProjectWorkspace,
@@ -1968,191 +1957,127 @@ export default function CalculatorGridClient({
     },
   };
 
-  const CalculatorRoot = workspace ? 'section' : 'main';
+  const workspaceViewProps: CalculatorWorkspaceViewProps = {
+    embedded: Boolean(workspace),
+    commandBar: {
+      variant: workspace ? 'embedded' : 'standalone',
+      designNavigation: workspace?.designNavigation,
+      projectLabel: project ? project.projectName ?? project.name ?? 'Select project' : 'Select project',
+      isEditingDesign,
+      activeModuleLabel,
+      uiMode,
+      onUiModeChange: setUiMode,
+      resultFreshness,
+      localDraftStatus,
+      blockerCount: quoteStatusUi.blockerCount,
+      onSelectProject: workspace ? undefined : () => setProjectPickerOpen(true),
+      saveLabel: generateField?.actionLabel ?? 'Save',
+      saveDisabled: !generateField || Boolean(generateField.disabled),
+      onSave: () => void generateField?.onAction?.(),
+      saveError: generateField?.error,
+    },
+    previewSplit,
+    moduleNavigator: {
+      model: moduleNavigatorModel,
+      pergolas,
+      moduleCount: values.modules.length,
+      onSelectModule: setActiveModuleIndex,
+      onAddModule: handleAddModule,
+      onAddPergola: handleAddPergola,
+      onRenamePergola: handleRenamePergola,
+      onDuplicateModule: handleDuplicateModule,
+      onMoveModule: handleMoveModule,
+      onRemoveModule: handleRemoveModule,
+    },
+    pricingSummary: pricingSummaryProps,
+    jobTemplatePicker: { onApply: handleApplyJobTemplate },
+    configurationForm: { fields: schema, isAdvancedUi },
+    resultFreshness,
+    pricingPreview,
+    actualCostEstimateId: canViewInternalCosts && isEditingDesign ? activeEditEstimateId : null,
+    moduleViews: {
+      moduleLabel: activeModuleLabel,
+      view: moduleViewsTab,
+      onViewChange: setModuleViewsTab,
+      status: moduleViewsStatus,
+      statusDetail: moduleViewsStatusDetail,
+      planModel: modulePlanModel,
+      sectionModel: moduleSectionModel,
+      footprintEditor: canEditActiveHouseFootprint ? {
+        available: true,
+        isEditing: isFootprintEditing,
+        allowAttachmentSideCanvasSelect: true,
+        allowResizeEdgeDrag: true,
+        hoveredAttachmentSide: footprintHoveredAttachmentSide,
+        hoveredHandleId: footprintHoveredHandleId,
+        activeHandleId: footprintActiveHandleId,
+        onStartEditing: startFootprintEditing,
+        onDoneEditing: stopFootprintEditing,
+        onAttachmentSideHover: setFootprintHoveredAttachmentSide,
+        onAttachmentSideSelect: handleFootprintAttachmentSideSelect,
+        onHandleHover: setFootprintHoveredHandleId,
+        onHandleDragStart: handleFootprintDragStart,
+        onPresetSelect: handleFootprintPresetSelect,
+        onRotate: handleFootprintRotate,
+        onSvgMount: handleFootprintSvgMount,
+      } : undefined,
+    },
+    priceImpact: canViewInternalCosts ? {
+      diff: impactDiff,
+      isAdvancedUi,
+      onResetBaseline: resetImpactBaseline,
+    } : null,
+    quoteStatus: { items: statusItems },
+    previewDetails: {
+      warnings: uiWarnings,
+      onJumpToWarning: (warning) => jumpToInfillWarningGlobal(warning.infillId, warning.warning),
+      bomLines: bomPreview,
+      canViewInternalCosts,
+      materialsEx,
+      isAdvancedUi,
+      materialsDebug,
+      labourActions: labourPreview,
+      structureRows: structureOutputRows,
+    },
+    infillWorkspace: infillWorkspaceProps,
+    saveDialogs: {
+      issuesOpen,
+      issues,
+      onCloseIssues: closeIssues,
+      onIssueClick: selectIssue,
+      confirmOpen,
+      onCloseConfirm: closeSaveConfirmation,
+      saveConfirmation: {
+        isEditingDesign,
+        canViewInternalCosts,
+        summary: saveDialogSummary,
+        pricingComparison,
+        warnings: { uiWarnings, criticalUiWarnings, reviewUiWarnings, infoUiWarnings },
+        confirmAcknowledgeWarnings,
+        pricingPreserveReason,
+        confirmRequestDesign,
+        confirmRequestDesignPriority,
+        generateError,
+        isGenerating,
+        hasStatusBlockers,
+        hasResult: resultFreshness === 'current',
+        onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
+        onPricingPreserveReasonChange: setPricingPreserveReason,
+        onConfirmRequestDesignChange: setConfirmRequestDesignChecked,
+        onConfirmRequestDesignPriorityChange: setConfirmRequestDesignPriority,
+        onSave: () => void saveConfirmed(),
+        onRepriceLatest: () => void repriceLatest(),
+      },
+    },
+    saveOutcome: { outcome: saveOutcome, onDismiss: dismissSaveOutcome },
+    projectPicker: workspace ? null : {
+      open: projectPickerOpen,
+      hostKey,
+      selectedProjectId: projectId,
+      onClose: () => setProjectPickerOpen(false),
+      onSelect: handleProjectSelect,
+    },
+  };
 
-  return (
-    <CalculatorRoot
-      className={`${styles.page} ${styles.previewPage}${workspace ? ` ${styles.embeddedPage}` : ''}${previewSplit.isDragging ? ` ${styles.previewPageResizing}` : ''}`}
-      data-calculator-workspace={workspace ? 'project' : 'standalone'}
-      data-ui-foundation-consumer="calculator"
-      data-ui-density="compact"
-    >
-      <div className={styles.previewFrame}>
-        <CalculatorCommandBar
-          variant={workspace ? 'embedded' : 'standalone'}
-          designNavigation={workspace?.designNavigation}
-          projectLabel={project ? project.projectName ?? project.name ?? 'Select project' : 'Select project'}
-          isEditingDesign={isEditingDesign}
-          activeModuleLabel={activeModuleLabel}
-          uiMode={uiMode}
-          onUiModeChange={setUiMode}
-          resultFreshness={resultFreshness}
-          localDraftStatus={localDraftStatus}
-          blockerCount={quoteStatusUi.blockerCount}
-          onSelectProject={workspace ? undefined : () => setProjectPickerOpen(true)}
-          saveLabel={generateField?.actionLabel ?? 'Save'}
-          saveDisabled={!generateField || Boolean(generateField.disabled)}
-          onSave={() => void generateField?.onAction?.()}
-          saveError={generateField?.error}
-        />
-        <div
-          className={styles.split}
-          ref={previewSplit.splitRef}
-          style={previewSplit.splitStyle}
-          data-calculator-split="true"
-        >
-          <div className={styles.leftCol}>
-            <div className={styles.configurationWorkspace} data-calculator-configuration-workspace>
-              <CalculatorModuleNavigator
-                model={moduleNavigatorModel}
-                pergolas={pergolas}
-                moduleCount={values.modules.length}
-                onSelectModule={setActiveModuleIndex}
-                onAddModule={handleAddModule}
-                onAddPergola={handleAddPergola}
-                onRenamePergola={handleRenamePergola}
-                onDuplicateModule={handleDuplicateModule}
-                onMoveModule={handleMoveModule}
-                onRemoveModule={handleRemoveModule}
-              />
-              <CalculatorPricingSummary {...pricingSummaryProps} variant="compact" />
-              <div className={styles.configurationMain} data-calculator-configuration-main>
-                <CalculatorJobTemplatePicker onApply={handleApplyJobTemplate} />
-                <CalculatorConfigurationForm fields={schema} isAdvancedUi={isAdvancedUi} />
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className={previewSplit.isDragging ? `${styles.columnResizeHandle} ${styles.columnResizeHandleActive}` : styles.columnResizeHandle}
-            onPointerDown={previewSplit.onPointerDown}
-            onPointerMove={previewSplit.onPointerMove}
-            onPointerUp={previewSplit.onPointerUp}
-            onPointerCancel={previewSplit.onPointerCancel}
-            onLostPointerCapture={previewSplit.onLostPointerCapture}
-            onKeyDown={previewSplit.onKeyDown}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize preview panel width"
-            aria-valuemin={CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX}
-            aria-valuemax={previewSplit.rightWidthMaxPx}
-            aria-valuenow={previewSplit.rightWidthPx}
-            title="Drag to resize preview panel"
-          />
-
-          <aside
-            className={resultFreshness === 'current' ? styles.rightCol : `${styles.rightCol} ${styles.rightColStale}`}
-            aria-label="Preview outputs"
-            data-result-freshness={resultFreshness}
-          >
-            <div className={styles.previewSummary}>
-              <CalculatorPricingSummary {...pricingSummaryProps} />
-              <CalculatorItemPricingBreakdown preview={pricingPreview} />
-              {canViewInternalCosts && isEditingDesign ? <CalculatorActualCostReview estimateId={activeEditEstimateId} /> : null}
-              <ModuleViewsCard
-                moduleLabel={activeModuleLabel}
-                view={moduleViewsTab}
-                onViewChange={setModuleViewsTab}
-                status={moduleViewsStatus}
-                statusDetail={moduleViewsStatusDetail}
-                planModel={modulePlanModel}
-                sectionModel={moduleSectionModel}
-                footprintEditor={
-                  canEditActiveHouseFootprint
-                    ? {
-                        available: true,
-                        isEditing: isFootprintEditing,
-                        allowAttachmentSideCanvasSelect: true,
-                        allowResizeEdgeDrag: true,
-                        hoveredAttachmentSide: footprintHoveredAttachmentSide,
-                        hoveredHandleId: footprintHoveredHandleId,
-                        activeHandleId: footprintActiveHandleId,
-                        onStartEditing: startFootprintEditing,
-                        onDoneEditing: stopFootprintEditing,
-                        onAttachmentSideHover: setFootprintHoveredAttachmentSide,
-                        onAttachmentSideSelect: handleFootprintAttachmentSideSelect,
-                        onHandleHover: setFootprintHoveredHandleId,
-                        onHandleDragStart: handleFootprintDragStart,
-                        onPresetSelect: handleFootprintPresetSelect,
-                        onRotate: handleFootprintRotate,
-                        onSvgMount: handleFootprintSvgMount,
-                      }
-                    : undefined
-                }
-              />
-
-              {canViewInternalCosts ? (
-                <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
-              ) : null}
-
-              <QuoteStatusCard items={statusItems} />
-
-            </div>
-
-            <CalculatorPreviewDetails
-              warnings={uiWarnings}
-              onJumpToWarning={(warning) => jumpToInfillWarningGlobal(warning.infillId, warning.warning)}
-              bomLines={bomPreview}
-              canViewInternalCosts={canViewInternalCosts}
-              materialsEx={materialsEx}
-              isAdvancedUi={isAdvancedUi}
-              materialsDebug={materialsDebug}
-              labourActions={labourPreview}
-              structureRows={structureOutputRows}
-            />
-          </aside>
-        </div>
-      </div>
-
-      <CalculatorInfillWorkspace {...infillWorkspaceProps} />
-      <CalculatorSaveDialogs
-        issuesOpen={issuesOpen}
-        issues={issues}
-        onCloseIssues={closeIssues}
-        onIssueClick={selectIssue}
-        confirmOpen={confirmOpen}
-        onCloseConfirm={closeSaveConfirmation}
-        saveConfirmation={{
-          isEditingDesign,
-          canViewInternalCosts,
-          summary: saveDialogSummary,
-          pricingComparison,
-          warnings: {
-            uiWarnings,
-            criticalUiWarnings,
-            reviewUiWarnings,
-            infoUiWarnings,
-          },
-          confirmAcknowledgeWarnings,
-          pricingPreserveReason,
-          confirmRequestDesign,
-          confirmRequestDesignPriority,
-          generateError,
-          isGenerating,
-          hasStatusBlockers,
-          hasResult: resultFreshness === 'current',
-          onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
-          onPricingPreserveReasonChange: setPricingPreserveReason,
-          onConfirmRequestDesignChange: setConfirmRequestDesignChecked,
-          onConfirmRequestDesignPriorityChange: setConfirmRequestDesignPriority,
-          onSave: () => void saveConfirmed(),
-          onRepriceLatest: () => void repriceLatest(),
-        }}
-      />
-      <CalculatorSaveOutcomeDialog
-        outcome={saveOutcome}
-        onDismiss={dismissSaveOutcome}
-      />
-      {!workspace ? (
-        <CalculatorProjectPicker
-          open={projectPickerOpen}
-          hostKey={hostKey}
-          selectedProjectId={projectId}
-          onClose={() => setProjectPickerOpen(false)}
-          onSelect={handleProjectSelect}
-        />
-      ) : null}
-    </CalculatorRoot>
-  );
+  return <CalculatorWorkspaceView {...workspaceViewProps} />;
 }
