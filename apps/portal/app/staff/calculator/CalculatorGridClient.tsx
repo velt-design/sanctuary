@@ -11,18 +11,8 @@ import {
   useState,
 } from 'react';
 import styles from './CalculatorGrid.module.css';
-import type {
-  CalculatorInputs,
-  CalculatorModuleInputs,
-} from '@/lib/types/calculator';
-import {
-  supportsHouseFootprints,
-} from '@/lib/types/calculator';
-import type { EstimateDetail } from '@/lib/estimates/types';
+import { supportsHouseFootprints } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
-import { apiJson } from '@/lib/repo/apiClient';
-import { getProject } from '@/lib/repo/projectsRepo';
-import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import InfillPreview from './InfillPreview';
@@ -39,30 +29,15 @@ import {
   type InfillUiState,
 } from './infillCompute';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import { qk } from '@/lib/queries/keys';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { buildSiteInputsFromCalculatorInputs } from '@/lib/estimates/costingPayload';
 import {
-  buildCalculatorDraftEntityKey,
-  buildEstimateEntityKey,
-  isLocalEstimateId,
-} from '@/lib/localFirst/portalEntities';
-import {
-  getLocalFirstWorkingCopy,
-  resolveLocalFirstId,
-} from '@/lib/localFirst/store';
-import {
-  calculatorDraftSessionKey,
-  calculatorInputsFromEstimateDetail,
   getPitchForModule,
   makeDefaultModule,
-  normalizeBlindsStateForUi,
-  normalizeCalculatorInputsForUi,
   normalizeInfillsStateForUi,
   toNumber,
 } from './calculatorInputs';
 import { buildCalculatorModuleErrors } from './calculatorValidation';
-import { useCalculatorDraftSession } from './useCalculatorDraftSession';
 import { applyCalculatorJobTemplate, type CalculatorJobTemplateKey } from './calculatorJobTemplates';
 import {
   addCalculatorModule,
@@ -124,6 +99,7 @@ import { useCalculatorBlindsController } from './useCalculatorBlindsController';
 import { useCalculatorFlashingsController } from './useCalculatorFlashingsController';
 import { useCalculatorInputController } from './useCalculatorInputController';
 import { useCalculatorResultPresentation } from './useCalculatorResultPresentation';
+import { useCalculatorWorkspaceSession } from './useCalculatorWorkspaceSession';
 import CalculatorWorkspaceView, { type CalculatorWorkspaceViewProps } from './CalculatorWorkspaceView';
 import type { CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
@@ -159,10 +135,7 @@ export default function CalculatorGridClient({
   );
   const {
     createNewEstimate,
-    editEstimateId,
-    fromEstimateId,
     projectId,
-    shouldOpenActiveDraft,
   } = workspaceRoute;
   const projectEstimatesQuery = useQuery({
     ...estimateMetasByProjectQueryOptions(hostKey, projectId),
@@ -173,40 +146,37 @@ export default function CalculatorGridClient({
     () => projectEstimates.find((estimate) => estimate.isActiveDraft) ?? null,
     [projectEstimates],
   );
-  const [editSessionEstimateId, setEditSessionEstimateId] = useState(() => editEstimateId.trim());
-  const activeEditEstimateId = editSessionEstimateId || editEstimateId.trim();
-  const isEditingDesign = activeEditEstimateId.length > 0;
-  const draftSessionKey = useMemo(
-    () => calculatorDraftSessionKey(projectId, fromEstimateId, activeEditEstimateId),
-    [activeEditEstimateId, fromEstimateId, projectId],
-  );
-  const draftEntityKey = useMemo(() => buildCalculatorDraftEntityKey(draftSessionKey), [draftSessionKey]);
-  const [loadedEstimateDetail, setLoadedEstimateDetail] = useState<EstimateDetail | null>(null);
   const {
+    activeEditEstimateId,
+    setEditSessionEstimateId,
+    isEditingDesign,
+    draftSessionKey,
+    draftEntityKey,
+    loadedEstimateDetail,
+    setLoadedEstimateDetail,
     values,
     setValues,
     activeModuleIndex,
     setActiveModuleIndex,
-    draftHydrated,
-    restoredFromLocalDraft,
     localDraftStatus,
-    acceptExternalDraft,
-  } = useCalculatorDraftSession({
-    draftEntityKey,
-    draftSessionKey,
-    awaitsExternalDraft: Boolean(activeEditEstimateId || fromEstimateId),
+    project,
+    setProject,
+    projectError,
+    draftNotice,
+  } = useCalculatorWorkspaceSession({
+    workspace,
+    route: workspaceRoute,
+    activeDraftEstimateMetaId: activeDraftEstimateMeta?.id ?? null,
+    hostKey,
+    searchParams,
+    router,
+    queryClient,
+    toast,
   });
-  const [project, setProject] = useState<Project | null>(null);
-  const [projectError, setProjectError] = useState<string | null>(null);
-  const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [uiMode, setUiMode] = useState<CalculatorUiMode>('basic');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
   const previewSplit = useCalculatorPreviewSplit();
-
-  useEffect(() => {
-    setLoadedEstimateDetail(null);
-  }, [draftEntityKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -230,132 +200,6 @@ export default function CalculatorGridClient({
   }, [uiMode]);
 
   const isAdvancedUi = uiMode === 'advanced';
-
-  useEffect(() => {
-    if (!projectId) {
-      setProject(null);
-      setProjectError(null);
-      return;
-    }
-
-    void (async () => {
-      const p = await getProject(projectId);
-      setProject(p);
-      if (!p) {
-        setProjectError('Project not found (use Projects in the header to create/select one).');
-        return;
-      }
-      setProjectError(null);
-      setValues((prev) => ({
-        ...prev,
-        projectName: p.projectName ?? p.name ?? prev.projectName,
-        quoteRef: p.quoteRef ?? prev.quoteRef,
-      }));
-    })();
-  }, [projectId]);
-
-  useEffect(() => {
-    const nextEditEstimateId = editEstimateId.trim();
-    if (!nextEditEstimateId && !workspace) return;
-    setEditSessionEstimateId(nextEditEstimateId);
-  }, [editEstimateId, workspace]);
-
-  useEffect(() => {
-    if (workspace) return;
-    if (!draftHydrated || !projectId || activeEditEstimateId || fromEstimateId) return;
-    if (restoredFromLocalDraft && !shouldOpenActiveDraft) return;
-    if (!activeDraftEstimateMeta) return;
-    const qs = new URLSearchParams(searchParams.toString());
-    qs.set('projectId', projectId);
-    qs.set('editEstimateId', activeDraftEstimateMeta.id);
-    qs.delete('fromEstimateId');
-    qs.delete('openActiveDraft');
-    router.replace(`/staff/calculator?${qs.toString()}`);
-  }, [activeDraftEstimateMeta, activeEditEstimateId, draftHydrated, fromEstimateId, projectId, restoredFromLocalDraft, router, searchParams, shouldOpenActiveDraft, workspace]);
-
-  useEffect(() => {
-    if (!draftHydrated) return;
-
-    if (!activeEditEstimateId && !fromEstimateId) {
-      setDraftNotice(null);
-      return;
-    }
-
-    void (async () => {
-      try {
-        if (activeEditEstimateId) {
-          const resolvedEditEstimateId = resolveLocalFirstId(activeEditEstimateId);
-          const cachedEstimate =
-            getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(activeEditEstimateId))?.data ??
-            (resolvedEditEstimateId && resolvedEditEstimateId !== activeEditEstimateId
-              ? getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(resolvedEditEstimateId))?.data
-              : null) ??
-            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, activeEditEstimateId)) ??
-            (resolvedEditEstimateId && resolvedEditEstimateId !== activeEditEstimateId
-              ? queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, resolvedEditEstimateId))
-              : null);
-
-          const estimate = cachedEstimate ?? (
-            await apiJson<{ estimate: EstimateDetail }>(
-              `/api/estimates/${encodeURIComponent(resolvedEditEstimateId || activeEditEstimateId)}`,
-              {
-                skipSaveTracking: true,
-              },
-            )
-          ).estimate;
-          if (!estimate) throw new Error('Design not found');
-          setLoadedEstimateDetail(estimate);
-          if (estimate.editability.isLocked) {
-            const msg = `Design ${estimate.versionLabel} is locked and can no longer be edited.`;
-            setDraftNotice(msg);
-            toast.error(msg);
-            if (projectId && !workspace) {
-              router.replace(
-                `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
-                  resolvedEditEstimateId || activeEditEstimateId,
-                )}`,
-              );
-            }
-            return;
-          }
-
-          if (restoredFromLocalDraft) {
-            setDraftNotice(`Restored unsaved edits for ${estimate.versionLabel}`);
-            return;
-          }
-
-          const draft = calculatorInputsFromEstimateDetail(estimate);
-          acceptExternalDraft(draft);
-          const msg =
-            isLocalEstimateId(estimate.id) || (resolvedEditEstimateId ?? activeEditEstimateId).startsWith('local-estimate:')
-              ? `Editing design ${estimate.versionLabel}. Changes will keep syncing in the background.`
-              : `Editing design ${estimate.versionLabel}`;
-          setDraftNotice(msg);
-          toast.success(msg);
-          return;
-        }
-
-        if (restoredFromLocalDraft) return;
-
-        const draft = await duplicateEstimateToDraft(fromEstimateId);
-        const normalizedDraft = normalizeCalculatorInputsForUi({
-          ...draft,
-          schemaVersion: 'v2',
-          modules: Array.isArray(draft.modules) ? draft.modules : [],
-          blinds: normalizeBlindsStateForUi((draft as any).blinds),
-        } as CalculatorInputs);
-
-        acceptExternalDraft(normalizedDraft);
-        const msg = `Draft design started from ${fromEstimateId}`;
-        setDraftNotice(msg);
-        toast.success(msg);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to start design revision';
-        setDraftNotice(msg);
-        toast.error(msg);
-      }
-    })();
-  }, [acceptExternalDraft, activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, restoredFromLocalDraft, router, toast, workspace]);
 
   const pergolas = useMemo(() => calculatorPergolaOptions(values), [values]);
   const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
