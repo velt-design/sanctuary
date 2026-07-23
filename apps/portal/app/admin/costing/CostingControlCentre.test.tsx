@@ -96,6 +96,13 @@ async function changeInput(input: HTMLInputElement, value: string) {
   });
 }
 
+async function changeTextarea(input: HTMLTextAreaElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
 describe('CostingControlCentre', () => {
   it('explains the safe first-use workflow without exposing technical IDs', () => {
     const rendered = renderIntoDocument(<CostingControlCentre initialOverview={{
@@ -185,6 +192,24 @@ describe('CostingControlCentre', () => {
     rendered.unmount();
   });
 
+  it('searches the material catalog by business name without exposing internal IDs', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(editorPayload('draft')), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    const rendered = renderIntoDocument(<CostingControlCentre initialOverview={overview('draft')} />);
+    await click(buttonByText(rendered.container, 'Continue draft v1'));
+    const search = rendered.container.querySelector('input[placeholder="Search by name, category or internal ID"]');
+    if (!(search instanceof HTMLInputElement)) throw new Error('Material search not found');
+
+    await changeInput(search, 'missing supplier product');
+
+    expect(rendered.container.textContent).toContain('0 shown · 0 changed');
+    expect(rendered.container.textContent).toContain('No materials match “missing supplier product”');
+    expect(rendered.container.textContent).not.toContain(materialId);
+    rendered.unmount();
+  });
+
   it('places server validation beside the affected business field', async () => {
     const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
       if (init?.method === 'PUT') {
@@ -255,6 +280,90 @@ describe('CostingControlCentre', () => {
     expect(rendered.container.textContent).toContain('Labour');
     expect(rendered.container.textContent).toContain('Overheads');
     expect(buttonByText(rendered.container, 'Continue to publish').disabled).toBe(false);
+    rendered.unmount();
+  });
+
+  it('saves, validates and refreshes the server-owned comparison', async () => {
+    const savedCandidate = structuredClone(config);
+    savedCandidate.overheads.crewDayHours = 9;
+    const savedPayload = editorPayload('draft', savedCandidate, {
+      diff: [{
+        path: 'overheads.crewDayHours',
+        before: config.overheads.crewDayHours,
+        after: 9,
+      }],
+      impact: [],
+    });
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        return new Response(JSON.stringify(savedPayload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url === '/api/admin/costing/configurations') {
+        return new Response(JSON.stringify(overview('draft')), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify(editorPayload('draft')), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderIntoDocument(<CostingControlCentre initialOverview={overview('draft')} />);
+    await click(buttonByText(rendered.container, 'Continue draft v1'));
+    await click(buttonByText(rendered.container, 'Overheads'));
+    await changeInput(labelledInput(rendered.container, 'Crew day length'), '9');
+    await click(buttonByText(rendered.container, 'Save & validate'));
+
+    expect(rendered.container.textContent).toContain('The comparison and impact preview are up to date.');
+    expect(buttonByText(rendered.container, 'Save & validate').disabled).toBe(true);
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/costing/configurations/11111111-1111-4111-8111-111111111111',
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    rendered.unmount();
+  });
+
+  it('requires a saved diff, audit note and explicit confirmation before publication', async () => {
+    const candidate = structuredClone(config);
+    candidate.materialRatesExGst[materialId] += 1;
+    const payload = editorPayload('draft', candidate, {
+      diff: [{
+        path: `materialRatesExGst.${materialId}`,
+        before: config.materialRatesExGst[materialId],
+        after: candidate.materialRatesExGst[materialId],
+      }],
+      impact: [],
+    });
+    const fetch = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const rendered = renderIntoDocument(<CostingControlCentre initialOverview={overview('draft')} />);
+    await click(buttonByText(rendered.container, 'Continue draft v1'));
+    await click(buttonByText(rendered.container, 'Review impact'));
+    await click(buttonByText(rendered.container, 'Continue to publish'));
+
+    const publish = buttonByText(rendered.container, 'Publish pricing version');
+    expect(publish.disabled).toBe(true);
+    const note = rendered.container.querySelector('textarea');
+    const confirmation = rendered.container.querySelector('label input[type="checkbox"]');
+    if (!(note instanceof HTMLTextAreaElement)) throw new Error('Audit note not found');
+    if (!(confirmation instanceof HTMLInputElement)) throw new Error('Confirmation not found');
+    await changeTextarea(note, 'Reviewed supplier rate and representative project impact.');
+    await act(async () => {
+      confirmation.click();
+    });
+
+    expect(publish.disabled).toBe(false);
+    expect(fetch.mock.calls.some(([url, init]) => (
+      String(url).endsWith('/publish') && (init as RequestInit | undefined)?.method === 'POST'
+    ))).toBe(false);
     rendered.unmount();
   });
 });

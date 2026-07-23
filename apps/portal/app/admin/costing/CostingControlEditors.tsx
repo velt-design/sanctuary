@@ -247,7 +247,15 @@ export function MaterialsEditor(props: SharedEditorProps & {
             </tbody>
           </table>
         </div>
-      ) : <EmptyChangedState />}
+      ) : (
+        <div className={styles.emptyInline}>
+          {props.showChangedOnly
+            ? 'No material rates differ from the active pricing configuration.'
+            : needle
+              ? `No materials match “${props.search.trim()}”. Try a broader name or category.`
+              : 'No material rates are available in this package manifest.'}
+        </div>
+      )}
     </div>
   );
 }
