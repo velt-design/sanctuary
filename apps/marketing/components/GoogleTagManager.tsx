@@ -1,4 +1,8 @@
+"use client";
+
 import Script from 'next/script';
+import { useConsent } from '@/components/ConsentProvider';
+import { toGtagConsentMode, type ConsentPreferences } from '@/lib/consent';
 
 const FALLBACK_GTM_CONTAINER_ID = 'GTM-W438QM7H';
 const GTM_CONTAINER_ID = process.env.NEXT_PUBLIC_GTM_CONTAINER_ID || FALLBACK_GTM_CONTAINER_ID;
@@ -8,34 +12,40 @@ function getContainerId(): string | null {
   return /^GTM-[A-Z0-9]+$/i.test(id) ? id : null;
 }
 
+export function shouldLoadGoogleTagManager(
+  consent: Pick<ConsentPreferences, 'analytics' | 'marketing'>,
+  hasStoredChoice: boolean,
+): boolean {
+  // GTM is a shared dispatcher. It may load after either relevant category is
+  // explicit, with the other category still denied in the consent-mode update.
+  return hasStoredChoice && (consent.analytics || consent.marketing);
+}
+
 export default function GoogleTagManager() {
   const containerId = getContainerId();
-  if (!containerId) return null;
+  const { consent, hasStoredChoice } = useConsent();
+  if (!containerId || !shouldLoadGoogleTagManager(consent, hasStoredChoice)) return null;
+
+  const consentMode = toGtagConsentMode(consent);
 
   return (
     <>
       <Script
-        id="sp-gtm-consent-default"
-        strategy="beforeInteractive"
+        id="sp-gtm-consent-before-load"
+        strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
 window.dataLayer = window.dataLayer || [];
 if (typeof window.gtag !== 'function') {
   window.gtag = function gtag(){ window.dataLayer.push(arguments); };
 }
-window.gtag('consent', 'default', {
-  analytics_storage: 'denied',
-  ad_storage: 'denied',
-  ad_user_data: 'denied',
-  ad_personalization: 'denied',
-  wait_for_update: 500
-});
+window.gtag('consent', 'update', ${JSON.stringify(consentMode)});
 `,
         }}
       />
       <Script
         id="sp-gtm"
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
 (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -47,21 +57,5 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         }}
       />
     </>
-  );
-}
-
-export function GoogleTagManagerNoScript() {
-  const containerId = getContainerId();
-  if (!containerId) return null;
-
-  return (
-    <noscript>
-      <iframe
-        src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(containerId)}`}
-        height="0"
-        width="0"
-        style={{ display: 'none', visibility: 'hidden' }}
-      />
-    </noscript>
   );
 }

@@ -14,15 +14,18 @@ const viewports = [
   { name: '390x844', width: 390, height: 844 },
 ];
 
-async function preparePage(page: Page) {
-  await page.addInitScript(() => {
+async function preparePage(
+  page: Page,
+  consent: { analytics: boolean; marketing: boolean } = { analytics: false, marketing: false },
+) {
+  await page.addInitScript((consent) => {
     window.localStorage.setItem('sp_consent_v1', JSON.stringify({
-      analytics: false,
-      marketing: false,
+      analytics: consent.analytics,
+      marketing: consent.marketing,
       updatedAt: new Date().toISOString(),
       version: 1,
     }));
-  });
+  }, consent);
 }
 
 function wordShingles(text: string, size = 10): Set<string> {
@@ -115,7 +118,7 @@ test('copy variant is materially original rather than a light rewrite', async ({
 
 test('copy variant enquiry keeps validation, API attribution and route-specific tracking', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await preparePage(page);
+  await preparePage(page, { analytics: true, marketing: false });
   let submittedBody: Record<string, unknown> | undefined;
   await page.route('**/api/enquiry', async (routeHandler) => {
     submittedBody = routeHandler.request().postDataJSON() as Record<string, unknown>;
@@ -124,6 +127,7 @@ test('copy variant enquiry keeps validation, API attribution and route-specific 
   await page.goto(route);
 
   const message = page.locator('#acrylic-enquiry-message');
+  await expect(message).toHaveCount(1);
   await message.fill('We want to use the deck for dinner without making the kitchen feel darker.');
   await page.getByRole('button', { name: 'Send my project details' }).click();
   await expect(page.getByText('Choose an enquiry type.')).toBeVisible();

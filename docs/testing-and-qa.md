@@ -25,6 +25,7 @@ npm run dev:portal
 npm run dev:worker
 npm run test
 npm run test:marketing
+npm run test:marketing:browser
 npm run test:email-provider
 npm run test:jobs
 npm run test:jobs:db-contract
@@ -38,6 +39,16 @@ npm run typecheck
 npm run typecheck:worker
 npm run lint
 ```
+
+Marketing public-boundary changes should run the unit/domain suite, marketing
+TypeScript and ESLint, the production build, and the relevant browser specs.
+`apps/marketing/lib/publicTokenExpiry.domain.test.ts` proves expired quote and
+invoice tokens cannot read or mutate downstream resources. Enquiry coverage
+includes durable signing limits, metadata/content/path validation, cleanup,
+safe errors, atomic retry/concurrency semantics, and the migration contract.
+`playwright/marketing.consent.spec.ts` observes real requests and fails if GTM,
+GA, Meta, ArchiPro, or a GTM noscript resource loads before the corresponding
+explicit consent.
 
 Portal readiness sweeps:
 

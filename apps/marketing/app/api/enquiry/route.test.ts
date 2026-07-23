@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TableName = 'audit_events' | 'contacts' | 'enquiry_requests' | 'estimates' | 'projects';
 type Row = Record<string, any>;
+const SUBMISSION_ID = 'ad5e5929-32f8-4af9-989a-4de73a4dc5a2';
+const UPLOAD_SESSION_TOKEN = 'valid-upload-session-token';
 
 const h = vi.hoisted(() => ({
   createClient: vi.fn(),
@@ -58,6 +60,11 @@ function makeDb() {
     estimates: ['estimate-1'],
     projects: ['project-1'],
   };
+  const intakeBySubmission = new Map<string, {
+    contact_id: string;
+    project_id: string;
+    enquiry_request_id: string;
+  }>();
 
   class Query {
     private op: 'select' | 'insert' = 'select';
@@ -140,11 +147,51 @@ function makeDb() {
   }
 
   const client = {
+    rpc: vi.fn(async (name: string, args: Record<string, any>) => {
+      if (name === 'marketing_public_rate_limit_take') {
+        return { data: [{ allowed: true, retry_after_seconds: 0 }], error: null };
+      }
+      if (name === 'marketing_enquiry_intake') {
+        const existing = intakeBySubmission.get(args.p_submission_id);
+        if (existing) return { data: [{ ...existing, already_existed: true }], error: null };
+        const input = args.p_payload;
+        const contact = {
+          id: 'contact-1',
+          name: input.name,
+          email: input.email || null,
+          phone: input.phone,
+        };
+        const project = {
+          id: 'project-1',
+          contact_id: contact.id,
+          name: `${input.name} - ${input.suburb || 'Project'}`,
+        };
+        const enquiry = {
+          id: 'enquiry-1',
+          submission_id: args.p_submission_id,
+          contact_id: contact.id,
+          project_id: project.id,
+          raw_payload: input.rawPayload,
+          files: input.files,
+        };
+        db.contacts.push(contact);
+        db.projects.push(project);
+        db.enquiry_requests.push(enquiry);
+        const result = {
+          contact_id: contact.id,
+          project_id: project.id,
+          enquiry_request_id: enquiry.id,
+        };
+        intakeBySubmission.set(args.p_submission_id, result);
+        return { data: [{ ...result, already_existed: false }], error: null };
+      }
+      return { data: null, error: new Error(`Unexpected RPC: ${name}`) };
+    }),
     from: vi.fn((table: TableName) => new Query(table)),
     storage: {
       from: vi.fn(() => ({
         download: vi.fn(async () => ({
-          data: { arrayBuffer: async () => new TextEncoder().encode('PDFDATA').buffer },
+          data: { arrayBuffer: async () => new TextEncoder().encode('%PDF-test').buffer },
           error: null,
         })),
         createSignedUrl: vi.fn(async (path: string) => ({
@@ -178,6 +225,7 @@ describe('POST /api/enquiry attribution', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          submissionId: SUBMISSION_ID,
           enquiryType: 'residential',
           name: 'Taylor',
           phone: '021000000',
@@ -256,13 +304,20 @@ describe('POST /api/enquiry attribution', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          submissionId: SUBMISSION_ID,
+          uploadSessionToken: UPLOAD_SESSION_TOKEN,
           enquiryType: 'professional',
           name: 'Pat',
           email: 'pat@example.com',
           phone: '021000000',
           suburb: 'Ponsonby',
           company: 'BuildCo',
-          files: [{ path: 'pending/abc/0-plan.pdf', name: 'plan.pdf', size: 2048, type: 'application/pdf' }],
+          files: [{
+            path: `pending/${SUBMISSION_ID}/0-plan.pdf`,
+            name: 'plan.pdf',
+            size: 9,
+            type: 'application/pdf',
+          }],
           source: 'website',
           page: '/contact',
           honeypot: '',
@@ -274,7 +329,7 @@ describe('POST /api/enquiry attribution', () => {
     expect(sendCustomerAutoresponder).toHaveBeenCalledTimes(1);
     const [, options] = (sendCustomerAutoresponder as any).mock.calls[0];
     expect(options).toEqual({
-      attachments: [{ filename: 'plan.pdf', content: Buffer.from('PDFDATA').toString('base64') }],
+      attachments: [{ filename: 'plan.pdf', content: Buffer.from('%PDF-test').toString('base64') }],
       idempotencyKey: 'website:autoresponder:enquiry-1',
     });
     expect(h.calculateCostV1).not.toHaveBeenCalled();
@@ -290,6 +345,7 @@ describe('POST /api/enquiry attribution', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
         enquiryType: 'residential',
         name: 'Alex',
         phone: '021000000',
@@ -308,5 +364,101 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.estimates[0]?.inputs.modules[0]?.postCount).toBe('2');
     expect(db.estimates[0]?.outputs.totals.cost_inc_gst).toBe(0);
     expect(db.estimates[0]?.derived.pricingMode).toBe('indicative_fallback');
+  });
+
+  it('returns the original result on a retry without duplicating side effects', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const body = JSON.stringify({
+      submissionId: SUBMISSION_ID,
+      enquiryType: 'residential',
+      name: 'Retry User',
+      phone: '021000000',
+      suburb: 'Albany',
+      dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
+      style: 'pitched',
+      roofMaterials: ['acrylic'],
+      addOns: {},
+      source: 'website',
+      honeypot: '',
+    });
+
+    const first = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    }));
+    const retry = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    }));
+
+    expect(first.status).toBe(200);
+    expect(await retry.json()).toMatchObject({
+      ok: true,
+      contactId: 'contact-1',
+      projectId: 'project-1',
+      enquiryRequestId: 'enquiry-1',
+      idempotentReplay: true,
+    });
+    expect(db.contacts).toHaveLength(1);
+    expect(db.projects).toHaveLength(1);
+    expect(db.enquiry_requests).toHaveLength(1);
+    expect(db.estimates).toHaveLength(1);
+    expect(db.audit_events).toHaveLength(1);
+  });
+
+  it('does not expose internal database failures to public clients', async () => {
+    const { client } = makeDb();
+    const defaultRpc = client.rpc;
+    client.rpc = vi.fn(async (name: string, args: Record<string, any>) => {
+      if (name === 'marketing_enquiry_intake') {
+        return {
+          data: null,
+          error: new Error('duplicate key violates confidential_internal_constraint'),
+        };
+      }
+      return defaultRpc(name, args);
+    });
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
+        enquiryType: 'professional',
+        name: 'Safe Error',
+        phone: '021000000',
+        source: 'website',
+        honeypot: '',
+      }),
+    }));
+    const body = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(body).toContain('Unable to save enquiry');
+    expect(body).not.toContain('confidential_internal_constraint');
+    expect(body).not.toContain('duplicate key');
+  });
+
+  it('rejects cross-origin submission attempts before database access', async () => {
+    const { client } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'https://attacker.example',
+      },
+      body: JSON.stringify({}),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(h.createClient).not.toHaveBeenCalled();
   });
 });

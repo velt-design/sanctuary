@@ -32,7 +32,8 @@ export default function PrivacyPage(){
                 <ul>
                   <li>Contact details you submit (e.g. name, email, suburb) and project notes.</li>
                   <li>Optional project details (sizes, style preferences, roof/add‑ons) you include in the form.</li>
-                  <li>Anonymous usage and performance data (for example page views, browser type, approximate location) via analytics tools such as Google Analytics. These tools may use cookies or similar technologies.</li>
+                  <li>Optional usage, performance and campaign-attribution data (for example page views, browser type, approximate location and advertising click identifiers) only after the relevant consent.</li>
+                  <li>Project files you choose to upload, such as photos, plans or sketches.</li>
                 </ul>
 
                 <h2>Cookies & analytics</h2>
@@ -42,7 +43,7 @@ export default function PrivacyPage(){
                   <li>Analytics cookies help us understand usage and improve performance.</li>
                   <li>Marketing cookies support campaign measurement and advertising attribution.</li>
                 </ul>
-                <p>You can choose analytics and marketing cookies in the cookie preferences banner.</p>
+                <p>Google Analytics loads only with analytics consent. Meta and ArchiPro load only with marketing consent. Google Tag Manager can dispatch both categories, so it loads only after you accept at least one relevant category and keeps any category you declined disabled. Declining all optional cookies does not load those vendor resources.</p>
                 <p>
                   <button type="button" className="privacy-cookie-manage" onClick={openBanner}>
                     Manage cookie preferences
@@ -57,7 +58,7 @@ export default function PrivacyPage(){
                 </ul>
 
                 <h2>How we store it</h2>
-                <p>Enquiries are delivered to our team via email and may be stored in our internal systems for follow‑up. Access is limited to our staff.</p>
+                <p>Enquiries and successfully submitted project files may be stored in our private internal systems for follow‑up. Access is limited to our staff and service providers needed to operate the enquiry process. Abandoned uploads use a short-lived submission binding and are scheduled for deletion after that binding expires.</p>
 
                 <h2>Sharing</h2>
                 <p>We do not sell your personal information. We may share it with trusted service providers (e.g. email delivery) solely to operate our services.</p>

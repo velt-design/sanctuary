@@ -3,7 +3,13 @@
 import Image from 'next/image';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
-import { uploadEnquiryAttachments } from '@/lib/enquiryAttachments';
+import {
+  createEnquirySubmissionId,
+  ENQUIRY_ATTACHMENT_ACCEPT,
+  uploadEnquiryAttachments,
+  validateEnquiryAttachments,
+} from '@/lib/enquiryAttachments';
+import { useConsent } from '@/components/ConsentProvider';
 import { getEnquiryTypeFromSearch, type EnquiryType } from './enquiryRoute';
 import '@/app/products/product.css';
 import '@/app/contact/dark.css';
@@ -15,6 +21,7 @@ const DISPLAY_STYLE_OPTS = PERGOLA_OPTIONS
   .map(s => s.replace(/^Box\s+Perimeter\b/i, 'Perimeter'));
 
 export default function ContactPage() {
+  const { consent, hasStoredChoice } = useConsent();
   const [width, setWidth] = useState(6.0);
   const [length, setLength] = useState(3.0);
   const [height, setHeight] = useState(2.5);
@@ -102,6 +109,7 @@ export default function ContactPage() {
   const [submitState, setSubmitState] = useState<'idle'|'sending'|'success'|'error'>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const submissionIdRef = useRef<string | null>(null);
 
   const createEventId = (): string => {
     try {
@@ -129,14 +137,14 @@ export default function ContactPage() {
       addons_count: addonsSelected.length,
     };
     try {
-      if (typeof gtag === 'function') {
+      if (hasStoredChoice && consent.analytics && typeof gtag === 'function') {
         gtag('event', `contact_${phase}`, { ...base, ...extra });
       }
-      if (phase === 'success' && typeof fbq === 'function') {
+      if (phase === 'success' && hasStoredChoice && consent.marketing && typeof fbq === 'function') {
         if (eventId) fbq('track', 'Lead', { ...base, ...extra }, { eventID: eventId });
         else fbq('track', 'Lead', { ...base, ...extra });
       }
-      if (phase === 'success') {
+      if (phase === 'success' && hasStoredChoice && (consent.analytics || consent.marketing)) {
         w.dataLayer = w.dataLayer || [];
         w.dataLayer.push({
           event: 'lead_submitted',
@@ -285,6 +293,8 @@ export default function ContactPage() {
     setSubmitError(null);
     setSubmitState('sending');
     const eventId = createEventId();
+    const submissionId = submissionIdRef.current ?? createEnquirySubmissionId();
+    submissionIdRef.current = submissionId;
     trackSubmitEvent('start');
     try {
       const enquiryTypeValue = enquiryType ? enquiryType.toLowerCase() : '';
@@ -294,12 +304,16 @@ export default function ContactPage() {
         lighting: addonsSelected.includes('Lighting'),
         heating: addonsSelected.includes('Heating'),
       };
-      const filesPayload =
+      const fileError = enquiryType === 'Professional' ? validateEnquiryAttachments(proFiles) : null;
+      if (fileError) throw new Error(fileError);
+      const attachmentUpload =
         enquiryType === 'Professional'
-          ? await uploadEnquiryAttachments(proFiles)
-          : [];
+          ? await uploadEnquiryAttachments(proFiles, submissionId)
+          : { files: [], uploadSessionToken: null };
       const attribution = getBrowserMarketingAttribution();
       const payload = {
+        submissionId,
+        uploadSessionToken: attachmentUpload.uploadSessionToken,
         enquiryType: enquiryTypeValue,
         name: userName.trim(),
         email: userEmail.trim(),
@@ -315,7 +329,7 @@ export default function ContactPage() {
         roofMaterials: roofSelected.map((r) => r.toLowerCase()),
         addOns: addOnsPayload,
         company: enquiryType === 'Professional' ? userCompany.trim() || null : null,
-        files: filesPayload,
+        files: attachmentUpload.files,
         utm: attribution.utm,
         attribution,
         page: typeof window !== 'undefined' ? window.location.pathname : '',
@@ -329,6 +343,7 @@ export default function ContactPage() {
       });
       const json = await res.json().catch(() => ({ ok: res.ok }));
       if (res.ok && json?.ok) {
+        submissionIdRef.current = null;
         setSubmitState('success');
         trackSubmitEvent('success', undefined, eventId);
         try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
@@ -810,6 +825,7 @@ export default function ContactPage() {
                         <input
                           ref={proFileInputRef}
                           type="file"
+                          accept={ENQUIRY_ATTACHMENT_ACCEPT}
                           multiple
                           tabIndex={-1}
                           aria-hidden

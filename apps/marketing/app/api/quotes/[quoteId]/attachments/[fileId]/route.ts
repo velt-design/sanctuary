@@ -29,7 +29,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ quoteId: string
   });
 
   if (!attachment.ok) {
-    const status = attachment.code === 'invalid' ? 400 : 404;
+    const status = attachment.code === 'invalid' ? 400 : attachment.code === 'expired' ? 410 : 404;
     return NextResponse.json({ error: attachment.message, code: attachment.code }, { status });
   }
 

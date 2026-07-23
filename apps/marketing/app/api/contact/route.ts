@@ -2,87 +2,21 @@
 import { NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'node:crypto';
 import { getEmailDeliveryFailureSummary, sendEmail } from '@/lib/email/sendEmail';
+import {
+  getMarketingClientIp,
+  isAllowedMarketingOrigin,
+  marketingAbuseKey,
+  readBoundedJson,
+  takeMarketingRateLimit,
+} from '@/lib/marketingPublicRequest';
+import { getServiceSupabase } from '@/lib/supabaseService';
 
-// Very lightweight, in-memory rate limiter (best-effort; per-instance)
-type Hit = { t: number; n: number };
-const hits = new Map<string, Hit>();
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_IN_WINDOW = 5; // 5 submissions per 10 minutes per IP
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_FIELD_LENGTH = 400;
-const MAX_ATTACHMENTS = 8; // cap number of files we forward
-const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20 MB across all files
 const MAX_EVENT_ID_LENGTH = 128;
+const MAX_BODY_BYTES = 128 * 1024;
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
-
-type UploadedAttachment = {
-  filename: string;
-  content: string; // base64
-};
-
-function isAllowedOrigin(req: Request): boolean {
-  const origin = req.headers.get('origin');
-  if (!origin) return true;
-  // In non-production Vercel environments (preview/dev), relax origin checks
-  // so that preview URLs and local testing don't get blocked by CORS.
-  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
-    return true;
-  }
-  try {
-    const { hostname } = new URL(origin);
-    const host = hostname.toLowerCase();
-
-    // Always allow Vercel-hosted URLs (both preview and production on *.vercel.app)
-    // so that branch/preview deployments can post to this API route without 403s.
-    if (host.endsWith('.vercel.app')) {
-      return true;
-    }
-
-    // Core allowed hosts for production + local dev
-    const baseAllowed = new Set([
-      'localhost',
-      '127.0.0.1',
-      '::1',
-      'www.sanctuarypergolas.co.nz',
-      'sanctuarypergolas.co.nz',
-    ]);
-
-    // Allow additional hosts from environment (e.g. staging/preview domains)
-    const envHosts = [
-      process.env.VERCEL_URL,
-      process.env.NEXT_PUBLIC_SITE_HOST,
-      ...(process.env.ALLOWED_ORIGINS || '').split(','),
-    ]
-      .map(h => (h || '').trim().toLowerCase())
-      .filter(Boolean);
-
-    envHosts.forEach(h => baseAllowed.add(h));
-
-    if (baseAllowed.has(host)) {
-      return true;
-    }
-
-    // Optionally allow subdomains of the primary site (e.g. preview.sanctuarypergolas.co.nz)
-    if (host.endsWith('.sanctuarypergolas.co.nz')) {
-      return true;
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-function getClientIp(req: Request): string {
-  try {
-    const xf = req.headers.get('x-forwarded-for') || '';
-    const ip = xf.split(',')[0].trim() || req.headers.get('x-real-ip') || '';
-    return String(ip || 'unknown');
-  } catch {
-    return 'unknown';
-  }
-}
 
 function clamp(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) : value;
@@ -141,7 +75,9 @@ async function sendMetaLeadEvent(params: {
   eventId: string;
   ip: string;
   enquiryType?: string;
+  marketingConsent: boolean;
 }): Promise<void> {
+  if (!params.marketingConsent) return;
   const accessToken = process.env.META_CONVERSIONS_API_TOKEN;
   const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
   if (!accessToken || !pixelId) return;
@@ -192,62 +128,19 @@ async function sendMetaLeadEvent(params: {
   }
 }
 
-async function extractAttachmentsFromFormData(fd: FormData): Promise<UploadedAttachment[]> {
-  const entries = fd.getAll('pro_attachments');
-  const files = entries.filter((entry): entry is File => entry instanceof File);
-  if (!files.length) return [];
-
-  const attachments: UploadedAttachment[] = [];
-  let totalBytes = 0;
-
-  for (const file of files) {
-    if (attachments.length >= MAX_ATTACHMENTS) {
-      break;
-    }
-    try {
-      const size = typeof file.size === 'number' ? file.size : 0;
-      if (!file.name || size <= 0) {
-        continue;
-      }
-      // Enforce a total size cap across all attachments.
-      if (totalBytes + size > MAX_TOTAL_ATTACHMENT_BYTES) {
-        continue;
-      }
-      const arrayBuffer = await file.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      attachments.push({
-        filename: file.name,
-        content: base64,
-      });
-      totalBytes += size;
-    } catch {
-      // Ignore individual file failures; continue with others.
-    }
-  }
-
-  return attachments;
-}
-
 export async function POST(req: Request) {
-  if (!isAllowedOrigin(req)) {
+  if (!isAllowedMarketingOrigin(req)) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
 
-  // Accept both JSON and form submissions
   const ct = (req.headers.get('content-type') || '').toLowerCase();
-  let data: Record<string, unknown> | null = null;
-  let attachments: UploadedAttachment[] = [];
-  try {
-    if (ct.includes('application/json')) {
-      data = await req.json();
-    } else {
-      const fd = await req.formData();
-      attachments = await extractAttachmentsFromFormData(fd);
-      data = Object.fromEntries(fd.entries());
-    }
-  } catch {
-    data = null;
+  if (!ct.includes('application/json')) {
+    return NextResponse.json(
+      { ok: false, error: 'Use the current enquiry form for file uploads.' },
+      { status: 415 },
+    );
   }
+  const data = await readBoundedJson(req, MAX_BODY_BYTES).catch(() => null);
 
   if (!data) {
     return NextResponse.json({ ok: false, error: 'Invalid body' }, { status: 400 });
@@ -279,19 +172,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 422 });
   }
 
-  // Basic rate limit by IP
-  const ip = getClientIp(req);
-  const now = Date.now();
-  const prev = hits.get(ip);
-  if (!prev || now - prev.t > WINDOW_MS) {
-    hits.set(ip, { t: now, n: 1 });
-  } else if (prev.n >= MAX_IN_WINDOW) {
-    return NextResponse.json({ ok: false, error: 'Too many submissions. Please try later.' }, { status: 429 });
-  } else {
-    prev.n += 1;
-    prev.t = now;
-    hits.set(ip, prev);
+  let supabase;
+  try {
+    supabase = getServiceSupabase();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Contact service unavailable' }, { status: 503 });
   }
+  let abuseKey: string;
+  try {
+    abuseKey = marketingAbuseKey(req);
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Contact service unavailable' }, { status: 503 });
+  }
+  const rateLimit = await takeMarketingRateLimit(supabase, {
+    scope: 'legacy_contact_submit',
+    keyHash: abuseKey,
+    maxHits: 5,
+    windowSeconds: 600,
+  });
+  if (!rateLimit.ok) {
+    if (rateLimit.unavailable) {
+      return NextResponse.json({ ok: false, error: 'Contact service unavailable' }, { status: 503 });
+    }
+    return NextResponse.json(
+      { ok: false, error: 'Too many submissions. Please try later.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+    );
+  }
+  const ip = getMarketingClientIp(req);
 
   // Prepare email content
   const fields = {
@@ -311,6 +219,7 @@ export async function POST(req: Request) {
     company: sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH),
     attachments: sanitizeSingleLine(getField('attachments'), MAX_FIELD_LENGTH),
     event_id: sanitizeSingleLine(getField('event_id'), MAX_EVENT_ID_LENGTH) || randomUUID(),
+    marketing_consent: ['true', '1', 'yes'].includes(getField('marketing_consent').trim().toLowerCase()),
   };
 
   const subject = `[Website enquiry] ${fields.enquiry_type || 'General'} – ${fields.name}`;
@@ -356,7 +265,6 @@ export async function POST(req: Request) {
         replyTo: fields.email,
         subject,
         html,
-        ...(attachments.length ? { attachments } : {}),
         idempotencyKey: `website-contact/${fields.event_id}`,
       });
     } catch (error) {
@@ -418,6 +326,7 @@ export async function POST(req: Request) {
     eventId: fields.event_id,
     ip,
     enquiryType: fields.enquiry_type || undefined,
+    marketingConsent: fields.marketing_consent,
   });
 
   return NextResponse.json({ ok: true });

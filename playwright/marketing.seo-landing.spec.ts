@@ -119,7 +119,9 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
   });
   await page.goto(route);
 
-  await page.locator('#acrylic-enquiry-message').fill('We need a sheltered dining area but want to keep the kitchen bright.');
+  const broadMessage = page.locator('#acrylic-enquiry-message');
+  await expect(broadMessage).toHaveCount(1);
+  await broadMessage.fill('We need a sheltered dining area but want to keep the kitchen bright.');
   await page.getByRole('button', { name: 'Send my project details' }).click();
   await expect(page.getByText('Choose an enquiry type.')).toBeVisible();
 
@@ -258,7 +260,9 @@ test('Custom Pergolas Auckland enquiry preserves its route and custom brief', as
     await routeHandler.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
   });
   await page.goto(customRoute);
-  await page.locator('#acrylic-enquiry-type').selectOption('residential');
+  const customEnquiryType = page.locator('#acrylic-enquiry-type');
+  await expect(customEnquiryType).toHaveCount(1);
+  await customEnquiryType.selectOption('residential');
   await page.locator('#acrylic-enquiry-name').fill('Test Person');
   await page.locator('#acrylic-enquiry-phone').fill('021 000 0000');
   await page.locator('#acrylic-enquiry-email').fill('test@example.com');

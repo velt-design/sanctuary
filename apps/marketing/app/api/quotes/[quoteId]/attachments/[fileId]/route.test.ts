@@ -50,6 +50,22 @@ describe('public quote attachment route', () => {
     });
   });
 
+  it('returns gone when the public token has expired', async () => {
+    downloadPublicQuoteAttachmentByTokenMock.mockResolvedValueOnce({
+      ok: false,
+      code: 'expired',
+      message: 'Quote link has expired',
+    });
+
+    const response = await GET(getRequest(), context());
+
+    expect(response.status).toBe(410);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Quote link has expired',
+      code: 'expired',
+    });
+  });
+
   it('returns not found when the token is valid but the attachment is unavailable', async () => {
     downloadPublicQuoteAttachmentByTokenMock.mockResolvedValueOnce({
       ok: false,

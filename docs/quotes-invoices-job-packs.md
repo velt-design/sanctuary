@@ -105,6 +105,8 @@ Do not expose service-role access or raw token values to client components. Toke
 - Public invoice links use `deposit_invoices.portal_token_hash`.
 - Quote attachments are limited to file IDs from the send log that matches the current accept token hash.
 - Token expiry must be handled as an access state, not as a missing record.
+- `apps/marketing/lib/publicTokenAccess.ts` is the shared active-token boundary. Check it immediately after the hash-bound token lookup and before loading customer/project details, line items, attachments, artifacts, or performing acceptance.
+- An expired token may produce an expired/unavailable UI state, but it must not return the protected quote/invoice model. The same rule covers quote acceptance, quote attachments, invoice PDFs, and source-quote PDFs.
 - Public accept/invoice flows should be treated as server-owned side effects, even though the initiating page lives in marketing.
 
 When changing public routes, verify invalid token, missing token, expired token, already accepted, declined/void, and attachment/PDF unavailable states.

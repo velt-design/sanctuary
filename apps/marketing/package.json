@@ -21,7 +21,7 @@
     "@sp/theme": "0.0.0",
     "@supabase/supabase-js": "^2.90.1",
     "framer-motion": "^12.23.12",
-    "next": "^16.2.10",
+    "next": "^16.2.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "^0.0.1",
@@ -36,7 +36,7 @@
     "eslint": "^9.33.0",
     "jsdom": "^27.4.0",
     "postcss": "8.5.10",
-    "sharp": "^0.33.5",
+    "sharp": "0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.16"

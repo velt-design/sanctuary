@@ -1,6 +1,6 @@
 import 'server-only';
 import { NextResponse } from 'next/server';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   buildEnquiryDraftEstimateRow,
@@ -20,62 +20,29 @@ import {
 } from '@/lib/sharedEmails';
 import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
-
-type Hit = { t: number; n: number };
-const hits = new Map<string, Hit>();
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_IN_WINDOW = 6; // submissions per window per IP
+import { getServiceSupabase } from '@/lib/supabaseService';
+import {
+  isAllowedMarketingOrigin,
+  isUuid,
+  marketingAbuseKey,
+  takeMarketingRateLimit,
+} from '@/lib/marketingPublicRequest';
+import {
+  normalizeEnquiryFiles,
+  verifyStoredEnquiryAttachments,
+  EnquiryAttachmentVerificationError,
+  type VerifiedStoredAttachment,
+} from '@/lib/enquiryStoredAttachments';
+import {
+  createMarketingEnquiryIntake,
+  MarketingEnquiryIntakeError,
+} from '@/lib/enquiryIntake';
 
 const MAX_FIELD_LENGTH = 400;
 const MAX_MESSAGE_LENGTH = 4000;
+const MAX_BODY_BYTES = 128 * 1024;
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
-
-let cachedServiceClient: SupabaseClient | null = null;
-let cachedServiceUrl = '';
-let cachedServiceKey = '';
-
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  throw new Error(`${name} is not set`);
-}
-
-function serviceSupabaseUrl(): string {
-  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || '';
-  const serviceUrl = process.env.SUPABASE_URL?.trim() || '';
-  if (publicUrl && serviceUrl && publicUrl !== serviceUrl) {
-    console.error('[supabase] URL mismatch', { publicUrl, serviceUrl });
-  }
-  if (publicUrl) return publicUrl;
-  if (serviceUrl) return serviceUrl;
-  return requiredEnv('SUPABASE_URL');
-}
-
-function getServiceSupabase(): SupabaseClient {
-  const url = serviceSupabaseUrl();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
-  if (!key) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-  }
-  if (cachedServiceClient && cachedServiceUrl === url && cachedServiceKey === key) return cachedServiceClient;
-  cachedServiceUrl = url;
-  cachedServiceKey = key;
-  cachedServiceClient = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  return cachedServiceClient;
-}
-
-function getClientIp(req: Request): string {
-  try {
-    const xf = req.headers.get('x-forwarded-for') || '';
-    const ip = xf.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '';
-    return String(ip || 'unknown');
-  } catch {
-    return 'unknown';
-  }
-}
 
 function clamp(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) : value;
@@ -93,13 +60,6 @@ function sanitizeMultiline(value: string, max: number): string {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isMissingColumnError(error: unknown): boolean {
-  const e = error as any;
-  const code = typeof e?.code === 'string' ? e.code : '';
-  const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
-  return code === '42703' || code === 'PGRST204' || (message.includes('column') && message.includes('does not exist'));
 }
 
 function maybeParseJson(value: unknown): unknown {
@@ -192,13 +152,17 @@ function isTruthy(value: unknown): boolean {
 
 async function readBody(req: Request): Promise<Record<string, unknown> | null> {
   const ct = (req.headers.get('content-type') || '').toLowerCase();
+  const contentLength = Number(req.headers.get('content-length') || 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) return null;
   try {
+    const raw = await req.text();
+    if (!raw || Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) return null;
     if (ct.includes('application/json')) {
-      return (await req.json()) as Record<string, unknown>;
+      const parsed = JSON.parse(raw) as unknown;
+      return isPlainObject(parsed) ? parsed : null;
     }
-    if (ct.includes('form')) {
-      const fd = await req.formData();
-      return Object.fromEntries(fd.entries());
+    if (ct.includes('application/x-www-form-urlencoded')) {
+      return Object.fromEntries(new URLSearchParams(raw).entries());
     }
   } catch {
     return null;
@@ -237,6 +201,7 @@ function storedAttachmentEntries(files: unknown): Array<{ path: string; name: st
 async function resolveProfessionalAttachments(
   supabase: SupabaseClient,
   files: unknown,
+  verifiedFiles: VerifiedStoredAttachment[],
 ): Promise<{ attachments: ResolvedAttachment[]; attachmentLinks: AttachmentLink[] }> {
   const entries = storedAttachmentEntries(files);
   if (!entries.length) return { attachments: [], attachmentLinks: [] };
@@ -244,19 +209,11 @@ async function resolveProfessionalAttachments(
   const totalBytes = entries.reduce((sum, entry) => sum + (entry.size > 0 ? entry.size : 0), 0);
 
   if (totalBytes > 0 && totalBytes <= ATTACH_INLINE_MAX_BYTES) {
-    const attachments: ResolvedAttachment[] = [];
-    for (const entry of entries) {
-      try {
-        const { data, error } = await supabase.storage.from(ENQUIRY_ATTACHMENT_BUCKET).download(entry.path);
-        if (error || !data) continue;
-        const arrayBuffer = await data.arrayBuffer();
-        attachments.push({ filename: entry.name, content: Buffer.from(arrayBuffer).toString('base64') });
-      } catch {
-        // Skip this file; other attachments and the email still go through.
-      }
-    }
+    const attachments: ResolvedAttachment[] = verifiedFiles.map((file) => ({
+      filename: file.filename,
+      content: file.content.toString('base64'),
+    }));
     if (attachments.length) return { attachments, attachmentLinks: [] };
-    // Downloads failed — fall through to links rather than dropping the files.
   }
 
   const attachmentLinks: AttachmentLink[] = [];
@@ -275,6 +232,10 @@ async function resolveProfessionalAttachments(
 }
 
 export async function POST(req: Request) {
+  if (!isAllowedMarketingOrigin(req)) {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   let payload: Record<string, unknown> | null = null;
   try {
     payload = await readBody(req);
@@ -286,7 +247,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid body' }, { status: 400 });
   }
 
-  let rawPayload = safeJsonPayload(payload);
   const getField = (key: string): string => {
     const value = payload?.[key];
     if (typeof value === 'string') return value;
@@ -325,18 +285,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Invalid enquiry type' }, { status: 422 });
   }
 
-  const ip = getClientIp(req);
-  const now = Date.now();
-  const prev = hits.get(ip);
-  if (!prev || now - prev.t > WINDOW_MS) {
-    hits.set(ip, { t: now, n: 1 });
-  } else if (prev.n >= MAX_IN_WINDOW) {
-    return NextResponse.json({ ok: false, error: 'Too many submissions. Please try later.' }, { status: 429 });
-  } else {
-    prev.n += 1;
-    prev.t = now;
-    hits.set(ip, prev);
+  const submissionId = sanitizeSingleLine(getField('submissionId'), 64);
+  if (!isUuid(submissionId)) {
+    return NextResponse.json({ ok: false, error: 'Invalid submission ID' }, { status: 422 });
   }
+  const uploadSessionToken = sanitizeSingleLine(getField('uploadSessionToken'), 128);
 
   const suburb = sanitizeSingleLine(getField('suburb'), MAX_FIELD_LENGTH);
   const message = sanitizeMultiline(getField('message'), MAX_MESSAGE_LENGTH);
@@ -364,104 +317,63 @@ export async function POST(req: Request) {
 
   const attributionRaw = maybeParseJson(payload.attribution);
   const attribution = normalizeMarketingAttributionInput(attributionRaw, { utm, page, source });
-  rawPayload = safeJsonPayload({ ...payload, attribution });
+  const { uploadSessionToken: _uploadSessionToken, ...payloadWithoutUploadToken } = payload;
+  const rawPayload = safeJsonPayload({ ...payloadWithoutUploadToken, attribution });
 
   const filesRaw = maybeParseJson(payload.files);
-  const files = Array.isArray(filesRaw) ? filesRaw : [];
+  const files = normalizeEnquiryFiles(filesRaw);
 
   let supabase: SupabaseClient;
   try {
     supabase = getServiceSupabase();
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message || 'Server not configured' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Enquiry service unavailable' }, { status: 503 });
   }
 
-  let contactId: string | null = null;
-  let contactRow: any | null = null;
-
-  if (email) {
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('id, name, email, phone')
-      .ilike('email', email)
-      .limit(1);
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message || 'Failed to find contact' }, { status: 500 });
+  let abuseKey: string;
+  try {
+    abuseKey = marketingAbuseKey(req);
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Enquiry service unavailable' }, { status: 503 });
+  }
+  const rateLimit = await takeMarketingRateLimit(supabase, {
+    scope: 'enquiry_submit',
+    keyHash: abuseKey,
+    maxHits: 6,
+    windowSeconds: 600,
+  });
+  if (!rateLimit.ok) {
+    if (rateLimit.unavailable) {
+      return NextResponse.json({ ok: false, error: 'Enquiry service unavailable' }, { status: 503 });
     }
-    contactRow = Array.isArray(data) && data.length ? data[0] : null;
+    return NextResponse.json(
+      { ok: false, error: 'Too many submissions. Please try later.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+    );
   }
 
-  if (!contactRow && phone) {
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('id, name, email, phone')
-      .eq('phone', phone)
-      .limit(1);
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message || 'Failed to find contact' }, { status: 500 });
+  let verifiedStoredAttachments: VerifiedStoredAttachment[] = [];
+  try {
+    verifiedStoredAttachments = await verifyStoredEnquiryAttachments(supabase, {
+      files,
+      submissionId,
+      uploadSessionToken,
+    });
+  } catch (error) {
+    if (
+      error instanceof EnquiryAttachmentVerificationError
+      && error.code === 'ATTACHMENT_UNAVAILABLE'
+    ) {
+      return NextResponse.json(
+        { ok: false, error: 'One or more attachments could not be verified. Please try uploading again.' },
+        { status: 503 },
+      );
     }
-    contactRow = Array.isArray(data) && data.length ? data[0] : null;
-    if (!contactRow && phoneRaw && phoneRaw !== phone) {
-      const altRes = await supabase
-        .from('contacts')
-        .select('id, name, email, phone')
-        .eq('phone', phoneRaw)
-        .limit(1);
-      if (!altRes.error && Array.isArray(altRes.data) && altRes.data.length) {
-        contactRow = altRes.data[0];
-      }
-    }
+    return NextResponse.json(
+      { ok: false, error: 'One or more attachments are invalid.' },
+      { status: 422 },
+    );
   }
-
-  if (contactRow) {
-    contactId = contactRow.id;
-    const patch: Record<string, unknown> = {};
-    if (!contactRow.name && name) patch.name = name;
-    if (!contactRow.email && email) patch.email = email;
-    if (!contactRow.phone && phone) patch.phone = phone;
-
-    if (Object.keys(patch).length) {
-      const { error } = await supabase.from('contacts').update(patch).eq('id', contactId);
-      if (error) {
-        if (!isMissingColumnError(error)) {
-          return NextResponse.json({ ok: false, error: error.message || 'Failed to update contact' }, { status: 500 });
-        }
-        console.warn('Skipping contact update because updated_at column is missing.', error);
-      }
-    }
-  } else {
-    const { data, error } = await supabase
-      .from('contacts')
-      .insert({
-        name,
-        email: email || null,
-        phone: phone || null,
-      })
-      .select('id')
-      .single();
-    if (error || !data?.id) {
-      return NextResponse.json({ ok: false, error: error?.message || 'Failed to create contact' }, { status: 500 });
-    }
-    contactId = data.id;
-  }
-
-  const projectName = `${name} - ${suburb || 'Enquiry'}`.trim();
-  const { data: projectRow, error: projectError } = await supabase
-    .from('projects')
-    .insert({
-      contact_id: contactId,
-      name: projectName,
-      pipeline_stage: 'NEW',
-      site_address: suburb || null,
-    })
-    .select('id')
-    .single();
-
-  if (projectError || !projectRow?.id) {
-    return NextResponse.json({ ok: false, error: projectError?.message || 'Failed to create project' }, { status: 500 });
-  }
-
-  const projectId = projectRow.id;
 
   const pricing = buildEnquiryPricingSnapshot({
     enquiryType,
@@ -476,55 +388,62 @@ export async function POST(req: Request) {
   });
   const budgets = pricing.budgets;
 
-  const insertBase: Record<string, unknown> = {
-    contact_id: contactId,
-    project_id: projectId,
-    enquiry_type: enquiryType,
-    suburb: suburb || null,
-    message: message || null,
-    width_m: widthM,
-    depth_m: depthM,
-    height_m: heightM,
-    style: style || null,
-    roof_materials: roofMaterials.length ? roofMaterials : null,
-    add_ons: addOns,
-    company: company || null,
-    files,
-    source,
-    page: page || null,
-    utm,
-    raw_payload: rawPayload,
-  };
-
-  const insertWithBudgets: Record<string, unknown> = {
-    ...insertBase,
-    ...(budgets.baseRange
-      ? {
-          base_budget_low_inc_gst: budgets.baseRange.lowIncGst,
-          base_budget_high_inc_gst: budgets.baseRange.highIncGst,
-        }
-      : {}),
-    ...(budgets.blindsRange
-      ? {
-          blinds_budget_low_inc_gst: budgets.blindsRange.lowIncGst,
-          blinds_budget_high_inc_gst: budgets.blindsRange.highIncGst,
-        }
-      : {}),
-    ...(budgets.budgetBasis ? { budget_basis: budgets.budgetBasis } : {}),
-  };
-
-  let insertRes = await supabase.from('enquiry_requests').insert(insertWithBudgets).select('id').single();
-
-  if (insertRes.error && isMissingColumnError(insertRes.error)) {
-    // DB schema may not yet include the budget columns; fall back to a schema-compatible insert.
-    insertRes = await supabase.from('enquiry_requests').insert(insertBase).select('id').single();
+  let intake;
+  try {
+    intake = await createMarketingEnquiryIntake(supabase, {
+      submissionId,
+      uploadSessionToken,
+      payload: {
+        enquiryType,
+        name,
+        email,
+        phone,
+        phoneRaw,
+        suburb,
+        message,
+        widthM,
+        depthM,
+        heightM,
+        style,
+        roofMaterials,
+        addOns,
+        company,
+        baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
+        baseBudgetHighIncGst: budgets.baseRange?.highIncGst ?? null,
+        blindsBudgetLowIncGst: budgets.blindsRange?.lowIncGst ?? null,
+        blindsBudgetHighIncGst: budgets.blindsRange?.highIncGst ?? null,
+        budgetBasis: budgets.budgetBasis ?? null,
+        source,
+        page,
+        utm,
+        rawPayload,
+        files,
+      },
+    });
+  } catch (error) {
+    if (error instanceof MarketingEnquiryIntakeError) {
+      return NextResponse.json({ ok: false, error: 'Unable to save enquiry' }, { status: 503 });
+    }
+    return NextResponse.json({ ok: false, error: 'Unable to save enquiry' }, { status: 503 });
   }
 
-  const enquiryRow = insertRes.data;
-  const enquiryError = insertRes.error;
+  const {
+    contactId,
+    projectId,
+    enquiryRequestId,
+    alreadyExisted,
+  } = intake;
+  const enquiryRow = { id: enquiryRequestId };
 
-  if (enquiryError || !enquiryRow?.id) {
-    return NextResponse.json({ ok: false, error: enquiryError?.message || 'Failed to create enquiry request' }, { status: 500 });
+  if (alreadyExisted) {
+    return NextResponse.json({
+      ok: true,
+      contactId,
+      projectId,
+      designId: null,
+      enquiryRequestId,
+      idempotentReplay: true,
+    });
   }
 
   await recordMarketingConversionEvent({
@@ -607,7 +526,11 @@ export async function POST(req: Request) {
 
       if (enquiryType === 'professional') {
         const filesCount = Array.isArray(files) ? files.length : 0;
-        const resolved = await resolveProfessionalAttachments(supabase, files);
+        const resolved = await resolveProfessionalAttachments(
+          supabase,
+          files,
+          verifiedStoredAttachments,
+        );
         professionalAttachments = resolved.attachments;
         emailPayload = {
           leadId: enquiryRow.id,
@@ -679,7 +602,11 @@ export async function POST(req: Request) {
       const idempotencyKey = `website:autoresponder:${enquiryRow.id}`;
       const supabaseHost = (() => {
         try {
-          return new URL(serviceSupabaseUrl()).host;
+          const url =
+            process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+            || process.env.SUPABASE_URL?.trim()
+            || '';
+          return new URL(url).host;
         } catch {
           return 'unknown';
         }
