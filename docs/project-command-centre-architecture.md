@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Stage 1 committed at `8770198f`; approved Stage 2 implementation and verification in progress.
+Status: Stages 1 and 2 are present in the current repository; Stage 2 environment gates remain Yellow.
 
 Baseline assessed: `ea1641c6c6647d22603d07b9f980cc3a1dad95fc` on 2026-07-20.
 
@@ -57,11 +57,12 @@ The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the intern
 
 The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
 
-The current lazy navigation owners are:
+The current staff-facing lazy navigation owners are:
 
+- Overview (`activity` key), the default project workflow.
 - Calculator (`estimates` key), embedded with fixed project context.
-- Commercial (`quotes` navigation key), with separate Quotes and Invoices inner views retaining their route keys.
-- Job Packs when available.
+- Commercial (`quotes` navigation key), with separate Quotes and Invoices inner views retaining the `quotes` and `invoices` keys.
+- Job Packs (`job-packs` key) when available.
 
 The project Emails UI is retired; `tab=emails` normalizes to Overview. Durable email audit data, preview APIs, snapshot fields, and quote/invoice delivery side effects are unchanged. The separate Design Workbench route remains available from the project header.
 
@@ -153,7 +154,7 @@ Stage 4 owns the future normalized communication/timeline read model.
 
 ## 10. Existing auth and permissions
 
-Command-centre reads and owner/action commands use `requireStaffContext()` and the returned auth-bound Supabase client. RLS plus security-definer command checks remain authoritative. The compatibility projection is refreshed inside the transactional action command; no browser or service-role caller has execute permission on its helper, and Details or task routes cannot write the legacy project columns.
+Command-centre reads and owner/action commands use `requireStaffContext()` and the returned auth-bound Supabase client. RLS plus security-definer command checks remain authoritative. The compatibility projection is refreshed inside the transactional action command; no browser or service-role caller has execute permission on its helper, and the retired Details writer or current task routes cannot write the legacy project columns.
 
 The response is `private, no-store`, carries standard request diagnostics, returns `401`/`403` from the auth helper, returns `404` only when the authenticated project read is absent, and returns a stable `500` when a bounded subordinate read fails.
 
@@ -161,7 +162,7 @@ No raw tokens, token hashes, internal true cost, margin, service-role data, or o
 
 ## 11. Existing loading, caching, and local-first model
 
-The new query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Designs or Quotes refreshes current commercial state without adding cache logic to those critical tabs.
+The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
 
 Overview states are explicit:
 
@@ -238,7 +239,12 @@ The server performs one auth-bound `projects` relation read for estimate metadat
 
 ## 15. Required migrations
 
-Stage 1 required no migration. Stage 2 adds ordered migration `20260720_000008_project_command_centre_stage2.sql`. It promotes task/follow-up setup into migration truth, adds canonical owner/action/control/selection/audit tables, updated timestamps and focused indexes, select-only portal RLS, transactional idempotent commands, active-user backfills, and compatibility projection columns. Source-table triggers maintain candidate versions and the Schedule projection; Design Package source-task changes use a bounded staff RPC after direct authenticated source writes are revoked.
+Stage 1 required no migration. Stage 2 is owned by two ordered forward migrations:
+
+- `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into migration truth; adds the initial owner/action/control/selection/audit tables, updated timestamps, focused indexes, select-only portal RLS, transactional idempotent commands, active-user backfills, and compatibility projection columns. Source-table triggers maintain candidate versions and the Schedule projection; Design Package source-task changes use a bounded staff RPC after direct authenticated source writes are revoked.
+- `20260721_000001_project_command_single_owner.sql` replaces the initial three-role owner contract with one Project Owner from the approved Jordan/JP/Joe/Bruce roster, performs the deterministic legacy backfill, and replaces the owner command.
+
+Both migrations must pass the executable environment smoke before Stage 2 can move from Yellow to complete.
 
 Legacy `projects.next_action*` and `follow_up_date` are a read-only Schedule compatibility projection. The transactional action command alone refreshes them through an internal helper. Project Details, dashboard controls, stage-task completion, and AutomationRunner no longer own those fields.
 
@@ -320,7 +326,7 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 1A: strict selector, normalized read model, staff API, and query. Implemented.
 - Stage 1B: Overview label/module, commercial card, customer context, truthful states, and legacy retirement. Implemented.
 - Stage 1C: deterministic unit/route/component/browser fixtures, docs, bundle/performance verification. Complete in the working tree.
-- Stage 2A-C: approved and implemented locally; authenticated and final quality gates remain before completion.
+- Stage 2A-C: present in the current repository; executable migration smoke plus authenticated real-project quality gates remain before completion.
 - Stage 3: workstreams. Not started.
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.

@@ -19,15 +19,16 @@ Portal staff manage contacts and projects in `apps/portal`.
 - Project routes: `/staff/projects`, `/staff/projects/new`, `/staff/projects/[projectId]`.
 - Project pipeline stages are defined in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Stage tasks mix manual checks and action links, for example booking a site visit or generating an estimate.
-- The project page's default landing tab is Activity, which hosts the Tasks panel and the Notes column.
+- The project page's staff-facing default is Overview, while the compatibility route key remains `activity`. Overview hosts status/details, current design and commercial truth, the Project Owner, one primary next action, project notes/activity, and stage tasks.
+- Staff-facing project tabs are Overview, Calculator, Commercial, and conditional Job Packs. Their compatibility route keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
 - Canonical doc: `projects-contacts-estimates-calculator.md`.
 
 ## Estimate Flow
 
-Staff create estimates from the calculator and project estimate tabs.
+Staff create estimates from the Calculator, either standalone or embedded in a project.
 
 - Main calculator route: `/staff/calculator`.
-- Project estimate surface: `/staff/projects/[projectId]?tab=estimates`.
+- Project Calculator surface: `/staff/projects/[projectId]?tab=estimates`; the route key remains for compatibility even though the visible label is Calculator.
 - Estimate APIs live under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`.
 - Estimate snapshots carry calculator inputs, derived costing output, and drawing state.
 - Sent, accepted, or declined quote versions lock the related estimate.
@@ -37,7 +38,8 @@ Staff create estimates from the calculator and project estimate tabs.
 
 Quotes are created from estimates and can be viewed publicly through tokenized routes.
 
-- Staff quote tab: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.
+- Project Commercial surface: `/staff/projects/[projectId]?tab=quotes` or `?tab=invoices`.
+- `CommercialTab.tsx` owns Quotes/Invoices composition while `QuotesTab.tsx` and `InvoicesTab.tsx` retain their specialist workflow behavior.
 - Staff quote APIs live under `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]`.
 - Deposit invoice routes live under portal staff APIs and public marketing invoice routes.

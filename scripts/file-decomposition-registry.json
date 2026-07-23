@@ -119,9 +119,7 @@
       "label": "geometry package",
       "status": "current",
       "ownerArea": "packages/geometry physical model truth",
-      "pathPatterns": [
-        "packages/geometry/**"
-      ],
+      "pathPatterns": ["packages/geometry/**"],
       "whyLarge": "Solvers, house model contracts, projections, and fixtures are central package truth with broad consumers.",
       "nextSafeExtraction": "Split solver phases, normalized model contracts, and projection helpers by physical responsibility while preserving public package exports.",
       "focusedTests": [
@@ -153,10 +151,17 @@
       "status": "current",
       "ownerArea": "Project commercial quote workflow",
       "pathPatterns": [
-        "apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx"
+        "apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx",
+        "apps/portal/components/projects/ProjectPage/tabs/QuoteDetailView.tsx",
+        "apps/portal/components/projects/ProjectPage/tabs/QuotesListView.tsx",
+        "apps/portal/components/projects/ProjectPage/tabs/QuoteWorkflowDialogs.tsx",
+        "apps/portal/components/projects/ProjectPage/tabs/quotesTabModel.ts",
+        "apps/portal/components/projects/ProjectPage/tabs/useQuoteLifecycleActions.ts",
+        "apps/portal/components/projects/ProjectPage/tabs/useQuotePdfPreviews.ts",
+        "apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts"
       ],
-      "whyLarge": "Local-first state, quote lifecycle, PDF/email side effects, and UI state sit close together.",
-      "nextSafeExtraction": "Move lifecycle policy, side-effect orchestration, and tab view models into named helpers before adding more inline tab behavior.",
+      "whyLarge": "QuotesTab is below the critical threshold and now composes named selection/query, lifecycle, PDF-preview, modal, list, detail, and pure-model owners. Draft editing, local-first create/persist, and send-form orchestration remain in the composition owner.",
+      "nextSafeExtraction": "If QuotesTab grows, extract draft editing plus local-first create/persist orchestration before adding another inline quote workflow.",
       "focusedTests": [
         "npm run test:portal:projects",
         "npm run test:portal:quotes",
@@ -168,9 +173,7 @@
       "label": "marketing enquiry route",
       "status": "current",
       "ownerArea": "Public enquiry intake and conversion workflow",
-      "pathPatterns": [
-        "apps/marketing/app/api/enquiry/route.ts"
-      ],
+      "pathPatterns": ["apps/marketing/app/api/enquiry/route.ts"],
       "whyLarge": "Request validation, indicative estimate preparation, project/contact/enquiry persistence, attachment staging, autoresponder delivery, outbox recording, attribution, and audit fallback still meet in one public route.",
       "nextSafeExtraction": "Move enquiry persistence and autoresponder/outbox audit orchestration behind named domain owners before JOB-07 migrates accepted delivery work; keep authentication-independent request validation and truthful response shaping in the route.",
       "focusedTests": [
@@ -184,9 +187,7 @@
       "label": "marketing start",
       "status": "current",
       "ownerArea": "Public conversion and guided-start experience",
-      "pathPatterns": [
-        "apps/marketing/app/start/page.tsx"
-      ],
+      "pathPatterns": ["apps/marketing/app/start/page.tsx"],
       "whyLarge": "Page-level presentation, product selection, conversion copy, and interaction paths are concentrated in one public page.",
       "nextSafeExtraction": "Extract section components, content data, and conversion state helpers before adding new campaign branches.",
       "focusedTests": [
