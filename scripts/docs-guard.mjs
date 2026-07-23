@@ -75,6 +75,7 @@ const ALLOWED_NON_ASCII_CODE_POINTS = new Set([
   0x2026, // HORIZONTAL ELLIPSIS
   // Math and comparison
   0x00B1, // PLUS-MINUS SIGN
+  0x00B2, // SUPERSCRIPT TWO (square-unit notation such as m²)
   0x00D7, // MULTIPLICATION SIGN
   0x00F7, // DIVISION SIGN
   0x2212, // MINUS SIGN
