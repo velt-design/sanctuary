@@ -111,6 +111,37 @@ describe('costing configuration admin publication', () => {
     }));
   });
 
+  it('returns the package-owned active snapshot needed for clear draft comparisons and resets', async () => {
+    const draft = draftVersion();
+    const activeConfig = loadCostingConfigV1();
+    const activeSnapshot = snapshotCostingControlConfigV1(activeConfig);
+    getCostingConfigurationVersionById.mockResolvedValue(draft);
+    resolvePublishedCostingConfiguration.mockResolvedValue({
+      config: activeConfig,
+      provenance: {
+        schemaVersion: 'costing-provenance.v1',
+        source: 'legacy-overrides',
+        versionId: null,
+        versionNumber: null,
+        contentHash: '0'.repeat(64),
+        baseManifestVersion: 'v1.7',
+        configSnapshot: activeSnapshot,
+      },
+    });
+    const { getCostingConfigurationEditor } = await import('./configurationAdmin');
+
+    const editor = await getCostingConfigurationEditor({} as SupabaseClient, draft.id);
+
+    expect(editor.comparison?.baselineConfig).toEqual(activeSnapshot);
+    expect(editor.comparison?.diff).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: 'labour.crewHourRateExGst',
+        before: activeSnapshot.labour.crewHourRateExGst,
+        after: draft.config.labour.crewHourRateExGst,
+      }),
+    ]));
+  });
+
   it('refuses to publish a stale hash before calling the database', async () => {
     const draft = draftVersion();
     getCostingConfigurationVersionById.mockResolvedValue(draft);

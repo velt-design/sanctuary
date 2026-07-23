@@ -67,6 +67,8 @@ Do not price from calculator while claiming the saved source is workbench-solved
 
 The admin-only control centre is `/admin/costing`. Its browser component calls guarded admin APIs only. `apps/portal/lib/costing/configurationAdmin.ts` owns draft/version orchestration, while `configurationResolver.ts` owns the staff calculation read path. Published version rows are immutable; a separate singleton publication row points to the current version so switching versions never mutates an old published row.
 
+The admin experience is a guided `Overview -> Edit settings -> Review impact -> Publish` workflow. The editor payload includes the validated active configuration snapshot alongside the selected draft so the UI can show active and draft values, filter changed settings, and reset a field or section without reconstructing costing logic in the portal. Draft changes remain browser-local until `Save & validate` calls the admin API; package validation issues are attached to business-labelled fields. Review continues to use the package-generated diff and representative-scenario preview, including material, labour, overhead, and total movement. UUIDs, hashes, schema names, manifests, and raw diff paths are available only as optional technical detail.
+
 Current data flow:
 
 ```text

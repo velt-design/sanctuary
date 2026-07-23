@@ -33,6 +33,7 @@ type CostingConfigurationActor = {
 export type CostingConfigurationComparison = {
   currentVersionId: string | null;
   currentSource: 'published' | 'legacy-overrides';
+  baselineConfig: CostingControlConfigV1;
   diff: CostingControlDiffEntryV1[];
   impact: CostingControlImpactRowV1[];
 };
@@ -162,11 +163,13 @@ async function compareCostingConfigurationDraft(
   const active = await resolvePublishedCostingConfiguration(supabase);
   const candidate = assertValidConfig(version.config);
   const candidateEngineConfig = applyCostingControlConfigV1(loadCostingConfigV1(), candidate);
+  const baselineConfig = snapshotCostingControlConfigV1(active.config);
   return {
     currentVersionId: active.provenance.versionId,
     currentSource: active.provenance.source,
+    baselineConfig,
     diff: diffCostingControlConfigsV1(
-      snapshotCostingControlConfigV1(active.config),
+      baselineConfig,
       candidate,
     ),
     impact: previewCostingControlImpactV1(active.config, candidateEngineConfig),
