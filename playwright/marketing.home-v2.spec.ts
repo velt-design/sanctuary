@@ -44,7 +44,9 @@ async function waitForAllImages(main: Locator) {
   expect(count, 'homepage V2 should render project and material photography').toBeGreaterThan(0);
 
   for (let index = 0; index < count; index += 1) {
-    await waitForImage(images.nth(index), `homepage V2 image ${index + 1}`);
+    if (await images.nth(index).isVisible()) {
+      await waitForImage(images.nth(index), `homepage V2 image ${index + 1}`);
+    }
   }
 }
 
@@ -98,6 +100,22 @@ for (const viewport of viewports) {
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /follow/i);
     await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute('content', /noindex/i);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonicalUrl);
+
+    const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
+    if (viewport.width <= 640) {
+      await expect(visitorPathways).toBeHidden();
+    } else {
+      await expect(visitorPathways).toBeVisible();
+    }
+
+    if (viewport.width > 640) {
+      const desktopDisclosures = main.locator('details[data-mobile-disclosure]');
+      await expect(desktopDisclosures).toHaveCount(7);
+      await expect.poll(() => desktopDisclosures.evaluateAll((items) => items.every((item) => item.hasAttribute('open'))))
+        .toBe(true);
+      await expect(desktopDisclosures.locator('summary').first()).toBeHidden();
+      await expect(main.locator('figure').filter({ hasText: 'Tindalls Bay / Patio and carport' })).toBeHidden();
+    }
 
     const liveRating = main.locator('[data-live-rating]');
     await expect(liveRating).toBeVisible();
@@ -204,6 +222,97 @@ for (const viewport of viewports) {
   });
 }
 
+for (const viewport of [
+  { width: 360, height: 800 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+] as const) {
+  test(`mobile homepage treatment is concise and progressive at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await preparePage(page);
+    await page.goto(route);
+
+    const main = page.locator('main[data-homepage-variant="v2"]');
+    const disclosures = main.locator('details[data-mobile-disclosure]');
+    await expect(disclosures).toHaveCount(7);
+    await expect.poll(() => disclosures.evaluateAll((items) => items.every((item) => !item.hasAttribute('open'))))
+      .toBe(true);
+
+    const summaries = disclosures.locator('summary');
+    await expect(summaries).toHaveCount(7);
+    for (let index = 0; index < await summaries.count(); index += 1) {
+      await expect(summaries.nth(index)).toBeVisible();
+      const bounds = await summaries.nth(index).boundingBox();
+      expect(bounds?.height).toBeGreaterThanOrEqual(44);
+    }
+
+    const collapsedState = await main.evaluate((element) => {
+      const wordCount = (value: string) => value.trim().match(/\S+/g)?.length ?? 0;
+      const blocks = [...element.querySelectorAll<HTMLElement>(':scope > section, :scope > aside, :scope > figure')]
+        .filter((block) => {
+          const bounds = block.getBoundingClientRect();
+          return bounds.width > 0 && bounds.height > 0;
+        });
+      let currentTextOnlyRun = 0;
+      let longestTextOnlyRun = 0;
+
+      for (const block of blocks) {
+        const hasImage = [...block.querySelectorAll('img')].some((image) => {
+          const bounds = image.getBoundingClientRect();
+          return bounds.width > 0 && bounds.height > 0;
+        });
+        const isTextHeavy = wordCount(block.innerText) > 50;
+        currentTextOnlyRun = isTextHeavy && !hasImage ? currentTextOnlyRun + 1 : 0;
+        longestTextOnlyRun = Math.max(longestTextOnlyRun, currentTextOnlyRun);
+      }
+
+      return {
+        visibleWords: wordCount(element.innerText),
+        longestTextOnlyRun,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+
+    expect(collapsedState.overflow).toBeLessThanOrEqual(0);
+    expect(collapsedState.longestTextOnlyRun).toBeLessThanOrEqual(2);
+
+    const headingLineCounts = await main.locator('h1, h2').evaluateAll((headings) => headings.map((heading) => {
+      const range = document.createRange();
+      range.selectNodeContents(heading);
+      return new Set([...range.getClientRects()].filter((line) => line.width > 0).map((line) => Math.round(line.top))).size;
+    }));
+    expect(Math.max(...headingLineCounts), 'mobile page-level headings should avoid awkward long wraps')
+      .toBeLessThanOrEqual(4);
+
+    const roofApproachCards = main.locator('[data-homepage-event="roof_approach_click"]').locator('..');
+    const cardHeights = await roofApproachCards.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
+    expect(Math.max(...cardHeights), 'priority mobile cards should remain compact').toBeLessThanOrEqual(300);
+
+    const projectBreak = main.locator('figure').filter({ hasText: 'Tindalls Bay / Patio and carport' });
+    await expect(projectBreak).toBeVisible();
+    await waitForImage(projectBreak.locator('img'), 'mobile Tindalls Bay project break');
+
+    const proofRows = await main.locator('[data-proof-item]').evaluateAll((items) => (
+      new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size
+    ));
+    expect(proofRows).toBe(2);
+
+    for (let index = 0; index < await summaries.count(); index += 1) {
+      await summaries.nth(index).click();
+      await expect(disclosures.nth(index)).toHaveAttribute('open', '');
+    }
+
+    const expandedWords = await main.evaluate((element) => (
+      element.innerText.trim().match(/\S+/g)?.length ?? 0
+    ));
+    expect(
+      collapsedState.visibleWords / expandedWords,
+      'the default mobile view should expose about 30% less copy while retaining expandable content',
+    ).toBeLessThanOrEqual(.72);
+    expect(collapsedState.visibleWords / expandedWords).toBeGreaterThan(.62);
+  });
+}
+
 test('approved homepage is indexable at root and the staging route permanently redirects', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
@@ -235,8 +344,7 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
     'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas for Auckland homes and selected commercial projects.',
   );
 
-  await expect(main).toContainText('Sanctuary designs, builds and installs bespoke fixed-roof pergolas in Auckland');
-  await expect(main).toContainText('home or commercial site');
+  await expect(main).toContainText('Sanctuary designs, builds and installs bespoke fixed-roof pergolas for Auckland homes and selected commercial projects');
   await expect(main).not.toContainText('4 roof forms');
   await expect(main).not.toContainText('10 design guides');
   await expect(main).not.toContainText('3 planning chapters');

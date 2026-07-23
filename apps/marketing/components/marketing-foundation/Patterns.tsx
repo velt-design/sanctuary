@@ -86,8 +86,8 @@ export function FullBleedStatement({ image, alt, eyebrow, heading, copy, action,
   return <section className={styles.fullBleed}><div className={styles.fullBleedImage}><Figure image={image} alt={alt} priority={priority} sizes="100vw" /></div><Container width="wide" className={styles.fullBleedContent}><Eyebrow>{eyebrow}</Eyebrow><Heading variant="page">{heading}</Heading><Text size="large">{copy}</Text>{action && <TextLink href={action.href}>{action.label}</TextLink>}</Container></section>;
 }
 
-export function StaggeredGallery({ items }: { items: Array<{ image: string; alt: string; title: string; detail?: string; href?: string; objectPosition?: string }> }) {
-  return <div className={styles.gallery}>{items.map((item, index) => <article key={item.title}><Figure image={item.image} alt={item.alt} caption={item.title} detail={item.detail} ratio={index % 3 === 1 ? 'portrait' : 'landscape'} objectPosition={item.objectPosition} />{item.href && <TextLink href={item.href}>View project</TextLink>}</article>)}</div>;
+export function StaggeredGallery({ items, className }: { items: Array<{ image: string; alt: string; title: string; detail?: string; href?: string; objectPosition?: string }>; className?: string }) {
+  return <div className={cn(styles.gallery, className)}>{items.map((item, index) => <article key={item.title}><Figure image={item.image} alt={item.alt} caption={item.title} detail={item.detail} ratio={index % 3 === 1 ? 'portrait' : 'landscape'} objectPosition={item.objectPosition} />{item.href && <TextLink href={item.href}>View project</TextLink>}</article>)}</div>;
 }
 
 export function SpecificationRows({ rows }: { rows: Array<{ label: string; value: string }> }) {

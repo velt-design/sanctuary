@@ -584,6 +584,26 @@ a.proofItem:hover {
   color: var(--color-inverse-text);
 }
 
+.mobileDisclosure {
+  min-width: 0;
+}
+
+.mobileDisclosureSummary {
+  display: none;
+}
+
+.mobileDisclosureBody {
+  min-width: 0;
+}
+
+.mobileProjectBreak {
+  display: none;
+}
+
+.mobileProjectBreakMedia {
+  position: relative;
+}
+
 @media (max-width: 1100px) {
   .heroCopy {
     grid-column: 1 / 11;
@@ -689,8 +709,13 @@ a.proofItem:hover {
 
 @media (max-width: 640px) {
   .page {
-    --text-page: clamp(2.9rem, 14.5vw, 4.5rem);
-    --section-space: clamp(4rem, 18vw, 5.5rem);
+    --text-page: clamp(2.65rem, 13vw, 4.1rem);
+    --section-space: clamp(3.25rem, 14vw, 4.25rem);
+    --section-space-compact: clamp(2.5rem, 11vw, 3.25rem);
+  }
+
+  .mobileHiddenPathways {
+    display: none;
   }
 
   .heroImage {
@@ -705,6 +730,14 @@ a.proofItem:hover {
   .introGrid,
   .sectionIntro {
     grid-template-columns: 1fr;
+  }
+
+  .heroContent {
+    padding-block: clamp(2.75rem, 10vw, 4rem);
+  }
+
+  .heroCopy {
+    gap: 1.05rem;
   }
 
   .heroCopy,
@@ -723,7 +756,16 @@ a.proofItem:hover {
   .heroMeta {
     justify-self: start;
     justify-content: flex-start;
-    margin-top: 1.25rem;
+    margin-top: .75rem;
+  }
+
+  .heroActions {
+    gap: .5rem 1.25rem;
+    margin-top: .15rem;
+  }
+
+  .heroMicrocopy {
+    line-height: 1.45;
   }
 
   .proofGrid {
@@ -731,8 +773,36 @@ a.proofItem:hover {
   }
 
   .proofItem {
-    min-height: 120px;
+    min-height: 118px;
+    grid-template-rows: minmax(3rem, auto) auto;
+    gap: .6rem;
     padding: 1rem;
+  }
+
+  .proofValue {
+    font-size: clamp(1.15rem, 5.4vw, 1.35rem);
+  }
+
+  [data-live-rating] .proofValue {
+    font-size: clamp(2.2rem, 10vw, 2.65rem);
+  }
+
+  .proofLabel {
+    font-size: .62rem;
+    letter-spacing: .075em;
+  }
+
+  .sectionIntro {
+    margin-bottom: clamp(2rem, 9vw, 2.75rem);
+  }
+
+  .introAction {
+    gap: 1rem;
+  }
+
+  .featuredProject,
+  .featuredProjectCopy {
+    gap: 1.5rem;
   }
 
   .projectFacts,
@@ -755,17 +825,57 @@ a.proofItem:hover {
   .pathwayCard,
   .guideCard {
     min-height: 0;
+    gap: .75rem;
+    padding: 1.35rem 1.25rem;
+  }
+
+  .pathwayCard,
+  .roofApproachCard {
+    position: relative;
+  }
+
+  .pathwayCard .cardNumber,
+  .roofApproachCard .cardNumber {
+    position: absolute;
+    top: 1.35rem;
+    right: 1.25rem;
+    margin: 0;
+  }
+
+  .cardAction {
+    min-height: 40px;
+  }
+
+  .roofApproachCard {
+    gap: .75rem;
+    padding: 1.35rem 1.25rem;
+  }
+
+  .materialContext {
+    gap: 1.25rem;
+    margin-top: 2.25rem;
   }
 
   .galleryHeader {
+    gap: 1rem;
+    margin-bottom: 2rem;
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .selectedGallery {
+    gap: 2.25rem;
+  }
+
+  .selectedGallery > article {
+    gap: .75rem;
   }
 
   .roofRow {
     grid-template-columns: 2.5rem minmax(0, 1fr);
     gap: .75rem 1rem;
-    padding-block: 1.5rem;
+    min-height: 0;
+    padding-block: 1.15rem;
   }
 
   .roofRow > :nth-child(3),
@@ -776,32 +886,122 @@ a.proofItem:hover {
   .reviewSummary {
     align-items: flex-start;
     flex-direction: column;
+    margin-top: 2rem;
+  }
+
+  .reviewCard {
+    min-height: 0;
+    gap: 1.5rem;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .reviewCard blockquote {
+    font-size: clamp(1.1rem, 5vw, 1.35rem);
   }
 
   .processAction {
     justify-content: flex-start;
+    margin-top: 1.5rem;
   }
 
   .secondaryPathways {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .mobileDisclosure {
+    border-top: 1px solid var(--color-rule-strong);
+  }
+
+  .mobileDisclosureSummary {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: .85rem;
+    cursor: pointer;
+    color: var(--color-text-primary);
+    font: 600 .72rem/1.35 var(--font-body);
+    letter-spacing: .085em;
+    list-style: none;
+    text-transform: uppercase;
+  }
+
+  .mobileDisclosureSummary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobileDisclosureSummary:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 4px;
+  }
+
+  .mobileDisclosureIcon {
+    position: relative;
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+  }
+
+  .mobileDisclosureIcon::before,
+  .mobileDisclosureIcon::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - .5px);
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: currentColor;
+    transition: transform 160ms ease;
+  }
+
+  .mobileDisclosureIcon::after {
+    transform: rotate(90deg);
+  }
+
+  .mobileDisclosure[open] .mobileDisclosureIcon::after {
+    transform: rotate(0);
+  }
+
+  .mobileDisclosureBody {
+    padding-top: 1rem;
+  }
+
+  .mobileProjectBreak {
+    display: block;
+    margin: 0;
+    background: var(--color-inverse-surface);
+    color: rgba(255, 255, 255, .72);
+  }
+
+  .mobileProjectBreakMedia {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+  }
+
+  .mobileProjectBreak figcaption {
+    padding: .85rem var(--page-gutter) 1rem;
+    font: 600 .65rem/1.4 var(--font-body);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
 }
 
 @media (max-width: 480px) {
   .proofGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .proofItem {
-    min-height: 0;
-    grid-template-rows: auto auto;
-    gap: .55rem;
-    padding: 1.25rem;
+    min-height: 118px;
+    grid-template-rows: minmax(3rem, auto) auto;
+    gap: .6rem;
+    padding: 1rem;
   }
 
   .proofValue {
-    max-width: 23ch;
+    max-width: 17ch;
   }
 }
 
@@ -809,6 +1009,11 @@ a.proofItem:hover {
   a.proofItem,
   .pathwayCard,
   .guideCard {
+    transition: none;
+  }
+
+  .mobileDisclosureIcon::before,
+  .mobileDisclosureIcon::after {
     transition: none;
   }
 }

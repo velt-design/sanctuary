@@ -37,6 +37,7 @@ import {
   visitorPathways,
 } from './content';
 import HomepageInteractionTracker from './HomepageInteractionTracker';
+import MobileDisclosure from './MobileDisclosure';
 import styles from './home-v2.module.css';
 
 const homepageTitle = 'Architectural Pergola Design & Build | Sanctuary Pergolas';
@@ -135,7 +136,7 @@ export default async function HomePage() {
                 Bespoke pergolas, built around the architecture.
               </Heading>
               <Text size="large" className={styles.heroText}>
-                Sanctuary designs, builds and installs bespoke fixed-roof pergolas in Auckland. Each project responds to the home or commercial site, its architecture and intended use.
+                Sanctuary designs, builds and installs bespoke fixed-roof pergolas for Auckland homes and selected commercial projects.
               </Text>
               <div className={styles.heroActions} aria-label="Homepage actions">
                 <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="hero_estimate_click">Get an initial project estimate</Button>
@@ -201,16 +202,18 @@ export default async function HomePage() {
                 <div><dt>Configuration</dt><dd>Freestanding gable</dd></div>
                 <div><dt>Roof and ceiling</dt><dd>Solid and clear acrylic zones with cedar lining</dd></div>
               </dl>
-              <div className={styles.projectEvidence}>
-                <div>
-                  <h3>Design constraint</h3>
-                  <p>Create a substantial room beside the house without relying on the existing structure for support, while retaining daylight and a connection to the garden.</p>
+              <MobileDisclosure summary="View the design response">
+                <div className={styles.projectEvidence}>
+                  <div>
+                    <h3>Design constraint</h3>
+                    <p>Create a substantial room beside the house without relying on the existing structure for support, while retaining daylight and a connection to the garden.</p>
+                  </div>
+                  <div>
+                    <h3>Sanctuary response</h3>
+                    <p>A freestanding gable combines the new deck, fireplace, clear acrylic glazing, solid roof zones, cedar ceiling and lighting within one resolved structure.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3>Sanctuary response</h3>
-                  <p>A freestanding gable combines the new deck, fireplace, clear acrylic glazing, solid roof zones, cedar ceiling and lighting within one resolved structure.</p>
-                </div>
-              </div>
+              </MobileDisclosure>
               <div className={styles.sectionActions}>
                 <Button href={`/projects/${leadProject.slug}`} data-homepage-event="project_case_study_click" data-homepage-item={leadProject.slug}>
                   View the Warkworth project
@@ -234,11 +237,13 @@ export default async function HomePage() {
               <TextLink href="/custom-pergolas-auckland" data-homepage-event="approach_click">See our design and build approach</TextLink>
             </div>
           </div>
-          <NumberedPrinciples items={designPrinciples.map((item) => ({ ...item }))} />
+          <MobileDisclosure summary="View the three design principles">
+            <NumberedPrinciples items={designPrinciples.map((item) => ({ ...item }))} />
+          </MobileDisclosure>
         </Container>
       </Section>
 
-      <Section aria-labelledby="project-pathways">
+      <Section className={styles.mobileHiddenPathways} aria-labelledby="project-pathways">
         <Container width="wide">
           <div className={styles.sectionIntro}>
             <div>
@@ -331,13 +336,15 @@ export default async function HomePage() {
             ))}
           </div>
           <div className={styles.materialContext}>
-            <SpecificationRows
-              rows={[
-                { label: 'Structure', value: 'Architectural aluminium framing, with steel where project requirements demand it' },
-                { label: 'Linings and ceilings', value: 'Timber sarking, cedar and selected solid ceiling treatments, specified separately from the roof category' },
-                { label: 'Junctions and drainage', value: 'Flashings, falls, gutters and house connections resolved with the frame and roof' },
-              ]}
-            />
+            <MobileDisclosure summary="View structure and detailing notes">
+              <SpecificationRows
+                rows={[
+                  { label: 'Structure', value: 'Architectural aluminium framing, with steel where project requirements demand it' },
+                  { label: 'Linings and ceilings', value: 'Timber sarking, cedar and selected solid ceiling treatments, specified separately from the roof category' },
+                  { label: 'Junctions and drainage', value: 'Flashings, falls, gutters and house connections resolved with the frame and roof' },
+                ]}
+              />
+            </MobileDisclosure>
             <TextLink href="/pergolas-auckland#roofing-options" data-homepage-event="roof_comparison_click">Compare roof approaches</TextLink>
           </div>
         </Container>
@@ -360,18 +367,20 @@ export default async function HomePage() {
               detail="Roof, ceiling and lighting coordinated together"
               className={styles.integrationFigure}
             />
-            <div className={styles.integrationRows}>
-              {integratedOptions.map((option, index) => (
-                <article className={styles.integrationRow} key={option.title}>
-                  <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
-                  <div>
-                    <Heading as="h3" variant="card">{option.title}</Heading>
-                    <Text size="small">{option.copy}</Text>
-                    <TextLink href={option.href} data-homepage-event="integrated_option_click" data-homepage-item={option.title}>{option.action}</TextLink>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <MobileDisclosure summary="View integrated comfort options">
+              <div className={styles.integrationRows}>
+                {integratedOptions.map((option, index) => (
+                  <article className={styles.integrationRow} key={option.title}>
+                    <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
+                    <div>
+                      <Heading as="h3" variant="card">{option.title}</Heading>
+                      <Text size="small">{option.copy}</Text>
+                      <TextLink href={option.href} data-homepage-event="integrated_option_click" data-homepage-item={option.title}>{option.action}</TextLink>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </MobileDisclosure>
           </div>
         </Container>
       </Section>
@@ -387,6 +396,7 @@ export default async function HomePage() {
           </div>
           <div data-homepage-event="project_case_study_click">
             <StaggeredGallery
+              className={styles.selectedGallery}
               items={selectedProjects.map(({ project, configuration, roofApproach }) => ({
                 image: project.heroImage.src,
                 alt: project.heroImage.alt,
@@ -409,7 +419,9 @@ export default async function HomePage() {
             </div>
             <Text>The programme and on-site sequence depend on the completed scope, access, approvals, materials and current schedule. They are confirmed for the project in writing.</Text>
           </div>
-          <ProcessSteps items={processSteps.map((item) => ({ ...item }))} />
+          <MobileDisclosure summary="View the five-stage process">
+            <ProcessSteps items={processSteps.map((item) => ({ ...item }))} />
+          </MobileDisclosure>
           <div className={styles.processAction}>
             <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="process_enquiry_click">Start with your project details</Button>
           </div>
@@ -441,6 +453,20 @@ export default async function HomePage() {
         </Container>
       </Section>
 
+      <figure className={styles.mobileProjectBreak}>
+        <div className={styles.mobileProjectBreakMedia}>
+          <Image
+            src="/images/project-tindalls-bay.jpg"
+            alt="Coastal pergola pavilion overlooking Tindalls Bay"
+            fill
+            quality={75}
+            sizes="(max-width: 640px) 100vw, 1px"
+            style={{ objectFit: 'cover', objectPosition: '50% 42%' }}
+          />
+        </div>
+        <figcaption>Tindalls Bay / Patio and carport</figcaption>
+      </figure>
+
       <Section tone="neutral" aria-labelledby="project-assurances">
         <Container>
           <div className={styles.sectionIntro}>
@@ -450,15 +476,17 @@ export default async function HomePage() {
             </div>
             <Text>Before site work begins, Sanctuary records the agreed design, materials, inclusions, exclusions, current programme and applicable warranty information in writing.</Text>
           </div>
-          <SpecificationRows
-            rows={[
-              { label: 'Written scope', value: 'Design, materials, inclusions and exclusions recorded for approval' },
-              { label: 'Current programme', value: 'Confirmed against the completed scope and current schedule' },
-              { label: 'Installation', value: 'Carried out by the Sanctuary team to the documented project requirements' },
-              { label: 'Warranty information', value: 'Applicable workmanship and selected-product terms supplied in writing' },
-              { label: 'Ongoing support', value: 'Care information and a clear contact path provided at handover' },
-            ]}
-          />
+          <MobileDisclosure summary="View project assurance details">
+            <SpecificationRows
+              rows={[
+                { label: 'Written scope', value: 'Design, materials, inclusions and exclusions recorded for approval' },
+                { label: 'Current programme', value: 'Confirmed against the completed scope and current schedule' },
+                { label: 'Installation', value: 'Carried out by the Sanctuary team to the documented project requirements' },
+                { label: 'Warranty information', value: 'Applicable workmanship and selected-product terms supplied in writing' },
+                { label: 'Ongoing support', value: 'Care information and a clear contact path provided at handover' },
+              ]}
+            />
+          </MobileDisclosure>
         </Container>
       </Section>
 
@@ -474,21 +502,23 @@ export default async function HomePage() {
               <TextLink href="/pergola-guides" data-homepage-event="guide_gateway_click">Explore the pergola guides</TextLink>
             </div>
           </div>
-          <div className={styles.guideGrid}>
-            {guidePathways.map((guide) => (
-              <Link
-                href={guide.href}
-                className={styles.guideCard}
-                key={guide.title}
-                data-homepage-event="guide_pathway_click"
-                data-homepage-item={guide.title}
-              >
-                <Heading as="h3" variant="card">{guide.title}</Heading>
-                <Text>{guide.copy}</Text>
-                <span className={styles.cardAction}>Open this guide</span>
-              </Link>
-            ))}
-          </div>
+          <MobileDisclosure summary="Browse individual guide topics">
+            <div className={styles.guideGrid}>
+              {guidePathways.map((guide) => (
+                <Link
+                  href={guide.href}
+                  className={styles.guideCard}
+                  key={guide.title}
+                  data-homepage-event="guide_pathway_click"
+                  data-homepage-item={guide.title}
+                >
+                  <Heading as="h3" variant="card">{guide.title}</Heading>
+                  <Text>{guide.copy}</Text>
+                  <span className={styles.cardAction}>Open this guide</span>
+                </Link>
+              ))}
+            </div>
+          </MobileDisclosure>
         </Container>
       </Section>
 
@@ -498,7 +528,7 @@ export default async function HomePage() {
             <Eyebrow>Start with the site and intended use</Eyebrow>
             <Heading id="qualified-enquiry">Send enough detail for a useful first response.</Heading>
             <Text size="large">
-              Sanctuary will review the initial information, identify likely options, flag obvious site or scope considerations and recommend the appropriate next step. An indicative price range may be possible where the brief is clear enough.
+              Sanctuary reviews the initial information, identifies likely options, flags site or scope considerations and recommends a next step. Where the brief is clear, an indicative price range may be possible.
             </Text>
             <div className={styles.sectionActions}>
               <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="final_enquiry_click">Send your project details</Button>

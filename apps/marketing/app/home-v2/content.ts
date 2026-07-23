@@ -26,7 +26,7 @@ export const visitorPathways = [
   {
     eyebrow: 'Residential planning',
     title: 'An Auckland pergola for your home',
-    copy: 'Start with the home, outdoor area and intended use, then compare the forms, roof approaches and scope that may suit.',
+    copy: 'Start with the home, outdoor area and intended use, then compare forms, roofs and scope.',
     href: '/pergolas-auckland',
     action: 'Plan an Auckland pergola',
     event: 'residential_pathway_click',
@@ -34,7 +34,7 @@ export const visitorPathways = [
   {
     eyebrow: 'Custom and complex',
     title: 'A site that needs a bespoke response',
-    copy: 'Explore unusual sites, difficult connections, larger spans, integrated structures and design-led project requirements.',
+    copy: 'Explore unusual sites, difficult connections, larger spans and integrated, design-led requirements.',
     href: '/custom-pergolas-auckland',
     action: 'Explore custom pergola design',
     event: 'custom_pathway_click',
@@ -42,7 +42,7 @@ export const visitorPathways = [
   {
     eyebrow: 'Commercial',
     title: 'Cover for a working environment',
-    copy: 'Plan hospitality, accommodation, workplace and selected commercial projects around operations, services and delivery.',
+    copy: 'Plan hospitality, accommodation, workplace and selected commercial projects around operations and delivery.',
     href: '/commercial-pergolas-auckland#project-details',
     action: 'Discuss a commercial project',
     event: 'commercial_pathway_click',
@@ -50,7 +50,7 @@ export const visitorPathways = [
   {
     eyebrow: 'Professional collaboration',
     title: 'Plans, specifications or an early brief',
-    copy: 'Architects, designers and builders can share drawings, concepts, tender information and the responsibilities already defined.',
+    copy: 'Architects, designers and builders can share drawings, concepts, tender information and defined responsibilities.',
     href: '/contact?enquiry=professional#contact-form',
     action: 'Send plans or a project brief',
     event: 'professional_pathway_click',
@@ -60,22 +60,22 @@ export const visitorPathways = [
 export const roofForms = [
   {
     title: 'Pitched',
-    copy: 'One roof plane creates a restrained profile. It can suit attached or freestanding work where height, fall and drainage support the form.',
+    copy: 'One restrained roof plane can suit attached or freestanding work where height, fall and drainage support the form.',
     href: '/products/pergolas/pitched',
   },
   {
     title: 'Gable',
-    copy: 'A central ridge creates height and a strong centreline. Attached and freestanding versions can suit wider rooms or a house with related roof geometry.',
+    copy: 'A central ridge creates height and can suit wider rooms or homes with related roof geometry.',
     href: '/products/pergolas/gable',
   },
   {
     title: 'Hip',
-    copy: 'Several roof planes meet around a more enclosed geometry. Attached or freestanding designs can respond to courtyards, corners and complex rooflines.',
+    copy: 'Several roof planes create an enclosed geometry that can respond to courtyards, corners and complex rooflines.',
     href: '/products/pergolas/hip',
   },
   {
     title: 'Box perimeter',
-    copy: 'A level outer edge conceals the working roof fall within. Attached and freestanding versions can suit contemporary homes and clean rectangular plans.',
+    copy: 'A level outer edge conceals the roof fall and can suit contemporary homes with clean rectangular plans.',
     href: '/products/pergolas/box-perimeter',
   },
 ] as const;
@@ -83,19 +83,19 @@ export const roofForms = [
 export const roofApproaches = [
   {
     title: 'Acrylic roofing',
-    copy: 'Transparent or translucent roof zones can maintain daylight and visual openness. The exact sheet, tint, roof depth and relationship to nearby windows are selected for the project.',
+    copy: 'Transparent or translucent zones can retain daylight and openness. Sheet, tint, roof depth and nearby windows are considered for the project.',
     href: '/acrylic-roof-pergolas-auckland',
     action: 'Review acrylic roofing',
   },
   {
     title: 'Solid roofing',
-    copy: 'Solid roof zones provide stronger overhead shade and can support a more ceiling-like treatment. The complete build-up, drainage and effect on adjoining rooms need early review.',
+    copy: 'Solid zones provide stronger shade and can support a ceiling-like treatment. Build-up, drainage and adjoining rooms need early review.',
     href: '/projects/riverhead-gable-pavilion',
     action: 'See a solid-roof project',
   },
   {
     title: 'Combination roofing',
-    copy: 'Transparent and solid zones can be coordinated to balance light, shade and architectural expression. Their junction is designed as part of the complete roof.',
+    copy: 'Transparent and solid zones can balance light, shade and architectural expression, with their junction designed into the complete roof.',
     href: '/projects/tindalls-bay-pavilion',
     action: 'See a combination-roof project',
   },
