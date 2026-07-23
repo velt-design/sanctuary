@@ -374,7 +374,7 @@ const baseProjects: Project[] = [
   {
     slug: 'goodhome-commercial-terrace',
     title: 'The Good Home Takanini',
-    location: '260 Great South Road, Takanini, Auckland',
+    location: 'Takanini, Auckland',
     region: 'South Auckland',
     type: 'Commercial',
     roof: 'Gable',

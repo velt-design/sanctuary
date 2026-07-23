@@ -21,6 +21,7 @@ const HEADER_SCROLL_THRESHOLD_PX = 12;
 const HEADER_DIRECTION_SAMPLE_COUNT = 2;
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
 const heroOverlayRoutes = new Set([
+  '/',
   '/home-v2',
   '/pergola-guides',
   '/pergolas-auckland',
@@ -238,7 +239,7 @@ export default function Header() {
 
   useEffect(() => {
     const body = document.body;
-    const preserveDocumentScroll = mobileMenuOpen && pathname === '/home-v2';
+    const preserveDocumentScroll = mobileMenuOpen && pathname === '/';
     const scrollY = preserveDocumentScroll ? mobileMenuScrollYRef.current : 0;
     const previousInlineStyle = preserveDocumentScroll
       ? {
@@ -327,8 +328,8 @@ export default function Header() {
             </div>
           </nav>
           <div className="header-actions">
-            <Link href="/contact" className="nav-cta">
-              <span className="nav-cta__label">Quick Estimate</span>
+            <Link href="/contact?enquiry=residential#contact-form" className="nav-cta">
+              <span className="nav-cta__label">Get an estimate</span>
             </Link>
             <button
               ref={mobileToggleRef}

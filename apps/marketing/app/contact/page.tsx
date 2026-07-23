@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import { uploadEnquiryAttachments } from '@/lib/enquiryAttachments';
+import { getEnquiryTypeFromSearch, type EnquiryType } from './enquiryRoute';
 import '@/app/products/product.css';
 import '@/app/contact/dark.css';
 import '@/app/contact/spacing.css';
@@ -18,10 +19,17 @@ export default function ContactPage() {
   const [length, setLength] = useState(3.0);
   const [height, setHeight] = useState(2.5);
   // Enquiry type (single select)
-  type EnquiryType = 'Residential' | 'Commercial' | 'Professional';
   const [enquiryType, setEnquiryType] = useState<EnquiryType | null>(null);
   const [enquiryExpanded, setEnquiryExpanded] = useState(true);
   const [enquiryRevealed, setEnquiryRevealed] = useState(false);
+  useEffect(() => {
+    const linkedEnquiryType = getEnquiryTypeFromSearch(window.location.search);
+    if (!linkedEnquiryType) return;
+
+    setEnquiryType(linkedEnquiryType);
+    setEnquiryExpanded(false);
+    setEnquiryRevealed(true);
+  }, []);
   // Delay the reveal so the selected enquiry toggle has time to animate
   const REVEAL_DELAY_MS = 650;
   const HIDE_AFTER_OPEN_MS = 200;

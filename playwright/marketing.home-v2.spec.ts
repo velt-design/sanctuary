@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const route = '/home-v2';
+const route = '/';
 const canonicalUrl = 'https://www.sanctuarypergolas.co.nz';
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-home-v2');
 const capture = process.env.MARKETING_HOME_V2_CAPTURE?.trim();
@@ -11,7 +11,9 @@ const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
   { name: '1024x768', width: 1024, height: 768 },
   { name: '768x1024', width: 768, height: 1024 },
+  { name: '430x932', width: 430, height: 932 },
   { name: '390x844', width: 390, height: 844 },
+  { name: '360x800', width: 360, height: 800 },
 ] as const;
 
 async function preparePage(page: Page, analytics = false) {
@@ -82,7 +84,7 @@ for (const viewport of viewports) {
     expect(response?.ok(), `${route} should resolve`).toBe(true);
 
     const main = page.locator('main[data-homepage-variant="v2"]');
-    const hero = main.locator('section[aria-labelledby="home-v2-heading"]');
+    const hero = main.locator('section[aria-labelledby="homepage-heading"]');
     const header = page.locator('header.site');
     const brand = header.locator('.site-brand');
 
@@ -92,8 +94,9 @@ for (const viewport of viewports) {
       level: 1,
       name: 'Bespoke pergolas, built around the architecture.',
     })).toBeVisible();
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/i);
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /nofollow/i);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index/i);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /follow/i);
+    await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute('content', /noindex/i);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonicalUrl);
 
     const liveRating = main.locator('[data-live-rating]');
@@ -104,9 +107,46 @@ for (const viewport of viewports) {
     );
     await expect(liveRating).toHaveAttribute('href', /search\.google\.com\/local\/reviews/);
 
-    const heroActions = main.getByLabel('Homepage V2 actions');
+    const proofItems = main.locator('[data-proof-item]');
+    await expect(proofItems).toHaveCount(4);
+    await expect(proofItems.nth(1)).toContainText('Auckland based');
+    await expect(proofItems.nth(1)).toContainText('Local design and installation');
+    await expect(proofItems.nth(2)).toContainText('Designed + installed by Sanctuary');
+    await expect(proofItems.nth(2)).toContainText('One team from concept to completion');
+    await expect(proofItems.nth(3)).toContainText('Fixed-roof specialists');
+    await expect(proofItems.nth(3)).toContainText('Residential and selected commercial projects');
+
+    const proofGeometry = await proofItems.evaluateAll((items) => items.map((item) => {
+      const primary = item.querySelector<HTMLElement>('[data-proof-primary]');
+      const supporting = item.querySelector<HTMLElement>('[data-proof-supporting]');
+      const bounds = item.getBoundingClientRect();
+      const supportingBounds = supporting?.getBoundingClientRect();
+      const range = document.createRange();
+      if (primary) range.selectNodeContents(primary);
+      const primaryLineTops = primary
+        ? [...range.getClientRects()].filter((line) => line.width > 0).map((line) => Math.round(line.top))
+        : [];
+      return {
+        top: bounds.top,
+        height: bounds.height,
+        supportingTop: supportingBounds?.top ?? 0,
+        primaryLines: new Set(primaryLineTops).size,
+      };
+    }));
+    for (const item of proofGeometry) {
+      expect(item.primaryLines, 'proof statements should wrap to no more than two controlled lines').toBeLessThanOrEqual(2.1);
+    }
+    const proofRowTops = [...new Set(proofGeometry.map((item) => Math.round(item.top)))];
+    for (const rowTop of proofRowTops) {
+      const row = proofGeometry.filter((item) => Math.round(item.top) === rowTop);
+      expect(new Set(row.map((item) => Math.round(item.height))).size).toBe(1);
+      expect(Math.max(...row.map((item) => item.supportingTop)) - Math.min(...row.map((item) => item.supportingTop)))
+        .toBeLessThanOrEqual(1);
+    }
+
+    const heroActions = main.getByLabel('Homepage actions');
     await expect(heroActions.getByRole('link', { name: 'Get an initial project estimate', exact: true }))
-      .toHaveAttribute('href', '/contact');
+      .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
     await expect(heroActions.locator('a[href="/projects"]')).toHaveText('View completed projects');
 
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -116,7 +156,7 @@ for (const viewport of viewports) {
     const topState = await page.evaluate(() => {
       const headerElement = document.querySelector<HTMLElement>('header.site');
       const brandElement = headerElement?.querySelector<HTMLElement>('.site-brand');
-      const heroElement = document.querySelector<HTMLElement>('main[data-homepage-variant="v2"] section[aria-labelledby="home-v2-heading"]');
+      const heroElement = document.querySelector<HTMLElement>('main[data-homepage-variant="v2"] section[aria-labelledby="homepage-heading"]');
       const imageElement = heroElement?.querySelector<HTMLElement>('img');
       if (!headerElement || !brandElement || !heroElement || !imageElement) return null;
 
@@ -164,31 +204,23 @@ for (const viewport of viewports) {
   });
 }
 
-test('homepage V2 stays noindex and unlisted while the current homepage remains established', async ({ page }) => {
+test('approved homepage is indexable at root and the staging route permanently redirects', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
-  const stagingResponse = await page.goto(route);
+  const stagingResponse = await page.request.get('/home-v2', { maxRedirects: 0 });
+  expect(stagingResponse.status()).toBe(308);
+  expect(stagingResponse.headers().location).toBe('/');
 
-  const v2RatingLabel = await page.locator('[data-live-rating]').getAttribute('aria-label');
-  expect(v2RatingLabel).toBeTruthy();
-  expect(stagingResponse?.headers()['x-robots-tag']).toBe('noindex, nofollow');
+  await page.goto(route);
+  await expect(page.locator('main[data-homepage-variant="v2"]')).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index/i);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonicalUrl);
   await expect(page.locator('header.site a[href="/home-v2"]')).toHaveCount(0);
   await expect(page.locator('footer a[href="/home-v2"]')).toHaveCount(0);
 
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).not.toContainText('/home-v2');
-
-  await page.goto('/');
-  await expect(page.locator('body')).toHaveClass(/homepage/);
-  await expect(page.locator('main[data-homepage-variant="v2"]')).toHaveCount(0);
-  await expect(page.getByRole('heading', {
-    level: 1,
-    name: 'Architectural pergolas tailored to Kiwi homes.',
-  })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'The Sanctuary Process' })).toBeAttached();
-  await expect(page.getByRole('link', { name: 'Quick Estimate' }).first()).toHaveAttribute('href', '/contact');
-  await expect(page.locator('a[href="/home-v2"]')).toHaveCount(0);
-  await expect(page.locator('.home-hero a[aria-label^="Rated"]')).toHaveAttribute('aria-label', v2RatingLabel!);
+  await expect(page.locator('body')).toContainText(`${canonicalUrl}/`);
 });
 
 test('homepage V2 exposes the approved pathways, evidence and production-ready SEO identity', async ({ page }) => {
@@ -200,7 +232,7 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await expect(page).toHaveTitle('Architectural Pergola Design & Build | Sanctuary Pergolas');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     'content',
-    'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas in Auckland for residential and selected commercial projects.',
+    'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas for Auckland homes and selected commercial projects.',
   );
 
   await expect(main).toContainText('Sanctuary designs, builds and installs bespoke fixed-roof pergolas in Auckland');
@@ -218,8 +250,8 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   const expectedPathways = [
     ['/pergolas-auckland', 'Plan an Auckland pergola'],
     ['/custom-pergolas-auckland', 'Explore custom pergola design'],
-    ['/commercial-pergolas-auckland', 'Discuss a commercial project'],
-    ['/contact#contact-form', 'Send plans or a project brief'],
+    ['/commercial-pergolas-auckland#project-details', 'Discuss a commercial project'],
+    ['/contact?enquiry=professional#contact-form', 'Send plans or a project brief'],
   ] as const;
   for (const [href, name] of expectedPathways) {
     await expect(main.getByRole('link', { name })).toHaveAttribute('href', href);
@@ -239,7 +271,15 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await expect(process.locator('ol > li')).toHaveCount(5);
   await expect(main.locator('[data-home-review]')).toHaveCount(3);
   await expect(main.getByRole('link', { name: 'Explore the pergola guides' })).toHaveAttribute('href', '/pergola-guides');
-  await expect(main.getByRole('link', { name: 'Send your project details' })).toHaveAttribute('href', '/contact');
+  await expect(main.getByRole('link', { name: 'Send your project details' }))
+    .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+  await expect(main).toContainText('Before site work begins, Sanctuary records the agreed design');
+  await expect(main).toContainText('Documented scope, approval and scheduling');
+  await expect(main).not.toContainText('Three concise Google reviews');
+  await expect(main).not.toContainText('complete technical manual');
+  await expect(main).not.toContainText('Standalone');
+  await expect(page.getByRole('link', { name: 'Get an estimate', exact: true }))
+    .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
 
   const schemaTypes = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) => (
     nodes.flatMap((node) => {
@@ -284,6 +324,35 @@ test('homepage V2 records consented CTA events without customer data', async ({ 
   });
 });
 
+test('homepage enquiry links open the promised contact pathway', async ({ page }) => {
+  await preparePage(page);
+
+  for (const [destination, enquiryHeading] of [
+    ['/contact?enquiry=residential#contact-form', 'Residential Enquiry'],
+    ['/contact?enquiry=professional#contact-form', 'Professional Enquiry'],
+  ] as const) {
+    await page.goto(destination);
+    await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
+    await expect(page.locator('.enquiry-header__text')).toHaveText(enquiryHeading);
+    await expect(page.locator('#contact-form')).toBeVisible();
+  }
+});
+
+test('homepage comparison and commercial links land at the promised sections', async ({ page }) => {
+  await preparePage(page);
+
+  for (const [destination, target] of [
+    ['/pergolas-auckland#roof-form-options', '#roof-form-options'],
+    ['/pergolas-auckland#roofing-options', '#roofing-options'],
+    ['/commercial-pergolas-auckland#project-details', '#project-details'],
+    ['/contact#contact-form', '#contact-form'],
+  ] as const) {
+    await page.goto(destination);
+    await expect(page.locator(target)).toBeAttached();
+    await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
+  }
+});
+
 test('homepage V2 internal destinations resolve without redirect errors', async ({ page }) => {
   await preparePage(page);
   await page.goto(route);
@@ -299,13 +368,65 @@ test('homepage V2 internal destinations resolve without redirect errors', async 
   }
 });
 
+test('homepage keeps a coherent keyboard and document structure', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  await page.goto(route);
+
+  const structure = await page.locator('main[data-homepage-variant="v2"]').evaluate((main) => {
+    const headingLevels = [...main.querySelectorAll('h1, h2, h3, h4, h5, h6')]
+      .map((heading) => Number(heading.tagName.slice(1)));
+    const images = [...main.querySelectorAll('img')];
+    return {
+      headingLevels,
+      h1Count: headingLevels.filter((level) => level === 1).length,
+      imagesMissingAlt: images.filter((image) => !image.hasAttribute('alt')).length,
+      imageCount: images.length,
+    };
+  });
+  expect(structure.h1Count).toBe(1);
+  expect(structure.imagesMissingAlt).toBe(0);
+  expect(structure.imageCount).toBeGreaterThan(0);
+  for (let index = 1; index < structure.headingLevels.length; index += 1) {
+    expect(
+      structure.headingLevels[index] - structure.headingLevels[index - 1],
+      'heading levels should not skip forward',
+    ).toBeLessThanOrEqual(1);
+  }
+
+  await page.keyboard.press('Tab');
+  const focusedElement = await page.evaluate(() => {
+    const active = document.activeElement as HTMLElement | null;
+    if (!active) return null;
+    const style = getComputedStyle(active);
+    return {
+      tagName: active.tagName,
+      name: active.getAttribute('aria-label') || active.textContent?.trim(),
+      hasVisibleFocus:
+        (style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0)
+        || style.boxShadow !== 'none',
+    };
+  });
+  expect(focusedElement?.tagName).toBe('A');
+  expect(focusedElement?.name).toContain('Sanctuary Pergolas');
+  expect(focusedElement?.hasVisibleFocus).toBe(true);
+
+  const mobileMenuButton = page.getByRole('button', { name: 'Open menu' });
+  const heroEstimate = page.getByRole('link', { name: 'Get an initial project estimate', exact: true });
+  for (const target of [mobileMenuButton, heroEstimate]) {
+    const bounds = await target.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThanOrEqual(44);
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
 test('Warkworth exterior focal framing propagates across public placements', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
 
   for (const { destination, galleryAdvances = 0 } of [
     { destination: '/' },
-    { destination: '/home-v2' },
     { destination: '/projects' },
     { destination: '/projects/warkworth-outdoor-room', galleryAdvances: 4 },
     { destination: '/pergola-guides' },
@@ -373,8 +494,8 @@ test('homepage V2 preserves the shared mobile menu scroll lock and focus return'
   await expect(menuButton).toBeFocused();
 });
 
-test('capture current and V2 homepage comparison evidence', async ({ page }) => {
-  test.skip(!capture, 'Set MARKETING_HOME_V2_CAPTURE=1 to refresh homepage comparison evidence.');
+test('capture approved homepage evidence', async ({ page }) => {
+  test.skip(!capture, 'Set MARKETING_HOME_V2_CAPTURE=1 to refresh homepage evidence.');
   await preparePage(page);
   await mkdir(evidenceDirectory, { recursive: true });
 
@@ -385,40 +506,22 @@ test('capture current and V2 homepage comparison evidence', async ({ page }) => 
   ] as const) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
-    await page.goto('/');
-    await expect(page.getByRole('heading', {
-      level: 1,
-      name: 'Architectural pergolas tailored to Kiwi homes.',
-    })).toBeVisible();
-    await waitForImage(page.locator('.home-hero img'), `current homepage ${viewport.name} hero`);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({
-      path: path.join(evidenceDirectory, `current-${viewport.name}-top-${viewport.width}x${viewport.height}.png`),
-    });
-
     await page.goto(route);
     const main = page.locator('main[data-homepage-variant="v2"]');
     await expect(main).toBeVisible();
     await waitForImage(
-      main.locator('section[aria-labelledby="home-v2-heading"] img'),
-      `homepage V2 ${viewport.name} hero`,
+      main.locator('section[aria-labelledby="homepage-heading"] img'),
+      `homepage ${viewport.name} hero`,
     );
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
-      path: path.join(evidenceDirectory, `home-v2-${viewport.name}-top-${viewport.width}x${viewport.height}.png`),
+      path: path.join(evidenceDirectory, `homepage-${viewport.name}-top-${viewport.width}x${viewport.height}.png`),
     });
 
-    await waitForAllImages(main);
-    await expectWarkworthGableFraming(main);
-    const featuredProject = main.locator('section[aria-labelledby="featured-warkworth-project"]');
-    await featuredProject.scrollIntoViewIfNeeded();
-    await featuredProject.screenshot({
-      path: path.join(evidenceDirectory, `home-v2-warkworth-${viewport.name}-${viewport.width}x${viewport.height}.png`),
-    });
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({
-      path: path.join(evidenceDirectory, `home-v2-${viewport.name}-full-${viewport.width}x${viewport.height}.png`),
-      fullPage: true,
+    const proofRail = main.locator('aside[aria-label="Sanctuary project evidence"]');
+    await proofRail.scrollIntoViewIfNeeded();
+    await proofRail.screenshot({
+      path: path.join(evidenceDirectory, `homepage-proof-${viewport.name}-${viewport.width}x${viewport.height}.png`),
     });
   }
 });

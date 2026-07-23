@@ -1,10 +1,10 @@
 export const homepageDescription =
-  'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas in Auckland for residential and selected commercial projects.';
+  'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas for Auckland homes and selected commercial projects.';
 
 export const proofPoints = [
-  { value: 'Auckland', label: 'based design and installation' },
-  { value: 'Built', label: 'residential and selected commercial work' },
-  { value: 'Written', label: 'project scope and warranty information' },
+  { value: 'Auckland based', label: 'Local design and installation' },
+  { value: 'Designed + installed by Sanctuary', label: 'One team from concept to completion' },
+  { value: 'Fixed-roof specialists', label: 'Residential and selected commercial projects' },
 ] as const;
 
 export const designPrinciples = [
@@ -43,7 +43,7 @@ export const visitorPathways = [
     eyebrow: 'Commercial',
     title: 'Cover for a working environment',
     copy: 'Plan hospitality, accommodation, workplace and selected commercial projects around operations, services and delivery.',
-    href: '/commercial-pergolas-auckland',
+    href: '/commercial-pergolas-auckland#project-details',
     action: 'Discuss a commercial project',
     event: 'commercial_pathway_click',
   },
@@ -51,7 +51,7 @@ export const visitorPathways = [
     eyebrow: 'Professional collaboration',
     title: 'Plans, specifications or an early brief',
     copy: 'Architects, designers and builders can share drawings, concepts, tender information and the responsibilities already defined.',
-    href: '/contact#contact-form',
+    href: '/contact?enquiry=professional#contact-form',
     action: 'Send plans or a project brief',
     event: 'professional_pathway_click',
   },
@@ -135,7 +135,7 @@ export const selectedProjectProfiles = [
   },
   {
     slug: 'velskov-forest',
-    configuration: 'Standalone pitched structure',
+    configuration: 'Freestanding pitched structure',
     roofApproach: 'Commercial setting',
   },
   {
@@ -159,8 +159,8 @@ export const processSteps = [
     copy: 'The home, site, measurements, exposure, connections, access and project requirements are assessed together.',
   },
   {
-    title: 'Documented scope and approval',
-    copy: 'The design, materials, exclusions, current programme, price and applicable warranty information are recorded in writing.',
+    title: 'Documented scope, approval and scheduling',
+    copy: 'The agreed design, materials, inclusions, exclusions, price, current programme and applicable warranty information are confirmed before manufacture or site work proceeds.',
   },
   {
     title: 'Manufacture, installation and handover',

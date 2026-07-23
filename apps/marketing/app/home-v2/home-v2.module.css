@@ -147,11 +147,12 @@
 }
 
 .proofItem {
-  min-height: 132px;
+  min-height: 156px;
   display: grid;
-  align-content: end;
-  gap: .55rem;
-  padding: 1.25rem;
+  grid-template-rows: minmax(4.75rem, auto) auto;
+  align-content: start;
+  gap: .75rem;
+  padding: 1.5rem;
   border-right: 1px solid var(--color-rule);
   color: inherit;
 }
@@ -165,12 +166,20 @@ a.proofItem:hover {
 }
 
 .proofValue {
-  font: 500 clamp(2rem, 3.2vw, 3.5rem)/.9 var(--font-display);
-  letter-spacing: -.035em;
+  max-width: 17ch;
+  font: 500 clamp(1.35rem, 1.85vw, 1.95rem)/1.02 var(--font-display);
+  letter-spacing: -.025em;
   font-variant-numeric: tabular-nums;
 }
 
+[data-live-rating] .proofValue {
+  font-size: clamp(2.4rem, 3.2vw, 3.5rem);
+  line-height: .92;
+  letter-spacing: -.035em;
+}
+
 .proofLabel {
+  align-self: start;
   color: var(--color-text-subtle);
   font: 600 .68rem/1.35 var(--font-body);
   letter-spacing: .1em;
@@ -584,6 +593,16 @@ a.proofItem:hover {
     grid-column: 9 / 13;
   }
 
+  .proofGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .proofItem {
+    min-height: 132px;
+    grid-template-rows: minmax(3.5rem, auto) auto;
+    border-bottom: 1px solid var(--color-rule);
+  }
+
   .roofIndex {
     grid-template-columns: 1fr;
   }
@@ -626,7 +645,8 @@ a.proofItem:hover {
   }
 
   .proofItem {
-    min-height: 112px;
+    min-height: 132px;
+    grid-template-rows: minmax(3.5rem, auto) auto;
     border-bottom: 1px solid var(--color-rule);
   }
 
@@ -711,7 +731,7 @@ a.proofItem:hover {
   }
 
   .proofItem {
-    min-height: 104px;
+    min-height: 120px;
     padding: 1rem;
   }
 
@@ -765,6 +785,23 @@ a.proofItem:hover {
   .secondaryPathways {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .proofGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .proofItem {
+    min-height: 0;
+    grid-template-rows: auto auto;
+    gap: .55rem;
+    padding: 1.25rem;
+  }
+
+  .proofValue {
+    max-width: 23ch;
   }
 }
 

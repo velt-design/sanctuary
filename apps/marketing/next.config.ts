@@ -84,10 +84,6 @@ const nextConfig: NextConfig = {
         headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },
       {
-        source: '/home-v2',
-        headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
-      },
-      {
         source: '/careers/:path*',
         headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },
@@ -120,6 +116,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Core marketing pages
+      { source: '/home-v2', destination: '/', permanent: true },
       { source: '/about-us', destination: '/', permanent: true },
       { source: '/gallery', destination: '/projects', permanent: true },
       { source: '/testimonials', destination: '/projects', permanent: true },
