@@ -8,14 +8,9 @@ import {
   type CalculatorPricingComparison,
 } from './calculatorPricingComparison';
 import type { UiWarning } from './warnings';
+import type { CalculatorIssue } from './calculatorIssueNavigation';
 
-export type CalculatorIssue = {
-  moduleIndex: number;
-  moduleLabel: string;
-  fieldId: string;
-  label: string;
-  message: string;
-};
+export type { CalculatorIssue } from './calculatorIssueNavigation';
 
 export type SaveDialogSummary = {
   modules: string;
