@@ -13,11 +13,6 @@ import {
 } from 'react';
 import styles from './CalculatorGrid.module.css';
 import type {
-  BlindLineItem,
-  CalculatorBlindsState,
-  CalculatorFlashingBand,
-  CalculatorFlashingPurpose,
-  CalculatorFlashingsState,
   CalculatorInputs,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
@@ -70,23 +65,13 @@ import {
   calculatorDraftSessionKey,
   calculatorInputsFromEstimateDetail,
   computeHasOurGutter,
-  formatFlashingLengthInput,
   getPitchForModule,
   isGutterBeamProfile,
-  isPrimaryFlashingLengthAutoLinked,
-  makeBlindId,
-  makeDefaultBlindItem,
   makeDefaultModule,
-  makeDefaultPrimaryFlashingRow,
-  makeFlashingId,
   normalizeBlindsStateForUi,
   normalizeCalculatorInputsForUi,
-  normalizeFlashingBand,
-  normalizeFlashingPurpose,
-  normalizeFlashingsStateForUi,
   normalizeInfillsStateForUi,
   normalizeOverrideValue,
-  roofLengthForPrimaryFlashing,
   toNumber,
 } from './calculatorInputs';
 import { buildCalculatorModuleErrors } from './calculatorValidation';
@@ -117,10 +102,8 @@ import {
 } from './calculatorFlashingUi';
 import {
   buildCalculatorBlindsUi,
-  formatBlindMetresInput,
-  parseBlindMetresInputToMmString,
 } from './calculatorBlindUi';
-import CalculatorBlindsEditor, { type BlindDimensionField } from './CalculatorBlindsEditor';
+import CalculatorBlindsEditor from './CalculatorBlindsEditor';
 import CalculatorFlashingsEditor from './CalculatorFlashingsEditor';
 import {
   buildCalculatorQuoteStatusUi,
@@ -157,6 +140,8 @@ import { useCalculatorMaterialsDebug } from './useCalculatorMaterialsDebug';
 import { useCalculatorInfillCostComparison } from './useCalculatorInfillCostComparison';
 import { useCalculatorInfillActions } from './useCalculatorInfillActions';
 import { useCalculatorHouseFootprintController } from './useCalculatorHouseFootprintController';
+import { useCalculatorBlindsController } from './useCalculatorBlindsController';
+import { useCalculatorFlashingsController } from './useCalculatorFlashingsController';
 import CalculatorWorkspaceView, { type CalculatorWorkspaceViewProps } from './CalculatorWorkspaceView';
 import type { CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
@@ -168,10 +153,6 @@ function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
   return `$${n.toFixed(2)}`;
 }
-function blindDimensionDraftKey(id: string, field: BlindDimensionField): string {
-  return `${id}:${field}`;
-}
-
 function formatMaybeMoney(n: number | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return formatMoney(n);
@@ -261,10 +242,8 @@ export default function CalculatorGridClient({
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
   const previewSplit = useCalculatorPreviewSplit();
-  const [blindDimensionDraftsM, setBlindDimensionDraftsM] = useState<Record<string, string>>({});
   const baselineResultRef = useRef<SiteOutputV1 | null>(null);
   const [impactDiff, setImpactDiff] = useState<ImpactDiff | null>(null);
-  const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     setLoadedEstimateDetail(null);
@@ -593,21 +572,8 @@ export default function CalculatorGridClient({
       }
 
       if (key === 'lengthM' || key === 'hipCornerLengthBM' || key === 'pergolaStyle') {
-        const flashings = normalizeFlashingsStateForUi(current.flashings, current);
-        const primary =
-          flashings.rows.find((row) => row.kind === 'primary') ??
-          flashings.rows[0] ??
-          makeDefaultPrimaryFlashingRow(current);
-        const manualOverride = primaryFlashingManualOverrideRef.current[primary.id] === true;
-
-        if (!manualOverride || isPrimaryFlashingLengthAutoLinked(primary.lengthM, current)) {
-          const nextAutoLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(updated));
-          const synced: CalculatorFlashingsState = {
-            rows: flashings.rows.map((row) => (row.id === primary.id ? { ...row, lengthM: nextAutoLength } : row)),
-          };
-          updated.flashings = normalizeFlashingsStateForUi(synced, updated);
-          primaryFlashingManualOverrideRef.current[primary.id] = false;
-        }
+        const syncedFlashings = syncPrimaryFlashingLength(current, updated);
+        if (syncedFlashings) updated.flashings = syncedFlashings;
       }
 
       modules[activeModuleIndex] = updated;
@@ -636,153 +602,30 @@ export default function CalculatorGridClient({
     });
   };
 
-  const flashingsState = normalizeFlashingsStateForUi(activeModule.flashings, activeModule);
-  const primaryFlashingRow =
-    flashingsState.rows.find((row) => row.kind === 'primary') ??
-    flashingsState.rows[0] ??
-    makeDefaultPrimaryFlashingRow(activeModule);
+  const {
+    state: flashingsState,
+    primaryRow: primaryFlashingRow,
+    addRow: addExtraFlashingRow,
+    updateRow: updateFlashingRow,
+    removeRow: removeFlashingRow,
+    syncPrimaryLength: syncPrimaryFlashingLength,
+  } = useCalculatorFlashingsController({
+    activeModule,
+    activeModuleIndex,
+    activePergolaId,
+    setValues,
+  });
 
-  const setFlashingsState = (updater: (state: CalculatorFlashingsState) => CalculatorFlashingsState) => {
-    setValues((prev) => {
-      const modules = prev.modules.slice();
-      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
-      const currentFlashings = normalizeFlashingsStateForUi(currentModule.flashings, currentModule);
-      const nextFlashings = normalizeFlashingsStateForUi(updater(currentFlashings), currentModule);
-      modules[activeModuleIndex] = { ...currentModule, flashings: nextFlashings };
-      return { ...prev, modules };
-    });
-  };
-
-  const addExtraFlashingRow = () => {
-    const id = makeFlashingId();
-    const defaultLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(activeModule));
-    setFlashingsState((state) => ({
-      ...state,
-      rows: [
-        ...state.rows,
-        {
-          id,
-          kind: 'extra',
-          band: normalizeFlashingBand(primaryFlashingRow.band),
-          lengthM: defaultLength || '1.0',
-          purpose: 'CUSTOM',
-        },
-      ],
-    }));
-    return id;
-  };
-
-  const updateFlashingRow = (
-    id: string,
-    patch: Partial<{
-      band: CalculatorFlashingBand;
-      lengthM: string;
-      purpose: CalculatorFlashingPurpose;
-    }>,
-  ) => {
-    if (patch.lengthM !== undefined) {
-      const row = flashingsState.rows.find((entry) => entry.id === id);
-      if (row?.kind === 'primary') {
-        primaryFlashingManualOverrideRef.current[row.id] = !isPrimaryFlashingLengthAutoLinked(String(patch.lengthM), activeModule);
-      }
-    }
-    setFlashingsState((state) => ({
-      ...state,
-      rows: state.rows.map((row) => {
-        if (row.id !== id) return row;
-        return {
-          ...row,
-          ...(patch.band !== undefined ? { band: normalizeFlashingBand(patch.band) } : null),
-          ...(patch.lengthM !== undefined ? { lengthM: String(patch.lengthM) } : null),
-          ...(patch.purpose !== undefined ? { purpose: normalizeFlashingPurpose(patch.purpose) } : null),
-        };
-      }),
-    }));
-  };
-
-  const removeFlashingRow = (id: string) => {
-    setFlashingsState((state) => ({
-      ...state,
-      rows: state.rows.filter((row) => row.id !== id || row.kind === 'primary'),
-    }));
-  };
-
-  const blindsState = normalizeBlindsStateForUi(values.blinds);
-
-  useEffect(() => {
-    if (values.blinds !== blindsState) {
-      setValues((prev) => ({ ...prev, blinds: blindsState }));
-    }
-  }, [values.blinds, blindsState]);
-
-  useEffect(() => {
-    setBlindDimensionDraftsM((prev) => {
-      const validKeys = new Set(
-        blindsState.items.flatMap((item) => [
-          blindDimensionDraftKey(item.id, 'widthMm'),
-          blindDimensionDraftKey(item.id, 'coverLengthMm'),
-        ]),
-      );
-      const nextEntries = Object.entries(prev).filter(([key]) => validKeys.has(key));
-      if (nextEntries.length === Object.keys(prev).length) return prev;
-      return Object.fromEntries(nextEntries);
-    });
-  }, [blindsState.items]);
-
-  const setBlindItem = (id: string, patch: Partial<BlindLineItem>) => {
-    setValues((prev) => {
-      const current = normalizeBlindsStateForUi(prev.blinds);
-      const items = current.items.map((item) => (item.id === id ? { ...item, ...patch } : item));
-      return { ...prev, blinds: { items } };
-    });
-  };
-
-  const updateBlindDimensionInput = (id: string, field: BlindDimensionField, nextMetresValue: string) => {
-    const draftKey = blindDimensionDraftKey(id, field);
-    setBlindDimensionDraftsM((prev) => {
-      if (prev[draftKey] === nextMetresValue) return prev;
-      return { ...prev, [draftKey]: nextMetresValue };
-    });
-    setBlindItem(id, { [field]: parseBlindMetresInputToMmString(nextMetresValue) } as Pick<BlindLineItem, BlindDimensionField>);
-  };
-
-  const commitBlindDimensionInput = (id: string, field: BlindDimensionField) => {
-    const draftKey = blindDimensionDraftKey(id, field);
-    setBlindDimensionDraftsM((prev) => {
-      if (!(draftKey in prev)) return prev;
-      const next = { ...prev };
-      delete next[draftKey];
-      return next;
-    });
-  };
-
-  const displayBlindDimensionInput = (item: BlindLineItem, field: BlindDimensionField) => {
-    const draftKey = blindDimensionDraftKey(item.id, field);
-    return blindDimensionDraftsM[draftKey] ?? formatBlindMetresInput(item[field]);
-  };
-
-  const addBlind = (seed?: Partial<BlindLineItem>) => {
-    setValues((prev) => {
-      const current = normalizeBlindsStateForUi(prev.blinds);
-      const nextItem = makeDefaultBlindItem(seed);
-      return { ...prev, blinds: { items: [...current.items, nextItem] } };
-    });
-  };
-
-  const duplicateBlind = (id: string) => {
-    const current = blindsState.items.find((item) => item.id === id);
-    if (!current) return;
-    addBlind({ ...current, id: makeBlindId(), label: current.label ? `${current.label} (copy)` : undefined });
-  };
-
-  const removeBlind = (id: string) => {
-    setValues((prev) => {
-      const current = normalizeBlindsStateForUi(prev.blinds);
-      const items = current.items.filter((item) => item.id !== id);
-      return { ...prev, blinds: { items } };
-    });
-  };
-
+  const {
+    state: blindsState,
+    setItem: setBlindItem,
+    updateDimensionInput: updateBlindDimensionInput,
+    commitDimensionInput: commitBlindDimensionInput,
+    displayDimensionInput: displayBlindDimensionInput,
+    add: addBlind,
+    duplicate: duplicateBlind,
+    remove: removeBlind,
+  } = useCalculatorBlindsController({ values, setValues });
   const infillsState = normalizeInfillsStateForUi(activeModule.infills);
 
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
