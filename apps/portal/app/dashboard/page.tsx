@@ -13,7 +13,7 @@ function readFirst(value: string | string[] | undefined): string | null {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: SearchParams | Promise<SearchParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
   const queueMode = parseDashboardQueueMode(readFirst(resolvedSearchParams?.queue));
