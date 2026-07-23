@@ -6,3 +6,4 @@ export * from './engine/materials_explain';
 export * from './engine/config';
 export * from './engine/types';
 export * from './commercial';
+export * from './controlConfig';

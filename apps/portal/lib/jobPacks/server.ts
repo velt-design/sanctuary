@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
+import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { buildVersionLabelMap } from '@/lib/estimates/server';
@@ -72,7 +72,7 @@ export async function loadPowdercoatOverrideState(estimateUuid: string, supabase
 
 export async function listPowdercoatProfileOptions(): Promise<JobPackPowdercoatOption[]> {
   const supabase = await resolveSupabaseClient();
-  const { config } = await getCostingConfigWithOverrides(supabase);
+  const { config } = await resolvePublishedCostingConfiguration(supabase);
   const grouped = new Map<string, { profile: string; stockLengthsM: Set<number> }>();
 
   for (const item of config.materials.items) {

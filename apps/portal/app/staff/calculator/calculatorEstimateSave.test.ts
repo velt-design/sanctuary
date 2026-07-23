@@ -411,6 +411,60 @@ describe('saveCalculatorEstimate', () => {
     }));
   });
 
+  it('uses provenance from the calculated result instead of a later metadata read', async () => {
+    const versionId = '11111111-1111-4111-8111-111111111111';
+    const result = {
+      ...makeSiteResult(),
+      costingConfiguration: {
+        schemaVersion: 'costing-provenance.v1',
+        source: 'published',
+        versionId,
+        versionNumber: 9,
+        contentHash: 'a'.repeat(64),
+        baseManifestVersion: 'v1.7',
+      },
+    } as any;
+    const harness = makeHarness({
+      services: {
+        getCostingMeta: vi.fn(async () => ({
+          manifestPath: 'manifest.json',
+          manifestVersion: 'm1',
+          files: {},
+          configVersions: {
+            pricebook: 'p1',
+            installActions: 'i1',
+            overheads: 'o1',
+            rules: 'r1',
+            manifest: 'm1',
+            costingControl: {
+              schemaVersion: 'costing-provenance.v1' as const,
+              source: 'published' as const,
+              versionId: '22222222-2222-4222-8222-222222222222',
+              versionNumber: 10,
+              contentHash: 'b'.repeat(64),
+              baseManifestVersion: 'v1.7',
+            },
+          },
+        })),
+      },
+    });
+
+    await saveWithDefaults({
+      result,
+      resultModules: result.pergolas[0].modules,
+    }, harness);
+
+    expect(harness.services.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        estimatePayload: expect.objectContaining({
+          configVersions: expect.objectContaining({
+            costingControl: expect.objectContaining({ versionId, versionNumber: 9 }),
+          }),
+        }),
+      }),
+    }));
+  });
+
   it('creates a local estimate, prepends optimistic cache state, and preserves the next version label', async () => {
     const harness = makeHarness({
       estimateMetas: [makeMeta('estimate-1', 'V1'), makeMeta('estimate-3', 'V3')],

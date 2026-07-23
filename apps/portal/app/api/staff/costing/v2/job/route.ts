@@ -1,5 +1,5 @@
 import { getPortalSession } from '@/lib/auth';
-import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
+import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { calculateSiteCostV2 } from '@sp/costing';
 import type { SiteInputsV2 } from '@sp/costing';
 import { NextResponse } from 'next/server';
@@ -46,9 +46,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { config } = await getCostingConfigWithOverrides();
+    const { config, provenance } = await resolvePublishedCostingConfiguration();
     const result = calculateSiteCostV2(body as SiteInputsV2, config);
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, costingConfiguration: provenance });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Costing failed';
     return NextResponse.json({ error: message }, { status: 500 });

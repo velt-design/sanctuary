@@ -1,9 +1,12 @@
+import type { CostingConfigurationProvenanceV1 } from './configurationTypes';
+
 type CostingConfigVersions = {
   pricebook: string;
   installActions: string;
   overheads: string;
   rules: string;
   manifest: string;
+  costingControl?: CostingConfigurationProvenanceV1;
 };
 
 type CostingMeta = {

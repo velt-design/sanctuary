@@ -8,6 +8,7 @@ export default defineConfig({
       { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
       { find: /^@sp\/email-provider$/, replacement: path.resolve(__dirname, 'packages/email-provider/src/index.ts') },
       { find: /^@sp\/jobs$/, replacement: path.resolve(__dirname, 'packages/jobs/src/index.ts') },
+      { find: /^@sp\/costing$/, replacement: path.resolve(__dirname, 'packages/costing/src/index.ts') },
       { find: '@sp/theme', replacement: path.resolve(__dirname, 'packages/theme/src/index.ts') },
       { find: '@/lib/enquiryEstimate', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryEstimate.ts') },
       { find: '@/lib/enquiryBudgets', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryBudgets.ts') },

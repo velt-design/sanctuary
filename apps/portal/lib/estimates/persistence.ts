@@ -70,6 +70,13 @@ function normalizeText(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+function normalizeUuid(value: unknown): string | null {
+  const normalized = normalizeText(value);
+  return normalized && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)
+    ? normalized
+    : null;
+}
+
 function computeLegacySummary(snapshot: Record<string, unknown>, workHoursPerDay = 9): LegacySummaryFields {
   const outputs = isRecord(snapshot.outputs) ? snapshot.outputs : null;
 
@@ -150,6 +157,9 @@ export function buildEstimateDbPayload(params: EstimatePayloadParams): Record<st
     warnings: built.warnings,
     costing_manifest: built.costingManifest,
     costing_rules: built.costingRules,
+    costing_config_version_id: normalizeUuid(
+      readPath(snapshotOutputs, ['configVersions', 'costingControl', 'versionId']),
+    ),
     ...built.legacySummary,
   };
 

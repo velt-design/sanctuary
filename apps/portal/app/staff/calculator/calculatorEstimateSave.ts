@@ -3,6 +3,7 @@
 import type { CostOutputV1, SiteOutputV1 } from '@sp/costing';
 import type { QueryClient } from '@tanstack/react-query';
 import { getCostingMeta } from '@/lib/costing/costEngine';
+import type { CalculatorCostingResponse } from '@/lib/costing/configurationTypes';
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import {
   type EstimateSaveMode,
@@ -341,6 +342,11 @@ export async function saveCalculatorEstimate(
       getCostingMetaForSave(),
       projectForSave.contactId ? getContactForSave(projectForSave.contactId) : Promise.resolve(null),
     ]);
+    const resultProvenance = (input.result as CalculatorCostingResponse).costingConfiguration;
+    const configVersions = {
+      ...meta.configVersions,
+      ...(resultProvenance ? { costingControl: resultProvenance } : {}),
+    } as unknown as Record<string, unknown>;
 
     const projectNameSnapshot = projectForSave.projectName ?? projectForSave.name ?? input.values.projectName;
     const snapshotError = getCalculatorProjectSnapshotError({
@@ -376,11 +382,11 @@ export async function saveCalculatorEstimate(
           },
         } as Record<string, unknown>,
         outputs: {},
-        configVersions: meta.configVersions as unknown as Record<string, unknown>,
+        configVersions,
       },
       inputs: input.values,
       siteResult: input.result,
-      configVersions: meta.configVersions as unknown as Record<string, unknown>,
+      configVersions,
       moduleIndex: input.activeModuleIndex,
       warnings: input.engineWarningsRaw,
     });

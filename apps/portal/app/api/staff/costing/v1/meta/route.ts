@@ -1,4 +1,5 @@
 import { getPortalSession } from '@/lib/auth';
+import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { ACTIVE_COSTING_MANIFEST_PATH, loadCostingConfigV1 } from '@sp/costing';
 import { NextResponse } from 'next/server';
 
@@ -13,7 +14,10 @@ export async function GET() {
   const session = await getPortalSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const config = loadCostingConfigV1();
+  const [config, active] = await Promise.all([
+    Promise.resolve(loadCostingConfigV1()),
+    resolvePublishedCostingConfiguration(),
+  ]);
   const files = config.manifest.files;
 
   return NextResponse.json({
@@ -27,6 +31,7 @@ export async function GET() {
       pricebook: resolveConfigPath(files.pricebook_materials),
       installActions: resolveConfigPath(files.install_actions),
       overheads: resolveConfigPath(files.overheads),
+      costingControl: active.provenance,
     },
   });
 }

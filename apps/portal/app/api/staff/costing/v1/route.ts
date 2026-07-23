@@ -1,5 +1,5 @@
 import { getPortalSession } from '@/lib/auth';
-import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
+import { resolvePublishedCostingConfiguration } from '@/lib/costing/configurationResolver';
 import { calculateCostV1 } from '@sp/costing';
 import type { CostInputsV1, ExtrusionColour } from '@sp/costing';
 import { NextResponse } from 'next/server';
@@ -551,9 +551,9 @@ export async function POST(req: Request) {
   };
 
   try {
-    const { config } = await getCostingConfigWithOverrides();
+    const { config, provenance } = await resolvePublishedCostingConfiguration();
     const result = calculateCostV1(inputs, config);
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, costingConfiguration: provenance });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Costing failed';
     return NextResponse.json({ error: message }, { status: 500 });
