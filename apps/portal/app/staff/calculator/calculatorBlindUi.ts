@@ -48,7 +48,7 @@ type BlindRowViewModel = {
   totalIncLabel: string;
 };
 
-type CalculatorBlindsUi = {
+export type CalculatorBlindsUi = {
   inputs: BlindLineItemInput[];
   pricing: BlindPricingResult;
   rows: BlindRowViewModel[];

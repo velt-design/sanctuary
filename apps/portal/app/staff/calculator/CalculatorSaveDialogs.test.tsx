@@ -93,6 +93,7 @@ describe('CalculatorSaveDialogs', () => {
       moduleIndex: 1,
       moduleLabel: 'Pergola 2 · Module 1',
       fieldId: 'lengthM',
+      sectionId: 'structure',
       label: 'Roof length',
       message: 'Enter a roof length.',
     };
