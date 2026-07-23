@@ -11,13 +11,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import FieldTile from './FieldTile';
 import styles from './CalculatorGrid.module.css';
 import type {
-  BlindFabric as BlindFabricInput,
   BlindLineItem,
-  BlindRollCover as BlindRollCoverInput,
-  BlindSystemType as BlindSystemInput,
   CalculatorBlindsState,
   CalculatorHouseFootprintParams,
   CalculatorFlashingBand,
@@ -166,22 +162,15 @@ import {
 import { buildCalculatorInfillSummary } from './calculatorInfillSummary';
 import { explicitInfillSelectionPatch } from './infillSupportPresentation';
 import {
-  FLASHING_BAND_OPTIONS,
-  FLASHING_PURPOSE_OPTIONS,
   buildFlashingDefaultsForModule,
-  calculateFlashingTotalLength,
-  calculateFlashingTotalsByBand,
-  isDuplicatePrimaryFlashingRow,
-  selectVisibleFlashingBands,
 } from './calculatorFlashingUi';
 import {
-  BLIND_FABRIC_OPTIONS,
-  BLIND_ROLL_COVER_OPTIONS,
-  BLIND_SYSTEM_OPTIONS,
   buildCalculatorBlindsUi,
   formatBlindMetresInput,
   parseBlindMetresInputToMmString,
 } from './calculatorBlindUi';
+import CalculatorBlindsEditor, { type BlindDimensionField } from './CalculatorBlindsEditor';
+import CalculatorFlashingsEditor from './CalculatorFlashingsEditor';
 import {
   buildCalculatorQuoteStatusUi,
   buildCalculatorUiWarnings,
@@ -253,8 +242,6 @@ type HouseFootprintDragSession = HouseFootprintEditorDragMeta & {
   startSvgY: number;
   startParams: CalculatorHouseFootprintParams;
 };
-
-type BlindDimensionField = 'widthMm' | 'coverLengthMm';
 
 function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
@@ -392,13 +379,10 @@ export default function CalculatorGridClient({
   const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintDragSession, setFootprintDragSession] = useState<HouseFootprintDragSession | null>(null);
-  const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
   const previewSplit = useCalculatorPreviewSplit();
-  const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
   const [blindDimensionDraftsM, setBlindDimensionDraftsM] = useState<Record<string, string>>({});
   const baselineResultRef = useRef<SiteOutputV1 | null>(null);
   const [impactDiff, setImpactDiff] = useState<ImpactDiff | null>(null);
-  const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
   const footprintCanvasSvgRef = useRef<SVGSVGElement | null>(null);
 
@@ -1102,7 +1086,7 @@ export default function CalculatorGridClient({
         },
       ],
     }));
-    setPendingFlashingLengthFocusId(id);
+    return id;
   };
 
   const updateFlashingRow = (
@@ -1139,15 +1123,6 @@ export default function CalculatorGridClient({
       rows: state.rows.filter((row) => row.id !== id || row.kind === 'primary'),
     }));
   };
-
-  useEffect(() => {
-    if (!pendingFlashingLengthFocusId) return;
-    const target = flashingLengthInputRefs.current[pendingFlashingLengthFocusId];
-    if (!target) return;
-    target.focus();
-    target.select();
-    setPendingFlashingLengthFocusId(null);
-  }, [flashingsState.rows, pendingFlashingLengthFocusId]);
 
   const blindsState = normalizeBlindsStateForUi(values.blinds);
 
@@ -1863,123 +1838,17 @@ export default function CalculatorGridClient({
 
 
   const blindsListContent = (
-    <div className={styles.blindsEditor}>
-      {blindsUi.rows.map((row, idx) => {
-        const item = row.item;
-        const statusClassName = row.statusTone === 'error' ? styles.error : styles.helper;
-        const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
-        return (
-          <div key={item.id} className={`${styles.previewCard} ${styles.blindCard}`}>
-            <div className={styles.blindCardHeader}>
-              <strong>Blind {idx + 1}</strong>
-              <div className={styles.blindCardActions}>
-                <button
-                  type="button"
-                  className={styles.infillSecondaryButton}
-                  onClick={() => duplicateBlind(item.id)}
-                >
-                  Duplicate
-                </button>
-                <button
-                  type="button"
-                  className={styles.infillSecondaryButton}
-                  onClick={() => removeBlind(item.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-            <div className={styles.blindFieldGrid}>
-              <FieldTile
-                id={`${domIdBase}-label`}
-                label="Label"
-                type="text"
-                value={item.label ?? ''}
-                onChange={(v) => setBlindItem(item.id, { label: String(v) })}
-              />
-              <FieldTile
-                id={`${domIdBase}-system`}
-                label="System"
-                type="select"
-                value={item.system}
-                onChange={(v) => setBlindItem(item.id, { system: v as BlindSystemInput })}
-                options={BLIND_SYSTEM_OPTIONS}
-              />
-              <FieldTile
-                id={`${domIdBase}-width`}
-                label="Width (m)"
-                type="number"
-                value={displayBlindDimensionInput(item, 'widthMm')}
-                inputMode="decimal"
-                step="0.001"
-                onChange={(v) => updateBlindDimensionInput(item.id, 'widthMm', String(v))}
-                onBlur={() => commitBlindDimensionInput(item.id, 'widthMm')}
-                onEnter={() => commitBlindDimensionInput(item.id, 'widthMm')}
-              />
-              <FieldTile
-                id={`${domIdBase}-cover`}
-                label="Blind drop (m)"
-                type="number"
-                value={displayBlindDimensionInput(item, 'coverLengthMm')}
-                inputMode="decimal"
-                step="0.001"
-                onChange={(v) => updateBlindDimensionInput(item.id, 'coverLengthMm', String(v))}
-                onBlur={() => commitBlindDimensionInput(item.id, 'coverLengthMm')}
-                onEnter={() => commitBlindDimensionInput(item.id, 'coverLengthMm')}
-              />
-              <FieldTile
-                id={`${domIdBase}-fabric`}
-                label="Fabric"
-                type="select"
-                value={item.fabric}
-                onChange={(v) => setBlindItem(item.id, { fabric: v as BlindFabricInput })}
-                options={BLIND_FABRIC_OPTIONS}
-              />
-              <FieldTile
-                id={`${domIdBase}-motor`}
-                label="Motorised"
-                type="toggle"
-                value={item.motorised === 'YES'}
-                onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
-              />
-              <FieldTile
-                id={`${domIdBase}-roll-cover`}
-                label="Blind roll cover"
-                type="select"
-                value={item.rollCover ?? 'NONE'}
-                onChange={(v) => setBlindItem(item.id, { rollCover: v as BlindRollCoverInput })}
-                options={BLIND_ROLL_COVER_OPTIONS}
-              />
-              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={row.totalExLabel} />
-              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={row.totalIncLabel} />
-            </div>
-            {row.showStatus ? <div className={statusClassName}>{row.statusMessage}</div> : null}
-          </div>
-        );
-      })}
-
-      <div className={styles.blindAddAction}>
-        <button
-          type="button"
-          className={`${styles.infillSecondaryButton} ${styles.blindAddButton}`}
-          onClick={() => addBlind()}
-        >
-          Add blind
-        </button>
-      </div>
-
-      <div className={`${styles.previewCard} ${styles.blindTotalsCard}`}>
-        <div className={styles.blindTotalRow}>
-          <span>Blinds total (ex‑GST)</span>
-          <span>{blindsUi.totalExLabel}</span>
-        </div>
-        <div className={styles.blindTotalRow}>
-          <span>Blinds total (inc‑GST)</span>
-          <span>{blindsUi.totalIncLabel}</span>
-        </div>
-        <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
-      </div>
-    </div>
+    <CalculatorBlindsEditor
+      ui={blindsUi}
+      fieldPrefix={blindFieldPrefix}
+      displayDimensionInput={displayBlindDimensionInput}
+      onDimensionChange={updateBlindDimensionInput}
+      onDimensionCommit={commitBlindDimensionInput}
+      onItemChange={setBlindItem}
+      onDuplicate={duplicateBlind}
+      onRemove={removeBlind}
+      onAdd={addBlind}
+    />
   );
 
   const roofRafterSpacingEstimate = useMemo(
@@ -2468,139 +2337,14 @@ export default function CalculatorGridClient({
     />
   );
 
-  const flashingExtraRows = useMemo(
-    () => flashingsState.rows.filter((row) => row.kind === 'extra'),
-    [flashingsState.rows],
-  );
-
-  const flashingTotalsPreview = useMemo(() => calculateFlashingTotalsByBand(flashingsState.rows), [flashingsState.rows]);
-
-  const flashingTotalLengthPreview = useMemo(
-    () => calculateFlashingTotalLength(flashingTotalsPreview),
-    [flashingTotalsPreview],
-  );
-
-  const flashingVisibleBands = useMemo(
-    () => selectVisibleFlashingBands(flashingTotalsPreview, showAllFlashingBands),
-    [showAllFlashingBands, flashingTotalsPreview],
-  );
-
   const flashingTileContent = (
-    <div className={styles.flashingsTileContent}>
-      <div className={styles.flashingsHeader}>
-        <strong>Flashings</strong>
-        <span className={styles.helper}>Defaults auto-apply by roof type; override each row or add extras.</span>
-      </div>
-
-      <div className={styles.flashingsTable}>
-        <div className={styles.flashingsGridHeader}>
-          <div>Item</div>
-          <div title="This sets the flashing girth band.">Girth (mm)</div>
-          <div>Length (m)</div>
-          <div>Purpose</div>
-          <div>Remove</div>
-        </div>
-
-        {flashingsState.rows.map((row) => {
-          const isPrimary = row.kind === 'primary';
-          const extraIndex = isPrimary ? -1 : flashingExtraRows.findIndex((extra) => extra.id === row.id) + 1;
-          const parsedLength = toNumber(row.lengthM);
-          const invalidLength = !Number.isFinite(parsedLength) || parsedLength < 0;
-          const zeroLength = Number.isFinite(parsedLength) && parsedLength === 0;
-          const duplicatePrimary = isDuplicatePrimaryFlashingRow(row, primaryFlashingRow);
-
-          return (
-            <div key={row.id} className={isPrimary ? styles.flashingsRowPrimary : styles.flashingsRow}>
-              <div className={styles.flashingsCellItem}>
-                <div className={styles.flashingsItemBadge}>{isPrimary ? 'Primary' : `Extra ${extraIndex}`}</div>
-                {isPrimary ? <div className={styles.flashingsItemMeta}>Default from roof type; editable.</div> : null}
-                {invalidLength ? <div className={styles.flashingsWarning}>Enter a length &gt; 0.</div> : null}
-                {!invalidLength && zeroLength ? <div className={styles.flashingsWarning}>0 length will be ignored.</div> : null}
-                {duplicatePrimary ? <div className={styles.flashingsWarning}>May double-count primary flashing.</div> : null}
-              </div>
-
-              <select
-                id={`flashing-row-band-${row.id}`}
-                className={styles.control}
-                value={row.band}
-                onChange={(event) => updateFlashingRow(row.id, { band: event.target.value as CalculatorFlashingBand })}
-              >
-                {FLASHING_BAND_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-
-              <div className={styles.flashingsLengthCell}>
-                <input
-                  id={`flashing-row-length-${row.id}`}
-                  className={styles.control}
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  value={row.lengthM}
-                  ref={(node) => {
-                    if (node) flashingLengthInputRefs.current[row.id] = node;
-                    else delete flashingLengthInputRefs.current[row.id];
-                  }}
-                  onChange={(event) => updateFlashingRow(row.id, { lengthM: event.target.value })}
-                />
-                <span className={styles.flashingsLengthSuffix}>m</span>
-              </div>
-
-              <select
-                id={`flashing-row-purpose-${row.id}`}
-                className={styles.control}
-                value={normalizeFlashingPurpose(row.purpose)}
-                onChange={(event) => updateFlashingRow(row.id, { purpose: event.target.value as CalculatorFlashingPurpose })}
-              >
-                {FLASHING_PURPOSE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-
-              {isPrimary ? (
-                <div className={styles.flashingsRemovePlaceholder} />
-              ) : (
-                <button
-                  type="button"
-                  className={styles.flashingsRemoveButton}
-                  title="Remove row"
-                  aria-label="Remove row"
-                  onClick={() => removeFlashingRow(row.id)}
-                >
-                  x
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <button type="button" className={styles.flashingsAddButton} onClick={addExtraFlashingRow}>
-        + Add flashing row
-      </button>
-
-      <div className={styles.flashingsTotalsCard}>
-        <div className={styles.flashingsTotalsTitle}>Totals</div>
-        <div className={styles.flashingsTotalsRow}>
-          <span>Total</span>
-          <span>{`${formatMaybeNumber(flashingTotalLengthPreview, 1)} m`}</span>
-        </div>
-        {flashingVisibleBands.map((band) => (
-          <div key={band} className={styles.flashingsTotalsRow}>
-            <span>{band}</span>
-            <span>{`${formatMaybeNumber(flashingTotalsPreview[band], 1)} m`}</span>
-          </div>
-        ))}
-        <button type="button" className={styles.flashingsTotalsToggle} onClick={() => setShowAllFlashingBands((prev) => !prev)}>
-          {showAllFlashingBands ? 'Show non-zero bands only' : 'Show all bands'}
-        </button>
-      </div>
-    </div>
+    <CalculatorFlashingsEditor
+      state={flashingsState}
+      primaryRow={primaryFlashingRow}
+      onAddRow={addExtraFlashingRow}
+      onUpdateRow={updateFlashingRow}
+      onRemoveRow={removeFlashingRow}
+    />
   );
 
   const schema: FieldSchemaItem[] = [
