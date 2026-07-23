@@ -470,6 +470,213 @@
   accent-color: var(--ui-action);
 }
 
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tabCount {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tabActive .tabCount {
+  background: var(--ui-surface-primary);
+  color: var(--ui-text-strong);
+}
+
+.versionName {
+  margin: 4px 0 0;
+  color: var(--ui-text-strong);
+  font-weight: 750;
+}
+
+.metadataGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
+}
+
+.purposePanel {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 13px 14px;
+  border-left: var(--ui-status-edge) solid var(--ui-action);
+  background: var(--ui-surface-elevated);
+}
+
+.groupStack {
+  display: grid;
+  gap: 12px;
+}
+
+.editorGroup {
+  overflow: hidden;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
+}
+
+.editorGroup > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+  background: var(--ui-surface-elevated);
+}
+
+.editorGroup > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editorGroup > summary::before {
+  content: '›';
+  color: var(--ui-text-muted);
+  font-size: 20px;
+  transform: rotate(0);
+  transition: transform 120ms ease;
+}
+
+.editorGroup[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.editorGroup > summary > span:first-of-type {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.editorGroup > summary small {
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.editorGroup > .fieldGrid {
+  padding: 14px;
+}
+
+.editorGroup > .tableWrap {
+  margin: 0;
+}
+
+.groupSummaryActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.groupToolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 14px 0;
+}
+
+.assumptionBadge {
+  display: block;
+  width: fit-content;
+  margin-top: 5px;
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dialogBackdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 48%);
+}
+
+.dialog {
+  display: grid;
+  width: min(620px, 100%);
+  max-height: calc(100vh - 40px);
+  gap: 16px;
+  overflow: auto;
+  padding: 22px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 28%);
+}
+
+.dialog h2 {
+  margin: 3px 0 0;
+  color: var(--ui-text-strong);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.estimatePicker {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.2fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.estimateContext,
+.estimatePreviewResult {
+  margin-top: 12px;
+  padding: 14px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-elevated);
+}
+
+.estimateContext {
+  display: grid;
+  gap: 4px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
+.estimateContext strong {
+  color: var(--ui-text-strong);
+  font-size: 14px;
+}
+
+.estimatePreviewResult {
+  border-left-width: var(--ui-status-edge);
+  border-left-color: var(--ui-action);
+}
+
+.impactBreakdown em {
+  font-size: 11px;
+  font-style: normal;
+}
+
 .section,
 .reviewSection {
   display: grid;
@@ -853,6 +1060,11 @@
   .statusGrid {
     grid-template-columns: 1fr;
   }
+
+  .estimatePicker {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 720px) {
@@ -891,6 +1103,10 @@
 
   .fieldGrid,
   .impactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metadataGrid {
     grid-template-columns: 1fr;
   }
 

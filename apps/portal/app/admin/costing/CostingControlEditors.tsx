@@ -1,5 +1,6 @@
 'use client';
 
+import { isValidElement } from 'react';
 import type { CostingControlConfigV1 } from '@sp/costing';
 import {
   findIssue,
@@ -18,6 +19,10 @@ type CatalogMaterial = {
   label: string;
   unit: string;
   category: string;
+  supplier: string | null;
+  product: string | null;
+  note: string | null;
+  assumption: boolean;
 };
 
 type UpdateConfig = (mutate: (next: CostingControlConfigV1) => void) => void;
@@ -126,6 +131,55 @@ function EmptyChangedState() {
   );
 }
 
+function groupedFields(
+  fields: React.ReactNode[],
+  prefix: string,
+): React.ReactNode[] {
+  return fields.filter((field) => (
+    isValidElement(field) && String(field.key ?? '').startsWith(prefix)
+  ));
+}
+
+function changedFieldCount(fields: React.ReactNode[]): number {
+  return fields.filter((field) => (
+    isValidElement<{ value: number; baselineValue: number }>(field)
+    && valuesDiffer(field.props.value, field.props.baselineValue)
+  )).length;
+}
+
+function ProgressiveFieldGroup(props: {
+  title: string;
+  description: string;
+  fields: React.ReactNode[];
+  readOnly: boolean;
+  defaultOpen?: boolean;
+  onReset: () => void;
+}) {
+  if (!props.fields.length) return null;
+  const changedCount = changedFieldCount(props.fields);
+  return (
+    <details className={styles.editorGroup} open={props.defaultOpen || changedCount > 0}>
+      <summary>
+        <span>
+          <strong>{props.title}</strong>
+          <small>{props.description}</small>
+        </span>
+        <span className={styles.groupSummaryActions}>
+          {changedCount ? <span className={styles.changedBadge}>{changedCount} changed</span> : null}
+        </span>
+      </summary>
+      {!props.readOnly && changedCount ? (
+        <div className={styles.groupToolbar}>
+          <button className={styles.resetButton} type="button" onClick={props.onReset}>
+            Reset group
+          </button>
+        </div>
+      ) : null}
+      <div className={styles.fieldGrid}>{props.fields}</div>
+    </details>
+  );
+}
+
 export function MaterialsEditor(props: SharedEditorProps & {
   materials: CatalogMaterial[];
   search: string;
@@ -139,13 +193,36 @@ export function MaterialsEditor(props: SharedEditorProps & {
     )
   )).length;
   const rows = props.materials.filter((item) => {
-    const matchesSearch = !needle || `${item.label} ${item.id} ${item.category}`.toLowerCase().includes(needle);
+    const matchesSearch = !needle || [
+      item.label,
+      item.id,
+      item.category,
+      item.supplier,
+      item.product,
+      item.note,
+    ].filter(Boolean).join(' ').toLowerCase().includes(needle);
     const changed = valuesDiffer(
       props.config.materialRatesExGst[item.id]!,
       props.baseline.materialRatesExGst[item.id]!,
     );
     return matchesSearch && (!props.showChangedOnly || changed);
   });
+  const groups = [...rows.reduce((grouped, item) => {
+    const group = grouped.get(item.category) ?? [];
+    group.push(item);
+    grouped.set(item.category, group);
+    return grouped;
+  }, new Map<string, CatalogMaterial[]>())]
+    .sort(([left], [right]) => left.localeCompare(right));
+  const changedByCategory = props.materials.reduce((counts, item) => {
+    if (valuesDiffer(
+      props.config.materialRatesExGst[item.id]!,
+      props.baseline.materialRatesExGst[item.id]!,
+    )) {
+      counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+    }
+    return counts;
+  }, new Map<string, number>());
 
   return (
     <div className={styles.section}>
@@ -174,19 +251,35 @@ export function MaterialsEditor(props: SharedEditorProps & {
         </span>
       </div>
       {rows.length ? (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Material</th>
-                <th>Category</th>
-                <th>{props.readOnly ? 'Version rate' : 'Active rate'}</th>
-                <th>Draft rate</th>
-                {!props.readOnly ? <th>Reset</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((item) => {
+        <div className={styles.groupStack}>
+          {groups.map(([category, items]) => {
+            const categoryChanged = changedByCategory.get(category) ?? 0;
+            return (
+              <details
+                className={styles.editorGroup}
+                key={category}
+                open={Boolean(needle || props.showChangedOnly || categoryChanged)}
+              >
+                <summary>
+                  <span>
+                    <strong>{titleCaseKey(category)}</strong>
+                    <small>{items.length} shown</small>
+                  </span>
+                  {categoryChanged ? <span className={styles.changedBadge}>{categoryChanged} changed</span> : null}
+                </summary>
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Material</th>
+                        <th>Source context</th>
+                        <th>{props.readOnly ? 'Version rate' : 'Active rate'}</th>
+                        <th>Draft rate</th>
+                        {!props.readOnly ? <th>Reset</th> : null}
+                      </tr>
+                    </thead>
+                    <tbody>
+              {items.map((item) => {
                 const path = `materialRatesExGst.${item.id}`;
                 const value = props.config.materialRatesExGst[item.id]!;
                 const baselineValue = props.baseline.materialRatesExGst[item.id]!;
@@ -200,8 +293,17 @@ export function MaterialsEditor(props: SharedEditorProps & {
                         {changed ? <span className={styles.changedBadge}>Changed</span> : null}
                       </div>
                       <span className={styles.muted}>per {item.unit || 'item'}</span>
+                      {item.assumption ? <span className={styles.assumptionBadge}>Supplier confirmation needed</span> : null}
                     </td>
-                    <td>{item.category}</td>
+                    <td>
+                      <strong>{item.supplier || item.product || 'Package pricebook'}</strong>
+                      {item.note ? (
+                        <details className={styles.inlineTechnical}>
+                          <summary>Pricing note</summary>
+                          <span>{item.note}</span>
+                        </details>
+                      ) : null}
+                    </td>
                     <td className={styles.moneyValue}>${baselineValue.toFixed(2)}</td>
                     <td>
                       <input
@@ -244,8 +346,12 @@ export function MaterialsEditor(props: SharedEditorProps & {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            );
+          })}
         </div>
       ) : (
         <div className={styles.emptyInline}>
@@ -386,6 +492,11 @@ export function LabourEditor(props: SharedEditorProps & {
     );
   });
 
+  const rateFields = groupedFields(visibleFields, 'labour.crewHourRateExGst');
+  const actionFields = groupedFields(visibleFields, 'labour.actionBaseMinutes.');
+  const multiplierFields = groupedFields(visibleFields, 'labour.multiplierValues.');
+  const curveFields = groupedFields(visibleFields, 'labour.rafterLengthLoadingCurve.');
+
   return (
     <div className={styles.section}>
       <SectionHeading
@@ -397,7 +508,49 @@ export function LabourEditor(props: SharedEditorProps & {
           next.labour = structuredClone(props.baseline.labour);
         })}
       />
-      {visibleFields.length ? <div className={styles.fieldGrid}>{visibleFields}</div> : <EmptyChangedState />}
+      {visibleFields.length ? (
+        <div className={styles.groupStack}>
+          <ProgressiveFieldGroup
+            title="Crew rate"
+            description="The base hourly cost for the installation crew."
+            fields={rateFields}
+            readOnly={props.readOnly}
+            defaultOpen
+            onReset={() => props.updateConfig((next) => {
+              next.labour.crewHourRateExGst = props.baseline.labour.crewHourRateExGst;
+            })}
+          />
+          <ProgressiveFieldGroup
+            title="Action time allowances"
+            description="Minutes assigned to package-owned installation actions."
+            fields={actionFields}
+            readOnly={props.readOnly}
+            onReset={() => props.updateConfig((next) => {
+              next.labour.actionBaseMinutes = structuredClone(props.baseline.labour.actionBaseMinutes);
+            })}
+          />
+          <ProgressiveFieldGroup
+            title="Installation multipliers"
+            description="Typed factors for supported access, height and job conditions."
+            fields={multiplierFields}
+            readOnly={props.readOnly}
+            onReset={() => props.updateConfig((next) => {
+              next.labour.multiplierValues = structuredClone(props.baseline.labour.multiplierValues);
+            })}
+          />
+          <ProgressiveFieldGroup
+            title="Rafter-length loading"
+            description="The constrained time-loading curve consumed by the engine."
+            fields={curveFields}
+            readOnly={props.readOnly}
+            onReset={() => props.updateConfig((next) => {
+              next.labour.rafterLengthLoadingCurve = structuredClone(
+                props.baseline.labour.rafterLengthLoadingCurve,
+              );
+            })}
+          />
+        </div>
+      ) : <EmptyChangedState />}
     </div>
   );
 }

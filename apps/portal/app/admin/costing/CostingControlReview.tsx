@@ -4,6 +4,7 @@ import type { RefObject } from 'react';
 import type { CostingConfigurationVersion } from '@/lib/costing/configurationTypes';
 import type { CostingConfigurationComparison } from '@/lib/costing/configurationAdmin';
 import { formatSettingPath, formatSettingValue } from './costingControlModel';
+import { CostingEstimatePreview } from './CostingEstimatePreview';
 import styles from './costingControl.module.css';
 
 export function CostingComparison(props: {
@@ -126,6 +127,9 @@ export function CostingComparison(props: {
           </div>
         )}
       </div>
+      {props.version.status === 'draft' ? (
+        <CostingEstimatePreview version={props.version} dirty={props.dirty} />
+      ) : null}
     </div>
   );
 }

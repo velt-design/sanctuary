@@ -76,16 +76,16 @@ export function CostingStatusSummary(props: {
       <StatusCard
         label="Active pricing"
         value={props.currentVersion
-          ? `Pricing version ${props.currentVersion.versionNumber}`
+          ? props.currentVersion.name
           : 'Legacy calculator settings'}
         detail={props.currentVersion
-          ? `Published ${formatCostingDate(props.currentVersion.publishedAt)}`
+          ? `Version ${props.currentVersion.versionNumber} · published ${formatCostingDate(props.currentVersion.publishedAt)}`
           : 'Existing calculator behaviour remains active until a version is published.'}
         tone={props.currentVersion ? 'success' : 'neutral'}
       />
       <StatusCard
         label="Latest draft"
-        value={props.latestDraft ? `Draft v${props.latestDraft.versionNumber}` : 'No draft in progress'}
+        value={props.latestDraft ? props.latestDraft.name : 'No draft in progress'}
         detail={props.latestDraft
           ? `Last updated ${formatCostingDate(props.latestDraft.updatedAt)} by ${props.latestDraft.updatedByEmail}`
           : 'Create a draft to propose a supported pricing change.'}
@@ -94,7 +94,7 @@ export function CostingStatusSummary(props: {
       <StatusCard
         label="Your working state"
         value={props.selectedVersion
-          ? `${props.selectedVersion.status === 'draft' ? 'Draft' : 'Version'} v${props.selectedVersion.versionNumber}`
+          ? props.selectedVersion.name
           : 'Overview'}
         detail={props.dirty
           ? 'Unsaved changes — save before leaving.'
@@ -131,11 +131,11 @@ export function VersionHistory(props: {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Version</th>
+                <th>Name and purpose</th>
                 <th>State</th>
                 <th>Based on</th>
                 <th>Last activity</th>
-                <th>Publication note</th>
+                <th>Publication audit note</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -178,7 +178,10 @@ function VersionRow(props: {
   const state = props.current ? 'Current' : version.status === 'draft' ? 'Draft' : 'Superseded';
   return (
     <tr className={props.selected ? styles.selectedRow : undefined}>
-      <td><strong>v{version.versionNumber}</strong></td>
+      <td>
+        <strong>{version.name}</strong>
+        <div className={styles.muted}>v{version.versionNumber} · {version.purpose}</div>
+      </td>
       <td>
         <span className={`${styles.badge} ${props.current ? styles.published : version.status === 'draft' ? styles.draft : ''}`}>
           {state}

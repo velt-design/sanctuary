@@ -6,6 +6,10 @@ const migrationSql = readFileSync(
   resolve(process.cwd(), 'supabase/migrations/20260723_000001_costing_configuration_versions.sql'),
   'utf8',
 ).toLowerCase();
+const metadataMigrationSql = readFileSync(
+  resolve(process.cwd(), 'supabase/migrations/20260724_000001_costing_configuration_metadata.sql'),
+  'utf8',
+).toLowerCase();
 
 describe('costing configuration migration', () => {
   it('stores immutable versions behind a separate atomic publication pointer', () => {
@@ -30,5 +34,16 @@ describe('costing configuration migration', () => {
     expect(migrationSql).toContain('add column costing_config_version_id uuid null');
     expect(migrationSql).toContain('references public.costing_configuration_versions(id) on delete restrict');
     expect(migrationSql).toContain('estimate costing provenance must reference a published configuration version');
+  });
+
+  it('adds bounded version identity without reusing publication audit fields', () => {
+    expect(metadataMigrationSql).toContain('add column name text');
+    expect(metadataMigrationSql).toContain('add column purpose text');
+    expect(metadataMigrationSql).toContain('costing_configuration_name_length');
+    expect(metadataMigrationSql).toContain('costing_configuration_purpose_length');
+    expect(metadataMigrationSql).toContain('alter column name set not null');
+    expect(metadataMigrationSql).toContain('alter column purpose set not null');
+    expect(metadataMigrationSql).not.toContain('rename column publish_note');
+    expect(metadataMigrationSql).not.toContain('drop column publish_note');
   });
 });

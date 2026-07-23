@@ -67,14 +67,16 @@ Do not price from calculator while claiming the saved source is workbench-solved
 
 The admin-only control centre is `/admin/costing`. Its browser component calls guarded admin APIs only. `apps/portal/lib/costing/configurationAdmin.ts` owns draft/version orchestration, while `configurationResolver.ts` owns the staff calculation read path. Published version rows are immutable; a separate singleton publication row points to the current version so switching versions never mutates an old published row.
 
-The admin experience is a guided `Overview -> Edit settings -> Review impact -> Publish` workflow. The editor payload includes the validated active configuration snapshot alongside the selected draft so the UI can show active and draft values, filter changed settings, and reset a field or section without reconstructing costing logic in the portal. Draft changes remain browser-local until `Save & validate` calls the admin API; package validation issues are attached to business-labelled fields. Review continues to use the package-generated diff and representative-scenario preview, including material, labour, overhead, and total movement. UUIDs, hashes, schema names, manifests, and raw diff paths are available only as optional technical detail.
+The admin experience is a guided `Overview -> Edit settings -> Review impact -> Publish` workflow. Every draft and immutable published version has a concise name and purpose; these are version identity, not a replacement for the separate publication audit note. The editor payload includes the validated active configuration snapshot alongside the selected draft so the UI can show active and draft values, changed counts by section, grouped material categories and labour subsections, changed-only filtering, and field/group/section resets without reconstructing costing logic in the portal. Material context may display existing package-owned product, supplier, unit, category, notes, and unconfirmed-assumption flags, but those identities and meanings are not editable.
+
+Draft changes remain browser-local until `Save & validate` calls the admin API. While editing, a debounced admin-only validation request runs the same package-owned typed and cross-field validation without saving or touching Supabase rows; save and publish still revalidate authoritatively. Package validation issues are attached to business-labelled fields. Review continues to use the package-generated diff and fixed representative-scenario preview, including material, labour, overhead, and total movement. Admins can optionally select a recent or searched saved estimate and compare its frozen calculator inputs under the active and saved-draft configurations. This real-estimate preview is server-calculated through the canonical calculator-to-site adapter and `@sp/costing`; it is read-only and never updates the estimate, its frozen outputs, or provenance. UUIDs, hashes, schema names, manifests, and raw diff paths are available only as optional technical detail.
 
 Current data flow:
 
 ```text
 admin draft
-  -> package validation
-  -> package diff + calculateSiteCostV1 representative preview
+  -> non-mutating package validation
+  -> package diff + calculateSiteCostV1 fixed and optional frozen-estimate preview
   -> confirmed atomic publish RPC + append-only audit event
   -> current publication pointer
   -> package validation/application on each server costing read
@@ -116,6 +118,7 @@ Changing any code-owned item is a normal package semantic change with package re
 ### Version and rollback rules
 
 - Draft rows may be edited and revalidated; published rows are immutable.
+- Draft name and purpose use bounded plain text and persist when a version is cloned. The publication note remains a separate publish-time audit field.
 - Publishing requires a saved hash, compare-time current-version ID, non-empty audit note, a clear diff, and representative impact. The RPC locks publication and rejects stale drafts or comparisons.
 - Rollback means cloning a compatible previous published version into a new draft and publishing that new version. History is never rewritten.
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.

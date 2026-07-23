@@ -94,7 +94,10 @@ describe('/api/admin/costing/configurations/:versionId', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         expectedContentHash: 'a'.repeat(64),
+        expectedUpdatedAt: '2026-07-23T01:00:00.000Z',
         config: { schemaVersion: 'costing-control.v1' },
+        name: 'August supplier update',
+        purpose: 'Refresh supported material rates.',
       }),
     }), context);
 
@@ -103,7 +106,12 @@ describe('/api/admin/costing/configurations/:versionId', () => {
       { id: 'admin-1', email: 'admin@example.com' },
       'draft-1',
       'a'.repeat(64),
+      '2026-07-23T01:00:00.000Z',
       { schemaVersion: 'costing-control.v1' },
+      {
+        name: 'August supplier update',
+        purpose: 'Refresh supported material rates.',
+      },
     );
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toEqual({

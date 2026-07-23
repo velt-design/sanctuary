@@ -20,6 +20,8 @@ function draftVersion() {
   return {
     id: '11111111-1111-4111-8111-111111111111',
     versionNumber: 2,
+    name: 'Supplier rate update',
+    purpose: 'Update supported rates for August.',
     status: 'draft' as const,
     schemaVersion: config.schemaVersion,
     baseManifestVersion: config.baseManifestVersion,
@@ -42,6 +44,8 @@ function publishedRow(version: ReturnType<typeof draftVersion>) {
   return {
     id: version.id,
     version_number: version.versionNumber,
+    name: version.name,
+    purpose: version.purpose,
     status: 'published',
     schema_version: version.schemaVersion,
     base_manifest_version: version.baseManifestVersion,
@@ -57,6 +61,30 @@ function publishedRow(version: ReturnType<typeof draftVersion>) {
     publish_note: 'Reviewed impacts.',
     publication_diff: [],
     publication_impact: [],
+  };
+}
+
+function draftRow(version: ReturnType<typeof draftVersion>, updatedAt = version.updatedAt) {
+  return {
+    id: version.id,
+    version_number: version.versionNumber,
+    name: version.name,
+    purpose: version.purpose,
+    status: 'draft',
+    schema_version: version.schemaVersion,
+    base_manifest_version: version.baseManifestVersion,
+    based_on_version_id: version.basedOnVersionId,
+    config_json: version.config,
+    content_hash: version.contentHash,
+    created_at: version.createdAt,
+    created_by_email: version.createdByEmail,
+    updated_at: updatedAt,
+    updated_by_email: version.updatedByEmail,
+    published_at: null,
+    published_by_email: null,
+    publish_note: null,
+    publication_diff: null,
+    publication_impact: null,
   };
 }
 
@@ -156,5 +184,79 @@ describe('costing configuration admin publication', () => {
       'Reviewed impacts.',
     )).rejects.toThrow('draft changed');
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('persists bounded draft identity when cloning a source version', async () => {
+    const source = draftVersion();
+    getCostingConfigurationVersionById.mockResolvedValue(source);
+    const insert = vi.fn();
+    const builder: Record<string, ReturnType<typeof vi.fn>> = {};
+    builder.insert = insert.mockImplementation(() => builder);
+    builder.select = vi.fn(() => builder);
+    builder.single = vi.fn(async () => ({
+      data: draftRow({
+        ...source,
+        name: 'Copy of supplier update',
+        purpose: 'Check the previous supplier assumptions.',
+      }),
+      error: null,
+    }));
+    const client = { from: vi.fn(() => builder) } as unknown as SupabaseClient;
+    const { createCostingConfigurationDraft } = await import('./configurationAdmin');
+
+    await createCostingConfigurationDraft(
+      client,
+      { id: 'admin-1', email: 'admin@example.com' },
+      source.id,
+      {
+        name: '  Copy of supplier update ',
+        purpose: ' Check the previous supplier assumptions. ',
+      },
+    );
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Copy of supplier update',
+      purpose: 'Check the previous supplier assumptions.',
+      based_on_version_id: source.id,
+    }));
+  });
+
+  it('protects metadata-only saves with the expected update timestamp', async () => {
+    const draft = draftVersion();
+    const update = vi.fn();
+    const eq = vi.fn();
+    const builder: Record<string, ReturnType<typeof vi.fn>> = {};
+    builder.update = update.mockImplementation(() => builder);
+    builder.eq = eq.mockImplementation(() => builder);
+    builder.select = vi.fn(() => builder);
+    builder.maybeSingle = vi.fn(async () => ({
+      data: draftRow({
+        ...draft,
+        name: 'Clearer supplier update',
+        purpose: 'Clarify the intended August change.',
+      }, '2026-07-23T02:00:00.000Z'),
+      error: null,
+    }));
+    const client = { from: vi.fn(() => builder) } as unknown as SupabaseClient;
+    const { saveCostingConfigurationDraft } = await import('./configurationAdmin');
+
+    await saveCostingConfigurationDraft(
+      client,
+      { id: 'admin-1', email: 'admin@example.com' },
+      draft.id,
+      draft.contentHash,
+      draft.updatedAt,
+      draft.config,
+      {
+        name: 'Clearer supplier update',
+        purpose: 'Clarify the intended August change.',
+      },
+    );
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Clearer supplier update',
+      purpose: 'Clarify the intended August change.',
+    }));
+    expect(eq).toHaveBeenCalledWith('updated_at', draft.updatedAt);
   });
 });

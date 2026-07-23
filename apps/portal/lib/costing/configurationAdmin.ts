@@ -24,6 +24,10 @@ import {
   getCostingConfigurationVersionById,
   resolvePublishedCostingConfiguration,
 } from './configurationResolver';
+import {
+  validateCostingConfigurationMetadata,
+  type CostingConfigurationMetadata,
+} from './configurationMetadata';
 
 type CostingConfigurationActor = {
   id: string;
@@ -59,6 +63,20 @@ function assertValidConfig(config: unknown): CostingControlConfigV1 {
   throw error;
 }
 
+function assertValidMetadata(candidate: Partial<CostingConfigurationMetadata>): CostingConfigurationMetadata {
+  const result = validateCostingConfigurationMetadata(candidate);
+  if (result.ok) return result.value;
+  const error = new Error('Costing configuration details are incomplete.') as Error & {
+    metadataIssues?: typeof result.issues;
+  };
+  error.metadataIssues = result.issues;
+  throw error;
+}
+
+export function validateCostingConfigurationCandidate(candidate: unknown) {
+  return validateCostingControlConfigV1(candidate, loadCostingConfigV1());
+}
+
 export async function listCostingConfigurationOverview(
   supabase: SupabaseClient,
 ): Promise<CostingConfigurationOverview> {
@@ -86,8 +104,10 @@ export async function createCostingConfigurationDraft(
   supabase: SupabaseClient,
   actor: CostingConfigurationActor,
   sourceVersionId?: string | null,
+  metadata?: Partial<CostingConfigurationMetadata>,
 ): Promise<CostingConfigurationVersion> {
   const identity = actorFields(actor);
+  const details = assertValidMetadata(metadata ?? {});
   let config: CostingControlConfigV1;
   let basedOnVersionId: string | null;
 
@@ -105,6 +125,8 @@ export async function createCostingConfigurationDraft(
     .from('costing_configuration_versions')
     .insert({
       status: 'draft',
+      name: details.name,
+      purpose: details.purpose,
       schema_version: config.schemaVersion,
       base_manifest_version: config.baseManifestVersion,
       based_on_version_id: basedOnVersionId,
@@ -128,13 +150,18 @@ export async function saveCostingConfigurationDraft(
   actor: CostingConfigurationActor,
   versionId: string,
   expectedContentHash: string,
+  expectedUpdatedAt: string,
   candidate: unknown,
+  metadata: Partial<CostingConfigurationMetadata>,
 ): Promise<CostingConfigurationVersion> {
   const identity = actorFields(actor);
   const config = assertValidConfig(candidate);
+  const details = assertValidMetadata(metadata);
   const updateResult = await supabase
     .from('costing_configuration_versions')
     .update({
+      name: details.name,
+      purpose: details.purpose,
       config_json: config,
       content_hash: hashCostingControlConfig(config),
       updated_at: new Date().toISOString(),
@@ -144,6 +171,7 @@ export async function saveCostingConfigurationDraft(
     .eq('id', versionId)
     .eq('status', 'draft')
     .eq('content_hash', expectedContentHash)
+    .eq('updated_at', expectedUpdatedAt)
     .select('*')
     .maybeSingle();
   if (updateResult.error) {
@@ -228,12 +256,35 @@ export async function publishCostingConfigurationDraft(
 export function getCostingConfigurationEditorCatalog() {
   const base = loadCostingConfigV1();
   return {
-    materials: base.materials.items.map((item) => ({
-      id: item.id,
-      label: typeof item.name === 'string' && item.name ? item.name : item.id,
-      unit: typeof item.unit === 'string' ? item.unit : '',
-      category: typeof item.category === 'string' ? item.category : 'Other',
-    })),
+    materials: base.materials.items.map((item) => {
+      const record = item as unknown as Record<string, unknown>;
+      const source = record.source && typeof record.source === 'object' && !Array.isArray(record.source)
+        ? record.source as Record<string, unknown>
+        : null;
+      const attributes = record.attributes && typeof record.attributes === 'object' && !Array.isArray(record.attributes)
+        ? record.attributes as Record<string, unknown>
+        : null;
+      const supplier = typeof source?.supplier === 'string'
+        ? source.supplier
+        : typeof attributes?.supplier === 'string'
+          ? attributes.supplier
+          : null;
+      const product = typeof attributes?.product === 'string'
+        ? attributes.product
+        : typeof record.name === 'string'
+          ? record.name
+          : null;
+      return {
+        id: item.id,
+        label: typeof item.name === 'string' && item.name ? item.name : item.id,
+        unit: typeof item.unit === 'string' ? item.unit : '',
+        category: typeof item.category === 'string' ? item.category : 'Other',
+        supplier,
+        product,
+        note: typeof record.notes === 'string' && record.notes.trim() ? record.notes.trim() : null,
+        assumption: source?.needs_confirmation === true || source?.method === 'assumption',
+      };
+    }),
     actions: base.installActions.actions.flatMap((action) => (
       action.base_minutes === undefined
         ? []

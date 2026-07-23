@@ -64,11 +64,11 @@ Tests may be longer than production files, but large tests should still split by
 The Calculator Brain follows this split:
 
 - `packages/costing/src/controlConfig.ts` owns the reusable typed snapshot, validation, application, diff, and scenario-preview contract. It must not gain Supabase or portal workflow concerns.
-- `apps/portal/lib/costing/configurationResolver.ts` owns current/historical read resolution and provenance; `configurationAdmin.ts` owns draft/list/compare/publish orchestration; `configurationShared.ts` owns row mapping and hashes.
+- `apps/portal/lib/costing/configurationResolver.ts` owns current/historical read resolution and provenance; `configurationAdmin.ts` owns draft/list/compare/publish orchestration; `configurationEstimatePreview.ts` owns bounded read-only estimate discovery and preview orchestration; `configurationShared.ts` owns row mapping and hashes.
 - thin route files under `apps/portal/app/api/admin/costing/configurations` own admin guards, HTTP parsing, status mapping, and response shape only.
-- `apps/portal/app/admin/costing/CostingControlCentre.tsx` owns browser editing and presentation only. It does not import Supabase, calculate prices, validate durable policy, or publish directly.
+- `apps/portal/app/admin/costing/CostingControlCentre.tsx` owns browser workflow state and composition only. `CostingDraftMetadata.tsx`, `CostingControlEditors.tsx`, `CostingControlOverview.tsx`, `CostingControlReview.tsx`, and `CostingEstimatePreview.tsx` own their focused presentation and local interaction boundaries. None imports Supabase, calculates prices, validates durable policy, or publishes directly.
 
-If the control-centre component approaches the warning band, extract the version-history table and draft section editors before adding new configuration categories. If the package contract approaches its warning band, split snapshot/validation from diff/preview while preserving the public `@sp/costing` export.
+If the control-centre composition approaches the warning band again, extract the saved-draft controller/API state before adding new configuration categories. If the package contract approaches its warning band, split snapshot/validation from diff/preview while preserving the public `@sp/costing` export.
 
 ## SaaS-Ready Portal Rule
 

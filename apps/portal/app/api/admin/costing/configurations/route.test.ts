@@ -66,7 +66,11 @@ describe('/api/admin/costing/configurations', () => {
     const request = new Request('http://localhost/api/admin/costing/configurations', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ sourceVersionId: 'published-2' }),
+      body: JSON.stringify({
+        sourceVersionId: 'published-2',
+        name: 'August supplier update',
+        purpose: 'Refresh supported material rates.',
+      }),
     });
 
     const response = await POST(request);
@@ -76,6 +80,10 @@ describe('/api/admin/costing/configurations', () => {
       expect.anything(),
       { id: 'admin-1', email: 'admin@example.com' },
       'published-2',
+      {
+        name: 'August supplier update',
+        purpose: 'Refresh supported material rates.',
+      },
     );
   });
 });

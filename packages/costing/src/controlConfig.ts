@@ -606,25 +606,41 @@ export function previewCostingControlImpactV1(
   beforeConfig: CostingConfigV1,
   afterConfig: CostingConfigV1,
 ): CostingControlImpactRowV1[] {
-  return COSTING_CONTROL_PREVIEW_SCENARIOS_V1.map((scenario) => {
-    const before = calculateSiteCostV1(deepClone(scenario.inputs), beforeConfig);
-    const after = calculateSiteCostV1(deepClone(scenario.inputs), afterConfig);
-    const beforeTotal = before.totals.cost_ex_gst;
-    const afterTotal = after.totals.cost_ex_gst;
-    const delta = round(afterTotal - beforeTotal, 2);
-    return {
-      id: scenario.id,
-      label: scenario.label,
-      beforeTotalExGst: beforeTotal,
-      afterTotalExGst: afterTotal,
-      deltaExGst: delta,
-      deltaPercent: beforeTotal === 0 ? null : round((delta / beforeTotal) * 100, 2),
-      beforeMaterialsExGst: before.materials.totals.materials_ex_gst,
-      afterMaterialsExGst: after.materials.totals.materials_ex_gst,
-      beforeInstallExGst: before.install.totals.install_ex_gst,
-      afterInstallExGst: after.install.totals.install_ex_gst,
-      beforeOverheadExGst: before.overhead.total_ex_gst,
-      afterOverheadExGst: after.overhead.total_ex_gst,
-    };
-  });
+  return COSTING_CONTROL_PREVIEW_SCENARIOS_V1.map((scenario) => (
+    previewCostingControlSiteImpactV1(
+      scenario.id,
+      scenario.label,
+      scenario.inputs,
+      beforeConfig,
+      afterConfig,
+    )
+  ));
+}
+
+export function previewCostingControlSiteImpactV1(
+  id: string,
+  label: string,
+  inputs: SiteInputsV1,
+  beforeConfig: CostingConfigV1,
+  afterConfig: CostingConfigV1,
+): CostingControlImpactRowV1 {
+  const before = calculateSiteCostV1(deepClone(inputs), beforeConfig);
+  const after = calculateSiteCostV1(deepClone(inputs), afterConfig);
+  const beforeTotal = before.totals.cost_ex_gst;
+  const afterTotal = after.totals.cost_ex_gst;
+  const delta = round(afterTotal - beforeTotal, 2);
+  return {
+    id,
+    label,
+    beforeTotalExGst: beforeTotal,
+    afterTotalExGst: afterTotal,
+    deltaExGst: delta,
+    deltaPercent: beforeTotal === 0 ? null : round((delta / beforeTotal) * 100, 2),
+    beforeMaterialsExGst: before.materials.totals.materials_ex_gst,
+    afterMaterialsExGst: after.materials.totals.materials_ex_gst,
+    beforeInstallExGst: before.install.totals.install_ex_gst,
+    afterInstallExGst: after.install.totals.install_ex_gst,
+    beforeOverheadExGst: before.overhead.total_ex_gst,
+    afterOverheadExGst: after.overhead.total_ex_gst,
+  };
 }

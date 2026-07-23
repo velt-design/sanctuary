@@ -35,6 +35,10 @@ export async function POST(req: Request) {
         email: auth.session.user.email ?? '',
       },
       sourceVersionId,
+      {
+        name: parsed.body?.name,
+        purpose: parsed.body?.purpose,
+      },
     );
     return jsonOk({ version }, 201);
   } catch (error) {

@@ -23,8 +23,19 @@ import {
   CostingPublishPanel,
 } from './CostingControlReview';
 import {
+  CostingDraftDialog,
+  CostingDraftMetadataEditor,
+  type DraftDialogState,
+} from './CostingDraftMetadata';
+import {
+  COSTING_CONFIGURATION_NAME_MAX,
+  validateCostingConfigurationMetadata,
+  type CostingConfigurationMetadataIssue,
+} from '@/lib/costing/configurationMetadata';
+import {
   formatCostingDate,
   formatSettingPath,
+  countCostingChangesBySection,
   sectionForIssuePath,
   type CostingControlSection,
   type ValidationIssue,
@@ -32,7 +43,16 @@ import {
 import styles from './costingControl.module.css';
 
 type Catalog = {
-  materials: Array<{ id: string; label: string; unit: string; category: string }>;
+  materials: Array<{
+    id: string;
+    label: string;
+    unit: string;
+    category: string;
+    supplier: string | null;
+    product: string | null;
+    note: string | null;
+    assumption: boolean;
+  }>;
   actions: Array<{ id: string; label: string }>;
 };
 
@@ -53,8 +73,12 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const data = await response.json();
   if (!response.ok) {
-    const error = new Error(String(data?.error ?? 'Request failed')) as Error & { issues?: ValidationIssue[] };
+    const error = new Error(String(data?.error ?? 'Request failed')) as Error & {
+      issues?: ValidationIssue[];
+      metadataIssues?: CostingConfigurationMetadataIssue[];
+    };
     error.issues = Array.isArray(data?.issues) ? data.issues : undefined;
+    error.metadataIssues = Array.isArray(data?.metadataIssues) ? data.metadataIssues : undefined;
     throw error;
   }
   return data as T;
@@ -84,6 +108,11 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [publishNote, setPublishNote] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [draftPurpose, setDraftPurpose] = useState('');
+  const [metadataIssues, setMetadataIssues] = useState<CostingConfigurationMetadataIssue[]>([]);
+  const [validationState, setValidationState] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [draftDialog, setDraftDialog] = useState<DraftDialogState | null>(null);
   const publishPanelRef = useRef<HTMLDivElement>(null);
 
   const versionById = useMemo(
@@ -103,6 +132,12 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
   const readOnly = editor?.version.status !== 'draft';
   const baseline = editor?.comparison?.baselineConfig ?? editor?.version.config ?? null;
   const workflowStep = currentWorkflowStep(editor, section);
+  const changedCounts = useMemo(
+    () => config && baseline
+      ? countCostingChangesBySection(config, baseline)
+      : { materials: 0, labour: 0, overheads: 0, rules: 0 },
+    [baseline, config],
+  );
 
   useEffect(() => {
     if (!dirty) return;
@@ -135,6 +170,38 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     }
   }, [section]);
 
+  useEffect(() => {
+    if (!dirty || !config || editor?.version.status !== 'draft') {
+      setValidationState(editor?.version.status === 'draft' ? 'valid' : 'idle');
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setValidationState('checking');
+      try {
+        await requestJson<{ valid: true; issues: [] }>('/api/admin/costing/validate', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ config }),
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setIssues([]);
+          setValidationState('valid');
+        }
+      } catch (caught) {
+        if (controller.signal.aborted) return;
+        const nextIssues = (caught as Error & { issues?: ValidationIssue[] }).issues ?? [];
+        setIssues(nextIssues);
+        setValidationState(nextIssues.length ? 'invalid' : 'idle');
+      }
+    }, 450);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [config, dirty, editor?.version.status]);
+
   const confirmDiscard = () => (
     !dirty || window.confirm('Discard your unsaved costing changes?')
   );
@@ -149,6 +216,8 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     );
     setEditor(next);
     setConfig(structuredClone(next.version.config));
+    setDraftName(next.version.name);
+    setDraftPurpose(next.version.purpose);
     setDirty(false);
     setIssues([]);
     setShowChangedOnly(false);
@@ -169,8 +238,26 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     }
   };
 
-  const createDraft = async (sourceVersionId?: string) => {
+  const createDraft = (sourceVersionId?: string) => {
     if (!confirmDiscard()) return;
+    const source = sourceVersionId ? versionById.get(sourceVersionId) : null;
+    setDraftDialog({
+      sourceVersionId: sourceVersionId ?? null,
+      name: source ? `Copy of ${source.name}`.slice(0, COSTING_CONFIGURATION_NAME_MAX) : 'Pricing update',
+      purpose: source?.purpose ?? '',
+    });
+  };
+
+  const submitDraft = async () => {
+    if (!draftDialog) return;
+    const source = draftDialog.sourceVersionId
+      ? versionById.get(draftDialog.sourceVersionId) ?? null
+      : null;
+    const metadata = validateCostingConfigurationMetadata(draftDialog);
+    if (!metadata.ok) {
+      setMetadataIssues(metadata.issues);
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -180,12 +267,21 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sourceVersionId: sourceVersionId ?? null }),
+          body: JSON.stringify({
+            sourceVersionId: draftDialog.sourceVersionId,
+            ...metadata.value,
+          }),
         },
       );
+      setDraftDialog(null);
+      setMetadataIssues([]);
       await refreshOverview();
       await loadVersion(created.version.id);
-      setMessage(`Draft v${created.version.versionNumber} created from the active pricing settings.`);
+      setMessage(
+        `Draft v${created.version.versionNumber} created from ${
+          source ? `${source.name} (v${source.versionNumber})` : 'the active pricing settings'
+        }.`,
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed to create pricing draft');
     } finally {
@@ -198,9 +294,29 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     const next = structuredClone(config);
     mutate(next);
     setConfig(next);
-    setDirty(JSON.stringify(next) !== JSON.stringify(editor.version.config));
+    setDirty(
+      JSON.stringify(next) !== JSON.stringify(editor.version.config)
+      || draftName.trim() !== editor.version.name
+      || draftPurpose.trim() !== editor.version.purpose,
+    );
     setMessage(null);
     setIssues([]);
+    setConfirmed(false);
+  };
+
+  const updateMetadata = (field: 'name' | 'purpose', value: string) => {
+    if (!editor || !config || editor.version.status !== 'draft') return;
+    const nextName = field === 'name' ? value : draftName;
+    const nextPurpose = field === 'purpose' ? value : draftPurpose;
+    if (field === 'name') setDraftName(value);
+    else setDraftPurpose(value);
+    setMetadataIssues([]);
+    setDirty(
+      JSON.stringify(config) !== JSON.stringify(editor.version.config)
+      || nextName.trim() !== editor.version.name
+      || nextPurpose.trim() !== editor.version.purpose,
+    );
+    setMessage(null);
     setConfirmed(false);
   };
 
@@ -217,20 +333,36 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             expectedContentHash: editor.version.contentHash,
+            expectedUpdatedAt: editor.version.updatedAt,
             config,
+            name: draftName,
+            purpose: draftPurpose,
           }),
         },
       );
       setEditor(saved);
       setConfig(structuredClone(saved.version.config));
+      setDraftName(saved.version.name);
+      setDraftPurpose(saved.version.purpose);
       setDirty(false);
       setMessage('Draft saved and validated. The comparison and impact preview are up to date.');
       if (landing) setSection(landing);
       await refreshOverview();
     } catch (caught) {
-      const value = caught as Error & { issues?: ValidationIssue[] };
+      const value = caught as Error & {
+        issues?: ValidationIssue[];
+        metadataIssues?: CostingConfigurationMetadataIssue[];
+      };
       const nextIssues = value.issues ?? [];
-      setError(nextIssues.length ? 'Some values need attention before this draft can be saved.' : value.message);
+      const nextMetadataIssues = value.metadataIssues ?? [];
+      setMetadataIssues(nextMetadataIssues);
+      setError(
+        nextIssues.length
+          ? 'Some values need attention before this draft can be saved.'
+          : nextMetadataIssues.length
+            ? 'Add a clear name and purpose before saving this draft.'
+            : value.message,
+      );
       setIssues(nextIssues);
       const firstSection = sectionForIssuePath(nextIssues[0]?.path);
       if (firstSection) setSection(firstSection);
@@ -281,6 +413,8 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
     if (!confirmDiscard()) return;
     setEditor(null);
     setConfig(null);
+    setDraftName('');
+    setDraftPurpose('');
     setDirty(false);
     setIssues([]);
     setMessage(null);
@@ -359,6 +493,20 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
         </div>
       ) : null}
 
+      {draftDialog ? (
+        <CostingDraftDialog
+          value={draftDialog}
+          issues={metadataIssues}
+          busy={busy}
+          onChange={setDraftDialog}
+          onCancel={() => {
+            setDraftDialog(null);
+            setMetadataIssues([]);
+          }}
+          onCreate={submitDraft}
+        />
+      ) : null}
+
       {!editor ? (
         <section className={styles.onboardingCard}>
           <div>
@@ -398,6 +546,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                 {readOnly ? 'Published pricing record' : 'Step 2 · Edit settings'}
               </div>
               <h2>{readOnly ? 'Pricing' : 'Draft'} version {editor.version.versionNumber}</h2>
+              <p className={styles.versionName}>{editor.version.name}</p>
               <p className={styles.muted}>
                 {readOnly
                   ? `Published ${formatCostingDate(editor.version.publishedAt)} by ${editor.version.publishedByEmail}.`
@@ -414,6 +563,15 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                     : 'Draft · saved'}
             </span>
           </div>
+
+          <CostingDraftMetadataEditor
+            readOnly={readOnly}
+            persistedPurpose={editor.version.purpose}
+            name={draftName}
+            purpose={draftPurpose}
+            issues={metadataIssues}
+            onChange={updateMetadata}
+          />
 
           {editor.version.publishNote ? (
             <div className={styles.publicationNote}>
@@ -444,6 +602,7 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                   onClick={() => setSection(key)}
                 >
                   {label}
+                  {changedCounts[key] ? <span className={styles.tabCount}>{changedCounts[key]}</span> : null}
                 </button>
               ))}
               <button
@@ -545,8 +704,14 @@ export default function CostingControlCentre({ initialOverview }: { initialOverv
                 <span>
                   <strong>{dirty ? 'Unsaved changes' : 'Saved and validated'}</strong>
                   <small>
-                    {dirty
-                      ? 'Save to refresh the comparison and impact preview.'
+                    {dirty && validationState === 'checking'
+                      ? 'Checking typed and cross-field rules…'
+                      : dirty && validationState === 'invalid'
+                        ? 'Fix the highlighted validation issues before saving.'
+                        : dirty && validationState === 'valid'
+                          ? 'Current values pass validation; save to refresh previews.'
+                      : dirty
+                        ? 'Save to refresh the comparison and impact preview.'
                       : 'The server accepted every typed setting.'}
                   </small>
                 </span>

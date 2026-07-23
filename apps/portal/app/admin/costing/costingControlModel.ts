@@ -7,6 +7,46 @@ export type ValidationIssue = {
   message?: string;
 };
 
+function countLeafChanges(left: unknown, right: unknown): number {
+  if (Object.is(left, right)) return 0;
+  if (Array.isArray(left) && Array.isArray(right)) {
+    const length = Math.max(left.length, right.length);
+    return Array.from({ length }, (_, index) => countLeafChanges(left[index], right[index]))
+      .reduce((total, count) => total + count, 0);
+  }
+  if (
+    left && right
+    && typeof left === 'object'
+    && typeof right === 'object'
+    && !Array.isArray(left)
+    && !Array.isArray(right)
+  ) {
+    const keys = new Set([
+      ...Object.keys(left as Record<string, unknown>),
+      ...Object.keys(right as Record<string, unknown>),
+    ]);
+    return [...keys].reduce((total, key) => (
+      total + countLeafChanges(
+        (left as Record<string, unknown>)[key],
+        (right as Record<string, unknown>)[key],
+      )
+    ), 0);
+  }
+  return 1;
+}
+
+export function countCostingChangesBySection(
+  config: CostingControlConfigV1,
+  baseline: CostingControlConfigV1,
+): Record<Exclude<CostingControlSection, 'comparison' | 'publish'>, number> {
+  return {
+    materials: countLeafChanges(config.materialRatesExGst, baseline.materialRatesExGst),
+    labour: countLeafChanges(config.labour, baseline.labour),
+    overheads: countLeafChanges(config.overheads, baseline.overheads),
+    rules: countLeafChanges(config.rules, baseline.rules),
+  };
+}
+
 export type NumberFieldMetadata = {
   label: string;
   description: string;

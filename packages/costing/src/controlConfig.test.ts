@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { loadCostingConfigV1 } from './engine/config';
 import {
   applyCostingControlConfigV1,
+  COSTING_CONTROL_PREVIEW_SCENARIOS_V1,
   diffCostingControlConfigsV1,
   previewCostingControlImpactV1,
+  previewCostingControlSiteImpactV1,
   snapshotCostingControlConfigV1,
   validateCostingControlConfigV1,
 } from './controlConfig';
@@ -88,5 +90,25 @@ describe('costing control configuration', () => {
     expect(impact).toHaveLength(4);
     expect(impact.every((row) => row.afterInstallExGst >= row.beforeInstallExGst)).toBe(true);
     expect(impact.some((row) => row.deltaExGst > 0)).toBe(true);
+  });
+
+  it('previews caller-supplied site inputs through the package-owned impact calculation', () => {
+    const base = loadCostingConfigV1();
+    const after = snapshotCostingControlConfigV1(base);
+    after.labour.crewHourRateExGst += 10;
+    const scenario = COSTING_CONTROL_PREVIEW_SCENARIOS_V1[0]!;
+
+    const impact = previewCostingControlSiteImpactV1(
+      'saved-estimate',
+      'Saved estimate',
+      scenario.inputs,
+      base,
+      applyCostingControlConfigV1(base, after),
+    );
+
+    expect(impact.id).toBe('saved-estimate');
+    expect(impact.label).toBe('Saved estimate');
+    expect(impact.afterInstallExGst).toBeGreaterThan(impact.beforeInstallExGst);
+    expect(impact.deltaExGst).toBeGreaterThan(0);
   });
 });

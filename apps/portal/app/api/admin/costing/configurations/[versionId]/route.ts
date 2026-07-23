@@ -14,6 +14,11 @@ function validationIssues(error: unknown): unknown[] | null {
   return Array.isArray(issues) ? issues : null;
 }
 
+function metadataIssues(error: unknown): unknown[] | null {
+  const issues = (error as { metadataIssues?: unknown })?.metadataIssues;
+  return Array.isArray(issues) ? issues : null;
+}
+
 export async function GET(_req: Request, { params }: Context) {
   const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
@@ -36,6 +41,9 @@ export async function PUT(req: Request, { params }: Context) {
   if (typeof parsed.body?.expectedContentHash !== 'string') {
     return jsonError('expectedContentHash is required', 400);
   }
+  if (typeof parsed.body?.expectedUpdatedAt !== 'string') {
+    return jsonError('expectedUpdatedAt is required', 400);
+  }
 
   try {
     const version = await saveCostingConfigurationDraft(
@@ -46,11 +54,18 @@ export async function PUT(req: Request, { params }: Context) {
       },
       versionId,
       parsed.body.expectedContentHash,
+      parsed.body.expectedUpdatedAt,
       parsed.body.config,
+      {
+        name: parsed.body?.name,
+        purpose: parsed.body?.purpose,
+      },
     );
     const editor = await getCostingConfigurationEditor(auth.supabase, version.id);
     return jsonOk({ ...editor, catalog: getCostingConfigurationEditorCatalog() });
   } catch (error) {
+    const details = metadataIssues(error);
+    if (details) return jsonOk({ error: 'Draft details are incomplete', metadataIssues: details }, 422);
     const issues = validationIssues(error);
     if (issues) return jsonOk({ error: 'Validation failed', issues }, 422);
     const message = error instanceof Error ? error.message : 'Failed to save costing configuration';

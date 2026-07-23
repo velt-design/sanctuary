@@ -16,6 +16,8 @@ export type {
 type VersionRow = {
   id: unknown;
   version_number: unknown;
+  name: unknown;
+  purpose: unknown;
   status: unknown;
   schema_version: unknown;
   base_manifest_version: unknown;
@@ -73,6 +75,8 @@ export function mapCostingConfigurationVersion(row: unknown): CostingConfigurati
   return {
     id: requiredString(value.id, 'id'),
     versionNumber,
+    name: requiredString(value.name, 'name'),
+    purpose: requiredString(value.purpose, 'purpose'),
     status,
     schemaVersion: requiredString(value.schema_version, 'schema_version'),
     baseManifestVersion: requiredString(value.base_manifest_version, 'base_manifest_version'),

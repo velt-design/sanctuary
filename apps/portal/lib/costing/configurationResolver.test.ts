@@ -15,6 +15,8 @@ function versionRow(config = snapshotCostingControlConfigV1(loadCostingConfigV1(
   return {
     id: '11111111-1111-4111-8111-111111111111',
     version_number: 4,
+    name: 'Published supplier update',
+    purpose: 'Keep supported supplier rates current.',
     status: 'published',
     schema_version: config.schemaVersion,
     base_manifest_version: config.baseManifestVersion,

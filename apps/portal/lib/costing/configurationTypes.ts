@@ -10,6 +10,8 @@ type CostingConfigurationStatus = 'draft' | 'published';
 export type CostingConfigurationVersion = {
   id: string;
   versionNumber: number;
+  name: string;
+  purpose: string;
   status: CostingConfigurationStatus;
   schemaVersion: string;
   baseManifestVersion: string;
@@ -53,4 +55,31 @@ export type CostingConfigurationProvenanceV1 =
 
 export type CalculatorCostingResponse = SiteOutputV1 & {
   costingConfiguration?: CostingConfigurationProvenanceV1;
+};
+
+export type CostingEstimateCandidate = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  quoteRef: string | null;
+  siteAddress: string | null;
+  version: number | null;
+  status: string;
+  updatedAt: string;
+  savedCostingVersionId: string | null;
+};
+
+export type CostingEstimatePreview = {
+  estimate: CostingEstimateCandidate & {
+    savedProvenance: {
+      source: string | null;
+      versionId: string | null;
+      versionNumber: number | null;
+      contentHash: string | null;
+    } | null;
+  };
+  impact: CostingControlImpactRowV1;
+  draftContentHash: string;
+  currentVersionId: string | null;
+  generatedAt: string;
 };

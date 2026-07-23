@@ -180,13 +180,20 @@ Primary write path:
 
 - Design List request and cell/action routes under `apps/portal/app/api/staff/v1/design-packages`.
 - Theme routes under `apps/portal/app/api/staff/v1/theme`.
-- Costing drafts and publication go through admin-guarded routes under `apps/portal/app/api/admin/costing/configurations`. Draft save uses an optimistic content hash. Publish uses the admin-only atomic `publish_costing_configuration_version(...)` RPC with the expected current version, expected draft hash, audit note, package-generated diff, and package-generated impact preview.
+- Costing drafts and publication go through admin-guarded routes under `apps/portal/app/api/admin/costing/configurations`. Version `name` and `purpose` are bounded identity metadata and remain separate from `publish_note`. Draft save uses the expected content hash plus `updated_at` so metadata-only concurrent edits are not silently overwritten. Publish uses the admin-only atomic `publish_costing_configuration_version(...)` RPC with the expected current version, expected draft hash, audit note, package-generated diff, and package-generated impact preview.
+- `/api/admin/costing/validate` is a non-mutating package-validation boundary. `/api/admin/costing/estimates` and the per-draft `estimate-preview` route perform bounded, auth-bound estimate/project reads only; they never update estimate or configuration rows.
 
 Primary read path:
 
 - Design package server/domain helpers under `apps/portal/lib/designPackages`.
 - Theme server helpers under `apps/portal/lib/theme`.
 - `apps/portal/lib/costing/configurationResolver.ts` reads the singleton publication pointer, validates and hashes the immutable JSON version against `@sp/costing`, and applies it through the package contract. Until the first publication it snapshots the effective legacy overrides through `overrides.ts`; database failures after schema creation fail closed.
+- `apps/portal/lib/costing/configurationEstimatePreview.ts` reads recent or selected estimate inputs and project identity through the auth-bound admin client, normalizes supported historical calculator input versions, and delegates active-versus-draft component totals to `@sp/costing`.
+
+Migration source:
+
+- `supabase/migrations/20260723_000001_costing_configuration_versions.sql`
+- `supabase/migrations/20260724_000001_costing_configuration_metadata.sql`
 
 Access rule:
 
