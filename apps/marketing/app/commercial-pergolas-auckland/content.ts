@@ -37,7 +37,17 @@ export const commercialPergolasConfig = {
       { slug: 'goodhome-commercial-terrace', label: 'Hospitality courtyard', summary: 'A 10.09 by 6.7 metre, two-zone gable extends a restaurant courtyard while following the villa-style facade.', facts: ['67.7 m² hospitality cover', '25 degree gable relationship'] },
       { slug: 'kiwi-rail-platform', label: 'Workplace circulation', summary: 'A 30 metre long aluminium and acrylic canopy forms a covered link between important routes at the KiwiRail head office.', facts: ['115 m² circulation canopy', 'Architect-led project'] },
       { slug: 'lilliput-mini-golf', label: 'Recreation and staged renovation', summary: 'A 12.0 by 6.0 metre pitched pergola covers circulation and seating within a staged site refresh coordinated with the client design team.', facts: ['72 m² covered area', 'Existing levels and sightlines retained'] },
-      { slug: 'atelier-shu-cafe', label: 'Cafe frontage', summary: 'A 9.0 by 4.0 metre aluminium gable creates a sheltered outdoor zone while responding to the existing cafe architecture and colours.', facts: ['36 m² frontage cover', '30 degree gable form'] },
+      {
+        slug: 'atelier-shu-cafe',
+        label: 'Cafe frontage',
+        summary: 'A 9.0 by 4.0 metre aluminium gable creates a sheltered outdoor zone while responding to the existing cafe architecture and colours.',
+        facts: ['36 m² frontage cover', '30 degree gable form'],
+        image: {
+          src: '/images/project-atelier-shu-02.jpg',
+          alt: 'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
+          objectPosition: '50% 42%',
+        },
+      },
     ] },
     { kind: 'decision-cards', id: 'commercial-decisions', tone: 'warm', eyebrow: 'Coordinate before fabrication', title: 'Four commercial decisions carry through the whole project', intro: 'Each one needs an owner, evidence and an agreed point of sign-off.', items: [
       { title: 'Use and capacity', outcome: 'A structure arranged around customers, staff, furniture, paths and required clear space.', consider: 'Peak use, accessibility, exits, doors, queues, service routes, sightlines and future layout changes.' },

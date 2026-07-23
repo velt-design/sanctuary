@@ -29,6 +29,7 @@ export type Project = {
   roof: 'Pitched' | 'Gable' | 'Hip' | 'Perimeter';
   year: string;
   heroImage: Image;
+  caseStudyHeroImage?: Image;
   gallery: Image[];
   blurb: string;
   constraint: string;
@@ -585,7 +586,17 @@ const baseProjects: Project[] = [
       alt: 'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
       objectPosition: '50% 48%',
     },
+    caseStudyHeroImage: {
+      src: '/images/project-atelier-shu-02.jpg',
+      alt: 'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
+      objectPosition: '50% 42%',
+    },
     gallery: [
+      {
+        src: '/images/project-atelier-shu-03.jpg',
+        alt: 'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
+        objectPosition: '50% 48%',
+      },
       {
         src: '/images/project-atelier-shu-01.jpg',
         alt: 'Sheltered outdoor seating beneath the Atelier Shu Cafe canopy',

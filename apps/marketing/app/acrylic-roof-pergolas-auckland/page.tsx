@@ -213,7 +213,13 @@ export default function AcrylicRoofPergolasAucklandPage() {
       <Section className="acrylic-section" aria-labelledby="summer-comfort">
         <Container width="wide" className="acrylic-editorial-grid">
           <div className="acrylic-editorial-media">
-            <Image src="/images/project-atelier-shu-03.jpg" alt="Dark-tint acrylic canopy detail at Atelier Shu Cafe in Auckland" fill sizes="(max-width: 900px) 100vw, 48vw" />
+            <Image
+              src="/images/project-dairy-flat-02.jpg"
+              alt="Clear acrylic gable roof above the sunlit Dairy Flat outdoor room"
+              fill
+              sizes="(max-width: 900px) 100vw, 48vw"
+              style={{ objectPosition: '50% 35%' }}
+            />
           </div>
           <div>
             <Eyebrow className="acrylic-eyebrow">Heat, glare and summer comfort</Eyebrow>

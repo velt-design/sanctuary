@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { ROOF_MATERIAL_MEDIA } from '../apps/marketing/app/start/startFlowMedia';
 import { projects } from '../apps/marketing/data/projects';
 
 const representativeRoute = `/projects/${projects[0].slug}`;
@@ -55,19 +56,81 @@ test('every canonical project remains discoverable in the public sitemap', async
   }
 });
 
-test('Atelier Shu uses the frontage image on its case study and commercial guide proof', async ({ page }) => {
-  const imagePath = 'project-atelier-shu-03.jpg';
+test('Atelier Shu uses the front-on canopy image on its case study and commercial guide proof', async ({ page }) => {
+  const imagePath = 'project-atelier-shu-02.jpg';
 
   await page.goto('/projects/atelier-shu-cafe');
   await expect(page.locator('.project-case-study__hero img')).toHaveAttribute('src', new RegExp(imagePath));
   await expect(page.locator('.project-case-study__hero img')).toHaveAttribute(
     'alt',
-    'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
+    'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
   );
+  await expect(page.locator('.project-case-study__hero img')).toHaveCSS('object-position', '50% 42%');
+  await expect(page.locator('.project-case-study__gallery img[src*="project-atelier-shu-03.jpg"]')).toHaveCount(1);
 
   await page.goto('/commercial-pergolas-auckland');
   const atelierCard = page.locator('a[href="/projects/atelier-shu-cafe"]');
   await expect(atelierCard.locator('img')).toHaveAttribute('src', new RegExp(imagePath));
+  await expect(atelierCard.locator('img')).toHaveAttribute(
+    'alt',
+    'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
+  );
+
+  await page.goto('/sitemap-images.xml');
+  await expect(page.locator('body')).toContainText(`${publicOrigin}/images/${imagePath}`);
+});
+
+test('Atelier imagery stays selective and claim-aligned across guide surfaces', async ({ page }) => {
+  const atelierCaseStudy = page.locator('img[src*="project-atelier-shu-02.jpg"]');
+  const atelierFrontage = page.locator('img[src*="project-atelier-shu-03.jpg"]');
+
+  for (const route of ['/projects/atelier-shu-cafe', '/commercial-pergolas-auckland']) {
+    await page.goto(route);
+    await expect(atelierCaseStudy).toHaveCount(1);
+  }
+
+  for (const route of [
+    '/acrylic-roof-pergolas-auckland',
+    '/acrylic-roof-pergolas-auckland-v2',
+    '/acrylic-pergolas-vs-louvre-roofs',
+    '/start',
+    '/',
+    '/gable-pergolas-auckland',
+  ]) {
+    await page.goto(route);
+    await expect(atelierCaseStudy).toHaveCount(0);
+  }
+
+  await page.goto('/acrylic-roof-pergolas-auckland');
+  await expect(page.locator('.acrylic-editorial-media img')).toHaveAttribute(
+    'src',
+    /project-dairy-flat-02\.jpg/,
+  );
+  await expect(page.locator('a[href="/projects/atelier-shu-cafe"] img')).toHaveAttribute(
+    'src',
+    /project-atelier-shu-03\.jpg/,
+  );
+
+  await page.goto('/start');
+  await expect(atelierFrontage).toHaveAttribute(
+    'alt',
+    'Atelier Shu Cafe gable canopy integrated with the existing Newmarket frontage.',
+  );
+  await expect(page.locator('img[src*="project-atelier-shu-01.jpg"]')).toHaveCount(0);
+  expect(ROOF_MATERIAL_MEDIA.combination).toEqual({
+    src: '/images/materials-combination.jpg',
+    alt: 'Combination roof concept with timber-lined and acrylic roof zones.',
+  });
+
+  for (const route of [
+    '/acrylic-roof-pergolas-auckland',
+    '/acrylic-roof-pergolas-auckland-v2',
+    '/acrylic-pergolas-vs-louvre-roofs',
+    '/start',
+  ]) {
+    await page.goto(route);
+    await expect(atelierFrontage).toHaveCount(1);
+  }
 });
 
 test('every canonical project route has complete case-study structure, metadata, and a loaded hero', async ({ page }) => {

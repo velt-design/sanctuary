@@ -44,7 +44,8 @@ export default function ProjectDetailContent({
   const features = getProjectFeatureTags(project);
   const technicalSections = getProjectTechnicalSections(project);
   const contextLinks = getProjectContextLinks(project);
-  const seenImages = new Set([project.heroImage.src]);
+  const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
+  const seenImages = new Set([caseStudyHeroImage.src]);
   const detailImages = project.gallery.filter((image) => {
     if (seenImages.has(image.src)) return false;
     seenImages.add(image.src);
@@ -90,13 +91,13 @@ export default function ProjectDetailContent({
       <figure className="project-case-study__hero">
         <div className="project-case-study__hero-media">
           <Image
-            src={project.heroImage.src}
-            alt={project.heroImage.alt}
+            src={caseStudyHeroImage.src}
+            alt={caseStudyHeroImage.alt}
             fill
             priority
             fetchPriority="high"
             sizes="(max-width: 899px) 100vw, (max-width: 1280px) calc(100vw - 320px), 1120px"
-            style={{ objectPosition: project.heroImage.objectPosition ?? 'center' }}
+            style={{ objectPosition: caseStudyHeroImage.objectPosition ?? 'center' }}
           />
         </div>
         <figcaption>

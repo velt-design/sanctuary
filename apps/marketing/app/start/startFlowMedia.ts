@@ -26,7 +26,7 @@ export const BRANCH_MEDIA: Record<EnquiryType, MediaEntry> = {
   },
   professional: {
     src: '/images/project-atelier-shu-03.jpg',
-    alt: 'Professional project concept showing architectural plans and details.',
+    alt: 'Atelier Shu Cafe gable canopy integrated with the existing Newmarket frontage.',
   },
 };
 
@@ -63,8 +63,8 @@ export const ROOF_MATERIAL_MEDIA: Record<RoofMaterialChoice, MediaEntry> = {
     alt: 'Timber-lined roof concept with warm ceiling finish.',
   },
   combination: {
-    src: '/images/project-atelier-shu-01.jpg',
-    alt: 'Combination roof concept with timber and acrylic skylight strips.',
+    src: '/images/materials-combination.jpg',
+    alt: 'Combination roof concept with timber-lined and acrylic roof zones.',
   },
   unsure: {
     src: '/images/hero-2.jpg',

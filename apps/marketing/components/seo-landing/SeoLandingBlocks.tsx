@@ -89,15 +89,15 @@ export default function SeoLandingBlocks({ blocks }: { blocks: readonly SeoLandi
     if (block.kind === 'projects') {
       const projectItems = block.items.flatMap((proof) => {
         const project = projects.find((candidate) => candidate.slug === proof.slug);
-        return project ? [{ ...proof, project }] : [];
+        return project ? [{ ...proof, project, image: proof.image ?? project.heroImage }] : [];
       });
       return (
         <Section id={block.id} tone={sectionTone(block.tone)} className="acrylic-section" aria-labelledby={`${block.id}-title`} key={block.id}>
           <Container width="wide">
             <header className="acrylic-section__header acrylic-section__header--wide"><Eyebrow className="acrylic-eyebrow">{block.eyebrow}</Eyebrow><Heading id={`${block.id}-title`}>{block.title}</Heading>{block.intro ? <p>{block.intro}</p> : null}</header>
-            <div className="acrylic-project-grid">{projectItems.map(({ project, label, summary, facts }) => (
+            <div className="acrylic-project-grid">{projectItems.map(({ project, label, summary, facts, image }) => (
               <Link href={`/projects/${project.slug}`} className="acrylic-project-card" key={project.slug}>
-                <div className="acrylic-project-card__media"><Image src={project.heroImage.src} alt={project.heroImage.alt} fill sizes="(max-width: 720px) 100vw, 50vw" style={{ objectPosition: project.heroImage.objectPosition }} /></div>
+                <div className="acrylic-project-card__media"><Image src={image.src} alt={image.alt} fill sizes="(max-width: 720px) 100vw, 50vw" style={{ objectPosition: image.objectPosition }} /></div>
                 <div className="acrylic-project-card__body"><Eyebrow className="acrylic-eyebrow">{label}</Eyebrow><h3>{project.title}</h3><p className="acrylic-project-card__location">{project.location} / {project.roof}</p><p>{summary}</p>{facts?.length ? <ul className="seo-landing__project-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}<span>Review the completed project</span></div>
               </Link>
             ))}</div>

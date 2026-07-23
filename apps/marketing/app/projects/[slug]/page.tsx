@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const title = `${project.title} Pergola Project | Sanctuary Pergolas`;
   const route = `/projects/${project.slug}`;
+  const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
 
   return {
     title: { absolute: title },
@@ -39,15 +40,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description: project.blurb,
       images: [{
-        url: project.heroImage.src,
-        alt: project.heroImage.alt,
+        url: caseStudyHeroImage.src,
+        alt: caseStudyHeroImage.alt,
       }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description: project.blurb,
-      images: [project.heroImage.src],
+      images: [caseStudyHeroImage.src],
     },
   };
 }
@@ -58,6 +59,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   if (!project) notFound();
 
   const route = `/projects/${project.slug}`;
+  const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
 
   return (
     <>
@@ -69,7 +71,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
             name: `${project.title} project case study`,
             description: project.blurb,
             url: absoluteUrl(route),
-            primaryImageOfPage: absoluteUrl(project.heroImage.src),
+            primaryImageOfPage: absoluteUrl(caseStudyHeroImage.src),
             isPartOf: {
               '@type': 'CollectionPage',
               name: 'Sanctuary Pergola Projects',

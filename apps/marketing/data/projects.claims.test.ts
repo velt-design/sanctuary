@@ -46,6 +46,15 @@ describe('published project evidence', () => {
       .toBe(WARKWORTH_EXTERIOR_OBJECT_POSITION);
   });
 
+  it('keeps the Atelier Shu case-study hero distinct from its reusable card image', () => {
+    const project = projects.find((candidate) => candidate.slug === 'atelier-shu-cafe');
+    expect(project?.heroImage.src).toBe('/images/project-atelier-shu-03.jpg');
+    expect(project?.caseStudyHeroImage).toMatchObject({
+      src: '/images/project-atelier-shu-02.jpg',
+      objectPosition: '50% 42%',
+    });
+  });
+
   for (const evidence of evidenceCases) {
     it(`${evidence.slug} keeps its current summary and detail aligned`, () => {
       const project = projects.find((candidate) => candidate.slug === evidence.slug);
