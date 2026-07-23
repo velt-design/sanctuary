@@ -16,11 +16,6 @@
   animation: portalNavigationProgress 900ms ease-in-out infinite;
 }
 
-:global([data-portal-route-pending='true']) {
-  cursor: progress;
-  opacity: 0.72;
-}
-
 @keyframes portalNavigationProgress {
   from {
     transform: translateX(-110%);

@@ -64,7 +64,7 @@
   grid-column: 1 / -1;
 }
 
-:global([data-field-tile-appearance='configuration']) {
+.form :global([data-field-tile-appearance='configuration']) {
   min-height: 0;
   height: auto;
   justify-content: flex-start;
@@ -73,11 +73,11 @@
   background: transparent;
 }
 
-:global([data-field-tile-appearance='configuration']:focus-within) {
+.form :global([data-field-tile-appearance='configuration']:focus-within) {
   outline: none;
 }
 
-:global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
   min-height: 34px;
   overflow: visible;
   text-overflow: clip;
@@ -98,7 +98,7 @@
   background: transparent;
 }
 
-:global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
   min-height: 40px;
   border: var(--ui-border-width) solid var(--ui-border-strong);
   border-radius: var(--ui-radius-control);
@@ -106,8 +106,8 @@
   background: var(--ui-surface-primary);
 }
 
-:global([data-field-tile-appearance='configuration'] [data-field-part='helper']),
-:global([data-field-tile-appearance='configuration'] [data-field-part='error']) {
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='helper']),
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='error']) {
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
@@ -149,7 +149,7 @@
     padding: 13px;
   }
 
-  :global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+  .form :global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
     min-height: 16px;
   }
 
@@ -176,11 +176,11 @@
 }
 
 .sectionTitle,
-:global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='label']) {
   color: var(--ui-text-strong);
 }
 
-:global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='toggle']) {
   border: var(--ui-border-width) solid var(--ui-border-strong);
   border-radius: var(--ui-radius-control);
   background: var(--ui-surface-elevated);

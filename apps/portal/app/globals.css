@@ -261,6 +261,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+[data-portal-route-pending='true'] {
+  cursor: progress;
+  opacity: 0.72;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
