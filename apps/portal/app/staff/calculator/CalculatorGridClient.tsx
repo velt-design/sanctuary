@@ -88,7 +88,6 @@ import {
   resolveMonoSlopeShape,
   resolveInfillUiState,
   infillFieldId,
-  type InfillDraftEntry,
   type InfillDraftFieldKey,
   type InfillUiState,
   type InfillWarningItem,
@@ -166,7 +165,6 @@ import {
   type CalculatorEstimateSaveOutcome,
 } from './calculatorEstimateSave';
 import {
-  INFILL_DELETE_UNDO_MS,
   INFILL_PRESETS,
   acrylicSourceLabel,
   estimateRoofRafterSpacing,
@@ -227,6 +225,7 @@ import {
   deriveCalculatorResultFreshness,
 } from './calculatorResultFreshness';
 import { useCalculatorCostingRequest } from './useCalculatorCostingRequest';
+import { useCalculatorInfillController } from './useCalculatorInfillController';
 import {
   resolveCalculatorWorkspaceRoute,
   type CalculatorProjectWorkspace,
@@ -318,13 +317,6 @@ function inferStockLengthFromLabel(label: string): number | null {
 }
 
 const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
-
-type InfillDeletedState = {
-  infill: InfillLineItem;
-  index: number;
-  expiresAt: number;
-  draft?: InfillDraftEntry;
-};
 
 function hasNonEmptyValue(value: string | undefined): value is string {
   return value !== undefined && value !== null && String(value).trim() !== '';
@@ -1355,36 +1347,8 @@ export default function CalculatorGridClient({
       modules[activeModuleIndex] = { ...currentModule, infills: { items } };
       return { ...prev, modules };
     });
-    setInfillDraftById((prev) => {
-      if (!prev[id]) return prev;
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    clearInfillDraft(id);
     setInfillStage('opening');
-  };
-
-  const setInfillDraftValue = (infillId: string, field: InfillDraftFieldKey, raw: string) => {
-    setInfillDraftById((prev) => {
-      const current = prev[infillId] ?? {};
-      return { ...prev, [infillId]: { ...current, [field]: raw } };
-    });
-  };
-
-  const clearInfillDraftField = (infillId: string, field: InfillDraftFieldKey) => {
-    setInfillDraftById((prev) => {
-      const current = prev[infillId];
-      if (!current || current[field] === undefined) return prev;
-      const nextDraft = { ...current };
-      delete nextDraft[field];
-      const next = { ...prev };
-      if (Object.keys(nextDraft).length === 0) {
-        delete next[infillId];
-      } else {
-        next[infillId] = nextDraft;
-      }
-      return next;
-    });
   };
 
   const syncMonoSlopeShape = (shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>): InfillLineItem['shape'] => {
@@ -1397,15 +1361,6 @@ export default function CalculatorGridClient({
   ) => {
     if (infill.shape.type !== 'mono_slope') return;
     setInfillItem(infill.id, { shape: syncMonoSlopeShape(updater(infill.shape)) });
-  };
-
-  const getInfillDraftValue = (infill: InfillLineItem, field: InfillDraftFieldKey): string => {
-    const override = infillDraftById[infill.id]?.[field];
-    if (typeof override === 'string') return override;
-    if (field === 'widthM') return infill.shape.widthM;
-    if (field === 'heightM') return infill.shape.type === 'rect' ? infill.shape.heightM : '';
-    if (field === 'heightLowM') return infill.shape.type === 'mono_slope' ? infill.shape.heightLowM : '';
-    return infill.shape.type === 'mono_slope' ? infill.shape.heightHighM : '';
   };
 
   const updateRequiredShapeField = (infill: InfillLineItem, field: InfillDraftFieldKey, raw: string) => {
@@ -1454,8 +1409,7 @@ export default function CalculatorGridClient({
     setInfillItems((items) => [...items, ...itemsToAdd]);
     setInfillStage('opening');
     if (nextSelectedId) {
-      setPendingInfillSelectionId(nextSelectedId);
-      setSelectedInfillId(nextSelectedId);
+      requestInfillSelection(nextSelectedId);
     }
   };
 
@@ -1531,8 +1485,7 @@ export default function CalculatorGridClient({
     const nextSelectedId = created[created.length - 1]?.id ?? created[0]?.id ?? null;
     setInfillItems((items) => [...items, ...created]);
     if (nextSelectedId) {
-      setPendingInfillSelectionId(nextSelectedId);
-      setSelectedInfillId(nextSelectedId);
+      requestInfillSelection(nextSelectedId);
     }
     setInfillStage('opening');
     trackInfillEvent('infill_duplicate_bulk', {
@@ -1555,8 +1508,7 @@ export default function CalculatorGridClient({
       next.splice(nextIndex, 0, moved);
       return next;
     });
-    setPendingInfillSelectionId(id);
-    setSelectedInfillId(id);
+    requestInfillSelection(id);
     trackInfillEvent('infill_reorder', {
       infill_id: id,
       from: currentIndex,
@@ -1574,22 +1526,11 @@ export default function CalculatorGridClient({
         ? infillsState.items[currentIdx + 1]?.id ?? infillsState.items[currentIdx - 1]?.id ?? null
         : infillsState.items[0]?.id ?? null;
 
-    const deletedDraft = infillDraftById[infill.id];
     setInfillItems((items) => items.filter((item) => item.id !== infill.id));
-    if (selectedInfillId === infill.id) setSelectedInfillId(nextSelection);
-
-    setInfillDraftById((prev) => {
-      if (!prev[infill.id]) return prev;
-      const next = { ...prev };
-      delete next[infill.id];
-      return next;
-    });
-
-    setDeletedInfill({
+    deleteInfillState({
       infill,
       index: currentIdx,
-      expiresAt: Date.now() + INFILL_DELETE_UNDO_MS,
-      draft: deletedDraft,
+      nextSelectionId: nextSelection,
     });
     trackInfillEvent('infill_delete', {
       infill_id: infill.id,
@@ -1599,24 +1540,18 @@ export default function CalculatorGridClient({
   };
 
   const undoDeleteInfill = () => {
-    if (!deletedInfill) return;
+    const restored = restoreDeletedInfill();
+    if (!restored) return;
     setInfillItems((items) => {
       const next = items.slice();
-      const insertIndex = Math.max(0, Math.min(deletedInfill.index, next.length));
-      next.splice(insertIndex, 0, deletedInfill.infill);
+      const insertIndex = Math.max(0, Math.min(restored.index, next.length));
+      next.splice(insertIndex, 0, restored.infill);
       return next;
     });
-    if (deletedInfill.draft) {
-      setInfillDraftById((prev) => ({ ...prev, [deletedInfill.infill.id]: deletedInfill.draft as InfillDraftEntry }));
-    }
-    setPendingInfillSelectionId(deletedInfill.infill.id);
-    setSelectedInfillId(deletedInfill.infill.id);
-    setInfillStage('opening');
     trackInfillEvent('infill_undo_delete', {
-      infill_id: deletedInfill.infill.id,
-      location: deletedInfill.infill.location,
+      infill_id: restored.infill.id,
+      location: restored.infill.location,
     });
-    setDeletedInfill(null);
   };
 
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
@@ -1657,14 +1592,6 @@ export default function CalculatorGridClient({
   const [infillWithoutCost, setInfillWithoutCost] = useState<CostOutputV1 | null>(null);
   const [compareSheetCost, setCompareSheetCost] = useState<CostOutputV1 | null>(null);
   const [compareStripCost, setCompareStripCost] = useState<CostOutputV1 | null>(null);
-  const [infillsOpen, setInfillsOpen] = useState(false);
-  const [selectedInfillId, setSelectedInfillId] = useState<string | null>(null);
-  const [pendingInfillSelectionId, setPendingInfillSelectionId] = useState<string | null>(null);
-  const [infillDraftById, setInfillDraftById] = useState<Record<string, InfillDraftEntry>>({});
-  const [infillStage, setInfillStage] = useState<InfillConfiguratorStage>('opening');
-  const [deletedInfill, setDeletedInfill] = useState<InfillDeletedState | null>(null);
-  const [infillDuplicateOpen, setInfillDuplicateOpen] = useState(false);
-  const [infillCostDetailsOpen, setInfillCostDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [pricingPreserveReason, setPricingPreserveReason] = useState('');
@@ -1673,8 +1600,6 @@ export default function CalculatorGridClient({
   const [saveOutcome, setSaveOutcome] = useState<CalculatorEstimateSaveOutcome | null>(null);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
-  const infillRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const infillListContainerRef = useRef<HTMLDivElement | null>(null);
   const infillLastSelectionEventRef = useRef<string | null>(null);
   const infillModalOpenTrackedRef = useRef(false);
   const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
@@ -1727,65 +1652,31 @@ export default function CalculatorGridClient({
     }
   }, [activeModuleIndex, issuesOpen]);
 
-  useEffect(() => {
-    if (!pendingInfillSelectionId) return;
-    if (!infillsState.items.some((item) => item.id === pendingInfillSelectionId)) return;
-    setSelectedInfillId(pendingInfillSelectionId);
-    setPendingInfillSelectionId(null);
-  }, [infillsState.items, pendingInfillSelectionId]);
-
-  useEffect(() => {
-    if (!infillsOpen || !selectedInfillId) return;
-    const selectedRow = infillRowRefs.current.get(selectedInfillId);
-    if (!selectedRow) return;
-    selectedRow.scrollIntoView({ block: 'nearest' });
-  }, [infillsOpen, infillsState.items, selectedInfillId]);
-
-  useEffect(() => {
-    if (!infillsOpen) return;
-    if (pendingInfillSelectionId) return;
-    if (!infillsState.items.length) {
-      if (selectedInfillId !== null) setSelectedInfillId(null);
-      return;
-    }
-    if (!selectedInfillId || !infillsState.items.some((item) => item.id === selectedInfillId)) {
-      setSelectedInfillId(infillsState.items[0].id);
-    }
-  }, [infillsOpen, infillsState.items, pendingInfillSelectionId, selectedInfillId]);
-
-  useEffect(() => {
-    const validIds = new Set(infillsState.items.map((item) => item.id));
-    setInfillDraftById((prev) => {
-      let changed = false;
-      const next: Record<string, InfillDraftEntry> = {};
-      Object.entries(prev).forEach(([id, draft]) => {
-        if (validIds.has(id)) {
-          next[id] = draft;
-        } else {
-          changed = true;
-        }
-      });
-      return changed ? next : prev;
-    });
-  }, [infillsState.items]);
-
-  useEffect(() => {
-    if (!deletedInfill) return;
-    const remainingMs = deletedInfill.expiresAt - Date.now();
-    if (remainingMs <= 0) {
-      setDeletedInfill(null);
-      return;
-    }
-    const timeoutId = window.setTimeout(() => {
-      setDeletedInfill((current) => {
-        if (!current) return null;
-        return current.expiresAt <= Date.now() ? null : current;
-      });
-    }, remainingMs);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [deletedInfill]);
+  const {
+    infillsOpen,
+    openInfills,
+    closeInfills,
+    selectedInfillId,
+    selectInfill,
+    requestInfillSelection,
+    infillDraftById,
+    setInfillDraftValue,
+    clearInfillDraftField,
+    clearInfillDraft,
+    getInfillDraftValue,
+    infillStage,
+    setInfillStage,
+    deletedInfill,
+    deleteInfillState,
+    restoreDeletedInfill,
+    infillDuplicateOpen,
+    openInfillDuplicate,
+    closeInfillDuplicate,
+    infillCostDetailsOpen,
+    setInfillCostDetailsOpen,
+    infillListContainerRef,
+    setInfillRowRef,
+  } = useCalculatorInfillController({ items: infillsState.items });
 
   useEffect(() => {
     setMaterialsDebugFocusLineIndex(null);
@@ -2389,7 +2280,7 @@ export default function CalculatorGridClient({
       const firstInvalidBlind = element?.querySelector<HTMLElement>('[aria-invalid="true"]');
       firstInvalidBlind?.focus({ preventScroll: true });
     },
-    openInfills: () => setInfillsOpen(true),
+    openInfills,
   };
   const statusItems: StatusItem[] = quoteStatusUi.items.map((item) => ({
     id: item.id,
@@ -2634,9 +2525,8 @@ export default function CalculatorGridClient({
   };
 
   const jumpToInfillWarningGlobal = (infillId: string, warning: InfillWarningItem) => {
-    setInfillsOpen(true);
-    setPendingInfillSelectionId(infillId);
-    setSelectedInfillId(infillId);
+    openInfills();
+    requestInfillSelection(infillId);
     pendingInfillWarningJumpRef.current = { infillId, warning };
   };
 
@@ -2694,8 +2584,7 @@ export default function CalculatorGridClient({
       infill_count: infillsState.items.length,
       warnings: selectedComputedWarnings.length,
     });
-    setInfillsOpen(false);
-    setInfillCostDetailsOpen(false);
+    closeInfills();
   };
 
   useInfillHotkeys({
@@ -2707,7 +2596,7 @@ export default function CalculatorGridClient({
     },
     onDuplicateBulk: () => {
       if (!selectedInfill) return;
-      setInfillDuplicateOpen(true);
+      openInfillDuplicate();
     },
     onCopyGeometry: () => {
       void handleCopyInfillGeometry();
@@ -2729,17 +2618,12 @@ export default function CalculatorGridClient({
 
   const addCustomInfillFromOverview = (openModal = false) => {
     addInfillPreset('custom');
-    if (openModal) setInfillsOpen(true);
+    if (openModal) openInfills();
   };
 
   const addInfillPresetFromOverview = (preset: InfillPresetKey, openModal = false) => {
     addInfillPreset(preset);
-    if (openModal) setInfillsOpen(true);
-  };
-
-  const setInfillRowRef = (id: string, node: HTMLButtonElement | null) => {
-    if (node) infillRowRefs.current.set(id, node);
-    else infillRowRefs.current.delete(id);
+    if (openModal) openInfills();
   };
 
   const infillsTileContent = (
@@ -2752,7 +2636,7 @@ export default function CalculatorGridClient({
       presets={infillPresetCards}
       onAddCustom={addCustomInfillFromOverview}
       onAddPreset={addInfillPresetFromOverview}
-      onOpenInfills={() => setInfillsOpen(true)}
+      onOpenInfills={openInfills}
     />
   );
 
@@ -4342,10 +4226,10 @@ export default function CalculatorGridClient({
               selectedIndex={selectedInfillIndex}
               locationLabel={locationLabel(selectedInfill.location)}
               disablePaste={!infillHasClipboard}
-              onSelect={setSelectedInfillId}
+              onSelect={selectInfill}
               onAdd={addCustomInfillFromOverview}
               onDuplicate={() => duplicateInfill(selectedInfill.id)}
-              onDuplicateBulk={() => setInfillDuplicateOpen(true)}
+              onDuplicateBulk={openInfillDuplicate}
               onCopyGeometry={() => { void handleCopyInfillGeometry(); }}
               onPasteGeometry={handlePasteInfillGeometry}
               onMoveUp={() => moveInfill(selectedInfill.id, -1)}
@@ -4373,7 +4257,7 @@ export default function CalculatorGridClient({
                 presets={infillPresetCards}
                 onAddCustom={addCustomInfillFromOverview}
                 onAddPreset={addInfillPresetFromOverview}
-                onSelectInfill={setSelectedInfillId}
+                onSelectInfill={selectInfill}
                 onFocusPrimaryField={focusInfillPrimaryField}
                 onMoveInfill={moveInfill}
                 onRowRef={setInfillRowRef}
@@ -4394,12 +4278,7 @@ export default function CalculatorGridClient({
                         onShapeTemplateChange={(template) => {
                           const nextShape = applyInfillOpeningTemplate(selectedInfill.shape, template);
                           if (nextShape === selectedInfill.shape) return;
-                          setInfillDraftById((previous) => {
-                            if (!previous[selectedInfill.id]) return previous;
-                            const next = { ...previous };
-                            delete next[selectedInfill.id];
-                            return next;
-                          });
+                          clearInfillDraft(selectedInfill.id);
                           setInfillItem(selectedInfill.id, { shape: nextShape });
                         }}
                         onDraftChange={(field, value) => updateRequiredShapeField(selectedInfill, field, value)}
@@ -4577,11 +4456,11 @@ export default function CalculatorGridClient({
         <DuplicateDialog
           open={infillDuplicateOpen && Boolean(selectedInfill)}
           sourceLabel={selectedInfill?.label?.trim() || `Infill ${Math.max(1, selectedInfillIndex + 1)}`}
-          onCancel={() => setInfillDuplicateOpen(false)}
+          onCancel={closeInfillDuplicate}
           onConfirm={({ count, labelPattern }) => {
             if (!selectedInfill) return;
             duplicateInfillBulk(selectedInfill.id, count, labelPattern);
-            setInfillDuplicateOpen(false);
+            closeInfillDuplicate();
           }}
         />
         </>
