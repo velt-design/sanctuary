@@ -24,6 +24,7 @@ import {
 } from '@/data/products';
 import { projects } from '@/data/projects';
 import { absoluteUrl } from '@/lib/seo';
+import MobileProductDisclosure from './MobileProductDisclosure';
 import ProductCard from './ProductCard';
 import styles from './product-pages.module.css';
 
@@ -38,13 +39,6 @@ function listAsSentence(items?: string[]): string {
 function getSpecificationRows(product: ProductRecord) {
   const details = product.details;
   return [
-    {
-      label: product.variant === 'pergola-form' ? 'Form and assembly' : 'System and mounting',
-      value:
-        details.howItWorks ??
-        listAsSentence(details.structureMaterials) ??
-        'Confirmed for the selected system and measured site.',
-    },
     {
       label: 'Structure and materials',
       value:
@@ -71,6 +65,37 @@ function getSpecificationRows(product: ProductRecord) {
         'Cleaning and inspection follow the current guidance for the selected products.',
     },
   ].filter((row) => row.value);
+}
+
+function ProductGallery({
+  product,
+  placement,
+}: ProductDetailPageProps & { placement: 'intro' | 'evidence' }) {
+  return (
+    <Section
+      compact={placement === 'intro'}
+      className={placement === 'intro' ? styles.introGallerySection : undefined}
+      aria-label={
+        placement === 'intro'
+          ? `${product.name} gallery`
+          : `${product.name} gallery with project evidence`
+      }
+      data-product-gallery={placement}
+    >
+      <Container width="wide">
+        <StaggeredGallery
+          className={placement === 'intro' ? styles.introGallery : undefined}
+          items={product.gallery.map((media) => ({
+            image: media.src,
+            alt: media.alt,
+            title: media.caption,
+            detail: media.detail,
+            objectPosition: media.objectPosition,
+          }))}
+        />
+      </Container>
+    </Section>
+  );
 }
 
 function EvidenceStory({ product }: ProductDetailPageProps) {
@@ -138,9 +163,13 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
   const alternatives = product.alternatives
     .map(getProductBySlug)
     .filter((item): item is ProductRecord => Boolean(item));
+  const alternativeSlugs = new Set(alternatives.map((item) => item.slug));
   const relatedProducts = product.relatedProducts
     .map(getProductBySlug)
-    .filter((item): item is ProductRecord => Boolean(item));
+    .filter(
+      (item): item is ProductRecord =>
+        item !== undefined && !alternativeSlugs.has(item.slug),
+    );
   const faqs = (product.details.faqs ?? []).map((faq) => ({
     question: faq.q,
     answer: faq.a,
@@ -254,6 +283,8 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
         </div>
       </section>
 
+      <ProductGallery product={product} placement="intro" />
+
       <Section>
         <Container>
           <div className={styles.outcomeGrid}>
@@ -304,28 +335,38 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
           <div className={styles.fitGrid}>
             <div className={styles.fitIntro}>
               <Eyebrow>Fit before features</Eyebrow>
-              <Heading>Where it can work—and what still needs an answer.</Heading>
+              <Heading>Where it can work, and what still needs an answer.</Heading>
               <Text>
                 These are design prompts, not a substitute for measuring the
                 house or confirming the selected products.
               </Text>
             </div>
-            <article className={styles.fitColumn}>
-              <span className={styles.fitLabel}>It can be a useful choice when</span>
-              <ul>
-                {product.decision.worksWhen.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </article>
-            <article className={styles.fitColumn}>
-              <span className={styles.fitLabel}>The project must resolve</span>
-              <ul>
-                {product.decision.resolve.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </article>
+            <MobileProductDisclosure
+              kind="works-when"
+              summary="When this choice can work"
+            >
+              <article className={styles.fitColumn}>
+                <span className={styles.fitLabel}>It can be a useful choice when</span>
+                <ul>
+                  {product.decision.worksWhen.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            </MobileProductDisclosure>
+            <MobileProductDisclosure
+              kind="must-resolve"
+              summary="What the project must resolve"
+            >
+              <article className={styles.fitColumn}>
+                <span className={styles.fitLabel}>The project must resolve</span>
+                <ul>
+                  {product.decision.resolve.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            </MobileProductDisclosure>
           </div>
         </Container>
       </Section>
@@ -337,7 +378,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
               <Eyebrow>Built evidence</Eyebrow>
               <Heading>
                 {product.evidence.status === 'not-published'
-                  ? 'Be clear about what has—and has not—been demonstrated.'
+                  ? 'Be clear about what has and has not been demonstrated.'
                   : 'See the decision in a real Sanctuary project.'}
               </Heading>
             </div>
@@ -351,19 +392,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
         </Container>
       </Section>
 
-      <Section>
-        <Container width="wide">
-          <StaggeredGallery
-            items={product.gallery.map((media) => ({
-              image: media.src,
-              alt: media.alt,
-              title: media.caption,
-              detail: media.detail,
-              objectPosition: media.objectPosition,
-            }))}
-          />
-        </Container>
-      </Section>
+      <ProductGallery product={product} placement="evidence" />
 
       <Section tone="warm">
         <Container>
@@ -378,7 +407,15 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
               site or supplier confirmation.
             </Text>
           </div>
-          <SpecificationRows rows={specifications} />
+          <MobileProductDisclosure
+            className={styles.specificationDisclosure}
+            kind="specification"
+            summary="View the proposal checklist"
+          >
+            <div className={styles.specificationRows}>
+              <SpecificationRows rows={specifications} />
+            </div>
+          </MobileProductDisclosure>
         </Container>
       </Section>
 
@@ -394,18 +431,24 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
                 ))}
               </ul>
             </div>
-            <div className={styles.tradeoffColumn}>
-              <Eyebrow>Honest trade-offs</Eyebrow>
-              <div className={styles.tradeoffList}>
-                {product.tradeoffs.map((tradeoff, index) => (
-                  <article key={tradeoff.tension}>
-                    <span>{String(index + 1).padStart(2, '0')}</span>
-                    <Heading as="h3" variant="card">{tradeoff.tension}</Heading>
-                    <Text>{tradeoff.guidance}</Text>
-                  </article>
-                ))}
+            <MobileProductDisclosure
+              className={styles.tradeoffDisclosure}
+              kind="tradeoffs"
+              summary="Review the main trade-offs"
+            >
+              <div className={styles.tradeoffColumn}>
+                <Eyebrow>Honest trade-offs</Eyebrow>
+                <div className={styles.tradeoffList}>
+                  {product.tradeoffs.map((tradeoff, index) => (
+                    <article key={tradeoff.tension}>
+                      <span>{String(index + 1).padStart(2, '0')}</span>
+                      <Heading as="h3" variant="card">{tradeoff.tension}</Heading>
+                      <Text>{tradeoff.guidance}</Text>
+                    </article>
+                  ))}
+                </div>
               </div>
-            </div>
+            </MobileProductDisclosure>
           </div>
         </Container>
       </Section>
@@ -458,7 +501,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
                     src={related.hero.src}
                     alt={related.hero.alt}
                     fill
-                    sizes="(max-width: 700px) 100vw, 33vw"
+                    sizes="(max-width: 640px) 112px, (max-width: 700px) 100vw, 33vw"
                     style={{ objectPosition: related.hero.objectPosition }}
                   />
                 </div>

@@ -203,7 +203,7 @@
       "status": "current",
       "ownerArea": "Public product content, claims, media and route identity",
       "pathPatterns": ["apps/marketing/data/products.ts"],
-      "whyLarge": "The approved product redesign deliberately consolidates ten previously fragmented product sources into one typed, reviewable public-claim owner. It contains static governed copy and relationships only; page composition, metadata rendering, interaction, project records and enquiry behavior remain separate owners.",
+      "whyLarge": "The approved product redesign deliberately consolidates ten previously fragmented product sources into one typed, reviewable public-claim owner. It contains static governed copy and relationships only; page composition, metadata rendering, interaction, project records and enquiry behavior remain separate owners. Repeated project-image focal positions stay in the dedicated projectImageFraming helper rather than becoming record-local framing logic.",
       "nextSafeExtraction": "If the catalogue grows beyond these ten records, retain apps/marketing/data/products.ts as the only public export and move byte-for-byte record groups into private category modules behind that boundary. Do not recreate independent route, image, SEO or technical-content maps.",
       "focusedTests": [
         "npx vitest run apps/marketing/data/products.test.ts",

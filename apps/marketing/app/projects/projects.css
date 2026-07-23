@@ -394,7 +394,7 @@
 
 .project-case-study__hero-media {
   width: 100%;
-  height: clamp(520px, 68vh, 820px);
+  height: clamp(600px, 78vh, 960px);
   position: relative;
   overflow: hidden;
   background: var(--color-surface-neutral);

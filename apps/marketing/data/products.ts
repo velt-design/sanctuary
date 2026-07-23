@@ -1,3 +1,5 @@
+import { WARKWORTH_EXTERIOR_OBJECT_POSITION } from '../lib/projectImageFraming';
+
 type ProductCategorySlug = 'pergolas' | 'screens-walls' | 'lighting-heating';
 type ProductVariant = 'pergola-form' | 'integrated-option';
 type ProductSlug =
@@ -776,7 +778,7 @@ export const products: ProductRecord[] = [
     outcome: {
       heading: 'Shelter the useful part of the deck without making the addition feel oversized.',
       copy:
-        'A pitched form is often the calmest starting point when the house connection is tight or the outlook should stay open. The pitch, high edge and low edge are set from the actual building—not chosen from a standard diagram.',
+        'A pitched form is often the calmest starting point when the house connection is tight or the outlook should stay open. The pitch, high edge and low edge are set from the actual building, rather than chosen from a standard diagram.',
     },
     decision: {
       worksWhen: [
@@ -866,7 +868,7 @@ export const products: ProductRecord[] = [
     outcome: {
       heading: 'Make the covered area feel like a room in its own right.',
       copy:
-        'A gable can create generous volume over dining and lounge zones. The result depends on the ridge height, eaves, end treatment and relationship to the existing roof—not the word “gable” alone.',
+        'A gable can create generous volume over dining and lounge zones. The result depends on the ridge height, eaves, end treatment and relationship to the existing roof, rather than the word “gable” alone.',
     },
     decision: {
       worksWhen: [
@@ -902,7 +904,7 @@ export const products: ProductRecord[] = [
       alt: 'Freestanding matte black gable outdoor room beside a Warkworth home',
       caption: 'Warkworth Outdoor Room',
       detail: 'Freestanding gable · Clear acrylic and cedar',
-      objectPosition: '50% 55%',
+      objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
     },
     gallery: [
       {
@@ -1365,11 +1367,11 @@ export const products: ProductRecord[] = [
         detail: 'Headbox, guides and clearances planned early',
       },
       {
-        src: '/images/project-tindalls-bay.jpg',
-        alt: 'Tindalls Bay patio cover with a screened edge overlooking the coast',
+        src: '/images/project-tindalls-bay-03.jpg',
+        alt: 'Tindalls Bay patio with mesh blinds, a heater and coastal outlook',
         caption: 'Tindalls Bay',
         detail: 'Mesh blinds support privacy and exposure control',
-        objectPosition: '50% 42%',
+        objectPosition: '50% 45%',
       },
     ],
     evidence: {

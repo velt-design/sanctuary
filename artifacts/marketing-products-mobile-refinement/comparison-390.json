@@ -1,0 +1,30 @@
+[
+  {
+    "name": "hub",
+    "before": 12822,
+    "after": 9613,
+    "reductionPixels": 3209,
+    "reductionPercent": 25
+  },
+  {
+    "name": "gable",
+    "before": 13164,
+    "after": 8580,
+    "reductionPixels": 4584,
+    "reductionPercent": 34.8
+  },
+  {
+    "name": "blinds",
+    "before": 12782,
+    "after": 8411,
+    "reductionPixels": 4371,
+    "reductionPercent": 34.2
+  },
+  {
+    "name": "heaters",
+    "before": 12815,
+    "after": 8147,
+    "reductionPixels": 4668,
+    "reductionPercent": 36.4
+  }
+]

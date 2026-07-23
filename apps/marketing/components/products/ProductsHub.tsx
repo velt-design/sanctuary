@@ -20,6 +20,7 @@ import {
 } from '@/data/products';
 import { projects } from '@/data/projects';
 import { absoluteUrl } from '@/lib/seo';
+import MobileProductDisclosure from './MobileProductDisclosure';
 import ProductCard from './ProductCard';
 import styles from './product-pages.module.css';
 
@@ -140,6 +141,16 @@ export default function ProductsHub() {
         </Container>
       </section>
 
+      <nav
+        className={styles.mobileCategoryNav}
+        aria-label="Browse product categories"
+        data-product-category-nav
+      >
+        <a href="#pergola-forms">Pergola forms</a>
+        <a href="#screens-walls">Screens</a>
+        <a href="#lighting-heating">Lighting and heat</a>
+      </nav>
+
       <Section>
         <Container>
           <div className={styles.introGrid}>
@@ -197,32 +208,38 @@ export default function ProductsHub() {
               and completed structure decide what is feasible.
             </Text>
           </div>
-          <div
-            className={styles.formComparison}
-            role="table"
-            aria-label="Comparison of Sanctuary pergola forms"
+          <MobileProductDisclosure
+            className={styles.formComparisonDisclosure}
+            kind="form-comparison"
+            summary="Compare all four forms"
           >
-            <div className={styles.comparisonHeader} role="row">
-              <div role="columnheader">Form</div>
-              <div role="columnheader">Defining geometry</div>
-              <div role="columnheader">Useful conditions</div>
-              <div role="columnheader">Important constraint</div>
-            </div>
-            {formComparison.map((row) => {
-              const product = products.find((item) => item.slug === row.slug);
-              if (!product) return null;
-              return (
-                <div className={styles.comparisonRow} role="row" key={row.slug}>
-                  <div role="rowheader">
-                    <TextLink href={product.route}>{product.shortName}</TextLink>
+            <div
+              className={styles.formComparison}
+              role="table"
+              aria-label="Comparison of Sanctuary pergola forms"
+            >
+              <div className={styles.comparisonHeader} role="row">
+                <div role="columnheader">Form</div>
+                <div role="columnheader">Defining geometry</div>
+                <div role="columnheader">Useful conditions</div>
+                <div role="columnheader">Important constraint</div>
+              </div>
+              {formComparison.map((row) => {
+                const product = products.find((item) => item.slug === row.slug);
+                if (!product) return null;
+                return (
+                  <div className={styles.comparisonRow} role="row" key={row.slug}>
+                    <div role="rowheader">
+                      <TextLink href={product.route}>{product.shortName}</TextLink>
+                    </div>
+                    <div role="cell" data-label="Geometry">{row.geometry}</div>
+                    <div role="cell" data-label="Useful when">{row.usefulWhen}</div>
+                    <div role="cell" data-label="Constraint">{row.constraint}</div>
                   </div>
-                  <div role="cell" data-label="Geometry">{row.geometry}</div>
-                  <div role="cell" data-label="Useful when">{row.usefulWhen}</div>
-                  <div role="cell" data-label="Constraint">{row.constraint}</div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </MobileProductDisclosure>
         </Container>
       </Section>
 

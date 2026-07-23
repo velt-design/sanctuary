@@ -12,6 +12,20 @@ const viewports = [
   { name: 'tablet', width: 768, height: 1024 },
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
+const mobileRefinementRoutes = [
+  { route: '/products', maximumHeightAt390: 10_258, disclosureCount: 1 },
+  { route: '/products/pergolas/gable', maximumHeightAt390: 9_873, disclosureCount: 4 },
+  {
+    route: '/products/screens-walls/drop-down-blinds',
+    maximumHeightAt390: 9_587,
+    disclosureCount: 4,
+  },
+  {
+    route: '/products/lighting-heating/patio-heaters',
+    maximumHeightAt390: 9_611,
+    disclosureCount: 4,
+  },
+] as const;
 
 async function preparePage(page: Page, reducedMotion = false) {
   await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
@@ -73,6 +87,23 @@ async function expectVisibleImagesLoaded(main: Locator) {
   }
 }
 
+async function expectMinimumTouchTargets(main: Locator) {
+  const undersized = await main.locator('a:visible, button:visible, summary:visible')
+    .evaluateAll((elements) => elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        height: Math.round(rect.height),
+        label:
+          element.getAttribute('aria-label') ??
+          element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 60) ??
+          element.tagName,
+        width: Math.round(rect.width),
+      };
+    }).filter(({ height, width }) => height < 44 || width < 44));
+
+  expect(undersized).toEqual([]);
+}
+
 test('the product catalogue owns all ten canonical routes and the sitemap exposes them', async ({ page }) => {
   await preparePage(page);
   await page.goto('/products');
@@ -118,11 +149,160 @@ for (const viewport of viewports) {
       await expect(main.getByRole('link', { name: 'Send your project details' }).first())
         .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
       await expect(main).not.toContainText('[[VERIFY]]');
+      await expect(main).not.toContainText('—');
+      const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>
+        elements.reduce((count, element) => {
+          const before = getComputedStyle(element, '::before').content;
+          const after = getComputedStyle(element, '::after').content;
+          return count + Number(before.includes('—')) + Number(after.includes('—'));
+        }, 0),
+      );
+      expect(emDashDecorationCount).toBe(0);
       await expectNoOverflowOrNestedScroll(page, main);
       await expectVisibleImagesLoaded(main);
     });
   }
 }
+
+test('the refined mobile journey is shorter, scannable and touch safe at target widths', async ({
+  page,
+}) => {
+  test.slow();
+  await preparePage(page, true);
+
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+
+    for (const routeCase of mobileRefinementRoutes) {
+      await page.goto(routeCase.route, { waitUntil: 'networkidle' });
+      const main = page.locator('main[data-marketing-foundation-page]:visible').last();
+      const disclosures = main.locator('details[data-product-mobile-disclosure]');
+
+      await expect(main.locator('h1:visible')).toHaveCount(1);
+      await expect(disclosures).toHaveCount(routeCase.disclosureCount);
+      for (const disclosure of await disclosures.all()) {
+        await expect(disclosure).not.toHaveAttribute('open', '');
+        expect((await disclosure.locator('summary').boundingBox())?.height ?? 0)
+          .toBeGreaterThanOrEqual(44);
+      }
+
+      const callsToAction = main.getByRole('link', {
+        name: 'Send your project details',
+      });
+      await expect(callsToAction).toHaveCount(2);
+      expect((await callsToAction.first().boundingBox())?.y ?? 844)
+        .toBeLessThan(844);
+
+      if (routeCase.route === '/products') {
+        const categoryNav = main.locator('[data-product-category-nav]');
+        await expect(categoryNav).toBeVisible();
+        await expect(categoryNav.locator('a')).toHaveCount(3);
+      } else {
+        const galleries = main.locator('[data-product-gallery]');
+        await expect(galleries).toHaveCount(2);
+        const introHeight = (await galleries.nth(0).boundingBox())?.height ?? 0;
+        const evidenceHeight = (await galleries.nth(1).boundingBox())?.height ?? 0;
+        expect(introHeight).toBeGreaterThan(0);
+        expect(introHeight).toBeLessThan(evidenceHeight * 0.5);
+      }
+
+      if (width === 390) {
+        expect((await main.boundingBox())?.height ?? Number.POSITIVE_INFINITY)
+          .toBeLessThanOrEqual(routeCase.maximumHeightAt390);
+      }
+
+      await expectNoOverflowOrNestedScroll(page, main);
+      await expectMinimumTouchTargets(main);
+    }
+  }
+});
+
+test('all ten product routes retain the complete mobile content contract', async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+
+  for (const product of products) {
+    const response = await page.goto(product.route, { waitUntil: 'networkidle' });
+    expect(response?.ok(), `${product.route} should resolve`).toBe(true);
+
+    const main = page.locator('main[data-product-detail]:visible').last();
+    await expect(main.locator('h1:visible')).toHaveCount(1);
+    await expect(main.locator('[data-product-gallery]')).toHaveCount(2);
+    await expect(main.locator('details[data-product-mobile-disclosure]')).toHaveCount(4);
+    await expect(main).not.toContainText('—');
+    await expect(main.getByRole('link', { name: 'Send your project details' }))
+      .toHaveCount(2);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      `${publicOrigin}${product.route}`,
+    );
+
+    const schemaTypes = (
+      await page.locator('script[type="application/ld+json"]').allTextContents()
+    ).flatMap((script) => {
+      const parsed = JSON.parse(script) as
+        | Record<string, unknown>
+        | Array<Record<string, unknown>>;
+      return (Array.isArray(parsed) ? parsed : [parsed]).map((node) => node['@type']);
+    });
+    expect(schemaTypes).toEqual(expect.arrayContaining([
+      'Product',
+      'BreadcrumbList',
+      'FAQPage',
+    ]));
+
+    const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>
+      elements.reduce((count, element) => {
+        const before = getComputedStyle(element, '::before').content;
+        const after = getComputedStyle(element, '::after').content;
+        return count + Number(before.includes('—')) + Number(after.includes('—'));
+      }, 0),
+    );
+    expect(emDashDecorationCount).toBe(0);
+    await expectNoOverflowOrNestedScroll(page, main);
+  }
+});
+
+test('mobile product disclosures are keyboard operable and desktop content stays expanded', async ({
+  page,
+}) => {
+  await preparePage(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/products/pergolas/gable', { waitUntil: 'networkidle' });
+
+  const main = page.locator('main[data-product-detail]:visible').last();
+  const specification = main.locator(
+    'details[data-product-mobile-disclosure="specification"]',
+  );
+  const summary = specification.locator('summary');
+
+  await expect(specification).not.toHaveAttribute('open', '');
+  await summary.focus();
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(specification).toHaveAttribute('open', '');
+  await expect(specification.getByText('Structure and materials', { exact: true }))
+    .toBeVisible();
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(specification).toHaveAttribute('open', '');
+  await expect(summary).toBeHidden();
+  await expect(specification.getByText('Care', { exact: true })).toBeVisible();
+});
+
+test('collapsed mobile decision content remains server rendered', async ({ request }) => {
+  const response = await request.get('/products/pergolas/gable');
+  expect(response.ok()).toBe(true);
+  const html = await response.text();
+
+  expect(html).toMatch(
+    /<details[^>]*data-product-mobile-disclosure="specification"[^>]*open=""/,
+  );
+  expect(html).toContain('Structure and materials');
+  expect(html).toContain('Volume versus visual presence');
+  expect(html).toContain('What the project must resolve');
+});
 
 test('a pergola form and an accessory preserve metadata, structured data and evidence', async ({ page }) => {
   await preparePage(page);
@@ -157,16 +337,44 @@ test('a pergola form and an accessory preserve metadata, structured data and evi
   }
 });
 
+test('product galleries appear near the introduction and again with project evidence', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await preparePage(page);
+  const product = products.find((item) => item.slug === 'gable');
+  if (!product) throw new Error('Missing representative gable product');
+  await page.goto(product.route);
+
+  const main = page.locator('main[data-product-detail]:visible').last();
+  const hero = main.locator('section').first();
+  expect((await hero.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(890);
+  await expect(hero.locator('img').first()).toHaveCSS('object-position', '50% 18%');
+
+  const galleries = page.locator('[data-product-gallery]');
+  await expect(galleries).toHaveCount(2);
+  await expect(galleries.nth(0)).toHaveAttribute('data-product-gallery', 'intro');
+  await expect(galleries.nth(1)).toHaveAttribute('data-product-gallery', 'evidence');
+
+  for (const gallery of await galleries.all()) {
+    await expect(gallery.locator('img')).toHaveCount(product.gallery.length);
+  }
+});
+
 test('unpublished heater evidence is labelled rather than inferred from context imagery', async ({ page }) => {
   await preparePage(page);
   await page.goto('/products/lighting-heating/patio-heaters');
 
+  const main = page.locator('main[data-product-detail]:visible').last();
+  await expect(main).not.toContainText('—');
   await expect(page.getByRole('heading', {
     name: 'No named heater installation is published yet.',
   })).toBeVisible();
   await expect(page.locator('p:visible').filter({
     hasText: 'Context photography must not be read as heater-product evidence.',
   }).first()).toBeVisible();
+  await expect(main.locator('a[href="/products/lighting-heating/downlights"]'))
+    .toHaveCount(1);
+  await expect(main.locator('a[href="/products/screens-walls/drop-down-blinds"]'))
+    .toHaveCount(1);
 });
 
 test('product media motion is removed when reduced motion is requested', async ({ page }) => {

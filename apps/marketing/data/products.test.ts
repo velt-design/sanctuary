@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WARKWORTH_EXTERIOR_OBJECT_POSITION } from '../lib/projectImageFraming';
 import {
   getProduct,
   getProductBySlug,
@@ -70,10 +71,17 @@ describe('governed product catalogue', () => {
     }
   });
 
+  it('keeps the Warkworth gable apex in the governed product crop', () => {
+    expect(getProductBySlug('gable')?.hero.objectPosition).toBe(
+      WARKWORTH_EXTERIOR_OBJECT_POSITION,
+    );
+  });
+
   it('does not expose placeholders or known prohibited sales clichés', () => {
     const publicCopy = JSON.stringify(products);
 
     expect(publicCopy).not.toMatch(/\[\[VERIFY\]\]/i);
+    expect(publicCopy).not.toContain('—');
     expect(publicCopy).not.toMatch(/transform your backyard/i);
     expect(publicCopy).not.toMatch(/ultimate outdoor oasis/i);
     expect(publicCopy).not.toMatch(/seamless indoor-outdoor flow/i);

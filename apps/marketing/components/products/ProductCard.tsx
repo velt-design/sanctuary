@@ -31,7 +31,7 @@ export default function ProductCard({
             priority={priority}
             sizes={
               compact
-                ? '(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw'
+                ? '(max-width: 640px) 112px, (max-width: 1100px) 50vw, 33vw'
                 : '(max-width: 720px) 100vw, 50vw'
             }
             style={{ objectPosition: product.hero.objectPosition }}

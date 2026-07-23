@@ -1,5 +1,7 @@
 // data/projects.ts
 import {
+  ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
+  ATELIER_SHU_CASE_STUDY_HERO_OBJECT_POSITION,
   WARKWORTH_EXTERIOR_IMAGE,
   WARKWORTH_EXTERIOR_OBJECT_POSITION,
 } from '../lib/projectImageFraming';
@@ -515,9 +517,22 @@ const baseProjects: Project[] = [
     type: 'Residential',
     roof: 'Pitched',
     year: '2025',
-    heroImage: { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
+    heroImage: {
+      src: '/images/project-tindalls-bay-02.jpg',
+      alt: 'Tindalls Bay home with connected patio and carport roof structures',
+      objectPosition: '50% 48%',
+    },
     gallery: [
-      { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
+      {
+        src: '/images/project-tindalls-bay.jpg',
+        alt: 'Timber battens, acrylic roof zones and the coastal outlook at Tindalls Bay',
+        objectPosition: '50% 42%',
+      },
+      {
+        src: '/images/project-tindalls-bay-03.jpg',
+        alt: 'Tindalls Bay patio with dining area, mesh blinds, heater and mixed roof zones',
+        objectPosition: '50% 45%',
+      },
     ],
     blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens to keep spaces bright but protected.',
     constraint:
@@ -587,9 +602,9 @@ const baseProjects: Project[] = [
       objectPosition: '50% 48%',
     },
     caseStudyHeroImage: {
-      src: '/images/project-atelier-shu-02.jpg',
+      src: ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
       alt: 'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
-      objectPosition: '50% 42%',
+      objectPosition: ATELIER_SHU_CASE_STUDY_HERO_OBJECT_POSITION,
     },
     gallery: [
       {

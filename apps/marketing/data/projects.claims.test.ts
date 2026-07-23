@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '../lib/projectImageFraming';
+import {
+  ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
+  ATELIER_SHU_CASE_STUDY_HERO_OBJECT_POSITION,
+  WARKWORTH_EXTERIOR_IMAGE,
+  WARKWORTH_EXTERIOR_OBJECT_POSITION,
+} from '../lib/projectImageFraming';
 import { projects } from './projects';
 
 const evidenceCases = [
@@ -50,9 +55,18 @@ describe('published project evidence', () => {
     const project = projects.find((candidate) => candidate.slug === 'atelier-shu-cafe');
     expect(project?.heroImage.src).toBe('/images/project-atelier-shu-03.jpg');
     expect(project?.caseStudyHeroImage).toMatchObject({
-      src: '/images/project-atelier-shu-02.jpg',
-      objectPosition: '50% 42%',
+      src: ATELIER_SHU_CASE_STUDY_HERO_IMAGE,
+      objectPosition: ATELIER_SHU_CASE_STUDY_HERO_OBJECT_POSITION,
     });
+  });
+
+  it('uses the full Tindalls Bay composition as hero and keeps both detail views', () => {
+    const project = projects.find((candidate) => candidate.slug === 'tindalls-bay-pavilion');
+    expect(project?.heroImage.src).toBe('/images/project-tindalls-bay-02.jpg');
+    expect(project?.gallery.map((image) => image.src)).toEqual([
+      '/images/project-tindalls-bay.jpg',
+      '/images/project-tindalls-bay-03.jpg',
+    ]);
   });
 
   for (const evidence of evidenceCases) {

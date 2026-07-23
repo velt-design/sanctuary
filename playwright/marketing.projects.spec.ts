@@ -59,13 +59,16 @@ test('every canonical project remains discoverable in the public sitemap', async
 test('Atelier Shu uses the front-on canopy image on its case study and commercial guide proof', async ({ page }) => {
   const imagePath = 'project-atelier-shu-02.jpg';
 
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/projects/atelier-shu-cafe');
-  await expect(page.locator('.project-case-study__hero img')).toHaveAttribute('src', new RegExp(imagePath));
-  await expect(page.locator('.project-case-study__hero img')).toHaveAttribute(
+  const hero = page.locator('.project-case-study__hero');
+  expect((await hero.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(780);
+  await expect(hero.locator('img')).toHaveAttribute('src', new RegExp(imagePath));
+  await expect(hero.locator('img')).toHaveAttribute(
     'alt',
     'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
   );
-  await expect(page.locator('.project-case-study__hero img')).toHaveCSS('object-position', '50% 42%');
+  await expect(hero.locator('img')).toHaveCSS('object-position', '50% 18%');
   await expect(page.locator('.project-case-study__gallery img[src*="project-atelier-shu-03.jpg"]')).toHaveCount(1);
 
   await page.goto('/commercial-pergolas-auckland');
@@ -78,6 +81,24 @@ test('Atelier Shu uses the front-on canopy image on its case study and commercia
 
   await page.goto('/sitemap-images.xml');
   await expect(page.locator('body')).toContainText(`${publicOrigin}/images/${imagePath}`);
+});
+
+test('Tindalls Bay leads with the full exterior and retains both supporting views', async ({ page }) => {
+  await page.goto('/projects/tindalls-bay-pavilion');
+
+  await expect(page.locator('.project-case-study__hero img')).toHaveAttribute(
+    'src',
+    /project-tindalls-bay-02\.jpg/,
+  );
+  await expect(page.locator('.project-case-study__gallery img')).toHaveCount(2);
+  await expect(page.locator('.project-case-study__gallery img').nth(0)).toHaveAttribute(
+    'src',
+    /project-tindalls-bay\.jpg/,
+  );
+  await expect(page.locator('.project-case-study__gallery img').nth(1)).toHaveAttribute(
+    'src',
+    /project-tindalls-bay-03\.jpg/,
+  );
 });
 
 test('Atelier imagery stays selective and claim-aligned across guide surfaces', async ({ page }) => {

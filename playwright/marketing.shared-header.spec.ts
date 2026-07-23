@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-const solidHeaderRoutes = [
+const establishedHeaderRoutes = [
   '/',
   '/projects',
   '/projects/warkworth-outdoor-room',
@@ -32,10 +32,10 @@ test('the architectural editorial header is shared by established public routes'
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
 
-  for (const route of solidHeaderRoutes) {
+  for (const route of establishedHeaderRoutes) {
     await page.goto(route);
     const header = page.locator('header.site');
-    const cta = header.getByRole('link', { name: 'Quick Estimate' });
+    const cta = header.getByRole('link', { name: 'Get an estimate' });
     await expect(header).toBeVisible();
     await expect(header).toHaveAttribute('data-header-ui', 'architectural-editorial');
     await expect(cta).toBeVisible();
@@ -52,6 +52,7 @@ test('the architectural editorial header is shared by established public routes'
       return {
         headerHeight: element.getBoundingClientRect().height,
         headerBackground: getComputedStyle(element).backgroundColor,
+        heroNavigation: element.dataset.heroNavigation ?? null,
         headerFont: getComputedStyle(element).fontFamily,
         brandFont: getComputedStyle(brand).fontFamily,
         navGapMidpoint: (projectsRect.right + productsRect.left) / 2,
@@ -61,7 +62,11 @@ test('the architectural editorial header is shared by established public routes'
 
     expect(geometry, `${route} should expose shared header geometry`).not.toBeNull();
     expect(geometry!.headerHeight).toBeCloseTo(83, 0);
-    expect(geometry!.headerBackground).not.toBe('rgba(0, 0, 0, 0)');
+    if (geometry!.heroNavigation === 'overlay') {
+      expect(geometry!.headerBackground).toBe('rgba(0, 0, 0, 0)');
+    } else {
+      expect(geometry!.headerBackground).not.toBe('rgba(0, 0, 0, 0)');
+    }
     expect(geometry!.headerFont).toContain('Inter Variable');
     expect(geometry!.brandFont).toContain('Instrument Sans Variable');
     expect(Math.abs(geometry!.navGapMidpoint - geometry!.viewportCenter)).toBeLessThanOrEqual(1);
@@ -88,7 +93,13 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   await expect(page.locator('body')).toHaveClass(/no-scroll/);
   await expect(mobileNavigation).toBeVisible();
   await expect(mobileNavigation.getByRole('link').first()).toBeFocused();
-  await expect(mobileNavigation.getByRole('link')).toHaveText(['Home', 'Projects', 'Products', 'Contact']);
+  await expect(mobileNavigation.getByRole('link')).toHaveText([
+    'Home',
+    'Projects',
+    'Products',
+    'Contact',
+    'Get an estimate',
+  ]);
 
   await expect.poll(() => page.locator('#mobile-menu').evaluate((element) => element.getBoundingClientRect().top)).toBeCloseTo(64, 0);
 

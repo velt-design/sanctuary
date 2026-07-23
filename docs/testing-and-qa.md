@@ -55,10 +55,14 @@ Product-page changes should run
 `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. The focused browser suite covers the
 product hub, one pergola form and one integrated accessory at 1440, 768 and 390
-pixel widths; it also verifies all ten canonical product routes in the sitemap,
-one visible H1, CTA continuity, loaded imagery, metadata and schema, reduced
-motion, no horizontal overflow, no nested content scroll and explicit handling
-of unpublished heater evidence.
+pixel widths. Its mobile-refinement matrix adds 320, 390 and 430 pixel coverage
+for the hub, form, accessory and unpublished-evidence heater states, and it
+visits all ten detail routes at 390 pixels. The lane verifies sitemap discovery,
+one visible H1, early and final CTA continuity, both gallery placements,
+server-rendered keyboard-operable disclosure content, minimum 44 pixel targets,
+loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
+horizontal overflow, no nested content scroll and explicit handling of
+unpublished heater evidence.
 
 Portal readiness sweeps:
 
