@@ -153,6 +153,7 @@
       "pathPatterns": [
         "apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx",
         "apps/portal/components/projects/ProjectPage/tabs/QuoteDetailView.tsx",
+        "apps/portal/components/projects/ProjectPage/tabs/QuoteLineItemsEditor.tsx",
         "apps/portal/components/projects/ProjectPage/tabs/QuotesListView.tsx",
         "apps/portal/components/projects/ProjectPage/tabs/QuoteWorkflowDialogs.tsx",
         "apps/portal/components/projects/ProjectPage/tabs/quotesTabModel.ts",

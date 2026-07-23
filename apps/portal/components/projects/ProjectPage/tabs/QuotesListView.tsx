@@ -19,7 +19,7 @@ import {
   isExpired,
 } from "./quotesTabModel";
 
-export type QuotesListViewProps = {
+type QuotesListViewProps = {
   quotes: QuoteVersion[];
   quotesLoading: boolean;
   quotesError: string | null;

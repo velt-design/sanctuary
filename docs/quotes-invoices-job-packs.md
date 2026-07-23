@@ -14,7 +14,7 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 - Quote query/URL selection: `apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts`.
 - Quote lifecycle actions and refresh/invoice/job-pack side effects: `apps/portal/components/projects/ProjectPage/tabs/useQuoteLifecycleActions.ts`.
 - Quote PDF preview lifecycle: `apps/portal/components/projects/ProjectPage/tabs/useQuotePdfPreviews.ts`.
-- Quote detail, list/create, and modal presentation: `QuoteDetailView.tsx`, `QuotesListView.tsx`, and `QuoteWorkflowDialogs.tsx` in the same tab directory.
+- Quote detail, line-item editing, list/create, and modal presentation: `QuoteDetailView.tsx`, `QuoteLineItemsEditor.tsx`, `QuotesListView.tsx`, and `QuoteWorkflowDialogs.tsx` in the same tab directory.
 - Pure quote-tab formatting, validation, and presentation model helpers: `apps/portal/components/projects/ProjectPage/tabs/quotesTabModel.ts`.
 - Project Commercial composition and Quotes/Invoices navigation: `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`.
 - Staff quote APIs: `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.

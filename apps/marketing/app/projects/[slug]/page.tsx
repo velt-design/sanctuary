@@ -1,12 +1,9 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import ProjectDetailContent from '../ProjectDetailContent';
+import JsonLd from '@/components/JsonLd';
 import { projects } from '@/data/projects';
-import '../projects.css';
-import '../../home.css';
-import '../../products/product.css';
-import { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
+import { absoluteUrl } from '@/lib/seo';
+import ProjectsExperience from '../ProjectsExperience';
 
 type PageParams = { slug: string };
 
@@ -15,72 +12,105 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return projects.map(project => ({ slug: project.slug }));
+  return projects.map((project) => ({ slug: project.slug }));
 }
 
-export async function generateMetadata(
-  { params }: PageProps,
-): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const project = projects.find(item => item.slug === slug);
+  const project = projects.find((item) => item.slug === slug);
+
   if (!project) {
     return {
-      title: 'Project detail – Sanctuary Pergolas',
-      description: 'Explore recent pergola projects around Auckland.',
+      title: { absolute: 'Project Not Found | Sanctuary Pergolas' },
+      description: 'Explore built Sanctuary pergola projects across Auckland and beyond.',
     };
   }
+
+  const title = `${project.title} Pergola Project | Sanctuary Pergolas`;
+  const route = `/projects/${project.slug}`;
+
   return {
-    title: `${project.title} – Projects`,
+    title: { absolute: title },
     description: project.blurb,
-    alternates: { canonical: `/projects/${slug}` },
+    alternates: { canonical: route },
     openGraph: {
-      url: `/projects/${slug}`,
-      title: `${project.title} – Sanctuary Pergolas`,
+      type: 'website',
+      url: route,
+      title,
       description: project.blurb,
-      images: project.heroImage?.src
-        ? [
-            {
-              url: project.heroImage.src,
-              alt: project.heroImage.alt,
-            },
-          ]
-        : undefined,
+      images: [{
+        url: project.heroImage.src,
+        alt: project.heroImage.alt,
+      }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${project.title} – Sanctuary Pergolas`,
+      title,
       description: project.blurb,
-      images: project.heroImage?.src ? [project.heroImage.src] : undefined,
+      images: [project.heroImage.src],
     },
   };
 }
 
 export default async function ProjectDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const project = projects.find(item => item.slug === slug);
+  const project = projects.find((item) => item.slug === slug);
   if (!project) notFound();
-  const related = project.related
-    ?.map(slug => projects.find(item => item.slug === slug))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const route = `/projects/${project.slug}`;
 
   return (
-    <main className="projects-standalone" aria-label="Project detail">
-      <div className="projects-breadcrumb projects-breadcrumb--standalone">
-        <p>
-          <Link href="/projects">Projects</Link>
-          <span> / {project.title}</span>
-        </p>
-      </div>
-      <div className="projects-standalone__body">
-        <ProjectDetailContent
-          project={project}
-          relatedProjects={related}
-          relationMode="link"
-          variant="standalone"
-          titleAs="h1"
-        />
-      </div>
-      <HomeProcessCtaBar />
-    </main>
+    <>
+      <JsonLd
+        data={[
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: `${project.title} project case study`,
+            description: project.blurb,
+            url: absoluteUrl(route),
+            primaryImageOfPage: absoluteUrl(project.heroImage.src),
+            isPartOf: {
+              '@type': 'CollectionPage',
+              name: 'Sanctuary Pergola Projects',
+              url: absoluteUrl('/projects'),
+            },
+            about: {
+              '@type': 'Place',
+              name: project.location,
+            },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: absoluteUrl('/'),
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: 'Projects',
+                item: absoluteUrl('/projects'),
+              },
+              {
+                '@type': 'ListItem',
+                position: 3,
+                name: project.title,
+                item: absoluteUrl(route),
+              },
+            ],
+          },
+        ]}
+      />
+      <ProjectsExperience
+        projects={projects}
+        initialSlugFromUrl={project.slug}
+        detailMode
+      />
+    </>
   );
 }

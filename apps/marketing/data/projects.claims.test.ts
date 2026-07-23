@@ -52,6 +52,9 @@ describe('published project evidence', () => {
       expect(project).toBeDefined();
       const detail = JSON.stringify({
         blurb: project?.blurb,
+        constraint: project?.constraint,
+        roofApproach: project?.roofApproach,
+        materials: project?.materials,
         description: project?.description,
         tags: project?.tags,
         sections: project?.sections,

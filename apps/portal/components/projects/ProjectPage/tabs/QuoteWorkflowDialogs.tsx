@@ -28,7 +28,7 @@ import {
 type SendMode = "send" | "resend";
 type ExpiredQuoteMode = "resend" | "revise";
 
-export type QuoteWorkflowDialogsProps = {
+type QuoteWorkflowDialogsProps = {
   detail: QuoteVersionDetail;
   refreshConfirmOpen: boolean;
   refreshUsesLatestDesign: boolean;
