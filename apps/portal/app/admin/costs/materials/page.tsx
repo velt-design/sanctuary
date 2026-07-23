@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function AdminMaterialsRedirect() {
-  redirect('/pricebook#materials');
+  redirect('/admin/costing');
 }

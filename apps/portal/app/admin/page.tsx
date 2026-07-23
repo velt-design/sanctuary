@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
 export default function AdminIndexPage() {
-  redirect('/admin/costs/materials');
+  redirect('/admin/costing');
 }
 

@@ -35,6 +35,7 @@ function isActive(pathname: string, href: string) {
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule'],
     '/imports': ['/admin/imports'],
+    '/admin/costing': ['/pricebook', '/admin/costs'],
   };
 
   const matches = aliases[href];

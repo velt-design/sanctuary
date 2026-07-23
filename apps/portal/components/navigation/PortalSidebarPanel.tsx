@@ -45,7 +45,7 @@ function isParentActive(pathname: string, href: string) {
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule'],
     '/imports': ['/admin/imports'],
-    '/pricebook': ['/admin/costs'],
+    '/admin/costing': ['/pricebook', '/admin/costs'],
   };
 
   const matches = aliases[href];
@@ -95,22 +95,13 @@ function isChildActive(
       if (childKey === 'schedule-site-visits') return scheduleView === 'site-visits';
       return false;
     }
-    case 'pricebook': {
-      const onPricebookPath =
-        pathname === '/pricebook' ||
-        pathname.startsWith('/pricebook/') ||
-        pathname.startsWith('/admin/costs/');
-      if (!onPricebookPath) return false;
-
-      if (childKey === 'pricebook-actions') {
-        return hashValue === '#actions' || pathname.startsWith('/admin/costs/actions');
+    case 'costing': {
+      if (childKey === 'costing-control') {
+        return pathname === '/admin/costing'
+          || pathname === '/pricebook'
+          || pathname.startsWith('/admin/costs/');
       }
-      if (childKey === 'pricebook-overheads') {
-        return hashValue === '#overheads' || pathname.startsWith('/admin/costs/overheads');
-      }
-      if (childKey === 'pricebook-materials') {
-        return hashValue === '#materials' || hashValue === '' || pathname.startsWith('/admin/costs/materials');
-      }
+      if (childKey === 'costing-calculator') return pathname === '/staff/calculator';
       return false;
     }
     default:
