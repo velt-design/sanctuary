@@ -21,7 +21,6 @@ import type {
   CalculatorFlashingsState,
   CalculatorInputs,
   CalculatorModuleInputs,
-  InfillLineItem,
 } from '@/lib/types/calculator';
 import {
   normalizeDrawingRotationQuarterTurns,
@@ -37,14 +36,11 @@ import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import InfillPreview from './InfillPreview';
-import { applyInfillOpeningTemplate, syncInfillMonoSlopeDraft } from './infillOpeningTemplates';
 import {
   addedSupportSummary,
   canOfferRafterMatching,
   infillResultStatus,
   isInfillOpeningComplete,
-  stageForInfillWarning,
-  type InfillConfiguratorStage,
 } from './infillConfiguratorPresentation';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
@@ -56,19 +52,10 @@ import ModuleViewsCard, {
   type ModuleViewsTab,
 } from './ModuleViewsCard';
 import { buildModulePlanModel, buildModuleSectionModel } from './moduleViews';
-import { useInfillClipboard } from './useInfillClipboard';
-import { useInfillHotkeys } from './useInfillHotkeys';
-import { trackInfillEvent } from './infillTelemetry';
 import { buildImpactDiff, type ImpactDiff } from './diff';
 import {
-  normalizeMonoSlopeAnchor,
-  normalizeMonoSlopeMode,
-  resolveMonoSlopeShape,
   resolveInfillUiState,
-  infillFieldId,
-  type InfillDraftFieldKey,
   type InfillUiState,
-  type InfillWarningItem,
 } from './infillCompute';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { qk } from '@/lib/queries/keys';
@@ -87,26 +74,21 @@ import {
   resolveLocalFirstId,
 } from '@/lib/localFirst/store';
 import {
-  buildInfillItemsForPreset,
-  buildInfillPreset,
   calculatorDraftSessionKey,
   calculatorInputsFromEstimateDetail,
   clampInt,
   computeBayCountsForModule,
   computeHasOurGutter,
   formatFlashingLengthInput,
-  formatInputNumber,
   getPitchForModule,
   getRoofTypeForModule,
   isGutterBeamProfile,
   isPrimaryFlashingLengthAutoLinked,
   makeBlindId,
   makeDefaultBlindItem,
-  makeDefaultInfillItem,
   makeDefaultModule,
   makeDefaultPrimaryFlashingRow,
   makeFlashingId,
-  makeInfillId,
   normalizeBlindsStateForUi,
   normalizeCalculatorInputsForUi,
   normalizeFlashingBand,
@@ -117,7 +99,6 @@ import {
   roofLengthForPrimaryFlashing,
   toNonNegativeInt,
   toNumber,
-  type InfillPresetKey,
 } from './calculatorInputs';
 import { useCalculatorDraftSession } from './useCalculatorDraftSession';
 import CalculatorModuleNavigator from './CalculatorModuleNavigator';
@@ -137,15 +118,12 @@ import {
   designRequestTierFromTotal,
 } from './calculatorSaveWorkflow';
 import {
-  INFILL_PRESETS,
   acrylicSourceLabel,
   estimateRoofRafterSpacing,
   locationLabel,
-  maxCentreForAcrylicSource,
   parseInfillsForPayload,
 } from './calculatorInfillUi';
 import { buildCalculatorInfillSummary } from './calculatorInfillSummary';
-import { explicitInfillSelectionPatch } from './infillSupportPresentation';
 import {
   buildFlashingDefaultsForModule,
 } from './calculatorFlashingUi';
@@ -198,6 +176,7 @@ import {
 import { useCalculatorMaterialsDebug } from './useCalculatorMaterialsDebug';
 import CalculatorPreviewDetails from './CalculatorPreviewDetails';
 import { useCalculatorInfillCostComparison } from './useCalculatorInfillCostComparison';
+import { useCalculatorInfillActions } from './useCalculatorInfillActions';
 import CalculatorInfillWorkspace, { type CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
   resolveCalculatorWorkspaceRoute,
@@ -1158,251 +1137,6 @@ export default function CalculatorGridClient({
 
   const infillsState = normalizeInfillsStateForUi(activeModule.infills);
 
-  const setInfillItems = (updater: (items: InfillLineItem[]) => InfillLineItem[]) => {
-    setValues((prev) => {
-      const modules = prev.modules.slice();
-      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
-      const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
-      const nextItems = updater(currentInfills.items).map((item) => makeDefaultInfillItem(item));
-      modules[activeModuleIndex] = { ...currentModule, infills: { items: nextItems } };
-      return { ...prev, modules };
-    });
-  };
-
-  const setInfillItem = (id: string, patch: Partial<InfillLineItem>) => {
-    setInfillItems((items) => items.map((item) => (item.id === id ? makeDefaultInfillItem({ ...item, ...patch, id }) : item)));
-  };
-
-  const setInfillLocation = (id: string, location: InfillLineItem['location']) => {
-    setValues((prev) => {
-      const modules = prev.modules.slice();
-      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
-      const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
-      const idx = currentInfills.items.findIndex((item) => item.id === id);
-      if (idx < 0) return prev;
-
-      const items = currentInfills.items.slice();
-      const existing = items[idx];
-      const preset = buildInfillPreset(currentModule, location);
-      items[idx] = makeDefaultInfillItem({
-        ...existing,
-        ...preset,
-        id: existing.id,
-        location,
-        support: { ...existing.support, ...(preset.support ?? {}) },
-        shape: (preset.shape as any) ?? existing.shape,
-      });
-
-      modules[activeModuleIndex] = { ...currentModule, infills: { items } };
-      return { ...prev, modules };
-    });
-    clearInfillDraft(id);
-    setInfillStage('opening');
-  };
-
-  const syncMonoSlopeShape = (shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>): InfillLineItem['shape'] => {
-    return syncInfillMonoSlopeDraft(shape);
-  };
-
-  const updateMonoSlopeShape = (
-    infill: InfillLineItem,
-    updater: (shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>) => Extract<InfillLineItem['shape'], { type: 'mono_slope' }>,
-  ) => {
-    if (infill.shape.type !== 'mono_slope') return;
-    setInfillItem(infill.id, { shape: syncMonoSlopeShape(updater(infill.shape)) });
-  };
-
-  const updateRequiredShapeField = (infill: InfillLineItem, field: InfillDraftFieldKey, raw: string) => {
-    setInfillDraftValue(infill.id, field, raw);
-  };
-
-  const commitRequiredShapeField = (infill: InfillLineItem, field: InfillDraftFieldKey, rawInput?: string) => {
-    const raw = typeof rawInput === 'string' ? rawInput : getInfillDraftValue(infill, field);
-    if (raw.trim() === '') return;
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed < 0) return;
-
-    if (infill.shape.type === 'rect') {
-      if (field === 'widthM') {
-        setInfillItem(infill.id, { shape: { ...infill.shape, widthM: raw } });
-        clearInfillDraftField(infill.id, field);
-        return;
-      }
-      if (field === 'heightM') {
-        setInfillItem(infill.id, { shape: { ...infill.shape, heightM: raw } });
-        clearInfillDraftField(infill.id, field);
-        return;
-      }
-      return;
-    }
-
-    if (field === 'widthM') {
-      updateMonoSlopeShape(infill, (shape) => ({ ...shape, widthM: raw }));
-      clearInfillDraftField(infill.id, field);
-      return;
-    }
-    if (field === 'heightLowM') {
-      updateMonoSlopeShape(infill, (shape) => ({ ...shape, heightLowM: raw }));
-      clearInfillDraftField(infill.id, field);
-      return;
-    }
-    if (field === 'heightHighM') {
-      updateMonoSlopeShape(infill, (shape) => ({ ...shape, heightHighM: raw }));
-      clearInfillDraftField(infill.id, field);
-    }
-  };
-
-  const addInfillItems = (itemsToAdd: InfillLineItem[]) => {
-    if (!itemsToAdd.length) return;
-    const nextSelectedId = itemsToAdd[0]?.id ?? null;
-    setInfillItems((items) => [...items, ...itemsToAdd]);
-    setInfillStage('opening');
-    if (nextSelectedId) {
-      requestInfillSelection(nextSelectedId);
-    }
-  };
-
-  const addInfill = (seed?: Partial<InfillLineItem>) => {
-    const created = makeDefaultInfillItem(seed);
-    addInfillItems([created]);
-  };
-
-  const addInfillPreset = (preset: InfillPresetKey) => {
-    const additions = buildInfillItemsForPreset(activeModule, preset).map((item) =>
-      makeDefaultInfillItem({
-        ...item,
-        targetPanelWidthM: formatInputNumber(maxCentreForAcrylicSource(item.acrylicSource), 2),
-        maxPanelWidthM: formatInputNumber(maxCentreForAcrylicSource(item.acrylicSource), 2),
-      }),
-    );
-    addInfillItems(additions);
-    trackInfillEvent('infill_add', {
-      source: preset === 'custom' ? 'custom' : 'preset',
-      preset,
-      count: additions.length,
-    });
-  };
-
-  const duplicateInfill = (id: string) => {
-    const current = infillsState.items.find((item) => item.id === id);
-    if (!current) return;
-    addInfill({ ...current, id: makeInfillId(), label: current.label ? `${current.label} (copy)` : undefined });
-    trackInfillEvent('infill_duplicate', {
-      infill_id: id,
-      location: current.location,
-      shape: current.shape.type,
-    });
-  };
-
-  const duplicateInfillBulk = (id: string, count: number, labelPattern: string) => {
-    const source = infillsState.items.find((item) => item.id === id);
-    if (!source) return;
-
-    const boundedCount = Math.max(1, Math.min(20, Math.round(count)));
-    const sourceLabel = source.label?.trim() || 'Infill';
-    const existingLabels = new Set(infillsState.items.map((item) => (item.label ?? '').trim().toLowerCase()).filter(Boolean));
-    const created: InfillLineItem[] = [];
-
-    const makeUniqueLabel = (candidate: string): string => {
-      const normalized = candidate.trim();
-      if (!normalized) return '';
-      let nextLabel = normalized;
-      let suffix = 2;
-      while (existingLabels.has(nextLabel.toLowerCase())) {
-        nextLabel = `${normalized} (${suffix})`;
-        suffix += 1;
-      }
-      existingLabels.add(nextLabel.toLowerCase());
-      return nextLabel;
-    };
-
-    for (let i = 1; i <= boundedCount; i += 1) {
-      const rawLabel = (labelPattern || '{original} (copy {i})')
-        .replaceAll('{original}', sourceLabel)
-        .replaceAll('{i}', String(i));
-      const label = makeUniqueLabel(rawLabel || `${sourceLabel} (copy ${i})`);
-      created.push(
-        makeDefaultInfillItem({
-          ...source,
-          id: makeInfillId(),
-          label,
-        }),
-      );
-    }
-
-    if (!created.length) return;
-    const nextSelectedId = created[created.length - 1]?.id ?? created[0]?.id ?? null;
-    setInfillItems((items) => [...items, ...created]);
-    if (nextSelectedId) {
-      requestInfillSelection(nextSelectedId);
-    }
-    setInfillStage('opening');
-    trackInfillEvent('infill_duplicate_bulk', {
-      infill_id: id,
-      count: created.length,
-      location: source.location,
-      shape: source.shape.type,
-    });
-  };
-
-  const moveInfill = (id: string, direction: -1 | 1) => {
-    const currentIndex = infillsState.items.findIndex((item) => item.id === id);
-    if (currentIndex < 0) return;
-    const nextIndex = currentIndex + direction;
-    if (nextIndex < 0 || nextIndex >= infillsState.items.length) return;
-
-    setInfillItems((items) => {
-      const next = items.slice();
-      const [moved] = next.splice(currentIndex, 1);
-      next.splice(nextIndex, 0, moved);
-      return next;
-    });
-    requestInfillSelection(id);
-    trackInfillEvent('infill_reorder', {
-      infill_id: id,
-      from: currentIndex,
-      to: nextIndex,
-    });
-  };
-
-  const deleteInfill = (infillId: string) => {
-    const currentIdx = infillsState.items.findIndex((item) => item.id === infillId);
-    const infill = currentIdx >= 0 ? infillsState.items[currentIdx] : null;
-    if (!infill) return;
-
-    const nextSelection =
-      currentIdx >= 0
-        ? infillsState.items[currentIdx + 1]?.id ?? infillsState.items[currentIdx - 1]?.id ?? null
-        : infillsState.items[0]?.id ?? null;
-
-    setInfillItems((items) => items.filter((item) => item.id !== infill.id));
-    deleteInfillState({
-      infill,
-      index: currentIdx,
-      nextSelectionId: nextSelection,
-    });
-    trackInfillEvent('infill_delete', {
-      infill_id: infill.id,
-      location: infill.location,
-      shape: infill.shape.type,
-    });
-  };
-
-  const undoDeleteInfill = () => {
-    const restored = restoreDeletedInfill();
-    if (!restored) return;
-    setInfillItems((items) => {
-      const next = items.slice();
-      const insertIndex = Math.max(0, Math.min(restored.index, next.length));
-      next.splice(insertIndex, 0, restored.infill);
-      return next;
-    });
-    trackInfillEvent('infill_undo_delete', {
-      infill_id: restored.infill.id,
-      location: restored.infill.location,
-    });
-  };
-
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
 
   const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
@@ -1427,9 +1161,6 @@ export default function CalculatorGridClient({
     readyToCalculate,
     requestPayloadJson,
   });
-  const infillLastSelectionEventRef = useRef<string | null>(null);
-  const infillModalOpenTrackedRef = useRef(false);
-  const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
   const blindFieldPrefix = useId();
 
   const resultFreshness = useMemo(
@@ -1889,190 +1620,68 @@ export default function CalculatorGridClient({
       acrossSideM={selectedInfillEstimate.acrossSideM}
     />
   ) : null;
-  const { hasClipboard: infillHasClipboard, copyGeometry: copyInfillGeometry, pasteGeometry: pasteInfillGeometry } = useInfillClipboard();
-
-  const setInfillAcrylicPreference = (infillId: string, source: InfillLineItem['acrylicSource']) => {
-    const targetWidth = source === 'strip_620' ? '0.64' : '1.2';
-    setInfillItem(infillId, {
-      acrylicSource: source,
-      targetPanelWidthM: targetWidth,
-      maxPanelWidthM: targetWidth,
-    });
-  };
-
-  const handleInfillStageChange = (nextStage: InfillConfiguratorStage) => {
-    if (nextStage !== 'opening' && selectedInfill && selectedInfillEstimate) {
-      const explicitPatch = explicitInfillSelectionPatch(
-        selectedInfill,
-        selectedInfillEstimate.acrylicSourceUsed,
-        selectedInfillEstimate.panelOrientationUsed,
-      );
-      if (explicitPatch) setInfillItem(selectedInfill.id, explicitPatch);
-    }
-    setInfillStage(nextStage);
-  };
-
-  const handleCopyInfillGeometry = async () => {
-    if (!selectedInfill) return;
-    await copyInfillGeometry(selectedInfill);
-    trackInfillEvent('infill_copy_geometry', {
-      infill_id: selectedInfill.id,
-      location: selectedInfill.location,
-      shape: selectedInfill.shape.type,
-    });
-    toast.success('Geometry copied.');
-  };
-
-  const handlePasteInfillGeometry = () => {
-    if (!selectedInfill) return;
-    const patch = pasteInfillGeometry(selectedInfill);
-    if (!patch) {
-      toast.error('No geometry copied yet.');
-      return;
-    }
-    setInfillItem(selectedInfill.id, patch);
-    setInfillStage('opening');
-    trackInfillEvent('infill_paste_geometry', {
-      infill_id: selectedInfill.id,
-      location: selectedInfill.location,
-      shape: selectedInfill.shape.type,
-    });
-    toast.success('Geometry pasted.');
-  };
-
-  const flashInfillTarget = (el: HTMLElement | null) => {
-    if (!el) return;
-    el.classList.add(styles.infillJumpFlash);
-    window.setTimeout(() => {
-      el.classList.remove(styles.infillJumpFlash);
-    }, 900);
-  };
-
-  const jumpToInfillWarningTarget = (warning: InfillWarningItem) => {
-    if (!selectedInfill) return;
-    const targetStage = stageForInfillWarning(warning);
-    handleInfillStageChange(targetStage);
-    trackInfillEvent('infill_warning_clicked', {
-      infill_id: selectedInfill.id,
-      warning_id: warning.id,
-      severity: warning.severity,
-      section: targetStage,
-    });
-    window.requestAnimationFrame(() => {
-      const fieldId = infillFieldId(selectedInfill.id, warning.target.fieldKey);
-      const element = document.getElementById(fieldId) as HTMLElement | null;
-      if (!element) return;
-      element.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      try {
-        element.focus({ preventScroll: true });
-      } catch {
-        element.focus();
-      }
-      flashInfillTarget(element);
-    });
-  };
-
-  const jumpToInfillWarningGlobal = (infillId: string, warning: InfillWarningItem) => {
-    openInfills();
-    requestInfillSelection(infillId);
-    pendingInfillWarningJumpRef.current = { infillId, warning };
-  };
-
-  useEffect(() => {
-    const pending = pendingInfillWarningJumpRef.current;
-    if (!pending) return;
-    if (!infillsOpen) return;
-    if (selectedInfill?.id !== pending.infillId) return;
-    pendingInfillWarningJumpRef.current = null;
-    jumpToInfillWarningTarget(pending.warning);
-  }, [infillsOpen, selectedInfill?.id]);
-
-  const focusInfillPrimaryField = (infillId: string) => {
-    setInfillStage('opening');
-    window.requestAnimationFrame(() => {
-      const field = document.getElementById(`infill-${infillId}-label`) as HTMLElement | null;
-      if (!field) return;
-      try {
-        field.focus({ preventScroll: true });
-      } catch {
-        field.focus();
-      }
-    });
-  };
-
-  useEffect(() => {
-    if (!infillsOpen) {
-      infillLastSelectionEventRef.current = null;
-      infillModalOpenTrackedRef.current = false;
-      return;
-    }
-    if (infillModalOpenTrackedRef.current) return;
-    infillModalOpenTrackedRef.current = true;
-    trackInfillEvent('infill_modal_open', {
-      infill_count: infillsState.items.length,
-      module_index: activeModuleIndex + 1,
-    });
-  }, [activeModuleIndex, infillsOpen, infillsState.items.length]);
-
-  useEffect(() => {
-    if (!infillsOpen || !selectedInfill) return;
-    if (infillLastSelectionEventRef.current === selectedInfill.id) return;
-    infillLastSelectionEventRef.current = selectedInfill.id;
-    trackInfillEvent('infill_select', {
-      infill_id: selectedInfill.id,
-      location: selectedInfill.location,
-      shape: selectedInfill.shape.type,
-      panel_count: selectedInfillEstimate?.panelCountEach ?? 0,
-      joiners: selectedInfillEstimate?.internalJoinerLinesEach ?? 0,
-    });
-  }, [infillsOpen, selectedInfill, selectedInfillEstimate?.internalJoinerLinesEach, selectedInfillEstimate?.panelCountEach]);
-
-  const closeInfillModal = () => {
-    trackInfillEvent('infill_done', {
-      infill_count: infillsState.items.length,
-      warnings: selectedComputedWarnings.length,
-    });
-    closeInfills();
-  };
-
-  useInfillHotkeys({
-    enabled: infillsOpen && Boolean(selectedInfill),
-    disableEsc: infillDuplicateOpen,
-    onDuplicate: () => {
-      if (!selectedInfill) return;
-      duplicateInfill(selectedInfill.id);
-    },
-    onDuplicateBulk: () => {
-      if (!selectedInfill) return;
-      openInfillDuplicate();
-    },
-    onCopyGeometry: () => {
-      void handleCopyInfillGeometry();
-    },
-    onPasteGeometry: handlePasteInfillGeometry,
-    onMoveUp: () => {
-      if (!selectedInfill) return;
-      moveInfill(selectedInfill.id, -1);
-    },
-    onMoveDown: () => {
-      if (!selectedInfill) return;
-      moveInfill(selectedInfill.id, 1);
-    },
-    onClose: closeInfillModal,
-    onDone: closeInfillModal,
+  const {
+    presets: infillPresetCards,
+    hasClipboard: infillHasClipboard,
+    addInfillPreset,
+    addCustomInfillFromOverview,
+    addInfillPresetFromOverview,
+    duplicateSelectedInfill,
+    confirmSelectedDuplicate,
+    handleCopyInfillGeometry,
+    handlePasteInfillGeometry,
+    moveInfill,
+    moveSelectedInfill,
+    deleteSelectedInfill,
+    undoDeleteInfill,
+    handleInfillStageChange,
+    jumpToInfillWarningTarget,
+    jumpToInfillWarningGlobal,
+    focusInfillPrimaryField,
+    closeInfillModal,
+    getSelectedDraftValue,
+    changeSelectedItem,
+    changeSelectedLocation,
+    changeSelectedShapeTemplate,
+    changeSelectedDraft,
+    commitSelectedDraft,
+    changeSelectedMonoMode,
+    changeSelectedMonoAnchor,
+    changeSelectedMonoSlope,
+    changeSelectedBottomOffset,
+    changeSelectedAcrylicSource,
+    changeSelectedPanelOrientation,
+    changeSelectedSupport,
+    changeSelectedInternalMode,
+    changeSelectedCustomPositions,
+  } = useCalculatorInfillActions({
+    activeModule,
+    activeModuleIndex,
+    activePergolaId,
+    infills: infillsState.items,
+    setValues,
+    selectedInfill,
+    selectedInfillEstimate,
+    selectedCanOfferRafterMatching,
+    selectedWarningCount: selectedComputedWarnings.length,
+    infillsOpen,
+    infillDuplicateOpen,
+    openInfills,
+    closeInfills,
+    openInfillDuplicate,
+    closeInfillDuplicate,
+    requestInfillSelection,
+    setInfillStage,
+    setInfillDraftValue,
+    clearInfillDraftField,
+    clearInfillDraft,
+    getInfillDraftValue,
+    deleteInfillState,
+    restoreDeletedInfill,
+    flashClassName: styles.infillJumpFlash,
+    notifySuccess: (message) => toast.success(message),
+    notifyError: (message) => toast.error(message),
   });
-
-  const infillPresetCards = INFILL_PRESETS.filter((preset) => preset.key !== 'custom');
-
-  const addCustomInfillFromOverview = (openModal = false) => {
-    addInfillPreset('custom');
-    if (openModal) openInfills();
-  };
-
-  const addInfillPresetFromOverview = (preset: InfillPresetKey, openModal = false) => {
-    addInfillPreset(preset);
-    if (openModal) openInfills();
-  };
 
   const infillsTileContent = (
     <CalculatorInfillTile
@@ -2263,13 +1872,13 @@ export default function CalculatorGridClient({
       disablePaste: !infillHasClipboard,
       onSelect: selectInfill,
       onAdd: addCustomInfillFromOverview,
-      onDuplicate: () => duplicateInfill(selectedInfill.id),
+      onDuplicate: duplicateSelectedInfill,
       onDuplicateBulk: openInfillDuplicate,
       onCopyGeometry: () => { void handleCopyInfillGeometry(); },
       onPasteGeometry: handlePasteInfillGeometry,
-      onMoveUp: () => moveInfill(selectedInfill.id, -1),
-      onMoveDown: () => moveInfill(selectedInfill.id, 1),
-      onDelete: () => deleteInfill(selectedInfill.id),
+      onMoveUp: () => moveSelectedInfill(-1),
+      onMoveDown: () => moveSelectedInfill(1),
+      onDelete: deleteSelectedInfill,
     } : null,
     showUndo: Boolean(deletedInfill),
     onUndo: undoDeleteInfill,
@@ -2296,47 +1905,16 @@ export default function CalculatorGridClient({
       domIdBase: selectedInfillDomIdBase,
       errors: selectedInfillValidation.errors,
       preview: selectedInfillPreview,
-      getDraftValue: (field) => getInfillDraftValue(selectedInfill, field),
-      onItemChange: (patch) => setInfillItem(selectedInfill.id, patch),
-      onLocationChange: (location) => setInfillLocation(selectedInfill.id, location),
-      onShapeTemplateChange: (template) => {
-        const nextShape = applyInfillOpeningTemplate(selectedInfill.shape, template);
-        if (nextShape === selectedInfill.shape) return;
-        clearInfillDraft(selectedInfill.id);
-        setInfillItem(selectedInfill.id, { shape: nextShape });
-      },
-      onDraftChange: (field, value) => updateRequiredShapeField(selectedInfill, field, value),
-      onDraftCommit: (field, value) => commitRequiredShapeField(selectedInfill, field, value),
-      onMonoModeChange: (nextMode) => {
-        updateMonoSlopeShape(selectedInfill, (shape) => {
-          const resolved = resolveMonoSlopeShape(shape);
-          return {
-            ...shape,
-            heightLowM: formatInputNumber(resolved.leftHeightM, 3),
-            heightHighM: formatInputNumber(resolved.rightHeightM, 3),
-            slopeMode: nextMode,
-            slopeDeg:
-              nextMode === 'pitch'
-                ? resolved.slopeDeg !== null
-                  ? formatInputNumber(resolved.slopeDeg, 2)
-                  : shape.slopeDeg ?? ''
-                : shape.slopeDeg ?? '',
-            slopeAnchor:
-              nextMode === 'pitch'
-                ? resolved.leftHeightM <= resolved.rightHeightM ? 'left' : 'right'
-                : shape.slopeAnchor ?? 'left',
-          };
-        });
-      },
-      onMonoAnchorChange: (anchor) => {
-        updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeAnchor: anchor }));
-      },
-      onMonoSlopeChange: (slopeDeg) => {
-        updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeDeg }));
-      },
-      onBottomOffsetChange: (bottomOffsetM) => {
-        setInfillItem(selectedInfill.id, { shape: { ...selectedInfill.shape, bottomOffsetM } });
-      },
+      getDraftValue: getSelectedDraftValue,
+      onItemChange: changeSelectedItem,
+      onLocationChange: changeSelectedLocation,
+      onShapeTemplateChange: changeSelectedShapeTemplate,
+      onDraftChange: changeSelectedDraft,
+      onDraftCommit: commitSelectedDraft,
+      onMonoModeChange: changeSelectedMonoMode,
+      onMonoAnchorChange: changeSelectedMonoAnchor,
+      onMonoSlopeChange: changeSelectedMonoSlope,
+      onBottomOffsetChange: changeSelectedBottomOffset,
     } : null,
     supportsStage: selectedInfill && selectedInfillEstimate && selectedInfillValidation ? {
       item: selectedInfill,
@@ -2354,24 +1932,11 @@ export default function CalculatorGridClient({
           ? selectedInfillEstimate.panelOrientationUsed
           : selectedInfill.panelOrientation,
       preview: selectedInfillPreview,
-      onAcrylicSourceChange: (source) => setInfillAcrylicPreference(selectedInfill.id, source),
-      onPanelOrientationChange: (panelOrientation) => setInfillItem(selectedInfill.id, { panelOrientation }),
-      onSupportChange: (support) => setInfillItem(selectedInfill.id, { support }),
-      onInternalModeChange: (nextMode) => {
-        setInfillItem(selectedInfill.id, {
-          ...(nextMode !== 'match_roof_rafters'
-            && !selectedCanOfferRafterMatching
-            && selectedInfill.widthMode === 'match_roof_rafters'
-            ? { widthMode: 'target_width' as const }
-            : {}),
-          support: { ...selectedInfill.support, internalSupportMode: nextMode },
-        });
-      },
-      onCustomPositionsChange: (internalSupportPositionsM) => {
-        setInfillItem(selectedInfill.id, {
-          support: { ...selectedInfill.support, internalSupportPositionsM },
-        });
-      },
+      onAcrylicSourceChange: changeSelectedAcrylicSource,
+      onPanelOrientationChange: changeSelectedPanelOrientation,
+      onSupportChange: changeSelectedSupport,
+      onInternalModeChange: changeSelectedInternalMode,
+      onCustomPositionsChange: changeSelectedCustomPositions,
     } : null,
     resultsStage: selectedInfill && selectedInfillEstimate && selectedInfillValidation && selectedResultStatus ? {
       status: selectedResultStatus,
@@ -2389,7 +1954,7 @@ export default function CalculatorGridClient({
     } : null,
     costComparison: canViewInternalCosts && selectedInfill ? {
       model: infillCostComparison,
-      onApply: (source) => setInfillAcrylicPreference(selectedInfill.id, source),
+      onApply: changeSelectedAcrylicSource,
     } : null,
     itemCount: infillsState.items.length,
     presets: infillPresetCards,
@@ -2399,11 +1964,7 @@ export default function CalculatorGridClient({
       open: infillDuplicateOpen && Boolean(selectedInfill),
       sourceLabel: selectedInfill?.label?.trim() || `Infill ${Math.max(1, selectedInfillIndex + 1)}`,
       onCancel: closeInfillDuplicate,
-      onConfirm: ({ count, labelPattern }) => {
-        if (!selectedInfill) return;
-        duplicateInfillBulk(selectedInfill.id, count, labelPattern);
-        closeInfillDuplicate();
-      },
+      onConfirm: confirmSelectedDuplicate,
     },
   };
 
