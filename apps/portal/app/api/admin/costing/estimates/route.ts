@@ -8,7 +8,9 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
   const query = new URL(req.url).searchParams.get('q')?.slice(0, 120) ?? '';
   try {
-    return jsonOk({ estimates: await listCostingEstimateCandidates(auth.supabase, query) });
+    const response = jsonOk({ estimates: await listCostingEstimateCandidates(auth.supabase, query) });
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : 'Failed to load estimate previews', 500);
   }

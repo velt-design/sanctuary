@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: Context) {
     return jsonError('estimateId and expectedContentHash are required', 400);
   }
   try {
-    return jsonOk({
+    const response = jsonOk({
       preview: await previewCostingDraftAgainstEstimate(
         auth.supabase,
         versionId,
@@ -27,6 +27,8 @@ export async function POST(req: Request, { params }: Context) {
         expectedContentHash,
       ),
     });
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to preview this estimate';
     return jsonError(message, message.includes('changed') ? 409 : 400);

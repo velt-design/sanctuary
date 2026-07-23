@@ -34,6 +34,7 @@ describe('/api/admin/costing/configurations/:versionId/estimate-preview', () => 
       body: JSON.stringify({ estimateId: 'estimate-1', expectedContentHash: 'a'.repeat(64) }),
     }), context);
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(previewCostingDraftAgainstEstimate).toHaveBeenCalledWith(
       expect.anything(),
       'draft-1',

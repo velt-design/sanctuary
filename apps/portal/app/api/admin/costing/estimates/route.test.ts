@@ -25,6 +25,7 @@ describe('/api/admin/costing/estimates', () => {
     const { GET } = await import('./route');
     const response = await GET(new Request('http://localhost/api/admin/costing/estimates?q=Patricia'));
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(listCostingEstimateCandidates).toHaveBeenCalledWith(expect.anything(), 'Patricia');
     await expect(response.json()).resolves.toEqual({ estimates: [{ id: 'estimate-1' }] });
   });
