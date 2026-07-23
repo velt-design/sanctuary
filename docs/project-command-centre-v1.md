@@ -2028,10 +2028,10 @@ At least five pilot staff across different office roles must complete this test 
 6. A missing quote source estimate produces `Source design unavailable`.
 7. The system never substitutes another estimate for a missing quote source design.
 8. Quote price comes only from the selected quote version when an eligible quote exists.
-9. Estimate price is used only when no eligible quote exists.
+9. Estimate price is used only when no eligible quote exists, and comes from the same saved-snapshot quote-handoff projection as quote creation rather than an estimate summary field.
 10. Missing quote price does not fall back to estimate price.
 11. A newer estimate does not replace a sent or accepted quote's source design.
-12. Stale costing remains visible and is not recalculated by the Overview.
+12. Stale costing remains visible and is not recalculated by the Overview; blocked or zero-value estimate projections show price unavailable rather than a partial total.
 13. Historical sent, accepted, and declined quote context remains unchanged.
 14. Quote-backed estimate locks remain authoritative.
 15. Multiple accepted records trigger a review state rather than silent ambiguity.

@@ -13,7 +13,6 @@ function estimate(
     createdAt,
     status: 'draft',
     versionLabel: 'V1',
-    totalIncGstCents: 120_000,
     isLocked: false,
     ...overrides,
   };

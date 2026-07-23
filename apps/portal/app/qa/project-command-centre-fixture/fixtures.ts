@@ -15,6 +15,7 @@ export const COMMAND_CENTRE_FIXTURE_SCENARIOS = [
   'declined-quote',
   'missing-source',
   'missing-price',
+  'missing-estimate-price',
 ] as const;
 
 type CommandCentreFixtureScenario = (typeof COMMAND_CENTRE_FIXTURE_SCENARIOS)[number];
@@ -306,6 +307,11 @@ export const commandCentreFixtures: Record<CommandCentreFixtureScenario, Project
     price: { source: 'quote', totalIncGstCents: null },
     warnings: ['quote_price_unavailable'],
   }),
+  'missing-estimate-price': {
+    ...BASE,
+    price: { source: 'estimate', totalIncGstCents: null },
+    warnings: ['estimate_price_unavailable'],
+  },
 };
 
 export function isCommandCentreFixtureScenario(value: string): value is CommandCentreFixtureScenario {

@@ -89,7 +89,8 @@ Additional strict rules:
 - A missing exact source produces `Source design unavailable`; no other estimate is borrowed.
 - A selected quote may use only its raw stored `total_inc_gst_cents`.
 - A missing or invalid quote total produces `Price unavailable`; no estimate price is borrowed.
-- Estimate price uses the selected row's stored `summary_json.total`; Stage 1 does not invoke costing.
+- Estimate price uses the canonical quote-handoff projection from the selected saved estimate snapshot. The read does not invoke costing, and never treats `summary_json.total` as customer price.
+- A blocked or zero-value estimate projection produces `Price unavailable` plus `estimate_price_unavailable`; partial line totals are not presented as a customer total.
 - Accepted quote plus a newer unrelated estimate keeps the accepted quote authoritative and reports the newer estimate separately.
 - Multiple accepted quotes select the newest deterministically and emit an integrity warning.
 
@@ -196,7 +197,7 @@ The existing authenticated Project Detail journey already measures the active ta
 | Quote source design | `source_estimate_version_id` | Exact match only |
 | Quote customer price | Raw `total_inc_gst_cents` | No fallback |
 | Estimate selection | `estimates` plus quote-derived lock state | Active eligible draft, then latest non-archived |
-| Estimate customer price | Stored `summary_json.total` | No recomputation |
+| Estimate customer price | Canonical quote-handoff projection from saved `inputs` + `outputs` | No live costing; blocked projections are unavailable |
 | Design labels | Selected estimate `inputs.modules` | Largest module plus additional count |
 | Costing freshness | Selected estimate `outputs.pricing_sync_state` | Stored status only |
 | Quote delivery | Selected quote status and send logs | Accepted/sent/failed/draft only |
@@ -289,7 +290,7 @@ The `activity` module loader now resolves to `OverviewTab`; the old Activity com
 Focused coverage includes:
 
 - Pure selector precedence and exact-source tests.
-- Raw server normalization, quote/estimate price ownership, delivery, freshness, missing-source, and complete-read failure tests.
+- Raw server normalization, quote/estimate price ownership, blocked-estimate pricing, delivery, freshness, missing-source, and complete-read failure tests.
 - Auth route response and failure tests.
 - Query preloading and preserved activity-key tab tests.
 - Overview pending/fresh/stale/failure/access-ending tests.

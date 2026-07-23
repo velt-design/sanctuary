@@ -105,7 +105,7 @@ export default function ProjectCurrentDesignCommercialCard({
               {
                 label: 'Customer price',
                 value: formatPrice(data.price.totalIncGstCents),
-                detail: data.price.source === 'quote' ? 'Stored quote total' : data.price.source === 'estimate' ? 'Stored estimate total' : 'No price source',
+                detail: data.price.source === 'quote' ? 'Stored quote total' : data.price.source === 'estimate' ? 'Quote-ready estimate total' : 'No price source',
                 emphasis: true,
               },
               {
@@ -147,6 +147,13 @@ export default function ProjectCurrentDesignCommercialCard({
           {data.warnings.includes('quote_price_unavailable') ? (
             <div data-command-centre-warning="quote-price-unavailable">
               <AlertBanner tone="warning" title="Stored quote price unavailable">No estimate price has been substituted.</AlertBanner>
+            </div>
+          ) : null}
+          {data.warnings.includes('estimate_price_unavailable') ? (
+            <div data-command-centre-warning="estimate-price-unavailable">
+              <AlertBanner tone="warning" title="Estimate price unavailable">
+                Open the source design and resolve pricing issues before relying on a customer total.
+              </AlertBanner>
             </div>
           ) : null}
           {data.warnings.includes('multiple_accepted_quotes') ? (

@@ -68,7 +68,13 @@ function projectRow(estimates: unknown[], quoteVersions: unknown[] = []) {
 
 const DETAIL = {
   id: UUID.estimate,
+  project_id: UUID.project,
+  created_at: '2026-07-01T00:00:00.000Z',
+  status: 'draft',
+  version: 1,
   inputs: {
+    schemaVersion: 'v2',
+    quoteDiscountPct: '0',
     modules: [{
       lengthM: '6',
       projectionM: '4',
@@ -76,7 +82,10 @@ const DETAIL = {
       roofMaterial: 'acrylic',
     }],
   },
-  outputs: { pricing_sync_state: 'current' },
+  outputs: {
+    pricing_sync_state: 'current',
+    totals: { cost_ex_gst: 1000, cost_inc_gst: 1150 },
+  },
   costing_manifest: 'fixture',
   costing_rules: 'fixture',
 };
@@ -92,7 +101,7 @@ describe('getProjectCommandCentre', () => {
     expect(projectSelect).not.toMatch(/pipeline_stage,\s*status,/);
   });
 
-  it('returns stored estimate price and current costing without running costing', async () => {
+  it('returns the quote-ready estimate price and ignores the ambiguous saved summary', async () => {
     const result = await getProjectCommandCentre(
       `proj_${UUID.project}`,
       createClient(projectRow([estimateRow()]), DETAIL),
@@ -100,7 +109,7 @@ describe('getProjectCommandCentre', () => {
     expect(result?.currentDesign).toMatchObject({
       source: 'estimate',
       design: { size: '6m x 4m', shape: 'Gable', roofing: 'Acrylic' },
-      price: { source: 'estimate', totalIncGstCents: 123_456 },
+      price: { source: 'estimate', totalIncGstCents: 143_750 },
       estimate: { versionLabel: 'V1', costingState: 'current' },
     });
   });
@@ -149,7 +158,7 @@ describe('getProjectCommandCentre', () => {
     );
     expect(result?.currentDesign).toMatchObject({
       source: 'estimate',
-      price: { source: 'estimate', totalIncGstCents: 123_456 },
+      price: { source: 'estimate', totalIncGstCents: 143_750 },
       latestDeclinedQuote: { quoteVersionId: `qv_${UUID.quote}` },
     });
   });
@@ -177,6 +186,18 @@ describe('getProjectCommandCentre', () => {
     );
     expect(result?.currentDesign.price).toEqual({ source: 'quote', totalIncGstCents: null });
     expect(result?.currentDesign.warnings).toContain('quote_price_unavailable');
+  });
+
+  it('marks a zero-value estimate price unavailable instead of showing a partial total', async () => {
+    const result = await getProjectCommandCentre(
+      `proj_${UUID.project}`,
+      createClient(projectRow([estimateRow()]), {
+        ...DETAIL,
+        outputs: { pricing_sync_state: 'current', totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+      }),
+    );
+    expect(result?.currentDesign.price).toEqual({ source: 'estimate', totalIncGstCents: null });
+    expect(result?.currentDesign.warnings).toContain('estimate_price_unavailable');
   });
 
   it('fails the complete read when selected estimate detail cannot be loaded', async () => {

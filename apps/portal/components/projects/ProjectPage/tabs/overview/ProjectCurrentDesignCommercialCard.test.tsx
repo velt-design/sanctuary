@@ -39,8 +39,20 @@ describe('ProjectCurrentDesignCommercialCard', () => {
     expect(rendered.container.textContent).toContain('6m x 4m');
     expect(rendered.container.textContent).toContain('Gable · Acrylic');
     expect(rendered.container.textContent).toContain('$1,234.56 inc GST');
+    expect(rendered.container.textContent).toContain('Quote-ready estimate total');
     expect(rendered.container.textContent).toContain('Current costing');
     expect(rendered.container.querySelectorAll('button')).toHaveLength(0);
+    rendered.unmount();
+  });
+
+  it('explains when an estimate customer price is unavailable', () => {
+    const rendered = renderIntoDocument(<ProjectCurrentDesignCommercialCard data={base({
+      price: { source: 'estimate', totalIncGstCents: null },
+      warnings: ['estimate_price_unavailable'],
+    })} />);
+    expect(rendered.container.textContent).toContain('Price unavailable');
+    expect(rendered.container.textContent).toContain('Estimate price unavailable');
+    expect(rendered.container.textContent).toContain('resolve pricing issues before relying on a customer total');
     rendered.unmount();
   });
 

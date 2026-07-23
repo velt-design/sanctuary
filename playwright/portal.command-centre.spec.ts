@@ -17,6 +17,7 @@ const SCENARIOS = [
   ['declined-quote', 'Latest quote outcome: declined'],
   ['missing-source', 'Source design unavailable'],
   ['missing-price', 'Price unavailable'],
+  ['missing-estimate-price', 'Estimate price unavailable'],
 ] as const;
 
 for (const [scenario, expected] of SCENARIOS) {

@@ -2,7 +2,9 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { computeEstimateEditability } from '@/lib/estimates/editability';
+import { buildQuoteHandoffPreviewFromEstimate } from '@/lib/quotes/estimateHandoffPreview';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
+import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
 import { getProjectCommandOperations } from './getProjectCommandOperations';
 import {
@@ -21,7 +23,7 @@ import type {
 const PROJECT_COMMAND_CENTRE_SELECT = `
   id,
   pipeline_stage,
-  estimates(id,project_id,created_at,status,version,summary_json),
+  estimates(id,project_id,created_at,status,version),
   quotes(
     id,
     quote_ref,
@@ -77,15 +79,6 @@ function parseRecord(value: unknown): AnyRecord | null {
   } catch {
     return null;
   }
-}
-
-function estimatePriceCents(value: unknown): number | null {
-  const summary = parseRecord(value);
-  const raw = summary?.total;
-  const amount = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN;
-  if (!Number.isFinite(amount) || amount < 0) return null;
-  const cents = Math.round(amount * 100);
-  return Number.isSafeInteger(cents) ? cents : null;
 }
 
 function estimateStatus(value: unknown): CommandCentreEstimateCandidate['status'] {
@@ -192,10 +185,40 @@ function normalizeEstimateRows(
       createdAt: isoTimestamp(row.created_at),
       status: estimateStatus(row.status),
       versionLabel: labels.get(sourceId) ?? 'V-',
-      totalIncGstCents: estimatePriceCents(row.summary_json),
       isLocked: editability.isLocked,
     }];
   });
+}
+
+function storedEstimateFromRow(
+  row: AnyRecord,
+  candidate: CommandCentreEstimateCandidate,
+): Estimate | null {
+  const inputs = parseRecord(row.inputs);
+  const outputs = parseRecord(row.outputs);
+  if (!inputs || !outputs) return null;
+
+  const configVersions = parseRecord(outputs.configVersions);
+  return {
+    id: candidate.id,
+    projectId: appIdFromUuid('proj', String(row.project_id ?? '')),
+    version: positiveInteger(row.version) ?? undefined,
+    createdAt: isoTimestamp(row.created_at) ?? candidate.createdAt ?? new Date(0).toISOString(),
+    updatedAt: isoTimestamp(row.updated_at) ?? undefined,
+    status: candidate.status === 'archived' ? 'archived' : 'draft',
+    inputs: inputs as unknown as Estimate['inputs'],
+    derived: (parseRecord(outputs.derived) ?? {}) as Estimate['derived'],
+    projectSnapshot: (parseRecord(outputs.projectSnapshot) ?? undefined) as Estimate['projectSnapshot'],
+    snapshot: (parseRecord(outputs.snapshot) ?? undefined) as Estimate['snapshot'],
+    outputs: outputs as unknown as Estimate['outputs'],
+    configVersions: {
+      pricebook: trimmedString(configVersions?.pricebook) ?? '',
+      installActions: trimmedString(configVersions?.installActions) ?? '',
+      overheads: trimmedString(configVersions?.overheads) ?? '',
+      rules: trimmedString(configVersions?.rules) ?? trimmedString(row.costing_rules) ?? '',
+      manifest: trimmedString(configVersions?.manifest) ?? trimmedString(row.costing_manifest) ?? '',
+    },
+  };
 }
 
 function statusPresentation(source: ProjectCommandCentreResponse['currentDesign']['source']): {
@@ -250,7 +273,7 @@ export async function getProjectCommandCentre(
   if (selection.estimate) {
     const estimateResult = await supabase
       .from('estimates')
-      .select('id,inputs,outputs,costing_manifest,costing_rules')
+      .select('id,project_id,created_at,updated_at,status,version,inputs,outputs,costing_manifest,costing_rules')
       .eq('id', selection.estimate.sourceId)
       .maybeSingle();
     if (estimateResult.error || !estimateResult.data) {
@@ -274,6 +297,17 @@ export async function getProjectCommandCentre(
   const basePath = `/staff/projects/${encodeURIComponent(projectId)}`;
   const estimate = selection.estimate;
   const quote = selection.quote;
+  let estimatePriceIncGstCents: number | null = null;
+  if (!quote && estimate && selectedDetail) {
+    const storedEstimate = storedEstimateFromRow(selectedDetail, estimate);
+    if (storedEstimate) {
+      const preview = buildQuoteHandoffPreviewFromEstimate(storedEstimate);
+      if (preview.blockingIssues.length === 0 && preview.totalIncGstCents > 0) {
+        estimatePriceIncGstCents = preview.totalIncGstCents;
+      }
+    }
+    if (estimatePriceIncGstCents === null) warnings.push('estimate_price_unavailable');
+  }
   const operations = await getProjectCommandOperations({
     projectUuid,
     stage,
@@ -294,7 +328,7 @@ export async function getProjectCommandCentre(
       price: quote
         ? { source: 'quote', totalIncGstCents: quote.totalIncGstCents }
         : estimate
-          ? { source: 'estimate', totalIncGstCents: estimate.totalIncGstCents }
+          ? { source: 'estimate', totalIncGstCents: estimatePriceIncGstCents }
           : { source: 'none', totalIncGstCents: null },
       estimate: estimate ? {
         id: estimate.id,

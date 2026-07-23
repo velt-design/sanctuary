@@ -72,7 +72,7 @@ export type ProjectCommandCentreCurrentDesign = {
   newerEstimate: CommandCentreEstimateReference | null;
   latestDeclinedQuote: CommandCentreDeclinedOutcome | null;
   warnings: Array<
-    'multiple_accepted_quotes' | 'source_design_unavailable' | 'quote_price_unavailable'
+    'multiple_accepted_quotes' | 'source_design_unavailable' | 'quote_price_unavailable' | 'estimate_price_unavailable'
   >;
   links: {
     designs: string;
@@ -220,7 +220,6 @@ export type CommandCentreEstimateCandidate = {
   createdAt: string | null;
   status: 'draft' | 'archived' | 'unknown';
   versionLabel: string;
-  totalIncGstCents: number | null;
   isLocked: boolean;
 };
 

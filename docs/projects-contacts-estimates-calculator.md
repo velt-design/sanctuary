@@ -199,7 +199,8 @@ The strict selection owner is `apps/portal/lib/projects/commandCentre/resolve.ts
 
 - A quote-backed selection uses only its exact `source_estimate_version_id`. If that row is absent or inaccessible, the response says `Source design unavailable`; no active/latest estimate is substituted.
 - Quote price uses only raw stored `quote_versions.total_inc_gst_cents`. Missing or invalid quote price says `Price unavailable`; estimate price is never substituted.
-- An estimate-led price uses the selected estimate's stored `summary_json.total`. The read model never runs costing.
+- An estimate-led price uses the same canonical quote-handoff projection as quote creation, derived from the selected saved estimate's `inputs` and `outputs`. The read model never runs live costing and never treats `summary_json.total` as customer price.
+- If quote handoff is blocked or produces no positive total, Overview shows `Price unavailable` with `estimate_price_unavailable`; it does not expose a partial pergola subtotal.
 - Design labels use the selected estimate's `inputs.modules`, shared quote module formatters, and the largest module by floor area, with `+ N more` for additional modules.
 - Costing labels derive only from stored `outputs.pricing_sync_state` and distinguish current, stored, may-be-stale, and unavailable.
 - Accepted quote plus a newer unrelated estimate keeps the accepted quote/source authoritative and exposes the newer estimate separately.

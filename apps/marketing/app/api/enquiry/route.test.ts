@@ -5,14 +5,6 @@ type Row = Record<string, any>;
 
 const h = vi.hoisted(() => ({
   createClient: vi.fn(),
-  priceAllBlinds: vi.fn((_items: unknown[]) => ({ totals: { totalIncCents: 0 } })),
-}));
-
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: h.createClient,
-}));
-
-vi.mock('@sp/costing', () => ({
   calculateCostV1: vi.fn(() => ({
     materials: { lines: [], totals: { materials_ex_gst: 0 } },
     install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
@@ -21,14 +13,23 @@ vi.mock('@sp/costing', () => ({
     warnings: [],
     pergolas: [],
   })),
+  priceAllBlinds: vi.fn((_items: unknown[]) => ({ totals: { totalIncCents: 0 } })),
+}));
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: h.createClient,
+}));
+
+vi.mock('@sp/costing', () => ({
+  calculateCostV1: h.calculateCostV1,
   autoSplitByMaxWidth: vi.fn(),
   getBlindSystemLimits: vi.fn(() => ({ maxWidthMm: 5000, maxCoverLengthMm: 3000 })),
   priceAllBlinds: h.priceAllBlinds,
 }));
 
 vi.mock('@/lib/enquiryBudgets', () => ({
-  buildEnquiryBudgets: vi.fn(() => ({
-    baseRange: { lowIncGst: 12000, highIncGst: 12000 },
+  buildEnquiryBudgets: vi.fn((params: { baseTrueCostIncGst: number | null }) => ({
+    baseRange: params.baseTrueCostIncGst ? { lowIncGst: 12000, highIncGst: 12000 } : null,
     blindsRange: null,
     budgetBasis: 'test',
   })),
@@ -161,6 +162,7 @@ describe('POST /api/enquiry attribution', () => {
   beforeEach(() => {
     vi.resetModules();
     h.createClient.mockReset();
+    h.calculateCostV1.mockClear();
     h.priceAllBlinds.mockClear();
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.test';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
@@ -236,6 +238,10 @@ describe('POST /api/enquiry attribution', () => {
         expect.objectContaining({ rollCover: 'NONE' }),
       ]),
     );
+    expect(h.calculateCostV1).toHaveBeenCalledTimes(1);
+    expect(h.calculateCostV1).toHaveBeenCalledWith(expect.objectContaining({ post_count: 2 }));
+    expect(db.estimates[0]?.inputs.modules[0]?.postCount).toBe('2');
+    expect(db.estimates[0]?.outputs.totals.cost_inc_gst).toBe(10000);
   });
 
   it('inlines small professional uploads as autoresponder attachments', async () => {
@@ -271,5 +277,36 @@ describe('POST /api/enquiry attribution', () => {
       attachments: [{ filename: 'plan.pdf', content: Buffer.from('PDFDATA').toString('base64') }],
       idempotencyKey: 'website:autoresponder:enquiry-1',
     });
+    expect(h.calculateCostV1).not.toHaveBeenCalled();
+  });
+
+  it('accepts the enquiry and saves unavailable pricing when the single costing attempt fails', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    h.calculateCostV1.mockImplementationOnce(() => { throw new Error('Costing unavailable'); });
+    const { POST } = await import('./route');
+
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enquiryType: 'residential',
+        name: 'Alex',
+        phone: '021000000',
+        suburb: 'Takapuna',
+        dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
+        style: 'pitched',
+        roofMaterials: ['acrylic'],
+        addOns: {},
+        source: 'website',
+        honeypot: '',
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(h.calculateCostV1).toHaveBeenCalledTimes(1);
+    expect(db.estimates[0]?.inputs.modules[0]?.postCount).toBe('2');
+    expect(db.estimates[0]?.outputs.totals.cost_inc_gst).toBe(0);
+    expect(db.estimates[0]?.derived.pricingMode).toBe('indicative_fallback');
   });
 });

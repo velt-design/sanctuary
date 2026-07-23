@@ -1,0 +1,321 @@
+import {
+  autoSplitByMaxWidth,
+  calculateCostV1,
+  getBlindSystemLimits,
+  priceAllBlinds,
+  type BlindLineItemInput,
+  type CostInputsV1,
+} from '@sp/costing';
+import { buildEstimateDbPayload } from '../../../apps/portal/lib/estimates/persistence';
+import { buildEnquiryBudgets } from './enquiryBudgets';
+import { QUOTE_MULTIPLIER, type MoneyRange } from './enquiryEstimate';
+
+type EnquiryPricingParams = {
+  enquiryType: string;
+  name: string;
+  suburb: string;
+  widthM: number | null;
+  depthM: number | null;
+  heightM: number | null;
+  style: string;
+  roofMaterials: string[];
+  addOns: Record<string, unknown>;
+};
+
+type EnquiryBudgets = {
+  baseRange: MoneyRange | null;
+  blindsRange: MoneyRange | null;
+  budgetBasis: string | null;
+};
+
+type EnquiryPricingSnapshot = {
+  costInputs: CostInputsV1 | null;
+  costResult: ReturnType<typeof calculateCostV1> | null;
+  calculatorInputs: Record<string, unknown>;
+  budgets: EnquiryBudgets;
+};
+
+function isTruthy(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (typeof value !== 'string') return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y';
+}
+
+function pergolaStyleForCosting(styleRaw: string): CostInputsV1['pergola_style'] {
+  const style = String(styleRaw ?? '').trim().toLowerCase();
+  if (style === 'gable') return 'gable';
+  if (style === 'hip') return 'hip';
+  if (style === 'hip_corner') return 'hip_corner';
+  if (style === 'box_perimeter' || style === 'perimeter') return 'box_perimeter';
+  return 'pitched';
+}
+
+function roofMaterialForCosting(roofMaterials: string[]): CostInputsV1['roof_material'] {
+  const materials = roofMaterials.map((material) => String(material ?? '').trim().toLowerCase()).filter(Boolean);
+  const hasAcrylic = materials.includes('acrylic');
+  const hasTimber = materials.includes('timber');
+  if (hasAcrylic && hasTimber) return 'mixed';
+  if (hasTimber) return 'timber';
+  return 'acrylic';
+}
+
+function heightCategoryForCosting(heightM: number | null): CostInputsV1['height'] {
+  return typeof heightM === 'number' && Number.isFinite(heightM) && heightM >= 3 ? 'two_storey' : 'single_storey';
+}
+
+function buildCanonicalCostInputs(params: EnquiryPricingParams): CostInputsV1 | null {
+  if (!Number.isFinite(params.widthM ?? NaN) || !Number.isFinite(params.depthM ?? NaN)) return null;
+  return {
+    length_m: Math.max(0.1, Number(params.widthM)),
+    projection_m: Math.max(0.1, Number(params.depthM)),
+    post_cut_height_m: Number.isFinite(params.heightM ?? NaN) ? Math.max(1, Number(params.heightM)) : 2.4,
+    pergola_style: pergolaStyleForCosting(params.style),
+    roof_material: roofMaterialForCosting(params.roofMaterials),
+    extrusion_colour: 'Black',
+    post_count: 2,
+    house_connection_type: 'fascia',
+    post_connection_type: 'deck_bracket',
+    access: 'normal',
+    height: heightCategoryForCosting(params.heightM),
+    ground: 'easy',
+  };
+}
+
+function buildBlindItems(params: EnquiryPricingParams): BlindLineItemInput[] {
+  if (!isTruthy(params.addOns.blinds) || !Number.isFinite(params.widthM ?? NaN) || !Number.isFinite(params.depthM ?? NaN)) {
+    return [];
+  }
+  const system: BlindLineItemInput['system'] = 'ZIPTRAK';
+  const { maxWidthMm, maxCoverLengthMm } = getBlindSystemLimits(system);
+  const heightMm = Number.isFinite(params.heightM ?? NaN) ? Math.round(Math.max(1, Number(params.heightM)) * 1000) : 2400;
+  const coverLengthMm = Math.min(Math.max(1000, heightMm), maxCoverLengthMm);
+  const facesMm = [
+    Math.round(Number(params.widthM) * 1000),
+    Math.round(Number(params.depthM) * 1000),
+    Math.round(Number(params.depthM) * 1000),
+  ].filter((value) => Number.isFinite(value) && value > 0);
+
+  const items: BlindLineItemInput[] = [];
+  let id = 1;
+  for (const faceWidthMm of facesMm) {
+    const panels = autoSplitByMaxWidth(faceWidthMm, maxWidthMm) ?? [faceWidthMm];
+    for (const widthMm of panels) {
+      items.push({
+        id: `enquiry-blind-${id}`,
+        label: `Blind ${id}`,
+        system,
+        widthMm,
+        coverLengthMm,
+        fabric: 'MESH',
+        motorised: false,
+        rollCover: 'NONE',
+      });
+      id += 1;
+    }
+  }
+  return items;
+}
+
+function calculatorInputsFromSnapshot(
+  params: EnquiryPricingParams,
+  costInputs: CostInputsV1 | null,
+  blindItems: BlindLineItemInput[],
+): Record<string, unknown> {
+  const lengthM = costInputs?.length_m ?? 6;
+  const projectionM = costInputs?.projection_m ?? 3;
+  const postCutHeightM = costInputs?.post_cut_height_m ?? 2.4;
+  const roofMaterial = costInputs?.roof_material ?? roofMaterialForCosting(params.roofMaterials);
+  const pergolaStyle = costInputs?.pergola_style ?? pergolaStyleForCosting(params.style);
+
+  return {
+    schemaVersion: 'v2',
+    projectName: `${params.name} - ${params.suburb || 'Enquiry'}`.trim(),
+    quoteRef: '',
+    access: costInputs?.access ?? 'normal',
+    height: costInputs?.height ?? heightCategoryForCosting(params.heightM),
+    jobType: 'residential',
+    travelExGst: '0',
+    extrasAllowanceExGst: '0',
+    quoteDiscountPct: '0',
+    pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+    modules: [{
+      pergolaId: 'pergola-1',
+      pergolaStyle,
+      roofMaterial,
+      extrusionColour: costInputs?.extrusion_colour ?? 'Black',
+      powdercoatStandardColour: '',
+      powdercoatIsCustom: false,
+      powdercoatCustomColour: '',
+      boxPerimeterEnabled: false,
+      internalRoofType: pergolaStyle === 'box_perimeter' ? 'flat' : 'pitched',
+      fallDistanceMm: '0',
+      roofPitchDeg: '',
+      gableEndFramesMode: 'outer_end_only',
+      gableHouseEdgeGutter: 'house',
+      gableOuterEdgeGutter: 'our',
+      boxGutterHouseEdge: 'house',
+      boxGutterFarEdge: 'our',
+      downpipeCount: '0',
+      downpipeJoinCount: '0',
+      downpipeElbowCount: '0',
+      separateGutterEnabled: false,
+      overhangEnabled: false,
+      overhangAmountM: '0.2',
+      overhangSupportBeamProfile: '150x50',
+      invertedEnabled: false,
+      invertedHouseGutter: true,
+      mixedSkylightStripCount: '1',
+      mixedSkylightStripWidthM: '0.62',
+      mixedAcrylicBaysMain: roofMaterial === 'mixed' ? '2' : '',
+      mixedAcrylicBaysA: '',
+      mixedAcrylicBaysB: '',
+      timberRoofAboveType: 'insulated_panels',
+      timberInsulatedPanelThicknessMm: '50',
+      timberTrayWidthMm: '500',
+      postCount: String(costInputs?.post_count ?? 2),
+      houseConnectionType: costInputs?.house_connection_type ?? 'fascia',
+      postConnectionType: costInputs?.post_connection_type ?? 'deck_bracket',
+      ground: costInputs?.ground ?? 'easy',
+      lengthM: String(lengthM),
+      projectionM: String(projectionM),
+      hipCornerLengthBM: '0',
+      hipCornerProjectionBM: '0',
+      postCutHeightM: String(postCutHeightM),
+      timberRoofAllowanceExGst: '0',
+      flashings: { rows: [] },
+      overrides: {},
+      infills: { items: [] },
+    }],
+    blinds: {
+      items: blindItems.map((item) => ({
+        ...item,
+        widthMm: String(item.widthMm),
+        coverLengthMm: String(item.coverLengthMm),
+        motorised: item.motorised ? 'YES' : 'NONE',
+      })),
+    },
+  };
+}
+
+export function buildEnquiryPricingSnapshot(params: EnquiryPricingParams): EnquiryPricingSnapshot {
+  const costInputs = buildCanonicalCostInputs(params);
+  let costResult: ReturnType<typeof calculateCostV1> | null = null;
+  if (costInputs) {
+    try {
+      costResult = calculateCostV1(costInputs);
+    } catch {
+      // Pricing is best-effort and must never block an enquiry submission.
+    }
+  }
+
+  const blindItems = buildBlindItems(params);
+  const blindPricing = blindItems.length ? priceAllBlinds(blindItems) : null;
+  const blindsQuoteIncGst = blindPricing && blindPricing.totals.totalIncCents > 0
+    ? blindPricing.totals.totalIncCents / 100
+    : null;
+  const baseTrueCostIncGst = costResult?.totals?.cost_inc_gst;
+  const budgets = buildEnquiryBudgets({
+    enquiryType: params.enquiryType,
+    baseTrueCostIncGst: typeof baseTrueCostIncGst === 'number' && Number.isFinite(baseTrueCostIncGst) && baseTrueCostIncGst > 0
+      ? baseTrueCostIncGst
+      : null,
+    blindsQuoteIncGst,
+  });
+
+  return {
+    costInputs,
+    costResult,
+    calculatorInputs: calculatorInputsFromSnapshot(params, costInputs, blindItems),
+    budgets,
+  };
+}
+
+export function buildEnquiryDraftEstimateRow(params: EnquiryPricingParams & {
+  projectId: string;
+  createdBy: string;
+  email: string;
+  phoneRaw: string;
+  message: string;
+  pricing: EnquiryPricingSnapshot;
+}): Record<string, unknown> {
+  const warnings = ['Draft design created automatically from website enquiry.'];
+  if (isTruthy(params.addOns.lighting) || isTruthy(params.addOns.heating) || isTruthy(params.addOns.slats)) {
+    warnings.push('Some enquiry add-ons are captured as notes only and still need staff review in the calculator.');
+  }
+
+  let derived: Record<string, unknown> = {
+    source: 'marketing_enquiry',
+    enquiryType: params.enquiryType,
+    budgetBasis: params.pricing.budgets.budgetBasis,
+  };
+  let outputs: Record<string, unknown>;
+  if (params.pricing.costResult) {
+    const result = params.pricing.costResult;
+    outputs = {
+      cost_snapshot_version: 'v2',
+      materials: result.materials,
+      install: result.install,
+      overhead: result.overhead,
+      totals: result.totals,
+      warnings: (result as { warnings?: unknown[] }).warnings ?? warnings,
+      pergolas: (result as { pergolas?: unknown[] }).pergolas ?? [],
+      siteShared: (result as { shared?: unknown }).shared ?? null,
+      shared: (result as { shared?: unknown }).shared ?? null,
+    };
+    derived = { ...derived, pricingMode: 'full_costing' };
+  } else {
+    const baseRange = params.pricing.budgets.baseRange;
+    const costIncGst = baseRange ? Math.round(baseRange.lowIncGst / QUOTE_MULTIPLIER) : 0;
+    outputs = {
+      cost_snapshot_version: 'v2',
+      totals: {
+        cost_inc_gst: costIncGst,
+        cost_ex_gst: Math.round((costIncGst / 1.15) * 100) / 100,
+        warnings,
+        notes_and_warnings: warnings,
+      },
+      warnings,
+    };
+    derived = { ...derived, pricingMode: params.pricing.costInputs ? 'indicative_fallback' : 'placeholder' };
+  }
+
+  return {
+    project_id: params.projectId,
+    ...buildEstimateDbPayload({
+      status: 'draft',
+      inputs: params.pricing.calculatorInputs,
+      outputs,
+      derived,
+      projectSnapshot: {
+        name: `${params.name} - ${params.suburb || 'Enquiry'}`.trim(),
+        siteAddress: params.suburb || null,
+        region: null,
+        quoteRef: null,
+        source: 'marketing_enquiry',
+      },
+      snapshot: {
+        source: 'marketing_enquiry',
+        contact: { displayName: params.name, email: params.email || null, phone: params.phoneRaw || null },
+        project: {
+          projectName: `${params.name} - ${params.suburb || 'Enquiry'}`.trim(),
+          region: null,
+          siteAddress: params.suburb || null,
+          quoteRef: null,
+        },
+        enquiry: {
+          enquiryType: params.enquiryType,
+          widthM: params.widthM,
+          depthM: params.depthM,
+          heightM: params.heightM,
+          style: params.style || null,
+          roofMaterials: params.roofMaterials,
+          addOns: params.addOns,
+          message: params.message || null,
+        },
+      },
+      version: 1,
+      createdBy: params.createdBy,
+    }),
+  };
+}
