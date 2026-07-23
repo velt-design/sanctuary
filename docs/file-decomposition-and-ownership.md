@@ -61,6 +61,15 @@ Packages own reusable truth. Move behavior into `packages/*` only when it is app
 
 Tests may be longer than production files, but large tests should still split by behavior, fixture, or helper when they become hard to scan.
 
+The Calculator Brain follows this split:
+
+- `packages/costing/src/controlConfig.ts` owns the reusable typed snapshot, validation, application, diff, and scenario-preview contract. It must not gain Supabase or portal workflow concerns.
+- `apps/portal/lib/costing/configurationResolver.ts` owns current/historical read resolution and provenance; `configurationAdmin.ts` owns draft/list/compare/publish orchestration; `configurationShared.ts` owns row mapping and hashes.
+- thin route files under `apps/portal/app/api/admin/costing/configurations` own admin guards, HTTP parsing, status mapping, and response shape only.
+- `apps/portal/app/admin/costing/CostingControlCentre.tsx` owns browser editing and presentation only. It does not import Supabase, calculate prices, validate durable policy, or publish directly.
+
+If the control-centre component approaches the warning band, extract the version-history table and draft section editors before adding new configuration categories. If the package contract approaches its warning band, split snapshot/validation from diff/preview while preserving the public `@sp/costing` export.
+
 ## SaaS-Ready Portal Rule
 
 Write portal code as if the portal may later become its own SaaS product.

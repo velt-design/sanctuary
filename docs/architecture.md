@@ -7,9 +7,9 @@ For the north-star structure this repo is converging toward, read `docs/target-a
 ## Workspace Shape
 
 - `apps/marketing`: public marketing site, enquiry form, public quote and invoice viewers, email templates, analytics runtime routes, consent handling, SEO.
-- `apps/portal`: authenticated staff portal, admin surfaces, project workflow, estimates, quotes, invoices, schedule, design list, running jobs, job packs, imports, pricebook.
+- `apps/portal`: authenticated staff portal, admin surfaces, project workflow, estimates, quotes, invoices, schedule, design list, running jobs, job packs, imports, and the Calculator Brain costing control centre.
 - `apps/worker`: Node 22 durable-job runtime, safe RPC adapter, lease/heartbeat/retry orchestration, bounded concurrency, health server, and CLI modes. It imports no Next.js app and defaults to dark mode.
-- `packages/costing`: canonical costing engine and base config, imported as `@sp/costing`.
+- `packages/costing`: canonical costing engine, base config, typed admin-configuration contract, validation, diff, and impact preview, imported as `@sp/costing`.
 - `packages/geometry`: canonical geometry solvers and viewer helpers, imported as `@sp/geometry`.
 - `packages/email-provider`: Node-only direct-`fetch` email provider boundary for canonical Resend request bytes, stable provider identity, typed outcomes, timeouts/abort handling, and Svix-signed webhook-envelope verification, imported as `@sp/email-provider`.
 - `packages/jobs`: shared durable background-job kinds, safe contracts, retry/rollout policy, and state/effect transition rules, imported as `@sp/jobs`.
@@ -36,13 +36,15 @@ Marketing owns public lead capture and public document viewing. It may call Supa
 
 Portal owns staff workflow state and staff APIs. Staff routes live under `apps/portal/app/staff`, admin routes under `apps/portal/app/admin`, and staff API routes under `apps/portal/app/api/staff/v1`.
 
+The portal's Calculator Brain lives at `/admin/costing`. Browser code uses admin APIs and never writes Supabase tables directly. Portal server modules own draft/version persistence and audit orchestration; `@sp/costing` owns which values are supported, validation, application to the engine, calculations, diffs, and preview calculations. Published configuration rows are immutable, and estimate snapshots retain the exact version/snapshot used.
+
 Worker owns generic durable execution mechanics only. It reaches Supabase through its private service-role RPC adapter, validates every response against `@sp/jobs`, and never imports portal or marketing modules. JOB-03 adds a reusable durable email-effect coordinator, but no registered domain handler or producer; workflow handlers may join later only through their existing shared owners.
 
 Shared packages own business logic that must not be forked into apps. If app code needs a package behavior change, change the package and update call sites.
 
 ## Source Of Truth Rules
 
-- Costing logic and config live in `packages/costing`.
+- Costing formulas, supported configuration types, validation, application, diffing, preview calculation, and base config live in `packages/costing`. Supabase stores immutable published values and draft workflow state, not executable logic.
 - Geometry solving lives in `packages/geometry`; portal drawing code adapts it for UI and persistence.
 - Durable background-job kinds, worker response contracts, retry policy, and transition policy live in `packages/jobs`; the Supabase ledger, private payload store, logged PGMQ queue, and lease-fenced RPCs own persistence. `apps/worker` owns execution mechanics, while later workflow checkpoints must own their domain preparation/finalisation and command-boundary enqueue decisions.
 - Email-provider request normalization, exact wire-body hashing, stable Resend idempotency identity, typed delivery outcomes, timeout/abort behavior, and raw-body webhook verification live in `packages/email-provider`. Apps may provide server-only compatibility adapters, but they must not fork provider rules or log raw provider/customer content.

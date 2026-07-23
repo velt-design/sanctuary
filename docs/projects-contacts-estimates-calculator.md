@@ -19,12 +19,13 @@ This doc is the current-state reference for the core staff portal workflow befor
 - Contact APIs: `apps/portal/app/api/contacts` and the Contacts-list read model at `apps/portal/app/api/staff/v1/contacts/index`.
 - Project APIs: `apps/portal/app/api/projects` and action routes under `apps/portal/app/api/staff/v1/projects`.
 - Estimate APIs: `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`.
+- Costing configuration admin: `/admin/costing`, guarded APIs under `apps/portal/app/api/admin/costing/configurations`, and server domain owners under `apps/portal/lib/costing/configuration*.ts`.
 - Route/auth contracts: `docs/staff-api-auth-contracts.md`.
 - Project domain helpers: `apps/portal/lib/projects`.
 - Estimate domain helpers: `apps/portal/lib/estimates`.
 - Local-first mutation keys and cache helpers: `apps/portal/lib/localFirst/portalEntities.ts` and `apps/portal/components/sync/LocalFirstPortalMutations.tsx`.
 
-Important tables include `contacts`, `projects`, `project_task_checks`, `estimates`, `quote_versions`, `quote_send_logs`, `site_visit_events`, `schedule_items`, `deposit_invoices`, and `job_pack_generations`.
+Important tables include `contacts`, `projects`, `project_task_checks`, `estimates`, `costing_configuration_versions`, `costing_configuration_publication`, `costing_configuration_audit_events`, `quote_versions`, `quote_send_logs`, `site_visit_events`, `schedule_items`, `deposit_invoices`, and `job_pack_generations`.
 
 For table/RPC ownership, write paths, access boundaries, and migration sources, see `docs/supabase-schema-map.md`.
 
@@ -83,6 +84,9 @@ The calculator produces estimate snapshots. Estimate rows are versioned per proj
 - Estimate summary mapping lives in `apps/portal/lib/estimates/summarize.ts` and server mapping helpers.
 - Version labels are derived from project estimate rows; new estimates advance the next available version.
 - Estimate snapshots carry calculator inputs plus output sections such as `derived`, `projectSnapshot`, `snapshot`, and `configVersions`.
+- Live calculator responses carry the exact costing configuration provenance used by that calculation. Reprice/save copies it into `outputs.configVersions.costingControl`; it must not infer the version from a later metadata request because an admin could publish between calculation and save.
+- Published provenance contains the immutable configuration version ID/number, content hash, and base manifest version. `estimates.costing_config_version_id` references that published row with restrictive deletion. Before the first publish, provenance contains the complete hashed effective legacy configuration snapshot and the foreign key remains null.
+- Frozen estimate inputs and outputs remain the historical commercial record. Re-evaluation may load the immutable published version (or the legacy snapshot) through `resolveHistoricalCostingConfiguration`, but ordinary estimate reads, quotes, actual-cost comparison, invoices, and job packs must not silently reprice stored history.
 - Calculator blind add-ons keep `widthMm` and `coverLengthMm` in saved estimate snapshots for compatibility, but the staff calculator presents and accepts those two dimensions in metres and converts them back to mm in the client adapter before pricing/persistence. A meaningful blind with invalid dimensions or selections is a quote blocker; quote mapping omits the invalid line and reports a blocking issue instead of silently creating a zero-dollar line.
 - Drawing state can be stored inside estimate snapshot/drawing draft shapes, but design workbench architecture and compatibility rules are owned by `docs/design-workbench-architecture.md`.
 
@@ -113,6 +117,8 @@ Successful calculator saves remain on the calculator long enough to show the act
 For a server-synced saved estimate, the admin-only calculator `Actual vs estimated` review records post-job materials, install, overhead, travel, extras, crew hours, notes, and completion state through `/api/staff/v1/estimates/[estimateId]/actual-costs`. The calculator does not render the review or make its optional read request for staff sessions. Variance is calculated against the frozen saved estimate outputs; historical estimates are not repriced. Records live in `estimate_cost_actuals`, retain the existing route/RLS boundary and last updater, and require materials, install, and overhead actuals before completion.
 
 Costing logic must remain in `packages/costing`; estimate code should persist and summarize costing output, not fork the costing engine.
+
+Publishing a costing draft affects only calculations performed after the publication commits. An estimate already calculated in the browser retains the provenance returned with its result when saved, even if the current publication changes before Save. Preserving an existing estimate's stored pricing also preserves its existing costing provenance. Rollback is a new published configuration version, not mutation of estimates or prior configuration rows.
 
 Calculator infills keep draft-string and field validation in the portal, but every complete infill delegates geometry, source/orientation resolution, joiner/support cuts, and stock purchasing to `calculateInfillsTakeoffV1()` from `@sp/costing`. The cut-list result has two groups: `Pieces to cut` for individual finished panels and linear cuts, and `Materials to purchase` for physically allocated stock. CSV download and clipboard copy use those same canonical records, including source IDs and allocated stock. A critical takeoff error makes the infill incomplete, hides exportable rows, and participates in Quote Status/save blocking.
 

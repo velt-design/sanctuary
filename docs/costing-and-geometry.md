@@ -5,7 +5,7 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 ## Read First
 
 - Use `## Costing Source Of Truth` before changing pricing or costing imports.
-- Use `## Commercial Boundary And Migration Harness` and `## Portal Cost Overrides` for commercial shadow flow and override boundaries.
+- Use `## Commercial Boundary And Migration Harness` and `## Costing Configuration Control` for commercial shadow flow and configuration boundaries.
 - Use `## Geometry Source Of Truth` before changing geometry solvers or portal drawing adapters.
 - Use the projection and shape sections for top-projection, roof/span, gable, downslope, and acrylic rules.
 - Finish with `## Verification` for package and app checks.
@@ -61,14 +61,63 @@ Any future live rollout gate for workbench-solved pricing belongs at the estimat
 
 Do not price from calculator while claiming the saved source is workbench-solved. Until the downstream adapter is introduced, workbench save/reprice controls should stay disabled or unavailable.
 
-## Portal Cost Overrides
+## Costing Configuration Control
 
-Portal applies database overrides on top of `loadCostingConfigV1()`.
+`@sp/costing` remains the only calculation authority. `packages/costing/src/controlConfig.ts` defines the exact typed configuration snapshot, validation, application, deterministic diff, and representative-scenario impact preview. The database stores JSON values conforming to that contract; it never stores JavaScript, SQL, predicates, quantity expressions, or unrestricted formulas.
 
-- Merge helpers: `apps/portal/lib/costing/overrides.ts`.
-- Staff costing APIs: `apps/portal/app/api/staff/costing/v1`.
-- Staff costing metadata fetch helper: `apps/portal/lib/costing/costEngine.ts`.
-- Pricebook/admin cost surfaces: `apps/portal/app/pricebook` and `apps/portal/app/admin/costs`.
+The admin-only control centre is `/admin/costing`. Its browser component calls guarded admin APIs only. `apps/portal/lib/costing/configurationAdmin.ts` owns draft/version orchestration, while `configurationResolver.ts` owns the staff calculation read path. Published version rows are immutable; a separate singleton publication row points to the current version so switching versions never mutates an old published row.
+
+Current data flow:
+
+```text
+admin draft
+  -> package validation
+  -> package diff + calculateSiteCostV1 representative preview
+  -> confirmed atomic publish RPC + append-only audit event
+  -> current publication pointer
+  -> package validation/application on each server costing read
+  -> package calculation
+  -> exact costingConfiguration provenance on the response
+  -> frozen estimate outputs + configVersions.costingControl + version foreign key
+```
+
+Before the first version is explicitly published, the resolver preserves the previous effective behavior: it loads the legacy material/action/curve overrides, snapshots their exact effective typed configuration, hashes it, and returns that snapshot as calculation provenance. Once a version is published, staff calculator, materials-explain, V2 costing, and job-pack material-option reads use the published version. A database error after the version schema exists fails closed; it must not silently fall back from a published version to package defaults. The legacy immediate-write routes return `409` and the old Pricebook pages redirect to the control centre.
+
+### Complete configuration boundary
+
+The v1 control contract is exhaustive by exact keyset. Unknown keys and missing package keys fail validation.
+
+| Current item | Classification | Editable shape |
+| --- | --- | --- |
+| Every active `materials.items[*].cost_ex_gst` value (currently 148 package material IDs) | Safely admin-editable | Non-negative ex-GST number; material identity, unit, attributes, and supplier/product meaning remain package-owned. |
+| Install crew-hour rate | Safely admin-editable | Positive ex-GST number; inc-GST companion is derived by the package adapter. |
+| Every action with an existing `base_minutes` value (currently 35 scalar actions and 4 by-profile actions; actions without a base value remain unavailable) | Constrained typed rule | Non-negative bounded minutes. By-profile actions must retain the package-defined profile key and exact profile options. |
+| Existing multiplier values in `access`, `access_logistics`, `height`, `ground`, `structure_type`, and `roof_type` | Constrained typed rule | Positive bounded numbers with the exact package-defined groups/options. Action applicability and multiplier attachment remain code/config-manifest logic. |
+| Rafter-length loading curve | Constrained typed rule | Two to twenty bounded points with strictly increasing lengths. Interpolation and use of the curve remain package code. |
+| Eight named overhead allocation values: crew-day hours; operations fixed/job, variable/crew-day, gable startup, box startup, timber/rounded crew-day; sales/design per job and extra-module factor | Safely admin-editable | Individually bounded numbers. Allocation formulas and eligibility predicates remain package code. |
+| Overhang default/min/max; nine box-perimeter dimension/pitch/setback allowances; acrylic max slope; cedar cover and waste factor; BOM stock-length preference | Constrained typed rule | Named bounded values with cross-field validation (`min <= default <= max`), unique stock lengths, and exact package field ownership. |
+| Site travel, extras, timber-roof allowance, and quote discount | Per-estimate inputs, not global configuration | Continue to be entered and frozen with the estimate; they are not Calculator Brain settings. |
+
+### Code-owned semantics
+
+The following are deliberately not database-editable:
+
+- costing formulas, action applicability predicates, quantity expressions, multiplier attachment rules, curve interpolation, material/BOM expressions, hardware placeholder expressions, and warning logic;
+- geometry normalization/derivation, rafter and member solving, sheet/stock rounding, infill takeoff, pooling, kerf and bin-packing algorithms;
+- the pitched-acrylic `$2000 ex GST` eligibility predicate and amount, GST rate, currency rounding sequence, job/site aggregation, and customer-price/discount sequence;
+- blind band tables, fabric factors, selling uplift, motor/cover add-on rates, and blind rounding;
+- generic minimum charges (the active engine has no generic minimum-charge rule), new allowance categories, arbitrary supplier formulas, and executable formulas;
+- manifest file selection, material/action identities and units, supplier/product attributes, roof/style option semantics, marketing standard-build assumptions, and workbench/commercial input migration.
+
+Changing any code-owned item is a normal package semantic change with package regression tests and explicit review. It must not be smuggled into a database setting merely to make the editor more flexible.
+
+### Version and rollback rules
+
+- Draft rows may be edited and revalidated; published rows are immutable.
+- Publishing requires a saved hash, compare-time current-version ID, non-empty audit note, a clear diff, and representative impact. The RPC locks publication and rejects stale drafts or comparisons.
+- Rollback means cloning a compatible previous published version into a new draft and publishing that new version. History is never rewritten.
+- A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
+- Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
 ## Marketing Estimate Use
 

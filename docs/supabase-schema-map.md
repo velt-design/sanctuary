@@ -172,31 +172,36 @@ Tables/RPCs:
 
 - Design List: `design_package_requests`
 - Portal theme: `portal_user_theme_settings`, `portal_user_theme_presets`
-- Costing overrides: `material_cost_overrides`, `install_action_minutes_overrides`, `install_driver_curve_overrides`
+- Versioned costing: `costing_configuration_versions`, `costing_configuration_publication`, `costing_configuration_audit_events`
+- Legacy costing compatibility (read-only after this migration): `material_cost_overrides`, `install_action_minutes_overrides`, `install_driver_curve_overrides`
+- Estimate provenance: nullable `estimates.costing_config_version_id`
 
 Primary write path:
 
 - Design List request and cell/action routes under `apps/portal/app/api/staff/v1/design-packages`.
 - Theme routes under `apps/portal/app/api/staff/v1/theme`.
-- Costing/admin override routes under `apps/portal/app/api/admin`.
+- Costing drafts and publication go through admin-guarded routes under `apps/portal/app/api/admin/costing/configurations`. Draft save uses an optimistic content hash. Publish uses the admin-only atomic `publish_costing_configuration_version(...)` RPC with the expected current version, expected draft hash, audit note, package-generated diff, and package-generated impact preview.
 
 Primary read path:
 
 - Design package server/domain helpers under `apps/portal/lib/designPackages`.
 - Theme server helpers under `apps/portal/lib/theme`.
-- Costing override helpers under `apps/portal/lib/costing/overrides.ts`, feeding `packages/costing` consumers without copying costing engine logic.
+- `apps/portal/lib/costing/configurationResolver.ts` reads the singleton publication pointer, validates and hashes the immutable JSON version against `@sp/costing`, and applies it through the package contract. Until the first publication it snapshots the effective legacy overrides through `overrides.ts`; database failures after schema creation fail closed.
 
 Access rule:
 
 - Design List writes are staff-owned and should touch only request-owned fields.
 - Theme rows are user-scoped and must preserve own-user RLS behavior.
-- Costing override writes are admin-owned. Costing source-of-truth logic remains in `packages/costing`; tables only store portal override data.
+- Costing draft rows are admin-owned and RLS-protected. Published rows are immutable by trigger; current selection lives in a separate one-row table. Staff may read the current published version for server costing. The audit table is append-only to authenticated callers and receives publish events only through the security-definer RPC.
+- Configuration JSON contains only the package-defined typed values. Executable formulas and calculation algorithms remain in `packages/costing`.
+- Estimate provenance may reference only a published version; a database trigger enforces that rule and foreign-key deletion is `restrict`. Existing estimate inputs/outputs remain frozen.
 
 Migration source:
 
 - `supabase/migrations/20260317_000001_design_package_requests.sql`.
 - `supabase/migrations/20260307_000001_portal_theme_settings.sql`, `20260308_000002_portal_theme_user_presets.sql`, and `20260318_000001_portal_theme_stone_olive_default.sql`.
 - `supabase/costing_overrides.sql`, `supabase/migrations/20260326_000001_install_driver_curve_overrides.sql`, and security hardening.
+- `supabase/migrations/20260723_000001_costing_configuration_versions.sql` adds versioning, immutable publication, publish audit, and estimate provenance. It is forward-only; legacy override rows remain for pre-first-publish compatibility and historical operational inspection.
 
 ## Durable Background Jobs
 

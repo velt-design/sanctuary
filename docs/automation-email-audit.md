@@ -93,6 +93,7 @@ Professional enquiry file uploads are stored, not just counted. The browser mint
 - Pricing rollout audit payloads include estimate or quote IDs, actor/request metadata, requested source, selected source, gate version, blocking gate codes, commercial input hash, parity report hash/version, and rollback provenance.
 - Pricing rollout audit payloads must exclude raw public tokens, token hashes, service-role details, raw commercial payloads, generated PDF contents, and email body token URLs.
 - Post-enable audit checks must verify blocked attempts have no paired estimate mutation, successful `workbench_solved` saves have source metadata, and rollback saves show `rollbackProvenance: explicit_calculator_live`.
+- Costing configuration publication uses its dedicated append-only `costing_configuration_audit_events` table. The atomic publish RPC records actor ID/email, immutable version ID/hash, previous current version, audit note, exact package-generated diff, and representative-scenario impact. Draft keystrokes are not audit events. Published rows and audit events cannot be updated or deleted by authenticated callers; rollback creates and publishes a new version.
 
 ## Common Tasks
 

@@ -12,6 +12,7 @@ This doc is the current-state reference for staff, admin, and public-token route
 - `GET /api/staff/v1/contacts/index` is the staff-authenticated Contacts-list read model. It uses `requireStaffContext()` and the canonical paginated contact loader, returns row-count and truncation metadata with diagnostics, and is always `private, no-store`.
 - `GET /api/staff/v1/search?q=...` is the staff-authenticated global header search read model. It requires 2-80 characters and performs one `portal_search_v1()` call through the request's auth-bound client. The `SECURITY INVOKER` function verifies `has_portal_access()` in-band while existing RLS remains authoritative, then returns at most five ranked Projects followed by five Contacts. Projects and Contacts retain authenticated `portal_access_all` policies for every operation; their row-independent membership helper is wrapped in a scalar `SELECT` so PostgreSQL evaluates the same decision once per statement. Projects match name, saved reference, site address, or linked contact name; Contacts match name, email, phone, or address. The route emits diagnostics and is always `private, no-store`.
 - Admin routes live under `apps/portal/app/api/admin` and must enforce admin role checks.
+- Calculator Brain routes under `/api/admin/costing/configurations` use `requireAdminContext()` and its auth-bound client for list, clone/create, draft read/save, compare, and publish. Browser components never mutate the version tables. Publish additionally passes through the database's `is_portal_admin()` check and atomic RPC.
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/api/quotes`.
 - Public invoice routes live under `apps/marketing/app/invoice/[invoiceId]` and `apps/marketing/app/api/invoices`.
 - Marketing lead and enquiry APIs live under `apps/marketing/app/api/contact` and `apps/marketing/app/api/enquiry`.
@@ -80,6 +81,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
 - Estimate actual-cost calibration uses `requireStaffContext()` and the returned auth-bound client. Blank or non-negative actuals may be saved as a draft; completing a review requires materials, install, and overhead. Invalid payloads return `400`, missing estimates return `404`, and table/schema failures remain `500`.
 - Quote create and estimate-refresh routes return `422` when the shared estimate-to-quote mapper reports a commercial blocker such as an invalid blind. This validation failure must not be treated as a transient server error or silently replaced with a zero-dollar line.
+- Costing draft validation returns `422` with path-specific issues. Stale draft hashes or compare-time publication IDs return `409`; clients must refresh rather than overwrite. Immediate legacy material/action/curve PATCH routes also return `409` and direct admins to `/admin/costing`.
 
 ## Route Ownership
 
@@ -91,6 +93,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Automation events, project tasks, follow-ups, email previews, and audit routes: `docs/automation-email-audit.md`.
 - Tracking, consent, CSP reports, Lighthouse, and audit routes: `docs/security-privacy-quality.md`.
 - Auth, role setup, Supabase env, RLS, and migration readiness: `docs/environment-auth-supabase.md`.
+- Costing configuration, version publication, and estimate provenance: `docs/costing-and-geometry.md`.
 
 If a route crosses feature boundaries, keep the side effect in the owning route/domain helper and add an explicit contract instead of duplicating logic.
 
