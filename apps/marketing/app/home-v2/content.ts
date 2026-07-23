@@ -3,7 +3,7 @@ export const homepageDescription =
 
 export const proofPoints = [
   { value: 'Auckland based', label: 'Local design and installation' },
-  { value: 'Designed + installed by Sanctuary', label: 'One team from concept to completion' },
+  { value: 'Design & Build', label: 'One team from concept to completion' },
   { value: 'Fixed-roof specialists', label: 'Residential and selected commercial projects' },
 ] as const;
 

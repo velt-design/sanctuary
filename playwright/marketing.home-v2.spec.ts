@@ -111,7 +111,7 @@ for (const viewport of viewports) {
     await expect(proofItems).toHaveCount(4);
     await expect(proofItems.nth(1)).toContainText('Auckland based');
     await expect(proofItems.nth(1)).toContainText('Local design and installation');
-    await expect(proofItems.nth(2)).toContainText('Designed + installed by Sanctuary');
+    await expect(proofItems.nth(2)).toContainText('Design & Build');
     await expect(proofItems.nth(2)).toContainText('One team from concept to completion');
     await expect(proofItems.nth(3)).toContainText('Fixed-roof specialists');
     await expect(proofItems.nth(3)).toContainText('Residential and selected commercial projects');
