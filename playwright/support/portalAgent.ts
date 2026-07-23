@@ -41,8 +41,9 @@ export async function openPortalPage(page: Page, route: string, options: OpenPor
 
   await expect(
     page
-      .locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]')
-      .or(page.getByRole('navigation', { name: 'Portal navigation' }))
+      .locator(
+        'button[aria-label="Open portal navigation"]:visible, [data-portal-sidebar-rail="true"]:visible, [data-portal-sidebar-panel="true"]:visible, [aria-label="Portal navigation"]:visible',
+      )
       .first(),
     `Expected authenticated portal shell chrome while opening ${route}.`,
   ).toBeVisible({ timeout });

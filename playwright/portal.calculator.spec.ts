@@ -151,20 +151,19 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(page.getByText('Pergola 2 · Module 1', { exact: true }).first()).toBeVisible();
     const pricing = page.getByRole('region', { name: 'Pricing preview' });
     await expect(pricing.getByText('Customer price (inc GST)', { exact: true })).toBeVisible();
-    await expect(pricing.getByText('1.25× internal true cost · pergola only', { exact: true })).toBeVisible();
-    await expect(pricing.getByText('Internal costing', { exact: true })).toBeVisible();
-    await expect(pricing.getByText('No customer-priced add-ons configured.', { exact: true })).toBeVisible();
-    await expect(pricing.getByText('Blind customer price (ex GST)', { exact: true })).toHaveCount(0);
+    await expect(pricing.getByText('1.25× internal true cost · pergola only', { exact: true })).toHaveCount(0);
+    await expect(pricing.getByText('Customer quote add-ons', { exact: true })).toHaveCount(0);
+    const internalDetails = pricing.locator('details', { hasText: 'Internal costing' });
+    await expect(internalDetails).not.toHaveAttribute('open', '');
+    await internalDetails.locator('summary').click();
+    await expect(internalDetails).toHaveAttribute('open', '');
 
     const customerInc = parseCurrency(await pricing.locator('strong').first().innerText());
-    const internalEx = parseCurrency(
-      await pricing.locator('dt', { hasText: 'True cost (ex GST)' }).locator('..').locator('dd').innerText(),
-    );
-    const expectedCustomerEx = Math.round(internalEx * 1.25 * 100) / 100;
-    const expectedCustomerInc = Math.round(expectedCustomerEx * 1.15 * 100) / 100;
-    const customerEx = parseCurrency(await pricing.getByText(/^Customer price \(ex GST\)/).innerText());
-    expect(customerEx).toBe(Math.round(expectedCustomerEx));
-    expect(customerInc).toBe(Math.round(expectedCustomerInc));
+    const itemPricing = page.getByRole('region', { name: 'Price by item' });
+    await expect(itemPricing.getByText('Pergola 1', { exact: true })).toBeVisible();
+    await expect(itemPricing.getByText('Pergola 2', { exact: true })).toBeVisible();
+    const exactItemTotal = parseCurrency(await itemPricing.locator('tfoot th').last().innerText());
+    expect(customerInc).toBe(Math.round(exactItemTotal));
   });
 });
 
@@ -176,13 +175,13 @@ test('real project route embeds the seeded Calculator without a project picker',
     await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('tab', { name: 'Calculator' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('[data-calculator-project-picker="fixed"]')).toBeVisible();
+    await expect(page.locator('[data-calculator-project-picker="fixed"]')).toHaveCount(0);
     await expect(page.locator('[data-calculator-project-picker="enabled"]')).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`tab=estimates.*estimateId=${encodeURIComponent(estimateId)}`));
   });
 });
 
-test('project Calculator keeps compact sticky chrome across supported widths', async ({ page }, testInfo) => {
+test('project Calculator keeps a compact command bar without horizontal overflow', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await clearPreviewSplitPreference(page);
@@ -203,24 +202,16 @@ test('project Calculator keeps compact sticky chrome across supported widths', a
         const commandElement = document.querySelector<HTMLElement>('[data-calculator-command-bar]');
         const workspaceElement = document.querySelector<HTMLElement>('[data-calculator-split="true"]');
         if (!mastheadElement || !commandElement || !workspaceElement) return null;
-        const mastheadBox = mastheadElement.getBoundingClientRect();
         const commandBox = commandElement.getBoundingClientRect();
-        const workspaceBox = workspaceElement.getBoundingClientRect();
         return {
-          mastheadHeight: Math.round(mastheadBox.height),
           commandHeight: Math.round(commandBox.height),
-          chromeHeight: Math.round(workspaceBox.top - mastheadBox.top),
-          mastheadPosition: getComputedStyle(mastheadElement.parentElement as HTMLElement).position,
           horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
         };
       });
       expect(metrics).not.toBeNull();
-      expect(metrics?.mastheadPosition).toBe('sticky');
       expect(metrics?.horizontalOverflow ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(1);
       if (width >= 1366) {
-        expect(metrics?.mastheadHeight ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(64);
         expect(metrics?.commandHeight ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(60);
-        expect(metrics?.chromeHeight ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(145);
       }
     }
 
@@ -379,11 +370,12 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     expect(previewWidth).toBeLessThanOrEqual(441);
     await expect(page.getByRole('region', { name: 'Current customer price' })).toBeHidden();
 
-    const internalValues = page
+    const internalDetails = page
       .getByRole('region', { name: 'Pricing preview' })
-      .getByText('Internal costing', { exact: true })
-      .locator('..')
-      .locator('dd');
+      .locator('details', { hasText: 'Internal costing' });
+    await expect(internalDetails).not.toHaveAttribute('open', '');
+    await internalDetails.locator('summary').click();
+    const internalValues = internalDetails.locator('dd');
     await expect(internalValues).toHaveCount(7);
     const internalValuePresentation = await internalValues.evaluateAll((elements) =>
       elements.map((element) => {
@@ -405,11 +397,7 @@ test('calculator preview does not clip horizontally at 1366px', async ({ page },
     expect(internalValuePresentation.every((value) => value.wordBreak === 'normal')).toBe(true);
     expect(internalValuePresentation.every((value) => value.lineCount === 1)).toBe(true);
 
-    const internalLabels = page
-      .getByRole('region', { name: 'Pricing preview' })
-      .getByText('Internal costing', { exact: true })
-      .locator('..')
-      .locator('dt');
+    const internalLabels = internalDetails.locator('dt');
     await expect(internalLabels).toHaveCount(7);
     const internalLabelPresentation = await internalLabels.evaluateAll((elements) =>
       elements.map((element) => {

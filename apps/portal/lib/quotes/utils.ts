@@ -18,8 +18,8 @@ export function lineTotalCents(qty: number, unitPriceIncCents: number): number {
   return Math.round(q * unit);
 }
 
-export function totalsFromLineItems(items: QuoteLineItem[]): QuoteTotals {
-  const totalInc = items.reduce((sum, item) => sum + (Number.isFinite(item.lineTotalIncGstCents) ? item.lineTotalIncGstCents : 0), 0);
+export function totalsFromIncGstCents(values: readonly number[]): QuoteTotals {
+  const totalInc = values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
   const totalEx = Math.round(totalInc / (1 + GST_RATE));
   const gst = totalInc - totalEx;
   return {
@@ -27,5 +27,9 @@ export function totalsFromLineItems(items: QuoteLineItem[]): QuoteTotals {
     totalExGstCents: totalEx,
     gstCents: gst,
   };
+}
+
+export function totalsFromLineItems(items: QuoteLineItem[]): QuoteTotals {
+  return totalsFromIncGstCents(items.map((item) => item.lineTotalIncGstCents));
 }
 

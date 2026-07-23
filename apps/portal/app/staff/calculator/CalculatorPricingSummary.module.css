@@ -63,11 +63,7 @@
 
 .header h2,
 .header p,
-.internalSection h3,
-.addonsSection h3,
-.addonsSection p,
-.internalGrid,
-.addonsGrid {
+.internalGrid {
   margin: 0;
 }
 
@@ -137,24 +133,51 @@
   background: color-mix(in srgb, var(--ui-status-warning-border) 7%, transparent);
 }
 
-.internalSection,
-.addonsSection {
+.internalSection {
   padding: 14px 16px;
 }
 
-.internalSection h3,
-.addonsSection h3 {
-  margin-bottom: 10px;
+.internalSection summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   color: var(--ui-text-muted);
   font-size: 12px;
   font-weight: 700;
+  cursor: pointer;
+  list-style: none;
 }
 
-.internalGrid,
-.addonsGrid {
+.internalSection summary::-webkit-details-marker {
+  display: none;
+}
+
+.internalSection summary::after {
+  content: '›';
+  flex: 0 0 auto;
+  color: var(--ui-text-muted);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+}
+
+.internalSection[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.internalSection summary:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.internalGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px 18px;
+  margin-top: 10px;
 }
 
 .metric {
@@ -187,23 +210,6 @@
   word-break: normal;
 }
 
-.addonsSection {
-  border-top: var(--ui-border-width) solid var(--ui-border);
-  background: var(--ui-surface-secondary);
-}
-
-.addonsSection p {
-  margin-top: 10px;
-  color: var(--ui-text-muted);
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.addonsSection .addonsEmpty {
-  margin-top: 0;
-  font-size: 12px;
-}
-
 @container calculator-page (max-width: 1119px) {
   .compactSummary {
     display: block;
@@ -223,8 +229,7 @@
 }
 
 @container calculator-preview-rail (max-width: 420px) {
-  .internalGrid,
-  .addonsGrid {
+  .internalGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -248,10 +253,9 @@
 .heroLabel,
 .heroEx,
 .heroExplanation,
-.internalSection h3,
-.addonsSection h3,
+.internalSection summary,
 .metric dt,
-.addonsSection p {
+.internalSection summary::after {
   color: var(--ui-text-muted);
 }
 
@@ -276,11 +280,6 @@
   background: var(--ui-status-warning-bg);
 }
 
-.metric,
-.addonsSection {
+.metric {
   border-color: var(--ui-border);
-}
-
-.addonsSection {
-  background: var(--ui-surface-secondary);
 }

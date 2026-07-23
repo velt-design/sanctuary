@@ -20,7 +20,7 @@ type InfillResultsStageProps = {
   cutListStatus: InfillComputeStatus;
   cutListRows: CutListRow[];
   preview: ReactNode;
-  technicalDetails: ReactNode;
+  technicalDetails?: ReactNode;
   technicalDetailsOpen: boolean;
   onTechnicalDetailsToggle: (open: boolean) => void;
   onFixBlocker: (warning: InfillWarningItem) => void;
@@ -86,14 +86,16 @@ export default function InfillResultsStage({
             {preview}
           </section>
 
-          <details
-            className={styles.infillCostDetails}
-            open={technicalDetailsOpen}
-            onToggle={(event) => onTechnicalDetailsToggle((event.currentTarget as HTMLDetailsElement).open)}
-          >
-            <summary>Cost and technical details</summary>
-            {technicalDetails}
-          </details>
+          {technicalDetails ? (
+            <details
+              className={styles.infillCostDetails}
+              open={technicalDetailsOpen}
+              onToggle={(event) => onTechnicalDetailsToggle((event.currentTarget as HTMLDetailsElement).open)}
+            >
+              <summary>Cost and technical details</summary>
+              {technicalDetails}
+            </details>
+          ) : null}
         </section>
       </aside>
     </div>

@@ -74,7 +74,6 @@ import { useInfillClipboard } from './useInfillClipboard';
 import { useInfillHotkeys } from './useInfillHotkeys';
 import { trackInfillEvent } from './infillTelemetry';
 import { buildImpactDiff, type ImpactDiff } from './diff';
-import { buildAddonsTotals, computeDisplayTotals } from './calcTotals';
 import {
   applyAcrylicVariantToInfillPayload,
   buildModulePayloadWithInfills,
@@ -212,7 +211,8 @@ import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommand
 import CalculatorConfigurationForm from './CalculatorConfigurationForm';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import CalculatorPricingSummary, { type CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
-import CalculatorPergolaPricingBreakdown from './CalculatorPergolaPricingBreakdown';
+import CalculatorItemPricingBreakdown from './CalculatorItemPricingBreakdown';
+import { useCalculatorPricingPreview } from './calculatorPricingPreview';
 import CalculatorActualCostReview from './CalculatorActualCostReview';
 import {
   CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX,
@@ -478,6 +478,7 @@ export default function CalculatorGridClient({
   const { email: sessionEmail, role: sessionRole } = usePortalSession();
   const email = typeof emailProp === 'string' ? emailProp : (sessionEmail ?? '');
   const role = (roleProp ?? (sessionRole ?? 'staff')) === 'admin' ? 'admin' : 'staff';
+  const canViewInternalCosts = role === 'admin';
 
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -1692,7 +1693,8 @@ export default function CalculatorGridClient({
     const pergola = requestPayload.pergolas.find((entry) => entry.id === route.pergolaId) ?? fallbackPergola;
     return pergola?.modules?.[route.localModuleIndex] ?? pergola?.modules?.[0] ?? null;
   }, [requestPayload, activeModuleIndex, moduleRoutes]);
-  const materialsDebugAvailable = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_COSTING_DEBUG_ENABLED === '1';
+  const materialsDebugAvailable = canViewInternalCosts
+    && (process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_COSTING_DEBUG_ENABLED === '1');
 
   const {
     result,
@@ -1927,7 +1929,7 @@ export default function CalculatorGridClient({
   ]);
 
   useEffect(() => {
-    if (!infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !readyToCalculate || isCalculating || engineError) {
+    if (!canViewInternalCosts || !infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !readyToCalculate || isCalculating || engineError) {
       setModuleBaseline(null);
       setModuleBaselineError(null);
       setModuleBaselineLoading(false);
@@ -1960,7 +1962,7 @@ export default function CalculatorGridClient({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [activeModulePayload, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, readyToCalculate]);
+  }, [activeModulePayload, canViewInternalCosts, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, readyToCalculate]);
 
   const resultModules = useMemo(() => (result?.pergolas ?? []).flatMap((pergola) => pergola.modules ?? []), [result]);
   const moduleResult = useMemo(() => {
@@ -2067,8 +2069,13 @@ export default function CalculatorGridClient({
   );
 
   const blindsUi = useMemo(() => buildCalculatorBlindsUi(blindsState.items), [blindsState.items]);
-  const addonsTotals = buildAddonsTotals(blindsUi.totalEx, blindsUi.totalInc);
-  const { coreEx: coreTotalEx, coreInc: coreTotalInc } = computeDisplayTotals(totalEx, totalInc, addonsTotals);
+  const pricingPreview = useCalculatorPricingPreview({
+    result,
+    inputs: values,
+    blindPricing: blindsUi.pricing,
+    estimateSnapshot: loadedEstimateDetail?.calculatorSnapshot,
+    resultFreshness,
+  });
   const pricingComparison = useMemo(
     () =>
       isEditingDesign
@@ -2346,7 +2353,7 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     const selectedInfillId = selectedInfill?.id ?? null;
-    if (!infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !moduleBaseline || !selectedInfillId || !readyToCalculate || isCalculating || engineError) {
+    if (!canViewInternalCosts || !infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !moduleBaseline || !selectedInfillId || !readyToCalculate || isCalculating || engineError) {
       setInfillWithoutCost(null);
       setCompareSheetCost(null);
       setCompareStripCost(null);
@@ -2405,7 +2412,7 @@ export default function CalculatorGridClient({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [activeModulePayload, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
+  }, [activeModulePayload, canViewInternalCosts, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
 
   const uiWarnings = useMemo(
     () =>
@@ -3917,10 +3924,8 @@ export default function CalculatorGridClient({
     { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
     { id: 'totalEx', label: 'Internal true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
     { id: 'totalInc', label: 'Internal true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
-    { id: 'blindsTotalEx', label: 'Blind customer price (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
-    { id: 'blindsTotalInc', label: 'Blind customer price (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
-    { id: 'coreTotalEx', label: 'Internal true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
-    { id: 'coreTotalInc', label: 'Internal true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
+    { id: 'blindsTotalEx', label: 'Blind customer price (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(blindsUi.totalEx) },
+    { id: 'blindsTotalInc', label: 'Blind customer price (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(blindsUi.totalInc) },
     ...(issuesCount
       ? [
           {
@@ -4031,8 +4036,9 @@ export default function CalculatorGridClient({
     materialsEx: formatMaybeMoney(materialsEx),
     installEx: formatMaybeMoney(installEx),
     overheadEx: formatMaybeMoney(overheadEx),
-    trueCostEx: formatMaybeMoney(coreTotalEx),
-    blindCustomerEx: formatMaybeMoney(addonsTotals.blinds.ex),
+    trueCostEx: formatMaybeMoney(totalEx),
+    blindCustomerEx: formatMaybeMoney(blindsUi.totalEx),
+    customerTotalInc: formatMaybeMoney(pricingPreview.totalIncGstCents / 100),
   };
 
   const closeSaveConfirmDialog = () => {
@@ -4051,17 +4057,20 @@ export default function CalculatorGridClient({
     resultFreshness,
     issuesCount,
     onOpenIssues: () => setIssuesOpen(true),
-    internalTrueCostExGst: coreTotalEx,
-    internalTrueCostIncGst: coreTotalInc,
+    customerTotalIncGstCents: pricingPreview.totalIncGstCents,
+    customerTotalExGstCents: pricingPreview.totalExGstCents,
+    undiscountedTotalIncGstCents: pricingPreview.undiscountedTotalIncGstCents,
+    quoteDiscountPct: pricingPreview.discountPct,
+    unpricedItemCount: pricingPreview.unpricedItemCount,
+    hasCustomerPricing: pricingPreview.hasCorePricing,
+    canViewInternalCosts,
+    internalTrueCostExGst: totalEx,
+    internalTrueCostIncGst: totalInc,
     materialsExGst: materialsEx,
     installExGst: installEx,
     overheadExGst: overheadEx,
     crewHours,
     installDays: crewDays,
-    blindCustomerPriceExGst: addonsTotals.blinds.ex,
-    blindCustomerPriceIncGst: addonsTotals.blinds.inc,
-    quoteDiscountPct: values.quoteDiscountPct,
-    hasInfills: infillsState.items.length > 0,
   };
 
   const CalculatorRoot = workspace ? 'section' : 'main';
@@ -4144,8 +4153,8 @@ export default function CalculatorGridClient({
           >
             <div className={styles.previewSummary}>
               <CalculatorPricingSummary {...pricingSummaryProps} />
-              <CalculatorPergolaPricingBreakdown result={result} quoteDiscountPct={values.quoteDiscountPct} />
-              {isEditingDesign ? <CalculatorActualCostReview estimateId={activeEditEstimateId} /> : null}
+              <CalculatorItemPricingBreakdown preview={pricingPreview} />
+              {canViewInternalCosts && isEditingDesign ? <CalculatorActualCostReview estimateId={activeEditEstimateId} /> : null}
               <ModuleViewsCard
                 moduleLabel={activeModuleLabel}
                 view={moduleViewsTab}
@@ -4178,7 +4187,9 @@ export default function CalculatorGridClient({
                 }
               />
 
-              <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
+              {canViewInternalCosts ? (
+                <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
+              ) : null}
 
               <QuoteStatusCard items={statusItems} />
 
@@ -4225,13 +4236,15 @@ export default function CalculatorGridClient({
                           {formatMaybeNumber(line.qty, 2)} {line.unit}
                         </div>
                       </div>
-                      <div className={styles.previewRowValue}>{formatMaybeMoney(line.line_cost_ex_gst)}</div>
+                      {canViewInternalCosts ? <div className={styles.previewRowValue}>{formatMaybeMoney(line.line_cost_ex_gst)}</div> : null}
                     </div>
                   ))}
-                  <div className={styles.previewRowTotal}>
-                    <span>Total materials (ex‑GST)</span>
-                    <span>{formatMaybeMoney(materialsEx)}</span>
-                  </div>
+                  {canViewInternalCosts ? (
+                    <div className={styles.previewRowTotal}>
+                      <span>Total materials (ex‑GST)</span>
+                      <span>{formatMaybeMoney(materialsEx)}</span>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p className={styles.previewMuted}>No BOM yet.</p>
@@ -4239,6 +4252,8 @@ export default function CalculatorGridClient({
             </section>
 
             {isAdvancedUi ? (
+            <>
+            {canViewInternalCosts ? (
             <>
             <section className={styles.previewCard} aria-label="Materials debug">
               <div className={styles.materialsDebugHeader}>
@@ -4359,6 +4374,8 @@ export default function CalculatorGridClient({
                 <p className={styles.previewMuted}>No labour actions yet.</p>
               )}
             </details>
+            </>
+            ) : null}
 
             <details className={styles.previewDetails}>
               <summary>Structure outputs</summary>
@@ -4536,7 +4553,7 @@ export default function CalculatorGridClient({
                         technicalDetailsOpen={infillCostDetailsOpen}
                         onTechnicalDetailsToggle={setInfillCostDetailsOpen}
                         onFixBlocker={jumpToInfillWarningTarget}
-                        technicalDetails={(
+                        technicalDetails={canViewInternalCosts ? (
                           <div className={styles.infillComputedGroup}>
                             <div className={styles.infillComputedGroupTitle}>Cost comparison</div>
                             {moduleBaselineLoading ? <p className={styles.infillComputedNote}>Loading module baseline...</p> : null}
@@ -4591,7 +4608,7 @@ export default function CalculatorGridClient({
                               </div>
                             </div>
                           </div>
-                        )}
+                        ) : undefined}
                       />
                     ) : null}
                   </>
@@ -4649,6 +4666,7 @@ export default function CalculatorGridClient({
         onCloseConfirm={closeSaveConfirmDialog}
         saveConfirmation={{
           isEditingDesign,
+          canViewInternalCosts,
           summary: saveDialogSummary,
           pricingComparison,
           warnings: {

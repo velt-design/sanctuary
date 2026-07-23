@@ -28,6 +28,7 @@ export type SaveDialogSummary = {
   overheadEx: string;
   trueCostEx: string;
   blindCustomerEx: string;
+  customerTotalInc: string;
 };
 
 type WarningGroups = {
@@ -39,6 +40,7 @@ type WarningGroups = {
 
 type SaveConfirmationContentProps = {
   isEditingDesign: boolean;
+  canViewInternalCosts: boolean;
   summary: SaveDialogSummary;
   pricingComparison: CalculatorPricingComparison | null;
   warnings: WarningGroups;
@@ -108,6 +110,7 @@ export function IssuesDialogContent({
 
 export function SaveConfirmationContent({
   isEditingDesign,
+  canViewInternalCosts,
   summary,
   pricingComparison,
   warnings,
@@ -165,7 +168,7 @@ export function SaveConfirmationContent({
 
         {isEditingDesign && pricingComparison ? (
           <>
-            <PricingComparisonSection comparison={pricingComparison} />
+            <PricingComparisonSection comparison={pricingComparison} canViewInternalCosts={canViewInternalCosts} />
             {pricingInputsChanged ? (
               <label className={dialogStyles.preserveReason}>
                 <span>Reason for keeping stored costing</span>
@@ -179,7 +182,7 @@ export function SaveConfirmationContent({
               </label>
             ) : null}
           </>
-        ) : (
+        ) : canViewInternalCosts ? (
           <section className={styles.modalSection} aria-label="Costing summary">
             <h3 className={styles.modalSectionTitle}>Internal costing</h3>
             <div className={styles.modalGrid}>
@@ -192,6 +195,13 @@ export function SaveConfirmationContent({
               <span>Blind customer price (ex‑GST)</span>
               <strong>{summary.blindCustomerEx}</strong>
               <p>Added during quote creation and excluded from pergola true cost.</p>
+            </div>
+          </section>
+        ) : (
+          <section className={styles.modalSection} aria-label="Customer pricing summary">
+            <h3 className={styles.modalSectionTitle}>Customer pricing</h3>
+            <div className={styles.modalGrid}>
+              <SummaryMetric label="Customer price (inc GST)" value={summary.customerTotalInc} />
             </div>
           </section>
         )}
@@ -317,7 +327,13 @@ const COMPARISON_ROWS: Array<{
   { key: 'trueCostInc', label: 'Internal true cost (inc‑GST)' },
 ];
 
-function PricingComparisonSection({ comparison }: { comparison: CalculatorPricingComparison }) {
+function PricingComparisonSection({
+  comparison,
+  canViewInternalCosts,
+}: {
+  comparison: CalculatorPricingComparison;
+  canViewInternalCosts: boolean;
+}) {
   const changeMessage = comparison.pricingInputsChanged
     ? 'Cost-affecting design inputs have changed.'
     : 'No cost-affecting design input changes were detected.';
@@ -331,29 +347,31 @@ function PricingComparisonSection({ comparison }: { comparison: CalculatorPricin
   return (
     <section className={styles.modalSection} aria-label="Stored and live costing comparison">
       <div className={dialogStyles.comparisonHeading}>
-        <h3 className={styles.modalSectionTitle}>Internal true cost comparison</h3>
+        <h3 className={styles.modalSectionTitle}>{canViewInternalCosts ? 'Internal true cost comparison' : 'Pricing review'}</h3>
         <span className={comparison.pricingInputsChanged ? dialogStyles.changedPill : dialogStyles.unchangedPill}>
           {comparison.pricingInputsChanged ? 'Inputs changed' : 'Inputs unchanged'}
         </span>
       </div>
       <p className={dialogStyles.comparisonNote}>{changeMessage}</p>
       {stateMessage ? <p className={dialogStyles.staleNote}>{stateMessage}</p> : null}
-      <div className={dialogStyles.comparisonTable} role="table" aria-label="Costing comparison">
-        <div className={dialogStyles.comparisonHeader} role="row">
-          <span role="columnheader">Cost item</span>
-          <span role="columnheader">Stored estimate</span>
-          <span role="columnheader">Live calculator</span>
-          <span role="columnheader">Difference</span>
-        </div>
-        {COMPARISON_ROWS.map((row) => (
-          <div className={dialogStyles.comparisonRow} role="row" key={row.key}>
-            <span className={dialogStyles.comparisonLabel} role="rowheader">{row.label}</span>
-            <span data-label="Stored estimate" role="cell">{formatCalculatorCostMoney(comparison.stored?.[row.key] ?? null)}</span>
-            <span data-label="Live calculator" role="cell">{formatCalculatorCostMoney(comparison.live?.[row.key] ?? null)}</span>
-            <span data-label="Difference" role="cell">{formatCalculatorCostMoney(comparison.difference?.[row.key] ?? null, { signed: true })}</span>
+      {canViewInternalCosts ? (
+        <div className={dialogStyles.comparisonTable} role="table" aria-label="Costing comparison">
+          <div className={dialogStyles.comparisonHeader} role="row">
+            <span role="columnheader">Cost item</span>
+            <span role="columnheader">Stored estimate</span>
+            <span role="columnheader">Live calculator</span>
+            <span role="columnheader">Difference</span>
           </div>
-        ))}
-      </div>
+          {COMPARISON_ROWS.map((row) => (
+            <div className={dialogStyles.comparisonRow} role="row" key={row.key}>
+              <span className={dialogStyles.comparisonLabel} role="rowheader">{row.label}</span>
+              <span data-label="Stored estimate" role="cell">{formatCalculatorCostMoney(comparison.stored?.[row.key] ?? null)}</span>
+              <span data-label="Live calculator" role="cell">{formatCalculatorCostMoney(comparison.live?.[row.key] ?? null)}</span>
+              <span data-label="Difference" role="cell">{formatCalculatorCostMoney(comparison.difference?.[row.key] ?? null, { signed: true })}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className={dialogStyles.decisionHelp}>
         <p><strong>Keep stored costing</strong> updates the design without replacing saved cost outputs.</p>
         <p><strong>Reprice and save</strong> replaces saved cost outputs with the Live calculator result.</p>

@@ -4792,6 +4792,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .previewRowMain {
@@ -4823,6 +4825,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
+  max-width: 100%;
   border-top: var(--ui-border-width) solid var(--ui-border);
   padding-top: 8px;
   font-size: 12px;
@@ -4883,6 +4887,7 @@
   .moduleViewsStage,
   .modulePlanFrame,
   .modulePlanCanvas {
+    box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
   }

@@ -4,10 +4,6 @@ import {
   calculatorResultFreshnessLabel,
   type CalculatorResultFreshness,
 } from './calculatorResultFreshness';
-import {
-  calculateStaffCustomerPriceFromCostEx,
-  normalizeStaffQuoteDiscountPct,
-} from '@/lib/quotes/pricing';
 import styles from './CalculatorPricingSummary.module.css';
 
 export type CalculatorPricingSummaryProps = {
@@ -15,6 +11,13 @@ export type CalculatorPricingSummaryProps = {
   resultFreshness: CalculatorResultFreshness;
   issuesCount: number;
   onOpenIssues: () => void;
+  customerTotalIncGstCents: number;
+  customerTotalExGstCents: number;
+  undiscountedTotalIncGstCents?: number | null;
+  quoteDiscountPct: number;
+  unpricedItemCount: number;
+  hasCustomerPricing: boolean;
+  canViewInternalCosts: boolean;
   internalTrueCostExGst?: number;
   internalTrueCostIncGst?: number;
   materialsExGst?: number;
@@ -22,10 +25,6 @@ export type CalculatorPricingSummaryProps = {
   overheadExGst?: number;
   crewHours?: number;
   installDays?: number;
-  blindCustomerPriceExGst?: number;
-  blindCustomerPriceIncGst?: number;
-  quoteDiscountPct?: string | number;
-  hasInfills: boolean;
 };
 
 function formatMoney(value: number | undefined): string {
@@ -38,9 +37,9 @@ const customerPriceNumberFormatter = new Intl.NumberFormat('en-NZ', {
   maximumFractionDigits: 0,
 });
 
-function formatCustomerPrice(value: number | undefined): string {
+function formatCustomerPriceFromCents(value: number | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return `$${customerPriceNumberFormatter.format(Math.round(value))}`;
+  return `$${customerPriceNumberFormatter.format(Math.round(value / 100))}`;
 }
 
 function formatNumber(value: number | undefined, digits = 2): string {
@@ -62,6 +61,13 @@ export default function CalculatorPricingSummary({
   resultFreshness,
   issuesCount,
   onOpenIssues,
+  customerTotalIncGstCents,
+  customerTotalExGstCents,
+  undiscountedTotalIncGstCents,
+  quoteDiscountPct,
+  unpricedItemCount,
+  hasCustomerPricing,
+  canViewInternalCosts,
   internalTrueCostExGst,
   internalTrueCostIncGst,
   materialsExGst,
@@ -69,23 +75,13 @@ export default function CalculatorPricingSummary({
   overheadExGst,
   crewHours,
   installDays,
-  blindCustomerPriceExGst,
-  blindCustomerPriceIncGst,
-  quoteDiscountPct,
-  hasInfills,
 }: CalculatorPricingSummaryProps) {
-  const normalizedDiscountPct = normalizeStaffQuoteDiscountPct(quoteDiscountPct);
-  const customerPrice = calculateStaffCustomerPriceFromCostEx(internalTrueCostExGst, normalizedDiscountPct);
-  const undiscountedCustomerPrice = normalizedDiscountPct > 0
-    ? calculateStaffCustomerPriceFromCostEx(internalTrueCostExGst)
-    : null;
-  const isLastValid = resultFreshness !== 'current' && customerPrice !== null;
+  const isLastValid = resultFreshness !== 'current' && hasCustomerPricing;
   const customerPriceLabel = isLastValid
     ? 'Last valid customer price (inc GST)'
-    : 'Customer price (inc GST)';
-  const hasBlindPricing = [blindCustomerPriceExGst, blindCustomerPriceIncGst].some(
-    (value) => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) >= 0.005,
-  );
+    : unpricedItemCount > 0
+      ? 'Customer price (priced items only, inc GST)'
+      : 'Customer price (inc GST)';
 
   if (variant === 'compact') {
     return (
@@ -97,11 +93,11 @@ export default function CalculatorPricingSummary({
       >
         <div className={styles.compactPrice}>
           <span className={styles.compactLabel}>{customerPriceLabel}</span>
-          <strong className={styles.compactValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
+          <strong className={styles.compactValue}>{hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalIncGstCents) : '—'}</strong>
         </div>
         <div className={styles.compactMeta}>
-          <span>Ex GST {formatCustomerPrice(customerPrice?.exGst)}</span>
-          <span>{normalizedDiscountPct > 0 ? `${normalizedDiscountPct}% discount` : calculatorResultFreshnessLabel(resultFreshness)}</span>
+          <span>Ex GST {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalExGstCents) : '—'}</span>
+          <span>{quoteDiscountPct > 0 ? `${quoteDiscountPct}% discount` : calculatorResultFreshnessLabel(resultFreshness)}</span>
         </div>
       </section>
     );
@@ -128,50 +124,34 @@ export default function CalculatorPricingSummary({
 
       <div className={styles.hero}>
         <span className={styles.heroLabel}>{customerPriceLabel}</span>
-        <strong className={styles.heroValue}>{formatCustomerPrice(customerPrice?.incGst)}</strong>
-        <span className={styles.heroEx}>Customer price (ex GST) {formatCustomerPrice(customerPrice?.exGst)}</span>
-        <span className={styles.heroExplanation}>
-          {normalizedDiscountPct > 0
-            ? `${normalizedDiscountPct}% quote discount applied to pergola and site price`
-            : '1.25× internal true cost · pergola only'}
-        </span>
-        {undiscountedCustomerPrice ? (
+        <strong className={styles.heroValue}>{hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalIncGstCents) : '—'}</strong>
+        <span className={styles.heroEx}>Customer price (ex GST) {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalExGstCents) : '—'}</span>
+        {quoteDiscountPct > 0 ? (
           <span className={styles.heroExplanation}>
-            Before discount {formatCustomerPrice(undiscountedCustomerPrice.incGst)} inc GST
+            {quoteDiscountPct}% quote discount applied to pergola and site prices only
+          </span>
+        ) : null}
+        {typeof undiscountedTotalIncGstCents === 'number' ? (
+          <span className={styles.heroExplanation}>
+            Before discount {formatCustomerPriceFromCents(undiscountedTotalIncGstCents)} inc GST
           </span>
         ) : null}
       </div>
 
-      <div className={styles.internalSection}>
-        <h3>Internal costing</h3>
-        <dl className={styles.internalGrid} data-pricing-metric-layout="inline">
-          <Metric label="True cost (ex GST)" value={formatMoney(internalTrueCostExGst)} />
-          <Metric label="True cost (inc GST)" value={formatMoney(internalTrueCostIncGst)} />
-          <Metric label="Materials" value={formatMoney(materialsExGst)} />
-          <Metric label="Install payout" value={formatMoney(installExGst)} />
-          <Metric label="Overhead" value={formatMoney(overheadExGst)} />
-          <Metric label="Crew hours" value={formatNumber(crewHours)} />
-          <Metric label="Install days" value={formatNumber(installDays, 0)} />
-        </dl>
-      </div>
-
-      <div className={styles.addonsSection}>
-        <h3>Customer quote add-ons</h3>
-        {hasBlindPricing || hasInfills ? (
-          <dl className={styles.addonsGrid} data-pricing-metric-layout="inline">
-            {hasBlindPricing ? (
-              <>
-                <Metric label="Blind customer price (ex GST)" value={formatMoney(blindCustomerPriceExGst)} />
-                <Metric label="Blind customer price (inc GST)" value={formatMoney(blindCustomerPriceIncGst)} />
-              </>
-            ) : null}
-            {hasInfills ? <Metric label="Infills" value="Configured (see BOM)" /> : null}
+      {canViewInternalCosts ? (
+        <details className={styles.internalSection}>
+          <summary>Internal costing</summary>
+          <dl className={styles.internalGrid} data-pricing-metric-layout="inline">
+            <Metric label="True cost (ex GST)" value={formatMoney(internalTrueCostExGst)} />
+            <Metric label="True cost (inc GST)" value={formatMoney(internalTrueCostIncGst)} />
+            <Metric label="Materials" value={formatMoney(materialsExGst)} />
+            <Metric label="Install payout" value={formatMoney(installExGst)} />
+            <Metric label="Overhead" value={formatMoney(overheadExGst)} />
+            <Metric label="Crew hours" value={formatNumber(crewHours)} />
+            <Metric label="Install days" value={formatNumber(installDays, 0)} />
           </dl>
-        ) : (
-          <p className={styles.addonsEmpty}>No customer-priced add-ons configured.</p>
-        )}
-        {hasBlindPricing ? <p>Blind prices are added during quote creation and are excluded from pergola true cost.</p> : null}
-      </div>
+        </details>
+      ) : null}
     </section>
   );
 }

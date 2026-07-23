@@ -14,6 +14,7 @@ import {
   type BlindLineItemPricing,
 } from '@sp/costing';
 import type { QuoteLineItem } from './types';
+import { extractLightingTotalCents } from './estimateAddons';
 import {
   calculateStaffCustomerPriceFromCostEx,
   normalizeStaffQuoteDiscountPct,
@@ -156,28 +157,6 @@ function isMeaningfulBlindItem(item: {
     rollCover !== 'NONE';
 
   return hasLabel || hasWidth || hasCover || hasNonDefault;
-}
-
-function extractLightingTotalCents(estimate: Estimate): number | null {
-  const inputs: any = (estimate as any).inputs ?? {};
-  const outputs: any = (estimate as any).outputs ?? {};
-
-  const candidates: Array<unknown> = [
-    inputs?.lighting_total_inc_gst,
-    inputs?.lightingTotalIncGst,
-    inputs?.lighting?.totalIncGst,
-    inputs?.lighting?.total_inc_gst,
-    outputs?.lighting_total_inc_gst,
-    outputs?.lightingTotalIncGst,
-    outputs?.lighting?.totalIncGst,
-  ];
-
-  for (const value of candidates) {
-    const n = typeof value === 'number' ? value : typeof value === 'string' ? Number.parseFloat(value) : NaN;
-    if (Number.isFinite(n) && n > 0) return toCents(n);
-  }
-
-  return null;
 }
 
 function normalizePergolaId(value: unknown, fallback: string): string {

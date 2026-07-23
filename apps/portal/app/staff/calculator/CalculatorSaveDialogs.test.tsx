@@ -22,6 +22,7 @@ const summary: SaveDialogSummary = {
   overheadEx: '$50.00',
   trueCostEx: '$350.00',
   blindCustomerEx: '$25.00',
+  customerTotalInc: '$2,100.00',
 };
 
 const pricingComparison: CalculatorPricingComparison = {
@@ -57,6 +58,7 @@ function renderSave(overrides?: Partial<Parameters<typeof SaveConfirmationConten
   return renderToStaticMarkup(
     <SaveConfirmationContent
       isEditingDesign={false}
+      canViewInternalCosts={false}
       summary={summary}
       pricingComparison={null}
       warnings={{
@@ -104,22 +106,23 @@ describe('CalculatorSaveDialogs', () => {
     expect(emptyMarkup).toContain('No validation errors.');
   });
 
-  it('renders create-save summary copy, no-warning copy, and request design priority select', () => {
+  it('shows customer pricing but no internal costs in the staff create-save flow', () => {
     const markup = renderSave({ confirmRequestDesign: true, confirmRequestDesignPriority: 'TIER_2' });
 
     expect(markup).toContain('This will save the current design draft for this project.');
     expect(markup).toContain('Pergola 1 · Module 1: pitched + box perimeter');
     expect(markup).toContain('6m × 3m');
     expect(markup).toContain('No warnings for this design.');
-    expect(markup).toContain('Internal true cost (ex‑GST)');
-    expect(markup).toContain('Blind customer price (ex‑GST)');
-    expect(markup).toContain('excluded from pergola true cost');
+    expect(markup).toContain('Customer price (inc GST)');
+    expect(markup).toContain('$2,100.00');
+    expect(markup).not.toContain('Internal true cost');
+    expect(markup).not.toContain('Blind customer price (ex‑GST)');
     expect(markup).toContain('Request drafting after saving this design');
     expect(markup).toContain('Tier 2');
     expect(markup).not.toContain('Reprice and save');
   });
 
-  it('renders edit-save copy, warning sections, acknowledgement, and reprice action', () => {
+  it('keeps staff edit-save decisions and warnings without comparison amounts', () => {
     const markup = renderSave({
       isEditingDesign: true,
       pricingComparison,
@@ -134,9 +137,9 @@ describe('CalculatorSaveDialogs', () => {
     });
 
     expect(markup).toContain('Choose whether to keep the estimate’s stored costing basis');
-    expect(markup).toContain('Stored estimate');
-    expect(markup).toContain('Live calculator');
-    expect(markup).toContain('+$25.00');
+    expect(markup).toContain('Pricing review');
+    expect(markup).not.toContain('Stored estimate');
+    expect(markup).not.toContain('+$25.00');
     expect(markup).toContain('Cost-affecting design inputs have changed.');
     expect(markup).toContain('Critical (blocks saving)');
     expect(markup).toContain('Review (acknowledge to continue)');
@@ -147,6 +150,19 @@ describe('CalculatorSaveDialogs', () => {
     expect(markup).toContain('Reprice and save');
     expect(markup).toContain('Repricing is recommended.');
     expect(markup).toContain('Save failed.');
+  });
+
+  it('retains the detailed internal comparison for admins', () => {
+    const markup = renderSave({
+      isEditingDesign: true,
+      canViewInternalCosts: true,
+      pricingComparison,
+    });
+
+    expect(markup).toContain('Internal true cost comparison');
+    expect(markup).toContain('Stored estimate');
+    expect(markup).toContain('Live calculator');
+    expect(markup).toContain('+$25.00');
   });
 
   it('disables save actions from freshness, blockers, and warnings without a redundant ready checkbox', () => {

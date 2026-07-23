@@ -3274,3 +3274,14 @@ Why it mattered: Staff could quote or discuss the wrong amount without any desig
 Current guardrail: Estimate-led Overview pricing must use the same deterministic saved-snapshot quote-handoff projection as quote creation. Never substitute an ambiguous summary or a partial total when mapping is blocked. Marketing enquiry email budgets, saved calculator inputs, and saved outputs must come from one canonical two-post costing snapshot; costing failure remains non-blocking.
 Promoted to: `docs/project-command-centre-architecture.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/costing-and-geometry.md`; `docs/automation-email-audit.md`
 Related docs/tests: `apps/portal/lib/quotes/estimateHandoffPreview.test.ts`; `apps/portal/lib/projects/commandCentre/getProjectCommandCentre.test.ts`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectCurrentDesignCommercialCard.test.tsx`; `apps/marketing/app/api/enquiry/route.test.ts`; `playwright/portal.command-centre.spec.ts`
+
+### 2026-07-23 - Calculator Pricing Preview - Full Customer Total, Internal Costs Admin-Only
+
+Date: 2026-07-23
+Area: Calculator pricing preview, estimate Save review, and quote handoff
+Status: Promoted
+Decision or mistake: The calculator headline represented only pergola/site selling price while blinds appeared in a separate add-on block, and staff-facing views exposed internal costs across the preview, BOM, comparisons, and Save dialogs. The preview now sums the same line-level pergola/site, blind, and preserved-lighting amounts used for quote handoff. Infills remain visibly included in their pergola price. Internal calculator cost views are presentation-gated to admins, with the aggregate section collapsed by default.
+Why it mattered: A partial headline made multi-item jobs hard to reconcile with the eventual quote, while broad internal-cost visibility obscured the customer price staff actually needed and exposed margin inputs unnecessarily.
+Current guardrail: Build calculator customer totals from exact quote-line cents, derive ex GST from the inclusive total, label invalid items as unpriced, and never add pooled infills twice. Use one calculator-level admin permission for internal-cost presentation and optional detail requests; staff retain customer prices, quantities, validation, and Save decisions. This UI gate does not claim server-payload secrecy.
+Promoted to: `docs/projects-contacts-estimates-calculator.md`; `docs/quotes-invoices-job-packs.md`
+Related docs/tests: `apps/portal/app/staff/calculator/calculatorPricingPreview.test.tsx`; `apps/portal/app/staff/calculator/CalculatorPricingSummary.test.tsx`; `apps/portal/app/staff/calculator/CalculatorSaveDialogs.test.tsx`; `playwright/portal.calculator.spec.ts`
