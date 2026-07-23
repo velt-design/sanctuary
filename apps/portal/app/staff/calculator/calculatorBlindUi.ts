@@ -28,8 +28,8 @@ export const BLIND_FABRIC_OPTIONS: Array<BlindOption<BlindFabric>> = [
 
 export const BLIND_ROLL_COVER_OPTIONS: Array<BlindOption<BlindRollCover>> = [
   { label: 'No cover', value: 'NONE' },
-  { label: 'Flashing ($44/m incl GST)', value: 'FLASHING' },
-  { label: 'Pelmet ($145/m incl GST)', value: 'PELMET' },
+  { label: 'Flashing', value: 'FLASHING' },
+  { label: 'Pelmet', value: 'PELMET' },
 ];
 
 type BlindStatusTone = 'error' | 'helper';
