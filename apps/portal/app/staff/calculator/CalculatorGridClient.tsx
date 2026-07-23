@@ -38,7 +38,6 @@ import type { Project } from '@/lib/types/project';
 import { apiJson } from '@/lib/repo/apiClient';
 import { getProject } from '@/lib/repo/projectsRepo';
 import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
-import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -94,7 +93,6 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import { qk } from '@/lib/queries/keys';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import {
-  type EstimateSaveMode,
   buildSiteInputsFromCalculatorInputs,
   deriveSiteResultWarnings,
 } from '@/lib/estimates/costingPayload';
@@ -158,10 +156,6 @@ import {
   designRequestTierFromTotal,
 } from './calculatorSaveWorkflow';
 import {
-  saveCalculatorEstimate,
-  type CalculatorEstimateSaveOutcome,
-} from './calculatorEstimateSave';
-import {
   INFILL_PRESETS,
   acrylicSourceLabel,
   estimateRoofRafterSpacing,
@@ -192,7 +186,6 @@ import {
   buildCalculatorQuoteStatusUi,
   buildCalculatorUiWarnings,
   groupCalculatorUiWarnings,
-  resolveGenerateDesignPreflight,
   type CalculatorQuoteStatusActionKey,
 } from './calculatorQuoteStatusUi';
 import {
@@ -201,7 +194,7 @@ import {
   InfillAddButton,
   InfillPresetMenu,
 } from './CalculatorInfillOverview';
-import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } from './CalculatorSaveDialogs';
+import CalculatorSaveDialogs, { type SaveDialogSummary } from './CalculatorSaveDialogs';
 import { buildCalculatorIssues } from './calculatorIssueNavigation';
 import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
 import CalculatorConfigurationForm from './CalculatorConfigurationForm';
@@ -228,6 +221,11 @@ import {
 } from './calculatorResultFreshness';
 import { useCalculatorCostingRequest } from './useCalculatorCostingRequest';
 import { useCalculatorInfillController } from './useCalculatorInfillController';
+import { useCalculatorIssueNavigation } from './useCalculatorIssueNavigation';
+import {
+  useCalculatorSaveController,
+  type CalculatorSaveContext,
+} from './useCalculatorSaveController';
 import {
   resolveCalculatorWorkspaceRoute,
   type CalculatorProjectWorkspace,
@@ -386,8 +384,6 @@ export default function CalculatorGridClient({
   const [project, setProject] = useState<Project | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [uiMode, setUiMode] = useState<CalculatorUiMode>('basic');
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
@@ -1514,14 +1510,6 @@ export default function CalculatorGridClient({
   const [infillWithoutCost, setInfillWithoutCost] = useState<CostOutputV1 | null>(null);
   const [compareSheetCost, setCompareSheetCost] = useState<CostOutputV1 | null>(null);
   const [compareStripCost, setCompareStripCost] = useState<CostOutputV1 | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
-  const [pricingPreserveReason, setPricingPreserveReason] = useState('');
-  const [confirmRequestDesign, setConfirmRequestDesign] = useState(false);
-  const [confirmRequestDesignPriority, setConfirmRequestDesignPriority] = useState<DesignRequestPriorityTier>('UNPRICED');
-  const [saveOutcome, setSaveOutcome] = useState<CalculatorEstimateSaveOutcome | null>(null);
-  const [issuesOpen, setIssuesOpen] = useState(false);
-  const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
   const infillLastSelectionEventRef = useRef<string | null>(null);
   const infillModalOpenTrackedRef = useRef(false);
   const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
@@ -1555,24 +1543,12 @@ export default function CalculatorGridClient({
     [result?.totals?.cost_inc_gst],
   );
 
-  useEffect(() => {
-    if (issuesOpen) return;
-    const pending = pendingIssueFocusRef.current;
-    if (!pending) return;
-    if (pending.moduleIndex !== activeModuleIndex) return;
-    pendingIssueFocusRef.current = null;
-
-    const el = document.getElementById(pending.fieldId);
-    if (!el) return;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    if (typeof (el as any).focus === 'function') {
-      try {
-        (el as any).focus({ preventScroll: true });
-      } catch {
-        (el as any).focus();
-      }
-    }
-  }, [activeModuleIndex, issuesOpen]);
+  const {
+    issuesOpen,
+    openIssues,
+    closeIssues,
+    selectIssue,
+  } = useCalculatorIssueNavigation({ activeModuleIndex, setActiveModuleIndex });
 
   const {
     infillsOpen,
@@ -1885,8 +1861,6 @@ export default function CalculatorGridClient({
         ? `Per side: ${rafterCount}${typeof hipRafterCount === 'number' && hipRafterCount > 0 ? ` (+${hipRafterCount} hip)` : ''}`
         : undefined;
 
-  const generateLabel = isGenerating ? 'Saving…' : 'Save';
-
 
   const blindsListContent = (
     <div className={styles.blindsEditor}>
@@ -2146,7 +2120,7 @@ export default function CalculatorGridClient({
       if (workspace) workspace.onOpenProject();
       else if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
     },
-    openIssues: () => setIssuesOpen(true),
+    openIssues,
     openBlinds: () => {
       const element = document.getElementById('blindsList');
       element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -2170,83 +2144,64 @@ export default function CalculatorGridClient({
     router.push(`/staff/calculator?projectId=${encodeURIComponent(selectedProject.id)}&openActiveDraft=1`);
   };
 
-  const saveDesign = useCallback(
-    async ({
-      createDesignRequest = null,
-      saveMode,
-      preserveReason,
-    }: {
-      createDesignRequest?: { priorityTier: DesignRequestPriorityTier } | null;
-      saveMode?: EstimateSaveMode;
-      preserveReason?: string;
-    } = {}) => {
-      setGenerateError(null);
-      const outcome = await saveCalculatorEstimate({
-        activeDraftEstimateMetaId: activeDraftEstimateMeta?.id,
-        activeEditEstimateId,
-        activeModuleIndex,
-        callbacks: {
-          fail: (msg) => {
-            setGenerateError(msg);
-            toast.error(msg);
-          },
-          setGenerating: setIsGenerating,
-          setLoadedEstimateDetail,
-        },
-        criticalWarningCount: criticalUiWarnings.length,
-        draftEntityKey,
-        draftSessionKey,
-        email,
-        engineWarningsRaw,
-        hasStatusBlockers,
-        hostKey,
-        isEditingDesign,
-        loadedEstimateDetail,
-        project,
-        projectId,
-        queryClient,
-        request: {
-          createDesignRequest,
-          saveMode,
-          preserveReason,
-        },
-        createNewEstimate,
-        result,
-        resultModules,
-        values,
-      });
-      if (outcome) {
-        setEditSessionEstimateId(outcome.estimateId);
-        workspace?.onEstimateSaved(outcome.estimateId);
-        setConfirmOpen(false);
-        setSaveOutcome(outcome);
-        toast.success('Design saved on this device.');
-      }
-    },
-    [
-      activeModuleIndex,
-      activeDraftEstimateMeta?.id,
-      activeEditEstimateId,
-      criticalUiWarnings.length,
-      createNewEstimate,
-      draftEntityKey,
-      draftSessionKey,
-      email,
-      engineWarningsRaw,
-      hasStatusBlockers,
-      hostKey,
-      isEditingDesign,
-      loadedEstimateDetail,
-      project,
+  const calculatorSaveContext: CalculatorSaveContext = {
+    activeDraftEstimateMetaId: activeDraftEstimateMeta?.id,
+    activeEditEstimateId,
+    activeModuleIndex,
+    criticalWarningCount: criticalUiWarnings.length,
+    draftEntityKey,
+    draftSessionKey,
+    email,
+    engineWarningsRaw,
+    hasStatusBlockers,
+    hostKey,
+    isEditingDesign,
+    loadedEstimateDetail,
+    project,
+    projectId,
+    queryClient,
+    createNewEstimate,
+    result,
+    resultModules,
+    values,
+  };
+  const {
+    generateError,
+    isGenerating,
+    generateLabel,
+    openSaveConfirmation,
+    confirmOpen,
+    closeSaveConfirmation,
+    confirmAcknowledgeWarnings,
+    setConfirmAcknowledgeWarnings,
+    pricingPreserveReason,
+    setPricingPreserveReason,
+    confirmRequestDesign,
+    setConfirmRequestDesignChecked,
+    confirmRequestDesignPriority,
+    setConfirmRequestDesignPriority,
+    saveConfirmed,
+    repriceLatest,
+    saveOutcome,
+    dismissSaveOutcome,
+  } = useCalculatorSaveController({
+    saveContext: calculatorSaveContext,
+    suggestedDesignRequestTier,
+    preflight: {
       projectId,
-      queryClient,
-      result,
-      resultModules,
-      toast,
-      values,
-      workspace,
-    ],
-  );
+      hasProject: Boolean(project),
+      readyToCalculate,
+      hasStatusBlockers,
+      resultFreshness,
+    },
+    setLoadedEstimateDetail,
+    onError: (message) => toast.error(message),
+    onSaved: (outcome) => {
+      setEditSessionEstimateId(outcome.estimateId);
+      workspace?.onEstimateSaved(outcome.estimateId);
+      toast.success('Design saved on this device.');
+    },
+  });
 
   const marginalInfillDelta = useMemo(() => diffModuleCost(moduleBaseline, infillWithoutCost), [moduleBaseline, infillWithoutCost]);
   const compareSheetDelta = useMemo(() => diffModuleCost(compareSheetCost, moduleBaseline), [compareSheetCost, moduleBaseline]);
@@ -2648,26 +2603,6 @@ export default function CalculatorGridClient({
     </div>
   );
 
-  const handleGenerateEstimate = async () => {
-    setGenerateError(null);
-
-    const preflight = resolveGenerateDesignPreflight({
-      projectId,
-      hasProject: Boolean(project),
-      readyToCalculate,
-      hasStatusBlockers,
-      resultFreshness,
-    });
-    if (preflight.kind === 'error') {
-      setGenerateError(preflight.message);
-      return;
-    }
-    setConfirmAcknowledgeWarnings(false);
-    setConfirmRequestDesign(false);
-    setConfirmRequestDesignPriority(suggestedDesignRequestTier);
-    setConfirmOpen(true);
-  };
-
   const schema: FieldSchemaItem[] = [
     ...buildCalculatorContextFields({
       resultFreshness,
@@ -2731,12 +2666,12 @@ export default function CalculatorGridClient({
       totalEx,
       totalInc,
       issuesCount,
-      onOpenIssues: () => setIssuesOpen(true),
+      onOpenIssues: openIssues,
       result,
       warningsCount,
       warningsHelperText,
       generateLabel,
-      onGenerate: handleGenerateEstimate,
+      onGenerate: openSaveConfirmation,
       projectId,
       generateError,
       isGenerating,
@@ -2811,22 +2746,10 @@ export default function CalculatorGridClient({
     customerTotalInc: formatMaybeMoney(pricingPreview.totalIncGstCents / 100),
   };
 
-  const closeSaveConfirmDialog = () => {
-    setConfirmOpen(false);
-    setPricingPreserveReason('');
-    setGenerateError(null);
-  };
-
-  const handleIssueDialogClick = (issue: CalculatorIssue) => {
-    pendingIssueFocusRef.current = { moduleIndex: issue.moduleIndex, fieldId: issue.fieldId };
-    setActiveModuleIndex(issue.moduleIndex);
-    setIssuesOpen(false);
-  };
-
   const pricingSummaryProps: CalculatorPricingSummaryProps = {
     resultFreshness,
     issuesCount,
-    onOpenIssues: () => setIssuesOpen(true),
+    onOpenIssues: openIssues,
     customerTotalIncGstCents: pricingPreview.totalIncGstCents,
     customerTotalExGstCents: pricingPreview.totalExGstCents,
     undiscountedTotalIncGstCents: pricingPreview.undiscountedTotalIncGstCents,
@@ -3425,10 +3348,10 @@ export default function CalculatorGridClient({
       <CalculatorSaveDialogs
         issuesOpen={issuesOpen}
         issues={issues}
-        onCloseIssues={() => setIssuesOpen(false)}
-        onIssueClick={handleIssueDialogClick}
+        onCloseIssues={closeIssues}
+        onIssueClick={selectIssue}
         confirmOpen={confirmOpen}
-        onCloseConfirm={closeSaveConfirmDialog}
+        onCloseConfirm={closeSaveConfirmation}
         saveConfirmation={{
           isEditingDesign,
           canViewInternalCosts,
@@ -3450,23 +3373,15 @@ export default function CalculatorGridClient({
           hasResult: resultFreshness === 'current',
           onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
           onPricingPreserveReasonChange: setPricingPreserveReason,
-          onConfirmRequestDesignChange: (checked) => {
-            setConfirmRequestDesign(checked);
-            if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
-          },
+          onConfirmRequestDesignChange: setConfirmRequestDesignChecked,
           onConfirmRequestDesignPriorityChange: setConfirmRequestDesignPriority,
-          onSave: () =>
-            void saveDesign({
-              createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
-              saveMode: isEditingDesign ? 'preserve_current' : 'reprice_latest',
-              preserveReason: isEditingDesign ? pricingPreserveReason : undefined,
-            }),
-          onRepriceLatest: () => void saveDesign({ saveMode: 'reprice_latest' }),
+          onSave: () => void saveConfirmed(),
+          onRepriceLatest: () => void repriceLatest(),
         }}
       />
       <CalculatorSaveOutcomeDialog
         outcome={saveOutcome}
-        onDismiss={() => setSaveOutcome(null)}
+        onDismiss={dismissSaveOutcome}
       />
       {!workspace ? (
         <CalculatorProjectPicker
