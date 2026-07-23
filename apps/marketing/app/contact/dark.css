@@ -15,15 +15,10 @@
 }
 
 /* Make sure the grid inherits the page background */
-.contact-page.contact-dark .product-split,
-.contact-page.contact-dark .product-left,
-.contact-page.contact-dark .product-right{ background:transparent; color:inherit; }
+.contact-page.contact-dark .contact-layout{ background:transparent; color:inherit; }
 
 /* Typography */
-.contact-page.contact-dark .product-kicker,
-.contact-page.contact-dark .product-title,
-.contact-page.contact-dark .product-desc,
-.contact-page.contact-dark .product-long{ color:#f5f6f7; }
+.contact-page.contact-dark .contact-title{ color:#f5f6f7; }
 .contact-page.contact-dark .contact-info{
   color: rgba(245,246,247,.46);
   font-size: 0.75rem;

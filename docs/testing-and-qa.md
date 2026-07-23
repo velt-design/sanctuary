@@ -50,6 +50,16 @@ safe errors, atomic retry/concurrency semantics, and the migration contract.
 GA, Meta, ArchiPro, or a GTM noscript resource loads before the corresponding
 explicit consent.
 
+Product-page changes should run
+`npx vitest run apps/marketing/data/products.test.ts` and
+`npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. The focused browser suite covers the
+product hub, one pergola form and one integrated accessory at 1440, 768 and 390
+pixel widths; it also verifies all ten canonical product routes in the sitemap,
+one visible H1, CTA continuity, loaded imagery, metadata and schema, reduced
+motion, no horizontal overflow, no nested content scroll and explicit handling
+of unpublished heater evidence.
+
 Portal readiness sweeps:
 
 ```bash

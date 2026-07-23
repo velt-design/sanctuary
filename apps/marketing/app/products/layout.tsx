@@ -1,15 +1,26 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Products',
+  title: 'Pergola Forms, Screens, Lighting & Heating',
   description:
-    'Pergolas, screens and lighting built for New Zealand homes. Explore pitched, gable, hip and box-perimeter designs plus slats, acrylic panels and lighting.',
+    'Compare four custom pergola forms plus screens, blinds, lighting and heating. See built Sanctuary projects, honest trade-offs and what your site needs to resolve.',
   alternates: { canonical: '/products' },
   openGraph: {
     url: '/products',
-    title: 'Products – Sanctuary Pergolas',
+    title: 'Pergola Forms & Integrated Options | Sanctuary Pergolas',
     description:
-      'Explore pergola designs and options: pitched, gable, hip, box-perimeter; slat screens, acrylic panels, blinds, downlights and LED strip.',
+      'Compare pergola forms, edge treatments, lighting and heating through real Sanctuary project evidence.',
+    images: [{
+      url: '/images/project-riverhead-gable-01.jpg',
+      alt: 'Riverhead gable pavilion beside a pool and garden',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Pergola Forms & Integrated Options | Sanctuary Pergolas',
+    description:
+      'Compare pergola forms, edge treatments, lighting and heating through real Sanctuary project evidence.',
+    images: ['/images/project-riverhead-gable-01.jpg'],
   },
 };
 

@@ -11,7 +11,7 @@ import {
 } from '@/lib/enquiryAttachments';
 import { useConsent } from '@/components/ConsentProvider';
 import { getEnquiryTypeFromSearch, type EnquiryType } from './enquiryRoute';
-import '@/app/products/product.css';
+import '@/app/contact/base.css';
 import '@/app/contact/dark.css';
 import '@/app/contact/spacing.css';
 
@@ -385,7 +385,7 @@ export default function ContactPage() {
   return (
     <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''} ${isSubmitted ? 'contact-submitted' : ''}`}>
       <form ref={formRef} id="contact-form" method="post" action="/api/enquiry" onSubmit={handleSubmit} onInput={handleFormInput}>
-        <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 items-stretch">
+        <div className="contact-layout max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 items-stretch">
         {/* Left column (keeps its space; content hides on submit) */}
         <div className="col-span-1 relative h-full">
           <div className="hw-tile contact-media" style={{height:'100%'}}>
@@ -405,7 +405,7 @@ export default function ContactPage() {
         {/* Middle column */}
         <div className="contact-mid grid gap-y-[var(--vgap)]">
           <div className="contact-mid__intro grid gap-y-[var(--vgap)]">
-            <h1 className="product-title text-3xl lg:text-4xl font-semibold">Start your project</h1>
+            <h1 className="contact-title text-3xl lg:text-4xl font-semibold">Start your project</h1>
             <div className="contact-info text-sm">
               <div><strong>Phone</strong> <a href="tel:+64228545633">022 854 5633</a></div>
               <div><strong>Email</strong> <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a></div>

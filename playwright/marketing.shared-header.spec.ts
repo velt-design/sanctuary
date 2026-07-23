@@ -103,7 +103,7 @@ test('shared header destinations remain functional', async ({ page }) => {
   await page.goto('/');
   await page.locator('header.site').getByRole('link', { name: 'Products' }).click();
   await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Pergola styles' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Cover the deck. Keep the light.' })).toBeVisible();
 });
 
 test('capture representative shared-header states', async ({ page }) => {

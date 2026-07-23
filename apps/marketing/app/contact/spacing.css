@@ -130,7 +130,7 @@
 
 /* Optional: frame padding aligns with the stepped gap */
 @media (min-width: 961px){
-  .contact-page .product-split{ padding-left: var(--gap-outside) !important; padding-right: var(--gap-outside) !important; }
+  .contact-page .contact-layout{ padding-left: var(--gap-outside) !important; padding-right: var(--gap-outside) !important; }
 }
 
 /* 2) Internal spacing: container-based, proportional within each tile/card */
@@ -261,9 +261,7 @@
 /* Let the contact page scroll naturally on desktop; prevent cropping */
 @media (min-width: 961px){
   .two-col-page.contact-page{ height:auto !important; overflow:visible !important; padding-bottom: var(--gap-outside) !important; }
-  .contact-page .product-split{ height:auto !important; overflow:visible !important; }
-  .contact-page .product-left-scroller{ height:auto !important; overflow:visible !important; }
-  .contact-page .product-left{ align-self:stretch !important; }
+  .contact-page .contact-layout{ height:auto !important; overflow:visible !important; }
 }
 
 /* Ensure the display box reserves enough space so items below never overlap */

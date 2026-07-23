@@ -551,7 +551,7 @@ test('homepage comparison and commercial links land at the promised sections', a
   await preparePage(page);
 
   for (const [destination, target] of [
-    ['/products', '.products-index'],
+    ['/products', '[data-products-index]'],
     ['/pergolas-auckland#roofing-options', '#roofing-options'],
     ['/commercial-pergolas-auckland#project-details', '#project-details'],
     ['/contact#contact-form', '#contact-form'],
