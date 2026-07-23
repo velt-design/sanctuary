@@ -4,7 +4,7 @@ import {
   Users,
   CalendarDays,
   ArrowDownToLine,
-  BrainCircuit,
+  BookOpen,
   KeyRound,
 } from 'lucide-react';
 
@@ -46,14 +46,14 @@ export const NAV_ITEMS = [
   },
   { key: 'imports', label: 'Imports', href: '/imports', Icon: ArrowDownToLine, adminOnly: false },
   {
-    key: 'costing',
-    label: 'Calculator Brain',
-    href: '/admin/costing',
-    Icon: BrainCircuit,
+    key: 'pricebook',
+    label: 'Pricebook',
+    href: '/pricebook',
+    Icon: BookOpen,
     adminOnly: true,
     children: [
-      { key: 'costing-control', label: 'Control centre', href: '/admin/costing' },
-      { key: 'costing-calculator', label: 'Calculator', href: '/staff/calculator' },
+      { key: 'pricebook-costing-control', label: 'Costing control centre', href: '/admin/costing' },
+      { key: 'pricebook-calculator', label: 'Calculator', href: '/staff/calculator' },
     ],
   },
   { key: 'access', label: 'Access', href: '/admin/access', Icon: KeyRound, adminOnly: true },

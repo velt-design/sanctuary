@@ -45,7 +45,7 @@ function isParentActive(pathname: string, href: string) {
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule'],
     '/imports': ['/admin/imports'],
-    '/admin/costing': ['/pricebook', '/admin/costs'],
+    '/pricebook': ['/admin/costing', '/admin/costs'],
   };
 
   const matches = aliases[href];
@@ -95,13 +95,13 @@ function isChildActive(
       if (childKey === 'schedule-site-visits') return scheduleView === 'site-visits';
       return false;
     }
-    case 'costing': {
-      if (childKey === 'costing-control') {
+    case 'pricebook': {
+      if (childKey === 'pricebook-costing-control') {
         return pathname === '/admin/costing'
           || pathname === '/pricebook'
           || pathname.startsWith('/admin/costs/');
       }
-      if (childKey === 'costing-calculator') return pathname === '/staff/calculator';
+      if (childKey === 'pricebook-calculator') return pathname === '/staff/calculator';
       return false;
     }
     default:

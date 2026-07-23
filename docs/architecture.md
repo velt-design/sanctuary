@@ -36,7 +36,7 @@ Marketing owns public lead capture and public document viewing. It may call Supa
 
 Portal owns staff workflow state and staff APIs. Staff routes live under `apps/portal/app/staff`, admin routes under `apps/portal/app/admin`, and staff API routes under `apps/portal/app/api/staff/v1`.
 
-The portal's Calculator Brain lives at `/admin/costing`. Browser code uses admin APIs and never writes Supabase tables directly. Portal server modules own draft/version persistence and audit orchestration; `@sp/costing` owns which values are supported, validation, application to the engine, calculations, diffs, and preview calculations. Published configuration rows are immutable, and estimate snapshots retain the exact version/snapshot used.
+The portal's Calculator Brain lives at `/admin/costing` and is exposed to admins beneath the Pricebook navigation item. Browser code uses admin APIs and never writes Supabase tables directly. Portal server modules own draft/version persistence and audit orchestration; `@sp/costing` owns which values are supported, validation, application to the engine, calculations, diffs, and preview calculations. Published configuration rows are immutable, and estimate snapshots retain the exact version/snapshot used.
 
 Worker owns generic durable execution mechanics only. It reaches Supabase through its private service-role RPC adapter, validates every response against `@sp/jobs`, and never imports portal or marketing modules. JOB-03 adds a reusable durable email-effect coordinator, but no registered domain handler or producer; workflow handlers may join later only through their existing shared owners.
 

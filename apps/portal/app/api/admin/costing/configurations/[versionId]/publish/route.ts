@@ -3,12 +3,12 @@ import { publishCostingConfigurationDraft } from '@/lib/costing/configurationAdm
 
 export const runtime = 'nodejs';
 
-type Context = { params: { versionId: string } | Promise<{ versionId: string }> };
+type Context = { params: Promise<{ versionId: string }> };
 
 export async function POST(req: Request, { params }: Context) {
   const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
-  const { versionId } = await Promise.resolve(params);
+  const { versionId } = await params;
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return parsed.response;
 

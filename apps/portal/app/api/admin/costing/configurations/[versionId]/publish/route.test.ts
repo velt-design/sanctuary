@@ -29,7 +29,7 @@ describe('POST /api/admin/costing/configurations/:versionId/publish', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ publishNote: 'Reviewed impact.' }),
       }),
-      { params: { versionId: 'draft-1' } },
+      { params: Promise.resolve({ versionId: 'draft-1' }) },
     );
 
     expect(response.status).toBe(400);

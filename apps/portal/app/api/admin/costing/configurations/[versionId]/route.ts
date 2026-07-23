@@ -7,7 +7,7 @@ import {
 
 export const runtime = 'nodejs';
 
-type Context = { params: { versionId: string } | Promise<{ versionId: string }> };
+type Context = { params: Promise<{ versionId: string }> };
 
 function validationIssues(error: unknown): unknown[] | null {
   const issues = (error as { validationIssues?: unknown })?.validationIssues;
@@ -17,7 +17,7 @@ function validationIssues(error: unknown): unknown[] | null {
 export async function GET(_req: Request, { params }: Context) {
   const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
-  const { versionId } = await Promise.resolve(params);
+  const { versionId } = await params;
 
   try {
     const editor = await getCostingConfigurationEditor(auth.supabase, versionId);
@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: Context) {
 export async function PUT(req: Request, { params }: Context) {
   const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
-  const { versionId } = await Promise.resolve(params);
+  const { versionId } = await params;
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return parsed.response;
   if (typeof parsed.body?.expectedContentHash !== 'string') {
