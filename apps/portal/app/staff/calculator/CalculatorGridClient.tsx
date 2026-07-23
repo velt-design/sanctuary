@@ -1,6 +1,6 @@
 'use client';
 
-import type { AttachmentSide, CostInputsV1, CostOutputV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
+import type { AttachmentSide, CostInputsV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -37,11 +37,6 @@ import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import InfillPreview from './InfillPreview';
-import InfillConfiguratorDialog from './InfillConfiguratorDialog';
-import InfillEditorHeader from './InfillEditorHeader';
-import InfillOpeningStage from './InfillOpeningStage';
-import InfillResultsStage from './InfillResultsStage';
-import InfillSupportsStage from './InfillSupportsStage';
 import { applyInfillOpeningTemplate, syncInfillMonoSlopeDraft } from './infillOpeningTemplates';
 import {
   addedSupportSummary,
@@ -51,7 +46,6 @@ import {
   stageForInfillWarning,
   type InfillConfiguratorStage,
 } from './infillConfiguratorPresentation';
-import DuplicateDialog from './DuplicateDialog';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
 import ModuleViewsCard, {
@@ -66,14 +60,6 @@ import { useInfillClipboard } from './useInfillClipboard';
 import { useInfillHotkeys } from './useInfillHotkeys';
 import { trackInfillEvent } from './infillTelemetry';
 import { buildImpactDiff, type ImpactDiff } from './diff';
-import {
-  applyAcrylicVariantToInfillPayload,
-  buildModulePayloadWithInfills,
-  diffModuleCost,
-  fetchModuleCost,
-  removeInfillFromInfills,
-  replaceInfillInPayload,
-} from './infillDecision';
 import {
   normalizeMonoSlopeAnchor,
   normalizeMonoSlopeMode,
@@ -176,12 +162,7 @@ import {
   groupCalculatorUiWarnings,
   type CalculatorQuoteStatusActionKey,
 } from './calculatorQuoteStatusUi';
-import {
-  CalculatorInfillRail,
-  CalculatorInfillTile,
-  InfillAddButton,
-  InfillPresetMenu,
-} from './CalculatorInfillOverview';
+import { CalculatorInfillTile } from './CalculatorInfillOverview';
 import CalculatorSaveDialogs, { type SaveDialogSummary } from './CalculatorSaveDialogs';
 import { buildCalculatorIssues } from './calculatorIssueNavigation';
 import CalculatorCommandBar, { type CalculatorUiMode } from './CalculatorCommandBar';
@@ -216,6 +197,8 @@ import {
 } from './useCalculatorSaveController';
 import { useCalculatorMaterialsDebug } from './useCalculatorMaterialsDebug';
 import CalculatorPreviewDetails from './CalculatorPreviewDetails';
+import { useCalculatorInfillCostComparison } from './useCalculatorInfillCostComparison';
+import CalculatorInfillWorkspace, { type CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
 import {
   resolveCalculatorWorkspaceRoute,
   type CalculatorProjectWorkspace,
@@ -232,7 +215,6 @@ function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
   return `$${n.toFixed(2)}`;
 }
-
 function blindDimensionDraftKey(id: string, field: BlindDimensionField): string {
   return `${id}:${field}`;
 }
@@ -268,13 +250,6 @@ function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number):
   point.y = clientY;
   const transformed = point.matrixTransform(ctm.inverse());
   return { x: transformed.x, y: transformed.y };
-}
-
-function formatSignedMoney(n: number | undefined): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return '\u2014';
-  if (Math.abs(n) < 0.005) return '$0.00';
-  const sign = n > 0 ? '+' : '-';
-  return `${sign}$${Math.abs(n).toFixed(2)}`;
 }
 
 function inferStockLengthFromLabel(label: string): number | null {
@@ -1452,14 +1427,6 @@ export default function CalculatorGridClient({
     readyToCalculate,
     requestPayloadJson,
   });
-  const [moduleBaseline, setModuleBaseline] = useState<CostOutputV1 | null>(null);
-  const [moduleBaselineLoading, setModuleBaselineLoading] = useState(false);
-  const [moduleBaselineError, setModuleBaselineError] = useState<string | null>(null);
-  const [infillDecisionLoading, setInfillDecisionLoading] = useState(false);
-  const [infillDecisionError, setInfillDecisionError] = useState<string | null>(null);
-  const [infillWithoutCost, setInfillWithoutCost] = useState<CostOutputV1 | null>(null);
-  const [compareSheetCost, setCompareSheetCost] = useState<CostOutputV1 | null>(null);
-  const [compareStripCost, setCompareStripCost] = useState<CostOutputV1 | null>(null);
   const infillLastSelectionEventRef = useRef<string | null>(null);
   const infillModalOpenTrackedRef = useRef(false);
   const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
@@ -1535,42 +1502,6 @@ export default function CalculatorGridClient({
     infillListContainerRef,
     setInfillRowRef,
   } = useCalculatorInfillController({ items: infillsState.items });
-
-  useEffect(() => {
-    if (!canViewInternalCosts || !infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !readyToCalculate || isCalculating || engineError) {
-      setModuleBaseline(null);
-      setModuleBaselineError(null);
-      setModuleBaselineLoading(false);
-      setInfillWithoutCost(null);
-      setCompareSheetCost(null);
-      setCompareStripCost(null);
-      setInfillDecisionError(null);
-      setInfillDecisionLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(async () => {
-      setModuleBaselineLoading(true);
-      setModuleBaselineError(null);
-      try {
-        const out = await fetchModuleCost(activeModulePayload, controller.signal);
-        if (controller.signal.aborted) return;
-        setModuleBaseline(out);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        const msg = err instanceof Error ? err.message : 'Failed to fetch module baseline';
-        setModuleBaselineError(msg);
-      } finally {
-        if (!controller.signal.aborted) setModuleBaselineLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(timeoutId);
-    };
-  }, [activeModulePayload, canViewInternalCosts, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, readyToCalculate]);
 
   const resultModules = useMemo(() => (result?.pergolas ?? []).flatMap((pergola) => pergola.modules ?? []), [result]);
   const moduleResult = useMemo(() => {
@@ -1783,68 +1714,19 @@ export default function CalculatorGridClient({
   const selectedInfillValidation = selectedInfillUi?.validation ?? null;
   const selectedInfillIsDraft = selectedInfillUi?.status === 'draft';
 
-  useEffect(() => {
-    const selectedInfillId = selectedInfill?.id ?? null;
-    if (!canViewInternalCosts || !infillsOpen || !infillCostDetailsOpen || !activeModulePayload || !moduleBaseline || !selectedInfillId || !readyToCalculate || isCalculating || engineError) {
-      setInfillWithoutCost(null);
-      setCompareSheetCost(null);
-      setCompareStripCost(null);
-      setInfillDecisionError(null);
-      setInfillDecisionLoading(false);
-      return;
-    }
-
-    const sourceInfills = activeModulePayload.infills;
-    if (!Array.isArray(sourceInfills) || !sourceInfills.some((entry) => String(entry.id) === selectedInfillId)) {
-      setInfillWithoutCost(null);
-      setCompareSheetCost(null);
-      setCompareStripCost(null);
-      setInfillDecisionError(null);
-      setInfillDecisionLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(async () => {
-      setInfillDecisionLoading(true);
-      setInfillDecisionError(null);
-      try {
-        const withoutInfills = removeInfillFromInfills(sourceInfills, selectedInfillId);
-        const withoutPayload = buildModulePayloadWithInfills(activeModulePayload, withoutInfills);
-
-        const sheetInfills = replaceInfillInPayload(sourceInfills, selectedInfillId, (entry) =>
-          applyAcrylicVariantToInfillPayload(entry, 'sheet_panels'),
-        );
-        const stripInfills = replaceInfillInPayload(sourceInfills, selectedInfillId, (entry) =>
-          applyAcrylicVariantToInfillPayload(entry, 'strip_620'),
-        );
-
-        const sheetPayload = buildModulePayloadWithInfills(activeModulePayload, sheetInfills);
-        const stripPayload = buildModulePayloadWithInfills(activeModulePayload, stripInfills);
-
-        const [withoutOut, sheetOut, stripOut] = await Promise.all([
-          fetchModuleCost(withoutPayload, controller.signal),
-          fetchModuleCost(sheetPayload, controller.signal),
-          fetchModuleCost(stripPayload, controller.signal),
-        ]);
-        if (controller.signal.aborted) return;
-        setInfillWithoutCost(withoutOut);
-        setCompareSheetCost(sheetOut);
-        setCompareStripCost(stripOut);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        const msg = err instanceof Error ? err.message : 'Failed to compare infill options';
-        setInfillDecisionError(msg);
-      } finally {
-        if (!controller.signal.aborted) setInfillDecisionLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(timeoutId);
-    };
-  }, [activeModulePayload, canViewInternalCosts, engineError, infillCostDetailsOpen, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
+  const infillCostComparison = useCalculatorInfillCostComparison({
+    canViewInternalCosts,
+    infillsOpen,
+    detailsOpen: infillCostDetailsOpen,
+    activeModulePayload,
+    readyToCalculate,
+    isCalculating,
+    engineError,
+    selectedInfill,
+    moduleLengthM: activeModule.lengthM,
+    roofRafterSpacingM: roofRafterSpacingEstimate.spacingM,
+    selectedInfillDraft: selectedInfill ? infillDraftById[selectedInfill.id] : undefined,
+  });
 
   const uiWarnings = useMemo(
     () =>
@@ -1966,32 +1848,6 @@ export default function CalculatorGridClient({
       toast.success('Design saved on this device.');
     },
   });
-
-  const marginalInfillDelta = useMemo(() => diffModuleCost(moduleBaseline, infillWithoutCost), [moduleBaseline, infillWithoutCost]);
-  const compareSheetDelta = useMemo(() => diffModuleCost(compareSheetCost, moduleBaseline), [compareSheetCost, moduleBaseline]);
-  const compareStripDelta = useMemo(() => diffModuleCost(compareStripCost, moduleBaseline), [compareStripCost, moduleBaseline]);
-  const sheetComplexityEstimate = useMemo(() => {
-    if (!selectedInfill) return null;
-    const variant = makeDefaultInfillItem({
-      ...selectedInfill,
-      id: selectedInfill.id,
-      acrylicSource: 'sheet_panels',
-      targetPanelWidthM: '1.2',
-      maxPanelWidthM: '1.2',
-    });
-    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id], toNumber(activeModule.lengthM))?.estimate ?? null;
-  }, [activeModule.lengthM, infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
-  const stripComplexityEstimate = useMemo(() => {
-    if (!selectedInfill) return null;
-    const variant = makeDefaultInfillItem({
-      ...selectedInfill,
-      id: selectedInfill.id,
-      acrylicSource: 'strip_620',
-      targetPanelWidthM: '0.64',
-      maxPanelWidthM: '0.64',
-    });
-    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id], toNumber(activeModule.lengthM))?.estimate ?? null;
-  }, [activeModule.lengthM, infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
 
   const infillSummary = useMemo(
     () => buildCalculatorInfillSummary(infillsState.items, infillUiById),
@@ -2389,6 +2245,168 @@ export default function CalculatorGridClient({
     { label: 'Brackets', value: typeof bracketCount === 'number' ? String(bracketCount) : '—' },
   ];
 
+  const infillWorkspaceProps: CalculatorInfillWorkspaceProps = {
+    open: infillsOpen,
+    dialog: {
+      closeOnEsc: !infillDuplicateOpen,
+      onClose: closeInfillModal,
+      stage: infillStage,
+      openingComplete: selectedOpeningComplete,
+      blockerCount: selectedCriticalWarnings.length,
+      onStageChange: handleInfillStageChange,
+    },
+    header: selectedInfill ? {
+      items: infillsState.items,
+      selectedItem: selectedInfill,
+      selectedIndex: selectedInfillIndex,
+      locationLabel: locationLabel(selectedInfill.location),
+      disablePaste: !infillHasClipboard,
+      onSelect: selectInfill,
+      onAdd: addCustomInfillFromOverview,
+      onDuplicate: () => duplicateInfill(selectedInfill.id),
+      onDuplicateBulk: openInfillDuplicate,
+      onCopyGeometry: () => { void handleCopyInfillGeometry(); },
+      onPasteGeometry: handlePasteInfillGeometry,
+      onMoveUp: () => moveInfill(selectedInfill.id, -1),
+      onMoveDown: () => moveInfill(selectedInfill.id, 1),
+      onDelete: () => deleteInfill(selectedInfill.id),
+    } : null,
+    showUndo: Boolean(deletedInfill),
+    onUndo: undoDeleteInfill,
+    rail: {
+      items: infillsState.items,
+      selectedInfillId: selectedInfill?.id ?? null,
+      uiById: infillUiById,
+      rafterSpacingM: roofRafterSpacingEstimate.spacingM,
+      listRef: infillListContainerRef,
+      summaryLine1: infillsSummaryLine1,
+      summaryLine2: infillsSummaryLine2,
+      summaryLine3: infillsSummaryLine3,
+      hasInfills,
+      presets: infillPresetCards,
+      onAddCustom: addCustomInfillFromOverview,
+      onAddPreset: addInfillPresetFromOverview,
+      onSelectInfill: selectInfill,
+      onFocusPrimaryField: focusInfillPrimaryField,
+      onMoveInfill: moveInfill,
+      onRowRef: setInfillRowRef,
+    },
+    openingStage: selectedInfill && selectedInfillEstimate && selectedInfillValidation ? {
+      item: selectedInfill,
+      domIdBase: selectedInfillDomIdBase,
+      errors: selectedInfillValidation.errors,
+      preview: selectedInfillPreview,
+      getDraftValue: (field) => getInfillDraftValue(selectedInfill, field),
+      onItemChange: (patch) => setInfillItem(selectedInfill.id, patch),
+      onLocationChange: (location) => setInfillLocation(selectedInfill.id, location),
+      onShapeTemplateChange: (template) => {
+        const nextShape = applyInfillOpeningTemplate(selectedInfill.shape, template);
+        if (nextShape === selectedInfill.shape) return;
+        clearInfillDraft(selectedInfill.id);
+        setInfillItem(selectedInfill.id, { shape: nextShape });
+      },
+      onDraftChange: (field, value) => updateRequiredShapeField(selectedInfill, field, value),
+      onDraftCommit: (field, value) => commitRequiredShapeField(selectedInfill, field, value),
+      onMonoModeChange: (nextMode) => {
+        updateMonoSlopeShape(selectedInfill, (shape) => {
+          const resolved = resolveMonoSlopeShape(shape);
+          return {
+            ...shape,
+            heightLowM: formatInputNumber(resolved.leftHeightM, 3),
+            heightHighM: formatInputNumber(resolved.rightHeightM, 3),
+            slopeMode: nextMode,
+            slopeDeg:
+              nextMode === 'pitch'
+                ? resolved.slopeDeg !== null
+                  ? formatInputNumber(resolved.slopeDeg, 2)
+                  : shape.slopeDeg ?? ''
+                : shape.slopeDeg ?? '',
+            slopeAnchor:
+              nextMode === 'pitch'
+                ? resolved.leftHeightM <= resolved.rightHeightM ? 'left' : 'right'
+                : shape.slopeAnchor ?? 'left',
+          };
+        });
+      },
+      onMonoAnchorChange: (anchor) => {
+        updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeAnchor: anchor }));
+      },
+      onMonoSlopeChange: (slopeDeg) => {
+        updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeDeg }));
+      },
+      onBottomOffsetChange: (bottomOffsetM) => {
+        setInfillItem(selectedInfill.id, { shape: { ...selectedInfill.shape, bottomOffsetM } });
+      },
+    } : null,
+    supportsStage: selectedInfill && selectedInfillEstimate && selectedInfillValidation ? {
+      item: selectedInfill,
+      domIdBase: selectedInfillDomIdBase,
+      canOfferRafterMatching: selectedCanOfferRafterMatching,
+      internalPositionsError: selectedInfillValidation.errors.internalSupportPositionsM,
+      acrylicSourceError: selectedInfillValidation.errors.acrylicSource,
+      additionalSupportSummary: addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal),
+      acrylicSource:
+        selectedInfill.acrylicSource === 'auto'
+          ? selectedInfillEstimate.acrylicSourceUsed
+          : selectedInfill.acrylicSource,
+      panelOrientation:
+        selectedInfill.panelOrientation === 'auto'
+          ? selectedInfillEstimate.panelOrientationUsed
+          : selectedInfill.panelOrientation,
+      preview: selectedInfillPreview,
+      onAcrylicSourceChange: (source) => setInfillAcrylicPreference(selectedInfill.id, source),
+      onPanelOrientationChange: (panelOrientation) => setInfillItem(selectedInfill.id, { panelOrientation }),
+      onSupportChange: (support) => setInfillItem(selectedInfill.id, { support }),
+      onInternalModeChange: (nextMode) => {
+        setInfillItem(selectedInfill.id, {
+          ...(nextMode !== 'match_roof_rafters'
+            && !selectedCanOfferRafterMatching
+            && selectedInfill.widthMode === 'match_roof_rafters'
+            ? { widthMode: 'target_width' as const }
+            : {}),
+          support: { ...selectedInfill.support, internalSupportMode: nextMode },
+        });
+      },
+      onCustomPositionsChange: (internalSupportPositionsM) => {
+        setInfillItem(selectedInfill.id, {
+          support: { ...selectedInfill.support, internalSupportPositionsM },
+        });
+      },
+    } : null,
+    resultsStage: selectedInfill && selectedInfillEstimate && selectedInfillValidation && selectedResultStatus ? {
+      status: selectedResultStatus,
+      blockers: selectedCriticalWarnings,
+      materialLabel: acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed),
+      orientationLabel: selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal',
+      additionalSupportCount: selectedInfillEstimate.estimatedMullionsTotal,
+      additionalSupportSummary: addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal),
+      cutListStatus: selectedInfillIsDraft ? 'draft' : 'valid',
+      cutListRows: selectedInfillEstimate.cutListRows ?? [],
+      preview: selectedInfillPreview,
+      technicalDetailsOpen: infillCostDetailsOpen,
+      onTechnicalDetailsToggle: setInfillCostDetailsOpen,
+      onFixBlocker: jumpToInfillWarningTarget,
+    } : null,
+    costComparison: canViewInternalCosts && selectedInfill ? {
+      model: infillCostComparison,
+      onApply: (source) => setInfillAcrylicPreference(selectedInfill.id, source),
+    } : null,
+    itemCount: infillsState.items.length,
+    presets: infillPresetCards,
+    onAddPreset: addInfillPreset,
+    onAddPresetFromOverview: addInfillPresetFromOverview,
+    duplicate: {
+      open: infillDuplicateOpen && Boolean(selectedInfill),
+      sourceLabel: selectedInfill?.label?.trim() || `Infill ${Math.max(1, selectedInfillIndex + 1)}`,
+      onCancel: closeInfillDuplicate,
+      onConfirm: ({ count, labelPattern }) => {
+        if (!selectedInfill) return;
+        duplicateInfillBulk(selectedInfill.id, count, labelPattern);
+        closeInfillDuplicate();
+      },
+    },
+  };
+
   const CalculatorRoot = workspace ? 'section' : 'main';
 
   return (
@@ -2526,262 +2544,7 @@ export default function CalculatorGridClient({
         </div>
       </div>
 
-      {infillsOpen ? (
-        <>
-        <InfillConfiguratorDialog
-          closeOnEsc={!infillDuplicateOpen}
-          onClose={closeInfillModal}
-          stage={infillStage}
-          openingComplete={selectedOpeningComplete}
-          blockerCount={selectedCriticalWarnings.length}
-          onStageChange={handleInfillStageChange}
-          editorHeader={selectedInfill ? (
-            <InfillEditorHeader
-              items={infillsState.items}
-              selectedItem={selectedInfill}
-              selectedIndex={selectedInfillIndex}
-              locationLabel={locationLabel(selectedInfill.location)}
-              disablePaste={!infillHasClipboard}
-              onSelect={selectInfill}
-              onAdd={addCustomInfillFromOverview}
-              onDuplicate={() => duplicateInfill(selectedInfill.id)}
-              onDuplicateBulk={openInfillDuplicate}
-              onCopyGeometry={() => { void handleCopyInfillGeometry(); }}
-              onPasteGeometry={handlePasteInfillGeometry}
-              onMoveUp={() => moveInfill(selectedInfill.id, -1)}
-              onMoveDown={() => moveInfill(selectedInfill.id, 1)}
-              onDelete={() => deleteInfill(selectedInfill.id)}
-            />
-          ) : null}
-          notice={deletedInfill ? (
-            <div className={styles.infillUndoToast} role="status" aria-live="polite">
-              <span>Infill deleted.</span>
-              <button type="button" className={styles.infillUndoButton} onClick={undoDeleteInfill}>Undo</button>
-            </div>
-          ) : null}
-          rail={(
-            <CalculatorInfillRail
-                items={infillsState.items}
-                selectedInfillId={selectedInfill?.id ?? null}
-                uiById={infillUiById}
-                rafterSpacingM={roofRafterSpacingEstimate.spacingM}
-                listRef={infillListContainerRef}
-                summaryLine1={infillsSummaryLine1}
-                summaryLine2={infillsSummaryLine2}
-                summaryLine3={infillsSummaryLine3}
-                hasInfills={hasInfills}
-                presets={infillPresetCards}
-                onAddCustom={addCustomInfillFromOverview}
-                onAddPreset={addInfillPresetFromOverview}
-                onSelectInfill={selectInfill}
-                onFocusPrimaryField={focusInfillPrimaryField}
-                onMoveInfill={moveInfill}
-                onRowRef={setInfillRowRef}
-            />
-          )}
-        >
-                {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
-                  <>
-                    {infillStage === 'opening' ? (
-                      <InfillOpeningStage
-                        item={selectedInfill}
-                        domIdBase={selectedInfillDomIdBase}
-                        errors={selectedInfillValidation.errors}
-                        preview={selectedInfillPreview}
-                        getDraftValue={(field) => getInfillDraftValue(selectedInfill, field)}
-                        onItemChange={(patch) => setInfillItem(selectedInfill.id, patch)}
-                        onLocationChange={(location) => setInfillLocation(selectedInfill.id, location)}
-                        onShapeTemplateChange={(template) => {
-                          const nextShape = applyInfillOpeningTemplate(selectedInfill.shape, template);
-                          if (nextShape === selectedInfill.shape) return;
-                          clearInfillDraft(selectedInfill.id);
-                          setInfillItem(selectedInfill.id, { shape: nextShape });
-                        }}
-                        onDraftChange={(field, value) => updateRequiredShapeField(selectedInfill, field, value)}
-                        onDraftCommit={(field, value) => commitRequiredShapeField(selectedInfill, field, value)}
-                        onMonoModeChange={(nextMode) => {
-                          updateMonoSlopeShape(selectedInfill, (shape) => {
-                            const resolved = resolveMonoSlopeShape(shape);
-                            return {
-                              ...shape,
-                              heightLowM: formatInputNumber(resolved.leftHeightM, 3),
-                              heightHighM: formatInputNumber(resolved.rightHeightM, 3),
-                              slopeMode: nextMode,
-                              slopeDeg:
-                                nextMode === 'pitch'
-                                  ? resolved.slopeDeg !== null
-                                    ? formatInputNumber(resolved.slopeDeg, 2)
-                                    : shape.slopeDeg ?? ''
-                                  : shape.slopeDeg ?? '',
-                              slopeAnchor:
-                                nextMode === 'pitch'
-                                  ? resolved.leftHeightM <= resolved.rightHeightM ? 'left' : 'right'
-                                  : shape.slopeAnchor ?? 'left',
-                            };
-                          });
-                        }}
-                        onMonoAnchorChange={(anchor) => {
-                          updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeAnchor: anchor }));
-                        }}
-                        onMonoSlopeChange={(slopeDeg) => {
-                          updateMonoSlopeShape(selectedInfill, (shape) => ({ ...shape, slopeDeg }));
-                        }}
-                        onBottomOffsetChange={(bottomOffsetM) => {
-                          setInfillItem(selectedInfill.id, { shape: { ...selectedInfill.shape, bottomOffsetM } });
-                        }}
-                      />
-                    ) : null}
-
-                    {infillStage === 'supports' ? (
-                      <InfillSupportsStage
-                        item={selectedInfill}
-                        domIdBase={selectedInfillDomIdBase}
-                        canOfferRafterMatching={selectedCanOfferRafterMatching}
-                        internalPositionsError={selectedInfillValidation.errors.internalSupportPositionsM}
-                        acrylicSourceError={selectedInfillValidation.errors.acrylicSource}
-                        additionalSupportSummary={addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}
-                        acrylicSource={selectedInfill.acrylicSource === 'auto' ? selectedInfillEstimate.acrylicSourceUsed : selectedInfill.acrylicSource}
-                        panelOrientation={selectedInfill.panelOrientation === 'auto' ? selectedInfillEstimate.panelOrientationUsed : selectedInfill.panelOrientation}
-                        preview={selectedInfillPreview}
-                        onAcrylicSourceChange={(source) => setInfillAcrylicPreference(selectedInfill.id, source)}
-                        onPanelOrientationChange={(panelOrientation) => setInfillItem(selectedInfill.id, { panelOrientation })}
-                        onSupportChange={(support) => setInfillItem(selectedInfill.id, { support })}
-                        onInternalModeChange={(nextMode) => {
-                          setInfillItem(selectedInfill.id, {
-                            ...(nextMode !== 'match_roof_rafters'
-                              && !selectedCanOfferRafterMatching
-                              && selectedInfill.widthMode === 'match_roof_rafters'
-                              ? { widthMode: 'target_width' as const }
-                              : {}),
-                            support: { ...selectedInfill.support, internalSupportMode: nextMode },
-                          });
-                        }}
-                        onCustomPositionsChange={(internalSupportPositionsM) => {
-                          setInfillItem(selectedInfill.id, {
-                            support: { ...selectedInfill.support, internalSupportPositionsM },
-                          });
-                        }}
-                      />
-                    ) : null}
-
-                    {infillStage === 'results' && selectedResultStatus ? (
-                      <InfillResultsStage
-                        status={selectedResultStatus}
-                        blockers={selectedCriticalWarnings}
-                        materialLabel={acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}
-                        orientationLabel={selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal'}
-                        additionalSupportCount={selectedInfillEstimate.estimatedMullionsTotal}
-                        additionalSupportSummary={addedSupportSummary(selectedInfillEstimate.estimatedMullionsTotal)}
-                        cutListStatus={selectedInfillIsDraft ? 'draft' : 'valid'}
-                        cutListRows={selectedInfillEstimate.cutListRows ?? []}
-                        preview={selectedInfillPreview}
-                        technicalDetailsOpen={infillCostDetailsOpen}
-                        onTechnicalDetailsToggle={setInfillCostDetailsOpen}
-                        onFixBlocker={jumpToInfillWarningTarget}
-                        technicalDetails={canViewInternalCosts ? (
-                          <div className={styles.infillComputedGroup}>
-                            <div className={styles.infillComputedGroupTitle}>Cost comparison</div>
-                            {moduleBaselineLoading ? <p className={styles.infillComputedNote}>Loading module baseline...</p> : null}
-                            {moduleBaselineError ? <p className={styles.previewError}>{moduleBaselineError}</p> : null}
-                            {infillDecisionLoading ? <p className={styles.infillComputedNote}>Running option comparison...</p> : null}
-                            {infillDecisionError ? <p className={styles.previewError}>{infillDecisionError}</p> : null}
-                            <div className={styles.infillDecisionCard}>
-                              <div className={styles.infillDecisionTitle}>Marginal cost (this infill)</div>
-                              <PreviewRow label="Delta total (ex-GST)" value={formatSignedMoney(marginalInfillDelta?.total_ex)} />
-                              <PreviewRow label="Delta total (inc-GST)" value={formatSignedMoney(marginalInfillDelta?.total_inc)} />
-                              <PreviewRow label="Delta materials (ex-GST)" value={formatSignedMoney(marginalInfillDelta?.materials_ex)} />
-                              <PreviewRow label="Delta install (ex-GST)" value={formatSignedMoney(marginalInfillDelta?.install_ex)} />
-                              <p className={styles.infillComputedNote}>Marginal vs current module; pooling across job not represented.</p>
-                            </div>
-                            <div className={styles.infillDecisionCard}>
-                              <div className={styles.infillDecisionTitle}>Compare sheet vs 620 strips</div>
-                              <div className={styles.infillDecisionRow}>
-                                <div className={styles.infillDecisionMain}>
-                                  <div className={styles.infillDecisionLabel}>Sheet panels</div>
-                                  <div className={styles.infillDecisionMeta}>
-                                    {`Delta total ${formatSignedMoney(compareSheetDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareSheetDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareSheetDelta?.install_ex)}`}
-                                  </div>
-                                  <div className={styles.infillDecisionMeta}>
-                                    {`Complexity: panels ~${sheetComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${sheetComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  className={styles.infillDecisionApply}
-                                  onClick={() => setInfillAcrylicPreference(selectedInfill.id, 'sheet_panels')}
-                                >
-                                  Apply
-                                </button>
-                              </div>
-                              <div className={styles.infillDecisionRow}>
-                                <div className={styles.infillDecisionMain}>
-                                  <div className={styles.infillDecisionLabel}>620 strips</div>
-                                  <div className={styles.infillDecisionMeta}>
-                                    {`Delta total ${formatSignedMoney(compareStripDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareStripDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareStripDelta?.install_ex)}`}
-                                  </div>
-                                  <div className={styles.infillDecisionMeta}>
-                                    {`Complexity: panels ~${stripComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${stripComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  className={styles.infillDecisionApply}
-                                  onClick={() => setInfillAcrylicPreference(selectedInfill.id, 'strip_620')}
-                                >
-                                  Apply
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : undefined}
-                      />
-                    ) : null}
-                  </>
-                ) : infillsState.items.length === 0 ? (
-                  <div className={styles.infillEditorEmpty}>
-                    <strong className={styles.infillEditorEmptyTitle}>Choose how you want to start</strong>
-                    <p>Use a preset for the fastest setup, or create a custom infill if this layout is unique.</p>
-                    <div className={styles.infillEditorEmptySectionTitle}>Use a preset</div>
-                    <div className={styles.infillPresetCardGrid}>
-                      {infillPresetCards.map((preset) => (
-                        <button key={preset.key} type="button" className={styles.infillPresetCard} onClick={() => addInfillPreset(preset.key)}>
-                          <strong>{preset.label}</strong>
-                        </button>
-                      ))}
-                    </div>
-                    <button type="button" className={styles.infillPrimaryButton} onClick={() => addInfillPreset('custom')}>
-                      Add custom infill
-                    </button>
-                    <p className={styles.infillEditorEmptyNote}>
-                      Presets are the quickest way to begin. You can edit panel layout, supports, and dimensions afterwards.
-                    </p>
-                  </div>
-                ) : (
-                  <div className={styles.infillEditorEmpty}>
-                    <strong className={styles.infillEditorEmptyTitle}>Select an infill to edit it</strong>
-                    <p>Pick one from the list, or add a new infill to this module.</p>
-                    <div className={styles.infillEditorActions}>
-                      <InfillPresetMenu label="Presets" presets={infillPresetCards} onAddPreset={addInfillPresetFromOverview} />
-                      <button type="button" className={styles.infillSecondaryButton} onClick={() => addInfillPreset('custom')}>
-                        Add custom infill
-                      </button>
-                    </div>
-                  </div>
-                )}
-        </InfillConfiguratorDialog>
-        <DuplicateDialog
-          open={infillDuplicateOpen && Boolean(selectedInfill)}
-          sourceLabel={selectedInfill?.label?.trim() || `Infill ${Math.max(1, selectedInfillIndex + 1)}`}
-          onCancel={closeInfillDuplicate}
-          onConfirm={({ count, labelPattern }) => {
-            if (!selectedInfill) return;
-            duplicateInfillBulk(selectedInfill.id, count, labelPattern);
-            closeInfillDuplicate();
-          }}
-        />
-        </>
-      ) : null}
-
+      <CalculatorInfillWorkspace {...infillWorkspaceProps} />
       <CalculatorSaveDialogs
         issuesOpen={issuesOpen}
         issues={issues}
@@ -2830,14 +2593,5 @@ export default function CalculatorGridClient({
         />
       ) : null}
     </CalculatorRoot>
-  );
-}
-
-function PreviewRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.previewRow}>
-      <span className={styles.previewRowLabel}>{label}</span>
-      <span className={styles.previewRowValue}>{value}</span>
-    </div>
   );
 }
