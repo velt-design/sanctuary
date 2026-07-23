@@ -51,7 +51,9 @@ export default function ProjectsExperience({
       data-projects-experience
     >
       {!detailMode ? (
-        <h1 className="visually-hidden">Pergola projects and case studies</h1>
+        <h1 className="projects-experience__collection-title">
+          Pergola projects and case studies
+        </h1>
       ) : null}
       <div className="projects-experience__layout">
         <ProjectNavigator projects={projects} activeProject={selectedProject} />
@@ -62,6 +64,7 @@ export default function ProjectsExperience({
           relatedProjects={relatedProjects}
           previousProject={previousProject}
           nextProject={nextProject}
+          showBreadcrumb={detailMode}
           titleAs={detailMode ? 'h1' : 'h2'}
         />
       </div>

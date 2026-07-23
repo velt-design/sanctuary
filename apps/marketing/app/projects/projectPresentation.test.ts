@@ -5,6 +5,7 @@ import {
   getProjectFacts,
   getProjectFeatureTags,
   getProjectFormLabel,
+  getProjectMobileFactSummary,
   getProjectTechnicalSections,
 } from './projectPresentation';
 
@@ -31,6 +32,17 @@ describe('project presentation', () => {
     expect(velskovFacts.some((fact) => fact.label === 'Completed')).toBe(false);
     expect(velskovFacts.some((fact) => fact.label === 'Structure & finish')).toBe(false);
     expect(velskovFacts.every((fact) => fact.value.trim().length > 0)).toBe(true);
+  });
+
+  it('summarises supported dimensions and roof evidence for compact mobile facts', () => {
+    expect(getProjectMobileFactSummary(getProject('warkworth-outdoor-room'))).toEqual({
+      measurement: '5.0 m W × 6.0 m D × 4.1 m H',
+      roofApproach: 'Corrugated COLORSTEEL with clear acrylic roof and gable glazing',
+    });
+    expect(getProjectMobileFactSummary(getProject('tindalls-bay-pavilion'))).toEqual({
+      measurement: '108 m²',
+      roofApproach: 'Insulated panels with opal and light grey acrylic roof zones',
+    });
   });
 
   it('does not repeat the design brief inside secondary technical details', () => {

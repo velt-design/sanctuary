@@ -64,6 +64,21 @@ loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
 horizontal overflow, no nested content scroll and explicit handling of
 unpublished heater evidence.
 
+Project-page changes should run
+`npx vitest run apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
+and
+`npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. The project browser suite visits every
+canonical case study at 390 pixels and runs the collection plus four
+representative project states at 320, 390 and 430 pixels. It verifies one
+visible H1 and logical heading order, early and final contact actions, loaded
+and intentionally framed hero media, mobile height budgets, minimum 44 pixel
+targets, native server-rendered disclosures, selector focus and scroll
+behavior, metadata and schema, honest missing-data treatment, reduced motion,
+zero textual or generated em dashes, no horizontal overflow and no nested
+vertical content scroller. Its seven-width responsive matrix and desktop
+navigator checks provide the representative desktop regression coverage.
+
 Portal readiness sweeps:
 
 ```bash

@@ -10,6 +10,11 @@ type ProjectContextLink = {
   label: string;
 };
 
+type ProjectMobileFactSummary = {
+  measurement: string;
+  roofApproach: string;
+};
+
 export function getProjectFormLabel(project: Project): string {
   return project.roof === 'Perimeter' ? 'Box-perimeter' : project.roof;
 }
@@ -20,6 +25,18 @@ function getProjectDimensions(project: Project): string {
     project.stats.depth ? `${project.stats.depth} D` : '',
     project.stats.height ? `${project.stats.height} H` : '',
   ].filter(Boolean).join(' × ');
+}
+
+export function getProjectMobileFactSummary(
+  project: Project,
+): ProjectMobileFactSummary {
+  return {
+    measurement:
+      getProjectDimensions(project)
+      || project.stats.area
+      || getProjectFormLabel(project),
+    roofApproach: project.roofApproach,
+  };
 }
 
 export function getProjectFacts(project: Project): ProjectFact[] {

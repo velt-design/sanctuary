@@ -1,12 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
+import MobileProjectDisclosure from './MobileProjectDisclosure';
 import {
   getProjectContextLinks,
   getProjectFacts,
   getProjectFeatureTags,
   getProjectFormLabel,
   getProjectIntroCta,
+  getProjectMobileFactSummary,
   getProjectTechnicalSections,
 } from './projectPresentation';
 
@@ -17,6 +19,7 @@ type ProjectDetailContentProps = {
   relatedProjects?: Project[];
   previousProject?: Project;
   nextProject?: Project;
+  showBreadcrumb?: boolean;
   titleAs?: 'h1' | 'h2';
 };
 
@@ -27,6 +30,7 @@ export default function ProjectDetailContent({
   relatedProjects = [],
   previousProject,
   nextProject,
+  showBreadcrumb = false,
   titleAs = 'h1',
 }: ProjectDetailContentProps) {
   if (!project) {
@@ -41,6 +45,7 @@ export default function ProjectDetailContent({
 
   const TitleTag = titleAs;
   const facts = getProjectFacts(project);
+  const mobileFactSummary = getProjectMobileFactSummary(project);
   const features = getProjectFeatureTags(project);
   const technicalSections = getProjectTechnicalSections(project);
   const contextLinks = getProjectContextLinks(project);
@@ -60,6 +65,13 @@ export default function ProjectDetailContent({
       aria-labelledby="project-case-study-title"
       data-project-case-study={project.slug}
     >
+      {showBreadcrumb ? (
+        <nav className="project-case-study__breadcrumbs" aria-label="Breadcrumb">
+          <Link href="/projects">Projects</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{project.title}</span>
+        </nav>
+      ) : null}
       <header className="project-case-study__intro">
         <div className="project-case-study__intro-heading">
           <p className="project-case-study__eyebrow">
@@ -79,11 +91,18 @@ export default function ProjectDetailContent({
             <Link className="project-action project-action--primary" href="/contact">
               {getProjectIntroCta(project)}
             </Link>
-            {contextLinks.map((link) => (
-              <Link className="project-action project-action--text" href={link.href} key={link.href}>
-                {link.label}
-              </Link>
-            ))}
+            {contextLinks.length ? (
+              <nav
+                className="project-case-study__context-links"
+                aria-label="Related pergola guides"
+              >
+                {contextLinks.map((link) => (
+                  <Link className="project-action project-action--text" href={link.href} key={link.href}>
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            ) : null}
           </div>
         </div>
       </header>
@@ -109,39 +128,63 @@ export default function ProjectDetailContent({
       <section className="project-case-study__facts" aria-labelledby="project-facts-title">
         <div className="project-case-study__section-heading">
           <p className="project-case-study__eyebrow">Project facts</p>
-          <h2 id="project-facts-title">The built work, at a glance.</h2>
+          <h2 id="project-facts-title">Built details.</h2>
         </div>
-        <div>
-          <dl className="project-case-study__fact-list">
-            {facts.map((fact) => (
-              <div key={fact.label}>
-                <dt>{fact.label}</dt>
-                <dd>{fact.value}</dd>
+        <MobileProjectDisclosure
+          bodyClassName="project-case-study__facts-body"
+          className="project-case-study__facts-disclosure"
+          kind="facts"
+          summary={(
+            <>
+              <span>
+                <span className="project-case-study__eyebrow">Built details</span>
+                <strong>{mobileFactSummary.measurement}</strong>
+                <small>{mobileFactSummary.roofApproach}</small>
+              </span>
+              <span aria-hidden="true">+</span>
+            </>
+          )}
+        >
+            <dl className="project-case-study__fact-list">
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+            {features.length ? (
+              <div className="project-case-study__features">
+                <p>Selected details</p>
+                <ul>
+                  {features.map((feature) => <li key={feature}>{feature}</li>)}
+                </ul>
               </div>
-            ))}
-          </dl>
-          {features.length ? (
-            <div className="project-case-study__features">
-              <p>Selected details</p>
-              <ul>
-                {features.map((feature) => <li key={feature}>{feature}</li>)}
-              </ul>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+        </MobileProjectDisclosure>
       </section>
 
       <section className="project-case-study__story" aria-labelledby="project-story-title">
         <div className="project-case-study__section-heading">
           <p className="project-case-study__eyebrow">Case study</p>
-          <h2 id="project-story-title">Brief, constraint and response.</h2>
+          <h2 id="project-story-title">The brief and response.</h2>
         </div>
         <div className="project-case-study__story-copy">
           {project.description[0] ? (
-            <section>
-              <h3>The brief</h3>
-              <p>{project.description[0]}</p>
-            </section>
+            <MobileProjectDisclosure
+              bodyClassName="project-case-study__story-disclosure-body"
+              className="project-case-study__story-disclosure"
+              kind="brief"
+              summary={(
+                <>
+                <span>The original brief</span>
+                <span aria-hidden="true">+</span>
+                </>
+              )}
+            >
+                <h3>The brief</h3>
+                <p>{project.description[0]}</p>
+            </MobileProjectDisclosure>
           ) : null}
           <section>
             <h3>Design constraint</h3>
@@ -149,10 +192,25 @@ export default function ProjectDetailContent({
           </section>
           {project.description.length > 1 ? (
             <section>
-              <h3>Sanctuary&apos;s design response</h3>
-              {project.description.slice(1).map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+              <h3>Sanctuary&apos;s response</h3>
+              <p>{project.description[1]}</p>
+              {project.description.length > 2 ? (
+                <MobileProjectDisclosure
+                  bodyClassName="project-case-study__story-more-body"
+                  className="project-case-study__story-more"
+                  kind="response"
+                  summary={(
+                    <>
+                    <span>More about the response</span>
+                    <span aria-hidden="true">+</span>
+                    </>
+                  )}
+                >
+                    {project.description.slice(2).map((paragraph) => (
+                      <p key={paragraph}>{paragraph}</p>
+                    ))}
+                </MobileProjectDisclosure>
+              ) : null}
             </section>
           ) : null}
         </div>
@@ -163,9 +221,9 @@ export default function ProjectDetailContent({
           <div className="project-case-study__gallery-heading">
             <div>
               <p className="project-case-study__eyebrow">Project gallery</p>
-              <h2 id="project-gallery-title">Architecture in use and in detail.</h2>
+              <h2 id="project-gallery-title">See the project in detail.</h2>
             </div>
-            <p>Swipe on smaller screens to move through the project.</p>
+            <p>Swipe through the project on smaller screens.</p>
           </div>
           <div className="project-case-study__gallery">
             {detailImages.map((image, index) => (
@@ -210,15 +268,21 @@ export default function ProjectDetailContent({
 
       {technicalSections.length ? (
         <section className="project-case-study__technical" aria-labelledby="project-technical-title">
-          <details>
-            <summary>
+          <MobileProjectDisclosure
+            bodyClassName="project-case-study__technical-grid"
+            className="project-case-study__technical-disclosure"
+            desktopMinWidth={900}
+            kind="technical"
+            summary={(
+              <>
               <span>
                 <span className="project-case-study__eyebrow">Project detail</span>
-                <span id="project-technical-title">Materials, roof and integrated elements.</span>
+                <span id="project-technical-title">Materials and technical details.</span>
               </span>
               <span aria-hidden="true">+</span>
-            </summary>
-            <div className="project-case-study__technical-grid">
+              </>
+            )}
+          >
               {technicalSections.map((section, index) => (
                 <section key={section.title}>
                   <span>{String(index + 1).padStart(2, '0')}</span>
@@ -233,8 +297,7 @@ export default function ProjectDetailContent({
                   ) : null}
                 </section>
               ))}
-            </div>
-          </details>
+          </MobileProjectDisclosure>
         </section>
       ) : null}
 
@@ -291,10 +354,10 @@ export default function ProjectDetailContent({
       <section className="project-case-study__final-cta" aria-labelledby="project-enquiry-title">
         <div>
           <p className="project-case-study__eyebrow">Start a conversation</p>
-          <h2 id="project-enquiry-title">Planning something with a similar brief?</h2>
+          <h2 id="project-enquiry-title">Planning a similar project?</h2>
           <p>
-            Share the site, plans or early project thinking. We can help define the right
-            architectural response.
+            Share the site, plans or early brief. We can help define the right
+            response.
           </p>
         </div>
         <Link className="project-action project-action--primary" href="/contact">

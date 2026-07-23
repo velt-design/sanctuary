@@ -103,9 +103,7 @@ export default function ProjectNavigator({
     setIsOpen(true);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        document.querySelector<HTMLButtonElement>(
-          '#project-navigator-panel .project-navigator__close',
-        )?.focus();
+        closeRef.current?.focus();
       });
     });
   };

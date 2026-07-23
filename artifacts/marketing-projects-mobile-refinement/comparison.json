@@ -1,0 +1,137 @@
+[
+  {
+    "width": 320,
+    "name": "collection",
+    "route": "/projects",
+    "beforeMainHeight": 5651,
+    "afterMainHeight": 3403,
+    "pixelsReduced": 2248,
+    "percentageReduced": 39.8
+  },
+  {
+    "width": 320,
+    "name": "warkworth",
+    "route": "/projects/warkworth-outdoor-room",
+    "beforeMainHeight": 5651,
+    "afterMainHeight": 3362,
+    "pixelsReduced": 2289,
+    "percentageReduced": 40.5
+  },
+  {
+    "width": 320,
+    "name": "st-heliers",
+    "route": "/projects/st-heliers-townhouse",
+    "beforeMainHeight": 4616,
+    "afterMainHeight": 3024,
+    "pixelsReduced": 1592,
+    "percentageReduced": 34.5
+  },
+  {
+    "width": 320,
+    "name": "lilliput",
+    "route": "/projects/lilliput-mini-golf",
+    "beforeMainHeight": 5414,
+    "afterMainHeight": 3339,
+    "pixelsReduced": 2075,
+    "percentageReduced": 38.3
+  },
+  {
+    "width": 320,
+    "name": "velskov",
+    "route": "/projects/velskov-forest",
+    "beforeMainHeight": 5277,
+    "afterMainHeight": 3432,
+    "pixelsReduced": 1845,
+    "percentageReduced": 35
+  },
+  {
+    "width": 390,
+    "name": "collection",
+    "route": "/projects",
+    "beforeMainHeight": 5665,
+    "afterMainHeight": 3415,
+    "pixelsReduced": 2250,
+    "percentageReduced": 39.7
+  },
+  {
+    "width": 390,
+    "name": "warkworth",
+    "route": "/projects/warkworth-outdoor-room",
+    "beforeMainHeight": 5665,
+    "afterMainHeight": 3368,
+    "pixelsReduced": 2297,
+    "percentageReduced": 40.5
+  },
+  {
+    "width": 390,
+    "name": "st-heliers",
+    "route": "/projects/st-heliers-townhouse",
+    "beforeMainHeight": 4677,
+    "afterMainHeight": 3028,
+    "pixelsReduced": 1649,
+    "percentageReduced": 35.3
+  },
+  {
+    "width": 390,
+    "name": "lilliput",
+    "route": "/projects/lilliput-mini-golf",
+    "beforeMainHeight": 5414,
+    "afterMainHeight": 3293,
+    "pixelsReduced": 2121,
+    "percentageReduced": 39.2
+  },
+  {
+    "width": 390,
+    "name": "velskov",
+    "route": "/projects/velskov-forest",
+    "beforeMainHeight": 5432,
+    "afterMainHeight": 3517,
+    "pixelsReduced": 1915,
+    "percentageReduced": 35.3
+  },
+  {
+    "width": 430,
+    "name": "collection",
+    "route": "/projects",
+    "beforeMainHeight": 5711,
+    "afterMainHeight": 3433,
+    "pixelsReduced": 2278,
+    "percentageReduced": 39.9
+  },
+  {
+    "width": 430,
+    "name": "warkworth",
+    "route": "/projects/warkworth-outdoor-room",
+    "beforeMainHeight": 5711,
+    "afterMainHeight": 3380,
+    "pixelsReduced": 2331,
+    "percentageReduced": 40.8
+  },
+  {
+    "width": 430,
+    "name": "st-heliers",
+    "route": "/projects/st-heliers-townhouse",
+    "beforeMainHeight": 4747,
+    "afterMainHeight": 3094,
+    "pixelsReduced": 1653,
+    "percentageReduced": 34.8
+  },
+  {
+    "width": 430,
+    "name": "lilliput",
+    "route": "/projects/lilliput-mini-golf",
+    "beforeMainHeight": 5448,
+    "afterMainHeight": 3350,
+    "pixelsReduced": 2098,
+    "percentageReduced": 38.5
+  },
+  {
+    "width": 430,
+    "name": "velskov",
+    "route": "/projects/velskov-forest",
+    "beforeMainHeight": 5492,
+    "afterMainHeight": 3579,
+    "pixelsReduced": 1913,
+    "percentageReduced": 34.8
+  }
+]
