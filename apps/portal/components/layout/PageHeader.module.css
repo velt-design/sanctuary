@@ -9,7 +9,8 @@
 .identity { min-width: 0; flex: 1 1 220px; display: grid; gap: 6px; }
 .rowWithUtility .identity { grid-area: identity; align-self: center; width: 100%; }
 .titleLine { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
-.title { margin: 0; font-size: clamp(26px, 4vw, 32px); line-height: 0.98; font-weight: 700; letter-spacing: -0.04em; color: var(--ui-text-strong); }
+.title { min-width: 0; margin: 0; font-size: clamp(26px, 4vw, 32px); line-height: 0.98; font-weight: 700; letter-spacing: -0.04em; color: var(--ui-text-strong); }
+.titleAccessory { display: inline-flex; flex: 0 0 auto; align-items: center; align-self: center; }
 .subtitle { font-size: 14px; line-height: 1.5; color: var(--ui-text-muted); }
 .meta { color: var(--ui-text-muted); font-size: 13px; }
 .right { min-width: 0; display: flex; align-items: center; justify-content: flex-end; flex: 1 1 auto; flex-wrap: wrap; gap: 8px; }

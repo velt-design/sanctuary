@@ -20,6 +20,7 @@ export type HeaderPrimaryAction = {
 
 export type PageHeaderProps = {
   title: string;
+  titleAccessory?: ReactNode;
   subtitle?: ReactNode;
   description?: ReactNode;
   eyebrow?: ReactNode;
@@ -54,6 +55,7 @@ function foundationActionVariant(tone: HeaderPrimaryAction['tone'] = 'primary'):
 
 export default function PageHeader({
   title,
+  titleAccessory,
   subtitle,
   description,
   eyebrow,
@@ -154,6 +156,7 @@ export default function PageHeader({
           {eyebrow ? <div className={styles.eyebrow}>{eyebrow}</div> : null}
           <div className={styles.titleLine}>
             {createElement(`h${headingLevel}`, { className: styles.title }, title)}
+            {titleAccessory ? <span className={styles.titleAccessory}>{titleAccessory}</span> : null}
             {count ? <span className={styles.count}>{count}</span> : null}
           </div>
           {description ?? subtitle ? <div className={styles.subtitle}>{description ?? subtitle}</div> : null}

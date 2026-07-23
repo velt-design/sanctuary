@@ -36,9 +36,37 @@
 }
 
 .mastheadBody {
-  display: grid;
-  gap: var(--ui-space-4);
-  padding: var(--ui-space-4);
+  min-width: 0;
+  padding: var(--ui-space-2) var(--ui-space-3);
+}
+
+.mastheadHeader {
+  min-width: 0;
+}
+
+.mastheadHeader :global([data-page-header-row='true']) {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 440px) minmax(0, 1fr);
+  gap: var(--ui-space-3);
+}
+
+.mastheadHeader :global([data-page-header-identity='true']) {
+  min-width: 180px;
+}
+
+.mastheadHeader :global([data-page-header-identity='true'] h1) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mastheadHeader :global([data-page-header-utility='true']) {
+  justify-self: stretch;
+  width: 100%;
+}
+
+.mastheadHeader :global([data-page-header-actions='true']) {
+  width: auto;
+  flex-wrap: nowrap;
 }
 
 .mastheadOwner {
@@ -47,6 +75,7 @@
   gap: var(--ui-space-2);
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-small);
+  white-space: nowrap;
 }
 
 .mastheadOwner strong {
@@ -60,24 +89,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--ui-space-2);
-}
-
-.mastheadStage {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-4);
-  min-width: 0;
-  border-top: var(--ui-border-width) solid var(--ui-border);
-  padding-top: var(--ui-space-4);
-}
-
-.mastheadTracker {
-  min-width: 0;
-  flex: 1;
-  overflow-x: auto;
-  padding: var(--ui-space-1);
 }
 
 .projectTabBody {
@@ -97,20 +110,41 @@
   }
 
   .mastheadBody {
+    padding: var(--ui-space-2);
+  }
+}
+
+@container (max-width: 1200px) {
+  .mastheadHeader :global([data-page-header-row='true']) {
+    grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
+    gap: var(--ui-space-2);
+  }
+}
+
+@container (max-width: 1140px) {
+  .mastheadHeader :global([data-page-header-row='true']) {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
     gap: var(--ui-space-3);
-    padding: var(--ui-space-3);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: var(--ui-space-1);
   }
 
-  .mastheadActions {
+  .mastheadHeader :global([data-page-header-identity='true']) {
+    flex: 0 1 260px;
+    width: auto;
+  }
+
+  .mastheadHeader :global([data-page-header-utility='true']) {
+    flex: 0 0 clamp(220px, 38vw, 360px);
+    width: auto;
+  }
+
+  .mastheadHeader :global([data-page-header-actions='true']) {
+    flex: 0 0 auto;
     justify-content: flex-start;
-  }
-
-  .mastheadStage {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .mastheadTracker {
-    width: 100%;
   }
 }

@@ -192,6 +192,7 @@ test('submits project-owner and admin conflict-resolution commands', async ({ pa
 const PROJECT_SHELL_VIEWPORTS = [
   [1600, 900],
   [1366, 768],
+  [1200, 800],
   [1024, 768],
   [768, 900],
   [390, 844],
@@ -216,7 +217,21 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     const fixture = page.locator('[data-portal-qa-fixture="project-page-shell"]');
     await expect(fixture).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Aroha Smith - Takapuna' })).toBeVisible();
+    const commandRow = page.locator('[data-project-header-row="command"]');
+    const tabRow = page.locator('[data-project-header-row="tabs"]');
+    await expect(page.locator('[data-project-header-row]')).toHaveCount(2);
+    await expect(commandRow.locator('[data-stage="sent"]')).toHaveText('Sent');
+    await expect(commandRow.getByRole('combobox', { name: 'Search projects and contacts' })).toBeVisible();
+    await expect(commandRow.getByText('Owner', { exact: true })).toBeVisible();
+    await expect(commandRow.getByRole('link', { name: 'Projects', exact: true })).toBeVisible();
+    await expect(commandRow.getByRole('link', { name: 'Design Workbench' })).toBeVisible();
+    // The credential-free fixture is non-admin; the component test covers the admin-only More menu.
+    await expect(commandRow.getByRole('button', { name: 'More' })).toHaveCount(0);
+    await expect(commandRow).not.toContainText('Q-2042');
+    await expect(commandRow).not.toContainText('proj_fixture_shell');
+    await expect(commandRow.locator('[aria-label="Project stage"]')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Project sections' })).toBeVisible();
+    await expect(tabRow.getByRole('navigation', { name: 'Project sections' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Calculator' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Commercial' })).toBeVisible();
@@ -226,10 +241,37 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(page.locator('[data-project-rail]')).toHaveCount(0);
     await expect(page.locator('[role="separator"]')).toHaveCount(0);
 
+    const commandRail = commandRow.locator('[data-page-header-row="true"]');
+    const commandRailOverflows = await commandRail.evaluate((element) => element.scrollWidth > element.clientWidth);
+    const usesCentredGrid = await commandRail.evaluate((element) => getComputedStyle(element).display === 'grid');
+    if (usesCentredGrid) {
+      const searchCentreOffset = await commandRail.evaluate((element) => {
+        const search = element.querySelector<HTMLElement>('[data-page-header-utility="true"]');
+        if (!search) return Number.POSITIVE_INFINITY;
+        const rowBounds = element.getBoundingClientRect();
+        const searchBounds = search.getBoundingClientRect();
+        return Math.abs(
+          (searchBounds.left + searchBounds.right) / 2 - (rowBounds.left + rowBounds.right) / 2,
+        );
+      });
+      expect(searchCentreOffset).toBeLessThanOrEqual(1);
+    }
+    if (commandRailOverflows) {
+      await commandRail.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+      const finalCommandIsReachable = await commandRail.evaluate((element) => {
+        const finalCommand = element.querySelector<HTMLAnchorElement>('a[href*="design-workbench"]');
+        if (!finalCommand) return false;
+        const railBounds = element.getBoundingClientRect();
+        const commandBounds = finalCommand.getBoundingClientRect();
+        return commandBounds.left >= railBounds.left - 1 && commandBounds.right <= railBounds.right + 1;
+      });
+      expect(finalCommandIsReachable).toBe(true);
+    }
+
     const stickyPosition = await page.locator('[data-project-masthead-slot="fixed"]').evaluate(
       (element) => getComputedStyle(element).position,
     );
-    expect(stickyPosition).toBe('sticky');
+    expect(stickyPosition).toBe(width >= 768 ? 'sticky' : 'static');
     const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(horizontalOverflow).toBe(false);
   });

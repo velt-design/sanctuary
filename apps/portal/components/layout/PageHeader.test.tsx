@@ -110,4 +110,21 @@ describe('PageHeader', () => {
     ))).toEqual(['identity', 'utility', 'actions']);
     rendered.unmount();
   });
+
+  it('places an optional title accessory directly beside the heading', () => {
+    const rendered = renderIntoDocument(
+      <PageHeader
+        variant="detail"
+        title="Remuera Residence"
+        titleAccessory={<span data-testid="stage-badge">Quoting</span>}
+      />,
+    );
+
+    const titleLine = rendered.container.querySelector('h1')?.parentElement;
+    expect(Array.from(titleLine?.children ?? []).map((child) => child.textContent)).toEqual([
+      'Remuera Residence',
+      'Quoting',
+    ]);
+    rendered.unmount();
+  });
 });

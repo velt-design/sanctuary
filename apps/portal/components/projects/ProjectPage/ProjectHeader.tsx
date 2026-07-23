@@ -3,7 +3,7 @@ import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
 import ProjectTabNavigation from './ProjectTabNavigation';
 import ProjectHeaderActions from './ProjectHeaderActions';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
-import { Card, ProjectStageBadge, ProjectStageTracker } from '@/components/ui/foundation';
+import { Card, ProjectStageBadge } from '@/components/ui/foundation';
 import styles from './ProjectPage.module.css';
 
 export default function ProjectHeader({
@@ -21,29 +21,26 @@ export default function ProjectHeader({
 }) {
   return (
     <Card className={styles.masthead} padding="none" aria-label="Project summary" data-ui-foundation="true">
-      <div className={styles.mastheadBody}>
+      <div className={styles.mastheadBody} data-project-header-row="command">
         <StaffPageHeader
+          className={styles.mastheadHeader}
           variant="detail"
-          eyebrow={`Project ${project.quoteRef || project.id}`}
           title={project.name}
-          breadcrumbs={[{ label: 'Projects', href: '/staff/projects' }, { label: project.name }]}
-          description={project.siteAddress || 'Site address not recorded'}
+          titleAccessory={<ProjectStageBadge stage={project.stage} compact />}
           meta={<span className={styles.mastheadOwner} data-project-owner={project.owner?.key ?? 'unassigned'}><strong>Owner</strong><span>{project.owner?.displayName ?? 'Unassigned'}</span></span>}
           right={<ProjectHeaderActions project={project} />}
         />
-        <div className={styles.mastheadStage}>
-          <ProjectStageBadge stage={project.stage} />
-          <div className={styles.mastheadTracker}><ProjectStageTracker currentStage={project.stage} /></div>
-        </div>
       </div>
-      <ProjectTabNavigation
-        hasJobPacks={Boolean(project.hasJobPacks)}
-        host={host}
-        initialTab={tab}
-        projectId={project.id}
-        optimisticTab={optimisticTab}
-        onTabSelect={onTabSelect}
-      />
+      <div data-project-header-row="tabs">
+        <ProjectTabNavigation
+          hasJobPacks={Boolean(project.hasJobPacks)}
+          host={host}
+          initialTab={tab}
+          projectId={project.id}
+          optimisticTab={optimisticTab}
+          onTabSelect={onTabSelect}
+        />
+      </div>
     </Card>
   );
 }

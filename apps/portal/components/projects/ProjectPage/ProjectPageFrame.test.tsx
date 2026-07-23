@@ -39,13 +39,13 @@ const snapshot = {
   project: {
     id: 'proj_123',
     name: 'Test project',
-    stage: 'lead',
+    stage: 'new',
     contactName: 'Alex',
     region: 'North',
     owner: { key: 'jordan', displayName: 'Jordan' },
   },
-  pipeline: { stage: 'lead' },
-  tasks: { stage: 'lead', items: [] },
+  pipeline: { stage: 'new' },
+  tasks: { stage: 'new', items: [] },
   activity: [],
   emails: [],
   notes: [],
@@ -56,13 +56,15 @@ describe('ProjectPageFrame', () => {
     document.body.innerHTML = '';
   });
 
-  it('uses one fixed sticky header with identity, owner, actions, and tab navigation', () => {
+  it('uses one fixed two-row header with identity, stage, commands, and tab navigation', () => {
     const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot} host="host" tab="estimates" />);
 
     expect(rendered.container.querySelector('[data-project-masthead-slot="fixed"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-project-masthead-slot-sticky="true"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Test project');
+    expect(rendered.container.textContent).toContain('New');
     expect(rendered.container.textContent).toContain('Jordan');
+    expect(rendered.container.textContent).not.toContain('proj_123');
     expect(rendered.container.textContent).not.toContain('Alex');
     expect(rendered.container.textContent).not.toContain('North');
     expect(rendered.container.textContent).toContain('Projects');
@@ -73,6 +75,9 @@ describe('ProjectPageFrame', () => {
     expect(rendered.container.querySelector('[data-testid="mock-project-shell"]')).not.toBeNull();
     expect(rendered.container.querySelector('[role="separator"]')).toBeNull();
     expect(rendered.container.querySelector('[data-project-pipeline]')).toBeNull();
+    expect(rendered.container.querySelectorAll('[data-project-header-row]')).toHaveLength(2);
+    expect(rendered.container.querySelector('[data-project-header-row="command"] [data-stage="new"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-project-header-row="tabs"] [data-testid="header-tabs"]')).not.toBeNull();
 
     rendered.unmount();
   });
