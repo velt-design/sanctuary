@@ -55,6 +55,21 @@ test('every canonical project remains discoverable in the public sitemap', async
   }
 });
 
+test('Atelier Shu uses the frontage image on its case study and commercial guide proof', async ({ page }) => {
+  const imagePath = 'project-atelier-shu-03.jpg';
+
+  await page.goto('/projects/atelier-shu-cafe');
+  await expect(page.locator('.project-case-study__hero img')).toHaveAttribute('src', new RegExp(imagePath));
+  await expect(page.locator('.project-case-study__hero img')).toHaveAttribute(
+    'alt',
+    'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
+  );
+
+  await page.goto('/commercial-pergolas-auckland');
+  const atelierCard = page.locator('a[href="/projects/atelier-shu-cafe"]');
+  await expect(atelierCard.locator('img')).toHaveAttribute('src', new RegExp(imagePath));
+});
+
 test('every canonical project route has complete case-study structure, metadata, and a loaded hero', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));

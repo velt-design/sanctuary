@@ -60,44 +60,65 @@ export const visitorPathways = [
 export const roofForms = [
   {
     title: 'Pitched',
-    copy: 'One restrained roof plane can suit attached or freestanding work where height, fall and drainage support the form.',
+    copy: 'One restrained roof plane suits sites where available height, fall and drainage support a quieter form.',
     href: '/products/pergolas/pitched',
+    image: '/images/pitch-landing.jpg',
+    alt: 'Attached pitched pergola following the roofline of a contemporary concrete and timber home',
+    objectPosition: '50% 52%',
   },
   {
     title: 'Gable',
-    copy: 'A central ridge creates height and can suit wider rooms or homes with related roof geometry.',
+    copy: 'A central ridge creates height and can echo related roof geometry across wider outdoor rooms.',
     href: '/products/pergolas/gable',
+    image: '/images/gable-landing.jpg',
+    alt: 'Symmetrical gable pergola spanning a landscaped courtyard between two wings of a home',
+    objectPosition: '50% 48%',
   },
   {
     title: 'Hip',
-    copy: 'Several roof planes create an enclosed geometry that can respond to courtyards, corners and complex rooflines.',
+    copy: 'Several roof planes create a composed geometry for courtyards, corners and more complex rooflines.',
     href: '/products/pergolas/hip',
+    image: '/images/hip-landing.jpg',
+    alt: 'Hip-roof pergola integrated with the corner of a contemporary home',
+    objectPosition: '50% 48%',
   },
   {
     title: 'Box perimeter',
-    copy: 'A level outer edge conceals the roof fall and can suit contemporary homes with clean rectangular plans.',
+    copy: 'A level outer edge conceals the fall and suits contemporary homes with clean rectangular plans.',
     href: '/products/pergolas/box-perimeter',
+    image: '/images/box-landing.jpg',
+    alt: 'Box-perimeter pergola with a level rectangular edge beside a modern home',
+    objectPosition: '50% 48%',
   },
 ] as const;
 
 export const roofApproaches = [
   {
     title: 'Acrylic roofing',
-    copy: 'Transparent or translucent zones can retain daylight and openness. Sheet, tint, roof depth and nearby windows are considered for the project.',
+    copy: 'Transparent or translucent zones retain daylight, with tint and roof depth selected for the site.',
     href: '/acrylic-roof-pergolas-auckland',
     action: 'Review acrylic roofing',
+    image: '/images/project-dairy-flat-02.jpg',
+    alt: 'View from below a clear acrylic gable roof transmitting daylight at Dairy Flat',
+    objectPosition: '50% 42%',
   },
   {
     title: 'Solid roofing',
-    copy: 'Solid zones provide stronger shade and can support a ceiling-like treatment. Build-up, drainage and adjoining rooms need early review.',
+    copy: 'Solid zones provide deeper shade and can create a warm, ceiling-like treatment below.',
     href: '/projects/riverhead-gable-pavilion',
     action: 'See a solid-roof project',
+    image: '/images/project-riverhead-gable-03.webp',
+    alt: 'View from below the timber-lined solid roof and integrated lighting at Riverhead',
+    objectPosition: '50% 50%',
   },
   {
     title: 'Combination roofing',
-    copy: 'Transparent and solid zones can balance light, shade and architectural expression, with their junction designed into the complete roof.',
+    copy: 'Transparent and solid zones place daylight and shelter where each is most useful.',
     href: '/projects/tindalls-bay-pavilion',
     action: 'See a combination-roof project',
+    image: '/images/project-warkworth-outdoor-room-04.jpg',
+    alt: 'Clear acrylic roof strips transitioning into cedar-lined solid roof zones at Warkworth',
+    objectPosition: '50% 25%',
   },
 ] as const;
 
@@ -172,34 +193,19 @@ export const reviewAuthors = ['Scott Fitchett', 'Kate Walker', 'Rod Clough'] as 
 
 export const guidePathways = [
   {
-    title: 'Planning an Auckland pergola',
-    copy: 'Start with the home, site and intended use.',
-    href: '/pergolas-auckland',
-  },
-  {
-    title: 'Comparing pergola forms',
-    copy: 'Review pitched, gable, hip and box-perimeter geometry.',
-    href: '/pergolas-auckland#roof-form-options',
-  },
-  {
-    title: 'Comparing roof approaches',
-    copy: 'Consider acrylic, solid and combination roofing.',
-    href: '/pergolas-auckland#roofing-options',
-  },
-  {
-    title: 'Understanding pergola costs',
-    copy: 'See which inputs shape scope and an initial estimate.',
+    title: 'What affects pergola cost?',
+    copy: 'See which site, structure and finish decisions shape the investment.',
     href: '/pergola-cost-auckland',
   },
   {
-    title: 'Planning blinds and enclosure',
-    copy: 'Map exposure, privacy and open-edge conditions.',
-    href: '/pergolas-with-blinds',
+    title: 'Fixed roof or opening louvres?',
+    copy: 'Compare permanent fixed-roof shelter with an opening-roof proposal.',
+    href: '/acrylic-pergolas-vs-louvre-roofs',
   },
   {
-    title: 'Resolving a complex project',
-    copy: 'Coordinate architecture, structure and unusual site constraints.',
-    href: '/custom-pergolas-auckland',
+    title: 'Planning the complete outdoor room',
+    copy: 'Coordinate the roof, comfort, use and adjoining home as one brief.',
+    href: '/outdoor-rooms-auckland',
   },
 ] as const;
 

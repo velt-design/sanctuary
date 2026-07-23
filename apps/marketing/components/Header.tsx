@@ -328,7 +328,11 @@ export default function Header() {
             </div>
           </nav>
           <div className="header-actions">
-            <Link href="/contact?enquiry=residential#contact-form" className="nav-cta">
+            <Link
+              href="/contact?enquiry=residential#contact-form"
+              className="nav-cta"
+              data-homepage-event="header_estimate_click"
+            >
               <span className="nav-cta__label">Get an estimate</span>
             </Link>
             <button
@@ -367,6 +371,16 @@ export default function Header() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/contact?enquiry=residential#contact-form"
+                  className="mobile-menu__link mobile-menu__link--estimate"
+                  data-homepage-event="header_estimate_click"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Get an estimate
+                </Link>
+              </li>
             </ul>
           </nav>
         </div>,

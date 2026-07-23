@@ -580,10 +580,17 @@ const baseProjects: Project[] = [
     type: 'Commercial',
     roof: 'Gable',
     year: '2020',
-    heroImage: { src: '/images/project-atelier-shu-01.jpg', alt: 'Sheltered outdoor area at Atelier Shu Cafe in Newmarket', objectPosition: '50% 44%' },
+    heroImage: {
+      src: '/images/project-atelier-shu-03.jpg',
+      alt: 'Dark-tint acrylic gable canopy across the Atelier Shu Cafe frontage in Newmarket',
+      objectPosition: '50% 48%',
+    },
     gallery: [
-      { src: '/images/project-atelier-shu-03.jpg', alt: 'Detail view of the Atelier Shu canopy', objectPosition: '50% 48%' },
-      { src: '/images/project-atelier-shu-01.jpg', alt: 'External view of the cafe canopy', objectPosition: '50% 44%' },
+      {
+        src: '/images/project-atelier-shu-01.jpg',
+        alt: 'Sheltered outdoor seating beneath the Atelier Shu Cafe canopy',
+        objectPosition: '50% 44%',
+      },
     ],
     blurb: 'Aluminium gable canopy with dark-tint acrylic roofing, adding a sheltered outdoor zone to a specialty dessert cafe.',
     constraint:

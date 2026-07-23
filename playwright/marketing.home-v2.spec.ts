@@ -6,6 +6,7 @@ const route = '/';
 const canonicalUrl = 'https://www.sanctuarypergolas.co.nz';
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-home-v2');
 const capture = process.env.MARKETING_HOME_V2_CAPTURE?.trim();
+const responsiveCaptureLabel = process.env.MARKETING_HOME_V2_CAPTURE_LABEL?.trim();
 
 const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
@@ -29,12 +30,13 @@ async function preparePage(page: Page, analytics = false) {
 
 async function waitForImage(image: Locator, label: string) {
   await image.scrollIntoViewIfNeeded();
+  const source = await image.getAttribute('src');
   await expect.poll(
     () => image.evaluate((element) => {
       const candidate = element as HTMLImageElement;
       return candidate.complete ? candidate.naturalWidth : 0;
     }),
-    { message: `${label} should load` },
+    { message: `${label} should load (${source ?? 'missing src'})` },
   ).toBeGreaterThan(0);
 }
 
@@ -102,11 +104,7 @@ for (const viewport of viewports) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonicalUrl);
 
     const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
-    if (viewport.width <= 640) {
-      await expect(visitorPathways).toBeHidden();
-    } else {
-      await expect(visitorPathways).toBeVisible();
-    }
+    await expect(visitorPathways).toBeVisible();
 
     if (viewport.width > 640) {
       const desktopDisclosures = main.locator('details[data-mobile-disclosure]');
@@ -115,6 +113,11 @@ for (const viewport of viewports) {
         .toBe(true);
       await expect(desktopDisclosures.locator('summary').first()).toBeHidden();
       await expect(main.locator('figure').filter({ hasText: 'Tindalls Bay / Patio and carport' })).toBeHidden();
+      await expect(main.locator('section[aria-labelledby="mobile-selected-projects"]')).toBeHidden();
+      await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeVisible();
+    } else {
+      await expect(main.locator('section[aria-labelledby="mobile-selected-projects"]')).toBeVisible();
+      await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeHidden();
     }
 
     const liveRating = main.locator('[data-live-rating]');
@@ -288,9 +291,53 @@ for (const viewport of [
     const cardHeights = await roofApproachCards.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
     expect(Math.max(...cardHeights), 'priority mobile cards should remain compact').toBeLessThanOrEqual(300);
 
-    const projectBreak = main.locator('figure').filter({ hasText: 'Tindalls Bay / Patio and carport' });
-    await expect(projectBreak).toBeVisible();
-    await waitForImage(projectBreak.locator('img'), 'mobile Tindalls Bay project break');
+    const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
+    const otherProjectTypes = visitorPathways.locator('details[data-mobile-disclosure]');
+    await expect(visitorPathways.locator('a[href="/pergolas-auckland"]')).toBeVisible();
+    await expect(visitorPathways.locator('a[href="/custom-pergolas-auckland"]')).toBeVisible();
+    await expect(visitorPathways.locator('a[href^="/commercial-pergolas-auckland"]')).toBeHidden();
+    await expect(otherProjectTypes.locator('summary')).toHaveText('Other project types');
+
+    const selectedPreview = main.locator('section[aria-labelledby="mobile-selected-projects"]');
+    await expect(selectedPreview).toBeVisible();
+    await expect(selectedPreview.locator('article')).toHaveCount(2);
+    const previewImages = selectedPreview.locator('img');
+    await expect(previewImages).toHaveCount(2);
+    for (let index = 0; index < await previewImages.count(); index += 1) {
+      await waitForImage(previewImages.nth(index), `early selected project ${index + 1}`);
+    }
+
+    const mobileSectionOrder = await main.evaluate((element) => {
+      const pathways = element.querySelector('section[aria-labelledby="project-pathways"]');
+      const projects = element.querySelector('section[aria-labelledby="mobile-selected-projects"]');
+      const approach = element.querySelector('section[aria-labelledby="sanctuary-design-approach"]');
+      if (!pathways || !projects || !approach) return null;
+      return [pathways, projects, approach].map((section) => section.getBoundingClientRect().top);
+    });
+    expect(mobileSectionOrder).not.toBeNull();
+    expect(mobileSectionOrder![0]).toBeLessThan(mobileSectionOrder![1]);
+    expect(mobileSectionOrder![1]).toBeLessThan(mobileSectionOrder![2]);
+
+    const formImages = main.locator('section[aria-labelledby="pergola-forms"] article img');
+    await expect(formImages).toHaveCount(4);
+    const approachImages = main.locator('section[aria-labelledby="roof-and-material-approaches"] article img');
+    await expect(approachImages).toHaveCount(3);
+
+    const mobileReviews = main.getByRole('region', { name: 'Client reviews' });
+    await expect(mobileReviews.locator('figure:visible')).toHaveCount(1);
+    await expect(mobileReviews.getByRole('button', { name: 'Previous review' })).toBeVisible();
+    await expect(mobileReviews.getByRole('button', { name: 'Next review' })).toBeVisible();
+
+    const process = main.locator('section[aria-labelledby="design-build-process"]');
+    await expect(process.locator('details')).toHaveCount(5);
+    const processSummaries = process.locator('details > summary');
+    for (let index = 0; index < await processSummaries.count(); index += 1) {
+      const bounds = await processSummaries.nth(index).boundingBox();
+      expect(bounds?.height).toBeGreaterThanOrEqual(44);
+    }
+
+    const guideGateway = main.getByRole('navigation', { name: 'Featured pergola guides' });
+    await expect(guideGateway.getByRole('link')).toHaveCount(3);
 
     const proofRows = await main.locator('[data-proof-item]').evaluateAll((items) => (
       new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size
@@ -301,6 +348,12 @@ for (const viewport of [
       await summaries.nth(index).click();
       await expect(disclosures.nth(index)).toHaveAttribute('open', '');
     }
+
+    await main.locator('details').evaluateAll((items) => {
+      items.forEach((item) => {
+        item.open = true;
+      });
+    });
 
     const expandedWords = await main.evaluate((element) => (
       element.innerText.trim().match(/\S+/g)?.length ?? 0
@@ -361,8 +414,9 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
     ['/commercial-pergolas-auckland#project-details', 'Discuss a commercial project'],
     ['/contact?enquiry=professional#contact-form', 'Send plans or a project brief'],
   ] as const;
+  const pathwaySection = main.locator('section[aria-labelledby="project-pathways"]');
   for (const [href, name] of expectedPathways) {
-    await expect(main.getByRole('link', { name })).toHaveAttribute('href', href);
+    await expect(pathwaySection.getByRole('link', { name })).toHaveAttribute('href', href);
   }
 
   for (const form of ['Pitched', 'Gable', 'Hip', 'Box perimeter']) {
@@ -376,9 +430,16 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   }
 
   const process = main.locator('section[aria-labelledby="design-build-process"]');
-  await expect(process.locator('ol > li')).toHaveCount(5);
+  await expect(process.locator('ol:visible > li')).toHaveCount(5);
   await expect(main.locator('[data-home-review]')).toHaveCount(3);
-  await expect(main.getByRole('link', { name: 'Explore the pergola guides' })).toHaveAttribute('href', '/pergola-guides');
+  await expect(main.getByRole('link', { name: 'Explore custom design capability' }))
+    .toHaveAttribute('href', '/custom-pergolas-auckland');
+  await expect(main.getByRole('link', { name: 'Compare pergola forms' }))
+    .toHaveAttribute('href', '/products');
+  await expect(main.getByRole('link', { name: 'Compare roof approaches' }))
+    .toHaveAttribute('href', '/pergolas-auckland#roofing-options');
+  await expect(main.getByRole('link', { name: 'Explore all pergola guides' })).toHaveAttribute('href', '/pergola-guides');
+  await expect(main.getByRole('navigation', { name: 'Featured pergola guides' }).getByRole('link')).toHaveCount(3);
   await expect(main.getByRole('link', { name: 'Send your project details' }))
     .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
   await expect(main).toContainText('Before site work begins, Sanctuary records the agreed design');
@@ -428,8 +489,48 @@ test('homepage V2 records consented CTA events without customer data', async ({ 
   expect(trackedEvent).toEqual({
     event: 'hero_projects_click',
     homepage_variant: 'v2',
+    viewport_category: 'desktop',
     destination: '/projects',
   });
+});
+
+test('mobile homepage records disclosure and review interactions with device context', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page, true);
+  await page.goto(route);
+  await page.evaluate(() => {
+    (window as typeof window & { dataLayer?: unknown[] }).dataLayer = [];
+  });
+
+  const pathways = page.locator('section[aria-labelledby="project-pathways"]');
+  await pathways.locator('summary').click();
+  await page.getByRole('button', { name: 'Next review' }).click();
+
+  const trackedEvents = await page.evaluate(() => (
+    (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
+      ?.filter((entry): entry is Record<string, unknown> => !Array.isArray(entry))
+      .filter((entry) => ['project_types_expand', 'review_next_click'].includes(String(entry.event)))
+  ));
+
+  expect(trackedEvents).toEqual([
+    {
+      event: 'project_types_expand',
+      homepage_variant: 'v2',
+      viewport_category: 'mobile',
+    },
+    {
+      event: 'review_next_click',
+      homepage_variant: 'v2',
+      viewport_category: 'mobile',
+    },
+  ]);
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  const mobileEstimate = page.getByRole('navigation', { name: 'Mobile primary' })
+    .getByRole('link', { name: 'Get an estimate', exact: true });
+  await expect(mobileEstimate).toBeVisible();
+  await expect(mobileEstimate).toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+  await expect(mobileEstimate).toHaveAttribute('data-homepage-event', 'header_estimate_click');
 });
 
 test('homepage enquiry links open the promised contact pathway', async ({ page }) => {
@@ -450,7 +551,7 @@ test('homepage comparison and commercial links land at the promised sections', a
   await preparePage(page);
 
   for (const [destination, target] of [
-    ['/pergolas-auckland#roof-form-options', '#roof-form-options'],
+    ['/products', '.products-index'],
     ['/pergolas-auckland#roofing-options', '#roofing-options'],
     ['/commercial-pergolas-auckland#project-details', '#project-details'],
     ['/contact#contact-form', '#contact-form'],
@@ -533,22 +634,17 @@ test('Warkworth exterior focal framing propagates across public placements', asy
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
 
-  for (const { destination, galleryAdvances = 0 } of [
-    { destination: '/' },
-    { destination: '/projects' },
-    { destination: '/projects/warkworth-outdoor-room', galleryAdvances: 4 },
-    { destination: '/pergola-guides' },
-    { destination: '/pergolas-auckland' },
-    { destination: '/acrylic-roof-pergolas-auckland' },
-    { destination: '/acrylic-roof-pergolas-auckland-v2' },
+  for (const destination of [
+    '/',
+    '/projects',
+    '/projects/warkworth-outdoor-room',
+    '/pergola-guides',
+    '/pergolas-auckland',
+    '/acrylic-roof-pergolas-auckland',
+    '/acrylic-roof-pergolas-auckland-v2',
   ]) {
     const response = await page.goto(destination);
     expect(response?.ok(), `${destination} should resolve`).toBe(true);
-    for (let index = 0; index < galleryAdvances; index += 1) {
-      const nextImage = page.getByRole('button', { name: 'Next image' });
-      expect(await nextImage.count(), `${destination} should expose one project gallery control`).toBe(1);
-      await nextImage.click();
-    }
     const images = page.locator('img[src*="project-warkworth-outdoor-room-01"]');
     const imageCount = await images.count();
     expect(imageCount, `${destination} should render the Warkworth exterior`).toBeGreaterThan(0);
@@ -630,6 +726,48 @@ test('capture approved homepage evidence', async ({ page }) => {
     await proofRail.scrollIntoViewIfNeeded();
     await proofRail.screenshot({
       path: path.join(evidenceDirectory, `homepage-proof-${viewport.name}-${viewport.width}x${viewport.height}.png`),
+    });
+  }
+});
+
+test('capture responsive homepage redesign evidence', async ({ page }) => {
+  test.skip(
+    !responsiveCaptureLabel,
+    'Set MARKETING_HOME_V2_CAPTURE_LABEL=before or after to capture responsive redesign evidence.',
+  );
+  await preparePage(page);
+
+  const responsiveEvidenceDirectory = path.join(
+    process.cwd(),
+    'artifacts',
+    'homepage-mobile-redesign',
+    responsiveCaptureLabel!,
+  );
+  await mkdir(responsiveEvidenceDirectory, { recursive: true });
+
+  for (const viewport of [
+    { name: 'mobile-360x800', width: 360, height: 800 },
+    { name: 'mobile-390x844', width: 390, height: 844 },
+    { name: 'mobile-430x932', width: 430, height: 932 },
+    { name: 'tablet-768x1024', width: 768, height: 1024 },
+    { name: 'tablet-820x1180', width: 820, height: 1180 },
+    { name: 'tablet-1024x1366', width: 1024, height: 1366 },
+    { name: 'desktop-1280x800', width: 1280, height: 800 },
+    { name: 'desktop-1440x900', width: 1440, height: 900 },
+  ] as const) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto(route);
+
+    const main = page.locator('main[data-homepage-variant="v2"]');
+    await expect(main).toBeVisible();
+    await waitForAllImages(main);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: path.join(
+        responsiveEvidenceDirectory,
+        `homepage-${responsiveCaptureLabel}-${viewport.name}.png`,
+      ),
+      fullPage: true,
     });
   }
 });
