@@ -1,0 +1,218 @@
+.workspace {
+  display: grid;
+  gap: var(--ui-space-4);
+  padding-top: var(--ui-space-5);
+}
+
+.toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--ui-space-5);
+  padding: var(--ui-space-4);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+}
+
+.eyebrow,
+.recipient {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  line-height: 1.45;
+}
+
+.eyebrow {
+  margin-bottom: var(--ui-space-2);
+  font-weight: 700;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.variant {
+  min-height: var(--ui-control-md);
+  padding: 0 var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-right: 0;
+  border-radius: 0;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+  cursor: pointer;
+  font: 600 var(--ui-font-size-small)/1 var(--ui-font-body);
+}
+
+.variant:last-child {
+  border-right: var(--ui-border-width) solid var(--ui-border-strong);
+}
+
+.variant[aria-pressed='true'] {
+  background: var(--ui-surface-inverse);
+  color: var(--ui-text-inverse);
+}
+
+.variant:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: -2px;
+}
+
+.send {
+  display: grid;
+  justify-items: end;
+  gap: var(--ui-space-2);
+}
+
+.reviewGrid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.34fr) minmax(480px, 0.66fr);
+  gap: var(--ui-space-4);
+  align-items: start;
+}
+
+.details,
+.frameShell,
+.loading,
+.error,
+.notice {
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+}
+
+.details {
+  display: grid;
+}
+
+.detail {
+  padding: var(--ui-space-4);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.detail span {
+  display: block;
+  margin-bottom: var(--ui-space-2);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.detail strong,
+.detail p {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.6;
+}
+
+.plainText {
+  padding: var(--ui-space-4);
+}
+
+.plainText summary {
+  min-height: 32px;
+  cursor: pointer;
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+  font-weight: 700;
+}
+
+.plainText pre {
+  max-height: 420px;
+  margin: var(--ui-space-3) 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--ui-text-muted);
+  font: 400 var(--ui-font-size-caption)/1.6 var(--ui-font-body);
+}
+
+.frameShell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.frameBar {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.frame {
+  display: block;
+  width: 100%;
+  min-height: 980px;
+  border: 0;
+  background: #e9eae6;
+}
+
+.loading,
+.error,
+.notice {
+  margin: 0;
+  padding: var(--ui-space-4);
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.5;
+}
+
+.error {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+}
+
+.notice {
+  border-color: var(--ui-status-success-border);
+  background: var(--ui-status-success-bg);
+}
+
+@media (max-width: 980px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .send {
+    justify-items: start;
+  }
+
+  .reviewGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .variants {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .variant,
+  .variant:last-child {
+    width: 100%;
+    border-right: var(--ui-border-width) solid var(--ui-border-strong);
+    border-bottom: 0;
+    text-align: left;
+  }
+
+  .variant:last-child {
+    border-bottom: var(--ui-border-width) solid var(--ui-border-strong);
+  }
+
+  .frame {
+    min-height: 760px;
+  }
+}

@@ -16,6 +16,7 @@ This doc is the current-state reference for staff, admin, and public-token route
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/api/quotes`.
 - Public invoice routes live under `apps/marketing/app/invoice/[invoiceId]` and `apps/marketing/app/api/invoices`.
 - Marketing lead and enquiry APIs live under `apps/marketing/app/api/contact` and `apps/marketing/app/api/enquiry`.
+- Fixture-only website autoresponder review lives at `GET`/`POST /api/staff/v1/email-previews/website-autoresponder`. It uses `requireStaffSession()`, accepts only a named fixture variant, returns `private, no-store`, and delegates fixed-recipient preview delivery to the server-only marketing email adapter.
 
 Route behavior belongs to the feature owner doc. This doc owns the cross-cutting route/auth contract.
 

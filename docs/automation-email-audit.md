@@ -65,6 +65,8 @@ Current website enquiry autoresponders keep the existing payload shape for previ
 
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 
+`/staff/email-previews` is the fixture-only staging review surface for the website autoresponder. Its staff-authenticated API renders the same stable template IDs, subject, preheader, HTML and plain text used by the production customer sender. Residential, residential without blinds, commercial, commercial with blinds and professional variants use repository fixtures only. Preview delivery reads `RESEND_API_KEY_PREVIEW` and the single `EMAIL_PREVIEW_TO` recipient on the server, omits the production BCC, and is unavailable unless `EMAIL_PREVIEW_ENABLED=true` in a Vercel Preview deployment (or local development/test). The browser may select only a fixture variant; it cannot supply recipients or provider credentials. This path does not call enquiry intake or write contacts, projects, estimates, enquiries, outbox rows or audit records.
+
 Residential, commercial, and professional enquiry file uploads share one stored,
 verified contract. The browser mints signed upload URLs via
 `apps/marketing/app/api/enquiry/attachments/sign` and uploads directly to the
@@ -101,6 +103,7 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 - Browser task and activity access should use current project/dashboard APIs and query helpers. Do not reintroduce direct browser automation table writes; prefer staff API routes for new write behavior.
 - Manual project-task checkboxes may show optimistic local feedback, but the owning staff API remains authoritative for `project_task_checks`, pipeline transitions, and automation events. Concurrent saves must roll back only the rejected task, expose explicit retry, and never claim an auto-advance side effect before the response confirms it.
 - Service-role keys, raw email provider responses, and private customer data must not reach client props, logs, generated documents, or public routes.
+- Preview-only Resend credentials and the fixed preview recipient stay server-owned. Preview-send requests accept only a repository fixture variant and never a browser-supplied address.
 
 ## Guardrails
 
@@ -154,6 +157,7 @@ npm run test:email-provider
 npm run test:worker -- apps/worker/src/effects
 npm run test:portal -- apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/app/api/webhooks/resend/route.test.ts apps/portal/lib/backgroundJobs/providerWebhookRepository.test.ts
 npm run test:marketing -- apps/marketing/lib/email apps/marketing/app/api/contact/route.test.ts apps/marketing/app/api/enquiry/route.test.ts
+npm run test:portal -- "apps/portal/app/api/staff/v1/email-previews/website-autoresponder/route.test.ts"
 npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/app/api/contacts/route.test.ts "apps/portal/app/api/contacts/[contactId]/route.test.ts"
 npm run test:marketing -- apps/marketing/emails/utils/callWindow.test.ts

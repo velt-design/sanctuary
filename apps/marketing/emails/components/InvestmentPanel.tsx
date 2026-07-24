@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Section, Text } from '@react-email/components';
 import { THEME } from '../theme';
 
-export const INVESTMENT_PANEL_BACKGROUND = '#20211D';
+export const INVESTMENT_PANEL_BACKGROUND = THEME.inverse;
 
 export function formatInvestmentAmount(
   range: { lowIncGst: number; highIncGst: number },
@@ -17,44 +17,46 @@ export function InvestmentPanel(props: {
   baseRange: string;
   blindsRange?: string;
   note: string;
+  rangeLabel?: string;
 }) {
   return (
     <>
       <Section
         style={{
-          margin: '18px 0 10px',
-          padding: '24px 24px 22px',
+          margin: '24px 0 12px',
+          padding: '26px 24px 24px',
           backgroundColor: INVESTMENT_PANEL_BACKGROUND,
-          border: '1px solid #2D2F29',
+          border: `1px solid ${THEME.inverse}`,
         }}
       >
         <Text
           style={{
-            margin: '0 0 10px',
-            fontSize: 11,
-            color: '#C8C5BA',
+            margin: '0 0 12px',
+            fontSize: 10,
+            color: '#BFC2BA',
             textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            fontWeight: 600,
+            letterSpacing: '0.14em',
+            fontWeight: 700,
             lineHeight: 1.5,
           }}
         >
-          Indicative installed investment
+          {props.rangeLabel ?? 'Indicative installed investment'}
         </Text>
 
         <Text
           style={{
-            margin: '0 0 6px',
-            fontSize: 32,
-            lineHeight: 1.15,
-            fontWeight: 600,
-            color: '#FFFFFF',
+            margin: '0 0 7px',
+            fontSize: 34,
+            lineHeight: 1.08,
+            letterSpacing: '-0.035em',
+            fontWeight: 700,
+            color: THEME.inverseText,
           }}
         >
           {props.baseRange}
         </Text>
-        <Text style={{ margin: '0 0 18px', fontSize: 13, color: '#DCD8CC', lineHeight: 1.55 }}>
-          Pergola structure, installed, incl. GST
+        <Text style={{ margin: '0 0 19px', fontSize: 12, color: '#CFD1CA', lineHeight: 1.55 }}>
+          Pergola structure and installation, including GST
         </Text>
 
         {props.blindsRange ? (
@@ -62,20 +64,20 @@ export function InvestmentPanel(props: {
             style={{
               margin: 0,
               padding: '16px 0 0',
-              borderTop: '1px solid #45463E',
+              borderTop: '1px solid #41443D',
             }}
           >
-            <Text style={{ margin: '0 0 5px', fontSize: 12, color: '#C8C5BA', lineHeight: 1.5 }}>
-              Blinds add-on
+            <Text style={{ margin: '0 0 5px', fontSize: 10, color: '#BFC2BA', lineHeight: 1.5, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Outdoor blinds
             </Text>
-            <Text style={{ margin: 0, fontSize: 19, fontWeight: 600, color: '#FFFFFF', lineHeight: 1.35 }}>
+            <Text style={{ margin: 0, fontSize: 20, fontWeight: 700, color: THEME.inverseText, lineHeight: 1.35 }}>
               {props.blindsRange}
             </Text>
           </Section>
         ) : null}
       </Section>
 
-      <Text style={{ margin: '0 0 22px', fontSize: 12, color: THEME.muted, lineHeight: 1.65 }}>
+      <Text style={{ margin: '0 0 26px', fontSize: 11, color: THEME.subtle, lineHeight: 1.65 }}>
         {props.note}
       </Text>
     </>

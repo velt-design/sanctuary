@@ -16,7 +16,7 @@ import {
   EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
   EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
   EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
-  customerEstimateSubject,
+  websiteAutoresponderSubject,
 } from '@/lib/sharedEmails';
 import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
@@ -600,12 +600,10 @@ export async function POST(req: Request) {
             ? EMAIL_WEBSITE_AUTORESPONDER_PRO_V1
             : EMAIL_WEBSITE_AUTORESPONDER_RES_V1;
 
-      const subject =
-        enquiryType === 'commercial'
-          ? customerEstimateSubject(name, 'commercial')
-          : enquiryType === 'professional'
-            ? 'Professional enquiry received - next steps'
-            : customerEstimateSubject(name, 'residential');
+      const subject = websiteAutoresponderSubject(
+        templateId,
+        emailPayload as unknown as Record<string, unknown>,
+      );
 
       const emailType =
         enquiryType === 'professional' ? 'WEBSITE_PROFESSIONAL_AUTORESPONDER' : 'WEBSITE_ESTIMATE_AUTORESPONDER';
