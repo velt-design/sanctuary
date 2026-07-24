@@ -38,7 +38,7 @@ describe('StaffSchedulePage', () => {
       initialV2Snapshot: { generatedAt: '2026-04-07T00:00:00.000Z' },
     });
 
-    const ui = (await StaffSchedulePage({ searchParams: { view: 'board' } })) as ReactElement;
+    const ui = (await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'board' }) })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
     expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'board' });
@@ -55,7 +55,7 @@ describe('StaffSchedulePage', () => {
       initialV2Snapshot: { generatedAt: '2026-04-07T00:00:00.000Z' },
     });
 
-    const ui = (await StaffSchedulePage({ searchParams: { view: 'gantt' } })) as ReactElement;
+    const ui = (await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'gantt' }) })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
     expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'gantt' });
@@ -66,7 +66,7 @@ describe('StaffSchedulePage', () => {
   });
 
   it('skips the schedule seed for site visits', async () => {
-    const ui = (await StaffSchedulePage({ searchParams: { view: 'site-visits' } })) as ReactElement;
+    const ui = (await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'site-visits' }) })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
     expect(loadSchedulePageSeedMock).not.toHaveBeenCalled();
@@ -80,7 +80,7 @@ describe('StaffSchedulePage', () => {
       initialV2Snapshot: null,
     });
 
-    const ui = (await StaffSchedulePage({ searchParams: { view: 'board' } })) as ReactElement;
+    const ui = (await StaffSchedulePage({ searchParams: Promise.resolve({ view: 'board' }) })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
     expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'board' });

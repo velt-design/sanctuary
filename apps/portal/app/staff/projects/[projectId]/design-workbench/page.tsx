@@ -62,8 +62,8 @@ export default async function DesignWorkbenchPage({
   params,
   searchParams,
 }: {
-  params: PageParams | Promise<PageParams>;
-  searchParams?: SearchParams | Promise<SearchParams>;
+  params: Promise<PageParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const { projectId } = await params;
   const normalizedProjectId = projectId.trim();

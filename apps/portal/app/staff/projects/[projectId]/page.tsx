@@ -22,8 +22,8 @@ export default async function ProjectDetailPage({
   params,
   searchParams,
 }: {
-  params: PageParams | Promise<PageParams>;
-  searchParams?: SearchParams | Promise<SearchParams>;
+  params: Promise<PageParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const { projectId } = await params;
   const resolvedSearchParams = await searchParams;

@@ -5,7 +5,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams?: SearchParams | Promise<SearchParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const resolved = await searchParams;
   const rawQuery = resolved?.q;

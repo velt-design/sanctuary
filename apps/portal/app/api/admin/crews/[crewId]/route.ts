@@ -4,14 +4,14 @@ import { countScheduledItemsForCrew, readCrewByIdWithCount, sanitizeHexColor, is
 export const runtime = 'nodejs';
 
 type Params = { crewId: string };
-type Ctx = { params: Params | Promise<Params> };
+type Ctx = { params: Promise<Params> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
   const supabase = auth.supabase;
 
-  const { crewId: crewIdRaw } = await Promise.resolve(params);
+  const { crewId: crewIdRaw } = await params;
   const crewId = decodeURIComponent(crewIdRaw ?? '').trim();
   if (!crewId) return jsonError('crewId is required', 400);
 

@@ -28,7 +28,7 @@ function renderInvalidFixtureLines(fixtureSlug: string): string[] {
 export default async function DesignWorkbenchFixturePage({
   searchParams,
 }: {
-  searchParams?: SearchParams | Promise<SearchParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   if (!isSanctuaryGeometryWorkbenchFixturesEnabled()) {
     notFound();

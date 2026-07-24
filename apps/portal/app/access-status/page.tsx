@@ -11,7 +11,7 @@ function readFirst(value: string | string[] | undefined): string | null {
 export default async function AccessStatusPage({
   searchParams,
 }: {
-  searchParams?: SearchParams | Promise<SearchParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
   const state = parseAccessStatusQueryState(readFirst(resolvedSearchParams?.state));

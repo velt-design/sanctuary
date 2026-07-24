@@ -20,7 +20,7 @@ function toSearchString(searchParams: SearchParams | undefined): string {
 export default async function StaffLoginPage({
   searchParams,
 }: {
-  searchParams?: SearchParams | Promise<SearchParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
   const resolvedSearchParams = await searchParams;
   redirect(`/login${toSearchString(resolvedSearchParams)}`);
