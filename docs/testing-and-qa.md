@@ -63,6 +63,19 @@ the animated route-transition boundary. Set `MARKETING_FOUNDATION_CAPTURE=1`
 to capture the three mobile primitive specimens under
 `artifacts/mobile-ux-phase-3-pr-6/`.
 
+Shared public-header changes should run
+`npx vitest run apps/marketing/components/Header.test.tsx apps/marketing/components/headerNavigation.test.ts`
+and
+`npx playwright test playwright/marketing.shared-header.spec.ts --config=playwright.marketing.config.ts`.
+The component lane owns open/closed state, inert hidden content, focus cycling,
+Escape return, reversible body scroll locking, history cleanup and the 901px
+CSS/JavaScript breakpoint contract. The browser lane covers the approved
+mobile destinations and route-aware enquiry URLs at 430px, 390px and 360px,
+tablet compatibility, a 360px by 480px short viewport, 44px targets, reduced
+motion, scroll and Back behavior, and established desktop routes and geometry.
+Set `MARKETING_SHARED_HEADER_CAPTURE=1` to write the approved PR 8 evidence to
+`artifacts/mobile-ux-phase-3-pr-8/`.
+
 Product-page changes should run
 `npx vitest run apps/marketing/data/products.test.ts` and
 `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`

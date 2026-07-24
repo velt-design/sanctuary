@@ -1,0 +1,218 @@
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import Header from './Header';
+
+let currentPathname = '/projects';
+let root: Root | null = null;
+let container: HTMLDivElement | null = null;
+let mediaListeners: Array<(event: MediaQueryListEvent) => void> = [];
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => currentPathname,
+}));
+
+beforeAll(() => {
+  (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
+    .IS_REACT_ACT_ENVIRONMENT = true;
+});
+
+beforeEach(() => {
+  currentPathname = '/projects';
+  mediaListeners = [];
+  Object.defineProperty(window, 'scrollY', {
+    configurable: true,
+    value: 320,
+  });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: vi.fn((query: string) => ({
+      matches: query === '(min-width: 901px)' ? false : true,
+      media: query,
+      onchange: null,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+        mediaListeners.push(listener);
+      },
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+        mediaListeners = mediaListeners.filter((candidate) => candidate !== listener);
+      },
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => true,
+    })),
+  });
+  Object.defineProperty(window, 'requestAnimationFrame', {
+    configurable: true,
+    value: (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    },
+  });
+  Object.defineProperty(window, 'cancelAnimationFrame', {
+    configurable: true,
+    value: () => undefined,
+  });
+  Object.defineProperty(window, 'scrollTo', {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
+
+afterEach(async () => {
+  if (root) {
+    await act(async () => root?.unmount());
+  }
+  root = null;
+  container = null;
+  document.body.innerHTML = '';
+  document.body.removeAttribute('style');
+  document.body.className = '';
+  vi.restoreAllMocks();
+});
+
+async function renderHeader() {
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root?.render(<Header />));
+}
+
+async function openMenu() {
+  const trigger = document.querySelector<HTMLButtonElement>('button[aria-controls="mobile-menu"]');
+  expect(trigger).not.toBeNull();
+  await act(async () => trigger?.click());
+  return trigger!;
+}
+
+async function pressKey(key: string, shiftKey = false) {
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key,
+      shiftKey,
+    }));
+  });
+}
+
+describe('shared mobile header interaction', () => {
+  it('opens one accessible menu tree, moves focus and reversibly locks page scroll', async () => {
+    await renderHeader();
+    const menu = document.querySelector<HTMLDivElement>('#mobile-menu');
+    expect(menu).not.toBeNull();
+    expect(menu?.getAttribute('aria-hidden')).toBe('true');
+    expect(menu?.hasAttribute('inert')).toBe(true);
+
+    const trigger = await openMenu();
+    const links = Array.from(menu!.querySelectorAll<HTMLAnchorElement>('a'));
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(menu?.getAttribute('aria-hidden')).toBe('false');
+    expect(menu?.hasAttribute('inert')).toBe(false);
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Home',
+      'Projects',
+      'Pergola options',
+      'Commercial',
+      'Architects, designers & builders',
+      'Contact',
+      'Get an estimate',
+    ]);
+    expect(document.activeElement).toBe(links[0]);
+    expect(document.body.classList.contains('no-scroll')).toBe(true);
+    expect(document.body.classList.contains('mobile-menu-open')).toBe(true);
+    expect(document.body.style.position).toBe('fixed');
+    expect(document.body.style.top).toBe('-320px');
+
+    await pressKey('Escape');
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(menu?.getAttribute('aria-hidden')).toBe('true');
+    expect(menu?.hasAttribute('inert')).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+    expect(document.body.classList.contains('no-scroll')).toBe(false);
+    expect(document.body.style.position).toBe('');
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 320);
+  });
+
+  it('cycles Tab and Shift+Tab through the trigger and every menu destination', async () => {
+    await renderHeader();
+    const trigger = await openMenu();
+    const links = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>('#mobile-menu a'),
+    );
+
+    expect(document.activeElement).toBe(links[0]);
+    await pressKey('Tab', true);
+    expect(document.activeElement).toBe(trigger);
+    await pressKey('Tab', true);
+    expect(document.activeElement).toBe(links.at(-1));
+    await pressKey('Tab');
+    expect(document.activeElement).toBe(trigger);
+    await pressKey('Tab');
+    expect(document.activeElement).toBe(links[0]);
+
+    await pressKey('Escape');
+  });
+
+  it('captures touch scroll position before fixed-body styles can reset the viewport', async () => {
+    await renderHeader();
+    const trigger = document.querySelector<HTMLButtonElement>('button[aria-controls="mobile-menu"]');
+    expect(trigger).not.toBeNull();
+
+    await act(async () => {
+      trigger?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 0,
+    });
+    await act(async () => trigger?.click());
+
+    expect(document.body.style.top).toBe('-320px');
+    await pressKey('Escape');
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 320);
+  });
+
+  it('closes without restoring the departed page scroll when browser history changes', async () => {
+    await renderHeader();
+    const trigger = await openMenu();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    await act(async () => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.body.classList.contains('no-scroll')).toBe(false);
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('closes at the same 901px breakpoint used by the responsive CSS', async () => {
+    await renderHeader();
+    const trigger = await openMenu();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    await act(async () => {
+      for (const listener of mediaListeners) {
+        listener({ matches: true } as MediaQueryListEvent);
+      }
+    });
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.body.classList.contains('no-scroll')).toBe(false);
+  });
+
+  it('closes a stale open menu when the current route changes', async () => {
+    await renderHeader();
+    const trigger = await openMenu();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    currentPathname = '/products/pergolas/pitched';
+    await act(async () => root?.render(<Header />));
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.body.classList.contains('no-scroll')).toBe(false);
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+});

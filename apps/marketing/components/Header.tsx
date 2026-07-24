@@ -13,17 +13,19 @@ import {
   buildEnquiryHref,
   inferEnquiryAudience,
 } from '@/lib/enquiryContext';
-
-const mobileNavItems = [
-  { href: '/', label: 'Home' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/products', label: 'Products' },
-  { href: '/contact', label: 'Contact' },
-];
+import {
+  getDesktopHeaderNavigation,
+  getMobileHeaderNavigation,
+} from './headerNavigation';
 
 const HEADER_SCROLL_THRESHOLD_PX = 12;
 const HEADER_DIRECTION_SAMPLE_COUNT = 2;
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
+const DESKTOP_MENU_MEDIA_QUERY = '(min-width: 901px)';
+const MENU_FOCUSABLE_SELECTOR = [
+  'a[href]:not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
+].join(',');
 const heroOverlayRoutes = new Set([
   '/',
   '/home-v2',
@@ -48,6 +50,8 @@ export default function Header() {
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
   const pathname = usePathname();
   const currentPath = pathname ?? '/';
+  const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
+  const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const headerEnquiryHref = buildEnquiryHref({
     enquiryType: inferEnquiryAudience(currentPath),
     sourcePath: currentPath,
@@ -57,8 +61,12 @@ export default function Header() {
   const isHeroOverlayRoute = heroOverlayRoutes.has(pathname ?? '');
   const startModalSuppressedRef = useRef(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
   const mobileMenuScrollYRef = useRef(0);
+  const mobileMenuScrollCapturedRef = useRef(false);
+  const mobileMenuOpenedAtPathRef = useRef(currentPath);
+  const restoreMobileMenuScrollRef = useRef(true);
   const scrollStateRef = useRef({
     lastY: 0,
     upDelta: 0,
@@ -83,6 +91,18 @@ export default function Header() {
     setStartHeaderVisible(false);
     resetScrollTracking();
   }, [resetScrollTracking]);
+
+  const closeMobileMenu = useCallback(({
+    restoreFocus = false,
+    restoreScroll = true,
+  }: {
+    restoreFocus?: boolean;
+    restoreScroll?: boolean;
+  } = {}) => {
+    restoreMobileMenuScrollRef.current = restoreScroll;
+    setMobileMenuOpen(false);
+    if (restoreFocus) mobileToggleRef.current?.focus();
+  }, []);
 
   // Hydration flag for mobile menu portal mounting.
   useEffect(() => {
@@ -221,79 +241,150 @@ export default function Header() {
   }, [hideStartHeader, isStartRoute]);
 
   useEffect(() => {
+    if (
+      mobileMenuOpen
+      && mobileMenuOpenedAtPathRef.current !== currentPath
+    ) {
+      closeMobileMenu({ restoreScroll: false });
+    }
+  }, [closeMobileMenu, currentPath, mobileMenuOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setMobileMenuOpen(false);
-        mobileToggleRef.current?.focus();
+        event.preventDefault();
+        closeMobileMenu({ restoreFocus: true });
+        return;
       }
+
+      if (event.key !== 'Tab') return;
+
+      const menuLinks = Array.from(
+        mobileMenuRef.current?.querySelectorAll<HTMLElement>(
+          MENU_FOCUSABLE_SELECTOR,
+        ) ?? [],
+      );
+      const focusOrder = [
+        mobileToggleRef.current,
+        ...menuLinks,
+      ].filter((element): element is HTMLElement => element !== null);
+      if (focusOrder.length === 0) return;
+
+      const currentIndex = focusOrder.indexOf(document.activeElement as HTMLElement);
+      const direction = event.shiftKey ? -1 : 1;
+      const nextIndex = currentIndex < 0
+        ? (event.shiftKey ? focusOrder.length - 1 : 0)
+        : (currentIndex + direction + focusOrder.length) % focusOrder.length;
+
+      event.preventDefault();
+      focusOrder[nextIndex]?.focus();
     };
 
     if (mobileMenuOpen) {
       document.addEventListener('keydown', handleKeyDown);
-      window.requestAnimationFrame(() => firstMobileLinkRef.current?.focus());
+      const focusFrame = window.requestAnimationFrame(() => (
+        firstMobileLinkRef.current?.focus()
+      ));
+      const closeOnHistoryNavigation = () => {
+        closeMobileMenu({ restoreScroll: false });
+      };
+      window.addEventListener('popstate', closeOnHistoryNavigation);
+
+      return () => {
+        window.cancelAnimationFrame(focusFrame);
+        document.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('popstate', closeOnHistoryNavigation);
+      };
     }
 
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [mobileMenuOpen]);
+    return undefined;
+  }, [closeMobileMenu, mobileMenuOpen]);
 
   useEffect(() => {
-    const closeOnDesktop = () => {
-      if (window.matchMedia('(min-width: 721px)').matches) {
-        setMobileMenuOpen(false);
+    const desktopMedia = window.matchMedia(DESKTOP_MENU_MEDIA_QUERY);
+    const closeOnDesktop = (event: MediaQueryListEvent | MediaQueryList) => {
+      if (event.matches) {
+        closeMobileMenu();
       }
     };
 
-    window.addEventListener('resize', closeOnDesktop);
-    return () => window.removeEventListener('resize', closeOnDesktop);
-  }, []);
+    closeOnDesktop(desktopMedia);
+    desktopMedia.addEventListener('change', closeOnDesktop);
+    return () => desktopMedia.removeEventListener('change', closeOnDesktop);
+  }, [closeMobileMenu]);
 
   useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+
     const body = document.body;
-    const preserveDocumentScroll = mobileMenuOpen && pathname === '/';
-    const scrollY = preserveDocumentScroll ? mobileMenuScrollYRef.current : 0;
-    const previousInlineStyle = preserveDocumentScroll
-      ? {
-          position: body.style.position,
-          top: body.style.top,
-          left: body.style.left,
-          right: body.style.right,
-          width: body.style.width,
-        }
-      : null;
+    const scrollY = mobileMenuScrollYRef.current;
+    const previousInlineStyle = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+    const bodyHadNoScroll = body.classList.contains('no-scroll');
+    const bodyHadMobileMenuOpen = body.classList.contains('mobile-menu-open');
 
-    body.classList.toggle('no-scroll', mobileMenuOpen);
-    body.classList.toggle('mobile-menu-open', mobileMenuOpen);
-
-    if (preserveDocumentScroll) {
-      body.style.position = 'fixed';
-      body.style.top = `-${scrollY}px`;
-      body.style.left = '0';
-      body.style.right = '0';
-      body.style.width = '100%';
-    }
+    body.classList.add('no-scroll', 'mobile-menu-open');
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
 
     return () => {
-      body.classList.remove('no-scroll', 'mobile-menu-open');
+      if (!bodyHadNoScroll) body.classList.remove('no-scroll');
+      if (!bodyHadMobileMenuOpen) body.classList.remove('mobile-menu-open');
+      body.style.position = previousInlineStyle.position;
+      body.style.top = previousInlineStyle.top;
+      body.style.left = previousInlineStyle.left;
+      body.style.right = previousInlineStyle.right;
+      body.style.width = previousInlineStyle.width;
 
-      if (previousInlineStyle) {
-        body.style.position = previousInlineStyle.position;
-        body.style.top = previousInlineStyle.top;
-        body.style.left = previousInlineStyle.left;
-        body.style.right = previousInlineStyle.right;
-        body.style.width = previousInlineStyle.width;
+      if (restoreMobileMenuScrollRef.current) {
         window.scrollTo(0, scrollY);
       }
     };
-  }, [mobileMenuOpen, pathname]);
+  }, [mobileMenuOpen]);
 
   const handleCircleToggle = () => {
-    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 721px)').matches;
-    if (isDesktop) return; // no toggle on desktop; menu is always visible
-    if (!mobileMenuOpen) mobileMenuScrollYRef.current = window.scrollY;
-    setMobileMenuOpen((open) => !open);
+    const isDesktop = typeof window !== 'undefined'
+      && window.matchMedia(DESKTOP_MENU_MEDIA_QUERY).matches;
+    if (isDesktop) return;
+    if (mobileMenuOpen) {
+      closeMobileMenu();
+      return;
+    }
+
+    if (!mobileMenuScrollCapturedRef.current) {
+      mobileMenuScrollYRef.current = window.scrollY;
+    }
+    mobileMenuScrollCapturedRef.current = false;
+    mobileMenuOpenedAtPathRef.current = currentPath;
+    restoreMobileMenuScrollRef.current = true;
+    setMobileMenuOpen(true);
   };
 
-  // Clicking Products navigates to /products (handled via Link below).
+  const captureMobileMenuScroll = () => {
+    if (mobileMenuOpen) return;
+    mobileMenuScrollYRef.current = window.scrollY;
+    mobileMenuScrollCapturedRef.current = true;
+  };
+
+  const handleMobileToggleKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      captureMobileMenuScroll();
+    }
+  };
+
+  const handleMobileNavigation = () => {
+    closeMobileMenu({ restoreScroll: false });
+  };
 
   const headerClassName = [
     'site',
@@ -321,18 +412,32 @@ export default function Header() {
             <div className="desktop-wipe open">
               <div className="nav-list nav-list--split">
                 <ul className="nav-list__cluster nav-list__cluster--left">
-                  <li><Link className={`navlink-btn ${pathname === '/' ? 'active' : ''}`} href="/" aria-current={pathname === '/' ? 'page' : undefined}>Home</Link></li>
-                  <li><Link className={`navlink-btn ${pathname?.startsWith('/projects') ? 'active' : ''}`} href="/projects" aria-current={pathname?.startsWith('/projects') ? 'page' : undefined}>Projects</Link></li>
+                  {desktopNavigationItems.slice(0, 2).map((item) => (
+                    <li key={item.id}>
+                      <Link
+                        className={`navlink-btn ${item.current ? 'active' : ''}`}
+                        href={item.href}
+                        aria-current={item.current ? 'page' : undefined}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
                 <ul className="nav-list__cluster nav-list__cluster--right">
-                  <li>
-                    <Link id="nav-products" href="/products" className={`navlink-btn ${pathname?.startsWith('/products') ? 'active' : ''}`} aria-label="Products" aria-current={pathname?.startsWith('/products') ? 'page' : undefined}>
-                      Products
-                    </Link>
-                  </li>
-                  {/* Temporarily hide Resources from nav until content is ready */}
-                  {/* <li><Link className={`navlink-btn ${(pathname?.startsWith('/about')||pathname?.startsWith('/blog')||pathname?.startsWith('/resources')) ? 'active' : ''}`} href="/resources" aria-current={(pathname?.startsWith('/about')||pathname?.startsWith('/blog')||pathname?.startsWith('/resources')) ? 'page' : undefined}>Resources</Link></li> */}
-                  <li><Link className={`navlink-btn ${pathname?.startsWith('/contact') ? 'active' : ''}`} href="/contact" aria-current={pathname?.startsWith('/contact') ? 'page' : undefined}>Contact</Link></li>
+                  {desktopNavigationItems.slice(2).map((item) => (
+                    <li key={item.id}>
+                      <Link
+                        id={item.id === 'products' ? 'nav-products' : undefined}
+                        className={`navlink-btn ${item.current ? 'active' : ''}`}
+                        href={item.href}
+                        aria-label={item.desktopLabel}
+                        aria-current={item.current ? 'page' : undefined}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -353,6 +458,11 @@ export default function Header() {
               aria-controls="mobile-menu"
               aria-expanded={mobileMenuOpen}
               onClick={handleCircleToggle}
+              onKeyDown={handleMobileToggleKeyDown}
+              onPointerDown={captureMobileMenuScroll}
+              onPointerCancel={() => {
+                mobileMenuScrollCapturedRef.current = false;
+              }}
             >
               <span className="mobile-toggle__pulse" aria-hidden="true" />
             </button>
@@ -362,20 +472,23 @@ export default function Header() {
 
       {mounted && createPortal(
         <div
+          ref={mobileMenuRef}
           id="mobile-menu"
           className={`mobile-menu ${mobileMenuOpen ? 'open' : ''}`}
           aria-hidden={!mobileMenuOpen}
+          data-mobile-menu-state={mobileMenuOpen ? 'open' : 'closed'}
+          inert={!mobileMenuOpen}
         >
           <nav aria-label="Mobile primary" className="mobile-nav">
             <ul className="mobile-menu__list">
-              {mobileNavItems.map((item, index) => (
-                <li key={item.href}>
+              {mobileNavigationItems.map((item, index) => (
+                <li key={item.id}>
                   <Link
                     ref={index === 0 ? firstMobileLinkRef : undefined}
                     href={item.href}
                     className="mobile-menu__link"
-                    aria-current={typeof pathname === 'string' && pathname === item.href ? 'page' : undefined}
-                    onClick={() => setMobileMenuOpen(false)}
+                    aria-current={item.current ? 'page' : undefined}
+                    onClick={handleMobileNavigation}
                   >
                     {item.label}
                   </Link>
@@ -386,7 +499,7 @@ export default function Header() {
                   href={headerEnquiryHref}
                   className="mobile-menu__link mobile-menu__link--estimate"
                   data-homepage-event="header_estimate_click"
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={handleMobileNavigation}
                 >
                   Get an estimate
                 </Link>
