@@ -2,7 +2,7 @@
 
 Status: Active evolving roadmap.
 
-Last updated: 2026-07-21.
+Last updated: 2026-07-24.
 
 Purpose: keep the highest-leverage usability work visible as the portal matures from a capable internal tool into a fast, trusted operating system for staff. This doc is intentionally product-facing: it tracks workflow clarity, visual hierarchy, user confidence, and the next UX passes worth doing.
 
@@ -37,6 +37,7 @@ The main UX standard:
    - Improve current status, next action, latest note/activity, current design/quote state, and obvious primary actions.
    - Stage 1 complete: the activity-key default is now labelled Overview; a strict server-owned card shows exact current design, quote/estimate version, stored customer price, delivery, costing freshness, source failures, and newer-estimate context. Customer context, notes, tasks, and specialist workflows remain available.
    - Stage 2 repository implementation is complete but remains Yellow: the project header shows one canonical Project Owner from the approved Jordan/JP/Joe/Bruce roster; Overview derives one primary action from project tasks, follow-up tasks, or controlled manual actions; conflicts, critical reasons, compact audit history, and dashboard project exceptions are surfaced. Executable smoke for both Stage 2 migrations and authenticated real-project Playwright remain the completion gates.
+   - The current Overview hierarchy now gives compact project context one full-width row, gives commercial truth the wider desktop track beside the focused next action, responds to owned content width instead of viewport width, and exposes direct Call, Email, and Map shortcuts. The required mobile order remains Status, commercial, then action with no document overflow.
    - Project shell Slices 1-2 are present in the current repository: the page is full width with project facts and stage in Overview; the authoritative Calculator replaces the legacy Designs/configurator surface; Quotes and Invoices share Commercial; the Emails UI is retired while delivery/audit data and side effects remain unchanged. Staff-facing tabs are Overview, Calculator, Commercial, and conditional Job Packs; compatibility keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
    - Stage 3 lead-to-quote workstreams are the next implementation stage after Stage 2 environment verification. V1 remains bounded at quote outcome.
 

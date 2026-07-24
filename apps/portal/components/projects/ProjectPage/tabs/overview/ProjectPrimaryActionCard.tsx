@@ -67,6 +67,22 @@ function AuditItems({ entries }: { entries: ProjectCommandAuditEntry[] }) {
   ))}</>;
 }
 
+function CompactAuditItems({ entries }: { entries: ProjectCommandAuditEntry[] }) {
+  return (
+    <ul className={styles.compactHistory}>
+      {entries.map((entry) => (
+        <li key={entry.id}>
+          <div className={styles.compactHistoryEvent}>
+            <Badge tone="neutral">{eventLabel(entry.eventType)}</Badge>
+            <span>{entry.reason ?? 'Project command updated'}</span>
+          </div>
+          <small>{entry.actor?.displayName ?? 'Staff'} - {auditTimestamp(entry.createdAt)}</small>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function ProjectPrimaryActionCard({
   projectId,
   host,
@@ -157,13 +173,12 @@ export default function ProjectPrimaryActionCard({
     >
       <div className={styles.stack}>
         <div className={styles.ownerSection} aria-label="Project ownership" data-project-owner>
-          <KeyValueGrid
-            columns={1}
-            items={[{
-              label: 'Project owner',
-              value: operations.owner.owner?.displayName ?? <span className={styles.missing}>Unassigned</span>,
-            }]}
-          />
+          <div className={styles.ownerSummary}>
+            <span>Project owner</span>
+            <strong className={operations.owner.owner ? undefined : styles.missing}>
+              {operations.owner.owner?.displayName ?? 'Unassigned'}
+            </strong>
+          </div>
           {operations.owner.permissions.canManage ? (
             <Button type="button" variant="secondary" size="small" disabled={disabled} aria-expanded={ownersOpen} onClick={() => setOwnersOpen((open) => !open)}>
               {ownersOpen ? 'Close owner control' : 'Manage project owner'}
@@ -215,7 +230,6 @@ export default function ProjectPrimaryActionCard({
             eyebrow={current.sourceLabel}
             tone={current.isCritical ? 'critical' : 'inverse'}
             data-primary-action-source={current.sourceKind}
-            status={<Badge tone={actionTone}>{current.isCritical ? 'Critical' : current.dueLabel}</Badge>}
             footer={(
               <Button
                 loading={pending}
@@ -227,11 +241,11 @@ export default function ProjectPrimaryActionCard({
             )}
           >
             <KeyValueGrid
-              columns={3}
+              columns={2}
               items={[
                 { label: 'Owner', value: current.owner?.displayName ?? 'Unassigned' },
                 { label: 'Due', value: current.dueLabel },
-                { label: 'Category', value: current.category },
+                { label: 'Category', value: current.category, wide: true },
               ]}
             />
             {current.isCritical && current.criticalReason ? (
@@ -282,7 +296,7 @@ export default function ProjectPrimaryActionCard({
               <h3>Recent changes</h3>
               {operations.audit.length > 5 ? <Button variant="tertiary" size="small" onClick={() => setHistoryOpen(true)}>View recent history</Button> : null}
             </div>
-            <ActivityTimeline ariaLabel="Recent project command changes"><AuditItems entries={operations.audit.slice(0, 5)} /></ActivityTimeline>
+            <CompactAuditItems entries={operations.audit.slice(0, 5)} />
           </section>
         ) : null}
 

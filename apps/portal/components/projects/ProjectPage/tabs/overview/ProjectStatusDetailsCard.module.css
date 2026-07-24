@@ -1,5 +1,7 @@
 .detailsCard {
   min-width: 0;
+  container-name: project-status-details;
+  container-type: inline-size;
 }
 
 .detailsActions {
@@ -8,6 +10,19 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: var(--ui-space-2);
+}
+
+.contactActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  padding: var(--ui-space-3) var(--ui-space-4);
+}
+
+.detailsCard .detailsGrid > div[data-wide] {
+  grid-column: auto;
 }
 
 .stageControl {
@@ -50,6 +65,12 @@
   padding: var(--ui-space-4);
 }
 
+@container project-status-details (max-width: 720px) {
+  .detailsCard .detailsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 767px) {
   .detailsActions {
     justify-content: flex-start;
@@ -62,5 +83,9 @@
 
   .detailsForm {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailsCard .detailsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

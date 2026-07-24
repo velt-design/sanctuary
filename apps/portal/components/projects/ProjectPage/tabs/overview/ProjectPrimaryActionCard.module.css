@@ -14,14 +14,41 @@
 }
 
 .ownerSection {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   border: var(--ui-border-width) solid var(--ui-border);
-  padding-bottom: var(--ui-space-3);
+  background: var(--ui-surface-secondary);
+  padding: var(--ui-space-3);
+}
+
+.ownerSummary {
+  display: grid;
+  gap: var(--ui-space-1);
+  min-width: 0;
+}
+
+.ownerSummary span {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 600;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.ownerSummary strong {
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+  line-height: var(--ui-line-height-body);
 }
 
 .ownerSection > button,
 .ownerControl {
   justify-self: start;
-  margin-inline: var(--ui-space-3);
+}
+
+.ownerControl {
+  grid-column: 1 / -1;
+  width: min(100%, 22rem);
 }
 
 .missing {
@@ -105,6 +132,43 @@
   text-transform: uppercase;
 }
 
+.compactHistory {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compactHistory li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  min-width: 0;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+  padding: var(--ui-space-2) 0;
+}
+
+.compactHistory li:last-child {
+  border-bottom: 0;
+}
+
+.compactHistoryEvent {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  color: var(--ui-text);
+  font-size: var(--ui-font-size-caption);
+}
+
+.compactHistory small {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  text-align: right;
+}
+
 .historyModal {
   display: grid;
   gap: var(--ui-space-4);
@@ -114,6 +178,10 @@
 }
 
 @container (max-width: 620px) {
+  .ownerSection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .controlRow,
   .createGrid {
     grid-template-columns: minmax(0, 1fr);
@@ -138,5 +206,13 @@
   .historyHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .compactHistory li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compactHistory small {
+    text-align: left;
   }
 }

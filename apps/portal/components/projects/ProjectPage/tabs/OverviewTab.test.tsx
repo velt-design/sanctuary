@@ -95,6 +95,9 @@ describe('OverviewTab', () => {
     expect(rendered.container.querySelector('[data-testid="mock-current-design"]')?.getAttribute('data-source')).toBe('estimate');
     expect(rendered.container.querySelector('[data-testid="mock-status-details"]')?.textContent).toContain('Aroha Smith');
     expect(rendered.container.querySelector('[data-testid="mock-primary-action"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-overview-slot="status"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-overview-slot="commercial"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-overview-slot="action"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-stage3-workstreams-slot]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-notes-panel"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-tasks-panel"]')).not.toBeNull();

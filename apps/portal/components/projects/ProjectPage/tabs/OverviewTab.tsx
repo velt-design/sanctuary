@@ -69,38 +69,56 @@ export default function OverviewTab({
         <AlertBanner tone="info" title="Updating commercial state">The saved overview remains available while the latest data loads.</AlertBanner>
       ) : null}
 
-      <OperationalGrid columns={3} data-command-centre-state={commandCentreState}>
-        <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project details" /></Card>}>
-          <ProjectStatusDetailsCard project={snapshot.project} host={host} />
-        </Suspense>
-        {accessEndingStatus !== null ? (
-          <DataStatePanel state="unavailable" title="Project access unavailable" description="Your access changed while this overview was open." />
-        ) : commandQuery.data ? (
-          <>
-            <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading commercial summary" /></Card>}>
-              <ProjectCurrentDesignCommercialCard data={commandQuery.data.currentDesign} />
+      <section
+        className={styles.commandSection}
+        data-command-centre-state={commandCentreState}
+        aria-label="Project operational overview"
+      >
+        <div className={styles.commandGrid}>
+          <div className={styles.statusSlot} data-overview-slot="status">
+            <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project details" /></Card>}>
+              <ProjectStatusDetailsCard project={snapshot.project} host={host} />
             </Suspense>
-            <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project command" /></Card>}>
-              <ProjectPrimaryActionCard
-                projectId={snapshot.project.id}
-                host={host}
-                operations={commandQuery.data.operations}
-                stale={commandQuery.isError}
-                onRefresh={() => void commandQuery.refetch()}
+          </div>
+          {accessEndingStatus !== null ? (
+            <div className={styles.commandStateSlot}>
+              <DataStatePanel state="unavailable" title="Project access unavailable" description="Your access changed while this overview was open." />
+            </div>
+          ) : commandQuery.data ? (
+            <>
+              <div className={styles.commercialSlot} data-overview-slot="commercial">
+                <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading commercial summary" /></Card>}>
+                  <ProjectCurrentDesignCommercialCard data={commandQuery.data.currentDesign} />
+                </Suspense>
+              </div>
+              <div className={styles.actionSlot} data-overview-slot="action">
+                <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project command" /></Card>}>
+                  <ProjectPrimaryActionCard
+                    projectId={snapshot.project.id}
+                    host={host}
+                    operations={commandQuery.data.operations}
+                    stale={commandQuery.isError}
+                    onRefresh={() => void commandQuery.refetch()}
+                  />
+                </Suspense>
+              </div>
+            </>
+          ) : commandQuery.isPending ? (
+            <div className={styles.commandStateSlot}>
+              <Card padding="compact"><LoadingSkeleton rows={5} columns={3} label="Loading design, commercial state and project command" /></Card>
+            </div>
+          ) : (
+            <div className={styles.commandStateSlot}>
+              <DataStatePanel
+                state="error"
+                title="Could not load the project overview"
+                description="The design, commercial summary and next action are unavailable."
+                onRetry={() => void commandQuery.refetch()}
               />
-            </Suspense>
-          </>
-        ) : commandQuery.isPending ? (
-          <Card padding="compact"><LoadingSkeleton rows={5} columns={3} label="Loading design, commercial state and project command" /></Card>
-        ) : (
-          <DataStatePanel
-            state="error"
-            title="Could not load the project overview"
-            description="The design, commercial summary and next action are unavailable."
-            onRetry={() => void commandQuery.refetch()}
-          />
-        )}
-      </OperationalGrid>
+            </div>
+          )}
+        </div>
+      </section>
 
       <div className={styles.workstreamsSlot} data-stage3-workstreams-slot aria-hidden="true" />
 
