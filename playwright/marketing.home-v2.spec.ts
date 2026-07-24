@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const route = '/';
 const canonicalUrl = 'https://www.sanctuarypergolas.co.nz';
@@ -26,6 +27,12 @@ async function preparePage(page: Page, analytics = false) {
       version: 1,
     }));
   }, analytics);
+}
+
+async function getSettledHomepageMain(page: Page) {
+  const main = page.locator('main[data-homepage-variant="v2"]:visible');
+  await expect(main).toHaveCount(1);
+  return main;
 }
 
 async function waitForImage(image: Locator, label: string) {
@@ -87,12 +94,11 @@ for (const viewport of viewports) {
     const response = await page.goto(route);
     expect(response?.ok(), `${route} should resolve`).toBe(true);
 
-    const main = page.locator('main[data-homepage-variant="v2"]');
+    const main = await getSettledHomepageMain(page);
     const hero = main.locator('section[aria-labelledby="homepage-heading"]');
     const header = page.locator('header.site');
     const brand = header.locator('.site-brand');
 
-    await expect(main).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.getByRole('heading', {
       level: 1,
@@ -115,9 +121,18 @@ for (const viewport of viewports) {
       await expect(main.locator('figure').filter({ hasText: 'Tindalls Bay / Patio and carport' })).toBeHidden();
       await expect(main.locator('section[aria-labelledby="mobile-selected-projects"]')).toBeHidden();
       await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeVisible();
+      await expect(main.locator('[data-home-process-variant="desktop"]')).toBeVisible();
+      await expect(main.locator('[data-home-process-variant="mobile"]')).toBeHidden();
+      await expect(main.locator('[data-home-review]')).not.toHaveCount(0);
+      await expect(main.locator('[data-home-review]').first()).toBeVisible();
+      await expect(main.locator('[aria-label="Client reviews"]')).toBeHidden();
     } else {
       await expect(main.locator('section[aria-labelledby="mobile-selected-projects"]')).toBeVisible();
       await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeHidden();
+      await expect(main.locator('[data-home-process-variant="desktop"]')).toBeHidden();
+      await expect(main.locator('[data-home-process-variant="mobile"]')).toBeVisible();
+      await expect(main.locator('[data-home-review]').first()).toBeHidden();
+      await expect(main.locator('[aria-label="Client reviews"]')).toBeVisible();
     }
 
     const liveRating = main.locator('[data-live-rating]');
@@ -167,7 +182,11 @@ for (const viewport of viewports) {
 
     const heroActions = main.getByLabel('Homepage actions');
     await expect(heroActions.getByRole('link', { name: 'Get an initial project estimate', exact: true }))
-      .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+      .toHaveAttribute('href', buildEnquiryHref({
+        enquiryType: 'residential',
+        sourcePath: '/',
+        sourceComponent: 'hero',
+      }));
     await expect(heroActions.locator('a[href="/projects"]')).toHaveText('View completed projects');
 
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -235,7 +254,7 @@ for (const viewport of [
     await preparePage(page);
     await page.goto(route);
 
-    const main = page.locator('main[data-homepage-variant="v2"]');
+    const main = await getSettledHomepageMain(page);
     const disclosures = main.locator('details[data-mobile-disclosure]');
     await expect(disclosures).toHaveCount(7);
     await expect.poll(() => disclosures.evaluateAll((items) => items.every((item) => !item.hasAttribute('open'))))
@@ -374,7 +393,7 @@ test('approved homepage is indexable at root and the staging route permanently r
   expect(stagingResponse.headers().location).toBe('/');
 
   await page.goto(route);
-  await expect(page.locator('main[data-homepage-variant="v2"]')).toBeVisible();
+  await getSettledHomepageMain(page);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonicalUrl);
   await expect(page.locator('header.site a[href="/home-v2"]')).toHaveCount(0);
@@ -390,7 +409,7 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await preparePage(page);
   await page.goto(route);
 
-  const main = page.locator('main[data-homepage-variant="v2"]');
+  const main = await getSettledHomepageMain(page);
   await expect(page).toHaveTitle('Architectural Pergola Design & Build | Sanctuary Pergolas');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     'content',
@@ -412,7 +431,11 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
     ['/pergolas-auckland', 'Plan an Auckland pergola'],
     ['/custom-pergolas-auckland', 'Explore custom pergola design'],
     ['/commercial-pergolas-auckland#project-details', 'Discuss a commercial project'],
-    ['/contact?enquiry=professional#contact-form', 'Send plans or a project brief'],
+    [buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: '/',
+      sourceComponent: 'pathway',
+    }), 'Send plans or a project brief'],
   ] as const;
   const pathwaySection = main.locator('section[aria-labelledby="project-pathways"]');
   for (const [href, name] of expectedPathways) {
@@ -441,14 +464,22 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await expect(main.getByRole('link', { name: 'Explore all pergola guides' })).toHaveAttribute('href', '/pergola-guides');
   await expect(main.getByRole('navigation', { name: 'Featured pergola guides' }).getByRole('link')).toHaveCount(3);
   await expect(main.getByRole('link', { name: 'Send your project details' }))
-    .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+    .toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'final_cta',
+    }));
   await expect(main).toContainText('Before site work begins, Sanctuary records the agreed design');
   await expect(main).toContainText('Documented scope, approval and scheduling');
   await expect(main).not.toContainText('Three concise Google reviews');
   await expect(main).not.toContainText('complete technical manual');
   await expect(main).not.toContainText('Standalone');
   await expect(page.getByRole('link', { name: 'Get an estimate', exact: true }))
-    .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+    .toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'header',
+    }));
 
   const schemaTypes = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) => (
     nodes.flatMap((node) => {
@@ -475,11 +506,12 @@ test('homepage V2 records consented CTA events without customer data', async ({ 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page, true);
   await page.goto(route);
+  const main = await getSettledHomepageMain(page);
   await page.evaluate(() => {
     (window as typeof window & { dataLayer?: unknown[] }).dataLayer = [];
   });
 
-  await page.locator('[data-homepage-event="hero_projects_click"]').click();
+  await main.locator('[data-homepage-event="hero_projects_click"]').click();
   await page.waitForURL('**/projects');
   const trackedEvent = await page.evaluate(() => (
     (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
@@ -498,11 +530,12 @@ test('mobile homepage records disclosure and review interactions with device con
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page, true);
   await page.goto(route);
+  const main = await getSettledHomepageMain(page);
   await page.evaluate(() => {
     (window as typeof window & { dataLayer?: unknown[] }).dataLayer = [];
   });
 
-  const pathways = page.locator('section[aria-labelledby="project-pathways"]');
+  const pathways = main.locator('section[aria-labelledby="project-pathways"]');
   await pathways.locator('summary').click();
   await page.getByRole('button', { name: 'Next review' }).click();
 
@@ -529,7 +562,11 @@ test('mobile homepage records disclosure and review interactions with device con
   const mobileEstimate = page.getByRole('navigation', { name: 'Mobile primary' })
     .getByRole('link', { name: 'Get an estimate', exact: true });
   await expect(mobileEstimate).toBeVisible();
-  await expect(mobileEstimate).toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+  await expect(mobileEstimate).toHaveAttribute('href', buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/',
+    sourceComponent: 'header',
+  }));
   await expect(mobileEstimate).toHaveAttribute('data-homepage-event', 'header_estimate_click');
 });
 
@@ -537,8 +574,16 @@ test('homepage enquiry links open the promised contact pathway', async ({ page }
   await preparePage(page);
 
   for (const [destination, enquiryOption] of [
-    ['/contact?enquiry=residential#contact-form', 'Residential'],
-    ['/contact?enquiry=professional#contact-form', 'Architect, designer or builder'],
+    [buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'hero',
+    }), 'Residential'],
+    [buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: '/',
+      sourceComponent: 'pathway',
+    }), 'Architect, designer or builder'],
   ] as const) {
     await page.goto(destination);
     await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
@@ -567,7 +612,8 @@ test('homepage V2 internal destinations resolve without redirect errors', async 
   await preparePage(page);
   await page.goto(route);
 
-  const hrefs = await page.locator('main[data-homepage-variant="v2"] a[href^="/"]').evaluateAll((links) => (
+  const main = await getSettledHomepageMain(page);
+  const hrefs = await main.locator('a[href^="/"]').evaluateAll((links) => (
     Array.from(new Set(links.map((link) => link.getAttribute('href')).filter((href): href is string => Boolean(href))))
   ));
   expect(hrefs.length).toBeGreaterThan(20);
@@ -583,7 +629,8 @@ test('homepage keeps a coherent keyboard and document structure', async ({ page 
   await preparePage(page);
   await page.goto(route);
 
-  const structure = await page.locator('main[data-homepage-variant="v2"]').evaluate((main) => {
+  const main = await getSettledHomepageMain(page);
+  const structure = await main.evaluate((main) => {
     const headingLevels = [...main.querySelectorAll('h1, h2, h3, h4, h5, h6')]
       .map((heading) => Number(heading.tagName.slice(1)));
     const images = [...main.querySelectorAll('img')];
@@ -672,7 +719,7 @@ test('homepage V2 preserves the shared mobile menu scroll lock and focus return'
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
   await page.goto(route);
-  await expect(page.locator('main[data-homepage-variant="v2"]')).toBeVisible();
+  await getSettledHomepageMain(page);
   await page.waitForTimeout(100);
   await page.evaluate(() => window.scrollTo(0, 500));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(500);
@@ -712,8 +759,7 @@ test('capture approved homepage evidence', async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     await page.goto(route);
-    const main = page.locator('main[data-homepage-variant="v2"]');
-    await expect(main).toBeVisible();
+    const main = await getSettledHomepageMain(page);
     await waitForImage(
       main.locator('section[aria-labelledby="homepage-heading"] img'),
       `homepage ${viewport.name} hero`,
@@ -759,8 +805,7 @@ test('capture responsive homepage redesign evidence', async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto(route);
 
-    const main = page.locator('main[data-homepage-variant="v2"]');
-    await expect(main).toBeVisible();
+    const main = await getSettledHomepageMain(page);
     await waitForAllImages(main);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({

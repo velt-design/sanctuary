@@ -251,6 +251,51 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   text-transform: uppercase;
 }
 
+.contact-form__context {
+  display: grid;
+  gap: .3rem;
+  max-width: 40rem;
+  padding: 1rem;
+  border-left: 3px solid var(--color-accent-olive);
+  background: var(--color-surface-elevated);
+}
+
+.contact-form__context strong {
+  font: 550 1rem/1.35 var(--font-display);
+}
+
+.contact-form__context span {
+  color: var(--color-text-secondary);
+  font-size: .78rem;
+}
+
+.contact-form__error-summary {
+  display: grid;
+  gap: .65rem;
+  margin-block: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--color-error);
+  background: #f4e8e7;
+  color: #6e2c31;
+}
+
+.contact-form__error-summary h3 {
+  font: 550 1rem/1.35 var(--font-display);
+}
+
+.contact-form__error-summary ul {
+  display: grid;
+  gap: .35rem;
+  padding-left: 1.1rem;
+}
+
+.contact-form__error-summary a {
+  color: inherit;
+  font-size: .82rem;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
 .contact-form__section {
   padding-block: clamp(2rem, 4vw, 3.5rem);
   border-top: 1px solid var(--color-rule);

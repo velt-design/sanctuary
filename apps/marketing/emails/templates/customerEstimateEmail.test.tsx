@@ -103,4 +103,24 @@ describe('customer estimate autoresponder emails', () => {
     expect(text).toContain('$27,500 - $31,500');
     expect(text).toContain('The lower figure reflects a base structure');
   });
+
+  it('renders residential upload confirmation and expiring links', async () => {
+    const text = await render(
+      CustomerResidentialEmail({
+        ...residential,
+        filesReceivedCount: 1,
+        attachmentLinks: [{
+          name: 'deck-photo.jpg',
+          url: 'https://signed.example.test/deck-photo.jpg',
+        }],
+        callWindowText: 'within 30 minutes',
+      }),
+      { plainText: true },
+    );
+
+    expect(text).toContain('Files received');
+    expect(text).toContain('1');
+    expect(text).toContain('deck-photo.jpg');
+    expect(text).toContain('https://signed.example.test/deck-photo.jpg');
+  });
 });

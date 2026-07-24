@@ -25,6 +25,9 @@ interface EnquiryBase {
   utmMedium?: string;
   utmCampaign?: string;
   landingUrl?: string;
+  filesReceivedCount?: number;
+  // Populated when uploads are too large to inline as email attachments.
+  attachmentLinks?: { name: string; url: string }[];
 }
 
 export interface ResidentialOrCommercial extends EnquiryBase {
@@ -47,10 +50,6 @@ export interface ResidentialOrCommercial extends EnquiryBase {
 export interface Professional extends EnquiryBase {
   enquiryType: 'professional';
   company?: string;
-  filesReceivedCount?: number;
-  // Populated only when uploads are too large to inline as email attachments;
-  // rendered as expiring signed download links in the professional email.
-  attachmentLinks?: { name: string; url: string }[];
 }
 
 export type EnquiryPayload = ResidentialOrCommercial | Professional;

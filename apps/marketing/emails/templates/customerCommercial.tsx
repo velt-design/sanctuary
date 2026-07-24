@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Text } from '@react-email/components';
 import { EmailLayout } from '../components/EmailLayout';
+import { AttachmentLinks } from '../components/AttachmentLinks';
 import { HeroImage } from '../components/HeroImage';
 import { InvestmentPanel, formatInvestmentAmount } from '../components/InvestmentPanel';
 import { NextSteps } from '../components/NextSteps';
@@ -65,15 +66,18 @@ export function CustomerCommercialEmail(props: ResidentialOrCommercial & { callW
           { label: 'Style', value: String(props.style) },
           { label: 'Roof', value: String(props.roof) },
           { label: 'Add-ons selected', value: addonsText },
+          { label: 'Files received', value: String(props.filesReceivedCount ?? 0) },
           { label: 'Notes', value: props.message?.trim() ? props.message.trim() : '-' },
         ]}
       />
+
+      <AttachmentLinks links={props.attachmentLinks} />
 
       <Text style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700 }}>
         Helpful next details
       </Text>
       <Text style={{ margin: 0, fontSize: 13, color: THEME.muted, lineHeight: 1.65 }}>
-        If you have photos, plans, or a preferred timeframe, simply reply to this email and send them through.
+        If you have more photos, plans, or a preferred timeframe, simply reply to this email and send them through.
       </Text>
 
       <Text style={{ margin: '14px 0 0', fontSize: 12, color: THEME.muted, lineHeight: 1.6 }}>

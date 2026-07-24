@@ -10,6 +10,9 @@ import { findPergolaGuide, pergolaGuideEditorialReview } from '@/data/pergolaGui
 
 export default function SeoLandingPage({ config }: { config: SeoLandingPageConfig }) {
   const guide = findPergolaGuide(config.route);
+  const enquiryType = config.route === '/commercial-pergolas-auckland'
+    ? 'commercial'
+    : 'residential';
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -42,7 +45,7 @@ export default function SeoLandingPage({ config }: { config: SeoLandingPageConfi
       <Section tone="inverse" className="acrylic-section acrylic-section--final-cta" aria-labelledby={`${config.marker}-final-cta`}>
         <Container width="wide" className="acrylic-final-grid"><div><Eyebrow className="acrylic-eyebrow">{config.finalCta.eyebrow}</Eyebrow><Heading id={`${config.marker}-final-cta`}>{config.finalCta.title}</Heading><p>{config.finalCta.text}</p><div className="acrylic-hero__actions"><Button href="#project-details">{config.finalCta.button}</Button></div></div><div><h3>{config.finalCta.checklistTitle}</h3><ul className="acrylic-check-list">{config.finalCta.checklist.map((item) => <li key={item}>{item}</li>)}</ul></div></Container>
       </Section>
-      <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} roofPreference={config.form.roofPreference} /></Container></Section>
+      <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label={config.form.ariaLabel}><Container width="wide"><AcrylicPergolaEnquiryForm eyebrow={config.form.eyebrow} heading={config.form.heading} intro={config.form.intro} submitLabel={config.form.submitLabel} messageLabel={config.form.messageLabel} messagePlaceholder={config.form.messagePlaceholder} briefFields={config.form.briefFields} roofPreference={config.form.roofPreference} initialEnquiryType={enquiryType} sourceContext={{ enquiryType, sourcePath: config.route, sourceComponent: 'embedded_form' }} /></Container></Section>
     </main>
   );
 }

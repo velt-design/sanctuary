@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { products } from '../apps/marketing/data/products';
+import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const representativeRoutes = [
@@ -144,10 +145,17 @@ for (const viewport of viewports) {
 
       const main = page.locator('main[data-marketing-foundation-page]:visible').last();
       const h1 = main.locator('h1:visible');
+      const product = products.find((candidate) => candidate.route === route);
+      const expectedEnquiryHref = buildEnquiryHref({
+        enquiryType: 'residential',
+        sourcePath: route,
+        sourceComponent: 'product_cta',
+        ...(product ? { sourceProduct: product.slug } : {}),
+      });
       await expect(h1).toHaveCount(1);
       await expect(h1).toBeVisible();
       await expect(main.getByRole('link', { name: 'Send your project details' }).first())
-        .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+        .toHaveAttribute('href', expectedEnquiryHref);
       await expect(main).not.toContainText('[[VERIFY]]');
       await expect(main).not.toContainText('—');
       const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>

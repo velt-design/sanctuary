@@ -20,6 +20,13 @@ import {
 } from '@/lib/sharedEmails';
 import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
+import { projects } from '../../../data/projects';
+import { products } from '../../../data/products';
+import {
+  getEnquiryContextProperties,
+  parseEnquiryContext,
+  type EnquiryAudience,
+} from '../../../lib/enquiryContext';
 import { getServiceSupabase } from '@/lib/supabaseService';
 import {
   isAllowedMarketingOrigin,
@@ -198,7 +205,7 @@ function storedAttachmentEntries(files: unknown): Array<{ path: string; name: st
 
 // Best-effort: never throws, so a Storage hiccup cannot block the enquiry or
 // its autoresponder. Returns inline attachments when small, else signed links.
-async function resolveProfessionalAttachments(
+async function resolveEnquiryAttachments(
   supabase: SupabaseClient,
   files: unknown,
   verifiedFiles: VerifiedStoredAttachment[],
@@ -296,6 +303,36 @@ export async function POST(req: Request) {
   const company = sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH);
   const page = sanitizeSingleLine(getField('page'), MAX_FIELD_LENGTH);
   const source = sanitizeSingleLine(getField('source'), MAX_FIELD_LENGTH) || 'website';
+  const rawEnquiryContext = isPlainObject(payload.enquiryContext)
+    ? payload.enquiryContext
+    : {};
+  const parsedEnquiryContext = parseEnquiryContext(
+    {
+      enquiry_type: typeof rawEnquiryContext.enquiry_type === 'string'
+        ? rawEnquiryContext.enquiry_type
+        : undefined,
+      source_path: typeof rawEnquiryContext.source_path === 'string'
+        ? rawEnquiryContext.source_path
+        : undefined,
+      source_component: typeof rawEnquiryContext.source_component === 'string'
+        ? rawEnquiryContext.source_component
+        : undefined,
+      source_project: typeof rawEnquiryContext.source_project === 'string'
+        ? rawEnquiryContext.source_project
+        : undefined,
+      source_product: typeof rawEnquiryContext.source_product === 'string'
+        ? rawEnquiryContext.source_product
+        : undefined,
+    },
+    {
+      projectSlugs: projects.map((project) => project.slug),
+      productSlugs: products.map((product) => product.slug),
+    },
+  );
+  const enquiryContext = getEnquiryContextProperties({
+    ...parsedEnquiryContext,
+    enquiryType: enquiryType as EnquiryAudience,
+  });
 
   const dimsRaw = isPlainObject(payload.dimensions) ? payload.dimensions : {};
   const dims = isPlainObject(dimsRaw) ? dimsRaw : {};
@@ -317,8 +354,16 @@ export async function POST(req: Request) {
 
   const attributionRaw = maybeParseJson(payload.attribution);
   const attribution = normalizeMarketingAttributionInput(attributionRaw, { utm, page, source });
-  const { uploadSessionToken: _uploadSessionToken, ...payloadWithoutUploadToken } = payload;
-  const rawPayload = safeJsonPayload({ ...payloadWithoutUploadToken, attribution });
+  const {
+    uploadSessionToken: _uploadSessionToken,
+    enquiryContext: _untrustedEnquiryContext,
+    ...payloadWithoutUploadToken
+  } = payload;
+  const rawPayload = safeJsonPayload({
+    ...payloadWithoutUploadToken,
+    attribution,
+    enquiryContext,
+  });
 
   const filesRaw = maybeParseJson(payload.files);
   const files = normalizeEnquiryFiles(filesRaw);
@@ -459,6 +504,7 @@ export async function POST(req: Request) {
       enquiryType,
       source,
       page: page || null,
+      ...enquiryContext,
       baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
       baseBudgetHighIncGst: budgets.baseRange?.highIncGst ?? null,
     },
@@ -522,16 +568,20 @@ export async function POST(req: Request) {
             : undefined;
 
       let emailPayload: EnquiryPayload;
-      let professionalAttachments: ResolvedAttachment[] = [];
+      const filesCount = Array.isArray(files) ? files.length : 0;
+      const resolvedAttachments = await resolveEnquiryAttachments(
+        supabase,
+        files,
+        verifiedStoredAttachments,
+      );
+      const attachmentContext = {
+        filesReceivedCount: filesCount,
+        ...(resolvedAttachments.attachmentLinks.length
+          ? { attachmentLinks: resolvedAttachments.attachmentLinks }
+          : {}),
+      };
 
       if (enquiryType === 'professional') {
-        const filesCount = Array.isArray(files) ? files.length : 0;
-        const resolved = await resolveProfessionalAttachments(
-          supabase,
-          files,
-          verifiedStoredAttachments,
-        );
-        professionalAttachments = resolved.attachments;
         emailPayload = {
           leadId: enquiryRow.id,
           submittedAt,
@@ -546,8 +596,7 @@ export async function POST(req: Request) {
           utmCampaign,
           landingUrl: page || undefined,
           company: company || undefined,
-          filesReceivedCount: filesCount,
-          ...(resolved.attachmentLinks.length ? { attachmentLinks: resolved.attachmentLinks } : {}),
+          ...attachmentContext,
         } satisfies Professional;
       } else {
         if (!budgets.baseRange) {
@@ -568,6 +617,7 @@ export async function POST(req: Request) {
           utmMedium,
           utmCampaign,
           landingUrl: page || undefined,
+          ...attachmentContext,
           widthM: Number.isFinite(widthM ?? NaN) ? Number(widthM) : 0,
           depthM: Number.isFinite(depthM ?? NaN) ? Number(depthM) : 0,
           heightM: Number.isFinite(heightM ?? NaN) ? Number(heightM) : 0,
@@ -620,7 +670,9 @@ export async function POST(req: Request) {
         await sendCustomerAutoresponder(
           emailPayload,
           {
-            ...(professionalAttachments.length ? { attachments: professionalAttachments } : {}),
+            ...(resolvedAttachments.attachments.length
+              ? { attachments: resolvedAttachments.attachments }
+              : {}),
             idempotencyKey,
           },
         );

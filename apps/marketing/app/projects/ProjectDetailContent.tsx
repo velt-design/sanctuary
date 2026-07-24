@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
 import MobileProjectDisclosure from './MobileProjectDisclosure';
 import {
   getProjectContextLinks,
@@ -20,6 +21,7 @@ type ProjectDetailContentProps = {
   previousProject?: Project;
   nextProject?: Project;
   showBreadcrumb?: boolean;
+  sourcePath?: string;
   titleAs?: 'h1' | 'h2';
 };
 
@@ -31,6 +33,7 @@ export default function ProjectDetailContent({
   previousProject,
   nextProject,
   showBreadcrumb = false,
+  sourcePath,
   titleAs = 'h1',
 }: ProjectDetailContentProps) {
   if (!project) {
@@ -58,6 +61,12 @@ export default function ProjectDetailContent({
   });
   const projectNumber = String(projectIndex + 1).padStart(2, '0');
   const projectTotal = String(projectCount).padStart(2, '0');
+  const enquiryHref = buildEnquiryHref({
+    enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
+    sourcePath: sourcePath ?? `/projects/${project.slug}`,
+    sourceComponent: 'project_cta',
+    sourceProject: project.slug,
+  });
 
   return (
     <article
@@ -88,7 +97,7 @@ export default function ProjectDetailContent({
         <div className="project-case-study__intro-copy">
           <p>{project.blurb}</p>
           <div className="project-case-study__intro-actions">
-            <Link className="project-action project-action--primary" href="/contact">
+            <Link className="project-action project-action--primary" href={enquiryHref}>
               {getProjectIntroCta(project)}
             </Link>
             {contextLinks.length ? (
@@ -360,7 +369,7 @@ export default function ProjectDetailContent({
             response.
           </p>
         </div>
-        <Link className="project-action project-action--primary" href="/contact">
+        <Link className="project-action project-action--primary" href={enquiryHref}>
           Send us your project details
         </Link>
       </section>

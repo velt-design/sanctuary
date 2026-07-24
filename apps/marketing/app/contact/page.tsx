@@ -1,12 +1,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { projects } from '@/data/projects';
+import { products } from '@/data/products';
+import {
+  parseEnquiryContext,
+  type EnquiryContextSearchParams,
+} from '@/lib/enquiryContext';
 import ContactEnquiryForm from './ContactEnquiryForm';
 import { getEnquiryTypeFromRouteValue } from './enquiryRoute';
 import './contact.css';
 
 type ContactPageProps = {
-  searchParams?: Promise<{ enquiry?: string | string[] }>;
+  searchParams?: Promise<EnquiryContextSearchParams>;
 };
 
 const warkworthProject = projects.find(
@@ -16,8 +21,19 @@ const contactImage = warkworthProject.caseStudyHeroImage ?? warkworthProject.her
 
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const params = searchParams ? await searchParams : {};
-  const routeValue = Array.isArray(params.enquiry) ? params.enquiry[0] : params.enquiry;
-  const initialEnquiryType = getEnquiryTypeFromRouteValue(routeValue);
+  const enquiryContext = parseEnquiryContext(params, {
+    projectSlugs: projects.map((project) => project.slug),
+    productSlugs: products.map((product) => product.slug),
+  });
+  const initialEnquiryType = getEnquiryTypeFromRouteValue(
+    enquiryContext.enquiryType,
+  );
+  const sourceProject = projects.find(
+    (project) => project.slug === enquiryContext.sourceProject,
+  );
+  const sourceProduct = products.find(
+    (product) => product.slug === enquiryContext.sourceProduct,
+  );
 
   return (
     <main className="contact-page" data-contact-page>
@@ -57,8 +73,11 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       <section className="contact-workspace" aria-label="Project enquiry">
         <div className="contact-shell contact-workspace__layout">
           <ContactEnquiryForm
-            key={initialEnquiryType ?? 'chooser'}
+            key={`${initialEnquiryType ?? 'chooser'}-${enquiryContext.sourceProject ?? ''}-${enquiryContext.sourceProduct ?? ''}`}
             initialEnquiryType={initialEnquiryType}
+            initialContext={enquiryContext}
+            sourceProjectLabel={sourceProject?.title}
+            sourceProductLabel={sourceProduct?.name}
           />
 
           <aside className="contact-guidance" aria-labelledby="contact-guidance-title">

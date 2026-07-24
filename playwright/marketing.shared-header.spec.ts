@@ -1,6 +1,10 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import {
+  buildEnquiryHref,
+  inferEnquiryAudience,
+} from '../apps/marketing/lib/enquiryContext';
 
 const establishedHeaderRoutes = [
   '/',
@@ -12,6 +16,7 @@ const establishedHeaderRoutes = [
   '/contact',
   '/privacy',
   '/acrylic-roof-pergolas-auckland-v2',
+  '/commercial-pergolas-auckland',
 ] as const;
 
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-shared-header');
@@ -34,6 +39,7 @@ test('the architectural editorial header is shared by established public routes'
 
   for (const route of establishedHeaderRoutes) {
     await page.goto(route);
+    const resolvedPath = new URL(page.url()).pathname;
     const header = page.locator('header.site');
     const cta = header.getByRole('link', { name: 'Get an estimate' });
     await expect(header).toBeVisible();
@@ -41,6 +47,11 @@ test('the architectural editorial header is shared by established public routes'
     await expect(cta).toBeVisible();
     await expect(cta).toHaveCSS('border-radius', '0px');
     await expect(cta).toHaveCSS('background-color', 'rgb(79, 87, 72)');
+    await expect(cta).toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: inferEnquiryAudience(resolvedPath),
+      sourcePath: resolvedPath,
+      sourceComponent: 'header',
+    }));
 
     const geometry = await header.evaluate((element) => {
       const brand = element.querySelector<HTMLElement>('.site-brand');

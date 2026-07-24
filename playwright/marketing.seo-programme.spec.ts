@@ -178,7 +178,7 @@ for (const programmePage of pages) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await preparePage(page);
       await page.goto(programmePage.route);
-      const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]`);
+      const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
 
       await expect(page).toHaveTitle(programmePage.title);
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${programmePage.route}`);
@@ -192,9 +192,14 @@ for (const programmePage of pages) {
       await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
       await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
       await expect(main.locator('.seo-landing__project-facts')).toHaveCount(programmePage.projectCount);
-      await expect(page.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`)).toBeVisible();
-      await expect(page.locator('#acrylic-enquiry-style')).toHaveValue('');
-      await expect(page.locator('#acrylic-enquiry-roof')).toHaveValue('');
+      await expect(main.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`)).toBeVisible();
+      await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(
+        programmePage.marker === 'commercial-pergolas-auckland'
+          ? 'commercial'
+          : 'residential',
+      );
+      await expect(main.locator('#acrylic-enquiry-style')).toHaveValue('');
+      await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
       const copy = await main.innerText();
       expect(copy).not.toContain('—');
       expect(copy).not.toContain('[[VERIFY:');
@@ -203,7 +208,7 @@ for (const programmePage of pages) {
       if (viewport.width <= 900) {
         await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
         await expect(page.locator('header.site .desktop-nav')).toBeHidden();
-      } else await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      } else await expect(page.getByRole('link', { name: 'Get an estimate' })).toBeVisible();
 
       if (capturePhase) {
         const directory = path.join(process.cwd(), 'artifacts', 'marketing-seo-landing', programmePage.marker);
@@ -225,12 +230,12 @@ for (const programmePage of pages) {
   test(`Page ${programmePage.order} ${programmePage.marker} is original against earlier references`, async ({ page }) => {
     await preparePage(page);
     await page.goto(programmePage.route);
-    const currentMain = page.locator(`main[data-seo-landing="${programmePage.marker}"]`);
+    const currentMain = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
     const currentCopy = await currentMain.innerText();
     const currentHeadings = await currentMain.locator('h1, h2').allTextContents();
     for (const reference of programmePage.comparisonReferences) {
       await page.goto(reference);
-      const referenceMain = page.locator('main.acrylic-landing');
+      const referenceMain = page.locator('main.acrylic-landing:visible');
       const referenceCopy = await referenceMain.innerText();
       const referenceHeadings = await referenceMain.locator('h1, h2').allTextContents();
       expect(currentHeadings.filter((heading) => referenceHeadings.includes(heading)), `${programmePage.route} repeats a heading from ${reference}`).toEqual([]);
@@ -243,17 +248,35 @@ for (const programmePage of pages) {
     let submittedBody: Record<string, unknown> | undefined;
     await page.route('**/api/enquiry', async (handler) => { submittedBody = handler.request().postDataJSON() as Record<string, unknown>; await handler.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }); });
     await page.goto(programmePage.route);
-    await page.locator('#acrylic-enquiry-type').selectOption('residential');
-    await page.locator('#acrylic-enquiry-name').fill('Test Person');
-    await page.locator('#acrylic-enquiry-phone').fill('021 000 0000');
-    await page.locator('#acrylic-enquiry-email').fill('test@example.com');
-    await page.locator('#acrylic-enquiry-suburb').fill('Auckland');
-    await page.locator('#acrylic-enquiry-message').fill('We need a site-specific design and can send photos.');
-    await page.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`).fill('Page-specific project context.');
-    await page.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
+    const expectedEnquiryType = programmePage.marker === 'commercial-pergolas-auckland'
+      ? 'commercial'
+      : 'residential';
+    const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
+    await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(expectedEnquiryType);
+    await main.locator('#acrylic-enquiry-name').fill('Test Person');
+    await main.locator('#acrylic-enquiry-phone').fill('021 000 0000');
+    await main.locator('#acrylic-enquiry-email').fill('test@example.com');
+    await main.locator('#acrylic-enquiry-suburb').fill('Auckland');
+    await main.locator('#acrylic-enquiry-message').fill('We need a site-specific design and can send photos.');
+    await main.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`).fill('Page-specific project context.');
+    await main.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
     await page.getByRole('button', { name: programmePage.submitLabel }).click();
-    await expect(page.getByText('Thanks, we have received your project details.')).toBeVisible();
-    expect(submittedBody).toMatchObject({ page: programmePage.route, source: 'website', roofMaterials: ['acrylic', 'timber'], projectDetails: { roofPreference: 'Combination roofing', [programmePage.briefFieldName]: 'Page-specific project context.' } });
+    await expect(main.getByText('Thanks, we have received your project details.')).toBeVisible();
+    expect(submittedBody).toMatchObject({
+      enquiryType: expectedEnquiryType,
+      enquiryContext: {
+        enquiry_type: expectedEnquiryType,
+        source_path: programmePage.route,
+        source_component: 'embedded_form',
+      },
+      page: programmePage.route,
+      source: 'website',
+      roofMaterials: ['acrylic', 'timber'],
+      projectDetails: {
+        roofPreference: 'Combination roofing',
+        [programmePage.briefFieldName]: 'Page-specific project context.',
+      },
+    });
   });
 
   test(`Page ${programmePage.order} ${programmePage.marker} sitemap links and schema are sound`, async ({ page, request }) => {
@@ -261,7 +284,8 @@ for (const programmePage of pages) {
     await page.goto('/sitemap.xml');
     await expect(page.locator('body')).toContainText(programmePage.route);
     await page.goto(programmePage.route);
-    const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]`);
+    const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
+    await expect(main).toHaveCount(1);
     const links = await main.locator('a[href^="/"]').evaluateAll((nodes) => [...new Set(nodes.map((node) => node.getAttribute('href')).filter((href): href is string => Boolean(href) && !href.includes('#')))]);
     for (const href of links) expect((await request.get(href)).status(), `${href} should resolve`).toBeLessThan(400);
     const jsonLd = (await page.locator('script[type="application/ld+json"]').allTextContents()).flatMap((script) => { const parsed = JSON.parse(script) as unknown; return Array.isArray(parsed) ? parsed : [parsed]; }) as Array<{ '@type'?: string; dateModified?: string; reviewedBy?: { name?: string }; mainEntity?: Array<{ name: string; acceptedAnswer: { text: string } }> }>;
@@ -283,7 +307,9 @@ test('all programme pages keep unique SEO identities and the approved green acce
   await preparePage(page);
   for (const programmePage of pages) {
     await page.goto(programmePage.route);
-    const accent = await page.locator(`main[data-seo-landing="${programmePage.marker}"]`).evaluate((main) => getComputedStyle(main).getPropertyValue('--color-accent-olive').trim());
+    const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
+    await expect(main).toHaveCount(1);
+    const accent = await main.evaluate((main) => getComputedStyle(main).getPropertyValue('--color-accent-olive').trim());
     expect(accent, `${programmePage.route} should retain the olive-green foundation accent`).toBe('#4f5748');
   }
 });

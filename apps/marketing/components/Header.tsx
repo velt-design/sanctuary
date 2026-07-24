@@ -9,6 +9,10 @@ import {
   type StartModalVisibilityDetail,
   isStartModalOpen,
 } from '@/lib/startModalBridge';
+import {
+  buildEnquiryHref,
+  inferEnquiryAudience,
+} from '@/lib/enquiryContext';
 
 const mobileNavItems = [
   { href: '/', label: 'Home' },
@@ -43,6 +47,12 @@ export default function Header() {
   const [startHeaderSuppressed, setStartHeaderSuppressed] = useState(false);
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
   const pathname = usePathname();
+  const currentPath = pathname ?? '/';
+  const headerEnquiryHref = buildEnquiryHref({
+    enquiryType: inferEnquiryAudience(currentPath),
+    sourcePath: currentPath,
+    sourceComponent: 'header',
+  });
   const isStartRoute = pathname?.startsWith('/start') ?? false;
   const isHeroOverlayRoute = heroOverlayRoutes.has(pathname ?? '');
   const startModalSuppressedRef = useRef(false);
@@ -329,7 +339,7 @@ export default function Header() {
           </nav>
           <div className="header-actions">
             <Link
-              href="/contact?enquiry=residential#contact-form"
+              href={headerEnquiryHref}
               className="nav-cta"
               data-homepage-event="header_estimate_click"
             >
@@ -373,7 +383,7 @@ export default function Header() {
               ))}
               <li>
                 <Link
-                  href="/contact?enquiry=residential#contact-form"
+                  href={headerEnquiryHref}
                   className="mobile-menu__link mobile-menu__link--estimate"
                   data-homepage-event="header_estimate_click"
                   onClick={() => setMobileMenuOpen(false)}

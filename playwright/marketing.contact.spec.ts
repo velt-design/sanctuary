@@ -1,7 +1,15 @@
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const route = '/contact';
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
+const phaseOneCapture = process.env.MARKETING_PHASE_ONE_CAPTURE?.trim();
+const phaseOneEvidenceDirectory = path.join(
+  process.cwd(),
+  'artifacts',
+  'mobile-ux-phase-1',
+);
 const consentChoice = {
   analytics: false,
   marketing: false,
@@ -85,6 +93,7 @@ async function expectTouchSafe(main: Locator) {
 
 for (const viewport of [
   { name: '320 mobile', width: 320, height: 844 },
+  { name: '360 mobile', width: 360, height: 800 },
   { name: '390 mobile', width: 390, height: 844 },
   { name: '430 mobile', width: 430, height: 932 },
   { name: 'tablet', width: 768, height: 1024 },
@@ -102,7 +111,7 @@ for (const viewport of [
         hydrationErrors.push(message.text());
       }
     });
-    const response = await page.goto(`${route}?enquiry=residential`, {
+    const response = await page.goto(`${route}?enquiry_type=residential`, {
       waitUntil: 'networkidle',
     });
     expect(response?.ok()).toBe(true);
@@ -176,7 +185,7 @@ for (const viewport of [
   });
 }
 
-test('query preselection is server rendered and invalid values leave the chooser open', async ({
+test('canonical and legacy preselection are server rendered and invalid values leave the chooser open', async ({
   page,
   request,
 }) => {
@@ -187,24 +196,34 @@ test('query preselection is server rendered and invalid values leave the chooser
     ['commercial', 'Commercial'],
     ['professional', 'Architect, designer or builder'],
   ] as const) {
-    const response = await request.get(`${route}?enquiry=${value}`);
+    const response = await request.get(`${route}?enquiry_type=${value}`);
     expect(response.ok()).toBe(true);
     const html = await response.text();
     expect(html).toMatch(
       new RegExp(`<input[^>]*name="enquiryType"[^>]*checked=""[^>]*value="${value}"`),
     );
 
-    await page.goto(`${route}?enquiry=${value}`, { waitUntil: 'networkidle' });
+    await page.goto(`${route}?enquiry_type=${value}`, { waitUntil: 'networkidle' });
     await expect(page.getByRole('radio', { name, exact: false })).toBeChecked();
   }
 
-  await page.goto(`${route}?enquiry=general`, { waitUntil: 'networkidle' });
+  await page.goto(`${route}?enquiry=professional`, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('radio', {
+    name: 'Architect, designer or builder',
+    exact: false,
+  })).toBeChecked();
+
+  await page.goto(
+    `${route}?enquiry_type=general&source_path=https%3A%2F%2Fevil.test&source_project=unknown`,
+    { waitUntil: 'networkidle' },
+  );
   expect(await page.getByRole('radio').evaluateAll((radios) =>
     radios.every((radio) => !(radio as HTMLInputElement).checked),
   )).toBe(true);
+  await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
 });
 
-test('validation is specific, focuses the first issue and preserves entered details', async ({
+test('validation is specific, focuses an error summary and preserves entered details', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -214,24 +233,35 @@ test('validation is specific, focuses the first issue and preserves entered deta
   const message = page.getByLabel('Project brief Optional');
   await message.fill('A sheltered dining area that keeps daylight in the kitchen.');
   await page.getByRole('button', { name: 'Send us your project details' }).click();
-  await expect(page.getByText('Choose a project type.')).toBeVisible();
-  await expect(page.getByRole('radio').first()).toBeFocused();
+  await expect(page.locator('#contact-enquiryType-error')).toHaveText(
+    'Choose a project type.',
+  );
+  const summary = page.locator('#contact-error-summary');
+  await expect(summary).toBeFocused();
   await expect(message).toHaveValue(
     'A sheltered dining area that keeps daylight in the kitchen.',
   );
+  await summary.getByRole('link', { name: 'Choose a project type.' }).click();
+  await expect(page.getByRole('radio').first()).toBeFocused();
 
   await page.getByRole('radio', { name: 'Residential', exact: false }).check();
   await page.getByRole('button', { name: 'Send us your project details' }).click();
-  await expect(page.getByText('Enter your name.')).toBeVisible();
+  await expect(page.locator('#contact-name-error')).toHaveText('Enter your name.');
+  await expect(summary).toBeFocused();
+  await summary.getByRole('link', { name: 'Enter your name.' }).click();
   await expect(page.getByLabel('Name Required')).toBeFocused();
 
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Optional').fill('not-an-email');
   await page.getByRole('button', { name: 'Send us your project details' }).click();
-  await expect(
-    page.getByText('Enter a valid email address or leave this field blank.'),
-  ).toBeVisible();
+  await expect(page.locator('#contact-email-error')).toHaveText(
+    'Enter a valid email address or leave this field blank.',
+  );
+  await expect(summary).toBeFocused();
+  await summary.getByRole('link', {
+    name: 'Enter a valid email address or leave this field blank.',
+  }).click();
   await expect(page.getByLabel('Email Optional')).toBeFocused();
 });
 
@@ -250,9 +280,12 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
       ),
     });
   });
-  await page.goto(`${route}?enquiry=residential&utm_source=test&gclid=click-123`, {
+  await page.goto(
+    `${route}?enquiry_type=residential&source_path=%2F&source_component=hero&utm_source=test&gclid=click-123`,
+    {
     waitUntil: 'networkidle',
-  });
+    },
+  );
 
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
@@ -282,6 +315,11 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
     message: 'Keep this project brief.',
     page: route,
     source: 'website',
+    enquiryContext: {
+      enquiry_type: 'residential',
+      source_path: '/',
+      source_component: 'hero',
+    },
     utm: { utm_source: 'test' },
     attribution: { clickIds: { gclid: 'click-123' } },
   });
@@ -311,7 +349,10 @@ test('the submit lock prevents duplicate requests and consent controls lead even
       body: JSON.stringify({ ok: true }),
     });
   });
-  await page.goto(`${route}?enquiry=residential`, { waitUntil: 'networkidle' });
+  await page.goto(
+    `${route}?enquiry_type=residential&source_path=%2F&source_component=hero`,
+    { waitUntil: 'networkidle' },
+  );
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
 
@@ -333,6 +374,8 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     .toHaveLength(1);
   expect(events.tracked?.some((entry) => entry.includes('contact_start'))).toBe(true);
   expect(events.tracked?.some((entry) => entry.includes('contact_success'))).toBe(true);
+  expect(JSON.stringify(events)).toContain('"source_path":"/"');
+  expect(JSON.stringify(events)).toContain('"source_component":"hero"');
   expect(JSON.stringify(events)).not.toContain('Test Person');
   await expect(page.getByRole('link', { name: 'Explore completed projects' }))
     .toHaveAttribute('href', '/projects');
@@ -340,7 +383,7 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     .toHaveAttribute('href', '/products');
 });
 
-test('professional attachments keep exact policy errors and metadata fallback', async ({
+test('residential attachments keep exact policy errors and metadata fallback', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -363,8 +406,8 @@ test('professional attachments keep exact policy errors and metadata fallback', 
       body: JSON.stringify({ ok: true }),
     });
   });
-  await page.goto(`${route}?enquiry=professional`, { waitUntil: 'networkidle' });
-  await page.getByLabel('Name Required').fill('Test Designer');
+  await page.goto(`${route}?enquiry_type=residential`, { waitUntil: 'networkidle' });
+  await page.getByLabel('Name Required').fill('Test Homeowner');
   await page.getByLabel('Phone Required').fill('021 000 0000');
 
   const files = page.getByLabel('Photos, plans or sketches Optional');
@@ -379,11 +422,16 @@ test('professional attachments keep exact policy errors and metadata fallback', 
     (input as HTMLInputElement).files = transfer.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await expect(page.getByText(
+  await expect(page.locator('#contact-files-error')).toHaveText(
     'Each file must be larger than 0 bytes and no larger than 20 MB.',
-  )).toBeVisible();
+  );
   await page.getByRole('button', { name: 'Send us your project details' }).click();
   expect(requestCount).toBe(0);
+  const summary = page.locator('#contact-error-summary');
+  await expect(summary).toBeFocused();
+  await summary.getByRole('link', {
+    name: 'Each file must be larger than 0 bytes and no larger than 20 MB.',
+  }).click();
   await expect(files).toBeFocused();
 
   await files.setInputFiles({
@@ -391,11 +439,15 @@ test('professional attachments keep exact policy errors and metadata fallback', 
     mimeType: 'application/x-msdownload',
     buffer: Buffer.from('invalid'),
   });
-  await expect(page.getByText(
+  await expect(page.locator('#contact-files-error')).toHaveText(
     'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
-  )).toBeVisible();
+  );
   await page.getByRole('button', { name: 'Send us your project details' }).click();
   expect(requestCount).toBe(0);
+  await expect(summary).toBeFocused();
+  await summary.getByRole('link', {
+    name: 'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
+  }).click();
   await expect(files).toBeFocused();
 
   await files.setInputFiles({
@@ -410,9 +462,126 @@ test('professional attachments keep exact policy errors and metadata fallback', 
   await expect(page.getByRole('status')).toContainText('Project details received');
   expect(requestCount).toBe(1);
   expect(submittedBody).toMatchObject({
-    enquiryType: 'professional',
+    enquiryType: 'residential',
     company: null,
     uploadSessionToken: null,
     files: [{ name: 'plan.pdf', size: 9, type: 'application/pdf' }],
   });
+});
+
+test('project context survives refresh and browser history', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  await page.goto('/projects/warkworth-outdoor-room', { waitUntil: 'networkidle' });
+
+  await page.locator(
+    '.project-case-study__intro-actions .project-action--primary',
+  ).click();
+  await expect(page).toHaveURL(/enquiry_type=residential/);
+  await expect(page).toHaveURL(/source_project=warkworth-outdoor-room/);
+  await expect(page.getByLabel('Enquiry context')).toContainText(
+    'Project: Warkworth Outdoor Room',
+  );
+  await expect(page.getByRole('radio', { name: 'Residential', exact: false }))
+    .toBeChecked();
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.getByLabel('Enquiry context')).toContainText(
+    'Project: Warkworth Outdoor Room',
+  );
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  await expect(page).toHaveURL(/\/projects\/warkworth-outdoor-room$/);
+  await page.goForward({ waitUntil: 'networkidle' });
+  await expect(page.getByLabel('Enquiry context')).toContainText(
+    'Project: Warkworth Outdoor Room',
+  );
+});
+
+test('product context is visible and included in the submitted payload', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  let submittedBody: Record<string, unknown> | undefined;
+  await page.route('**/api/enquiry', async (handler) => {
+    submittedBody = handler.request().postDataJSON() as Record<string, unknown>;
+    await handler.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  await page.goto('/products/pergolas/gable', { waitUntil: 'networkidle' });
+  await page.getByRole('link', { name: 'Send your project details' }).first().click();
+  await expect(page.getByLabel('Enquiry context')).toContainText(
+    'Pergola option: Gable pergola',
+  );
+  await page.getByLabel('Name Required').fill('Test Person');
+  await page.getByLabel('Phone Required').fill('021 000 0000');
+  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await expect(page.getByRole('status')).toContainText('Gable pergola option');
+
+  expect(submittedBody).toMatchObject({
+    enquiryType: 'residential',
+    enquiryContext: {
+      enquiry_type: 'residential',
+      source_path: '/products/pergolas/gable',
+      source_component: 'product_cta',
+      source_product: 'gable',
+    },
+  });
+});
+
+test('form semantics exclude the honeypot and keep IDs and error associations valid', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await preparePage(page);
+  await page.goto(route, { waitUntil: 'networkidle' });
+
+  const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
+    const counts = new Map<string, number>();
+    for (const element of elements) {
+      counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([id]) => id);
+  });
+  expect(duplicateIds).toEqual([]);
+
+  const honeypot = page.locator('#contact-website');
+  await expect(honeypot).not.toBeInViewport();
+  await expect(honeypot).toHaveAttribute('tabindex', '-1');
+  await expect(honeypot.locator('xpath=..')).toHaveAttribute('aria-hidden', 'true');
+
+  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  const typeErrorId = await page.locator('fieldset.contact-form__type')
+    .getAttribute('aria-describedby');
+  expect(typeErrorId).toBe('contact-enquiryType-error');
+  await expect(page.locator(`#${typeErrorId}`)).toContainText('Choose a project type.');
+});
+
+test('capture Phase 1 enquiry continuity at the target mobile widths', async ({ page }) => {
+  test.skip(!phaseOneCapture, 'Set MARKETING_PHASE_ONE_CAPTURE=1 to capture Phase 1 evidence.');
+  await mkdir(phaseOneEvidenceDirectory, { recursive: true });
+  await preparePage(page);
+
+  for (const width of [360, 390, 430] as const) {
+    await page.setViewportSize({ width, height: 932 });
+    await page.goto(
+      `${route}?enquiry_type=residential&source_path=%2Fprojects%2Fwarkworth-outdoor-room&source_component=project_cta&source_project=warkworth-outdoor-room#contact-form`,
+      { waitUntil: 'networkidle' },
+    );
+    const form = page.locator('#contact-form');
+    await expect(form).toBeVisible();
+    await expect(page.getByLabel('Enquiry context')).toContainText(
+      'Project: Warkworth Outdoor Room',
+    );
+    await form.screenshot({
+      path: path.join(phaseOneEvidenceDirectory, `contact-context-${width}.png`),
+    });
+  }
 });

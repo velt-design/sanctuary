@@ -432,6 +432,12 @@ export default function PergolasAucklandPage() {
       <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label="Auckland pergola project enquiry form">
         <Container width="wide">
           <AcrylicPergolaEnquiryForm
+            initialEnquiryType="residential"
+            sourceContext={{
+              enquiryType: 'residential',
+              sourcePath: '/pergolas-auckland',
+              sourceComponent: 'embedded_form',
+            }}
             eyebrow="Start with what you know"
             heading="Send your pergola project details"
             intro="Add the suburb, a few photos and rough dimensions. Tell us what the outdoor area cannot do today, which rooms sit beside it and what you want the new structure to improve."

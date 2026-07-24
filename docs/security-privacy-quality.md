@@ -35,6 +35,13 @@ When adding or removing tracking, update this table and the privacy behavior.
 
 Homepage interaction events contain only the stable event name, homepage variant, viewport category, link destination and optional editorial card label. They do not contain form values, photos, dimensions, contact details or other project/customer data, and the route-local listener is inactive unless analytics consent is granted. Homepage enquiry links may pass the non-sensitive `residential`, `commercial` or `professional` enquiry type so the contact form opens on the promised pathway; no customer-entered data is placed in the URL.
 
+Enquiry conversion events retain their existing consent gates and event names. Where
+available they also include validated `source_path`, `source_component`,
+`source_project`, and `source_product` values from the shared enquiry-context
+contract. These properties use known paths, component identifiers, and canonical
+project/product slugs only. Names, contact details, messages, dimensions, upload
+names, and upload contents must not be placed in enquiry URLs or analytics events.
+
 ## Portal Operational Performance Telemetry
 
 Authenticated portal Web Vitals are operational telemetry, not marketing analytics. `PortalVitalsReporter` submits CLS, FCP, INP, LCP, and TTFB to the first-party staff API with `sendBeacon` and a keepalive-fetch fallback. Failure is silent and never delays navigation.

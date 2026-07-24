@@ -65,6 +65,7 @@ export default function ProjectsExperience({
           previousProject={previousProject}
           nextProject={nextProject}
           showBreadcrumb={detailMode}
+          sourcePath={detailMode ? `/projects/${selectedProject.slug}` : '/projects'}
           titleAs={detailMode ? 'h1' : 'h2'}
         />
       </div>
