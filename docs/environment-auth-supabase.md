@@ -32,7 +32,7 @@ Common optional or feature-specific variables:
 - `NEXT_PUBLIC_GA_MEASUREMENT_ID`
 - `NEXT_PUBLIC_FB_PIXEL_ID`
 - `NEXT_PUBLIC_GTM_CONTAINER_ID` (optional; falls back to the current checked container ID and loads only after an explicit analytics or marketing choice, with consent mode preserving the denied category)
-- `MARKETING_ABUSE_HASH_SECRET` (required in production; server-only HMAC key for durable public rate-limit identifiers)
+- `MARKETING_ABUSE_HASH_SECRET` (preferred production server-only HMAC key for durable public rate-limit identifiers; when absent, marketing derives a domain-separated HMAC subkey from the already-required `SUPABASE_SERVICE_ROLE_KEY`, and still fails closed if neither secret exists)
 - `CRON_SECRET` (server-only bearer secret used by the scheduled abandoned-enquiry-upload cleanup route)
 - `META_CONVERSIONS_API_TOKEN`
 - `META_GRAPH_API_VERSION`

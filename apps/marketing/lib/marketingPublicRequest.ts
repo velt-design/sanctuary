@@ -53,13 +53,27 @@ export function getMarketingClientIp(req: Request): string {
   return forwarded.split(',')[0]?.trim() || req.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
-export function marketingAbuseKey(req: Request): string {
+function marketingAbuseHashSecret(): string | Buffer {
   const configuredSecret = process.env.MARKETING_ABUSE_HASH_SECRET?.trim() || '';
-  if (!configuredSecret && process.env.NODE_ENV === 'production') {
-    throw new Error('MARKETING_ABUSE_HASH_SECRET is required');
+  if (configuredSecret) return configuredSecret;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
+  if (serviceRoleKey) {
+    return createHmac('sha256', serviceRoleKey)
+      .update('sanctuary:marketing-public-rate-limit:v1')
+      .digest();
   }
-  const secret = configuredSecret || 'local-marketing-abuse-key';
-  return createHmac('sha256', secret).update(getMarketingClientIp(req)).digest('hex');
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('A server-side marketing abuse hash secret is required');
+  }
+  return 'local-marketing-abuse-key';
+}
+
+export function marketingAbuseKey(req: Request): string {
+  return createHmac('sha256', marketingAbuseHashSecret())
+    .update(getMarketingClientIp(req))
+    .digest('hex');
 }
 
 export function secureTokenMatches(provided: string, expected: string): boolean {
