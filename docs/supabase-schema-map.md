@@ -352,6 +352,7 @@ Migration source:
 
 - `supabase/enquiry_requests.sql`, `supabase/automation_phase_a.sql`, `supabase/email_templates_website_autoresponder.sql`, `supabase/dashboard_snapshot_v1.sql`, and security hardening.
 - `20260723_000001_marketing_enquiry_intake_security.sql` adds the enquiry idempotency constraint, atomic intake, durable rate limiting, submission-bound upload sessions, cleanup RPCs, RLS/revokes, and retention schedule. Apply it before deploying the matching marketing routes.
+- `20260724043000_marketing_enquiry_budget_columns.sql` forward-adds the nullable indicative-pricing columns consumed by `marketing_enquiry_intake`; the root `enquiry_requests.sql` baseline does not evolve an already-existing table.
 - Personal dashboard tasks use ordered migrations under `supabase/migrations`.
 - `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into ordered truth and owns command-centre tables, RLS/grants/indexes/backfills/RPCs, and compatibility projection columns.
 - `20260721_000001_project_command_single_owner.sql` replaces the three-role owner contract with one named project owner, performs the deterministic legacy backfill, and replaces the owner command.

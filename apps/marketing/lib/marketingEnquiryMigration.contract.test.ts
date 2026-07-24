@@ -6,6 +6,13 @@ const migration = fs.readFileSync(
   path.resolve(process.cwd(), 'supabase/migrations/20260723_000001_marketing_enquiry_intake_security.sql'),
   'utf8',
 );
+const budgetColumnMigration = fs.readFileSync(
+  path.resolve(
+    process.cwd(),
+    'supabase/migrations/20260724043000_marketing_enquiry_budget_columns.sql',
+  ),
+  'utf8',
+);
 
 describe('marketing enquiry security migration contract', () => {
   it('makes submission IDs unique and serializes concurrent duplicate intake', () => {
@@ -43,5 +50,18 @@ describe('marketing enquiry security migration contract', () => {
     expect(migration).toContain('for update skip locked');
     expect(migration).toContain("updated_at < clock_timestamp() - interval '2 days'");
     expect(migration).toContain("consumed_at < clock_timestamp() - interval '30 days'");
+  });
+
+  it('adds every pricing column consumed by the atomic intake RPC', () => {
+    for (const column of [
+      'base_budget_low_inc_gst',
+      'base_budget_high_inc_gst',
+      'blinds_budget_low_inc_gst',
+      'blinds_budget_high_inc_gst',
+      'budget_basis',
+    ]) {
+      expect(migration).toContain(column);
+      expect(budgetColumnMigration).toContain(`add column if not exists ${column}`);
+    }
   });
 });
