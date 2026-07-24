@@ -138,6 +138,14 @@ for (const viewport of viewports) {
       await expect(desktopDisclosures.locator('summary').first()).toBeHidden();
       await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeVisible();
       await expect(main.locator('[data-home-review]').first()).toBeVisible();
+
+      const pathwayCards = visitorPathways.locator('a[data-homepage-item]');
+      await expect(pathwayCards).toHaveCount(3);
+      const pathwayBoxes = await pathwayCards.evaluateAll((cards) => cards.map((card) => (
+        card.getBoundingClientRect().toJSON()
+      )));
+      expect(pathwayBoxes[0].width).toBeGreaterThan(pathwayBoxes[1].width);
+      expect(Math.abs(pathwayBoxes[1].top - pathwayBoxes[2].top)).toBeLessThanOrEqual(1);
     } else {
       await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeVisible();
       await expect(main.locator('[data-home-review]').first()).toBeVisible();
@@ -644,6 +652,12 @@ test('homepage keeps a coherent keyboard and document structure', async ({ page 
   expect(structure.h1Count).toBe(1);
   expect(structure.imagesMissingAlt).toBe(0);
   expect(structure.imageCount).toBeGreaterThan(0);
+  const heroImage = main.locator('section[aria-labelledby="homepage-heading"] img');
+  await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
+  const nonHeroLoading = await main.locator('img').evaluateAll((images, heroSource) => images
+    .filter((image) => image.getAttribute('src') !== heroSource)
+    .map((image) => image.getAttribute('loading')), await heroImage.getAttribute('src'));
+  expect(nonHeroLoading.every((value) => value === 'lazy')).toBe(true);
   for (let index = 1; index < structure.headingLevels.length; index += 1) {
     expect(
       structure.headingLevels[index] - structure.headingLevels[index - 1],
@@ -676,6 +690,28 @@ test('homepage keeps a coherent keyboard and document structure', async ({ page 
     expect(bounds!.width).toBeGreaterThanOrEqual(44);
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
   }
+});
+
+test('homepage removes route-local motion when reduced motion is requested', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await preparePage(page);
+  await page.goto(route);
+
+  const main = await getSettledHomepageMain(page);
+  const motionState = await main.evaluate((element) => {
+    const pathway = element.querySelector<HTMLElement>('section[aria-labelledby="project-pathways"] a[data-homepage-item]');
+    const disclosureIcon = element.querySelector<HTMLElement>('[data-mobile-disclosure] summary span:last-child');
+    return {
+      pathwayTransition: pathway ? getComputedStyle(pathway).transitionDuration : null,
+      disclosureTransition: disclosureIcon
+        ? getComputedStyle(disclosureIcon, '::after').transitionDuration
+        : null,
+    };
+  });
+
+  expect(motionState.pathwayTransition).toBe('0s');
+  expect(motionState.disclosureTransition).toBe('0s');
 });
 
 test('Warkworth exterior focal framing propagates across public placements', async ({ page }) => {
