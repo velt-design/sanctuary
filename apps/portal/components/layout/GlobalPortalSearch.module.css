@@ -67,16 +67,14 @@
 }
 
 .panel {
-  position: absolute;
   z-index: 80;
-  top: calc(100% + var(--ui-space-1));
-  right: 0;
-  width: min(560px, calc(100vw - var(--ui-space-8)));
-  max-height: min(620px, calc(100dvh - 96px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: var(--ui-border-width) solid var(--ui-border-strong);
   border-radius: var(--ui-radius-overlay);
   background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+  font-family: var(--ui-font-body);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--ui-surface-inverse) 20%, transparent);
 }
 
@@ -230,14 +228,6 @@
   .inputShell { min-height: 44px; }
   .inputShell input { height: 42px; }
   .inputShell kbd { display: none; }
-  .panel {
-    position: absolute;
-    top: calc(100% + var(--ui-space-1));
-    right: 0;
-    left: 0;
-    width: auto;
-    max-height: min(520px, calc(100dvh - var(--ui-mobile-bar) - var(--ui-space-8)));
-  }
   .result { min-height: 62px; }
 }
 

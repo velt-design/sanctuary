@@ -120,7 +120,40 @@ describe('GlobalPortalSearch', () => {
     const input = rendered.container.querySelector('input') as HTMLInputElement;
     act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })));
     expect(document.activeElement).toBe(input);
-    expect(rendered.container.textContent).toContain('Type at least 2 characters');
+    expect(document.body.textContent).toContain('Type at least 2 characters');
+    rendered.unmount();
+  });
+
+  it('renders the open results panel outside clipping header containers', () => {
+    const rendered = renderSearch();
+    const input = rendered.container.querySelector('input') as HTMLInputElement;
+    const root = rendered.container.querySelector('[data-global-portal-search="true"]') as HTMLDivElement;
+    vi.stubGlobal('innerWidth', 1280);
+    vi.stubGlobal('innerHeight', 800);
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      bottom: 100,
+      height: 40,
+      left: 500,
+      right: 800,
+      top: 60,
+      width: 300,
+      x: 500,
+      y: 60,
+      toJSON: () => ({}),
+    });
+
+    act(() => input.focus());
+
+    const panel = document.querySelector<HTMLElement>('[data-global-search-panel="true"]');
+    expect(panel).not.toBeNull();
+    expect(panel?.parentElement).toBe(document.body);
+    expect(panel?.style.position).toBe('fixed');
+    expect(panel?.style.left).toBe('240px');
+    expect(panel?.style.top).toBe('104px');
+    expect(panel?.style.width).toBe('560px');
+    expect(panel?.style.maxHeight).toBe('620px');
+    act(() => panel?.dispatchEvent(new Event('pointerdown', { bubbles: true })));
+    expect(document.querySelector('[data-global-search-panel="true"]')).not.toBeNull();
     rendered.unmount();
   });
 
@@ -140,15 +173,15 @@ describe('GlobalPortalSearch', () => {
     await flushQueryNotifications();
 
     expect(fetch).toHaveBeenCalledWith('/api/staff/v1/search?q=re', expect.objectContaining({ cache: 'no-store' }));
-    expect(rendered.container.textContent).toContain('Remuera Residence');
-    expect(rendered.container.textContent).toContain('Rebecca Stone');
-    expect(rendered.container.textContent).toContain('View all matching projects');
+    expect(document.body.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).toContain('Rebecca Stone');
+    expect(document.body.textContent).toContain('View all matching projects');
 
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })));
-    expect(rendered.container.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain('Remuera Residence');
+    expect(document.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain('Remuera Residence');
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
-    expect(rendered.container.querySelector('[role="listbox"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[role="option"]')?.textContent).toContain('Opening');
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(document.querySelector('[role="option"]')?.textContent).toContain('Opening');
     expect(navigation.beginRouteTransition).toHaveBeenCalledWith(expect.objectContaining({
       href: '/staff/projects/proj_1',
       source: 'global-portal-search',
@@ -171,9 +204,9 @@ describe('GlobalPortalSearch', () => {
     });
     await flushQueryNotifications();
 
-    act(() => (rendered.container.querySelector('[role="option"]') as HTMLAnchorElement).click());
+    act(() => (document.querySelector('[role="option"]') as HTMLAnchorElement).click());
     expect(input.value).toBe('re');
-    expect(rendered.container.textContent).toContain('Opening');
+    expect(document.body.textContent).toContain('Opening');
 
     navigation.pathname = '/staff/projects/proj_1';
     window.history.pushState(null, '', navigation.pathname);
@@ -186,7 +219,7 @@ describe('GlobalPortalSearch', () => {
     );
 
     expect(input.value).toBe('');
-    expect(rendered.container.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
     rendered.unmount();
   });
 
@@ -207,13 +240,13 @@ describe('GlobalPortalSearch', () => {
     });
     await flushQueryNotifications();
 
-    const current = rendered.container.querySelector('[role="option"][aria-current="page"]') as HTMLAnchorElement;
+    const current = document.querySelector('[role="option"][aria-current="page"]') as HTMLAnchorElement;
     expect(current.textContent).toContain('Current');
     act(() => current.click());
 
     expect(navigation.beginRouteTransition).not.toHaveBeenCalled();
     expect(input.value).toBe('');
-    expect(rendered.container.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
     rendered.unmount();
   });
 
@@ -224,7 +257,7 @@ describe('GlobalPortalSearch', () => {
     inputText(input, 'deck');
     act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })));
     expect(input.value).toBe('deck');
-    expect(rendered.container.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
     rendered.unmount();
   });
 
@@ -242,7 +275,7 @@ describe('GlobalPortalSearch', () => {
       await Promise.resolve();
     });
     await flushQueryNotifications();
-    expect(rendered.container.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).toContain('Remuera Residence');
     expect(fetch).toHaveBeenCalledTimes(1);
 
     inputText(input, '');
@@ -251,8 +284,8 @@ describe('GlobalPortalSearch', () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.textContent).toContain('Remuera Residence');
-    expect(rendered.container.textContent).not.toContain('Searching the portal');
+    expect(document.body.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).not.toContain('Searching the portal');
     expect(fetch).toHaveBeenCalledTimes(1);
     rendered.unmount();
   });
@@ -277,8 +310,8 @@ describe('GlobalPortalSearch', () => {
     await flushQueryNotifications();
 
     inputText(input, 'rem');
-    expect(rendered.container.textContent).toContain('Remuera Residence');
-    expect(rendered.container.textContent).toContain('Updating results');
+    expect(document.body.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).toContain('Updating results');
 
     await act(async () => {
       vi.advanceTimersByTime(PORTAL_SEARCH_DEBOUNCE_MS + 1);
@@ -287,7 +320,7 @@ describe('GlobalPortalSearch', () => {
       await Promise.resolve();
     });
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(rendered.container.textContent).toContain('Remuera Residence');
+    expect(document.body.textContent).toContain('Remuera Residence');
 
     await act(async () => {
       finishRefresh?.(Response.json(searchResponse('rem', 'Remuera Courtyard')));
@@ -297,8 +330,8 @@ describe('GlobalPortalSearch', () => {
       await Promise.resolve();
     });
     await flushQueryNotifications();
-    expect(rendered.container.textContent).toContain('Remuera Courtyard');
-    expect(rendered.container.textContent).not.toContain('Updating results');
+    expect(document.body.textContent).toContain('Remuera Courtyard');
+    expect(document.body.textContent).not.toContain('Updating results');
     rendered.unmount();
   });
 });
