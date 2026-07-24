@@ -26,7 +26,7 @@ interface EnquiryBase {
   utmCampaign?: string;
   landingUrl?: string;
   filesReceivedCount?: number;
-  // Used only when verified uploads are too large to inline in the email.
+  // Populated when uploads are too large to inline as email attachments.
   attachmentLinks?: { name: string; url: string }[];
 }
 

@@ -23,8 +23,8 @@ import {
   type ProductRecord,
 } from '@/data/products';
 import { projects } from '@/data/projects';
-import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { absoluteUrl } from '@/lib/seo';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
 import MobileProductDisclosure from './MobileProductDisclosure';
 import ProductCard from './ProductCard';
 import styles from './product-pages.module.css';
@@ -161,6 +161,12 @@ function EvidenceStory({ product }: ProductDetailPageProps) {
 }
 
 export default function ProductDetailPage({ product }: ProductDetailPageProps) {
+  const enquiryHref = buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: product.route,
+    sourceComponent: 'product_cta',
+    sourceProduct: product.slug,
+  });
   const alternatives = product.alternatives
     .map(getProductBySlug)
     .filter((item): item is ProductRecord => Boolean(item));
@@ -177,18 +183,6 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
   }));
   const canonical = product.route;
   const specifications = getSpecificationRows(product);
-  const heroEnquiryHref = buildEnquiryHref({
-    enquiryType: 'residential',
-    sourcePath: product.route,
-    sourceComponent: 'product-hero',
-    productSlug: product.slug,
-  });
-  const finalEnquiryHref = buildEnquiryHref({
-    enquiryType: 'residential',
-    sourcePath: product.route,
-    sourceComponent: 'product-final',
-    productSlug: product.slug,
-  });
 
   return (
     <main
@@ -282,7 +276,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
           <Heading as="h1" variant="page">{product.name}</Heading>
           <Text size="large">{product.proposition}</Text>
           <div className={styles.heroActions}>
-            <Button href={heroEnquiryHref}>
+            <Button href={enquiryHref}>
               Send your project details
             </Button>
             <TextLink href="#product-fit">See where it fits</TextLink>
@@ -567,7 +561,7 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
         heading={`Could ${product.shortName.toLowerCase()} suit your deck?`}
         copy="Send your suburb, a few photos and rough dimensions. We can assess the house connection, likely constraints and the most useful next step."
         actionLabel="Send your project details"
-        href={finalEnquiryHref}
+        href={enquiryHref}
       />
     </main>
   );

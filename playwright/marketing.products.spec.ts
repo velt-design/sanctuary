@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { products } from '../apps/marketing/data/products';
+import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const representativeRoutes = [
@@ -144,13 +145,15 @@ for (const viewport of viewports) {
 
       const main = page.locator('main[data-marketing-foundation-page]:visible').last();
       const h1 = main.locator('h1:visible');
+      const product = products.find((candidate) => candidate.route === route);
+      const expectedEnquiryHref = buildEnquiryHref({
+        enquiryType: 'residential',
+        sourcePath: route,
+        sourceComponent: 'product_cta',
+        ...(product ? { sourceProduct: product.slug } : {}),
+      });
       await expect(h1).toHaveCount(1);
       await expect(h1).toBeVisible();
-      const expectedEnquiryHref = route === '/products'
-        ? '/contact?enquiry=residential&source_path=%2Fproducts'
-          + '&source_component=products-index-hero#contact-form'
-        : `/contact?enquiry=residential&source_path=${encodeURIComponent(route)}`
-          + `&source_component=product-hero&product=${route.split('/').at(-1)}#contact-form`;
       await expect(main.getByRole('link', { name: 'Send your project details' }).first())
         .toHaveAttribute('href', expectedEnquiryHref);
       await expect(main).not.toContainText('[[VERIFY]]');

@@ -169,8 +169,6 @@ textarea.input { min-height: 132px; resize: vertical; }
 .responsiveMobile .responsiveFrameBody { grid-template-columns: 1fr; }
 .responsiveMobile .responsiveFrameCopy span:first-child { width: 90%; }
 
-:global(:focus-visible) { outline: var(--focus-ring); outline-offset: 2px; }
-
 @media (max-width: 900px) {
   .foundationNav { min-height: 72px; grid-template-columns: 1fr auto; }
   .foundationMobileMenu { inset-block-start: 72px; }
@@ -190,8 +188,6 @@ textarea.input { min-height: 132px; resize: vertical; }
   .responsiveFrames { grid-template-columns: 1fr 1fr; align-items: stretch; }
   .responsiveMobile { grid-column: 1 / -1; width: min(55%, 340px); }
 }
-
-:global(html.foundation-menu-open), :global(body.foundation-menu-open) { height: 100% !important; overflow: hidden !important; }
 
 @media (max-width: 640px) {
   .foundationNav { min-height: 64px; }
@@ -217,5 +213,4 @@ textarea.input { min-height: 132px; resize: vertical; }
 
 @media (prefers-reduced-motion: reduce) {
   .button, .textLink::after { transition: none; }
-  html:focus-within { scroll-behavior: auto; }
 }

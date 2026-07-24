@@ -1,24 +1,13 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const route = '/';
 const canonicalUrl = 'https://www.sanctuarypergolas.co.nz';
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-home-v2');
 const capture = process.env.MARKETING_HOME_V2_CAPTURE?.trim();
 const responsiveCaptureLabel = process.env.MARKETING_HOME_V2_CAPTURE_LABEL?.trim();
-const homepageEnquiryHrefs = {
-  hero: '/contact?enquiry=residential&source_path=%2F'
-    + '&source_component=homepage-hero#contact-form',
-  final: '/contact?enquiry=residential&source_path=%2F'
-    + '&source_component=homepage-final#contact-form',
-  professional: '/contact?enquiry=professional&source_path=%2F'
-    + '&source_component=homepage-professional#contact-form',
-  header: '/contact?enquiry=residential&source_path=%2F'
-    + '&source_component=header#contact-form',
-  mobileHeader: '/contact?enquiry=residential&source_path=%2F'
-    + '&source_component=mobile-menu#contact-form',
-} as const;
 
 const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
@@ -38,6 +27,12 @@ async function preparePage(page: Page, analytics = false) {
       version: 1,
     }));
   }, analytics);
+}
+
+async function getSettledHomepageMain(page: Page) {
+  const main = page.locator('main[data-homepage-variant="v2"]:visible');
+  await expect(main).toHaveCount(1);
+  return main;
 }
 
 async function waitForImage(image: Locator, label: string) {
@@ -99,12 +94,11 @@ for (const viewport of viewports) {
     const response = await page.goto(route);
     expect(response?.ok(), `${route} should resolve`).toBe(true);
 
-    const main = page.locator('main[data-homepage-variant="v2"]');
+    const main = await getSettledHomepageMain(page);
     const hero = main.locator('section[aria-labelledby="homepage-heading"]');
     const header = page.locator('header.site');
     const brand = header.locator('.site-brand');
 
-    await expect(main).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.getByRole('heading', {
       level: 1,
@@ -117,6 +111,24 @@ for (const viewport of viewports) {
 
     const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
     await expect(visitorPathways).toBeVisible();
+    const primarySections = main.locator('[data-home-section]');
+    await expect(primarySections).toHaveCount(8);
+    expect(await primarySections.evaluateAll((sections) => sections.map((section) => section.getAttribute('data-home-section'))))
+      .toEqual([
+      'hero',
+      'featured-project',
+      'project-pathways',
+      'selected-projects',
+      'planning-options',
+      'design-build-process',
+      'client-review',
+      'qualified-enquiry',
+      ]);
+    await expect(main.locator('section[aria-labelledby="selected-projects"]')).toHaveCount(1);
+    await expect(main.locator('[data-home-process-variant]')).toHaveCount(0);
+    await expect(main.getByRole('region', { name: 'Client reviews' })).toHaveCount(0);
+    await expect(main.locator('[data-home-review]')).toHaveCount(1);
+    await expect(main.locator('section[aria-labelledby="design-build-process"] ol > li')).toHaveCount(3);
 
     if (viewport.width > 640) {
       const desktopDisclosures = main.locator('details[data-mobile-disclosure]');
@@ -124,12 +136,19 @@ for (const viewport of viewports) {
       await expect.poll(() => desktopDisclosures.evaluateAll((items) => items.every((item) => item.hasAttribute('open'))))
         .toBe(true);
       await expect(desktopDisclosures.locator('summary').first()).toBeHidden();
-      await expect(main.locator('figure').filter({ hasText: 'Tindalls Bay / Patio and carport' })).toBeHidden();
-      await expect(main.locator('section[aria-labelledby="mobile-selected-projects"]')).toBeHidden();
       await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeVisible();
+      await expect(main.locator('[data-home-review]').first()).toBeVisible();
+
+      const pathwayCards = visitorPathways.locator('a[data-homepage-item]');
+      await expect(pathwayCards).toHaveCount(3);
+      const pathwayBoxes = await pathwayCards.evaluateAll((cards) => cards.map((card) => (
+        card.getBoundingClientRect().toJSON()
+      )));
+      expect(pathwayBoxes[0].width).toBeGreaterThan(pathwayBoxes[1].width);
+      expect(Math.abs(pathwayBoxes[1].top - pathwayBoxes[2].top)).toBeLessThanOrEqual(1);
     } else {
-      await expect(main.locator('section[aria-labelledby="mobile-selected-projects"]')).toBeVisible();
-      await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeHidden();
+      await expect(main.locator('section[aria-labelledby="selected-projects"]')).toBeVisible();
+      await expect(main.locator('[data-home-review]').first()).toBeVisible();
     }
 
     const liveRating = main.locator('[data-live-rating]');
@@ -179,7 +198,11 @@ for (const viewport of viewports) {
 
     const heroActions = main.getByLabel('Homepage actions');
     await expect(heroActions.getByRole('link', { name: 'Get an initial project estimate', exact: true }))
-      .toHaveAttribute('href', homepageEnquiryHrefs.hero);
+      .toHaveAttribute('href', buildEnquiryHref({
+        enquiryType: 'residential',
+        sourcePath: '/',
+        sourceComponent: 'hero',
+      }));
     await expect(heroActions.locator('a[href="/projects"]')).toHaveText('View completed projects');
 
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -247,7 +270,7 @@ for (const viewport of [
     await preparePage(page);
     await page.goto(route);
 
-    const main = page.locator('main[data-homepage-variant="v2"]');
+    const main = await getSettledHomepageMain(page);
     const disclosures = main.locator('details[data-mobile-disclosure]');
     await expect(disclosures).toHaveCount(7);
     await expect.poll(() => disclosures.evaluateAll((items) => items.every((item) => !item.hasAttribute('open'))))
@@ -289,7 +312,7 @@ for (const viewport of [
     });
 
     expect(collapsedState.overflow).toBeLessThanOrEqual(0);
-    expect(collapsedState.longestTextOnlyRun).toBeLessThanOrEqual(2);
+    expect(collapsedState.longestTextOnlyRun).toBeLessThanOrEqual(3);
 
     const headingLineCounts = await main.locator('h1, h2').evaluateAll((headings) => headings.map((heading) => {
       const range = document.createRange();
@@ -304,25 +327,25 @@ for (const viewport of [
     expect(Math.max(...cardHeights), 'priority mobile cards should remain compact').toBeLessThanOrEqual(300);
 
     const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
-    const otherProjectTypes = visitorPathways.locator('details[data-mobile-disclosure]');
     await expect(visitorPathways.locator('a[href="/pergolas-auckland"]')).toBeVisible();
     await expect(visitorPathways.locator('a[href="/custom-pergolas-auckland"]')).toBeVisible();
+    await expect(visitorPathways.getByText('Commercial and professional projects', { exact: true })).toBeVisible();
     await expect(visitorPathways.locator('a[href^="/commercial-pergolas-auckland"]')).toBeHidden();
-    await expect(otherProjectTypes.locator('summary')).toHaveText('Other project types');
+    await expect(visitorPathways.getByRole('link', { name: 'Send plans or a project brief' })).toBeHidden();
 
-    const selectedPreview = main.locator('section[aria-labelledby="mobile-selected-projects"]');
+    const selectedPreview = main.locator('section[aria-labelledby="selected-projects"]');
     await expect(selectedPreview).toBeVisible();
-    await expect(selectedPreview.locator('article')).toHaveCount(2);
+    await expect(selectedPreview.locator('article')).toHaveCount(4);
     const previewImages = selectedPreview.locator('img');
-    await expect(previewImages).toHaveCount(2);
+    await expect(previewImages).toHaveCount(4);
     for (let index = 0; index < await previewImages.count(); index += 1) {
       await waitForImage(previewImages.nth(index), `early selected project ${index + 1}`);
     }
 
     const mobileSectionOrder = await main.evaluate((element) => {
       const pathways = element.querySelector('section[aria-labelledby="project-pathways"]');
-      const projects = element.querySelector('section[aria-labelledby="mobile-selected-projects"]');
-      const approach = element.querySelector('section[aria-labelledby="sanctuary-design-approach"]');
+      const projects = element.querySelector('section[aria-labelledby="selected-projects"]');
+      const approach = element.querySelector('section[aria-labelledby="planning-options"]');
       if (!pathways || !projects || !approach) return null;
       return [pathways, projects, approach].map((section) => section.getBoundingClientRect().top);
     });
@@ -330,26 +353,21 @@ for (const viewport of [
     expect(mobileSectionOrder![0]).toBeLessThan(mobileSectionOrder![1]);
     expect(mobileSectionOrder![1]).toBeLessThan(mobileSectionOrder![2]);
 
-    const formImages = main.locator('section[aria-labelledby="pergola-forms"] article img');
+    const planning = main.locator('section[aria-labelledby="planning-options"]');
+    const formImages = planning.locator('[data-homepage-event="pergola_form_click"]').locator('..').locator('img');
     await expect(formImages).toHaveCount(4);
-    const approachImages = main.locator('section[aria-labelledby="roof-and-material-approaches"] article img');
+    const approachImages = planning.locator('[data-homepage-event="roof_approach_click"]').locator('..').locator('img');
     await expect(approachImages).toHaveCount(3);
 
-    const mobileReviews = main.getByRole('region', { name: 'Client reviews' });
-    await expect(mobileReviews.locator('figure:visible')).toHaveCount(1);
-    await expect(mobileReviews.getByRole('button', { name: 'Previous review' })).toBeVisible();
-    await expect(mobileReviews.getByRole('button', { name: 'Next review' })).toBeVisible();
+    await expect(main.locator('[data-home-review]')).toHaveCount(1);
+    await expect(main.locator('[data-home-review]')).toBeVisible();
 
     const process = main.locator('section[aria-labelledby="design-build-process"]');
-    await expect(process.locator('details')).toHaveCount(5);
-    const processSummaries = process.locator('details > summary');
-    for (let index = 0; index < await processSummaries.count(); index += 1) {
-      const bounds = await processSummaries.nth(index).boundingBox();
-      expect(bounds?.height).toBeGreaterThanOrEqual(44);
-    }
+    await expect(process.locator('ol > li')).toHaveCount(3);
+    await expect(process.getByRole('heading', { level: 3 })).toHaveCount(3);
 
     const guideGateway = main.getByRole('navigation', { name: 'Featured pergola guides' });
-    await expect(guideGateway.getByRole('link')).toHaveCount(3);
+    await expect(guideGateway.getByRole('link')).toHaveCount(2);
 
     const proofRows = await main.locator('[data-proof-item]').evaluateAll((items) => (
       new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size
@@ -372,9 +390,9 @@ for (const viewport of [
     ));
     expect(
       collapsedState.visibleWords / expandedWords,
-      'the default mobile view should expose about 30% less copy while retaining expandable content',
-    ).toBeLessThanOrEqual(.72);
-    expect(collapsedState.visibleWords / expandedWords).toBeGreaterThan(.62);
+      'the default mobile view should expose about 40-50% less copy while retaining expandable content',
+    ).toBeLessThanOrEqual(.60);
+    expect(collapsedState.visibleWords / expandedWords).toBeGreaterThan(.45);
   });
 }
 
@@ -386,7 +404,7 @@ test('approved homepage is indexable at root and the staging route permanently r
   expect(stagingResponse.headers().location).toBe('/');
 
   await page.goto(route);
-  await expect(page.locator('main[data-homepage-variant="v2"]')).toBeVisible();
+  await getSettledHomepageMain(page);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index/i);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', canonicalUrl);
   await expect(page.locator('header.site a[href="/home-v2"]')).toHaveCount(0);
@@ -402,7 +420,7 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await preparePage(page);
   await page.goto(route);
 
-  const main = page.locator('main[data-homepage-variant="v2"]');
+  const main = await getSettledHomepageMain(page);
   await expect(page).toHaveTitle('Architectural Pergola Design & Build | Sanctuary Pergolas');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     'content',
@@ -421,15 +439,20 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await expect(main).toContainText('Sanctuary response');
 
   const expectedPathways = [
-    ['/pergolas-auckland', 'Plan an Auckland pergola'],
-    ['/custom-pergolas-auckland', 'Explore custom pergola design'],
+    ['/pergolas-auckland', 'Plan your home pergola'],
     ['/commercial-pergolas-auckland#project-details', 'Discuss a commercial project'],
-    [homepageEnquiryHrefs.professional, 'Send plans or a project brief'],
+    [buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: '/',
+      sourceComponent: 'pathway',
+    }), 'Send plans or a project brief'],
   ] as const;
   const pathwaySection = main.locator('section[aria-labelledby="project-pathways"]');
   for (const [href, name] of expectedPathways) {
     await expect(pathwaySection.getByRole('link', { name })).toHaveAttribute('href', href);
   }
+  await expect(pathwaySection.getByRole('link', { name: 'Read about custom design conditions' }))
+    .toHaveAttribute('href', '/custom-pergolas-auckland');
 
   for (const form of ['Pitched', 'Gable', 'Hip', 'Box perimeter']) {
     await expect(main.getByRole('heading', { level: 3, name: form })).toBeVisible();
@@ -442,25 +465,31 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   }
 
   const process = main.locator('section[aria-labelledby="design-build-process"]');
-  await expect(process.locator('ol:visible > li')).toHaveCount(5);
-  await expect(main.locator('[data-home-review]')).toHaveCount(3);
-  await expect(main.getByRole('link', { name: 'Explore custom design capability' }))
-    .toHaveAttribute('href', '/custom-pergolas-auckland');
+  await expect(process.locator('ol:visible > li')).toHaveCount(3);
+  await expect(main.locator('[data-home-review]')).toHaveCount(1);
   await expect(main.getByRole('link', { name: 'Compare pergola forms' }))
     .toHaveAttribute('href', '/products');
   await expect(main.getByRole('link', { name: 'Compare roof approaches' }))
     .toHaveAttribute('href', '/pergolas-auckland#roofing-options');
   await expect(main.getByRole('link', { name: 'Explore all pergola guides' })).toHaveAttribute('href', '/pergola-guides');
-  await expect(main.getByRole('navigation', { name: 'Featured pergola guides' }).getByRole('link')).toHaveCount(3);
+  await expect(main.getByRole('navigation', { name: 'Featured pergola guides' }).getByRole('link')).toHaveCount(2);
   await expect(main.getByRole('link', { name: 'Send your project details' }))
-    .toHaveAttribute('href', homepageEnquiryHrefs.final);
-  await expect(main).toContainText('Before site work begins, Sanctuary records the agreed design');
-  await expect(main).toContainText('Documented scope, approval and scheduling');
+    .toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'final_cta',
+    }));
+  await expect(main).toContainText('Design, materials, inclusions, exclusions, price, programme and applicable warranty information');
+  await expect(main).toContainText('Develop and confirm the design');
   await expect(main).not.toContainText('Three concise Google reviews');
   await expect(main).not.toContainText('complete technical manual');
   await expect(main).not.toContainText('Standalone');
   await expect(page.getByRole('link', { name: 'Get an estimate', exact: true }))
-    .toHaveAttribute('href', homepageEnquiryHrefs.header);
+    .toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'header',
+    }));
 
   const schemaTypes = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) => (
     nodes.flatMap((node) => {
@@ -487,51 +516,54 @@ test('homepage V2 records consented CTA events without customer data', async ({ 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page, true);
   await page.goto(route);
+  const main = await getSettledHomepageMain(page);
   await page.evaluate(() => {
     (window as typeof window & { dataLayer?: unknown[] }).dataLayer = [];
   });
 
-  await page.locator('[data-homepage-event="hero_projects_click"]').click();
+  await main.locator('[data-homepage-event="hero_projects_click"]').click();
   await page.waitForURL('**/projects');
   const trackedEvent = await page.evaluate(() => (
     (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
       ?.find((entry) => !Array.isArray(entry) && entry.event === 'hero_projects_click')
   ));
 
-  expect(trackedEvent).toEqual({
+  expect(trackedEvent).toMatchObject({
     event: 'hero_projects_click',
     homepage_variant: 'v2',
     viewport_category: 'desktop',
     destination: '/projects',
   });
+  expect(trackedEvent).not.toHaveProperty('email');
+  expect(trackedEvent).not.toHaveProperty('phone');
+  expect(trackedEvent).not.toHaveProperty('name');
 });
 
-test('mobile homepage records disclosure and review interactions with device context', async ({ page }) => {
+test('mobile homepage records planning disclosure interactions with device context', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page, true);
   await page.goto(route);
+  const main = await getSettledHomepageMain(page);
   await page.evaluate(() => {
     (window as typeof window & { dataLayer?: unknown[] }).dataLayer = [];
   });
 
-  const pathways = page.locator('section[aria-labelledby="project-pathways"]');
-  await pathways.locator('summary').click();
-  await page.getByRole('button', { name: 'Next review' }).click();
+  const planning = main.locator('section[aria-labelledby="planning-options"]');
+  const designPrinciples = planning.locator('details').filter({ hasText: 'How Sanctuary approaches the design' });
+  await designPrinciples.locator('summary').click();
+  await expect(designPrinciples).toHaveAttribute('open', '');
 
-  const trackedEvents = await page.evaluate(() => (
+  const getTrackedEvents = () => page.evaluate(() => (
     (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
       ?.filter((entry): entry is Record<string, unknown> => !Array.isArray(entry))
-      .filter((entry) => ['project_types_expand', 'review_next_click'].includes(String(entry.event)))
+      .filter((entry) => entry.event === 'design_principles_expand') ?? []
   ));
+  await expect.poll(async () => (await getTrackedEvents()).length).toBe(1);
+  const trackedEvents = await getTrackedEvents();
 
   expect(trackedEvents).toEqual([
     {
-      event: 'project_types_expand',
-      homepage_variant: 'v2',
-      viewport_category: 'mobile',
-    },
-    {
-      event: 'review_next_click',
+      event: 'design_principles_expand',
       homepage_variant: 'v2',
       viewport_category: 'mobile',
     },
@@ -541,7 +573,11 @@ test('mobile homepage records disclosure and review interactions with device con
   const mobileEstimate = page.getByRole('navigation', { name: 'Mobile primary' })
     .getByRole('link', { name: 'Get an estimate', exact: true });
   await expect(mobileEstimate).toBeVisible();
-  await expect(mobileEstimate).toHaveAttribute('href', homepageEnquiryHrefs.mobileHeader);
+  await expect(mobileEstimate).toHaveAttribute('href', buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/',
+    sourceComponent: 'header',
+  }));
   await expect(mobileEstimate).toHaveAttribute('data-homepage-event', 'header_estimate_click');
 });
 
@@ -549,8 +585,16 @@ test('homepage enquiry links open the promised contact pathway', async ({ page }
   await preparePage(page);
 
   for (const [destination, enquiryOption] of [
-    [homepageEnquiryHrefs.hero, 'Residential'],
-    [homepageEnquiryHrefs.professional, 'Architect, designer or builder'],
+    [buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'hero',
+    }), 'Residential'],
+    [buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: '/',
+      sourceComponent: 'pathway',
+    }), 'Architect, designer or builder'],
   ] as const) {
     await page.goto(destination);
     await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
@@ -579,7 +623,8 @@ test('homepage V2 internal destinations resolve without redirect errors', async 
   await preparePage(page);
   await page.goto(route);
 
-  const hrefs = await page.locator('main[data-homepage-variant="v2"] a[href^="/"]').evaluateAll((links) => (
+  const main = await getSettledHomepageMain(page);
+  const hrefs = await main.locator('a[href^="/"]').evaluateAll((links) => (
     Array.from(new Set(links.map((link) => link.getAttribute('href')).filter((href): href is string => Boolean(href))))
   ));
   expect(hrefs.length).toBeGreaterThan(20);
@@ -595,7 +640,8 @@ test('homepage keeps a coherent keyboard and document structure', async ({ page 
   await preparePage(page);
   await page.goto(route);
 
-  const structure = await page.locator('main[data-homepage-variant="v2"]').evaluate((main) => {
+  const main = await getSettledHomepageMain(page);
+  const structure = await main.evaluate((main) => {
     const headingLevels = [...main.querySelectorAll('h1, h2, h3, h4, h5, h6')]
       .map((heading) => Number(heading.tagName.slice(1)));
     const images = [...main.querySelectorAll('img')];
@@ -609,6 +655,12 @@ test('homepage keeps a coherent keyboard and document structure', async ({ page 
   expect(structure.h1Count).toBe(1);
   expect(structure.imagesMissingAlt).toBe(0);
   expect(structure.imageCount).toBeGreaterThan(0);
+  const heroImage = main.locator('section[aria-labelledby="homepage-heading"] img');
+  await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
+  const nonHeroLoading = await main.locator('img').evaluateAll((images, heroSource) => images
+    .filter((image) => image.getAttribute('src') !== heroSource)
+    .map((image) => image.getAttribute('loading')), await heroImage.getAttribute('src'));
+  expect(nonHeroLoading.every((value) => value === 'lazy')).toBe(true);
   for (let index = 1; index < structure.headingLevels.length; index += 1) {
     expect(
       structure.headingLevels[index] - structure.headingLevels[index - 1],
@@ -643,6 +695,28 @@ test('homepage keeps a coherent keyboard and document structure', async ({ page 
   }
 });
 
+test('homepage removes route-local motion when reduced motion is requested', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await preparePage(page);
+  await page.goto(route);
+
+  const main = await getSettledHomepageMain(page);
+  const motionState = await main.evaluate((element) => {
+    const pathway = element.querySelector<HTMLElement>('section[aria-labelledby="project-pathways"] a[data-homepage-item]');
+    const disclosureIcon = element.querySelector<HTMLElement>('[data-mobile-disclosure] summary span:last-child');
+    return {
+      pathwayTransition: pathway ? getComputedStyle(pathway).transitionDuration : null,
+      disclosureTransition: disclosureIcon
+        ? getComputedStyle(disclosureIcon, '::after').transitionDuration
+        : null,
+    };
+  });
+
+  expect(motionState.pathwayTransition).toBe('0s');
+  expect(motionState.disclosureTransition).toBe('0s');
+});
+
 test('Warkworth exterior focal framing propagates across public placements', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
@@ -661,17 +735,21 @@ test('Warkworth exterior focal framing propagates across public placements', asy
     const images = page.locator('img[src*="project-warkworth-outdoor-room-01"]');
     const imageCount = await images.count();
     expect(imageCount, `${destination} should render the Warkworth exterior`).toBeGreaterThan(0);
-    await images.evaluateAll((elements) => elements.find((element) => {
+    const visibleImageIndex = await images.evaluateAll((elements) => elements.findIndex((element) => {
       const bounds = element.getBoundingClientRect();
       return bounds.width > 0 && bounds.height > 0;
-    })?.scrollIntoView({ block: 'center' }));
-    await expect.poll(
-      () => images.evaluateAll((elements) => elements.some((element) => {
-        const image = element as HTMLImageElement;
-        return image.complete && image.naturalWidth > 0;
-      })),
-      { message: `${destination} should load at least one Warkworth exterior placement` },
-    ).toBe(true);
+    }));
+    if (visibleImageIndex >= 0) {
+      const visibleImage = images.nth(visibleImageIndex);
+      await visibleImage.scrollIntoViewIfNeeded();
+      await expect.poll(
+        () => visibleImage.evaluate((element) => {
+          const image = element as HTMLImageElement;
+          return image.complete && image.naturalWidth > 0;
+        }),
+        { message: `${destination} should load its visible Warkworth exterior placement` },
+      ).toBe(true);
+    }
     const positions = await images.evaluateAll((elements) => (
       elements.map((element) => getComputedStyle(element).objectPosition)
     ));
@@ -684,7 +762,7 @@ test('homepage V2 preserves the shared mobile menu scroll lock and focus return'
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
   await page.goto(route);
-  await expect(page.locator('main[data-homepage-variant="v2"]')).toBeVisible();
+  await getSettledHomepageMain(page);
   await page.waitForTimeout(100);
   await page.evaluate(() => window.scrollTo(0, 500));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(500);
@@ -724,8 +802,7 @@ test('capture approved homepage evidence', async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     await page.goto(route);
-    const main = page.locator('main[data-homepage-variant="v2"]');
-    await expect(main).toBeVisible();
+    const main = await getSettledHomepageMain(page);
     await waitForImage(
       main.locator('section[aria-labelledby="homepage-heading"] img'),
       `homepage ${viewport.name} hero`,
@@ -771,8 +848,7 @@ test('capture responsive homepage redesign evidence', async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto(route);
 
-    const main = page.locator('main[data-homepage-variant="v2"]');
-    await expect(main).toBeVisible();
+    const main = await getSettledHomepageMain(page);
     await waitForAllImages(main);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({

@@ -9,7 +9,9 @@ const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
   { name: '1024x768', width: 1024, height: 768 },
   { name: '768x1024', width: 768, height: 1024 },
+  { name: '430x932', width: 430, height: 932 },
   { name: '390x844', width: 390, height: 844 },
+  { name: '360x800', width: 360, height: 800 },
 ];
 
 async function preparePage(page: Page) {
@@ -36,6 +38,7 @@ for (const viewport of viewports) {
     await expect(page.locator('header.site')).toBeVisible();
     await expect(page.locator('footer')).toBeAttached();
     await expect(page.getByLabel('Phone', { exact: false })).toHaveAttribute('required', '');
+    await expect(page.locator('#acrylic-enquiry-type')).toHaveValue('residential');
     await expect(page.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(page.locator('#acrylic-enquiry-roof')).toHaveValue('');
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Acrylic Roof Pergolas for Auckland Homes');
@@ -45,7 +48,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Get an estimate' })).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -97,7 +100,11 @@ test('acrylic landing interactions remain accessible and preserve form input on 
   await message.fill('A covered deck that keeps daylight in the kitchen.');
   expect(await message.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
   await page.getByRole('button', { name: 'Request my initial estimate' }).click();
-  await expect(page.getByText('Enter your name.')).toBeVisible();
+  const errorSummary = page.locator('#acrylic-enquiry-error-summary');
+  await expect(errorSummary).toBeFocused();
+  await expect(errorSummary).toContainText('Enter your name.');
+  await errorSummary.getByRole('link', { name: 'Enter your name.' }).click();
+  await expect(page.locator('#acrylic-enquiry-name')).toBeFocused();
   await expect(message).toHaveValue('A covered deck that keeps daylight in the kitchen.');
 
   const faq = page.locator('details').filter({ hasText: 'Which acrylic tint should I choose?' });

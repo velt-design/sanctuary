@@ -26,20 +26,12 @@ export const designPrinciples = [
 
 export const visitorPathways = [
   {
-    eyebrow: 'Residential planning',
-    title: 'An Auckland pergola for your home',
-    copy: 'Start with the home, outdoor area and intended use, then compare forms, roofs and scope.',
+    eyebrow: 'For your home',
+    title: 'Start with a residential pergola brief',
+    copy: 'Share the home, outdoor area and intended use first. Unusual sites, difficult connections and integrated details are resolved within the same residential design process.',
     href: '/pergolas-auckland',
-    action: 'Plan an Auckland pergola',
+    action: 'Plan your home pergola',
     event: 'residential_pathway_click',
-  },
-  {
-    eyebrow: 'Custom and complex',
-    title: 'A site that needs a bespoke response',
-    copy: 'Explore unusual sites, difficult connections, larger spans and integrated, design-led requirements.',
-    href: '/custom-pergolas-auckland',
-    action: 'Explore custom pergola design',
-    event: 'custom_pathway_click',
   },
   {
     eyebrow: 'Commercial',
@@ -56,7 +48,7 @@ export const visitorPathways = [
     href: buildEnquiryHref({
       enquiryType: 'professional',
       sourcePath: '/',
-      sourceComponent: 'homepage-professional',
+      sourceComponent: 'pathway',
     }),
     action: 'Send plans or a project brief',
     event: 'professional_pathway_click',
@@ -174,24 +166,16 @@ export const selectedProjectProfiles = [
 
 export const processSteps = [
   {
-    title: 'Share the initial brief',
-    copy: 'Send the suburb, project photos, approximate dimensions, intended use and any preferred form or roof approach.',
+    title: 'Share a useful brief',
+    copy: 'Send the suburb, project photos, approximate dimensions and intended use. Sanctuary reviews the information and recommends a useful next step.',
   },
   {
-    title: 'Initial assessment',
-    copy: 'Sanctuary reviews the information, identifies a likely approach and may provide an indicative price range where the brief allows.',
+    title: 'Develop and confirm the design',
+    copy: 'The site, measurements, exposure, connections and access are assessed before the design, materials, inclusions, exclusions, price and current programme are confirmed in writing.',
   },
   {
-    title: 'Site review and design development',
-    copy: 'The home, site, measurements, exposure, connections, access and project requirements are assessed together.',
-  },
-  {
-    title: 'Documented scope, approval and scheduling',
-    copy: 'The agreed design, materials, inclusions, exclusions, price, current programme and applicable warranty information are confirmed before manufacture or site work proceeds.',
-  },
-  {
-    title: 'Manufacture, installation and handover',
-    copy: 'The pergola is prepared, installed by the Sanctuary team and handed over with the care and warranty information that applies.',
+    title: 'Build, install and hand over',
+    copy: 'The pergola is prepared and installed by the Sanctuary team, then handed over with the applicable care, warranty and ongoing support information.',
   },
 ] as const;
 
@@ -207,11 +191,6 @@ export const guidePathways = [
     title: 'Fixed roof or opening louvres?',
     copy: 'Compare permanent fixed-roof shelter with an opening-roof proposal.',
     href: '/acrylic-pergolas-vs-louvre-roofs',
-  },
-  {
-    title: 'Planning the complete outdoor room',
-    copy: 'Coordinate the roof, comfort, use and adjoining home as one brief.',
-    href: '/outdoor-rooms-auckland',
   },
 ] as const;
 

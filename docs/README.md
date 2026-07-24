@@ -12,12 +12,13 @@ These docs are current-state references and active guardrails for coding agents.
 6. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
 7. `agent-centric-portal-plan.md`: active roadmap for making the portal easier for agents to inspect, reproduce, test, and improve.
 8. `portal-ux-roadmap.md`: active roadmap for the highest-leverage staff usability work.
-9. `architecture.md`: workspace structure and app/package ownership.
-10. `target-architecture.md`: target workspace shape and migration direction.
-11. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
-12. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
-13. `platform-workflow.md`: business workflow from lead to install completion.
-14. The feature doc for the area you are changing.
+9. `mobile-ux-roadmap.md`: active roadmap for public-site mobile conversion and UX work.
+10. `architecture.md`: workspace structure and app/package ownership.
+11. `target-architecture.md`: target workspace shape and migration direction.
+12. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
+13. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
+14. `platform-workflow.md`: business workflow from lead to install completion.
+15. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
@@ -28,6 +29,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
+| `mobile-ux-roadmap.md` | Active roadmap | You are planning or implementing public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
 | `project-command-centre-v1.md` | Product contract | You are changing the Project Operational Command Centre product behavior, scope, exclusions, or acceptance criteria. |
 | `project-command-centre-roadmap.md` | Active programme | You need the current Command Centre stage, completion evidence, or next approved stage. |
 | `project-command-centre-architecture.md` | Current architecture | You are changing the Command Centre read model, resolver, API, Overview components, caching, fixtures, or later-stage technical plan. |

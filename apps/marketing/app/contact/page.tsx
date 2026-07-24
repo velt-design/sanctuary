@@ -1,14 +1,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { projects } from '@/data/projects';
-import { getProductBySlug } from '@/data/products';
-import { parseEnquiryContext } from '@/lib/enquiryContext';
+import { products } from '@/data/products';
+import {
+  parseEnquiryContext,
+  type EnquiryContextSearchParams,
+} from '@/lib/enquiryContext';
 import ContactEnquiryForm from './ContactEnquiryForm';
-import { getEnquiryTypeFromAudience } from './enquiryRoute';
+import { getEnquiryTypeFromRouteValue } from './enquiryRoute';
 import './contact.css';
 
 type ContactPageProps = {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  searchParams?: Promise<EnquiryContextSearchParams>;
 };
 
 const warkworthProject = projects.find(
@@ -18,36 +21,19 @@ const contactImage = warkworthProject.caseStudyHeroImage ?? warkworthProject.her
 
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const params = searchParams ? await searchParams : {};
-  const routeContext = parseEnquiryContext(params);
-  const sourceProject = routeContext.projectSlug
-    ? projects.find((project) => project.slug === routeContext.projectSlug)
-    : undefined;
-  const sourceProduct = routeContext.productSlug
-    ? getProductBySlug(routeContext.productSlug)
-    : undefined;
-  const inferredAudience = routeContext.enquiryType
-    ?? (sourceProject
-      ? sourceProject.type === 'Commercial' ? 'commercial' : 'residential'
-      : undefined)
-    ?? (sourceProduct ? 'residential' : undefined);
-  const initialEnquiryType = getEnquiryTypeFromAudience(inferredAudience);
-  const initialSourceContext = {
-    ...(routeContext.sourcePath ? { sourcePath: routeContext.sourcePath } : {}),
-    ...(routeContext.sourceComponent
-      ? { sourceComponent: routeContext.sourceComponent }
-      : {}),
-    ...(sourceProject
-      ? { projectSlug: sourceProject.slug, projectTitle: sourceProject.title }
-      : {}),
-    ...(sourceProduct
-      ? { productSlug: sourceProduct.slug, productName: sourceProduct.name }
-      : {}),
-    hasEntryContext: Boolean(
-      inferredAudience
-      || sourceProject
-      || sourceProduct,
-    ),
-  };
+  const enquiryContext = parseEnquiryContext(params, {
+    projectSlugs: projects.map((project) => project.slug),
+    productSlugs: products.map((product) => product.slug),
+  });
+  const initialEnquiryType = getEnquiryTypeFromRouteValue(
+    enquiryContext.enquiryType,
+  );
+  const sourceProject = projects.find(
+    (project) => project.slug === enquiryContext.sourceProject,
+  );
+  const sourceProduct = products.find(
+    (product) => product.slug === enquiryContext.sourceProduct,
+  );
 
   return (
     <main className="contact-page" data-contact-page>
@@ -87,13 +73,11 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       <section className="contact-workspace" aria-label="Project enquiry">
         <div className="contact-shell contact-workspace__layout">
           <ContactEnquiryForm
-            key={[
-              initialEnquiryType ?? 'chooser',
-              initialSourceContext.projectSlug ?? '',
-              initialSourceContext.productSlug ?? '',
-            ].join(':')}
+            key={`${initialEnquiryType ?? 'chooser'}-${enquiryContext.sourceProject ?? ''}-${enquiryContext.sourceProduct ?? ''}`}
             initialEnquiryType={initialEnquiryType}
-            initialSourceContext={initialSourceContext}
+            initialContext={enquiryContext}
+            sourceProjectLabel={sourceProject?.title}
+            sourceProductLabel={sourceProduct?.name}
           />
 
           <aside className="contact-guidance" aria-labelledby="contact-guidance-title">

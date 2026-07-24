@@ -1,194 +1,182 @@
-export const enquiryAudiences = [
+export type EnquiryAudience = 'residential' | 'commercial' | 'professional';
+
+type EnquirySourceComponent =
+  | 'header'
+  | 'hero'
+  | 'pathway'
+  | 'project_cta'
+  | 'product_cta'
+  | 'final_cta'
+  | 'embedded_form';
+
+export type EnquiryContext = {
+  enquiryType?: EnquiryAudience;
+  sourcePath?: string;
+  sourceComponent?: EnquirySourceComponent;
+  sourceProject?: string;
+  sourceProduct?: string;
+};
+
+export type EnquiryContextProperties = {
+  enquiry_type?: EnquiryAudience;
+  source_path?: string;
+  source_component?: EnquirySourceComponent;
+  source_project?: string;
+  source_product?: string;
+};
+
+type SearchValue = string | string[] | undefined;
+export type EnquiryContextSearchParams = Record<string, SearchValue>;
+
+type KnownContext = {
+  projectSlugs?: Iterable<string>;
+  productSlugs?: Iterable<string>;
+};
+
+const enquiryAudiences = new Set<EnquiryAudience>([
   'residential',
   'commercial',
   'professional',
-] as const;
-
-export type EnquiryAudience = (typeof enquiryAudiences)[number];
-
-export const enquirySourceComponents = [
-  'header',
-  'mobile-menu',
-  'homepage-hero',
-  'homepage-process',
-  'homepage-final',
-  'homepage-professional',
-  'project-intro',
-  'project-final',
-  'products-index-hero',
-  'products-index-final',
-  'product-hero',
-  'product-final',
-  'embedded-enquiry',
-] as const;
-
-export type EnquirySourceComponent = (typeof enquirySourceComponents)[number];
-
-export type EnquirySourceContext = {
-  sourcePath?: string;
-  sourceComponent?: EnquirySourceComponent;
-  projectSlug?: string;
-  productSlug?: string;
-};
-
-export type EnquiryLinkContext = EnquirySourceContext & {
-  enquiryType?: EnquiryAudience;
-};
-
-const audienceSet = new Set<string>(enquiryAudiences);
-const sourceComponentSet = new Set<string>(enquirySourceComponents);
-const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const internalPathPattern = /^\/(?:[a-z0-9_-]+\/?)*$/;
-
-const residentialHeaderRoutes = new Set([
-  '/',
-  '/home-v2',
-  '/pergolas-auckland',
-  '/custom-pergolas-auckland',
-  '/aluminium-pergolas-auckland',
-  '/pergola-cost-auckland',
-  '/gable-pergolas-auckland',
-  '/pitched-pergolas-auckland',
-  '/outdoor-rooms-auckland',
-  '/pergolas-with-blinds',
-  '/acrylic-pergolas-vs-louvre-roofs',
-  '/acrylic-roof-pergolas-auckland',
-  '/acrylic-roof-pergolas-auckland-v2',
 ]);
 
-function firstString(value: unknown): string | undefined {
-  if (Array.isArray(value)) {
-    return typeof value[0] === 'string' ? value[0] : undefined;
-  }
-  return typeof value === 'string' ? value : undefined;
+const sourceComponents = new Set<EnquirySourceComponent>([
+  'header',
+  'hero',
+  'pathway',
+  'project_cta',
+  'product_cta',
+  'final_cta',
+  'embedded_form',
+]);
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const MAX_PATH_LENGTH = 240;
+const MAX_SLUG_LENGTH = 100;
+
+function firstValue(value: SearchValue): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
-function normalizeAudience(value: unknown): EnquiryAudience | undefined {
-  const normalized = firstString(value)?.trim().toLowerCase();
-  return normalized && audienceSet.has(normalized)
-    ? normalized as EnquiryAudience
-    : undefined;
+function normalizeAudience(value: SearchValue): EnquiryAudience | undefined {
+  const normalized = firstValue(value)?.trim().toLowerCase() as EnquiryAudience | undefined;
+  return normalized && enquiryAudiences.has(normalized) ? normalized : undefined;
 }
 
 function normalizeSourceComponent(
-  value: unknown,
+  value: SearchValue,
 ): EnquirySourceComponent | undefined {
-  const normalized = firstString(value)?.trim().toLowerCase();
-  return normalized && sourceComponentSet.has(normalized)
-    ? normalized as EnquirySourceComponent
-    : undefined;
+  const normalized = firstValue(value)?.trim().toLowerCase() as
+    | EnquirySourceComponent
+    | undefined;
+  return normalized && sourceComponents.has(normalized) ? normalized : undefined;
 }
 
-function normalizeSlug(value: unknown): string | undefined {
-  const normalized = firstString(value)?.trim().toLowerCase();
-  return normalized
-    && normalized.length <= 100
-    && slugPattern.test(normalized)
-    ? normalized
-    : undefined;
+function normalizeSourcePath(value: SearchValue): string | undefined {
+  const normalized = firstValue(value)?.trim();
+  if (
+    !normalized
+    || normalized.length > MAX_PATH_LENGTH
+    || !normalized.startsWith('/')
+    || normalized.startsWith('//')
+    || normalized.includes('\\')
+    || normalized.includes('?')
+    || normalized.includes('#')
+    || /[\u0000-\u001f\u007f]/.test(normalized)
+  ) {
+    return undefined;
+  }
+  return normalized;
 }
 
-function normalizeSourcePath(value: unknown): string | undefined {
-  const normalized = firstString(value)?.trim();
-  return normalized
-    && normalized.length <= 200
-    && internalPathPattern.test(normalized)
-    && !normalized.startsWith('//')
-    ? normalized
-    : undefined;
-}
-
-function searchValue(
-  input: URLSearchParams | Record<string, unknown>,
-  key: string,
-): unknown {
-  return input instanceof URLSearchParams ? input.get(key) ?? undefined : input[key];
+function normalizeSlug(
+  value: SearchValue,
+  knownValues?: Iterable<string>,
+): string | undefined {
+  const normalized = firstValue(value)?.trim().toLowerCase();
+  if (
+    !normalized
+    || normalized.length > MAX_SLUG_LENGTH
+    || !SLUG_PATTERN.test(normalized)
+  ) {
+    return undefined;
+  }
+  if (knownValues && !new Set(knownValues).has(normalized)) return undefined;
+  return normalized;
 }
 
 export function parseEnquiryContext(
-  input: URLSearchParams | Record<string, unknown>,
-): EnquiryLinkContext {
-  const enquiryType = normalizeAudience(searchValue(input, 'enquiry'));
-  const sourcePath = normalizeSourcePath(searchValue(input, 'source_path'));
-  const sourceComponent = normalizeSourceComponent(
-    searchValue(input, 'source_component'),
+  searchParams: EnquiryContextSearchParams,
+  knownContext: KnownContext = {},
+): EnquiryContext {
+  const enquiryType = normalizeAudience(
+    searchParams.enquiry_type ?? searchParams.enquiry,
   );
-  const projectSlug = normalizeSlug(searchValue(input, 'project'));
-  const productSlug = normalizeSlug(searchValue(input, 'product'));
+  const sourcePath = normalizeSourcePath(searchParams.source_path);
+  const sourceComponent = normalizeSourceComponent(searchParams.source_component);
+  const sourceProject = normalizeSlug(
+    searchParams.source_project,
+    knownContext.projectSlugs,
+  );
+  const sourceProduct = normalizeSlug(
+    searchParams.source_product,
+    knownContext.productSlugs,
+  );
 
   return {
     ...(enquiryType ? { enquiryType } : {}),
     ...(sourcePath ? { sourcePath } : {}),
     ...(sourceComponent ? { sourceComponent } : {}),
-    ...(projectSlug ? { projectSlug } : {}),
-    ...(productSlug ? { productSlug } : {}),
+    ...(sourceProject ? { sourceProject } : {}),
+    ...(sourceProduct ? { sourceProduct } : {}),
   };
 }
 
-export function normalizeEnquirySourceContext(
-  value: unknown,
-): EnquirySourceContext {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  const input = value as Record<string, unknown>;
-  const sourcePath = normalizeSourcePath(input.sourcePath);
-  const sourceComponent = normalizeSourceComponent(input.sourceComponent);
-  const projectSlug = normalizeSlug(input.projectSlug);
-  const productSlug = normalizeSlug(input.productSlug);
+export function buildEnquiryHref(context: EnquiryContext = {}): string {
+  const normalized = parseEnquiryContext({
+    enquiry_type: context.enquiryType,
+    source_path: context.sourcePath,
+    source_component: context.sourceComponent,
+    source_project: context.sourceProject,
+    source_product: context.sourceProduct,
+  });
+  const params = new URLSearchParams();
 
-  return {
-    ...(sourcePath ? { sourcePath } : {}),
-    ...(sourceComponent ? { sourceComponent } : {}),
-    ...(projectSlug ? { projectSlug } : {}),
-    ...(productSlug ? { productSlug } : {}),
-  };
-}
-
-export function buildEnquiryHref(context: EnquiryLinkContext = {}): string {
-  const normalized = {
-    ...normalizeEnquirySourceContext(context),
-    enquiryType: normalizeAudience(context.enquiryType),
-  };
-  const search = new URLSearchParams();
-
-  if (normalized.enquiryType) search.set('enquiry', normalized.enquiryType);
-  if (normalized.sourcePath) search.set('source_path', normalized.sourcePath);
+  if (normalized.enquiryType) params.set('enquiry_type', normalized.enquiryType);
+  if (normalized.sourcePath) params.set('source_path', normalized.sourcePath);
   if (normalized.sourceComponent) {
-    search.set('source_component', normalized.sourceComponent);
+    params.set('source_component', normalized.sourceComponent);
   }
-  if (normalized.projectSlug) search.set('project', normalized.projectSlug);
-  if (normalized.productSlug) search.set('product', normalized.productSlug);
+  if (normalized.sourceProject) params.set('source_project', normalized.sourceProject);
+  if (normalized.sourceProduct) params.set('source_product', normalized.sourceProduct);
 
-  const query = search.toString();
+  const query = params.toString();
   return `/contact${query ? `?${query}` : ''}#contact-form`;
 }
 
-export function getHeaderEnquiryContext(pathname: string): EnquiryLinkContext {
-  const sourcePath = normalizeSourcePath(pathname);
-  if (!sourcePath) return {};
+export function getEnquiryContextProperties(
+  context: EnquiryContext,
+): EnquiryContextProperties {
+  const normalized = parseEnquiryContext({
+    enquiry_type: context.enquiryType,
+    source_path: context.sourcePath,
+    source_component: context.sourceComponent,
+    source_project: context.sourceProject,
+    source_product: context.sourceProduct,
+  });
 
-  if (sourcePath === '/commercial-pergolas-auckland') {
-    return { enquiryType: 'commercial', sourcePath };
-  }
+  return {
+    ...(normalized.enquiryType ? { enquiry_type: normalized.enquiryType } : {}),
+    ...(normalized.sourcePath ? { source_path: normalized.sourcePath } : {}),
+    ...(normalized.sourceComponent
+      ? { source_component: normalized.sourceComponent }
+      : {}),
+    ...(normalized.sourceProject ? { source_project: normalized.sourceProject } : {}),
+    ...(normalized.sourceProduct ? { source_product: normalized.sourceProduct } : {}),
+  };
+}
 
-  const projectMatch = sourcePath.match(/^\/projects\/([a-z0-9-]+)$/);
-  if (projectMatch) {
-    return { sourcePath, projectSlug: projectMatch[1] };
-  }
-
-  const productMatch = sourcePath.match(
-    /^\/products\/[a-z0-9-]+\/([a-z0-9-]+)$/,
-  );
-  if (productMatch) {
-    return {
-      enquiryType: 'residential',
-      sourcePath,
-      productSlug: productMatch[1],
-    };
-  }
-
-  if (sourcePath === '/products' || residentialHeaderRoutes.has(sourcePath)) {
-    return { enquiryType: 'residential', sourcePath };
-  }
-
-  return { sourcePath };
+export function inferEnquiryAudience(pathname: string): EnquiryAudience | undefined {
+  if (pathname === '/commercial-pergolas-auckland') return 'commercial';
+  if (pathname === '/contact') return undefined;
+  return 'residential';
 }

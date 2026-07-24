@@ -406,8 +406,9 @@ export default function AcrylicRoofPergolasAucklandCopyVariantPage() {
           <AcrylicPergolaEnquiryForm
             initialEnquiryType="residential"
             sourceContext={{
-              sourcePath: route,
-              sourceComponent: 'embedded-enquiry',
+              enquiryType: 'residential',
+              sourcePath: '/acrylic-roof-pergolas-auckland-v2',
+              sourceComponent: 'embedded_form',
             }}
             eyebrow="Start with what you know"
             heading="Send your project details"

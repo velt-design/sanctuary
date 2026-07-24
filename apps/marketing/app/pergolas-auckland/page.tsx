@@ -434,8 +434,9 @@ export default function PergolasAucklandPage() {
           <AcrylicPergolaEnquiryForm
             initialEnquiryType="residential"
             sourceContext={{
+              enquiryType: 'residential',
               sourcePath: '/pergolas-auckland',
-              sourceComponent: 'embedded-enquiry',
+              sourceComponent: 'embedded_form',
             }}
             eyebrow="Start with what you know"
             heading="Send your pergola project details"

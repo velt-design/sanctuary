@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Text } from '@react-email/components';
-import { AttachmentLinks } from '../components/AttachmentLinks';
 import { EmailLayout } from '../components/EmailLayout';
+import { AttachmentLinks } from '../components/AttachmentLinks';
 import { HeroImage } from '../components/HeroImage';
 import { InvestmentPanel, formatInvestmentAmount } from '../components/InvestmentPanel';
 import { NextSteps } from '../components/NextSteps';
@@ -71,7 +71,7 @@ export function CustomerResidentialEmail(props: ResidentialOrCommercial & { call
         ]}
       />
 
-      <AttachmentLinks files={props.attachmentLinks} />
+      <AttachmentLinks links={props.attachmentLinks} />
 
       <Text style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700 }}>
         Helpful next details

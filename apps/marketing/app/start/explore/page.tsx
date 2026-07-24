@@ -10,9 +10,9 @@ function readBoolParam(v: string | string[] | undefined) {
 export default async function Page({
   searchParams,
 }: {
-  searchParams?: SearchParams | Promise<SearchParams>;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const params = searchParams instanceof Promise ? await searchParams : searchParams;
+  const params = await searchParams;
   const debug = readBoolParam(params?.debug);
   return <StartExploreClient debug={debug} />;
 }

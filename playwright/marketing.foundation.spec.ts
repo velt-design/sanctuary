@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const viewports = [
   { name: 'desktop', width: 1440, height: 1000 },
@@ -26,16 +27,18 @@ for (const viewport of viewports) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 
-  test(`public homepage retains its established implementation at ${viewport.name}`, async ({ page }) => {
+  test(`public homepage retains its approved implementation at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: 'Architectural pergolas tailored to Kiwi homes.' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Get an estimate', exact: true }).first())
-      .toHaveAttribute(
-        'href',
-        '/contact?enquiry=residential&source_path=%2F&source_component=header#contact-form',
-      );
-    await expect(page.getByRole('heading', { name: 'The Sanctuary Process' })).toBeAttached();
+    const main = page.locator('main[data-homepage-variant="v2"]');
+    await expect(main.getByRole('heading', { level: 1, name: 'Bespoke pergolas, built around the architecture.' })).toBeVisible();
+    await expect(main.getByRole('link', { name: 'Get an initial project estimate' })).toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'hero',
+    }));
+    await expect(main.getByRole('heading', { name: 'Three stages, with expectations confirmed in writing.' })).toBeAttached();
+    await expect(main.locator('[data-home-section]')).toHaveCount(8);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }

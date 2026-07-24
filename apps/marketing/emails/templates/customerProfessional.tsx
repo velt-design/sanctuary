@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Text } from '@react-email/components';
-import { AttachmentLinks } from '../components/AttachmentLinks';
 import { EmailLayout } from '../components/EmailLayout';
+import { AttachmentLinks } from '../components/AttachmentLinks';
 import { Summary } from '../components/Summary';
 import { THEME } from '../theme';
 import type { Professional } from '../types';
@@ -28,7 +28,7 @@ export function CustomerProfessionalEmail(props: Professional & { callWindowText
         ]}
       />
 
-      <AttachmentLinks files={props.attachmentLinks} />
+      <AttachmentLinks links={props.attachmentLinks} />
 
       <Text style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>
         Next step

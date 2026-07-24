@@ -42,18 +42,14 @@
   font-family: var(--font-body);
 }
 
-:global(html:has([data-products-index])),
-:global(body:has([data-products-index])),
-:global(html:has([data-product-detail])),
-:global(body:has([data-product-detail])) {
+:global(html):has(.productExperience),
+:global(body):has(.productExperience) {
   min-height: 100%;
   background: #e9eae6;
 }
 
-:global(html:has([data-products-index]):not(.scroll-locked)),
-:global(body:has([data-products-index]):not(.no-scroll):not(.scroll-locked)),
-:global(html:has([data-product-detail]):not(.scroll-locked)),
-:global(body:has([data-product-detail]):not(.no-scroll):not(.scroll-locked)) {
+:global(html:not(.scroll-locked)):has(.productExperience),
+:global(body:not(.no-scroll):not(.scroll-locked)):has(.productExperience) {
   height: auto !important;
   overflow-x: clip !important;
   overflow-y: visible !important;
