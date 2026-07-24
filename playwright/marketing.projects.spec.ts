@@ -7,12 +7,6 @@ const representativeRoute = `/projects/${projects[0].slug}`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const mobileRefinementRoutes = [
   {
-    name: 'collection',
-    route: '/projects',
-    maximumHeightAt390: 4_815,
-    project: projects[0],
-  },
-  {
     name: 'residential outdoor room',
     route: '/projects/warkworth-outdoor-room',
     maximumHeightAt390: 4_250,
@@ -126,6 +120,10 @@ async function expectNoProjectEmDashes(page: Page) {
   expect(decorativeEmDashes).toBe(0);
 }
 
+function visibleProjectCards(page: Page) {
+  return visibleProjectsMain(page).locator('[data-project-card]:visible');
+}
+
 test('projects index preserves a canonical collection route and legacy query selection', async ({ page }) => {
   await page.goto(`/projects?slug=${projects[3].slug}`);
 
@@ -147,6 +145,157 @@ test('projects index preserves a canonical collection route and legacy query sel
   });
   expect(parsedSchemas.some((schema) => schema['@type'] === 'CollectionPage')).toBe(true);
   expect(parsedSchemas.some((schema) => schema['@type'] === 'ItemList')).toBe(true);
+});
+
+test('mobile project index is one image-led semantic card sequence at every target width', async ({
+  page,
+}) => {
+  test.slow();
+
+  for (const width of [430, 390, 360]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/projects', { waitUntil: 'domcontentloaded' });
+    await dismissConsent(page);
+
+    const main = visibleProjectsMain(page);
+    const cards = visibleProjectCards(page);
+    await expect(main.locator('h1:visible')).toHaveText('Pergola projects and case studies');
+    await expect(main.locator('.project-case-study')).toBeHidden();
+    await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
+    await expect(main.locator('.project-navigator__list')).toHaveCount(1);
+    await expect(main.getByRole('navigation', { name: 'Project case studies' }))
+      .toContainText(projects[0].title);
+    await expect(main.locator('.project-navigator__result-count'))
+      .toHaveAttribute('aria-live', 'polite');
+    await expect(cards).toHaveCount(projects.length);
+    await expect(cards.first().locator('h2')).toHaveText(projects[0].title);
+    await expect(cards.first()).toHaveAttribute(
+      'href',
+      `/projects/${projects[0].slug}`,
+    );
+    await expect(cards.first()).toContainText(projects[0].title);
+    await expect(cards.first()).toContainText(projects[0].location);
+    await expect(cards.first()).toContainText(
+      `${projects[0].type} / ${projects[0].roof}`,
+    );
+    await expect(cards.first()).not.toContainText(projects[0].blurb);
+    await expect(cards.first()).not.toContainText(projects[0].year);
+
+    const firstCard = await cards.first().boundingBox();
+    const secondCard = await cards.nth(1).boundingBox();
+    expect(firstCard?.width ?? 0).toBeGreaterThanOrEqual(width - 42);
+    expect(secondCard?.y ?? 0).toBeGreaterThan(
+      (firstCard?.y ?? 0) + (firstCard?.height ?? 0),
+    );
+
+    const firstMedia = main.locator(
+      '[data-project-card] [data-responsive-media] > div',
+    ).first();
+    const mediaBox = await firstMedia.boundingBox();
+    expect(mediaBox?.height ?? 0).toBeCloseTo((mediaBox?.width ?? 0) * 1.25, 0);
+    const firstImage = firstMedia.locator('img');
+    await expect(firstImage).toHaveAttribute('loading', 'lazy');
+    await expect(firstImage).toHaveAttribute(
+      'sizes',
+      '(max-width: 899px) calc(100vw - 2.5rem), 1px',
+    );
+    await expect(firstImage).toHaveCSS(
+      'object-position',
+      projects[0].heroImage.objectPosition ?? '50% 50%',
+    );
+    await expect.poll(
+      () => firstImage.evaluate((image: HTMLImageElement) => (
+        image.complete && image.naturalWidth > 0
+      )),
+    ).toBe(true);
+
+    const filterSummary = main.locator('[data-project-filter-disclosure] summary');
+    await expect(filterSummary).toBeVisible();
+    expect((await filterSummary.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await filterSummary.focus();
+    await page.keyboard.press('Tab');
+    await expect(cards.first()).toBeFocused();
+    expect(await cards.first().evaluate((element) => (
+      getComputedStyle(element).outlineStyle
+    ))).not.toBe('none');
+
+    await expectNoPageOverflow(page);
+    await expectNoNestedVerticalScroll(page);
+    await expectMinimumTouchTargets(page);
+    await expectLogicalVisibleHeadingOrder(page);
+  }
+});
+
+test('project filters persist through refresh, filter history, project Back, and reset', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/projects');
+  await dismissConsent(page);
+
+  const main = visibleProjectsMain(page);
+  const disclosure = main.locator('[data-project-filter-disclosure]');
+  const summary = disclosure.locator('summary');
+  await summary.focus();
+  await expect(summary).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(disclosure).toHaveAttribute('open', '');
+
+  await main.getByLabel('Filter by audience').selectOption('residential');
+  await page.waitForURL(/audience=residential/);
+  await expect(visibleProjectCards(page)).toHaveCount(9);
+
+  await main.getByLabel('Filter by roof form').selectOption('gable');
+  await page.waitForURL(/audience=residential&form=gable/);
+  await expect(visibleProjectCards(page)).toHaveCount(4);
+  await expect(main.locator('.project-navigator__result-count'))
+    .toHaveText('Showing 4 of 14 projects');
+
+  await page.reload();
+  await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
+  await expect(main.getByLabel('Filter by roof form')).toHaveValue('gable');
+  await expect(visibleProjectCards(page)).toHaveCount(4);
+
+  await page.goBack();
+  await expect(main.getByLabel('Filter by audience')).toHaveValue('residential');
+  await expect(main.getByLabel('Filter by roof form')).toHaveValue('all');
+  await expect(visibleProjectCards(page)).toHaveCount(9);
+  await page.goForward();
+  await expect(visibleProjectCards(page)).toHaveCount(4);
+
+  const filteredUrl = page.url();
+  const firstDestination = await visibleProjectCards(page).first().getAttribute('href');
+  await visibleProjectCards(page).first().click();
+  await expect(page).toHaveURL(firstDestination ?? '');
+  await page.goBack();
+  await expect(page).toHaveURL(filteredUrl);
+  await expect(visibleProjectCards(page)).toHaveCount(4);
+
+  await main.locator('[data-project-filter-disclosure] summary').click();
+  await main.getByRole('button', { name: 'Reset filters' }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(visibleProjectCards(page)).toHaveCount(projects.length);
+  await page.goBack();
+  await expect(visibleProjectCards(page)).toHaveCount(4);
+});
+
+test('empty project filters keep a clear all-project recovery', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto('/projects?audience=commercial&form=box-perimeter');
+  await dismissConsent(page);
+
+  const main = visibleProjectsMain(page);
+  await expect(visibleProjectCards(page)).toHaveCount(0);
+  await expect(main.locator('.project-navigator__result-count'))
+    .toHaveText('Showing 0 of 14 projects');
+  await expect(main.locator('.project-navigator__empty'))
+    .toContainText('No projects match both filters.');
+  const viewAll = main.getByRole('button', { name: 'View all projects' });
+  expect((await viewAll.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  await viewAll.click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(visibleProjectCards(page)).toHaveCount(projects.length);
+  await expectNoPageOverflow(page);
 });
 
 test('every canonical project remains discoverable in the public sitemap', async ({ page }) => {
@@ -505,12 +654,46 @@ test('desktop navigator filters projects, remains sticky, and supports list keyb
   await page.keyboard.press('ArrowDown');
   await expect(main.locator('.project-navigator__list a').nth(1)).toBeFocused();
 
-  await main.locator('.project-navigator__filters select').first().selectOption('Commercial');
+  await main.locator('.project-navigator__filters select').first().selectOption('commercial');
   const visibleLabels = main.locator('.project-navigator__list small');
   expect(await visibleLabels.count()).toBeGreaterThan(0);
   for (const label of await visibleLabels.allTextContents()) {
     expect(label).toContain('Commercial');
   }
+});
+
+test('desktop index retains the case-study rail without eagerly loading mobile card media', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/projects', { waitUntil: 'networkidle' });
+  await dismissConsent(page);
+  const main = visibleProjectsMain(page);
+  const navigator = main.locator('.project-navigator--collection');
+  const cards = main.locator('[data-project-card]');
+
+  await expect(navigator).toBeVisible();
+  await expect(navigator).toHaveCSS('position', 'sticky');
+  await expect(main.locator('.project-case-study')).toBeVisible();
+  await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
+  await expect(main.locator('[data-project-filter-disclosure] summary')).toBeHidden();
+  await expect(main.getByLabel('Filter by audience')).toBeVisible();
+  await expect(cards).toHaveCount(projects.length);
+  expect((await cards.first().boundingBox())?.height ?? 0).toBeLessThanOrEqual(90);
+
+  const cardImages = cards.locator('img');
+  await expect(cardImages).toHaveCount(projects.length);
+  expect(await cardImages.evaluateAll((images) => images.every((image) => {
+    const cardImage = image as HTMLImageElement;
+    return cardImage.loading === 'lazy'
+      && cardImage.sizes === '(max-width: 899px) calc(100vw - 2.5rem), 1px'
+      && cardImage.naturalWidth <= 1;
+  }))).toBe(true);
+
+  await cards.first().focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(cards.nth(1)).toBeFocused();
+  await expectNoPageOverflow(page);
 });
 
 test('mobile navigator is a focus-managed modal sheet with reversible scroll lock', async ({ page }) => {

@@ -103,19 +103,24 @@ failure; duplicate-submit exclusion; consent-controlled events; attribution;
 professional attachment policy errors; and metadata-only upload fallback.
 
 Project-page changes should run
-`npx vitest run apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
+`npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
 and
 `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. The project browser suite visits every
 canonical case study at 390 pixels and runs the collection plus four
-representative project states at 320, 390 and 430 pixels. It verifies one
-visible H1 and logical heading order, early and final contact actions, loaded
-and intentionally framed hero media, mobile height budgets, minimum 44 pixel
-targets, native server-rendered disclosures, selector focus and scroll
-behavior, metadata and schema, honest missing-data treatment, reduced motion,
-zero textual or generated em dashes, no horizontal overflow and no nested
-vertical content scroller. Its seven-width responsive matrix and desktop
-navigator checks provide the representative desktop regression coverage.
+representative project states across 320, 360, 390 and 430 pixels. The
+collection lane covers every audience and roof-form combination, all-project
+and empty states, URL reset, refresh and Back, one semantic image-led card
+tree, canonical destinations, native disclosure semantics, visible focus,
+minimum 44 pixel targets, responsive sizes, focal points, lazy loading,
+reserved image geometry and desktop rail/payload regression. The detail lane
+verifies one visible H1 and logical heading order, early and final contact
+actions, loaded and intentionally framed hero media, mobile height budgets,
+native server-rendered disclosures, selector focus and scroll behavior,
+metadata and schema, honest missing-data treatment, reduced motion, zero
+textual or generated em dashes, no horizontal overflow and no nested vertical
+content scroller. Its seven-width responsive matrix provides the remaining
+representative desktop regression coverage.
 
 Portal readiness sweeps:
 

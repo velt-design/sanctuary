@@ -2,6 +2,7 @@ import type { Project } from '@/data/projects';
 import ProjectDetailContent from './ProjectDetailContent';
 import ProjectNavigator from './ProjectNavigator';
 import './projects.css';
+import './projectCollection.css';
 
 type ProjectsExperienceProps = {
   projects: Project[];
@@ -45,7 +46,7 @@ export default function ProjectsExperience({
 
   return (
     <main
-      className="projects-experience"
+      className={`projects-experience${detailMode ? '' : ' projects-experience--collection'}`}
       aria-label={detailMode ? `${selectedProject.title} project case study` : 'Pergola projects and case studies'}
       data-marketing-foundation-page
       data-projects-experience
@@ -56,7 +57,11 @@ export default function ProjectsExperience({
         </h1>
       ) : null}
       <div className="projects-experience__layout">
-        <ProjectNavigator projects={projects} activeProject={selectedProject} />
+        <ProjectNavigator
+          projects={projects}
+          activeProject={selectedProject}
+          collectionMode={!detailMode}
+        />
         <ProjectDetailContent
           project={selectedProject}
           projectIndex={selectedIndex}
