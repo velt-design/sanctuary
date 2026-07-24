@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getEnquiryTypeFromSearch } from './enquiryRoute';
+import {
+  getEnquiryTypeFromRouteValue,
+  getEnquiryTypeFromSearch,
+} from './enquiryRoute';
 
 describe('getEnquiryTypeFromSearch', () => {
   it.each([
@@ -16,4 +19,10 @@ describe('getEnquiryTypeFromSearch', () => {
       expect(getEnquiryTypeFromSearch(search)).toBeNull();
     },
   );
+
+  it('maps the server route value before hydration', () => {
+    expect(getEnquiryTypeFromRouteValue(' Professional ')).toBe('Professional');
+    expect(getEnquiryTypeFromRouteValue('general')).toBeNull();
+    expect(getEnquiryTypeFromRouteValue(undefined)).toBeNull();
+  });
 });

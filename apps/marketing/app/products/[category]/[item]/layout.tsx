@@ -1,8 +1,5 @@
 import type { Metadata } from 'next';
-import { sections } from '@/data/mega';
-import { productContent } from '@/data/productContent';
-import { productDescriptions } from '@/data/productDescriptions';
-import { metaDesc, stripArrow, imageForSlug } from '@/lib/seo';
+import { getProduct } from '@/data/products';
 
 type LayoutParams = { category: string; item: string };
 
@@ -14,35 +11,36 @@ export async function generateMetadata(
   { params }: LayoutProps,
 ): Promise<Metadata> {
   const { category, item } = await params;
-  const sec = sections.find((s) => s.heading.toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-') === category);
-  const entry = sec?.items.find((i) => (i.href.split('/').pop() || '') === item);
-  const baseTitle = stripArrow(entry?.title || item);
-  const title = sec?.heading === 'Screens & walls' && /gable/i.test(baseTitle)
-    ? baseTitle
-    : baseTitle;
+  const product = getProduct(category, item);
 
-  const content = productContent[item as keyof typeof productContent];
-  const long = productDescriptions[item];
-  const description = metaDesc(
-    content?.overview || (long ? long.split(/\n+/)[0] : 'Product detail'),
-    180,
-  );
-
-  const canonical = `/products/${category}/${item}`;
-  const ogImage = imageForSlug(item);
+  if (!product) {
+    return {
+      title: 'Product not found',
+      robots: { index: false, follow: false },
+    };
+  }
 
   return {
-    title,
-    description,
-    alternates: { canonical },
+    title: product.metadata.title,
+    description: product.metadata.description,
+    alternates: { canonical: product.route },
     openGraph: {
-      url: canonical,
-      title: `${title} – Sanctuary Pergolas`,
-      description,
-      images: [{ url: ogImage, width: 1200, height: 630, alt: `${title}` }],
-      // Next.js OpenGraph types follow a limited enum; 'product' is invalid.
-      // Use the generic 'website' type to avoid runtime errors.
+      url: product.route,
+      title: `${product.metadata.title} | Sanctuary Pergolas`,
+      description: product.metadata.description,
+      images: [{
+        url: product.metadata.ogImage,
+        width: 1200,
+        height: 630,
+        alt: product.hero.alt,
+      }],
       type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.metadata.title} | Sanctuary Pergolas`,
+      description: product.metadata.description,
+      images: [product.metadata.ogImage],
     },
   };
 }

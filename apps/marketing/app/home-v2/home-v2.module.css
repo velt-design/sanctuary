@@ -320,6 +320,12 @@ a.proofItem:hover {
   background: var(--color-surface-elevated);
 }
 
+.pathwayDisclosure,
+.pathwayDisclosure > .mobileDisclosureBody,
+.pathwayDisclosureGrid {
+  display: contents;
+}
+
 .pathwayCard .cardAction,
 .guideCard .cardAction {
   margin-top: auto;
@@ -359,6 +365,42 @@ a.proofItem:hover {
   margin: 0;
 }
 
+.mobileSelectedProjects {
+  display: none;
+}
+
+.mobileProjectPreviewGrid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.mobileProjectPreviewCard {
+  display: grid;
+  gap: 1rem;
+}
+
+.mobileProjectPreviewMedia {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-surface-neutral);
+}
+
+.mobileProjectPreviewCopy {
+  display: grid;
+  justify-items: start;
+  gap: .65rem;
+}
+
+.mobileProjectPreviewCopy p {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font: 600 .65rem/1.5 var(--font-body);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
 .roofIndex {
   display: grid;
   grid-template-columns: minmax(0, .88fr) minmax(32rem, 1.12fr);
@@ -373,6 +415,10 @@ a.proofItem:hover {
 
 .roofRows {
   border-top: 1px solid var(--color-rule-strong);
+}
+
+.roofFormMedia {
+  display: none;
 }
 
 .roofRow {
@@ -409,6 +455,10 @@ a.proofItem:hover {
   padding: clamp(1.5rem, 3vw, 2.5rem);
   border-right: 1px solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
+}
+
+.roofApproachMedia {
+  display: none;
 }
 
 .roofApproachCard > :last-child {
@@ -461,6 +511,11 @@ a.proofItem:hover {
   margin-top: 2rem;
 }
 
+.mobileProcess,
+.mobileReviewCarousel {
+  display: none;
+}
+
 .inverseIntro {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(18rem, .6fr);
@@ -507,12 +562,51 @@ a.proofItem:hover {
   text-transform: uppercase;
 }
 
-.guideGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.guideGateway {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(24rem, 1.2fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+  padding: clamp(1.75rem, 4vw, 3.5rem);
+  border: 1px solid var(--color-rule-strong);
+  background: var(--color-surface-elevated);
 }
 
-.guideCard {
-  min-height: 250px;
+.guideGateway > div {
+  display: grid;
+  gap: 1rem;
+}
+
+.guideLinks {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-rule-strong);
+  list-style: none;
+}
+
+.guideLinks a {
+  min-height: 76px;
+  display: grid;
+  gap: .35rem;
+  align-content: center;
+  padding: .9rem 0;
+  border-bottom: 1px solid var(--color-rule);
+  color: inherit;
+}
+
+.guideLinks a span:first-child {
+  font: 500 clamp(1.05rem, 1.6vw, 1.35rem)/1.25 var(--font-display);
+  letter-spacing: -.015em;
+}
+
+.guideLinks a span:last-child {
+  color: var(--color-text-secondary);
+  font: 400 .8rem/1.5 var(--font-body);
+}
+
+.guideGateway > :last-child {
+  grid-column: 2;
+  justify-self: start;
 }
 
 .finalGrid {
@@ -549,6 +643,11 @@ a.proofItem:hover {
   border-bottom: 1px solid rgba(255, 255, 255, .16);
   color: rgba(255, 255, 255, .82);
   font: 400 .86rem/1.5 var(--font-body);
+}
+
+.finalChecklistDisclosure,
+.finalChecklistDisclosure > .mobileDisclosureBody {
+  display: contents;
 }
 
 .secondaryPathways {
@@ -594,14 +693,6 @@ a.proofItem:hover {
 
 .mobileDisclosureBody {
   min-width: 0;
-}
-
-.mobileProjectBreak {
-  display: none;
-}
-
-.mobileProjectBreakMedia {
-  position: relative;
 }
 
 @media (max-width: 1100px) {
@@ -714,10 +805,6 @@ a.proofItem:hover {
     --section-space-compact: clamp(2.5rem, 11vw, 3.25rem);
   }
 
-  .mobileHiddenPathways {
-    display: none;
-  }
-
   .heroImage {
     object-position: 51% 50%;
   }
@@ -796,6 +883,10 @@ a.proofItem:hover {
     margin-bottom: clamp(2rem, 9vw, 2.75rem);
   }
 
+  .mobileSecondaryCopy {
+    display: none;
+  }
+
   .introAction {
     gap: 1rem;
   }
@@ -807,8 +898,7 @@ a.proofItem:hover {
 
   .projectFacts,
   .projectEvidence,
-  .pathwayGrid,
-  .guideGrid {
+  .pathwayGrid {
     grid-template-columns: 1fr;
   }
 
@@ -829,6 +919,33 @@ a.proofItem:hover {
     padding: 1.35rem 1.25rem;
   }
 
+  .pathwayDisclosure {
+    display: block;
+    grid-column: 1 / -1;
+  }
+
+  .pathwayDisclosure > .mobileDisclosureBody {
+    display: block;
+    padding-top: 0;
+  }
+
+  .pathwayDisclosureGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .mobileSelectedProjects {
+    display: block;
+  }
+
+  .desktopSelectedProjects {
+    display: none;
+  }
+
+  .mobileProjectPreviewGrid {
+    gap: 2rem;
+  }
+
   .pathwayCard,
   .roofApproachCard {
     position: relative;
@@ -847,8 +964,40 @@ a.proofItem:hover {
   }
 
   .roofApproachCard {
-    gap: .75rem;
-    padding: 1.35rem 1.25rem;
+    min-height: 200px;
+    grid-template-columns: minmax(118px, .78fr) minmax(0, 1.22fr);
+    gap: .45rem .85rem;
+    padding: 1rem;
+  }
+
+  .roofApproachMedia {
+    position: relative;
+    display: block;
+    width: auto;
+    min-height: 200px;
+    align-self: stretch;
+    grid-column: 1;
+    grid-row: 1 / 6;
+    margin: -1rem 0 -1rem -1rem;
+    overflow: hidden;
+    background: var(--color-surface-neutral);
+  }
+
+  .roofApproachCard > :not(.roofApproachMedia) {
+    grid-column: 2;
+  }
+
+  .mobileRoofEyebrow {
+    display: none;
+  }
+
+  .roofApproachCard .cardNumber {
+    top: .75rem;
+    right: auto;
+    left: .75rem;
+    padding: .3rem .4rem;
+    background: rgba(17, 18, 16, .72);
+    color: white;
   }
 
   .materialContext {
@@ -871,32 +1020,188 @@ a.proofItem:hover {
     gap: .75rem;
   }
 
+  .roofFigure {
+    display: none;
+  }
+
+  .roofRows {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-left: 1px solid var(--color-rule);
+  }
+
   .roofRow {
-    grid-template-columns: 2.5rem minmax(0, 1fr);
-    gap: .75rem 1rem;
+    position: relative;
     min-height: 0;
-    padding-block: 1.15rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .7rem;
+    align-content: start;
+    align-items: start;
+    padding: 0 1rem 1.1rem;
+    border-right: 1px solid var(--color-rule);
   }
 
-  .roofRow > :nth-child(3),
-  .roofRow > :nth-child(4) {
-    grid-column: 2;
+  .roofFormMedia {
+    position: relative;
+    display: block;
+    width: calc(100% + 2rem);
+    aspect-ratio: 4 / 3;
+    margin: 0 -1rem .2rem;
+    overflow: hidden;
+    background: var(--color-surface-neutral);
   }
 
+  .roofRow .roofNumber {
+    position: absolute;
+    top: .65rem;
+    right: .65rem;
+    z-index: 1;
+    padding: .3rem .4rem;
+    background: rgba(17, 18, 16, .72);
+    color: white;
+  }
+
+  .roofRow > * {
+    grid-column: 1;
+  }
+
+  .reviewGrid,
   .reviewSummary {
-    align-items: flex-start;
-    flex-direction: column;
-    margin-top: 2rem;
+    display: none;
   }
 
-  .reviewCard {
-    min-height: 0;
-    gap: 1.5rem;
-    padding: 1.5rem 1.25rem;
+  .mobileReviewCarousel {
+    display: block;
+    border-top: 1px solid rgba(255, 255, 255, .28);
   }
 
-  .reviewCard blockquote {
-    font-size: clamp(1.1rem, 5vw, 1.35rem);
+  .mobileReviewCard {
+    min-height: 245px;
+    display: grid;
+    align-content: space-between;
+    gap: 2rem;
+    margin: 0;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .18);
+  }
+
+  .mobileReviewCard blockquote {
+    margin: 0;
+    color: var(--color-inverse-text);
+    font: 500 clamp(1.2rem, 5.6vw, 1.5rem)/1.4 var(--font-display);
+    letter-spacing: -.015em;
+  }
+
+  .mobileReviewCard figcaption {
+    color: rgba(255, 255, 255, .62);
+    font: 600 .68rem/1.4 var(--font-body);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  .mobileReviewControls {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1rem;
+  }
+
+  .mobileReviewControls button {
+    width: 44px;
+    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .35);
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-inverse-text);
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .mobileReviewControls button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 3px;
+  }
+
+  .mobileReviewControls > span {
+    justify-self: center;
+    color: rgba(255, 255, 255, .68);
+    font: 600 .68rem/1.4 var(--font-body);
+    letter-spacing: .09em;
+  }
+
+  .mobileReviewSummary {
+    display: grid;
+    justify-items: start;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, .22);
+    color: rgba(255, 255, 255, .68);
+    font: 600 .68rem/1.5 var(--font-body);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .mobileReviewSummary a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    border-bottom: 1px solid currentColor;
+    color: var(--color-inverse-text);
+  }
+
+  .desktopProcess {
+    display: none;
+  }
+
+  .mobileProcess {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-rule-strong);
+    list-style: none;
+  }
+
+  .mobileProcess li {
+    border-bottom: 1px solid var(--color-rule);
+  }
+
+  .mobileProcess summary {
+    min-height: 62px;
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) 1rem;
+    gap: .75rem;
+    align-items: center;
+    padding-block: .8rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .mobileProcess summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobileProcess summary:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 4px;
+  }
+
+  .mobileProcess summary > span:first-child {
+    color: var(--color-text-subtle);
+    font: 500 .68rem/1.4 var(--font-body);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mobileProcess details > p {
+    margin: 0 0 1rem 2.75rem;
+  }
+
+  .mobileProcess details[open] .mobileDisclosureIcon::after {
+    transform: rotate(0);
   }
 
   .processAction {
@@ -907,6 +1212,38 @@ a.proofItem:hover {
   .secondaryPathways {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .guideGateway {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .guideGateway > :last-child {
+    grid-column: 1;
+  }
+
+  .guideLinks a {
+    min-height: 68px;
+  }
+
+  .guideLinks a span:last-child {
+    display: none;
+  }
+
+  .mobileDisclosure.finalChecklistDisclosure {
+    display: block;
+    border-top-color: rgba(255, 255, 255, .28);
+  }
+
+  .finalChecklistDisclosure > .mobileDisclosureBody {
+    display: block;
+    padding-top: 0;
+  }
+
+  .finalChecklistDisclosure .mobileDisclosureSummary {
+    color: var(--color-inverse-text);
   }
 
   .mobileDisclosure {
@@ -968,24 +1305,6 @@ a.proofItem:hover {
     padding-top: 1rem;
   }
 
-  .mobileProjectBreak {
-    display: block;
-    margin: 0;
-    background: var(--color-inverse-surface);
-    color: rgba(255, 255, 255, .72);
-  }
-
-  .mobileProjectBreakMedia {
-    aspect-ratio: 4 / 3;
-    overflow: hidden;
-  }
-
-  .mobileProjectBreak figcaption {
-    padding: .85rem var(--page-gutter) 1rem;
-    font: 600 .65rem/1.4 var(--font-body);
-    letter-spacing: .09em;
-    text-transform: uppercase;
-  }
 }
 
 @media (max-width: 480px) {

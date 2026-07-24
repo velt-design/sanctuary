@@ -1,0 +1,389 @@
+[
+  {
+    "width": 320,
+    "name": "hub",
+    "route": "/products",
+    "errors": [],
+    "mainHeight": 9941,
+    "documentHeight": 10785,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "form-comparison",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 0,
+    "evidenceGalleryHeight": 0
+  },
+  {
+    "width": 320,
+    "name": "gable",
+    "route": "/products/pergolas/gable",
+    "errors": [],
+    "mainHeight": 8874,
+    "documentHeight": 9718,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 224,
+    "evidenceGalleryHeight": 778
+  },
+  {
+    "width": 320,
+    "name": "blinds",
+    "route": "/products/screens-walls/drop-down-blinds",
+    "errors": [],
+    "mainHeight": 8711,
+    "documentHeight": 9555,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 240,
+    "evidenceGalleryHeight": 778
+  },
+  {
+    "width": 320,
+    "name": "heaters",
+    "route": "/products/lighting-heating/patio-heaters",
+    "errors": [],
+    "mainHeight": 8522,
+    "documentHeight": 9366,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 256,
+    "evidenceGalleryHeight": 795
+  },
+  {
+    "width": 390,
+    "name": "hub",
+    "route": "/products",
+    "errors": [],
+    "mainHeight": 9613,
+    "documentHeight": 10457,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "form-comparison",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 0,
+    "evidenceGalleryHeight": 0
+  },
+  {
+    "width": 390,
+    "name": "gable",
+    "route": "/products/pergolas/gable",
+    "errors": [],
+    "mainHeight": 8580,
+    "documentHeight": 9424,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 235,
+    "evidenceGalleryHeight": 915
+  },
+  {
+    "width": 390,
+    "name": "blinds",
+    "route": "/products/screens-walls/drop-down-blinds",
+    "errors": [],
+    "mainHeight": 8411,
+    "documentHeight": 9255,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 235,
+    "evidenceGalleryHeight": 915
+  },
+  {
+    "width": 390,
+    "name": "heaters",
+    "route": "/products/lighting-heating/patio-heaters",
+    "errors": [],
+    "mainHeight": 8147,
+    "documentHeight": 8991,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 266,
+    "evidenceGalleryHeight": 915
+  },
+  {
+    "width": 430,
+    "name": "hub",
+    "route": "/products",
+    "errors": [],
+    "mainHeight": 9700,
+    "documentHeight": 10544,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "form-comparison",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 0,
+    "evidenceGalleryHeight": 0
+  },
+  {
+    "width": 430,
+    "name": "gable",
+    "route": "/products/pergolas/gable",
+    "errors": [],
+    "mainHeight": 8771,
+    "documentHeight": 9615,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 250,
+    "evidenceGalleryHeight": 984
+  },
+  {
+    "width": 430,
+    "name": "blinds",
+    "route": "/products/screens-walls/drop-down-blinds",
+    "errors": [],
+    "mainHeight": 8504,
+    "documentHeight": 9348,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 250,
+    "evidenceGalleryHeight": 984
+  },
+  {
+    "width": 430,
+    "name": "heaters",
+    "route": "/products/lighting-heating/patio-heaters",
+    "errors": [],
+    "mainHeight": 8327,
+    "documentHeight": 9171,
+    "textEmDashes": 0,
+    "decorativeEmDashes": 0,
+    "overflow": 0,
+    "visibleH1s": 1,
+    "disclosures": [
+      {
+        "kind": "works-when",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "must-resolve",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "specification",
+        "open": false,
+        "summaryHeight": 52
+      },
+      {
+        "kind": "tradeoffs",
+        "open": false,
+        "summaryHeight": 52
+      }
+    ],
+    "introGalleryHeight": 281,
+    "evidenceGalleryHeight": 1001
+  }
+]

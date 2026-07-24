@@ -36,8 +36,9 @@ The main UX standard:
    - Goal: make the project page the clearest operational hub.
    - Improve current status, next action, latest note/activity, current design/quote state, and obvious primary actions.
    - Stage 1 complete: the activity-key default is now labelled Overview; a strict server-owned card shows exact current design, quote/estimate version, stored customer price, delivery, costing freshness, source failures, and newer-estimate context. Customer context, notes, tasks, and specialist workflows remain available.
-   - Stage 2 implemented locally and in verification: the project header shows one canonical Project Owner from the approved Jordan/JP/Joe/Bruce roster; Overview derives one primary action from project tasks, follow-up tasks, or controlled manual actions; conflicts, critical reasons, compact audit history, and dashboard project exceptions are surfaced. Authenticated real-project Playwright remains the completion gate.
-   - Project shell Slices 1-2 implemented locally: the page is full width with project facts and stage in Overview; the authoritative Calculator replaces the legacy Designs/configurator surface; Quotes and Invoices share Commercial; the Emails UI is retired while delivery/audit data and side effects remain unchanged.
+   - Stage 2 repository implementation is complete but remains Yellow: the project header shows one canonical Project Owner from the approved Jordan/JP/Joe/Bruce roster; Overview derives one primary action from project tasks, follow-up tasks, or controlled manual actions; conflicts, critical reasons, compact audit history, and dashboard project exceptions are surfaced. Executable smoke for both Stage 2 migrations and authenticated real-project Playwright remain the completion gates.
+   - Project shell Slices 1-2 are present in the current repository: the page is full width with project facts and stage in Overview; the authoritative Calculator replaces the legacy Designs/configurator surface; Quotes and Invoices share Commercial; the Emails UI is retired while delivery/audit data and side effects remain unchanged. Staff-facing tabs are Overview, Calculator, Commercial, and conditional Job Packs; compatibility keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
+   - Stage 3 lead-to-quote workstreams are the next implementation stage after Stage 2 environment verification. V1 remains bounded at quote outcome.
 
 3. **Activity System V2**
    - Goal: turn activity into a useful cross-workflow timeline, not just a note list.
@@ -89,11 +90,12 @@ The main UX standard:
 1. Project Pages Speed revalidation and measured bottleneck fixes after the current UI-foundation checkpoint.
 2. Current project-tab intent, useful-shell, and bundle-boundary performance.
 3. Project Command Centre authenticated completion gate.
-4. Activity category expansion and timeline clarity.
-5. Dashboard/project task evolution.
-6. Quote/estimate state summary standardisation.
-7. Schedule priority-view simplification.
-8. Workbench state and diagnostics simplification.
+4. Project Command Centre Stage 3 lead-to-quote workstreams.
+5. Activity category expansion and timeline clarity.
+6. Dashboard/project task evolution.
+7. Quote/estimate state summary standardisation.
+8. Schedule priority-view simplification.
+9. Workbench state and diagnostics simplification.
 
 ## Update Notes
 

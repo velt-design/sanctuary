@@ -1,64 +1,69 @@
-export type EnquiryAttachmentPayload = {
-  path?: string;
-  name: string;
-  size: number;
-  type: string;
+import {
+  ENQUIRY_ATTACHMENT_ACCEPT,
+  ENQUIRY_ATTACHMENT_LIMITS,
+  validateEnquiryAttachmentDescriptors,
+  type EnquiryAttachmentDescriptor,
+} from './enquiryAttachmentPolicy';
+
+type EnquiryAttachmentPayload = EnquiryAttachmentDescriptor;
+export { ENQUIRY_ATTACHMENT_ACCEPT, ENQUIRY_ATTACHMENT_LIMITS };
+
+type EnquiryAttachmentUploadResult = {
+  files: EnquiryAttachmentPayload[];
+  uploadSessionToken: string | null;
 };
 
-export const ENQUIRY_ATTACHMENT_LIMITS = {
-  maxFiles: 8,
-  maxFileBytes: 20 * 1024 * 1024,
-  maxTotalBytes: 20 * 1024 * 1024,
-} as const;
-
 export function validateEnquiryAttachments(files: File[]): string | null {
-  if (files.length > ENQUIRY_ATTACHMENT_LIMITS.maxFiles) {
-    return `Add no more than ${ENQUIRY_ATTACHMENT_LIMITS.maxFiles} files.`;
-  }
+  return validateEnquiryAttachmentDescriptors(files);
+}
 
-  if (files.some((file) => file.size <= 0 || file.size > ENQUIRY_ATTACHMENT_LIMITS.maxFileBytes)) {
-    return 'Each file must be larger than 0 bytes and no larger than 20 MB.';
+export function createEnquirySubmissionId(): string {
+  if (typeof globalThis.crypto?.randomUUID !== 'function') {
+    throw new Error('A secure browser is required to submit this enquiry.');
   }
-
-  const totalBytes = files.reduce((total, file) => total + file.size, 0);
-  if (totalBytes > ENQUIRY_ATTACHMENT_LIMITS.maxTotalBytes) {
-    return 'Attachments must be no larger than 20 MB in total.';
-  }
-
-  return null;
+  return globalThis.crypto.randomUUID();
 }
 
 // Uploads directly to the existing private enquiry bucket with short-lived
 // signed URLs. Metadata-only fallback keeps the enquiry submittable when local
 // storage configuration is unavailable or an upload fails.
-export async function uploadEnquiryAttachments(files: File[]): Promise<EnquiryAttachmentPayload[]> {
+export async function uploadEnquiryAttachments(
+  files: File[],
+  submissionId: string,
+): Promise<EnquiryAttachmentUploadResult> {
   const metaOnly: EnquiryAttachmentPayload[] = files.map((file) => ({
     name: file.name,
     size: file.size,
     type: file.type,
   }));
-  if (!files.length) return [];
+  const validationError = validateEnquiryAttachmentDescriptors(metaOnly);
+  if (validationError) throw new Error(validationError);
+  if (!files.length) return { files: [], uploadSessionToken: null };
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) return metaOnly;
+  if (!supabaseUrl || !supabaseAnonKey) return { files: metaOnly, uploadSessionToken: null };
 
   try {
     const signResponse = await fetch('/api/enquiry/attachments/sign', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: metaOnly }),
+      body: JSON.stringify({ submissionId, files: metaOnly }),
     });
-    if (!signResponse.ok) return metaOnly;
+    if (!signResponse.ok) return { files: metaOnly, uploadSessionToken: null };
 
     const signPayload = await signResponse.json().catch(() => null);
     const uploads = Array.isArray(signPayload?.uploads) ? signPayload.uploads : [];
-    if (uploads.length !== files.length) return metaOnly;
+    const uploadSessionToken =
+      typeof signPayload?.uploadSessionToken === 'string' ? signPayload.uploadSessionToken : null;
+    if (uploads.length !== files.length || !uploadSessionToken) {
+      return { files: metaOnly, uploadSessionToken: null };
+    }
 
     const { createClient } = await import('@supabase/supabase-js');
     const client = createClient(supabaseUrl, supabaseAnonKey);
 
-    return await Promise.all(
+    const uploadedFiles = await Promise.all(
       files.map(async (file, index): Promise<EnquiryAttachmentPayload> => {
         const upload = uploads[index];
         try {
@@ -74,7 +79,8 @@ export async function uploadEnquiryAttachments(files: File[]): Promise<EnquiryAt
         }
       }),
     );
+    return { files: uploadedFiles, uploadSessionToken };
   } catch {
-    return metaOnly;
+    return { files: metaOnly, uploadSessionToken: null };
   }
 }

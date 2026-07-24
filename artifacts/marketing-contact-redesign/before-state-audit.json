@@ -1,0 +1,29 @@
+{
+  "emptyValidation": {
+    "error": "Sorry, we couldn’t send your message.Phone is required",
+    "focusedName": "phone"
+  },
+  "apiError": {
+    "requests": 1,
+    "error": "Sorry, we couldn’t send your message.Enquiry service unavailable",
+    "name": "Test Person",
+    "message": "A retained test message"
+  },
+  "success": {
+    "requests": 2,
+    "status": "Thanks – we’ve received your enquiry.We’ll get back to you shortly. If it’s urgent, call 022 854 5633."
+  },
+  "invalidAttachment": {
+    "error": "Sorry, we couldn’t send your message.Something went wrong. Please try again."
+  },
+  "validAttachment": {
+    "status": "Thanks – we’ve received your enquiry.We’ll get back to you shortly. If it’s urgent, call 022 854 5633.",
+    "filePayload": [
+      {
+        "name": "plan.pdf",
+        "size": 9,
+        "type": "application/pdf"
+      }
+    ]
+  }
+}

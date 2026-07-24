@@ -1,0 +1,92 @@
+
+> my-site@0.1.0 build:marketing
+> npm --prefix apps/marketing run build
+
+
+> sanctuary-marketing@0.1.0 build
+> next build
+
+▲ Next.js 16.2.10 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  ✓ externalDir
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.3s
+  Running TypeScript ...
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/homepage-mobile-production/types/**/*.ts'
+  	- include was updated to add '.next/homepage-mobile-production/dev/types/**/*.ts'
+
+  Finished TypeScript in 4.6s ...
+  Collecting page data using 31 workers ...
+  Generating static pages using 31 workers (0/53) ...
+  Generating static pages using 31 workers (13/53) 
+  Generating static pages using 31 workers (26/53) 
+  Generating static pages using 31 workers (39/53) 
+✓ Generating static pages using 31 workers (53/53) in 658ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ƒ /__foundation/marketing
+├ ○ /_not-found
+├ ○ /acrylic-pergolas-vs-louvre-roofs
+├ ○ /acrylic-roof-pergolas-auckland
+├ ○ /acrylic-roof-pergolas-auckland-v2
+├ ○ /aluminium-pergolas-auckland
+├ ƒ /api/contact
+├ ƒ /api/enquiry
+├ ƒ /api/enquiry/attachments/sign
+├ ƒ /api/invoices/[invoiceId]/pdf
+├ ƒ /api/invoices/[invoiceId]/quote-pdf
+├ ƒ /api/quotes/[quoteId]/accept
+├ ƒ /api/quotes/[quoteId]/attachments/[fileId]
+├ ƒ /api/retired-pergola-brochure
+├ ƒ /api/security/csp-report
+├ ○ /apple-icon.png
+├ ○ /commercial-pergolas-auckland
+├ ○ /contact
+├ ○ /custom-pergolas-auckland
+├ ○ /gable-pergolas-auckland
+├ ƒ /gallery
+├ ○ /home-v2
+├ ○ /icon.png
+├ ƒ /icons/192
+├ ƒ /icons/512
+├ ƒ /invoice/[invoiceId]
+├ ○ /manifest.webmanifest
+├ ○ /outdoor-rooms-auckland
+├ ○ /pergola-cost-auckland
+├ ○ /pergola-guides
+├ ○ /pergolas-auckland
+├ ○ /pergolas-with-blinds
+├ ○ /pitched-pergolas-auckland
+├ ○ /privacy
+├ ○ /products
+├ ƒ /products/[category]/[item]
+├ ƒ /products/-/-/opengraph-image
+├ ƒ /projects
+├ ● /projects/[slug]
+│ ├ /projects/warkworth-outdoor-room
+│ ├ /projects/mt-maunganui-box
+│ ├ /projects/lilliput-mini-golf
+│ └ [+11 more paths]
+├ ƒ /quote/[quoteId]
+├ ○ /robots.txt
+├ ƒ /runtime-archipro.js
+├ ƒ /runtime-ga.js
+├ ƒ /runtime-meta.js
+├ ƒ /sitemap-images.xml
+├ ○ /sitemap.xml
+├ ○ /start
+└ ƒ /start/explore
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

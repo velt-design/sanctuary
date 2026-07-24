@@ -3,6 +3,12 @@
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
+import {
+  createEnquirySubmissionId,
+  ENQUIRY_ATTACHMENT_ACCEPT,
+  uploadEnquiryAttachments,
+  validateEnquiryAttachments,
+} from '@/lib/enquiryAttachments';
 import { dispatchStartModalVisibility, setStartModalOpenClass } from '@/lib/startModalBridge';
 import {
   START_FLOW_SCHEMA_VERSION,
@@ -638,6 +644,7 @@ export default function StartPage() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [sendPhotosLater, setSendPhotosLater] = useState(false);
+  const submissionIdRef = useRef<string | null>(null);
 
   const sectionRefs = useRef<Record<SectionId, HTMLElement | null>>({
     hero: null,
@@ -1004,6 +1011,7 @@ export default function StartPage() {
     setSubmitError(null);
     setSubmitMeta(null);
     setSubmitState('idle');
+    submissionIdRef.current = null;
     setActiveModal(null);
     setQuickInfoModal(null);
     setBriefSheetOpen(false);
@@ -1260,6 +1268,8 @@ export default function StartPage() {
         errors.push('Residential and commercial submissions require a roof material selection.');
       }
     }
+    const fileError = validateEnquiryAttachments(photoFiles);
+    if (fileError) errors.push(fileError);
 
     return errors;
   };
@@ -1289,6 +1299,9 @@ export default function StartPage() {
     setSubmitState('sending');
 
     try {
+      const submissionId = submissionIdRef.current ?? createEnquirySubmissionId();
+      submissionIdRef.current = submissionId;
+      const attachments = await uploadEnquiryAttachments(photoFiles, submissionId);
       const summaryBlock = buildSummaryBlock({
         draft,
         areaM2,
@@ -1306,6 +1319,8 @@ export default function StartPage() {
 
       const attribution = getBrowserMarketingAttribution();
       const payload = {
+        submissionId,
+        uploadSessionToken: attachments.uploadSessionToken,
         enquiryType: draft.enquiryType,
         name: trimSingleLine(draft.name),
         phone: trimSingleLine(draft.phone),
@@ -1320,7 +1335,7 @@ export default function StartPage() {
         style: draft.style ?? '',
         roofMaterials: [...draft.roofMaterials],
         addOns,
-        files: photoFiles.map((file) => ({ name: file.name, size: file.size, type: file.type })),
+        files: attachments.files,
         utm: attribution.utm,
         attribution,
         page: typeof window === 'undefined' ? '/start' : window.location.pathname,
@@ -1371,6 +1386,7 @@ export default function StartPage() {
       }
 
       setSubmitState('success');
+      submissionIdRef.current = null;
       setSubmitMeta({
         contactId: json.contactId,
         projectId: json.projectId,
@@ -2268,7 +2284,7 @@ export default function StartPage() {
                       <p className="text-sm font-medium text-neutral-900">Photos (recommended)</p>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept={ENQUIRY_ATTACHMENT_ACCEPT}
                         multiple
                         onChange={(event) => handlePhotosSelected(event.target.files)}
                         className="block w-full text-sm"

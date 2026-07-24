@@ -20,6 +20,8 @@ The July 2026 guide-cluster pass removed ungoverned headline durations, combined
 | Consent or approval outcome | Project-specific. Do not promise exemption or approval. | Current planning and building-control advice for the actual site and design. | Size, height, boundary, attachment, use and existing conditions can change requirements. | Sanctuary design lead and relevant authority | Per project | All service and guide pages |
 | Published project dimensions and accessory detail | Use only the current project record and avoid stronger hidden legacy detail. | Approved project file, drawings or as-built record for each published example. | KiwiRail currently records a 30.0 m by 3.0 m plan and 115 m² total area; the basis of the larger total needs confirmation. Screen or blind product and control detail must not be inferred from a generic project tag. | Sanctuary project and marketing leads | Pending for identified records | Project pages and guide evidence cards |
 
+The project record now separates the client constraint, roof approach, optional verified configuration and supported material list from narrative copy. `apps/marketing/data/projects.claims.test.ts` includes those fields in the evidence snapshot. Presentation helpers omit missing year, footprint, pitch, finish or configuration values instead of inferring them; Warkworth is the only current record with a verified `Freestanding` configuration.
+
 ## Editorial fallback
 
 When an approved claim is unavailable:

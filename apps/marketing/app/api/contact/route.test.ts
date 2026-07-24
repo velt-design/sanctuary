@@ -3,11 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({
   getEmailDeliveryFailureSummary: vi.fn(),
   sendEmail: vi.fn(),
+  getServiceSupabase: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock('@/lib/email/sendEmail', () => ({
   getEmailDeliveryFailureSummary: h.getEmailDeliveryFailureSummary,
   sendEmail: h.sendEmail,
+}));
+vi.mock('@/lib/supabaseService', () => ({
+  getServiceSupabase: h.getServiceSupabase,
 }));
 
 function contactRequest(eventId: string, ip: string): Request {
@@ -32,6 +37,10 @@ describe('POST /api/contact email compatibility path', () => {
     vi.resetModules();
     h.sendEmail.mockReset();
     h.getEmailDeliveryFailureSummary.mockReset();
+    h.getServiceSupabase.mockReset();
+    h.rpc.mockReset();
+    h.rpc.mockResolvedValue({ data: [{ allowed: true, retry_after_seconds: 0 }], error: null });
+    h.getServiceSupabase.mockReturnValue({ rpc: h.rpc });
     h.getEmailDeliveryFailureSummary.mockReturnValue({
       code: 'EMAIL_DELIVERY_UNEXPECTED',
       outcome: 'adapter_error',
@@ -89,5 +98,29 @@ describe('POST /api/contact email compatibility path', () => {
     });
     expect(JSON.stringify(warn.mock.calls)).not.toContain('taylor@example.test');
     warn.mockRestore();
+  });
+
+  it('uses the durable database rate limit', async () => {
+    h.rpc.mockResolvedValueOnce({
+      data: [{ allowed: false, retry_after_seconds: 120 }],
+      error: null,
+    });
+    const { POST } = await import('./route');
+    const response = await POST(contactRequest('event-limited', '203.0.113.12'));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).toBe('120');
+    expect(h.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('rejects legacy multipart uploads instead of buffering unbound files', async () => {
+    const { POST } = await import('./route');
+    const response = await POST(new Request('http://localhost/api/contact', {
+      method: 'POST',
+      body: new FormData(),
+    }));
+
+    expect(response.status).toBe(415);
+    expect(h.getServiceSupabase).not.toHaveBeenCalled();
   });
 });

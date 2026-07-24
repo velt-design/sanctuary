@@ -10,7 +10,12 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 
 ## Ownership
 
-- Staff quote UI: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.
+- Staff quote composition and draft/local-first send orchestration: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.
+- Quote query/URL selection: `apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts`.
+- Quote lifecycle actions and refresh/invoice/job-pack side effects: `apps/portal/components/projects/ProjectPage/tabs/useQuoteLifecycleActions.ts`.
+- Quote PDF preview lifecycle: `apps/portal/components/projects/ProjectPage/tabs/useQuotePdfPreviews.ts`.
+- Quote detail, line-item editing, list/create, and modal presentation: `QuoteDetailView.tsx`, `QuoteLineItemsEditor.tsx`, `QuotesListView.tsx`, and `QuoteWorkflowDialogs.tsx` in the same tab directory.
+- Pure quote-tab formatting, validation, and presentation model helpers: `apps/portal/components/projects/ProjectPage/tabs/quotesTabModel.ts`.
 - Project Commercial composition and Quotes/Invoices navigation: `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`.
 - Staff quote APIs: `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Quote domain helpers: `apps/portal/lib/quotes`.
@@ -37,7 +42,7 @@ For table/RPC ownership, write paths, access boundaries, and migration sources, 
 
 The project page's Overview surfaces the current design and commercial record through the dedicated server-owned command-centre read model. It selects accepted > sent > draft, excludes declined quotes, uses only the selected quote's exact source estimate, and reads only that quote's raw stored total. The precedence rules and source-of-truth notes live in `docs/projects-contacts-estimates-calculator.md` under "Overview and current-design precedence". When changing quote status semantics, accept/decline behaviour, send logs, or quote totals, double-check that read model continues to reflect the right historical source without estimate fallback.
 
-The project header exposes one Commercial tab. Its accessible inner switch keeps Quotes and Invoices as separate lazy owners and preserves the existing `tab=quotes` and `tab=invoices` URLs. `QuotesTab.tsx` continues to own quote state and side effects; `CommercialTab.tsx` owns only composition, Edit/Preview URL state, and navigation. Switching to Invoices clears `quotePreview` but preserves selected quote, create-from-estimate, and unrelated query context. Email audit data and quote/invoice delivery side effects remain available through their domain records and APIs even though the standalone project Emails tab is retired.
+The project header exposes one Commercial tab. Its accessible inner switch keeps Quotes and Invoices as separate lazy owners and preserves the existing `tab=quotes` and `tab=invoices` URLs. `QuotesTab.tsx` is the quote composition owner: query/selection, lifecycle actions, PDF-preview effects, and presentation now live behind the named owners above, while draft editing plus local-first create/persist and send-form orchestration remain in the tab. `CommercialTab.tsx` owns only composition, Edit/Preview URL state, and navigation. Switching to Invoices clears `quotePreview` but preserves selected quote, create-from-estimate, and unrelated query context. Email audit data and quote/invoice delivery side effects remain available through their domain records and APIs even though the standalone project Emails tab is retired.
 
 The Commercial Quotes surface uses canonical `QuoteStatusBadge` presentation for `DRAFT`, `SENT`, `ACCEPTED`, and `DECLINED`; a sticky action owner reports dirty or syncing draft state without claiming durable success. Version rows are keyboard operable, quote and estimate-version reads expose retry states, and create/refresh/send/invoice/expiry/delete dialogs use the shared focus trap, Escape policy, scroll lock, and focus return. Responsive CSS may hide secondary quote-index columns or contain editor tables, but it must retain quote identity, status, inc-GST amount, the explicit GST breakdown, and every lifecycle action. These are presentation boundaries only and must not move local-first queueing, locks, quote email/PDF behavior, or server-confirmed transitions into shared UI components.
 
@@ -100,6 +105,8 @@ Do not expose service-role access or raw token values to client components. Toke
 - Public invoice links use `deposit_invoices.portal_token_hash`.
 - Quote attachments are limited to file IDs from the send log that matches the current accept token hash.
 - Token expiry must be handled as an access state, not as a missing record.
+- `apps/marketing/lib/publicTokenAccess.ts` is the shared active-token boundary. Check it immediately after the hash-bound token lookup and before loading customer/project details, line items, attachments, artifacts, or performing acceptance.
+- An expired token may produce an expired/unavailable UI state, but it must not return the protected quote/invoice model. The same rule covers quote acceptance, quote attachments, invoice PDFs, and source-quote PDFs.
 - Public accept/invoice flows should be treated as server-owned side effects, even though the initiating page lives in marketing.
 
 When changing public routes, verify invalid token, missing token, expired token, already accepted, declined/void, and attachment/PDF unavailable states.

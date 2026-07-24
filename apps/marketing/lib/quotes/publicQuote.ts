@@ -3,6 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { hashAcceptToken } from '@/lib/quotes/acceptToken';
 import { getServiceSupabase } from '@/lib/supabaseService';
+import { publicTokenAccessState } from '@/lib/publicTokenAccess';
 import { ensureDepositInvoiceForAcceptedQuote } from '../../../portal/lib/invoices/server';
 
 type PublicQuoteLineItem = {
@@ -50,7 +51,7 @@ type AcceptPublicQuoteResult =
 
 type PublicQuoteAttachmentDownloadResult =
   | { ok: true; filename: string; contentType: string; bytes: Uint8Array }
-  | { ok: false; code: 'invalid' | 'not_found'; message: string };
+  | { ok: false; code: 'invalid' | 'expired' | 'not_found'; message: string };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -80,13 +81,6 @@ function normalizeStatus(value: unknown): PublicQuote['status'] {
   const raw = typeof value === 'string' ? value.trim().toUpperCase() : '';
   if (raw === 'SENT' || raw === 'ACCEPTED' || raw === 'DECLINED') return raw;
   return 'DRAFT';
-}
-
-function tokenHasExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false;
-  const parsed = new Date(expiresAt);
-  if (!Number.isFinite(parsed.getTime())) return false;
-  return Date.now() > parsed.getTime();
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -155,6 +149,20 @@ async function loadQuoteVersionByToken(params: {
     introText: typeof (versionRes.data as any).intro_text === 'string' ? (versionRes.data as any).intro_text : null,
     termsText: typeof (versionRes.data as any).terms_text === 'string' ? (versionRes.data as any).terms_text : null,
   };
+}
+
+async function loadActiveQuoteVersionByToken(
+  params: { quoteId: string; token: string },
+): Promise<
+  | { version: NonNullable<Awaited<ReturnType<typeof loadQuoteVersionByToken>>>; reason?: never }
+  | { version: null; reason: 'invalid' | 'expired' }
+> {
+  const version = await loadQuoteVersionByToken(params);
+  if (!version) return { version: null, reason: 'invalid' };
+  if (publicTokenAccessState(version.tokenExpiresAt) === 'expired') {
+    return { version: null, reason: 'expired' };
+  }
+  return { version };
 }
 
 async function loadQuoteProject(quoteId: string): Promise<{ quoteRef: string; projectId: string | null } | null> {
@@ -301,8 +309,9 @@ async function insertAuditEvent(projectId: string, type: string, payload: Record
 }
 
 export async function loadPublicQuoteByToken(params: { quoteId: string; token: string }): Promise<PublicQuoteLookupResult> {
-  const version = await loadQuoteVersionByToken(params);
-  if (!version) return { quote: null, reason: 'invalid' };
+  const access = await loadActiveQuoteVersionByToken(params);
+  if (!access.version) return { quote: null, reason: access.reason };
+  const version = access.version;
 
   const [quoteProject, lineItems, attachments] = await Promise.all([
     loadQuoteProject(version.quoteId),
@@ -340,7 +349,6 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
     attachments,
   };
 
-  if (tokenHasExpired(version.tokenExpiresAt)) return { quote, reason: 'expired' };
   return { quote };
 }
 
@@ -356,8 +364,15 @@ export async function downloadPublicQuoteAttachmentByToken(params: {
     return { ok: false, code: 'invalid', message: errorMessage(error, 'Invalid attachment ID') };
   }
 
-  const version = await loadQuoteVersionByToken({ quoteId: params.quoteId, token: params.token });
-  if (!version) return { ok: false, code: 'invalid', message: 'Invalid quote link' };
+  const access = await loadActiveQuoteVersionByToken({ quoteId: params.quoteId, token: params.token });
+  if (!access.version) {
+    return {
+      ok: false,
+      code: access.reason,
+      message: access.reason === 'expired' ? 'Quote link has expired' : 'Invalid quote link',
+    };
+  }
+  const version = access.version;
 
   const attachmentIds = await loadTokenScopedAttachmentFileIds({
     quoteVersionUuid: version.quoteVersionUuid,
@@ -408,20 +423,18 @@ export async function acceptPublicQuoteByToken(params: {
   quoteId: string;
   token: string;
 }): Promise<AcceptPublicQuoteResult> {
-  let version: Awaited<ReturnType<typeof loadQuoteVersionByToken>>;
+  let access: Awaited<ReturnType<typeof loadActiveQuoteVersionByToken>>;
   try {
-    version = await loadQuoteVersionByToken(params);
+    access = await loadActiveQuoteVersionByToken(params);
   } catch (error) {
     return { ok: false, code: 'invalid', message: errorMessage(error, 'Invalid quote ID') };
   }
 
-  if (!version) {
-    return { ok: false, code: 'invalid', message: 'Invalid token' };
-  }
-
-  if (tokenHasExpired(version.tokenExpiresAt)) {
+  if (!access.version && access.reason === 'expired') {
     return { ok: false, code: 'expired', message: 'Quote link has expired' };
   }
+  if (!access.version) return { ok: false, code: 'invalid', message: 'Invalid token' };
+  const version = access.version;
 
   if (version.status === 'ACCEPTED') {
     return { ok: true, alreadyAccepted: true };

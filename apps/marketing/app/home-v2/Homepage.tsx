@@ -38,6 +38,7 @@ import {
 } from './content';
 import HomepageInteractionTracker from './HomepageInteractionTracker';
 import MobileDisclosure from './MobileDisclosure';
+import MobileReviewCarousel from './MobileReviewCarousel';
 import styles from './home-v2.module.css';
 
 const homepageTitle = 'Architectural Pergola Design & Build | Sanctuary Pergolas';
@@ -82,9 +83,35 @@ const selectedProjects = selectedProjectProfiles.map((profile) => ({
   ...profile,
   project: findProject(profile.slug),
 }));
+const mobileSelectedProjects = selectedProjects.slice(0, 2);
 const selectedReviews = featuredReviews.filter((review) => (
   reviewAuthors.some((author) => author === review.author)
 ));
+
+type VisitorPathway = (typeof visitorPathways)[number];
+
+function PathwayCard({
+  index,
+  pathway,
+}: {
+  index: number;
+  pathway: VisitorPathway;
+}) {
+  return (
+    <Link
+      className={styles.pathwayCard}
+      href={pathway.href}
+      data-homepage-event={pathway.event}
+      data-homepage-item={pathway.eyebrow}
+    >
+      <span className={styles.cardNumber}>{String(index + 1).padStart(2, '0')}</span>
+      <Eyebrow>{pathway.eyebrow}</Eyebrow>
+      <Heading as="h3" variant="card">{pathway.title}</Heading>
+      <Text>{pathway.copy}</Text>
+      <span className={styles.cardAction}>{pathway.action}</span>
+    </Link>
+  );
+}
 
 export default async function HomePage() {
   const review = await getGoogleRating();
@@ -202,7 +229,10 @@ export default async function HomePage() {
                 <div><dt>Configuration</dt><dd>Freestanding gable</dd></div>
                 <div><dt>Roof and ceiling</dt><dd>Solid and clear acrylic zones with cedar lining</dd></div>
               </dl>
-              <MobileDisclosure summary="View the design response">
+              <MobileDisclosure
+                summary="View the design response"
+                eventName="featured_project_response_expand"
+              >
                 <div className={styles.projectEvidence}>
                   <div>
                     <h3>Design constraint</h3>
@@ -225,6 +255,79 @@ export default async function HomePage() {
         </Container>
       </Section>
 
+      <Section aria-labelledby="project-pathways">
+        <Container width="wide">
+          <div className={styles.sectionIntro}>
+            <div>
+              <Eyebrow>Choose the right starting point</Eyebrow>
+              <Heading id="project-pathways">Different briefs need different pathways.</Heading>
+            </div>
+            <Text className={styles.mobileSecondaryCopy}>Use the route that best matches the project today. The form, material and detailed scope can follow once the right context is clear.</Text>
+          </div>
+          <div className={styles.pathwayGrid}>
+            {visitorPathways.slice(0, 2).map((pathway, index) => (
+              <PathwayCard index={index} key={pathway.title} pathway={pathway} />
+            ))}
+            <MobileDisclosure
+              className={styles.pathwayDisclosure}
+              summary="Other project types"
+              eventName="project_types_expand"
+            >
+              <div className={styles.pathwayDisclosureGrid}>
+                {visitorPathways.slice(2).map((pathway, index) => (
+                  <PathwayCard index={index + 2} key={pathway.title} pathway={pathway} />
+                ))}
+              </div>
+            </MobileDisclosure>
+          </div>
+        </Container>
+      </Section>
+
+      <Section className={styles.mobileSelectedProjects} aria-labelledby="mobile-selected-projects">
+        <Container width="wide">
+          <div className={styles.galleryHeader}>
+            <div>
+              <Eyebrow>Selected work</Eyebrow>
+              <Heading id="mobile-selected-projects">Built across different sites and briefs.</Heading>
+            </div>
+            <TextLink href="/projects" data-homepage-event="project_gallery_click">View all projects</TextLink>
+          </div>
+          <div className={styles.mobileProjectPreviewGrid}>
+            {mobileSelectedProjects.map(({ project, configuration, roofApproach }) => (
+              <article className={styles.mobileProjectPreviewCard} key={project.slug}>
+                <Link
+                  className={styles.mobileProjectPreviewMedia}
+                  href={`/projects/${project.slug}`}
+                  data-homepage-event="project_case_study_click"
+                  data-homepage-item={project.slug}
+                  aria-label={`View ${project.title}`}
+                >
+                  <Image
+                    src={project.heroImage.src}
+                    alt={project.heroImage.alt}
+                    fill
+                    quality={75}
+                    sizes="(max-width: 640px) calc(100vw - 2.5rem), 1px"
+                    style={{ objectFit: 'cover', objectPosition: project.heroImage.objectPosition }}
+                  />
+                </Link>
+                <div className={styles.mobileProjectPreviewCopy}>
+                  <Heading as="h3" variant="card">{project.title}</Heading>
+                  <p>{[project.location, projectDimensions(project), configuration, roofApproach].filter(Boolean).join(' / ')}</p>
+                  <TextLink
+                    href={`/projects/${project.slug}`}
+                    data-homepage-event="project_case_study_click"
+                    data-homepage-item={project.slug}
+                  >
+                    View project
+                  </TextLink>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Container>
+      </Section>
+
       <Section tone="warm" aria-labelledby="sanctuary-design-approach">
         <Container>
           <div className={styles.sectionIntro}>
@@ -234,41 +337,15 @@ export default async function HomePage() {
             </div>
             <div className={styles.introAction}>
               <Text>Each decision is made in context so the structure, roof and room below it support the same brief.</Text>
-              <TextLink href="/custom-pergolas-auckland" data-homepage-event="approach_click">See our design and build approach</TextLink>
+              <TextLink href="/custom-pergolas-auckland" data-homepage-event="approach_click">Explore custom design capability</TextLink>
             </div>
           </div>
-          <MobileDisclosure summary="View the three design principles">
+          <MobileDisclosure
+            summary="View the three design principles"
+            eventName="design_principles_expand"
+          >
             <NumberedPrinciples items={designPrinciples.map((item) => ({ ...item }))} />
           </MobileDisclosure>
-        </Container>
-      </Section>
-
-      <Section className={styles.mobileHiddenPathways} aria-labelledby="project-pathways">
-        <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Choose the right starting point</Eyebrow>
-              <Heading id="project-pathways">Different briefs need different pathways.</Heading>
-            </div>
-            <Text>Use the route that best matches the project today. The form, material and detailed scope can follow once the right context is clear.</Text>
-          </div>
-          <div className={styles.pathwayGrid}>
-            {visitorPathways.map((pathway, index) => (
-              <Link
-                className={styles.pathwayCard}
-                href={pathway.href}
-                key={pathway.title}
-                data-homepage-event={pathway.event}
-                data-homepage-item={pathway.eyebrow}
-              >
-                <span className={styles.cardNumber}>{String(index + 1).padStart(2, '0')}</span>
-                <Eyebrow>{pathway.eyebrow}</Eyebrow>
-                <Heading as="h3" variant="card">{pathway.title}</Heading>
-                <Text>{pathway.copy}</Text>
-                <span className={styles.cardAction}>{pathway.action}</span>
-              </Link>
-            ))}
-          </div>
         </Container>
       </Section>
 
@@ -290,7 +367,7 @@ export default async function HomePage() {
             </div>
             <div className={styles.introAction}>
               <Text>Available height, roofline, drainage, proportion and the area to cover help determine which geometry belongs on the site.</Text>
-              <TextLink href="/pergolas-auckland#roof-form-options" data-homepage-event="pergola_forms_compare_click">Compare pergola forms</TextLink>
+              <TextLink href="/products" data-homepage-event="pergola_forms_compare_click">Compare pergola forms</TextLink>
             </div>
           </div>
           <div className={styles.roofIndex}>
@@ -304,6 +381,16 @@ export default async function HomePage() {
             <div className={styles.roofRows}>
               {roofForms.map((roof, index) => (
                 <article className={styles.roofRow} key={roof.title}>
+                  <div className={styles.roofFormMedia}>
+                    <Image
+                      src={roof.image}
+                      alt={roof.alt}
+                      fill
+                      quality={75}
+                      sizes="(max-width: 640px) calc(50vw - 1.9rem), 1px"
+                      style={{ objectFit: 'cover', objectPosition: roof.objectPosition }}
+                    />
+                  </div>
                   <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
                   <Heading as="h3" variant="card">{roof.title}</Heading>
                   <Text size="small">{roof.copy}</Text>
@@ -327,8 +414,19 @@ export default async function HomePage() {
           <div className={styles.roofApproachGrid}>
             {roofApproaches.map((approach, index) => (
               <article className={styles.roofApproachCard} key={approach.title}>
+                <div className={styles.roofApproachMedia}>
+                  <Image
+                    src={approach.image}
+                    alt={approach.alt}
+                    fill
+                    quality={75}
+                    unoptimized={approach.image.endsWith('.webp')}
+                    sizes="(max-width: 640px) calc(100vw - 2.5rem), 1px"
+                    style={{ objectFit: 'cover', objectPosition: approach.objectPosition }}
+                  />
+                </div>
                 <span className={styles.cardNumber}>{String(index + 1).padStart(2, '0')}</span>
-                <Eyebrow>Roof approach</Eyebrow>
+                <Eyebrow className={styles.mobileRoofEyebrow}>Roof approach</Eyebrow>
                 <Heading as="h3" variant="card">{approach.title}</Heading>
                 <Text>{approach.copy}</Text>
                 <TextLink href={approach.href} data-homepage-event="roof_approach_click" data-homepage-item={approach.title}>{approach.action}</TextLink>
@@ -336,7 +434,10 @@ export default async function HomePage() {
             ))}
           </div>
           <div className={styles.materialContext}>
-            <MobileDisclosure summary="View structure and detailing notes">
+            <MobileDisclosure
+              summary="How the roof is resolved"
+              eventName="roof_resolution_expand"
+            >
               <SpecificationRows
                 rows={[
                   { label: 'Structure', value: 'Architectural aluminium framing, with steel where project requirements demand it' },
@@ -367,7 +468,10 @@ export default async function HomePage() {
               detail="Roof, ceiling and lighting coordinated together"
               className={styles.integrationFigure}
             />
-            <MobileDisclosure summary="View integrated comfort options">
+            <MobileDisclosure
+              summary="View integrated comfort options"
+              eventName="integrated_options_expand"
+            >
               <div className={styles.integrationRows}>
                 {integratedOptions.map((option, index) => (
                   <article className={styles.integrationRow} key={option.title}>
@@ -385,7 +489,7 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section aria-labelledby="selected-projects">
+      <Section className={styles.desktopSelectedProjects} aria-labelledby="selected-projects">
         <Container width="wide">
           <div className={styles.galleryHeader}>
             <div>
@@ -419,9 +523,27 @@ export default async function HomePage() {
             </div>
             <Text>The programme and on-site sequence depend on the completed scope, access, approvals, materials and current schedule. They are confirmed for the project in writing.</Text>
           </div>
-          <MobileDisclosure summary="View the five-stage process">
+          <div className={styles.desktopProcess}>
             <ProcessSteps items={processSteps.map((item) => ({ ...item }))} />
-          </MobileDisclosure>
+          </div>
+          <ol className={styles.mobileProcess}>
+            {processSteps.map((step, index) => (
+              <li key={step.title}>
+                <details
+                  open={index === 0}
+                  data-homepage-toggle-event="process_item_expand"
+                  data-homepage-item={step.title}
+                >
+                  <summary>
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    <Heading as="h3" variant="card">{step.title}</Heading>
+                    <span className={styles.mobileDisclosureIcon} aria-hidden="true" />
+                  </summary>
+                  <Text>{step.copy}</Text>
+                </details>
+              </li>
+            ))}
+          </ol>
           <div className={styles.processAction}>
             <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="process_enquiry_click">Start with your project details</Button>
           </div>
@@ -450,22 +572,14 @@ export default async function HomePage() {
               Read all reviews on Google
             </a>
           </div>
+          <MobileReviewCarousel
+            count={review.count}
+            rating={ratingText}
+            reviews={selectedReviews}
+            reviewsUrl={GOOGLE_PLACE.reviewsUrl}
+          />
         </Container>
       </Section>
-
-      <figure className={styles.mobileProjectBreak}>
-        <div className={styles.mobileProjectBreakMedia}>
-          <Image
-            src="/images/project-tindalls-bay.jpg"
-            alt="Coastal pergola pavilion overlooking Tindalls Bay"
-            fill
-            quality={75}
-            sizes="(max-width: 640px) 100vw, 1px"
-            style={{ objectFit: 'cover', objectPosition: '50% 42%' }}
-          />
-        </div>
-        <figcaption>Tindalls Bay / Patio and carport</figcaption>
-      </figure>
 
       <Section tone="neutral" aria-labelledby="project-assurances">
         <Container>
@@ -474,9 +588,12 @@ export default async function HomePage() {
               <Eyebrow>Project-specific assurances</Eyebrow>
               <Heading id="project-assurances">Clear expectations before site work begins.</Heading>
             </div>
-            <Text>Before site work begins, Sanctuary records the agreed design, materials, inclusions, exclusions, current programme and applicable warranty information in writing.</Text>
+            <Text className={styles.mobileSecondaryCopy}>Before site work begins, Sanctuary records the agreed design, materials, inclusions, exclusions, current programme and applicable warranty information in writing.</Text>
           </div>
-          <MobileDisclosure summary="View project assurance details">
+          <MobileDisclosure
+            summary="What is confirmed before work begins"
+            eventName="assurance_expand"
+          >
             <SpecificationRows
               rows={[
                 { label: 'Written scope', value: 'Design, materials, inclusions and exclusions recorded for approval' },
@@ -492,33 +609,30 @@ export default async function HomePage() {
 
       <Section aria-labelledby="pergola-guide-pathways">
         <Container width="wide">
-          <div className={styles.sectionIntro}>
+          <div className={styles.guideGateway}>
             <div>
-              <Eyebrow>Pergola design library</Eyebrow>
-              <Heading id="pergola-guide-pathways">Continue with the question you need answered.</Heading>
+              <Eyebrow>Planning guides</Eyebrow>
+              <Heading id="pergola-guide-pathways">Still working through the options?</Heading>
+              <Text>Compare cost, roof approaches and complete outdoor-room planning before making an enquiry.</Text>
             </div>
-            <div className={styles.introAction}>
-              <Text>Use the guide library to continue with the decision that matters most to your project.</Text>
-              <TextLink href="/pergola-guides" data-homepage-event="guide_gateway_click">Explore the pergola guides</TextLink>
-            </div>
-          </div>
-          <MobileDisclosure summary="Browse individual guide topics">
-            <div className={styles.guideGrid}>
+            <nav aria-label="Featured pergola guides">
+              <ul className={styles.guideLinks}>
               {guidePathways.map((guide) => (
-                <Link
-                  href={guide.href}
-                  className={styles.guideCard}
-                  key={guide.title}
-                  data-homepage-event="guide_pathway_click"
-                  data-homepage-item={guide.title}
-                >
-                  <Heading as="h3" variant="card">{guide.title}</Heading>
-                  <Text>{guide.copy}</Text>
-                  <span className={styles.cardAction}>Open this guide</span>
-                </Link>
+                <li key={guide.title}>
+                  <Link
+                    href={guide.href}
+                    data-homepage-event="guide_pathway_click"
+                    data-homepage-item={guide.title}
+                  >
+                    <span>{guide.title}</span>
+                    <span>{guide.copy}</span>
+                  </Link>
+                </li>
               ))}
-            </div>
-          </MobileDisclosure>
+              </ul>
+            </nav>
+            <TextLink href="/pergola-guides" data-homepage-event="guide_gateway_click">Explore all pergola guides</TextLink>
+          </div>
         </Container>
       </Section>
 
@@ -534,16 +648,25 @@ export default async function HomePage() {
               <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="final_enquiry_click">Send your project details</Button>
             </div>
             <nav className={styles.secondaryPathways} aria-label="Alternative enquiry pathways">
-              <TextLink href="/commercial-pergolas-auckland#project-details" data-homepage-event="commercial_pathway_click">Commercial enquiries</TextLink>
-              <TextLink href="/contact?enquiry=professional#contact-form" data-homepage-event="professional_pathway_click">Architects, designers and builders</TextLink>
+              <TextLink href="/commercial-pergolas-auckland#project-details" data-homepage-event="commercial_pathway_click">Discuss a commercial project</TextLink>
+              <TextLink href="/contact?enquiry=professional#contact-form" data-homepage-event="professional_pathway_click">Send plans or a project brief</TextLink>
               <TextLink href="/contact#contact-form" data-homepage-event="general_contact_click">General contact questions</TextLink>
             </nav>
           </div>
           <div className={styles.finalChecklist}>
             <h3>Useful first inputs</h3>
             <ul>
-              {finalEnquiryChecklist.map((item) => <li key={item}>{item}</li>)}
+              {finalEnquiryChecklist.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
             </ul>
+            <MobileDisclosure
+              className={styles.finalChecklistDisclosure}
+              summary="More helpful project information"
+              eventName="enquiry_inputs_expand"
+            >
+              <ul>
+                {finalEnquiryChecklist.slice(3).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </MobileDisclosure>
           </div>
         </Container>
       </Section>

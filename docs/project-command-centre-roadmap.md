@@ -1,10 +1,11 @@
 # Project Operational Command Centre Roadmap
 
 Status: Active programme tracker  
-Current stage: Stage 2 implementation and verification
+Current stage: Stage 2 environment verification
 Product definition: Complete  
-Implementation: Stage 1 committed locally at `8770198f`; Stage 2 repository implementation complete and awaiting environment gates
-Next action: Apply the ordered Stage 2 migration in a disposable/staging Supabase environment, then run authenticated real-project Playwright with a dedicated safe mutation project
+Implementation: Stages 1 and 2 are present in the current repository; Stage 2 remains Yellow pending environment gates
+Next action: Apply ordered migrations `20260720_000008_project_command_centre_stage2.sql` and `20260721_000001_project_command_single_owner.sql` in a disposable/staging Supabase environment, then run authenticated real-project Playwright with dedicated safe mutation and conflict projects
+Next implementation stage after those gates: Stage 3 - Lead-to-quote workstreams
 
 ## Index
 
@@ -133,7 +134,7 @@ Read-only information derived from existing trusted data wherever possible.
 
 #### Status
 
-Complete in local commit `8770198f`; not published.
+Complete in commit `8770198f`, which is present in the current repository history.
 
 ---
 
@@ -169,7 +170,7 @@ Ownership, primary-action selection, controlled actions, audit history, and dash
 
 #### Status
 
-Repository implementation complete. The product contract, canonical migration, selector/domain APIs, project/dashboard UI, automation cutover, compatibility projection, legacy writer retirement, and repository-local gates are complete. Stage completion remains Yellow until the migration passes an executable PostgreSQL/Supabase smoke and authenticated real-project Playwright passes with provisioned staff credentials and a dedicated safe mutation project.
+Repository implementation complete. The product contract, both canonical migrations, selector/domain APIs, project/dashboard UI, automation cutover, compatibility projection, legacy writer retirement, and repository-local gates are complete. Stage completion remains Yellow until both ordered migrations pass an executable PostgreSQL/Supabase smoke and authenticated real-project Playwright passes with provisioned staff credentials plus dedicated safe mutation and conflict projects.
 
 ---
 
@@ -318,8 +319,8 @@ Not started.
 | --- | --- | --- | --- |
 | Product definition | Complete | - | Vision, V1 specification, roadmap, and Stage 0 prompt approved |
 | Stage 0: Repository assessment | Complete | - | Repository-grounded architecture, ownership, boundary, risk, and Stage 1 sequence recorded against baseline `ea1641c6` |
-| Stage 1: Read-only shell | Complete in `8770198f` | Not published | Strict read model/API/query, Overview UI, legacy retirement, deterministic fixtures, focused/project/browser/performance tests, typecheck, lint, isolated production build, and unchanged bundle-budget assertions |
-| Stage 2: Ownership and primary action | Repository complete; environment gates pending | - | Canonical ownership/actions/audit migration, selector, APIs, Overview/header/dashboard UI, automation persistence extraction, and legacy writer retirement implemented. Local evidence: 335/335 project tests, 18/18 fixture Playwright checks, full typecheck/lint, isolated 66-page production build, unchanged six-route bundle budgets, architecture/docs/dead-code guards. Executable migration smoke and authenticated real-project Playwright remain required. |
+| Stage 1: Read-only shell | Complete in `8770198f` | Present in current repository history | Strict read model/API/query, Overview UI, legacy retirement, deterministic fixtures, focused/project/browser/performance tests, typecheck, lint, isolated production build, and unchanged bundle-budget assertions |
+| Stage 2: Ownership and primary action | Repository complete; environment gates pending | Present in current repository history | Canonical ownership/actions/audit migrations, selector, APIs, Overview/header/dashboard UI, automation persistence extraction, and legacy writer retirement implemented. Local evidence: 335/335 project tests, 18/18 fixture Playwright checks, full typecheck/lint, isolated 66-page production build, unchanged six-route bundle budgets, architecture/docs/dead-code guards. Executable smoke for both ordered migrations and authenticated real-project Playwright remain required. |
 | Stage 3: Lead-to-quote workstreams | Not started | - | - |
 | Stage 4: Communication and timeline | Not started | - | - |
 | Stage 5: Exceptions and approvals | Not started | - | - |
@@ -358,15 +359,15 @@ Not started.
 ## Stage 1 handoff
 
 ```text
-Stage completed: Stage 1 - Read-only Command Centre shell
-Pull request: None; committed locally, not published
+Historical stage handoff: Stage 1 - Read-only Command Centre shell
+Pull request at the time: None recorded; commit `8770198f` is now present in current repository history
 Repository baseline: 8770198f
-Product behaviour delivered: Overview default label; strict current quote/estimate, source, price, delivery, and costing-freshness read model; existing customer context, notes, tasks, Details, and specialist workflows retained
+Product behaviour delivered at Stage 1: Overview default label; strict current quote/estimate, source, price, delivery, and costing-freshness read model; existing customer context, notes, tasks, Details, and specialist workflows retained. Later project-shell work consolidated Details into Overview, replaced the legacy project estimate surface with Calculator, grouped Quotes/Invoices in Commercial, and retired the Emails UI.
 Verification completed: selector/loader/route/component/access tests; 322 project tests; 15 browser checks passed with 1 conditional workbench skip; 9 fixture performance checks; repository typecheck and lint; isolated production build; all unchanged bundle budgets; docs, architecture, file, ownership, and strict dead-code reports
 Known limitations: authenticated smoke and production performance could not be rerun locally because PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD were unavailable; the canonical build preflight was correctly blocked by the user's pre-existing port-3001 dev server, so the same production build and budget assertions ran against an isolated Next output directory
 Architecture document updates: Stage 0 repository contract completed and Stage 1 implementation/evidence recorded
-Roadmap updates: Stage 0 and Stage 1 complete; Stage 2 baseline begins at `8770198f`
-Next approved stage: Stage 2 - Ownership and primary next action.
+Roadmap updates at the time: Stage 0 and Stage 1 complete; Stage 2 baseline begins at `8770198f`
+Current next implementation stage after Stage 2 environment gates: Stage 3 - Lead-to-quote workstreams.
 ```
 
 ## Stage handoff template

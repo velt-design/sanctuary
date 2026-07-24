@@ -10,21 +10,30 @@ This doc combines operational controls for tracking, consent, security, and qual
 
 Optional categories must not load before explicit consent.
 
+The initial browser state denies both optional categories. GA loads only after
+analytics consent; Meta and ArchiPro load only after marketing consent; GTM
+loads after either relevant category and receives a consent-mode update that
+keeps the other category denied. There is no
+GTM noscript iframe or other unconditional vendor request. Consent updates are
+queued before a newly permitted loader runs, and declining or not choosing
+causes no GA, GTM, Meta, or ArchiPro network request. The executable browser
+boundary is `playwright/marketing.consent.spec.ts`.
+
 ## Tracking Register
 
 | Integration | Category | Load Path | Purpose | Owner |
 | --- | --- | --- | --- | --- |
-| Google Tag Manager | analytics / marketing | `apps/marketing/components/GoogleTagManager.tsx` | Container for Google Ads conversion tags, conversion linker, and future vendor tags; consent defaults are denied before the container loads | Marketing and Engineering |
+| Google Tag Manager | analytics / marketing | `apps/marketing/components/GoogleTagManager.tsx` | Container for Google Ads conversion tags, conversion linker, and future vendor tags; it loads only after at least one relevant optional category is explicitly granted and receives the exact category consent state first | Marketing and Engineering |
 | Google Analytics GA4 | analytics | `apps/marketing/components/Analytics.tsx`, `apps/marketing/app/runtime-ga.js/route.ts` | Page and Web Vitals analytics | Marketing and Engineering |
 | Google Ads attribution foundation | marketing | `apps/marketing/lib/attribution.ts`, `apps/marketing/app/api/enquiry/route.ts`, portal `audit_events` | Captures UTM plus `gclid`/`gbraid`/`wbraid` for new enquiries and records high-value lifecycle milestones for later Ads import | Marketing and Engineering |
 | Meta Pixel browser | marketing | `apps/marketing/components/MetaPixel.tsx`, `apps/marketing/app/runtime-meta.js/route.ts` | Browser-side lead attribution | Marketing |
-| Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Server-side lead conversion reporting | Marketing and Engineering |
+| Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Legacy server-side lead conversion reporting; requires an explicit marketing-consent flag | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
-| Homepage interaction events | analytics | `apps/marketing/app/home-v2/HomepageInteractionTracker.tsx` | Distinguishes non-PII hero, pathway, product, project, guide and enquiry-link interactions on `/` after analytics consent | Marketing and Engineering |
+| Homepage interaction events | analytics | `apps/marketing/app/home-v2/HomepageInteractionTracker.tsx` | Distinguishes non-PII hero, pathway, product, project, disclosure, review-control, guide and enquiry-link interactions on `/` after analytics consent, segmented by mobile, tablet or desktop viewport | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
-Homepage interaction events contain only the stable event name, homepage variant, link destination and optional editorial card label. They do not contain form values, photos, dimensions, contact details or other project/customer data, and the route-local listener is inactive unless analytics consent is granted. Homepage enquiry links may pass the non-sensitive `residential`, `commercial` or `professional` enquiry type so the contact form opens on the promised pathway; no customer-entered data is placed in the URL.
+Homepage interaction events contain only the stable event name, homepage variant, viewport category, link destination and optional editorial card label. They do not contain form values, photos, dimensions, contact details or other project/customer data, and the route-local listener is inactive unless analytics consent is granted. Homepage enquiry links may pass the non-sensitive `residential`, `commercial` or `professional` enquiry type so the contact form opens on the promised pathway; no customer-entered data is placed in the URL.
 
 ## Portal Operational Performance Telemetry
 
@@ -32,7 +41,7 @@ Authenticated portal Web Vitals are operational telemetry, not marketing analyti
 
 The event contract accepts only a closed route-template allowlist, metric value/rating, navigation type, device class, and an optional build ID. Raw URLs, query strings, record IDs, names, email addresses, user IDs, user-agent strings, and free-form text are not accepted or stored. Staff may insert through the authenticated route; only admins may read the grouped 7- or 30-day p75/p95 summary. Clients cannot update or delete metrics. A locked-down daily database job deletes rows older than 30 days.
 
-GTM migration note: the coded GA4 loader remains active while the GTM container is being configured. The public enquiry form pushes a non-PII `lead_submitted` dataLayer event after `/api/enquiry` succeeds so Google Ads conversion tracking can trigger without relying on a thank-you page. Server-side forward attribution now records `marketing.lead_submitted`, `marketing.site_visit_booked`, `marketing.quote_accepted`, and `marketing.deposit_received` in `audit_events`; Google Ads API upload/enhanced conversions remain a later integration once conversion action IDs and credentials are available. Once GA4 and Google Ads conversion tags are owned by GTM, remove or disable the coded GA4 loader to avoid duplicate page view or event reporting.
+GTM migration note: the coded GA4 loader remains active while the GTM container is being configured. The public enquiry form pushes a non-PII `lead_submitted` dataLayer event after `/api/enquiry` succeeds so Google Ads conversion tracking can trigger without relying on a thank-you page, but no vendor runtime can transmit it until its consent boundary opens. Server-side forward attribution now records `marketing.lead_submitted`, `marketing.site_visit_booked`, `marketing.quote_accepted`, and `marketing.deposit_received` in `audit_events`; Google Ads API upload/enhanced conversions remain a later integration once conversion action IDs and credentials are available. Once GA4 and Google Ads conversion tags are owned by GTM, remove or disable the coded GA4 loader to avoid duplicate page view or event reporting.
 
 ## Durable Background-Job Boundary
 
@@ -64,6 +73,8 @@ Commit `db20ed2e` removed tracked private-key material after the repository secu
 - Use portal auth helpers for staff/admin API routes.
 - No-auth QA routes must be disabled by default, render baked sample data only, and must not initiate domain/customer-table reads. The project-mutation timing fixture requires `ENABLE_PORTAL_QA_FIXTURES=1`; its intercepted sample request must never contain a customer or durable record ID.
 - Keep public quote and invoice flows token-bound.
+- Resolve quote and invoice token expiry through `apps/marketing/lib/publicTokenAccess.ts` before loading customer-facing records, artifacts, or mutations. Expired tokens must not render quote/invoice data, accept a quote, download invoice/source-quote PDFs, or download quote attachments.
+- Public enquiry submission and attachment signing must pass same-origin/allowlisted-origin checks and durable database rate limits. Stored attachments require an unexpired submission-bound upload session, strict metadata plus content-signature validation, and private-bucket cleanup for abandoned uploads.
 - Keep automation, email outbox, and audit side effects aligned with `docs/automation-email-audit.md`.
 - Keep durable background-job messages minimal and payloads private; keep all worker access behind service-role RPCs and every worker-owned payload read/mutation lease-fenced.
 - Keep provider transport and webhook verification in `@sp/email-provider`; app adapters and routes may expose only typed safe failures and verified correlation fields.

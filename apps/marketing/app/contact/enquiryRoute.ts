@@ -6,7 +6,15 @@ const enquiryTypesByRouteValue: Record<string, EnquiryType> = {
   professional: 'Professional',
 };
 
-export function getEnquiryTypeFromSearch(search: string): EnquiryType | null {
-  const routeValue = new URLSearchParams(search).get('enquiry')?.trim().toLowerCase();
+export function getEnquiryTypeFromRouteValue(
+  value: string | undefined,
+): EnquiryType | null {
+  const routeValue = value?.trim().toLowerCase();
   return routeValue ? enquiryTypesByRouteValue[routeValue] ?? null : null;
+}
+
+export function getEnquiryTypeFromSearch(search: string): EnquiryType | null {
+  return getEnquiryTypeFromRouteValue(
+    new URLSearchParams(search).get('enquiry') ?? undefined,
+  );
 }

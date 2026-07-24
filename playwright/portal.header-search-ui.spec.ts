@@ -229,8 +229,14 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   await expect(page.locator(`[data-project-id="${projectAId}"]:visible`)).toHaveCount(1);
   await expectSearchRouteSettled(page, projectAHref!);
 
+  // At this width the project command row becomes horizontally scrollable.
+  // The search overlay must live at the viewport level so that row cannot clip it.
+  await page.setViewportSize({ width: 1280, height: 800 });
   const projectASearch = page.getByRole('combobox', { name: 'Search projects and contacts' });
   await projectASearch.fill('switch');
+  const projectSearchPanel = page.locator('[data-global-search-panel="true"]');
+  await expect(projectSearchPanel).toBeVisible();
+  expect(await projectSearchPanel.evaluate((element) => element.parentElement === document.body)).toBe(true);
   const switchResults = page.getByRole('listbox', { name: 'Portal search results' });
   const projectBOption = switchResults.getByRole('option', { name: /Switch to project B/ });
   await expect(projectBOption).toBeVisible();
@@ -262,6 +268,7 @@ test('shared search handles project-to-project mouse, keyboard, current, and mob
   await expect(currentSearch).toHaveValue('');
   await expect(page.locator('[data-global-search-panel="true"]')).toHaveCount(0);
 
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/dashboard');
   await expect(page.locator('[data-ui-foundation-consumer="dashboard"]:visible')).toHaveAttribute(
     'data-dashboard-state',

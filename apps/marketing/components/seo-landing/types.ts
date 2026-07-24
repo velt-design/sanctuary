@@ -8,6 +8,7 @@ type ProjectProofItem = {
   label: string;
   summary: string;
   facts?: readonly string[];
+  image?: { src: string; alt: string; objectPosition?: string };
 };
 
 export type EnquiryBriefField = {

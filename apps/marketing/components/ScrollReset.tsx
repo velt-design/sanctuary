@@ -26,11 +26,9 @@ export default function ScrollReset() {
       // Reset any route-level scroll containers we use
       const selectors = [
         '.two-col-page',
-        '.product-page',
-        '.products-index',
+        '[data-products-index]',
+        '[data-product-detail]',
         '.projects-experience',
-        '.product-left-scroller',
-        '.product-right-scroller',
       ];
       document
         .querySelectorAll<HTMLElement>(selectors.join(','))

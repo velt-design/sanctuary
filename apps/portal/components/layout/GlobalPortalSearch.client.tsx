@@ -13,12 +13,15 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   shouldHandleRouteTransitionClick,
   shouldStartRouteTransitionForHref,
@@ -43,7 +46,48 @@ import styles from './GlobalPortalSearch.module.css';
 
 type SearchState = 'idle' | 'loading' | 'results' | 'empty' | 'error';
 type SearchResult = PortalProjectSearchResult | PortalContactSearchResult;
+type SearchPanelPlacement = Pick<CSSProperties, 'left' | 'maxHeight' | 'top' | 'width'>;
 const SEARCH_NAVIGATION_TIMEOUT_MS = 8000;
+const SEARCH_PANEL_GAP_PX = 4;
+const SEARCH_PANEL_GUTTER_PX = 16;
+const SEARCH_PANEL_MIN_HEIGHT_PX = 120;
+const SEARCH_PANEL_DESKTOP_MAX_HEIGHT_PX = 620;
+const SEARCH_PANEL_MOBILE_MAX_HEIGHT_PX = 520;
+const SEARCH_PANEL_DESKTOP_WIDTH_PX = 560;
+const SEARCH_PANEL_MOBILE_MIN_WIDTH_PX = 280;
+const SEARCH_PANEL_MOBILE_BREAKPOINT_PX = 767;
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function resolveSearchPanelPlacement(anchor: HTMLElement): SearchPanelPlacement {
+  const rect = anchor.getBoundingClientRect();
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+  const availableWidth = Math.max(0, viewportWidth - (SEARCH_PANEL_GUTTER_PX * 2));
+  const mobile = viewportWidth <= SEARCH_PANEL_MOBILE_BREAKPOINT_PX;
+  const width = Math.min(
+    mobile
+      ? Math.max(rect.width, SEARCH_PANEL_MOBILE_MIN_WIDTH_PX)
+      : SEARCH_PANEL_DESKTOP_WIDTH_PX,
+    availableWidth,
+  );
+  const left = clamp(
+    rect.right - width,
+    SEARCH_PANEL_GUTTER_PX,
+    Math.max(SEARCH_PANEL_GUTTER_PX, viewportWidth - SEARCH_PANEL_GUTTER_PX - width),
+  );
+  const maximumHeight = mobile
+    ? SEARCH_PANEL_MOBILE_MAX_HEIGHT_PX
+    : SEARCH_PANEL_DESKTOP_MAX_HEIGHT_PX;
+  const spaceBelow = viewportHeight - rect.bottom - SEARCH_PANEL_GAP_PX - SEARCH_PANEL_GUTTER_PX;
+  const availableHeight = Math.max(SEARCH_PANEL_MIN_HEIGHT_PX, spaceBelow);
+  const maxHeight = Math.min(maximumHeight, availableHeight);
+  const top = rect.bottom + SEARCH_PANEL_GAP_PX;
+
+  return { left, maxHeight, top, width };
+}
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -81,6 +125,7 @@ function ActiveGlobalPortalSearch({
   const { beginRouteTransition } = routeTransition;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const navigationStartRouteKeyRef = useRef<string | null>(null);
   const listboxId = useId();
   const [query, setQuery] = useState('');
@@ -88,6 +133,7 @@ function ActiveGlobalPortalSearch({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
+  const [panelPlacement, setPanelPlacement] = useState<SearchPanelPlacement | null>(null);
   const trimmedQuery = query.trim();
   const normalizedQuery = normalizePortalSearchQuery(trimmedQuery);
   const searchEnabled = normalizedQuery.length >= PORTAL_SEARCH_MIN_LENGTH;
@@ -160,11 +206,40 @@ function ActiveGlobalPortalSearch({
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (
+        !rootRef.current?.contains(target)
+        && !panelRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !rootRef.current) {
+      setPanelPlacement(null);
+      return;
+    }
+
+    const anchor = rootRef.current;
+    const updatePlacement = () => setPanelPlacement(resolveSearchPanelPlacement(anchor));
+    updatePlacement();
+    window.addEventListener('resize', updatePlacement);
+    window.addEventListener('scroll', updatePlacement, true);
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updatePlacement);
+    resizeObserver?.observe(anchor);
+
+    return () => {
+      window.removeEventListener('resize', updatePlacement);
+      window.removeEventListener('scroll', updatePlacement, true);
+      resizeObserver?.disconnect();
+    };
+  }, [open]);
 
   useEffect(() => {
     setActiveIndex(-1);
@@ -317,8 +392,13 @@ function ActiveGlobalPortalSearch({
         {state === 'loading' || refreshing || navigatingHref ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <kbd>Ctrl K</kbd>}
       </div>
 
-      {showPanel ? (
-        <div className={styles.panel} data-global-search-panel="true">
+      {showPanel && panelPlacement ? createPortal((
+        <div
+          ref={panelRef}
+          className={styles.panel}
+          data-global-search-panel="true"
+          style={{ ...panelPlacement, position: 'fixed' }}
+        >
           {state === 'idle' ? (
             <div className={styles.message}>Type at least {PORTAL_SEARCH_MIN_LENGTH} characters to search projects and contacts.</div>
           ) : null}
@@ -391,7 +471,7 @@ function ActiveGlobalPortalSearch({
             <span>↑↓ Navigate</span><span>Enter Open</span><span>Esc Close</span>
           </div>
         </div>
-      ) : null}
+      ), document.body) : null}
     </div>
   );
 }

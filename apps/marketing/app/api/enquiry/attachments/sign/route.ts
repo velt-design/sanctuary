@@ -1,94 +1,136 @@
 import 'server-only';
-import { NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// Mint short-lived signed upload URLs so professional enquiry attachments can
-// be uploaded directly from the browser to Supabase Storage, bypassing the
-// serverless request-body limit. The bytes never flow through this function.
+import { createHash, randomBytes } from 'node:crypto';
+import { NextResponse } from 'next/server';
+import {
+  validateEnquiryAttachmentDescriptors,
+  type EnquiryAttachmentDescriptor,
+} from '@/lib/enquiryAttachmentPolicy';
+import {
+  isAllowedMarketingOrigin,
+  isUuid,
+  marketingAbuseKey,
+  readBoundedJson,
+} from '@/lib/marketingPublicRequest';
+import { getServiceSupabase } from '@/lib/supabaseService';
 
 const BUCKET = 'enquiry-attachments';
-const MAX_ATTACHMENTS = 8;
-const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20 MB across all files
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 32 * 1024;
 const MAX_NAME_LENGTH = 160;
 
 type IncomingFile = { name?: unknown; size?: unknown; type?: unknown };
 
-// Mirrors the inline service client in ../../route.ts (this route folder keeps
-// its Supabase client local rather than importing the shared lib).
-function serviceSupabaseUrl(): string {
-  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || '';
-  const serviceUrl = process.env.SUPABASE_URL?.trim() || '';
-  if (publicUrl) return publicUrl;
-  if (serviceUrl) return serviceUrl;
-  throw new Error('SUPABASE_URL is not set');
+function safeDisplayName(name: string): string {
+  const base = name.split(/[\\/]/).pop() || 'file';
+  return base.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, MAX_NAME_LENGTH) || 'file';
 }
 
-function getServiceSupabase(): SupabaseClient {
-  const url = serviceSupabaseUrl();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
-  if (!key) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
-  }
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+function safePathName(name: string): string {
+  return name.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, MAX_NAME_LENGTH) || 'file';
+}
+
+function normalizeFiles(value: unknown): EnquiryAttachmentDescriptor[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => {
+    const file = entry as IncomingFile;
+    return {
+      name: safeDisplayName(typeof file?.name === 'string' ? file.name : ''),
+      size: typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0,
+      type: typeof file?.type === 'string' ? file.type.trim().toLowerCase() : '',
+    };
   });
 }
 
-function safeName(name: string): string {
-  const base = name.split(/[\\/]/).pop() || 'file';
-  const cleaned = base.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '');
-  return cleaned.slice(0, MAX_NAME_LENGTH) || 'file';
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 export async function POST(req: Request) {
-  let body: { files?: IncomingFile[] } | null = null;
-  try {
-    body = (await req.json()) as { files?: IncomingFile[] };
-  } catch {
-    body = null;
+  if (!isAllowedMarketingOrigin(req)) {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
 
-  const files = Array.isArray(body?.files) ? (body!.files as IncomingFile[]) : [];
-  if (!files.length) {
+  const body = await readBoundedJson(req, MAX_REQUEST_BYTES).catch(() => null);
+  if (!body) {
+    return NextResponse.json({ ok: false, error: 'Invalid body' }, { status: 400 });
+  }
+
+  const submissionId = typeof body.submissionId === 'string' ? body.submissionId.trim() : '';
+  if (!isUuid(submissionId)) {
+    return NextResponse.json({ ok: false, error: 'Invalid submission ID' }, { status: 422 });
+  }
+
+  const incomingFiles = normalizeFiles(body.files);
+  if (!incomingFiles.length) {
     return NextResponse.json({ ok: false, error: 'No files' }, { status: 422 });
   }
-  if (files.length > MAX_ATTACHMENTS) {
-    return NextResponse.json({ ok: false, error: 'Too many files' }, { status: 422 });
+  const fileError = validateEnquiryAttachmentDescriptors(incomingFiles);
+  if (fileError) {
+    return NextResponse.json({ ok: false, error: fileError }, { status: 422 });
   }
 
-  let totalBytes = 0;
-  for (const file of files) {
-    const size = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0;
-    if (size <= 0 || size > MAX_FILE_BYTES) {
-      return NextResponse.json({ ok: false, error: 'Invalid file size' }, { status: 422 });
-    }
-    totalBytes += size;
-  }
-  if (totalBytes > MAX_TOTAL_BYTES) {
-    return NextResponse.json({ ok: false, error: 'Attachments exceed 20MB total' }, { status: 422 });
-  }
-
-  let supabase: SupabaseClient;
+  let supabase;
   try {
     supabase = getServiceSupabase();
   } catch {
     return NextResponse.json({ ok: false, error: 'Storage unavailable' }, { status: 503 });
   }
 
-  const submissionId = randomUUID();
-  const uploads: Array<{ path: string; signedUrl: string; token: string; name: string }> = [];
+  const uploadSessionToken = randomBytes(32).toString('base64url');
+  let abuseKey: string;
+  try {
+    abuseKey = marketingAbuseKey(req);
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Storage unavailable' }, { status: 503 });
+  }
+  const expectedFiles = incomingFiles.map((file, index) => ({
+    ...file,
+    path: `pending/${submissionId}/${index}-${safePathName(file.name)}`,
+  }));
 
-  for (let index = 0; index < files.length; index++) {
-    const rawName = typeof files[index]?.name === 'string' ? (files[index].name as string) : `file-${index}`;
-    const path = `pending/${submissionId}/${index}-${safeName(rawName)}`;
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
-    if (error || !data?.signedUrl || !data?.token) {
-      return NextResponse.json({ ok: false, error: 'Failed to prepare upload' }, { status: 500 });
-    }
-    uploads.push({ path: data.path ?? path, signedUrl: data.signedUrl, token: data.token, name: rawName });
+  const { data: prepared, error: prepareError } = await supabase.rpc(
+    'marketing_enquiry_prepare_upload_session',
+    {
+      p_submission_id: submissionId,
+      p_token_hash: sha256(uploadSessionToken),
+      p_ip_key_hash: abuseKey,
+      p_files: expectedFiles,
+      p_max_hits: 5,
+      p_window_seconds: 600,
+    },
+  );
+  if (prepareError) {
+    return NextResponse.json({ ok: false, error: 'Storage unavailable' }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true, submissionId, uploads });
+  const preparedRow = Array.isArray(prepared) ? prepared[0] : prepared;
+  if (preparedRow?.allowed !== true) {
+    const retryAfter = Math.max(1, Number(preparedRow?.retry_after_seconds) || 60);
+    return NextResponse.json(
+      { ok: false, error: 'Too many upload requests. Please try later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfter)) } },
+    );
+  }
+
+  const uploads: Array<{ path: string; signedUrl: string; token: string; name: string }> = [];
+  for (const file of expectedFiles) {
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(file.path);
+    if (error || !data?.signedUrl || !data?.token) {
+      return NextResponse.json({ ok: false, error: 'Failed to prepare upload' }, { status: 503 });
+    }
+    uploads.push({
+      path: file.path,
+      signedUrl: data.signedUrl,
+      token: data.token,
+      name: file.name,
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    submissionId,
+    uploadSessionToken,
+    expiresAt: preparedRow.expires_at ?? null,
+    uploads,
+  });
 }

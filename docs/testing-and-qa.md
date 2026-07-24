@@ -25,6 +25,7 @@ npm run dev:portal
 npm run dev:worker
 npm run test
 npm run test:marketing
+npm run test:marketing:browser
 npm run test:email-provider
 npm run test:jobs
 npm run test:jobs:db-contract
@@ -38,6 +39,57 @@ npm run typecheck
 npm run typecheck:worker
 npm run lint
 ```
+
+Marketing public-boundary changes should run the unit/domain suite, marketing
+TypeScript and ESLint, the production build, and the relevant browser specs.
+`apps/marketing/lib/publicTokenExpiry.domain.test.ts` proves expired quote and
+invoice tokens cannot read or mutate downstream resources. Enquiry coverage
+includes durable signing limits, metadata/content/path validation, cleanup,
+safe errors, atomic retry/concurrency semantics, and the migration contract.
+`playwright/marketing.consent.spec.ts` observes real requests and fails if GTM,
+GA, Meta, ArchiPro, or a GTM noscript resource loads before the corresponding
+explicit consent.
+
+Product-page changes should run
+`npx vitest run apps/marketing/data/products.test.ts` and
+`npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. The focused browser suite covers the
+product hub, one pergola form and one integrated accessory at 1440, 768 and 390
+pixel widths. Its mobile-refinement matrix adds 320, 390 and 430 pixel coverage
+for the hub, form, accessory and unpublished-evidence heater states, and it
+visits all ten detail routes at 390 pixels. The lane verifies sitemap discovery,
+one visible H1, early and final CTA continuity, both gallery placements,
+server-rendered keyboard-operable disclosure content, minimum 44 pixel targets,
+loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
+horizontal overflow, no nested content scroll and explicit handling of
+unpublished heater evidence.
+
+Contact-page changes should run
+`npx vitest run apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts`
+and
+`npx playwright test playwright/marketing.contact.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. The focused browser suite covers 320,
+390, 430, tablet and desktop widths; server-rendered query preselection;
+persistent labels and form metadata; minimum 44 pixel targets; reduced motion;
+zero textual or generated em dashes; no horizontal overflow or nested content
+scroll; focused client validation; retained values and UUID reuse after API
+failure; duplicate-submit exclusion; consent-controlled events; attribution;
+professional attachment policy errors; and metadata-only upload fallback.
+
+Project-page changes should run
+`npx vitest run apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
+and
+`npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. The project browser suite visits every
+canonical case study at 390 pixels and runs the collection plus four
+representative project states at 320, 390 and 430 pixels. It verifies one
+visible H1 and logical heading order, early and final contact actions, loaded
+and intentionally framed hero media, mobile height budgets, minimum 44 pixel
+targets, native server-rendered disclosures, selector focus and scroll
+behavior, metadata and schema, honest missing-data treatment, reduced motion,
+zero textual or generated em dashes, no horizontal overflow and no nested
+vertical content scroller. Its seven-width responsive matrix and desktop
+navigator checks provide the representative desktop regression coverage.
 
 Portal readiness sweeps:
 
@@ -285,7 +337,7 @@ The 2026-07-22 isolated project-tab pass measured the integrated UI before chang
 
 After `npm run build:portal`, run `npm run portal:bundle-budget`. It enforces initial raw/gzip, total lazy raw/gzip, and largest-lazy raw/gzip limits for Schedule, Projects Index, Contacts Index, Project Detail, Calculator, and Design Workbench. The analyser reads both Next's loadable manifests and Turbopack's emitted lazy-loader groups so an empty route loadable manifest cannot silently report zero deferred code. Turbopack may repeat route/layout CSS in a dynamic entry; CSS explicitly listed in the route manifest's `entryCSSFiles` is already loaded and is de-duplicated from lazy totals while the established initial-JavaScript baseline remains unchanged. Projects Index was measured at 687.3/197.8 KiB raw/gzip initial and 2,651.9/606.2 KiB lazy. Contacts Index was measured from the Slice 3 fresh build at 559.8/159.6 KiB initial and 120.6/19.2 KiB lazy; each limit is its fresh measurement plus 5%, rounded up to KiB. Shared shell gzip grew by about 0.7 KiB from Slice 2, within the 5 KiB allowance. `npm run schedule:bundle-budget` remains the focused compatibility wrapper and preserves the original Schedule limits. Missing or changed Next manifests fail with the fresh-build recovery command.
 
-Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. Activity remains the default workflow but now joins responsive Details and the other workflows as a truthful local lazy boundary; the project frame and tabs stay initial. The Estimate drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
+Project Detail measures about 658.1/189.5 KiB raw/gzip initial plus 1,762.9/370.9 KiB lazy (about 2,421.0/560.4 KiB combined). Its fresh-build-plus-5% limits remain below the preserved 3,014,656 raw / 757,760 gzip route cap. The activity-key Overview is the default workflow and joins Calculator, Commercial, and conditional Job Packs as truthful local lazy boundaries; the project frame and tabs stay initial. Project details and stage correction live in Overview at every width, while the retired Details rail/tab and Emails UI have no runtime boundary. The Calculator drawing surface no longer pulls Three/React Three Fiber into Project Detail: the 3D viewport loads only from exact `3D Review` intent and is accounted for by the Design Workbench route gate. That route measures about 1,583.2/385.9 KiB initial plus 942.8/247.1 KiB lazy; its split limits redistribute, but do not increase, the previous 2,681,856 raw / 671,744 gzip all-initial allowance.
 
 `npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
 
@@ -393,7 +445,7 @@ Projects:
 Design Workbench authenticated edit/save/reload:
 
 - Use a staff test account and a reversible draft estimate/design with safe fixture-like data.
-- Open `/staff/projects`, select the project, open the Designs tab, and open the drawing workbench.
+- Open `/staff/projects`, select the project, and use the project header's Design Workbench action.
 - Confirm Plan Editor, Sheet View, and 3D View are nonblank, finite, and do not show legacy fallback or unavailable text.
 - Make one reversible object-first edit such as a small roof pitch, attachment side, deck position, opening position, or house form parameter change.
 - Save the workbench, wait for the saved/clean state, reload the page, and confirm the edited value, Plan Editor, Sheet View, and 3D View persist.

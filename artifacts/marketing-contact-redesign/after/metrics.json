@@ -1,0 +1,86 @@
+{
+  "chooser-320": {
+    "documentHeight": 5288,
+    "mainHeight": 4444,
+    "formHeight": 2781,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "residential-320": {
+    "documentHeight": 5288,
+    "mainHeight": 4444,
+    "formHeight": 2781,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "chooser-390": {
+    "documentHeight": 4969,
+    "mainHeight": 4125,
+    "formHeight": 2468,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "residential-390": {
+    "documentHeight": 4969,
+    "mainHeight": 4125,
+    "formHeight": 2468,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "chooser-430": {
+    "documentHeight": 5058,
+    "mainHeight": 4126,
+    "formHeight": 2441,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "residential-430": {
+    "documentHeight": 5058,
+    "mainHeight": 4126,
+    "formHeight": 2441,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "chooser-768": {
+    "documentHeight": 4331,
+    "mainHeight": 3307,
+    "formHeight": 1753,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "residential-768": {
+    "documentHeight": 4331,
+    "mainHeight": 3307,
+    "formHeight": 1753,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "chooser-1440": {
+    "documentHeight": 4090,
+    "mainHeight": 3090,
+    "formHeight": 1986,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "residential-1440": {
+    "documentHeight": 4090,
+    "mainHeight": 3090,
+    "formHeight": 1986,
+    "visibleLabels": 19,
+    "undersizedDirectControls": []
+  },
+  "professional-390": {
+    "documentHeight": 5201,
+    "mainHeight": 4357,
+    "formHeight": 2700,
+    "visibleLabels": 21,
+    "undersizedDirectControls": []
+  },
+  "professional-1440": {
+    "documentHeight": 4327,
+    "mainHeight": 3327,
+    "formHeight": 2223,
+    "visibleLabels": 21,
+    "undersizedDirectControls": []
+  }
+}

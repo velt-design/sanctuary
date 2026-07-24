@@ -1,7 +1,7 @@
 # Project Operational Command Centre V1
 
 Status: Authoritative product contract  
-Programme stage: Stage 1 committed at `8770198f`; Stage 2 implementation in progress
+Programme stage: Stage 2 repository implementation complete; environment gates pending; Stage 3 not started
 V1 lifecycle scope: Lead received through quote outcome  
 Staff-facing default tab: `Overview`  
 Related documents:
@@ -58,7 +58,9 @@ V1 must not create a separate layout for each role. Permissions may alter sensit
 - The staff-facing default tab label becomes `Overview`.
 - The internal `activity` tab key may remain if that preserves routes, links, tests, and lazy-loading boundaries.
 - Existing notes, stage tasks, current-design information, and activity capability are retained, reorganised, or linked.
-- Existing Designs, Quotes, Invoices, conditional Job Packs, and Emails workflows remain specialist destinations with their current URL keys. Project details are consolidated into Overview.
+- The staff-facing project tabs are Overview, Calculator, Commercial, and conditional Job Packs.
+- The compatibility route keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`; Commercial groups the `quotes` and `invoices` views.
+- The standalone project Emails UI is retired. Durable email audit data, previews, and quote/invoice delivery side effects remain with their specialist owners. Project details are consolidated into Overview.
 
 ## 3. Staff decisions supported by V1
 
@@ -1927,7 +1929,7 @@ Do not store independent copies of:
 - Known data remains visible during recoverable refresh failure.
 - Quote-backed estimate locks remain authoritative.
 - Historical quote and invoice records are not repriced by the Overview.
-- Activity or Overview remains a lazy workflow boundary so project opening budgets are preserved.
+- Overview remains a lazy workflow boundary so project opening budgets are preserved.
 - Documentation changes must remain discoverable from the repository docs index and owner docs.
 
 ## 18. Controlled V1 actions

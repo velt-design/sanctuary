@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Eyebrow, Heading } from '@/components/marketing-foundation';
+import { useConsent } from '@/components/ConsentProvider';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import {
+  createEnquirySubmissionId,
+  ENQUIRY_ATTACHMENT_ACCEPT,
   ENQUIRY_ATTACHMENT_LIMITS,
   uploadEnquiryAttachments,
   validateEnquiryAttachments,
@@ -71,7 +74,12 @@ function makeEventId(): string {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function trackLeadSubmitted(enquiryType: string, eventId: string, landingPage: string): void {
+function trackLeadSubmitted(
+  enquiryType: string,
+  eventId: string,
+  landingPage: string,
+  trackingConsent: { analytics: boolean; marketing: boolean; hasStoredChoice: boolean },
+): void {
   type TrackingWindow = typeof window & {
     dataLayer?: Array<Record<string, unknown>>;
     gtag?: (...args: unknown[]) => void;
@@ -86,10 +94,17 @@ function trackLeadSubmitted(enquiryType: string, eventId: string, landingPage: s
   };
 
   try {
-    trackingWindow.gtag?.('event', 'contact_success', eventData);
-    trackingWindow.fbq?.('track', 'Lead', eventData, { eventID: eventId });
-    trackingWindow.dataLayer = trackingWindow.dataLayer || [];
-    trackingWindow.dataLayer.push({ event: 'lead_submitted', ...eventData, lead_event_id: eventId });
+    if (!trackingConsent.hasStoredChoice) return;
+    if (trackingConsent.analytics) {
+      trackingWindow.gtag?.('event', 'contact_success', eventData);
+    }
+    if (trackingConsent.marketing) {
+      trackingWindow.fbq?.('track', 'Lead', eventData, { eventID: eventId });
+    }
+    if (trackingConsent.analytics || trackingConsent.marketing) {
+      trackingWindow.dataLayer = trackingWindow.dataLayer || [];
+      trackingWindow.dataLayer.push({ event: 'lead_submitted', ...eventData, lead_event_id: eventId });
+    }
   } catch {
     // Analytics must never prevent a completed enquiry.
   }
@@ -109,9 +124,11 @@ export default function AcrylicPergolaEnquiryForm({
   briefFields = [],
   roofPreference = acrylicRoofPreference,
 }: AcrylicPergolaEnquiryFormProps = {}) {
+  const { consent, hasStoredChoice } = useConsent();
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitState, setSubmitState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const submissionIdRef = useRef<string | null>(null);
 
   const clearFieldError = (field: keyof FieldErrors) => {
     setErrors((current) => ({ ...current, [field]: undefined }));
@@ -178,7 +195,9 @@ export default function AcrylicPergolaEnquiryForm({
     setSubmitState('sending');
 
     try {
-      const attachments = await uploadEnquiryAttachments(files);
+      const submissionId = submissionIdRef.current ?? createEnquirySubmissionId();
+      submissionIdRef.current = submissionId;
+      const attachments = await uploadEnquiryAttachments(files, submissionId);
       const selectedPriorities = formData.getAll('priorities').map(String);
       const selectedAccessories = formData.getAll('accessories').map(String);
       const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
@@ -203,6 +222,8 @@ export default function AcrylicPergolaEnquiryForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          submissionId,
+          uploadSessionToken: attachments.uploadSessionToken,
           enquiryType,
           name: String(formData.get('name') ?? '').trim(),
           phone: String(formData.get('phone') ?? '').trim(),
@@ -217,7 +238,7 @@ export default function AcrylicPergolaEnquiryForm({
           style: preferredStyle === 'unsure' ? '' : preferredStyle,
           roofMaterials,
           addOns,
-          files: attachments,
+          files: attachments.files,
           projectDetails: {
             [roofPreference.detailKey]: selectedRoofPreference || null,
             attachment: String(formData.get('attachment') ?? '') || null,
@@ -238,8 +259,13 @@ export default function AcrylicPergolaEnquiryForm({
       const responsePayload = await response.json().catch(() => null);
       if (!response.ok || !responsePayload?.ok) throw new Error('SUBMIT_FAILED');
 
+      submissionIdRef.current = null;
       setSubmitState('success');
-      trackLeadSubmitted(enquiryType, makeEventId(), window.location.pathname);
+      trackLeadSubmitted(enquiryType, makeEventId(), window.location.pathname, {
+        analytics: consent.analytics,
+        marketing: consent.marketing,
+        hasStoredChoice,
+      });
     } catch {
       setSubmitState('error');
     }
@@ -377,7 +403,7 @@ export default function AcrylicPergolaEnquiryForm({
             Add photos of the proposed area from inside and outside. You can also add plans, sketches or renovation drawings.
             Up to {ENQUIRY_ATTACHMENT_LIMITS.maxFiles} files and 20 MB in total.
           </p>
-          <input id="acrylic-enquiry-files" name="files" type="file" multiple aria-describedby={`acrylic-enquiry-files-help${errors.files ? ` ${fieldErrorId('files')}` : ''}`} aria-invalid={Boolean(errors.files)} onChange={(event) => { handleFiles(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = ''; }} />
+          <input id="acrylic-enquiry-files" name="files" type="file" accept={ENQUIRY_ATTACHMENT_ACCEPT} multiple aria-describedby={`acrylic-enquiry-files-help${errors.files ? ` ${fieldErrorId('files')}` : ''}`} aria-invalid={Boolean(errors.files)} onChange={(event) => { handleFiles(Array.from(event.currentTarget.files ?? [])); event.currentTarget.value = ''; }} />
           {files.length ? (
             <ul className="acrylic-form__file-list" aria-label="Selected files">
               {files.map((file, index) => (

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { hashAcceptToken } from '@/lib/quotes/acceptToken';
+import { publicTokenAccessState } from '@/lib/publicTokenAccess';
 import { getServiceSupabase } from '@/lib/supabaseService';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -74,13 +75,6 @@ function invoiceUuidFromParam(value: string): string {
 
 function toStatus(value: unknown): InvoiceStatus {
   return String(value ?? '').toUpperCase() === 'VOID' ? 'VOID' : 'OPEN';
-}
-
-function tokenHasExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false;
-  const parsed = new Date(expiresAt);
-  if (!Number.isFinite(parsed.getTime())) return false;
-  return Date.now() > parsed.getTime();
 }
 
 function mapInvoiceRow(row: any): InvoiceRow {
@@ -180,27 +174,38 @@ async function loadInvoiceByToken(params: { invoiceId: string; token: string }):
   return mapInvoiceRow(invoiceRes.data);
 }
 
+async function loadActiveInvoiceByToken(
+  params: { invoiceId: string; token: string },
+): Promise<
+  | { row: InvoiceRow; reason?: never }
+  | { row: null; reason: 'invalid' | 'expired' }
+> {
+  const row = await loadInvoiceByToken(params);
+  if (!row) return { row: null, reason: 'invalid' };
+  if (publicTokenAccessState(row.portal_token_expires_at) === 'expired') {
+    return { row: null, reason: 'expired' };
+  }
+  return { row };
+}
+
 export async function loadPublicDepositInvoiceByToken(params: {
   invoiceId: string;
   token: string;
 }): Promise<PublicDepositInvoiceLookupResult> {
-  let row: InvoiceRow | null;
+  let access: Awaited<ReturnType<typeof loadActiveInvoiceByToken>>;
 
   try {
-    row = await loadInvoiceByToken(params);
+    access = await loadActiveInvoiceByToken(params);
   } catch {
     return { invoice: null, reason: 'invalid' };
   }
 
-  if (!row) return { invoice: null, reason: 'invalid' };
+  if (!access.row) return { invoice: null, reason: access.reason };
+  const row = access.row;
   if (row.status === 'VOID') return { invoice: null, reason: 'void' };
 
   const quotePdfFileId = await loadQuotePdfFileId(row.quote_version_id);
   const invoice = toPublicInvoice(row, quotePdfFileId);
-  if (tokenHasExpired(invoice.tokenExpiresAt)) {
-    return { invoice, reason: 'expired' };
-  }
-
   return { invoice };
 }
 
@@ -208,14 +213,15 @@ export async function loadPublicDepositInvoicePdfByToken(params: {
   invoiceId: string;
   token: string;
 }): Promise<{ filename: string; content: Buffer } | null> {
-  let row: InvoiceRow | null;
+  let access: Awaited<ReturnType<typeof loadActiveInvoiceByToken>>;
 
   try {
-    row = await loadInvoiceByToken(params);
+    access = await loadActiveInvoiceByToken(params);
   } catch {
     return null;
   }
 
+  const row = access.row;
   if (!row || row.status !== 'OPEN' || !row.pdf_file_id) return null;
 
   const file = await loadFileArtifact(row.pdf_file_id);
@@ -227,14 +233,15 @@ export async function loadPublicSourceQuotePdfByInvoiceToken(params: {
   invoiceId: string;
   token: string;
 }): Promise<{ filename: string; content: Buffer } | null> {
-  let row: InvoiceRow | null;
+  let access: Awaited<ReturnType<typeof loadActiveInvoiceByToken>>;
 
   try {
-    row = await loadInvoiceByToken(params);
+    access = await loadActiveInvoiceByToken(params);
   } catch {
     return null;
   }
 
+  const row = access.row;
   if (!row || row.status !== 'OPEN') return null;
 
   const quotePdfFileId = await loadQuotePdfFileId(row.quote_version_id);

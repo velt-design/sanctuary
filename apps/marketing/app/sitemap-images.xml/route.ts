@@ -11,6 +11,7 @@ export async function GET() {
   const entries = projects.map((project) => {
     const imageSet = new Set<string>();
     if (project.heroImage?.src) imageSet.add(project.heroImage.src);
+    if (project.caseStudyHeroImage?.src) imageSet.add(project.caseStudyHeroImage.src);
     project.gallery?.forEach((image) => {
       if (image?.src) imageSet.add(image.src);
     });
