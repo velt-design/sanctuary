@@ -41,6 +41,36 @@ describe('marketing public request boundaries', () => {
     expect(first).not.toContain('203.0.113.5');
   });
 
+  it('derives a production-safe abuse key from the required service credential', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('MARKETING_ABUSE_HASH_SECRET', '');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-service-role-key');
+
+    const first = marketingAbuseKey(new Request('https://example.test', {
+      headers: { 'x-forwarded-for': '203.0.113.5' },
+    }));
+    const same = marketingAbuseKey(new Request('https://example.test', {
+      headers: { 'x-forwarded-for': '203.0.113.5, 10.0.0.1' },
+    }));
+    const other = marketingAbuseKey(new Request('https://example.test', {
+      headers: { 'x-forwarded-for': '203.0.113.6' },
+    }));
+
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+    expect(first).toBe(same);
+    expect(first).not.toBe(other);
+    expect(first).not.toContain('203.0.113.5');
+  });
+
+  it('still fails closed in production when no server-side secret exists', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('MARKETING_ABUSE_HASH_SECRET', '');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+
+    expect(() => marketingAbuseKey(new Request('https://example.test')))
+      .toThrow('A server-side marketing abuse hash secret is required');
+  });
+
   it('fails closed when the durable limiter is unavailable and preserves retry timing', async () => {
     const unavailable = await takeMarketingRateLimit({
       rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('database details') }),
