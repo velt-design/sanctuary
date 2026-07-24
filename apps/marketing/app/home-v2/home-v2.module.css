@@ -325,6 +325,12 @@ a.proofItem:hover {
   min-height: 240px;
 }
 
+.pathwayDisclosure,
+.pathwayDisclosure > .mobileDisclosureBody,
+.pathwayDisclosureGrid {
+  display: contents;
+}
+
 .pathwayCard .cardAction,
 .guideCard .cardAction {
   margin-top: auto;
@@ -954,6 +960,21 @@ a.proofItem:hover {
 
   .primaryPathway {
     grid-column: auto;
+  }
+
+  .pathwayDisclosure {
+    display: block;
+    grid-column: 1 / -1;
+  }
+
+  .pathwayDisclosure > .mobileDisclosureBody {
+    display: block;
+    padding-top: 0;
+  }
+
+  .pathwayDisclosureGrid {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .pathwayCard,

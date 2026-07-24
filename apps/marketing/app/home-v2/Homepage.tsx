@@ -282,9 +282,20 @@ export default async function HomePage() {
             </div>
           </div>
           <div className={styles.pathwayGrid}>
-            {visitorPathways.map((pathway, index) => (
+            {visitorPathways.slice(0, 1).map((pathway, index) => (
               <PathwayCard index={index} key={pathway.title} pathway={pathway} />
             ))}
+            <MobileDisclosure
+              className={styles.pathwayDisclosure}
+              summary="Commercial and professional projects"
+              eventName="project_types_expand"
+            >
+              <div className={styles.pathwayDisclosureGrid}>
+                {visitorPathways.slice(1).map((pathway, index) => (
+                  <PathwayCard index={index + 1} key={pathway.title} pathway={pathway} />
+                ))}
+              </div>
+            </MobileDisclosure>
           </div>
         </Container>
       </Section>

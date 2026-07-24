@@ -132,7 +132,7 @@ for (const viewport of viewports) {
 
     if (viewport.width > 640) {
       const desktopDisclosures = main.locator('details[data-mobile-disclosure]');
-      await expect(desktopDisclosures).toHaveCount(6);
+      await expect(desktopDisclosures).toHaveCount(7);
       await expect.poll(() => desktopDisclosures.evaluateAll((items) => items.every((item) => item.hasAttribute('open'))))
         .toBe(true);
       await expect(desktopDisclosures.locator('summary').first()).toBeHidden();
@@ -264,12 +264,12 @@ for (const viewport of [
 
     const main = await getSettledHomepageMain(page);
     const disclosures = main.locator('details[data-mobile-disclosure]');
-    await expect(disclosures).toHaveCount(6);
+    await expect(disclosures).toHaveCount(7);
     await expect.poll(() => disclosures.evaluateAll((items) => items.every((item) => !item.hasAttribute('open'))))
       .toBe(true);
 
     const summaries = disclosures.locator('summary');
-    await expect(summaries).toHaveCount(6);
+    await expect(summaries).toHaveCount(7);
     for (let index = 0; index < await summaries.count(); index += 1) {
       await expect(summaries.nth(index)).toBeVisible();
       const bounds = await summaries.nth(index).boundingBox();
@@ -321,8 +321,9 @@ for (const viewport of [
     const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
     await expect(visitorPathways.locator('a[href="/pergolas-auckland"]')).toBeVisible();
     await expect(visitorPathways.locator('a[href="/custom-pergolas-auckland"]')).toBeVisible();
-    await expect(visitorPathways.locator('a[href^="/commercial-pergolas-auckland"]')).toBeVisible();
-    await expect(visitorPathways.getByRole('link', { name: 'Send plans or a project brief' })).toBeVisible();
+    await expect(visitorPathways.getByText('Commercial and professional projects', { exact: true })).toBeVisible();
+    await expect(visitorPathways.locator('a[href^="/commercial-pergolas-auckland"]')).toBeHidden();
+    await expect(visitorPathways.getByRole('link', { name: 'Send plans or a project brief' })).toBeHidden();
 
     const selectedPreview = main.locator('section[aria-labelledby="selected-projects"]');
     await expect(selectedPreview).toBeVisible();
