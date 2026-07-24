@@ -5,6 +5,43 @@
   min-width: 0;
 }
 
+.commandSection {
+  min-width: 0;
+  container-name: project-command-overview;
+  container-type: inline-size;
+}
+
+.commandGrid {
+  display: grid;
+  grid-template-areas:
+    'status status'
+    'commercial action';
+  grid-template-columns: minmax(0, 1.25fr) minmax(22rem, 1fr);
+  align-items: start;
+  gap: var(--ui-grid-gutter);
+  min-width: 0;
+}
+
+.commandGrid > * {
+  min-width: 0;
+}
+
+.statusSlot {
+  grid-area: status;
+}
+
+.commercialSlot {
+  grid-area: commercial;
+}
+
+.actionSlot {
+  grid-area: action;
+}
+
+.commandStateSlot {
+  grid-column: 1 / -1;
+}
+
 .layout {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   align-items: start;
@@ -12,6 +49,16 @@
 
 .workstreamsSlot {
   min-height: 0;
+}
+
+@container project-command-overview (max-width: 760px) {
+  .commandGrid {
+    grid-template-areas:
+      'status'
+      'commercial'
+      'action';
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {

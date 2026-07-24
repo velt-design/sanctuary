@@ -4,7 +4,16 @@ import { lazy, Suspense } from 'react';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { useProjectDetailsDraft } from '../../useProjectDetailsDraft';
 import styles from './ProjectStatusDetailsCard.module.css';
-import { AlertBanner, Badge, Button, Card, Input, KeyValueGrid, useUnsavedChangesGuard } from '@/components/ui/foundation';
+import {
+  AlertBanner,
+  Badge,
+  Button,
+  ButtonLink,
+  Card,
+  Input,
+  KeyValueGrid,
+  useUnsavedChangesGuard,
+} from '@/components/ui/foundation';
 
 const ProjectStageControl = lazy(() => import('./ProjectStageControl'));
 
@@ -92,6 +101,8 @@ export default function ProjectStatusDetailsCard({
       ) : (
         <KeyValueGrid
           ariaLabel="Project details"
+          columns={4}
+          className={styles.detailsGrid}
           items={[
             { label: 'Contact', value: displayed.contactName || '—' },
             { label: 'Email', value: displayed.contactEmail || '—' },
@@ -103,6 +114,28 @@ export default function ProjectStatusDetailsCard({
           ]}
         />
       )}
+
+      {!isEditing && (displayed.contactPhone || displayed.contactEmail || displayed.siteAddress) ? (
+        <nav className={styles.contactActions} aria-label="Customer and site shortcuts">
+          {displayed.contactPhone ? (
+            <ButtonLink variant="secondary" size="small" href={`tel:${displayed.contactPhone}`}>Call customer</ButtonLink>
+          ) : null}
+          {displayed.contactEmail ? (
+            <ButtonLink variant="secondary" size="small" href={`mailto:${displayed.contactEmail}`}>Email customer</ButtonLink>
+          ) : null}
+          {displayed.siteAddress ? (
+            <ButtonLink
+              variant="tertiary"
+              size="small"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayed.siteAddress)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open map
+            </ButtonLink>
+          ) : null}
+        </nav>
+      ) : null}
     </Card>
   );
 }

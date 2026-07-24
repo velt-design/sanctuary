@@ -55,7 +55,7 @@ The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the intern
 
 `ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns one fixed sticky header and the full-width body. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Quotes/Invoices composition and quote Edit/Preview URL state without taking over either subview's side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
-The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
+The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready. Its operational composition is container-owned: a compact full-width Status & Details card comes first, then the current-design/commercial card receives the wider desktop track beside the primary-action card. The latter two remain side by side while their owned content width can support it and stack commercial before action below that threshold. Cards align to their own content rather than stretching a sparse state to match a taller neighbour.
 
 The current staff-facing lazy navigation owners are:
 
@@ -66,7 +66,7 @@ The current staff-facing lazy navigation owners are:
 
 The project Emails UI is retired; `tab=emails` normalizes to Overview. Durable email audit data, preview APIs, snapshot fields, and quote/invoice delivery side effects are unchanged. The separate Design Workbench route remains available from the project header.
 
-Project details and stage correction are part of Overview at every width. The pipeline is no longer rendered in the header.
+Project details and stage correction are part of Overview at every width. Read mode uses a compact four-column facts grid on wide content and two columns on narrow content, with direct Call customer, Email customer, and Open map shortcuts when their canonical project/contact values exist. The pipeline is no longer rendered in the header.
 
 Stage 1 did not add logic to the specialist tabs. The later shell Slice 2 retired the legacy Estimates/Configurator owner in favour of the authoritative Calculator and deliberately left the critical `QuotesTab.tsx` mutation boundary unchanged.
 
@@ -279,9 +279,9 @@ Every response, including errors, is `private, no-store`. Mutations require UUID
 
 Implemented component boundaries:
 
-- `OverviewTab.tsx`: query and five-state orchestration plus the responsive operational-card composition.
+- `OverviewTab.tsx`: query and five-state orchestration plus the container-driven status-first, weighted commercial/action operational-card composition.
 - `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation.
-- `overview/ProjectStatusDetailsCard.tsx`: pipeline stage, stage correction, and user-owned local-first project details.
+- `overview/ProjectStatusDetailsCard.tsx`: pipeline stage, stage correction, user-owned local-first project details, and read-only customer/site shortcuts derived from the displayed canonical values.
 - Existing `ProjectNotesPanel.client.tsx`: project note/activity column.
 - Existing `ProjectTasksSidebar.client.tsx`: stage-task action card below the operational row.
 - Project Header: project identity, owner, actions, and the horizontally scrollable tab navigation.
@@ -305,6 +305,7 @@ Focused coverage includes:
 - Environment-gated, customer-data-free fixture route.
 - Browser matrix for the nine Stage 1 commercial scenarios plus primary, empty, conflict, critical, and undated Stage 2 states at 1600, 1366, 1024, 768, and 390 px.
 - 390px no-horizontal-overflow and always-visible action facts.
+- Project-shell layout assertions that keep Status first, give commercial truth the wider supported track, preserve commercial-before-action stacking, and expose Call, Email, and Map shortcuts without adding document overflow.
 
 Fixture route: `/qa/project-command-centre-fixture?scenario=...&action=...`, enabled only by `ENABLE_PORTAL_QA_FIXTURES=1`.
 

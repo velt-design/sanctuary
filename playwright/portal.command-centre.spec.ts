@@ -13,8 +13,8 @@ const SCENARIOS = [
   ['standard-estimate', '$1,234.56 inc GST'],
   ['multiple-estimates', '6m x 4m + 2 more'],
   ['sent-revision', 'Quote sent'],
-  ['accepted-newer-estimate', 'newer unrelated estimate'],
-  ['declined-quote', 'Latest quote outcome: declined'],
+  ['accepted-newer-estimate', 'Newer unrelated estimate'],
+  ['declined-quote', 'Latest quote declined'],
   ['missing-source', 'Source design unavailable'],
   ['missing-price', 'Price unavailable'],
   ['missing-estimate-price', 'Estimate price unavailable'],
@@ -35,7 +35,7 @@ test('keeps the command-centre card readable at a 390px viewport', async ({ page
   await page.goto(`${FIXTURE_PATH}?scenario=accepted-newer-estimate`);
   const fixture = page.locator('[data-portal-qa-fixture="project-command-centre"]');
   await expect(fixture).toContainText('Quote accepted');
-  await expect(fixture).toContainText('newer unrelated estimate');
+  await expect(fixture).toContainText('Newer unrelated estimate');
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(horizontalOverflow).toBe(false);
 });
@@ -134,7 +134,8 @@ test('submits reschedule, reassignment, criticality and undated selection comman
   await page.getByRole('button', { name: 'Reassign' }).click();
   await page.getByLabel('Criticality reason').fill('Customer decision is blocked');
   await page.getByRole('button', { name: 'Mark critical' }).click();
-  await expect(page.getByText('Critical: Customer cannot proceed without a revised quote.')).toBeVisible();
+  await expect(page.getByText('Critical action')).toBeVisible();
+  await expect(page.getByText('Customer cannot proceed without a revised quote.')).toBeVisible();
 
   await page.goto(`${FIXTURE_PATH}?scenario=standard-estimate&action=undated`);
   await expect(page.locator('[data-command-centre-fixture-hydrated="true"]')).toBeVisible();
@@ -238,8 +239,26 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
     await expect(page.getByRole('tab', { name: 'Emails' })).toHaveCount(0);
     await expect(page.locator('[data-project-status-details="true"]')).toContainText('Sent');
     await expect(page.locator('[data-primary-action-card="true"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Call customer' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Email customer' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Open map' })).toBeVisible();
     await expect(page.locator('[data-project-rail]')).toHaveCount(0);
     await expect(page.locator('[role="separator"]')).toHaveCount(0);
+
+    const statusBounds = await page.locator('[data-overview-slot="status"]').boundingBox();
+    const commercialBounds = await page.locator('[data-overview-slot="commercial"]').boundingBox();
+    const actionBounds = await page.locator('[data-overview-slot="action"]').boundingBox();
+    expect(statusBounds).not.toBeNull();
+    expect(commercialBounds).not.toBeNull();
+    expect(actionBounds).not.toBeNull();
+    expect((commercialBounds?.y ?? 0)).toBeGreaterThan(statusBounds?.y ?? 0);
+    expect((actionBounds?.y ?? 0)).toBeGreaterThan(statusBounds?.y ?? 0);
+    if (width >= 768) {
+      expect(Math.abs((commercialBounds?.y ?? 0) - (actionBounds?.y ?? 0))).toBeLessThanOrEqual(1);
+      expect((commercialBounds?.width ?? 0)).toBeGreaterThan(actionBounds?.width ?? 0);
+    } else {
+      expect((actionBounds?.y ?? 0)).toBeGreaterThan(commercialBounds?.y ?? 0);
+    }
 
     const commandRail = commandRow.locator('[data-page-header-row="true"]');
     const commandRailOverflows = await commandRail.evaluate((element) => element.scrollWidth > element.clientWidth);
