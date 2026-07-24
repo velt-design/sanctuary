@@ -53,6 +53,7 @@ describe('/api/admin/costing/configurations', () => {
     const response = await GET();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     await expect(response.json()).resolves.toEqual({
       currentVersionId: null,
       currentSource: 'legacy-overrides',

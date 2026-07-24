@@ -31,6 +31,7 @@ Admin routes should use helpers from `apps/portal/lib/api/adminApi.ts`:
 
 - `requireAdminSession()` when the route only needs an admin session check.
 - `requireAdminContext()` when the route also needs an auth-bound Supabase server client.
+- `jsonOk()` and `jsonError()` for admin responses; both enforce `Cache-Control: private, no-store` so authenticated admin data and errors are never shared or reused by an intermediary cache.
 - Admin-only failures should distinguish `401 Unauthorized` from `403 Forbidden`.
 
 Do not add ad hoc session checks to new staff/admin routes when a helper already exists.

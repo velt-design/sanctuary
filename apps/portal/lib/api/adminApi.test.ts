@@ -10,6 +10,7 @@ describe('adminApi diagnostics responses', () => {
 
     expect(res.status).toBe(201);
     await expect(res.json()).resolves.toEqual({ ok: true });
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     expect(res.headers.get('x-portal-request-id')).toBeTruthy();
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
@@ -24,6 +25,7 @@ describe('adminApi diagnostics responses', () => {
 
     expect(res.status).toBe(403);
     await expect(res.json()).resolves.toEqual({ error: 'Forbidden' });
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     expect(res.headers.get('x-portal-request-id')).toBe('req_admin_err');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });

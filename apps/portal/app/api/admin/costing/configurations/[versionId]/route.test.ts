@@ -67,6 +67,7 @@ describe('/api/admin/costing/configurations/:versionId', () => {
     const response = await GET(new Request('http://localhost/test'), context);
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
     await expect(response.json()).resolves.toEqual({
       version: { id: 'draft-1', status: 'draft' },
       comparison: {

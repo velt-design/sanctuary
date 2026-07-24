@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: false },
   // Allow monorepo package resolution for workspace packages.
   turbopack: { root: path.resolve(__dirname, '../..') },
+  async redirects() {
+    return [
+      {
+        source: '/pricebook',
+        destination: '/admin/costing',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     const baseSecurityHeaders: { key: string; value: string }[] = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
