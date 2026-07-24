@@ -6,7 +6,8 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 
 ## Source Of Truth
 
-- Route-local semantic colour, type, layout, and responsive tokens: `apps/marketing/app/%5F%5Ffoundation/marketing/catalogue.module.css`.
+- Shared semantic colour, type, layout, and responsive tokens: `MarketingPage` and `foundation.module.css` in `apps/marketing/components/marketing-foundation/`.
+- Catalogue-only presentation and token overrides: `apps/marketing/app/%5F%5Ffoundation/marketing/catalogue.module.css`.
 - Reusable primitives, controls, and editorial patterns: `apps/marketing/components/marketing-foundation/`.
 - Live catalogue: `/__foundation/marketing`, implemented by the escaped Next.js route folder `apps/marketing/app/%5F%5Ffoundation/marketing/`.
 - Shared header fonts: Instrument Sans and Inter, loaded by the public root layout; foundation routes use the same families.
@@ -17,9 +18,22 @@ Use Instrument Sans for display text and Inter for body, navigation, forms, and 
 
 ## Component Contract
 
-The foundation exports layout and content primitives (`Container`, `Section`, `Eyebrow`, `Heading`, `Text`, `Button`, `TextLink`, `Rule`, `Figure`, `ProjectMeta`) and labelled form controls (`Field`, `TextareaField`, `SelectField`, `CheckboxField`, `RadioGroup`). Prefer their semantic variants instead of route-local colour, alignment, or spacing props. `Figure` and the image-led patterns accept an optional `objectPosition`; use the shared focal position for a repeated project image so its architectural subject remains consistently framed across landscape, square and responsive crops.
+The foundation exports layout and content primitives (`MarketingPage`, `Container`, `Section`, `SectionHeader`, `Eyebrow`, `Heading`, `Text`, `ActionGroup`, `Button`, `TextLink`, `Rule`, `Figure`, `ProjectMeta`, `FactList`, `CardGrid`, `EditorialCard`) and labelled form controls (`Field`, `TextareaField`, `SelectField`, `CheckboxField`, `RadioGroup`). Prefer their semantic variants instead of route-local colour, alignment, or spacing props.
 
 It also exports navigation, homepage and project heroes, introductions, split narratives, principles, full-bleed statements, galleries, specification rows, materials, project stories, testimonials, process steps, comparisons, FAQs, responsive examples, and conversion sections. The catalogue demonstrates these reusable exports rather than maintaining parallel mock markup.
+
+### Shared responsive contract
+
+Phase 3 PR 6 establishes the following compatible contract without changing the existing Tailwind v4, PostCSS, React, or CSS-module architecture:
+
+- `MarketingPage` owns the shared semantic tokens and mobile section/type scale. `Container` keeps the existing wide, standard, compact, and reading widths. Headings retain their character-based measures, large body copy retains its 42rem measure, and `SectionHeader` constrains supporting copy to 34rem while moving from the established 12-column desktop composition to a one-column mobile flow.
+- `ActionGroup` lays out related actions. `Button` exposes primary and secondary hierarchy, with the former `outline` prop retained as a secondary-style compatibility alias. `TextLink` remains the quiet tertiary action. Buttons are at least 48px high and text links at least 44px high.
+- `EditorialCard` supports `image-led`, `balanced`, and `compact` density through one linked semantic tree. `CardGrid` owns the responsive collection layout; consumers should not create separate mobile cards.
+- `FactList` renders project facts as a semantic description list and changes column presentation without changing its markup.
+- `Figure` supports `wide`, `landscape`, `standard`, `portrait`, and `square` ratios plus optional `mobileRatio` and `mobileObjectPosition`. Use the shared focal position for repeated project imagery, and supply a mobile focal point only where the narrower crop needs different framing.
+- Shared actions and linked cards have component-owned visible focus treatment. Their directly relevant transitions are disabled when reduced motion is requested.
+
+The internal catalogue is the complete fixture for these variants. The approved homepage is the first public compatibility consumer for `MarketingPage`, `SectionHeader`, `ActionGroup`, balanced pathway cards, project facts, and responsive featured-project media. Disclosure, gallery, menu, and sticky-action contracts remain deliberately deferred to PR 7 and PR 8.
 
 ## Catalogue Guard
 
@@ -92,20 +106,24 @@ The homepage presents Sanctuary as an Auckland designer, builder and installer o
 
 Homepage interaction links and controls expose stable event attributes. The route-local tracker records only the event name, V2 variant, viewport category, destination and optional editorial label, and only after analytics consent. Hero, pathway, pergola-form, roof, project, disclosure, guide and final-enquiry interactions therefore remain distinguishable without collecting project or customer details.
 
-The homepage owns its content and scoped tokens under `apps/marketing/app/home-v2/`. The root page is indexable, self-canonical at `/`, present in the sitemap and backed by the approved title, description, Open Graph identity and WebSite/WebPage schema. The retired `/home-v2` URL remains absent from navigation, footer and sitemap output and must continue to redirect permanently to `/`. The established legacy owners `apps/marketing/app/home.css` and `apps/marketing/components/home/**` remain unchanged.
+The homepage owns its content and route-specific presentation under `apps/marketing/app/home-v2/`, while its shared page tokens, section headers, action groups, pathway cards, project facts and responsive featured media use the Foundation owners described above. The root page is indexable, self-canonical at `/`, present in the sitemap and backed by the approved title, description, Open Graph identity and WebSite/WebPage schema. The retired `/home-v2` URL remains absent from navigation, footer and sitemap output and must continue to redirect permanently to `/`. The established legacy owners `apps/marketing/app/home.css` and `apps/marketing/components/home/**` remain unchanged.
 
 Root height and overflow normalisation must preserve the shared mobile-menu and consent locks. The homepage browser suite opens the mobile menu from a non-zero scroll position and verifies that the document stays fixed, Escape restores focus, and the prior reading position returns when the menu closes.
 
 ## Verification
 
 - `npx vitest run apps/marketing/app/%5F%5Ffoundation/marketing/foundationAccess.test.ts`
+- `npx vitest run apps/marketing/components/marketing-foundation/Primitives.test.tsx`
 - `npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false`
 - `npm run test:marketing:browser`
 - `npm run build:marketing`
+- `npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.home-v2.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.contact.spec.ts --config=playwright.marketing.config.ts`
 - Shared-header Playwright coverage at desktop and mobile widths, including geometry, green accent, keyboard focus, and representative public-route screenshots.
+
+The Foundation browser suite exercises the shared responsive specimens at 430px, 390px, 360px, tablet, compact desktop, and desktop widths. It asserts single-tree card and fact-list presentation, semantic CTA hierarchy, minimum touch targets, focus visibility, reduced-motion behavior, mobile and desktop media ratios and focal points, stable desktop card geometry, and no horizontal overflow. An isolated-context matrix also smoke-tests every distinct direct Foundation consumer type at 390px and 1440px so the existing animated route transition cannot leave an exiting page in a strict locator. Set `MARKETING_FOUNDATION_CAPTURE=1` when running the focused spec to write the three mobile specimen screenshots to `artifacts/mobile-ux-phase-3-pr-6/`.
 
 The Playwright lane checks the standalone catalogue, shared header, homepage, every SEO programme route, the product hub and details, the project collection and case studies, the contact route, and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, green accent, project and FAQ rendering, all ten directory destinations, horizontal overflow, mobile navigation, form attribution, sitemap inclusion, resolving internal links and visible schema parity. The product suite proves all ten catalogue routes remain discoverable and verifies every detail route at 390px. Its focused refinement matrix exercises the hub, one pergola form, one integrated accessory and the unpublished-evidence heater state at 320px, 390px and 430px. It enforces one visible H1, loaded imagery, early and final CTA continuity, both gallery placements, minimum 44px targets, keyboard-operable server-rendered disclosures, explicit mobile height budgets, no horizontal overflow, no nested content scroller, structured data, canonical metadata, reduced motion and explicit unpublished-evidence handling. The projects suite proves every canonical record at 390px and exercises the collection, a residential outdoor room, a constrained residential project, a commercial project and an incomplete technical record at 320px, 390px and 430px. It checks loaded and intentionally framed hero media, visible heading order, early and final contact actions, mobile height budgets, missing-data omission, minimum 44px targets, zero textual or generated em dashes, no page overflow or nested vertical scroller, keyboard-operable server-rendered disclosures, the seven-width responsive matrix, desktop filtering and keyboard navigation, sticky behavior, focus-managed mobile scroll locking, circular navigation and reduced motion. The contact suite verifies canonical and legacy server-rendered enquiry preselection, validated project/product continuity through refresh and browser history, persistent labels, linked error summaries, hidden honeypots, unique IDs, field metadata, 44px controls, reduced motion, exact validation and attachment-policy feedback, failure-state value retention, retry UUID stability, duplicate-submit exclusion, consent-controlled lead events and non-personal source properties at 320px, 360px, 390px, 430px, tablet and desktop. The homepage suite additionally proves `/` is indexable and self-canonical, `/home-v2` redirects and remains unlisted, the root retains its live review and preselected enquiry paths, renders the approved visitor, product, project, process, trust and three-link guide structure, records consented device-segmented interactions without customer data, loads all visible imagery, preserves the Warkworth exterior gable apex with visible breathing room, uses the correct responsive header states, and preserves the desktop composition while applying the deliberate mobile treatment. The hero-navigation matrix proves every programme route has true desktop image/header overlap, no canvas gap at the fold, a viewport-centred Projects/Products gap, the guide hero split on that same centreline, transparent top and solid scrolled states, and the solid collapsed treatment at tablet and mobile widths.

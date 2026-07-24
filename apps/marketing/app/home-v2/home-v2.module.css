@@ -1,44 +1,5 @@
 .page {
-  --color-canvas: #e9eae6;
-  --color-surface-warm: #f1f0eb;
-  --color-surface-neutral: #e1e3de;
-  --color-surface-elevated: #f8f8f5;
-  --color-text-primary: #111210;
-  --color-text-secondary: #555852;
-  --color-text-subtle: #5f635c;
-  --color-rule: #c7cac3;
-  --color-rule-strong: #aeb2aa;
-  --color-accent-olive: #4f5748;
-  --color-accent-olive-hover: #41483c;
-  --color-inverse-surface: #181a17;
-  --color-inverse-text: #f4f4f0;
-  --color-success: #356747;
-  --color-error: #a33c42;
-  --font-display: "Instrument Sans Variable", "Helvetica Neue", sans-serif;
-  --font-body: "Inter Variable", Arial, sans-serif;
-  --text-display: clamp(3.5rem, 8vw, 8.4rem);
-  --text-page: clamp(3rem, 6.2vw, 6.6rem);
-  --text-section: clamp(2rem, 4.2vw, 4.4rem);
-  --text-card: clamp(1.25rem, 2vw, 1.7rem);
-  --text-body-large: clamp(1.05rem, 1.5vw, 1.3rem);
-  --text-body: .95rem;
-  --text-small: .78rem;
-  --container-site: 1600px;
-  --container-wide: 1440px;
-  --container-standard: 1280px;
-  --container-compact: 1040px;
-  --container-reading: 680px;
-  --page-gutter: clamp(1.25rem, 4vw, 4.5rem);
-  --section-space: clamp(4.5rem, 8vw, 7.5rem);
-  --section-space-compact: clamp(3rem, 5vw, 5rem);
-  --grid-gap: clamp(1rem, 2.2vw, 2.25rem);
-  --header-height: 82px;
-  --focus-ring: 2px solid #4f5748;
-  min-height: 100vh;
   overflow: clip;
-  background: var(--color-canvas);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
 }
 
 :global(html):has(.page),
@@ -110,10 +71,6 @@
 }
 
 .heroActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .75rem 1.5rem;
   margin-top: .35rem;
 }
 
@@ -186,39 +143,19 @@ a.proofItem:hover {
   text-transform: uppercase;
 }
 
-.introGrid,
-.sectionIntro {
+.introGrid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--grid-gap);
   align-items: end;
 }
 
-.introGrid > :first-child,
-.sectionIntro > :first-child {
+.introGrid > :first-child {
   grid-column: 1 / 7;
 }
 
-.introGrid > :last-child,
-.sectionIntro > :last-child {
+.introGrid > :last-child {
   grid-column: 8 / 13;
-}
-
-.sectionIntro {
-  margin-bottom: clamp(2.75rem, 5vw, 5rem);
-}
-
-.introAction {
-  display: grid;
-  justify-items: start;
-  gap: 1.5rem;
-}
-
-.sectionActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .75rem 1.5rem;
 }
 
 .featuredProject {
@@ -238,25 +175,6 @@ a.proofItem:hover {
   gap: clamp(1.5rem, 3vw, 2.5rem);
 }
 
-.projectFacts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  border-top: 1px solid var(--color-rule-strong);
-}
-
-.projectFacts div {
-  min-width: 0;
-  padding: 1rem 1rem 1rem 0;
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.projectFacts div:not(:last-child) {
-  border-right: 1px solid var(--color-rule);
-  margin-right: 1rem;
-}
-
-.projectFacts dt,
 .projectEvidence h3,
 .finalChecklist h3 {
   margin: 0 0 .55rem;
@@ -264,12 +182,6 @@ a.proofItem:hover {
   font: 600 .68rem/1.35 var(--font-body);
   letter-spacing: .1em;
   text-transform: uppercase;
-}
-
-.projectFacts dd {
-  margin: 0;
-  color: var(--color-text-primary);
-  font: 500 .85rem/1.5 var(--font-body);
 }
 
 .projectEvidence {
@@ -293,7 +205,6 @@ a.proofItem:hover {
   font: 400 .86rem/1.65 var(--font-body);
 }
 
-.pathwayGrid,
 .guideGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -301,7 +212,6 @@ a.proofItem:hover {
   border-left: 1px solid var(--color-rule);
 }
 
-.pathwayCard,
 .guideCard {
   min-height: 290px;
   display: grid;
@@ -315,7 +225,6 @@ a.proofItem:hover {
   transition: background-color 160ms ease;
 }
 
-.pathwayCard:hover,
 .guideCard:hover {
   background: var(--color-surface-elevated);
 }
@@ -338,7 +247,6 @@ a.proofItem:hover {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.pathwayCard .cardAction,
 .guideCard .cardAction {
   margin-top: auto;
 }
@@ -775,11 +683,6 @@ a.proofItem:hover {
 }
 
 @media (max-width: 900px) {
-  .page {
-    --header-height: 64px;
-    --text-page: clamp(3rem, 10vw, 5.5rem);
-  }
-
   .hero {
     min-height: calc(100svh - var(--header-height));
     margin-top: var(--header-height);
@@ -807,13 +710,11 @@ a.proofItem:hover {
     border-bottom: 1px solid var(--color-rule);
   }
 
-  .introGrid > :first-child,
-  .sectionIntro > :first-child {
+  .introGrid > :first-child {
     grid-column: 1 / 6;
   }
 
-  .introGrid > :last-child,
-  .sectionIntro > :last-child {
+  .introGrid > :last-child {
     grid-column: 6 / 13;
   }
 
@@ -845,12 +746,6 @@ a.proofItem:hover {
 }
 
 @media (max-width: 640px) {
-  .page {
-    --text-page: clamp(2.65rem, 13vw, 4.1rem);
-    --section-space: clamp(3.25rem, 14vw, 4.25rem);
-    --section-space-compact: clamp(2.5rem, 11vw, 3.25rem);
-  }
-
   .heroImage {
     object-position: 51% 50%;
   }
@@ -860,8 +755,7 @@ a.proofItem:hover {
   }
 
   .heroGrid,
-  .introGrid,
-  .sectionIntro {
+  .introGrid {
     grid-template-columns: 1fr;
   }
 
@@ -876,9 +770,7 @@ a.proofItem:hover {
   .heroCopy,
   .heroMeta,
   .introGrid > :first-child,
-  .introGrid > :last-child,
-  .sectionIntro > :first-child,
-  .sectionIntro > :last-child {
+  .introGrid > :last-child {
     grid-column: auto;
   }
 
@@ -925,16 +817,8 @@ a.proofItem:hover {
     letter-spacing: .075em;
   }
 
-  .sectionIntro {
-    margin-bottom: clamp(2rem, 9vw, 2.75rem);
-  }
-
   .mobileSecondaryCopy {
     display: none;
-  }
-
-  .introAction {
-    gap: 1rem;
   }
 
   .featuredProject,
@@ -942,13 +826,11 @@ a.proofItem:hover {
     gap: 1.5rem;
   }
 
-  .projectFacts,
   .projectEvidence,
-  .pathwayGrid {
+  .pathwayDisclosureGrid {
     grid-template-columns: 1fr;
   }
 
-  .projectFacts div:not(:last-child),
   .projectEvidence > div:first-child {
     border-right: 0;
     margin-right: 0;
@@ -958,7 +840,6 @@ a.proofItem:hover {
     padding-right: 0;
   }
 
-  .pathwayCard,
   .guideCard {
     min-height: 0;
     gap: .75rem;
@@ -984,12 +865,10 @@ a.proofItem:hover {
     grid-template-columns: 1fr;
   }
 
-  .pathwayCard,
   .roofApproachCard {
     position: relative;
   }
 
-  .pathwayCard .cardNumber,
   .roofApproachCard .cardNumber {
     position: absolute;
     top: 1.35rem;
@@ -998,7 +877,7 @@ a.proofItem:hover {
   }
 
   .cardAction {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .roofApproachCard {
@@ -1248,7 +1127,6 @@ a.proofItem:hover {
 
 @media (prefers-reduced-motion: reduce) {
   a.proofItem,
-  .pathwayCard,
   .guideCard {
     transition: none;
   }

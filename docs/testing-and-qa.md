@@ -50,6 +50,19 @@ safe errors, atomic retry/concurrency semantics, and the migration contract.
 GA, Meta, ArchiPro, or a GTM noscript resource loads before the corresponding
 explicit consent.
 
+Shared marketing-foundation primitive changes should run
+`npx vitest run apps/marketing/components/marketing-foundation/Primitives.test.tsx`,
+`npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`,
+and the focused spec for each adopted public consumer. The Foundation spec
+covers 430, 390 and 360 pixel fixtures plus tablet and desktop smoke, semantic
+CTA tiers, 44/48 pixel targets, focus visibility, responsive media ratios and
+focal points, card/fact-list layout, reduced motion, reduced horizontal
+overflow risk, and stable desktop card geometry. Its isolated 390 and 1440
+pixel matrix covers each distinct direct Foundation consumer without crossing
+the animated route-transition boundary. Set `MARKETING_FOUNDATION_CAPTURE=1`
+to capture the three mobile primitive specimens under
+`artifacts/mobile-ux-phase-3-pr-6/`.
+
 Product-page changes should run
 `npx vitest run apps/marketing/data/products.test.ts` and
 `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
