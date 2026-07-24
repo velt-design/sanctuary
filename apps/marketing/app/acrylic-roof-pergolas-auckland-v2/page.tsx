@@ -404,6 +404,11 @@ export default function AcrylicRoofPergolasAucklandCopyVariantPage() {
       <Section id="project-details" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label="Acrylic pergola project enquiry form">
         <Container width="wide">
           <AcrylicPergolaEnquiryForm
+            initialEnquiryType="residential"
+            sourceContext={{
+              sourcePath: route,
+              sourceComponent: 'embedded-enquiry',
+            }}
             eyebrow="Start with what you know"
             heading="Send your project details"
             intro="Add the suburb, a few photos and rough dimensions. Tell us what the deck cannot do today, which rooms sit beside it and what you want the new cover to improve."

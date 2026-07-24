@@ -236,6 +236,11 @@ describe('POST /api/enquiry attribution', () => {
           addOns: { blinds: true },
           source: 'website',
           page: '/contact',
+          sourceContext: {
+            sourcePath: '/projects/warkworth-outdoor-room',
+            sourceComponent: 'project-final',
+            projectSlug: 'warkworth-outdoor-room',
+          },
           utm: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'winter' },
           attribution: {
             utm: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'winter' },
@@ -259,6 +264,11 @@ describe('POST /api/enquiry attribution', () => {
       clickIds: { gclid: 'g-123', gbraid: 'gb-456', wbraid: 'wb-789' },
       landingPage: 'https://www.sanctuarypergolas.co.nz/contact?gclid=g-123',
     });
+    expect(db.enquiry_requests[0]?.raw_payload.sourceContext).toEqual({
+      sourcePath: '/projects/warkworth-outdoor-room',
+      sourceComponent: 'project-final',
+      projectSlug: 'warkworth-outdoor-room',
+    });
     expect(db.audit_events).toHaveLength(1);
     expect(db.audit_events[0]).toMatchObject({
       project_id: 'project-1',
@@ -268,6 +278,11 @@ describe('POST /api/enquiry attribution', () => {
         projectId: 'project-1',
         enquiryRequestId: 'enquiry-1',
         enquiryType: 'residential',
+        sourceContext: {
+          sourcePath: '/projects/warkworth-outdoor-room',
+          sourceComponent: 'project-final',
+          projectSlug: 'warkworth-outdoor-room',
+        },
         attribution: {
           enquiryRequestId: 'enquiry-1',
           clickIds: { gclid: 'g-123', gbraid: 'gb-456', wbraid: 'wb-789' },
@@ -333,6 +348,58 @@ describe('POST /api/enquiry attribution', () => {
       idempotencyKey: 'website:autoresponder:enquiry-1',
     });
     expect(h.calculateCostV1).not.toHaveBeenCalled();
+  });
+
+  it('delivers verified residential uploads through the existing autoresponder', async () => {
+    const { client } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (sendCustomerAutoresponder as any).mockClear();
+
+    const response = await POST(
+      new Request('http://localhost/api/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: SUBMISSION_ID,
+          uploadSessionToken: UPLOAD_SESSION_TOKEN,
+          enquiryType: 'residential',
+          name: 'Riley',
+          email: 'riley@example.com',
+          phone: '021000000',
+          suburb: 'Warkworth',
+          dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
+          style: 'pitched',
+          roofMaterials: ['acrylic'],
+          addOns: {},
+          files: [{
+            path: `pending/${SUBMISSION_ID}/0-plan.pdf`,
+            name: 'plan.pdf',
+            size: 9,
+            type: 'application/pdf',
+          }],
+          source: 'website',
+          page: '/contact',
+          honeypot: '',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sendCustomerAutoresponder).toHaveBeenCalledTimes(1);
+    const [emailPayload, options] = (sendCustomerAutoresponder as any).mock.calls[0];
+    expect(emailPayload).toMatchObject({
+      enquiryType: 'residential',
+      filesReceivedCount: 1,
+    });
+    expect(options).toEqual({
+      attachments: [{
+        filename: 'plan.pdf',
+        content: Buffer.from('%PDF-test').toString('base64'),
+      }],
+      idempotencyKey: 'website:autoresponder:enquiry-1',
+    });
   });
 
   it('accepts the enquiry and saves unavailable pricing when the single costing attempt fails', async () => {

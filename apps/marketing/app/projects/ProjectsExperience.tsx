@@ -61,6 +61,7 @@ export default function ProjectsExperience({
           project={selectedProject}
           projectIndex={selectedIndex}
           projectCount={projects.length}
+          sourcePath={detailMode ? `/projects/${selectedProject.slug}` : '/projects'}
           relatedProjects={relatedProjects}
           previousProject={previousProject}
           nextProject={nextProject}

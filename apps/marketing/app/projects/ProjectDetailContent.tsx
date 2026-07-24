@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
 import MobileProjectDisclosure from './MobileProjectDisclosure';
 import {
   getProjectContextLinks,
@@ -16,6 +17,7 @@ type ProjectDetailContentProps = {
   project: Project | null;
   projectIndex: number;
   projectCount: number;
+  sourcePath?: string;
   relatedProjects?: Project[];
   previousProject?: Project;
   nextProject?: Project;
@@ -27,6 +29,7 @@ export default function ProjectDetailContent({
   project,
   projectIndex,
   projectCount,
+  sourcePath,
   relatedProjects = [],
   previousProject,
   nextProject,
@@ -58,6 +61,20 @@ export default function ProjectDetailContent({
   });
   const projectNumber = String(projectIndex + 1).padStart(2, '0');
   const projectTotal = String(projectCount).padStart(2, '0');
+  const enquiryType = project.type === 'Commercial' ? 'commercial' : 'residential';
+  const enquirySourcePath = sourcePath ?? `/projects/${project.slug}`;
+  const introEnquiryHref = buildEnquiryHref({
+    enquiryType,
+    sourcePath: enquirySourcePath,
+    sourceComponent: 'project-intro',
+    projectSlug: project.slug,
+  });
+  const finalEnquiryHref = buildEnquiryHref({
+    enquiryType,
+    sourcePath: enquirySourcePath,
+    sourceComponent: 'project-final',
+    projectSlug: project.slug,
+  });
 
   return (
     <article
@@ -88,7 +105,7 @@ export default function ProjectDetailContent({
         <div className="project-case-study__intro-copy">
           <p>{project.blurb}</p>
           <div className="project-case-study__intro-actions">
-            <Link className="project-action project-action--primary" href="/contact">
+            <Link className="project-action project-action--primary" href={introEnquiryHref}>
               {getProjectIntroCta(project)}
             </Link>
             {contextLinks.length ? (
@@ -360,7 +377,7 @@ export default function ProjectDetailContent({
             response.
           </p>
         </div>
-        <Link className="project-action project-action--primary" href="/contact">
+        <Link className="project-action project-action--primary" href={finalEnquiryHref}>
           Send us your project details
         </Link>
       </section>

@@ -17,6 +17,7 @@ import {
   uploadEnquiryAttachments,
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
+import type { EnquirySourceContext } from '@/lib/enquiryContext';
 import {
   enquiryTypeValue,
   validateContactForm,
@@ -27,6 +28,11 @@ import type { EnquiryType } from './enquiryRoute';
 
 type ContactEnquiryFormProps = {
   initialEnquiryType: EnquiryType | null;
+  initialSourceContext: EnquirySourceContext & {
+    hasEntryContext: boolean;
+    projectTitle?: string;
+    productName?: string;
+  };
 };
 
 type SubmitState = 'idle' | 'sending' | 'success' | 'error';
@@ -97,6 +103,7 @@ function formatFileSize(bytes: number): string {
 
 export default function ContactEnquiryForm({
   initialEnquiryType,
+  initialSourceContext,
 }: ContactEnquiryFormProps) {
   const { consent, hasStoredChoice } = useConsent();
   const [enquiryType, setEnquiryType] = useState<EnquiryType | null>(
@@ -135,6 +142,18 @@ export default function ContactEnquiryForm({
       enquiry_type: enquiryType ?? 'Unknown',
       roof_count: selectedRoofs.length,
       addons_count: selectedAddOns.length,
+      ...(initialSourceContext.sourcePath
+        ? { source_path: initialSourceContext.sourcePath }
+        : {}),
+      ...(initialSourceContext.sourceComponent
+        ? { source_component: initialSourceContext.sourceComponent }
+        : {}),
+      ...(initialSourceContext.projectSlug
+        ? { project_slug: initialSourceContext.projectSlug }
+        : {}),
+      ...(initialSourceContext.productSlug
+        ? { product_slug: initialSourceContext.productSlug }
+        : {}),
     };
 
     try {
@@ -179,11 +198,6 @@ export default function ContactEnquiryForm({
   const handleEnquiryType = (type: EnquiryType) => {
     setEnquiryType(type);
     clearFieldError('enquiryType');
-    if (type !== 'Professional') {
-      setFiles([]);
-      attachmentErrorRef.current = null;
-      clearFieldError('files');
-    }
   };
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
@@ -228,9 +242,8 @@ export default function ContactEnquiryForm({
 
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const selectedFiles = enquiryType === 'Professional' ? files : [];
-    const nextErrors = validateContactForm(formData, selectedFiles);
-    if (enquiryType === 'Professional' && attachmentErrorRef.current) {
+    const nextErrors = validateContactForm(formData, files);
+    if (attachmentErrorRef.current) {
       nextErrors.files = attachmentErrorRef.current;
     }
     setFieldErrors(nextErrors);
@@ -252,9 +265,7 @@ export default function ContactEnquiryForm({
     trackSubmitEvent('start', selectedRoofs, selectedAddOns);
 
     try {
-      const attachmentUpload = enquiryType === 'Professional'
-        ? await uploadEnquiryAttachments(files, submissionId)
-        : { files: [], uploadSessionToken: null };
+      const attachmentUpload = await uploadEnquiryAttachments(files, submissionId);
       const attribution = getBrowserMarketingAttribution();
       const response = await fetch('/api/enquiry', {
         method: 'POST',
@@ -290,6 +301,20 @@ export default function ContactEnquiryForm({
           attribution,
           page: window.location.pathname,
           source: 'website',
+          sourceContext: {
+            ...(initialSourceContext.sourcePath
+              ? { sourcePath: initialSourceContext.sourcePath }
+              : {}),
+            ...(initialSourceContext.sourceComponent
+              ? { sourceComponent: initialSourceContext.sourceComponent }
+              : {}),
+            ...(initialSourceContext.projectSlug
+              ? { projectSlug: initialSourceContext.projectSlug }
+              : {}),
+            ...(initialSourceContext.productSlug
+              ? { productSlug: initialSourceContext.productSlug }
+              : {}),
+          },
           honeypot: String(formData.get('website') ?? ''),
         }),
       });
@@ -384,6 +409,31 @@ export default function ContactEnquiryForm({
           Start with what you know. The design, materials and exact dimensions
           can be worked through later.
         </p>
+        {initialSourceContext.hasEntryContext ? (
+          <aside className="contact-form__context" aria-label="Enquiry context">
+            <p>We have kept your enquiry context.</p>
+            <dl>
+              {enquiryType ? (
+                <div>
+                  <dt>Pathway</dt>
+                  <dd>{enquiryType}</dd>
+                </div>
+              ) : null}
+              {initialSourceContext.projectTitle ? (
+                <div>
+                  <dt>Project reference</dt>
+                  <dd>{initialSourceContext.projectTitle}</dd>
+                </div>
+              ) : null}
+              {initialSourceContext.productName ? (
+                <div>
+                  <dt>Product interest</dt>
+                  <dd>{initialSourceContext.productName}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </aside>
+        ) : null}
         <p className="contact-form__required-note">
           Fields marked <span>Required</span> are needed to send the enquiry.
         </p>
@@ -520,7 +570,7 @@ export default function ContactEnquiryForm({
 
           <fieldset className="contact-form__subsection">
             <legend>
-              Roof direction <span>Optional</span>
+              Roof approach <span>Optional</span>
             </legend>
             <div className="contact-form__checks">
               {roofOptions.map(([value, label]) => (
@@ -646,7 +696,7 @@ export default function ContactEnquiryForm({
             />
           </div>
 
-          {enquiryType === 'Professional' ? (
+          {enquiryType ? (
             <div className="contact-form__field contact-form__field--wide">
               <label htmlFor="contact-files">
                 Photos, plans or sketches <span>Optional</span>

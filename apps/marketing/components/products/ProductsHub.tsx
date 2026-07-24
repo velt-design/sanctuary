@@ -19,10 +19,24 @@ import {
   products,
 } from '@/data/products';
 import { projects } from '@/data/projects';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { absoluteUrl } from '@/lib/seo';
 import MobileProductDisclosure from './MobileProductDisclosure';
 import ProductCard from './ProductCard';
 import styles from './product-pages.module.css';
+
+const productsIndexEnquiryHrefs = {
+  hero: buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/products',
+    sourceComponent: 'products-index-hero',
+  }),
+  final: buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/products',
+    sourceComponent: 'products-index-final',
+  }),
+};
 
 const formComparison = [
   {
@@ -133,7 +147,7 @@ export default function ProductsHub() {
             house and the way you want to use the room.
           </Text>
           <div className={styles.heroActions}>
-            <Button href="/contact?enquiry=residential#contact-form">
+            <Button href={productsIndexEnquiryHrefs.hero}>
               Send your project details
             </Button>
             <TextLink href="#pergola-forms">Compare the choices</TextLink>
@@ -364,7 +378,7 @@ export default function ProductsHub() {
         heading="Show us the deck, the house and what you want to improve."
         copy="Send your suburb, a few photos and rough dimensions. We can give you an initial view on suitable forms, the questions to resolve and a useful next step."
         actionLabel="Send your project details"
-        href="/contact?enquiry=residential#contact-form"
+        href={productsIndexEnquiryHrefs.final}
       />
     </main>
   );

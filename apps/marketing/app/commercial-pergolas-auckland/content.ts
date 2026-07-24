@@ -13,6 +13,7 @@ const faqItems = [
 
 export const commercialPergolasConfig = {
   marker: 'commercial-pergolas-auckland', route: '/commercial-pergolas-auckland',
+  enquiryType: 'commercial',
   description: 'Plan a commercial pergola in Auckland around customers, staff, circulation, frontage, services, staging and clear project responsibility. Review Sanctuary project evidence.',
   schemaName: 'Commercial Pergolas Auckland', serviceName: 'Commercial pergola design and installation in Auckland', serviceType: 'Commercial pergola design and installation',
   hero: { image: '/images/project-goodhome-04.jpg', imageAlt: 'Occupied Auckland hospitality courtyard beneath a lit acrylic gable pergola', objectPosition: '50% 42%', eyebrow: 'Commercial pergolas in Auckland', title: 'A commercial pergola has to work before, during and after service', intro: 'Sanctuary plans commercial cover around the people moving below it, the building behind it and the teams required to deliver it. Customer experience, staff circulation, services, staging and responsibility belong in the brief from the start.', primaryCta: 'Share the commercial brief', secondaryCta: 'Map the operation', secondaryHref: '#commercial-brief', proof: ['Use and circulation first', 'Consultant and trade interfaces named', 'Scope built for handover'] },

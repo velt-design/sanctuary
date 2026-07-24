@@ -37,6 +37,7 @@ import {
   createMarketingEnquiryIntake,
   MarketingEnquiryIntakeError,
 } from '@/lib/enquiryIntake';
+import { normalizeKnownEnquirySourceContext } from '@/lib/enquirySourceContext.server';
 
 const MAX_FIELD_LENGTH = 400;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -198,7 +199,7 @@ function storedAttachmentEntries(files: unknown): Array<{ path: string; name: st
 
 // Best-effort: never throws, so a Storage hiccup cannot block the enquiry or
 // its autoresponder. Returns inline attachments when small, else signed links.
-async function resolveProfessionalAttachments(
+async function resolveEnquiryAttachments(
   supabase: SupabaseClient,
   files: unknown,
   verifiedFiles: VerifiedStoredAttachment[],
@@ -296,6 +297,7 @@ export async function POST(req: Request) {
   const company = sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH);
   const page = sanitizeSingleLine(getField('page'), MAX_FIELD_LENGTH);
   const source = sanitizeSingleLine(getField('source'), MAX_FIELD_LENGTH) || 'website';
+  const sourceContext = normalizeKnownEnquirySourceContext(payload.sourceContext);
 
   const dimsRaw = isPlainObject(payload.dimensions) ? payload.dimensions : {};
   const dims = isPlainObject(dimsRaw) ? dimsRaw : {};
@@ -318,7 +320,11 @@ export async function POST(req: Request) {
   const attributionRaw = maybeParseJson(payload.attribution);
   const attribution = normalizeMarketingAttributionInput(attributionRaw, { utm, page, source });
   const { uploadSessionToken: _uploadSessionToken, ...payloadWithoutUploadToken } = payload;
-  const rawPayload = safeJsonPayload({ ...payloadWithoutUploadToken, attribution });
+  const rawPayload = safeJsonPayload({
+    ...payloadWithoutUploadToken,
+    attribution,
+    sourceContext,
+  });
 
   const filesRaw = maybeParseJson(payload.files);
   const files = normalizeEnquiryFiles(filesRaw);
@@ -459,6 +465,7 @@ export async function POST(req: Request) {
       enquiryType,
       source,
       page: page || null,
+      sourceContext,
       baseBudgetLowIncGst: budgets.baseRange?.lowIncGst ?? null,
       baseBudgetHighIncGst: budgets.baseRange?.highIncGst ?? null,
     },
@@ -522,16 +529,14 @@ export async function POST(req: Request) {
             : undefined;
 
       let emailPayload: EnquiryPayload;
-      let professionalAttachments: ResolvedAttachment[] = [];
+      const filesCount = files.length;
+      const resolvedAttachments = await resolveEnquiryAttachments(
+        supabase,
+        files,
+        verifiedStoredAttachments,
+      );
 
       if (enquiryType === 'professional') {
-        const filesCount = Array.isArray(files) ? files.length : 0;
-        const resolved = await resolveProfessionalAttachments(
-          supabase,
-          files,
-          verifiedStoredAttachments,
-        );
-        professionalAttachments = resolved.attachments;
         emailPayload = {
           leadId: enquiryRow.id,
           submittedAt,
@@ -547,7 +552,9 @@ export async function POST(req: Request) {
           landingUrl: page || undefined,
           company: company || undefined,
           filesReceivedCount: filesCount,
-          ...(resolved.attachmentLinks.length ? { attachmentLinks: resolved.attachmentLinks } : {}),
+          ...(resolvedAttachments.attachmentLinks.length
+            ? { attachmentLinks: resolvedAttachments.attachmentLinks }
+            : {}),
         } satisfies Professional;
       } else {
         if (!budgets.baseRange) {
@@ -568,6 +575,10 @@ export async function POST(req: Request) {
           utmMedium,
           utmCampaign,
           landingUrl: page || undefined,
+          filesReceivedCount: filesCount,
+          ...(resolvedAttachments.attachmentLinks.length
+            ? { attachmentLinks: resolvedAttachments.attachmentLinks }
+            : {}),
           widthM: Number.isFinite(widthM ?? NaN) ? Number(widthM) : 0,
           depthM: Number.isFinite(depthM ?? NaN) ? Number(depthM) : 0,
           heightM: Number.isFinite(heightM ?? NaN) ? Number(heightM) : 0,
@@ -620,7 +631,9 @@ export async function POST(req: Request) {
         await sendCustomerAutoresponder(
           emailPayload,
           {
-            ...(professionalAttachments.length ? { attachments: professionalAttachments } : {}),
+            ...(resolvedAttachments.attachments.length
+              ? { attachments: resolvedAttachments.attachments }
+              : {}),
             idempotencyKey,
           },
         );

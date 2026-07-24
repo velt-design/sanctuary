@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Text } from '@react-email/components';
+import { AttachmentLinks } from '../components/AttachmentLinks';
 import { EmailLayout } from '../components/EmailLayout';
 import { Summary } from '../components/Summary';
 import { THEME } from '../theme';
@@ -27,23 +28,7 @@ export function CustomerProfessionalEmail(props: Professional & { callWindowText
         ]}
       />
 
-      {props.attachmentLinks && props.attachmentLinks.length ? (
-        <>
-          <Text style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600 }}>
-            Your files
-          </Text>
-          <Text style={{ margin: '0 0 14px', fontSize: 13, color: THEME.muted, lineHeight: 1.6 }}>
-            {props.attachmentLinks.map((file, index) => (
-              <React.Fragment key={`${file.name}-${index}`}>
-                <a href={file.url} style={{ color: THEME.text }}>
-                  {file.name}
-                </a>
-                {index < props.attachmentLinks!.length - 1 ? <br /> : null}
-              </React.Fragment>
-            ))}
-          </Text>
-        </>
-      ) : null}
+      <AttachmentLinks files={props.attachmentLinks} />
 
       <Text style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>
         Next step

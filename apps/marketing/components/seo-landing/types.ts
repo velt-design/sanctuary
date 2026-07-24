@@ -1,3 +1,5 @@
+import type { EnquiryAudience } from '@/lib/enquiryContext';
+
 type FaqItem = {
   question: string;
   answer: readonly string[];
@@ -92,6 +94,7 @@ export type SeoLandingBlock =
 export type SeoLandingPageConfig = {
   marker: string;
   route: string;
+  enquiryType?: EnquiryAudience;
   description: string;
   schemaName: string;
   serviceName: string;

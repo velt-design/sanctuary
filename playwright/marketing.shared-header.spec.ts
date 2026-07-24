@@ -117,6 +117,34 @@ test('shared header destinations remain functional', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Cover the deck. Keep the light.' })).toBeVisible();
 });
 
+test('shared header enquiry intent follows commercial and project context', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await preparePage(page);
+
+  await page.goto('/commercial-pergolas-auckland');
+  await expect(page.locator('#acrylic-enquiry-type')).toHaveValue('commercial');
+  await expect(page.locator('header.site').getByRole('link', { name: 'Get an estimate' }))
+    .toHaveAttribute(
+      'href',
+      '/contact?enquiry=commercial&source_path=%2Fcommercial-pergolas-auckland'
+      + '&source_component=header#contact-form',
+    );
+
+  await page.goto('/projects/atelier-shu-cafe');
+  const projectHeaderCta = page.locator('header.site')
+    .getByRole('link', { name: 'Get an estimate' });
+  await expect(projectHeaderCta).toHaveAttribute(
+    'href',
+    '/contact?source_path=%2Fprojects%2Fatelier-shu-cafe'
+    + '&source_component=header&project=atelier-shu-cafe#contact-form',
+  );
+  await projectHeaderCta.click();
+  await expect(page.getByRole('radio', { name: 'Commercial', exact: false }))
+    .toBeChecked();
+  await expect(page.getByRole('complementary', { name: 'Enquiry context' }))
+    .toContainText('Atelier Shu Cafe');
+});
+
 test('capture representative shared-header states', async ({ page }) => {
   test.skip(!capture, 'Set MARKETING_SHARED_HEADER_CAPTURE=1 to refresh visual evidence.');
   await preparePage(page);

@@ -77,7 +77,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
     }
 
     if (viewport.width <= 720) {
@@ -128,12 +128,12 @@ test('copy variant enquiry keeps validation, API attribution and route-specific 
 
   const message = page.locator('#acrylic-enquiry-message');
   await expect(message).toHaveCount(1);
+  await expect(page.locator('#acrylic-enquiry-type')).toHaveValue('residential');
   await message.fill('We want to use the deck for dinner without making the kitchen feel darker.');
   await page.getByRole('button', { name: 'Send my project details' }).click();
-  await expect(page.getByText('Choose an enquiry type.')).toBeVisible();
+  await expect(page.getByText('Enter your name.')).toBeVisible();
   await expect(message).toHaveValue('We want to use the deck for dinner without making the kitchen feel darker.');
 
-  await page.locator('#acrylic-enquiry-type').selectOption('residential');
   await page.locator('#acrylic-enquiry-name').fill('Test Person');
   await page.locator('#acrylic-enquiry-phone').fill('021 000 0000');
   await page.locator('#acrylic-enquiry-email').fill('test@example.com');
@@ -141,7 +141,14 @@ test('copy variant enquiry keeps validation, API attribution and route-specific 
   await page.getByRole('button', { name: 'Send my project details' }).click();
 
   await expect(page.getByText('Thanks, we have received your project details.')).toBeVisible();
-  expect(submittedBody).toMatchObject({ page: route, source: 'website' });
+  expect(submittedBody).toMatchObject({
+    page: route,
+    source: 'website',
+    sourceContext: {
+      sourcePath: route,
+      sourceComponent: 'embedded-enquiry',
+    },
+  });
   expect(await page.evaluate(() => {
     type TrackingWindow = Window & { dataLayer?: Array<Record<string, unknown>> };
     return (window as TrackingWindow).dataLayer?.find((event) => event.event === 'lead_submitted')?.landing_page;

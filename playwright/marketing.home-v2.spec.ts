@@ -7,6 +7,18 @@ const canonicalUrl = 'https://www.sanctuarypergolas.co.nz';
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-home-v2');
 const capture = process.env.MARKETING_HOME_V2_CAPTURE?.trim();
 const responsiveCaptureLabel = process.env.MARKETING_HOME_V2_CAPTURE_LABEL?.trim();
+const homepageEnquiryHrefs = {
+  hero: '/contact?enquiry=residential&source_path=%2F'
+    + '&source_component=homepage-hero#contact-form',
+  final: '/contact?enquiry=residential&source_path=%2F'
+    + '&source_component=homepage-final#contact-form',
+  professional: '/contact?enquiry=professional&source_path=%2F'
+    + '&source_component=homepage-professional#contact-form',
+  header: '/contact?enquiry=residential&source_path=%2F'
+    + '&source_component=header#contact-form',
+  mobileHeader: '/contact?enquiry=residential&source_path=%2F'
+    + '&source_component=mobile-menu#contact-form',
+} as const;
 
 const viewports = [
   { name: '1440x1000', width: 1440, height: 1000 },
@@ -167,7 +179,7 @@ for (const viewport of viewports) {
 
     const heroActions = main.getByLabel('Homepage actions');
     await expect(heroActions.getByRole('link', { name: 'Get an initial project estimate', exact: true }))
-      .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+      .toHaveAttribute('href', homepageEnquiryHrefs.hero);
     await expect(heroActions.locator('a[href="/projects"]')).toHaveText('View completed projects');
 
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -412,7 +424,7 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
     ['/pergolas-auckland', 'Plan an Auckland pergola'],
     ['/custom-pergolas-auckland', 'Explore custom pergola design'],
     ['/commercial-pergolas-auckland#project-details', 'Discuss a commercial project'],
-    ['/contact?enquiry=professional#contact-form', 'Send plans or a project brief'],
+    [homepageEnquiryHrefs.professional, 'Send plans or a project brief'],
   ] as const;
   const pathwaySection = main.locator('section[aria-labelledby="project-pathways"]');
   for (const [href, name] of expectedPathways) {
@@ -441,14 +453,14 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   await expect(main.getByRole('link', { name: 'Explore all pergola guides' })).toHaveAttribute('href', '/pergola-guides');
   await expect(main.getByRole('navigation', { name: 'Featured pergola guides' }).getByRole('link')).toHaveCount(3);
   await expect(main.getByRole('link', { name: 'Send your project details' }))
-    .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+    .toHaveAttribute('href', homepageEnquiryHrefs.final);
   await expect(main).toContainText('Before site work begins, Sanctuary records the agreed design');
   await expect(main).toContainText('Documented scope, approval and scheduling');
   await expect(main).not.toContainText('Three concise Google reviews');
   await expect(main).not.toContainText('complete technical manual');
   await expect(main).not.toContainText('Standalone');
   await expect(page.getByRole('link', { name: 'Get an estimate', exact: true }))
-    .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+    .toHaveAttribute('href', homepageEnquiryHrefs.header);
 
   const schemaTypes = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) => (
     nodes.flatMap((node) => {
@@ -529,7 +541,7 @@ test('mobile homepage records disclosure and review interactions with device con
   const mobileEstimate = page.getByRole('navigation', { name: 'Mobile primary' })
     .getByRole('link', { name: 'Get an estimate', exact: true });
   await expect(mobileEstimate).toBeVisible();
-  await expect(mobileEstimate).toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+  await expect(mobileEstimate).toHaveAttribute('href', homepageEnquiryHrefs.mobileHeader);
   await expect(mobileEstimate).toHaveAttribute('data-homepage-event', 'header_estimate_click');
 });
 
@@ -537,8 +549,8 @@ test('homepage enquiry links open the promised contact pathway', async ({ page }
   await preparePage(page);
 
   for (const [destination, enquiryOption] of [
-    ['/contact?enquiry=residential#contact-form', 'Residential'],
-    ['/contact?enquiry=professional#contact-form', 'Architect, designer or builder'],
+    [homepageEnquiryHrefs.hero, 'Residential'],
+    [homepageEnquiryHrefs.professional, 'Architect, designer or builder'],
   ] as const) {
     await page.goto(destination);
     await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));

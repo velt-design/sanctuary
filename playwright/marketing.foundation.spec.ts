@@ -30,7 +30,11 @@ for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Architectural pergolas tailored to Kiwi homes.' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Quick Estimate' }).first()).toHaveAttribute('href', '/contact');
+    await expect(page.getByRole('link', { name: 'Get an estimate', exact: true }).first())
+      .toHaveAttribute(
+        'href',
+        '/contact?enquiry=residential&source_path=%2F&source_component=header#contact-form',
+      );
     await expect(page.getByRole('heading', { name: 'The Sanctuary Process' })).toBeAttached();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });

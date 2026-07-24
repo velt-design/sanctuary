@@ -402,7 +402,13 @@ export default function AcrylicRoofPergolasAucklandPage() {
 
       <Section id="estimate" tone="warm" className="acrylic-section acrylic-section--estimate" aria-label="Initial estimate enquiry form">
         <Container width="wide">
-          <AcrylicPergolaEnquiryForm />
+          <AcrylicPergolaEnquiryForm
+            initialEnquiryType="residential"
+            sourceContext={{
+              sourcePath: route,
+              sourceComponent: 'embedded-enquiry',
+            }}
+          />
         </Container>
       </Section>
     </main>

@@ -30,10 +30,17 @@ boundary is `playwright/marketing.consent.spec.ts`.
 | Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Legacy server-side lead conversion reporting; requires an explicit marketing-consent flag | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
 | Homepage interaction events | analytics | `apps/marketing/app/home-v2/HomepageInteractionTracker.tsx` | Distinguishes non-PII hero, pathway, product, project, disclosure, review-control, guide and enquiry-link interactions on `/` after analytics consent, segmented by mobile, tablet or desktop viewport | Marketing and Engineering |
+| Public enquiry conversion events | analytics / marketing | `apps/marketing/app/contact/ContactEnquiryForm.tsx`, `apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.tsx` | Preserves the existing consent-gated contact start/success/error and lead events with validated non-personal enquiry type, source path/component, and project/product slug context | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
 Homepage interaction events contain only the stable event name, homepage variant, viewport category, link destination and optional editorial card label. They do not contain form values, photos, dimensions, contact details or other project/customer data, and the route-local listener is inactive unless analytics consent is granted. Homepage enquiry links may pass the non-sensitive `residential`, `commercial` or `professional` enquiry type so the contact form opens on the promised pathway; no customer-entered data is placed in the URL.
+
+Public enquiry context uses only validated internal paths, a closed source-component
+allowlist, the enquiry type, and known project/product slugs. These properties may
+be added to the existing consent-gated contact and `lead_submitted` events. Names,
+email addresses, phone numbers, messages, dimensions, file names, and other
+customer-entered values must not enter enquiry URLs or analytics properties.
 
 ## Portal Operational Performance Telemetry
 

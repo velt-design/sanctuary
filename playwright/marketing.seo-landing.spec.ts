@@ -73,7 +73,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -121,11 +121,11 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
 
   const broadMessage = page.locator('#acrylic-enquiry-message');
   await expect(broadMessage).toHaveCount(1);
+  await expect(page.locator('#acrylic-enquiry-type')).toHaveValue('residential');
   await broadMessage.fill('We need a sheltered dining area but want to keep the kitchen bright.');
   await page.getByRole('button', { name: 'Send my project details' }).click();
-  await expect(page.getByText('Choose an enquiry type.')).toBeVisible();
+  await expect(page.getByText('Enter your name.')).toBeVisible();
 
-  await page.locator('#acrylic-enquiry-type').selectOption('residential');
   await page.locator('#acrylic-enquiry-name').fill('Test Person');
   await page.locator('#acrylic-enquiry-phone').fill('021 000 0000');
   await page.locator('#acrylic-enquiry-email').fill('test@example.com');
@@ -143,6 +143,10 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
   expect(submittedBody).toMatchObject({
     page: route,
     source: 'website',
+    sourceContext: {
+      sourcePath: route,
+      sourceComponent: 'embedded-enquiry',
+    },
     roofMaterials: ['acrylic', 'timber'],
     files: [{ name: 'deck-context.jpg', size: 21, type: 'image/jpeg' }],
     projectDetails: { roofPreference: 'Combination roofing' },
@@ -215,7 +219,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -272,7 +276,19 @@ test('Custom Pergolas Auckland enquiry preserves its route and custom brief', as
   await page.locator('#acrylic-enquiry-roof').selectOption('Acrylic roofing');
   await page.getByRole('button', { name: 'Request a design review' }).click();
   await expect(page.getByText('Thanks, we have received your project details.')).toBeVisible();
-  expect(submittedBody).toMatchObject({ page: customRoute, source: 'website', roofMaterials: ['acrylic'], projectDetails: { roofPreference: 'Acrylic roofing', knownConstraints: 'No post can sit across the corner door and the deck changes level.' } });
+  expect(submittedBody).toMatchObject({
+    page: customRoute,
+    source: 'website',
+    sourceContext: {
+      sourcePath: customRoute,
+      sourceComponent: 'embedded-enquiry',
+    },
+    roofMaterials: ['acrylic'],
+    projectDetails: {
+      roofPreference: 'Acrylic roofing',
+      knownConstraints: 'No post can sit across the corner door and the deck changes level.',
+    },
+  });
 });
 
 test('Custom Pergolas Auckland sitemap, links and page schema match the service role', async ({ page, request }) => {

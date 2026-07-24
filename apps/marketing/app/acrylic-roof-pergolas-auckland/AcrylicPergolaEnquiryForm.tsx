@@ -12,6 +12,10 @@ import {
   uploadEnquiryAttachments,
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
+import type {
+  EnquiryAudience,
+  EnquirySourceContext,
+} from '@/lib/enquiryContext';
 import type { EnquiryBriefField } from '@/components/seo-landing/types';
 
 type RequiredField = 'enquiryType' | 'name' | 'phone' | 'email' | 'suburb' | 'message';
@@ -24,6 +28,8 @@ type AcrylicPergolaEnquiryFormProps = {
   messageLabel?: string;
   messagePlaceholder?: string;
   briefFields?: readonly EnquiryBriefField[];
+  initialEnquiryType?: EnquiryAudience;
+  sourceContext?: EnquirySourceContext;
   roofPreference?: {
     label: string;
     detailKey: 'acrylicOption' | 'roofPreference';
@@ -78,6 +84,7 @@ function trackLeadSubmitted(
   enquiryType: string,
   eventId: string,
   landingPage: string,
+  sourceContext: EnquirySourceContext,
   trackingConsent: { analytics: boolean; marketing: boolean; hasStoredChoice: boolean },
 ): void {
   type TrackingWindow = typeof window & {
@@ -91,6 +98,10 @@ function trackLeadSubmitted(
     event_label: enquiryType,
     enquiry_type: enquiryType,
     landing_page: landingPage,
+    source_path: sourceContext.sourcePath ?? landingPage,
+    source_component: sourceContext.sourceComponent ?? 'embedded-enquiry',
+    ...(sourceContext.projectSlug ? { project_slug: sourceContext.projectSlug } : {}),
+    ...(sourceContext.productSlug ? { product_slug: sourceContext.productSlug } : {}),
   };
 
   try {
@@ -122,6 +133,8 @@ export default function AcrylicPergolaEnquiryForm({
   messageLabel = 'Brief project description',
   messagePlaceholder = 'Tell us how you use the space, which rooms sit beside it and what you would like the roof to improve.',
   briefFields = [],
+  initialEnquiryType,
+  sourceContext = {},
   roofPreference = acrylicRoofPreference,
 }: AcrylicPergolaEnquiryFormProps = {}) {
   const { consent, hasStoredChoice } = useConsent();
@@ -215,6 +228,11 @@ export default function AcrylicPergolaEnquiryForm({
       const roofMaterials = selectedRoofOption ? [...selectedRoofOption.roofMaterials] : [];
 
       const preferredStyle = String(formData.get('style') ?? '');
+      const normalizedSourceContext = {
+        ...sourceContext,
+        sourcePath: sourceContext.sourcePath ?? window.location.pathname,
+        sourceComponent: sourceContext.sourceComponent ?? 'embedded-enquiry',
+      } satisfies EnquirySourceContext;
       const pageSpecificDetails = Object.fromEntries(
         briefFields.map((field) => [field.name, String(formData.get(field.name) ?? '').trim() || null]),
       );
@@ -252,6 +270,7 @@ export default function AcrylicPergolaEnquiryForm({
           attribution,
           page: window.location.pathname,
           source: 'website',
+          sourceContext: normalizedSourceContext,
           honeypot: String(formData.get('website') ?? ''),
         }),
       });
@@ -261,11 +280,17 @@ export default function AcrylicPergolaEnquiryForm({
 
       submissionIdRef.current = null;
       setSubmitState('success');
-      trackLeadSubmitted(enquiryType, makeEventId(), window.location.pathname, {
-        analytics: consent.analytics,
-        marketing: consent.marketing,
-        hasStoredChoice,
-      });
+      trackLeadSubmitted(
+        enquiryType,
+        makeEventId(),
+        window.location.pathname,
+        normalizedSourceContext,
+        {
+          analytics: consent.analytics,
+          marketing: consent.marketing,
+          hasStoredChoice,
+        },
+      );
     } catch {
       setSubmitState('error');
     }
@@ -277,13 +302,13 @@ export default function AcrylicPergolaEnquiryForm({
         <Eyebrow className="acrylic-eyebrow">{eyebrow}</Eyebrow>
         <Heading id="estimate-form-title">{heading}</Heading>
         <p>{intro}</p>
-        <p className="acrylic-form__required-note">Fields marked required are needed before the enquiry can be assessed.</p>
+        <p className="acrylic-form__required-note">Fields marked <strong>Required</strong> are needed before the enquiry can be assessed.</p>
       </div>
 
       <div className="acrylic-form__fields">
         <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-type">Enquiry type <span aria-hidden="true">*</span></label>
-          <select id="acrylic-enquiry-type" name="enquiryType" defaultValue="" required aria-invalid={Boolean(errors.enquiryType)} aria-describedby={errors.enquiryType ? fieldErrorId('enquiryType') : undefined} onChange={() => clearFieldError('enquiryType')}>
+          <label htmlFor="acrylic-enquiry-type">Enquiry type <span>Required</span></label>
+          <select id="acrylic-enquiry-type" name="enquiryType" defaultValue={initialEnquiryType ?? ''} required aria-invalid={Boolean(errors.enquiryType)} aria-describedby={errors.enquiryType ? fieldErrorId('enquiryType') : undefined} onChange={() => clearFieldError('enquiryType')}>
             <option value="" disabled>Choose an enquiry type</option>
             <option value="residential">Residential</option>
             <option value="commercial">Commercial</option>
@@ -293,31 +318,31 @@ export default function AcrylicPergolaEnquiryForm({
         </div>
 
         <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-name">Name <span aria-hidden="true">*</span></label>
+          <label htmlFor="acrylic-enquiry-name">Name <span>Required</span></label>
           <input id="acrylic-enquiry-name" name="name" autoComplete="name" required aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? fieldErrorId('name') : undefined} onChange={() => clearFieldError('name')} />
           {errors.name ? <p className="acrylic-form__error" id={fieldErrorId('name')}>{errors.name}</p> : null}
         </div>
 
         <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-phone">Phone <span aria-hidden="true">*</span></label>
+          <label htmlFor="acrylic-enquiry-phone">Phone <span>Required</span></label>
           <input id="acrylic-enquiry-phone" name="phone" type="tel" autoComplete="tel" required aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? fieldErrorId('phone') : undefined} onChange={() => clearFieldError('phone')} />
           {errors.phone ? <p className="acrylic-form__error" id={fieldErrorId('phone')}>{errors.phone}</p> : null}
         </div>
 
         <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-email">Email <span aria-hidden="true">*</span></label>
+          <label htmlFor="acrylic-enquiry-email">Email <span>Required</span></label>
           <input id="acrylic-enquiry-email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? fieldErrorId('email') : undefined} onChange={() => clearFieldError('email')} />
           {errors.email ? <p className="acrylic-form__error" id={fieldErrorId('email')}>{errors.email}</p> : null}
         </div>
 
         <div className="acrylic-form__field acrylic-form__field--wide">
-          <label htmlFor="acrylic-enquiry-suburb">Project suburb <span aria-hidden="true">*</span></label>
+          <label htmlFor="acrylic-enquiry-suburb">Project suburb <span>Required</span></label>
           <input id="acrylic-enquiry-suburb" name="suburb" autoComplete="address-level2" required aria-invalid={Boolean(errors.suburb)} aria-describedby={errors.suburb ? fieldErrorId('suburb') : undefined} onChange={() => clearFieldError('suburb')} />
           {errors.suburb ? <p className="acrylic-form__error" id={fieldErrorId('suburb')}>{errors.suburb}</p> : null}
         </div>
 
         <div className="acrylic-form__field acrylic-form__field--wide">
-          <label htmlFor="acrylic-enquiry-message">{messageLabel} <span aria-hidden="true">*</span></label>
+          <label htmlFor="acrylic-enquiry-message">{messageLabel} <span>Required</span></label>
           <textarea id="acrylic-enquiry-message" name="message" rows={5} required placeholder={messagePlaceholder} aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? fieldErrorId('message') : undefined} onChange={() => clearFieldError('message')} />
           {errors.message ? <p className="acrylic-form__error" id={fieldErrorId('message')}>{errors.message}</p> : null}
         </div>

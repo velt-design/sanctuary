@@ -146,8 +146,13 @@ for (const viewport of viewports) {
       const h1 = main.locator('h1:visible');
       await expect(h1).toHaveCount(1);
       await expect(h1).toBeVisible();
+      const expectedEnquiryHref = route === '/products'
+        ? '/contact?enquiry=residential&source_path=%2Fproducts'
+          + '&source_component=products-index-hero#contact-form'
+        : `/contact?enquiry=residential&source_path=${encodeURIComponent(route)}`
+          + `&source_component=product-hero&product=${route.split('/').at(-1)}#contact-form`;
       await expect(main.getByRole('link', { name: 'Send your project details' }).first())
-        .toHaveAttribute('href', '/contact?enquiry=residential#contact-form');
+        .toHaveAttribute('href', expectedEnquiryHref);
       await expect(main).not.toContainText('[[VERIFY]]');
       await expect(main).not.toContainText('—');
       const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>

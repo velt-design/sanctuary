@@ -20,6 +20,7 @@ import {
 } from '@/components/marketing-foundation';
 import { projects, type Project } from '@/data/projects';
 import { GOOGLE_PLACE, featuredReviews } from '@/data/reviews';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { getGoogleRating } from '@/lib/googleReviews';
 import { absoluteUrl } from '@/lib/seo';
 import {
@@ -42,6 +43,28 @@ import MobileReviewCarousel from './MobileReviewCarousel';
 import styles from './home-v2.module.css';
 
 const homepageTitle = 'Architectural Pergola Design & Build | Sanctuary Pergolas';
+const homepageEnquiryHrefs = {
+  hero: buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/',
+    sourceComponent: 'homepage-hero',
+  }),
+  process: buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/',
+    sourceComponent: 'homepage-process',
+  }),
+  final: buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/',
+    sourceComponent: 'homepage-final',
+  }),
+  professional: buildEnquiryHref({
+    enquiryType: 'professional',
+    sourcePath: '/',
+    sourceComponent: 'homepage-professional',
+  }),
+};
 
 export const metadata: Metadata = {
   title: { absolute: homepageTitle },
@@ -166,7 +189,7 @@ export default async function HomePage() {
                 Sanctuary designs, builds and installs bespoke fixed-roof pergolas for Auckland homes and selected commercial projects.
               </Text>
               <div className={styles.heroActions} aria-label="Homepage actions">
-                <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="hero_estimate_click">Get an initial project estimate</Button>
+                <Button href={homepageEnquiryHrefs.hero} data-homepage-event="hero_estimate_click">Get an initial project estimate</Button>
                 <TextLink href="/projects" className={styles.heroLink} data-homepage-event="hero_projects_click">
                   View completed projects
                 </TextLink>
@@ -545,7 +568,7 @@ export default async function HomePage() {
             ))}
           </ol>
           <div className={styles.processAction}>
-            <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="process_enquiry_click">Start with your project details</Button>
+            <Button href={homepageEnquiryHrefs.process} data-homepage-event="process_enquiry_click">Start with your project details</Button>
           </div>
         </Container>
       </Section>
@@ -645,11 +668,11 @@ export default async function HomePage() {
               Sanctuary reviews the initial information, identifies likely options, flags site or scope considerations and recommends a next step. Where the brief is clear, an indicative price range may be possible.
             </Text>
             <div className={styles.sectionActions}>
-              <Button href="/contact?enquiry=residential#contact-form" data-homepage-event="final_enquiry_click">Send your project details</Button>
+              <Button href={homepageEnquiryHrefs.final} data-homepage-event="final_enquiry_click">Send your project details</Button>
             </div>
             <nav className={styles.secondaryPathways} aria-label="Alternative enquiry pathways">
               <TextLink href="/commercial-pergolas-auckland#project-details" data-homepage-event="commercial_pathway_click">Discuss a commercial project</TextLink>
-              <TextLink href="/contact?enquiry=professional#contact-form" data-homepage-event="professional_pathway_click">Send plans or a project brief</TextLink>
+              <TextLink href={homepageEnquiryHrefs.professional} data-homepage-event="professional_pathway_click">Send plans or a project brief</TextLink>
               <TextLink href="/contact#contact-form" data-homepage-event="general_contact_click">General contact questions</TextLink>
             </nav>
           </div>

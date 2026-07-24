@@ -203,7 +203,7 @@ for (const programmePage of pages) {
       if (viewport.width <= 900) {
         await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
         await expect(page.locator('header.site .desktop-nav')).toBeHidden();
-      } else await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      } else await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
 
       if (capturePhase) {
         const directory = path.join(process.cwd(), 'artifacts', 'marketing-seo-landing', programmePage.marker);

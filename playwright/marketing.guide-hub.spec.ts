@@ -89,7 +89,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
     }
 
     if (capture) {

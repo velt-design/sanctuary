@@ -45,7 +45,7 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Quick Estimate' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -97,7 +97,7 @@ test('acrylic landing interactions remain accessible and preserve form input on 
   await message.fill('A covered deck that keeps daylight in the kitchen.');
   expect(await message.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
   await page.getByRole('button', { name: 'Request my initial estimate' }).click();
-  await expect(page.getByText('Choose an enquiry type.')).toBeVisible();
+  await expect(page.getByText('Enter your name.')).toBeVisible();
   await expect(message).toHaveValue('A covered deck that keeps daylight in the kitchen.');
 
   const faq = page.locator('details').filter({ hasText: 'Which acrylic tint should I choose?' });

@@ -204,6 +204,66 @@ test('query preselection is server rendered and invalid values leave the chooser
   )).toBe(true);
 });
 
+test('validated project and product context is visible, refresh-safe and submitted', async ({
+  page,
+}) => {
+  await preparePage(page);
+  let submittedBody: Record<string, unknown> | undefined;
+  await page.route('**/api/enquiry', async (handler) => {
+    submittedBody = handler.request().postDataJSON() as Record<string, unknown>;
+    await handler.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  const projectUrl = `${route}?enquiry=residential`
+    + '&source_path=%2Fprojects%2Fwarkworth-outdoor-room'
+    + '&source_component=project-final'
+    + '&project=warkworth-outdoor-room#contact-form';
+  await page.goto(projectUrl, { waitUntil: 'networkidle' });
+
+  const context = page.getByRole('complementary', { name: 'Enquiry context' });
+  await expect(context).toContainText('Residential');
+  await expect(context).toContainText('Warkworth Outdoor Room');
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(context).toContainText('Warkworth Outdoor Room');
+
+  await page.getByLabel('Name Required').fill('Test Person');
+  await page.getByLabel('Phone Required').fill('021 000 0000');
+  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await expect(page.getByRole('status')).toContainText('Project details received');
+  expect(submittedBody).toMatchObject({
+    enquiryType: 'residential',
+    sourceContext: {
+      sourcePath: '/projects/warkworth-outdoor-room',
+      sourceComponent: 'project-final',
+      projectSlug: 'warkworth-outdoor-room',
+    },
+  });
+
+  await page.goto(
+    `${route}?enquiry=residential`
+    + '&source_path=%2Fproducts%2Fpergolas%2Fgable'
+    + '&source_component=product-hero&product=gable',
+    { waitUntil: 'networkidle' },
+  );
+  await expect(page.getByRole('complementary', { name: 'Enquiry context' }))
+    .toContainText('Gable pergola');
+
+  await page.goto(
+    `${route}?enquiry=unknown&source_path=https%3A%2F%2Fexample.com`
+    + '&source_component=anything&project=..%2Fcustomer',
+    { waitUntil: 'networkidle' },
+  );
+  await expect(page.getByRole('complementary', { name: 'Enquiry context' }))
+    .toHaveCount(0);
+  expect(await page.getByRole('radio').evaluateAll((radios) =>
+    radios.every((radio) => !(radio as HTMLInputElement).checked),
+  )).toBe(true);
+});
+
 test('validation is specific, focuses the first issue and preserves entered details', async ({
   page,
 }) => {
@@ -311,7 +371,10 @@ test('the submit lock prevents duplicate requests and consent controls lead even
       body: JSON.stringify({ ok: true }),
     });
   });
-  await page.goto(`${route}?enquiry=residential`, { waitUntil: 'networkidle' });
+  await page.goto(
+    `${route}?enquiry=residential&source_path=%2F&source_component=homepage-final`,
+    { waitUntil: 'networkidle' },
+  );
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
 
@@ -329,8 +392,15 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     }).dataLayer,
     tracked: (window as typeof window & { __tracked?: Array<unknown[]> }).__tracked,
   }));
-  expect(events.dataLayer?.filter((event) => event.event === 'lead_submitted'))
-    .toHaveLength(1);
+  const leadEvents = events.dataLayer?.filter(
+    (event) => event.event === 'lead_submitted',
+  );
+  expect(leadEvents).toHaveLength(1);
+  expect(leadEvents?.[0]).toMatchObject({
+    enquiry_type: 'Residential',
+    source_path: '/',
+    source_component: 'homepage-final',
+  });
   expect(events.tracked?.some((entry) => entry.includes('contact_start'))).toBe(true);
   expect(events.tracked?.some((entry) => entry.includes('contact_success'))).toBe(true);
   expect(JSON.stringify(events)).not.toContain('Test Person');
@@ -340,7 +410,7 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     .toHaveAttribute('href', '/products');
 });
 
-test('professional attachments keep exact policy errors and metadata fallback', async ({
+test('attachments are available to residential and professional enquiries with exact policy errors', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -363,8 +433,8 @@ test('professional attachments keep exact policy errors and metadata fallback', 
       body: JSON.stringify({ ok: true }),
     });
   });
-  await page.goto(`${route}?enquiry=professional`, { waitUntil: 'networkidle' });
-  await page.getByLabel('Name Required').fill('Test Designer');
+  await page.goto(`${route}?enquiry=residential`, { waitUntil: 'networkidle' });
+  await page.getByLabel('Name Required').fill('Test Customer');
   await page.getByLabel('Phone Required').fill('021 000 0000');
 
   const files = page.getByLabel('Photos, plans or sketches Optional');
@@ -410,9 +480,12 @@ test('professional attachments keep exact policy errors and metadata fallback', 
   await expect(page.getByRole('status')).toContainText('Project details received');
   expect(requestCount).toBe(1);
   expect(submittedBody).toMatchObject({
-    enquiryType: 'professional',
+    enquiryType: 'residential',
     company: null,
     uploadSessionToken: null,
     files: [{ name: 'plan.pdf', size: 9, type: 'application/pdf' }],
   });
+
+  await page.goto(`${route}?enquiry=professional`, { waitUntil: 'networkidle' });
+  await expect(page.getByLabel('Photos, plans or sketches Optional')).toBeVisible();
 });
