@@ -7,10 +7,8 @@ import {
   Container,
   Eyebrow,
   Figure,
-  FullBleedStatement,
   Heading,
   NumberedPrinciples,
-  ProcessSteps,
   ProjectMeta,
   Section,
   SpecificationRows,
@@ -39,7 +37,6 @@ import {
 } from './content';
 import HomepageInteractionTracker from './HomepageInteractionTracker';
 import MobileDisclosure from './MobileDisclosure';
-import MobileReviewCarousel from './MobileReviewCarousel';
 import styles from './home-v2.module.css';
 
 const homepageTitle = 'Architectural Pergola Design & Build | Sanctuary Pergolas';
@@ -57,10 +54,6 @@ const homeProfessionalEnquiryHref = buildEnquiryHref({
   enquiryType: 'professional',
   sourcePath: '/',
   sourceComponent: 'pathway',
-});
-const homeGeneralContactHref = buildEnquiryHref({
-  sourcePath: '/',
-  sourceComponent: 'final_cta',
 });
 
 export const metadata: Metadata = {
@@ -103,7 +96,6 @@ const selectedProjects = selectedProjectProfiles.map((profile) => ({
   ...profile,
   project: findProject(profile.slug),
 }));
-const mobileSelectedProjects = selectedProjects.slice(0, 2);
 const selectedReviews = featuredReviews.filter((review) => (
   reviewAuthors.some((author) => author === review.author)
 ));
@@ -119,7 +111,7 @@ function PathwayCard({
 }) {
   return (
     <Link
-      className={styles.pathwayCard}
+      className={`${styles.pathwayCard} ${index === 0 ? styles.primaryPathway : ''}`}
       href={pathway.href}
       data-homepage-event={pathway.event}
       data-homepage-item={pathway.eyebrow}
@@ -163,7 +155,7 @@ export default async function HomePage() {
         ]}
       />
 
-      <section className={styles.hero} aria-labelledby="homepage-heading">
+      <section className={styles.hero} aria-labelledby="homepage-heading" data-home-section="hero">
         <Image
           src="/images/project-warkworth-outdoor-room-02.jpg"
           alt="Timber-lined Warkworth gable outdoor room with integrated lighting and lounge seating"
@@ -228,7 +220,7 @@ export default async function HomePage() {
         </Container>
       </aside>
 
-      <Section aria-labelledby="featured-warkworth-project">
+      <Section aria-labelledby="featured-warkworth-project" data-home-section="featured-project">
         <Container width="wide">
           <article className={styles.featuredProject}>
             <Figure
@@ -275,241 +267,29 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section aria-labelledby="project-pathways">
+      <Section aria-labelledby="project-pathways" data-home-section="project-pathways">
         <Container width="wide">
           <div className={styles.sectionIntro}>
             <div>
-              <Eyebrow>Choose the right starting point</Eyebrow>
-              <Heading id="project-pathways">Different briefs need different pathways.</Heading>
+              <Eyebrow>Start with the project context</Eyebrow>
+              <Heading id="project-pathways">Home projects come first.</Heading>
             </div>
-            <Text className={styles.mobileSecondaryCopy}>Use the route that best matches the project today. The form, material and detailed scope can follow once the right context is clear.</Text>
+            <div className={styles.introAction}>
+              <Text>Residential enquiries begin with the home and intended use. Complex sites and custom details stay within that same design pathway.</Text>
+              <TextLink href="/custom-pergolas-auckland" data-homepage-event="custom_pathway_click">
+                Read about custom design conditions
+              </TextLink>
+            </div>
           </div>
           <div className={styles.pathwayGrid}>
-            {visitorPathways.slice(0, 2).map((pathway, index) => (
+            {visitorPathways.map((pathway, index) => (
               <PathwayCard index={index} key={pathway.title} pathway={pathway} />
             ))}
-            <MobileDisclosure
-              className={styles.pathwayDisclosure}
-              summary="Other project types"
-              eventName="project_types_expand"
-            >
-              <div className={styles.pathwayDisclosureGrid}>
-                {visitorPathways.slice(2).map((pathway, index) => (
-                  <PathwayCard index={index + 2} key={pathway.title} pathway={pathway} />
-                ))}
-              </div>
-            </MobileDisclosure>
           </div>
         </Container>
       </Section>
 
-      <Section className={styles.mobileSelectedProjects} aria-labelledby="mobile-selected-projects">
-        <Container width="wide">
-          <div className={styles.galleryHeader}>
-            <div>
-              <Eyebrow>Selected work</Eyebrow>
-              <Heading id="mobile-selected-projects">Built across different sites and briefs.</Heading>
-            </div>
-            <TextLink href="/projects" data-homepage-event="project_gallery_click">View all projects</TextLink>
-          </div>
-          <div className={styles.mobileProjectPreviewGrid}>
-            {mobileSelectedProjects.map(({ project, configuration, roofApproach }) => (
-              <article className={styles.mobileProjectPreviewCard} key={project.slug}>
-                <Link
-                  className={styles.mobileProjectPreviewMedia}
-                  href={`/projects/${project.slug}`}
-                  data-homepage-event="project_case_study_click"
-                  data-homepage-item={project.slug}
-                  aria-label={`View ${project.title}`}
-                >
-                  <Image
-                    src={project.heroImage.src}
-                    alt={project.heroImage.alt}
-                    fill
-                    quality={75}
-                    sizes="(max-width: 640px) calc(100vw - 2.5rem), 1px"
-                    style={{ objectFit: 'cover', objectPosition: project.heroImage.objectPosition }}
-                  />
-                </Link>
-                <div className={styles.mobileProjectPreviewCopy}>
-                  <Heading as="h3" variant="card">{project.title}</Heading>
-                  <p>{[project.location, projectDimensions(project), configuration, roofApproach].filter(Boolean).join(' / ')}</p>
-                  <TextLink
-                    href={`/projects/${project.slug}`}
-                    data-homepage-event="project_case_study_click"
-                    data-homepage-item={project.slug}
-                  >
-                    View project
-                  </TextLink>
-                </div>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
-      <Section tone="warm" aria-labelledby="sanctuary-design-approach">
-        <Container>
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>The Sanctuary design approach</Eyebrow>
-              <Heading id="sanctuary-design-approach">One design response, from home to final detail.</Heading>
-            </div>
-            <div className={styles.introAction}>
-              <Text>Each decision is made in context so the structure, roof and room below it support the same brief.</Text>
-              <TextLink href="/custom-pergolas-auckland" data-homepage-event="approach_click">Explore custom design capability</TextLink>
-            </div>
-          </div>
-          <MobileDisclosure
-            summary="View the three design principles"
-            eventName="design_principles_expand"
-          >
-            <NumberedPrinciples items={designPrinciples.map((item) => ({ ...item }))} />
-          </MobileDisclosure>
-        </Container>
-      </Section>
-
-      <FullBleedStatement
-        image="/images/timber-gable-ceiling.jpg"
-        alt="Timber-lined Riverhead gable roof framing blue sky and treetops"
-        eyebrow="Riverhead / Gable / Solid roof"
-        heading="A roof form is only the beginning."
-        copy="Structure, roofing, lining, drainage and integrated services are resolved as one assembly."
-        action={{ label: 'See the Riverhead project', href: '/projects/riverhead-gable-pavilion' }}
-      />
-
-      <Section tone="warm" aria-labelledby="pergola-forms">
-        <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Pergola forms</Eyebrow>
-              <Heading id="pergola-forms">Four forms, selected for a reason.</Heading>
-            </div>
-            <div className={styles.introAction}>
-              <Text>Available height, roofline, drainage, proportion and the area to cover help determine which geometry belongs on the site.</Text>
-              <TextLink href="/products" data-homepage-event="pergola_forms_compare_click">Compare pergola forms</TextLink>
-            </div>
-          </div>
-          <div className={styles.roofIndex}>
-            <Figure
-              image="/images/product-gable-02.jpg"
-              alt="Gable pergola roof with dark aluminium framing and clear acrylic panels"
-              caption="Gable roof form"
-              detail="Structure and daylight resolved together"
-              className={styles.roofFigure}
-            />
-            <div className={styles.roofRows}>
-              {roofForms.map((roof, index) => (
-                <article className={styles.roofRow} key={roof.title}>
-                  <div className={styles.roofFormMedia}>
-                    <Image
-                      src={roof.image}
-                      alt={roof.alt}
-                      fill
-                      quality={75}
-                      sizes="(max-width: 640px) calc(50vw - 1.9rem), 1px"
-                      style={{ objectFit: 'cover', objectPosition: roof.objectPosition }}
-                    />
-                  </div>
-                  <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
-                  <Heading as="h3" variant="card">{roof.title}</Heading>
-                  <Text size="small">{roof.copy}</Text>
-                  <TextLink href={roof.href} data-homepage-event="pergola_form_click" data-homepage-item={roof.title}>Explore</TextLink>
-                </article>
-              ))}
-            </div>
-          </div>
-        </Container>
-      </Section>
-
-      <Section aria-labelledby="roof-and-material-approaches">
-        <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Roofing and materials</Eyebrow>
-              <Heading id="roof-and-material-approaches">Choose what the roof should do to the room.</Heading>
-            </div>
-            <Text>Acrylic, solid and combination roofs create different relationships with daylight, shade and the architecture. No one approach is right for every project.</Text>
-          </div>
-          <div className={styles.roofApproachGrid}>
-            {roofApproaches.map((approach, index) => (
-              <article className={styles.roofApproachCard} key={approach.title}>
-                <div className={styles.roofApproachMedia}>
-                  <Image
-                    src={approach.image}
-                    alt={approach.alt}
-                    fill
-                    quality={75}
-                    unoptimized={approach.image.endsWith('.webp')}
-                    sizes="(max-width: 640px) calc(100vw - 2.5rem), 1px"
-                    style={{ objectFit: 'cover', objectPosition: approach.objectPosition }}
-                  />
-                </div>
-                <span className={styles.cardNumber}>{String(index + 1).padStart(2, '0')}</span>
-                <Eyebrow className={styles.mobileRoofEyebrow}>Roof approach</Eyebrow>
-                <Heading as="h3" variant="card">{approach.title}</Heading>
-                <Text>{approach.copy}</Text>
-                <TextLink href={approach.href} data-homepage-event="roof_approach_click" data-homepage-item={approach.title}>{approach.action}</TextLink>
-              </article>
-            ))}
-          </div>
-          <div className={styles.materialContext}>
-            <MobileDisclosure
-              summary="How the roof is resolved"
-              eventName="roof_resolution_expand"
-            >
-              <SpecificationRows
-                rows={[
-                  { label: 'Structure', value: 'Architectural aluminium framing, with steel where project requirements demand it' },
-                  { label: 'Linings and ceilings', value: 'Timber sarking, cedar and selected solid ceiling treatments, specified separately from the roof category' },
-                  { label: 'Junctions and drainage', value: 'Flashings, falls, gutters and house connections resolved with the frame and roof' },
-                ]}
-              />
-            </MobileDisclosure>
-            <TextLink href="/pergolas-auckland#roofing-options" data-homepage-event="roof_comparison_click">Compare roof approaches</TextLink>
-          </div>
-        </Container>
-      </Section>
-
-      <Section tone="elevated" aria-labelledby="integrated-options">
-        <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Integrated options</Eyebrow>
-              <Heading id="integrated-options">Plan comfort into the structure.</Heading>
-            </div>
-            <Text>Blinds, lighting and heating work best when mounting, power, clearances, exposure and the intended use are considered before fabrication.</Text>
-          </div>
-          <div className={styles.integrationGrid}>
-            <Figure
-              image="/images/project-warkworth-outdoor-room-04.jpg"
-              alt="Clear acrylic glazing, cedar ceiling and integrated lighting in the Warkworth outdoor room"
-              caption="Warkworth Outdoor Room"
-              detail="Roof, ceiling and lighting coordinated together"
-              className={styles.integrationFigure}
-            />
-            <MobileDisclosure
-              summary="View integrated comfort options"
-              eventName="integrated_options_expand"
-            >
-              <div className={styles.integrationRows}>
-                {integratedOptions.map((option, index) => (
-                  <article className={styles.integrationRow} key={option.title}>
-                    <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
-                    <div>
-                      <Heading as="h3" variant="card">{option.title}</Heading>
-                      <Text size="small">{option.copy}</Text>
-                      <TextLink href={option.href} data-homepage-event="integrated_option_click" data-homepage-item={option.title}>{option.action}</TextLink>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </MobileDisclosure>
-          </div>
-        </Container>
-      </Section>
-
-      <Section className={styles.desktopSelectedProjects} aria-labelledby="selected-projects">
+      <Section aria-labelledby="selected-projects" data-home-section="selected-projects">
         <Container width="wide">
           <div className={styles.galleryHeader}>
             <div>
@@ -534,33 +314,123 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section tone="warm" aria-labelledby="design-build-process">
+      <Section tone="warm" aria-labelledby="planning-options" data-home-section="planning-options">
+        <Container width="wide">
+          <div className={styles.sectionIntro}>
+            <div>
+              <Eyebrow>Planning the design</Eyebrow>
+              <Heading id="planning-options">Resolve the form, roof and comfort as one brief.</Heading>
+            </div>
+            <Text>Start with the site and intended use. The detailed options can follow once the right constraints and priorities are clear.</Text>
+          </div>
+          <div className={styles.planningGroups}>
+            <MobileDisclosure
+              className={styles.planningDisclosure}
+              summary="How Sanctuary approaches the design"
+              eventName="design_principles_expand"
+            >
+              <NumberedPrinciples items={designPrinciples.map((item) => ({ ...item }))} />
+            </MobileDisclosure>
+            <MobileDisclosure
+              className={styles.planningDisclosure}
+              summary="Compare four pergola forms"
+              eventName="pergola_forms_expand"
+            >
+              <div className={styles.roofRows}>
+              {roofForms.map((roof, index) => (
+                <article className={styles.roofRow} key={roof.title}>
+                  <div className={styles.roofFormMedia}>
+                    <Image
+                      src={roof.image}
+                      alt={roof.alt}
+                      fill
+                      quality={75}
+                      sizes="(max-width: 640px) calc(50vw - 1.9rem), 1px"
+                      style={{ objectFit: 'cover', objectPosition: roof.objectPosition }}
+                    />
+                  </div>
+                  <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
+                  <Heading as="h3" variant="card">{roof.title}</Heading>
+                  <Text size="small">{roof.copy}</Text>
+                  <TextLink href={roof.href} data-homepage-event="pergola_form_click" data-homepage-item={roof.title}>Explore</TextLink>
+                </article>
+              ))}
+              </div>
+              <TextLink href="/products" data-homepage-event="pergola_forms_compare_click">Compare pergola forms</TextLink>
+            </MobileDisclosure>
+            <MobileDisclosure
+              className={styles.planningDisclosure}
+              summary="Compare roof and material approaches"
+              eventName="roof_approaches_expand"
+            >
+              <div className={styles.roofApproachGrid}>
+                {roofApproaches.map((approach, index) => (
+                  <article className={styles.roofApproachCard} key={approach.title}>
+                    <div className={styles.roofApproachMedia}>
+                      <Image
+                        src={approach.image}
+                        alt={approach.alt}
+                        fill
+                        quality={75}
+                        unoptimized={approach.image.endsWith('.webp')}
+                        sizes="(max-width: 640px) calc(100vw - 2.5rem), 1px"
+                        style={{ objectFit: 'cover', objectPosition: approach.objectPosition }}
+                      />
+                    </div>
+                    <span className={styles.cardNumber}>{String(index + 1).padStart(2, '0')}</span>
+                    <Eyebrow className={styles.mobileRoofEyebrow}>Roof approach</Eyebrow>
+                    <Heading as="h3" variant="card">{approach.title}</Heading>
+                    <Text>{approach.copy}</Text>
+                    <TextLink href={approach.href} data-homepage-event="roof_approach_click" data-homepage-item={approach.title}>{approach.action}</TextLink>
+                  </article>
+                ))}
+              </div>
+              <SpecificationRows
+                rows={[
+                  { label: 'Structure', value: 'Architectural aluminium framing, with steel where project requirements demand it' },
+                  { label: 'Linings and ceilings', value: 'Timber sarking, cedar and selected solid ceiling treatments, specified separately from the roof category' },
+                  { label: 'Junctions and drainage', value: 'Flashings, falls, gutters and house connections resolved with the frame and roof' },
+                ]}
+              />
+              <TextLink href="/pergolas-auckland#roofing-options" data-homepage-event="roof_comparison_click">Compare roof approaches</TextLink>
+            </MobileDisclosure>
+            <MobileDisclosure
+              className={styles.planningDisclosure}
+              summary="Plan integrated comfort options"
+              eventName="integrated_options_expand"
+            >
+              <div className={styles.integrationRows}>
+                {integratedOptions.map((option, index) => (
+                  <article className={styles.integrationRow} key={option.title}>
+                    <span className={styles.roofNumber}>{String(index + 1).padStart(2, '0')}</span>
+                    <div>
+                      <Heading as="h3" variant="card">{option.title}</Heading>
+                      <Text size="small">{option.copy}</Text>
+                      <TextLink href={option.href} data-homepage-event="integrated_option_click" data-homepage-item={option.title}>{option.action}</TextLink>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </MobileDisclosure>
+          </div>
+        </Container>
+      </Section>
+
+      <Section tone="warm" aria-labelledby="design-build-process" data-home-section="design-build-process">
         <Container width="wide">
           <div className={styles.sectionIntro}>
             <div>
               <Eyebrow>Design and build process</Eyebrow>
-              <Heading id="design-build-process">From useful first brief to documented handover.</Heading>
+              <Heading id="design-build-process">Three stages, with expectations confirmed in writing.</Heading>
             </div>
-            <Text>The programme and on-site sequence depend on the completed scope, access, approvals, materials and current schedule. They are confirmed for the project in writing.</Text>
+            <Text>Design, materials, inclusions, exclusions, price, programme and applicable warranty information are recorded before manufacture or site work proceeds.</Text>
           </div>
-          <div className={styles.desktopProcess} data-home-process-variant="desktop">
-            <ProcessSteps items={processSteps.map((item) => ({ ...item }))} />
-          </div>
-          <ol className={styles.mobileProcess} data-home-process-variant="mobile">
+          <ol className={styles.processSteps}>
             {processSteps.map((step, index) => (
               <li key={step.title}>
-                <details
-                  open={index === 0}
-                  data-homepage-toggle-event="process_item_expand"
-                  data-homepage-item={step.title}
-                >
-                  <summary>
-                    <span>{String(index + 1).padStart(2, '0')}</span>
-                    <Heading as="h3" variant="card">{step.title}</Heading>
-                    <span className={styles.mobileDisclosureIcon} aria-hidden="true" />
-                  </summary>
-                  <Text>{step.copy}</Text>
-                </details>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <Heading as="h3" variant="card">{step.title}</Heading>
+                <Text>{step.copy}</Text>
               </li>
             ))}
           </ol>
@@ -570,7 +440,7 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section tone="inverse" aria-labelledby="homepage-review-heading">
+      <Section tone="inverse" aria-labelledby="homepage-review-heading" data-home-section="client-review">
         <Container width="wide">
           <div className={styles.inverseIntro}>
             <div>
@@ -578,13 +448,11 @@ export default async function HomePage() {
               <Heading id="homepage-review-heading">Trusted for the design, build and installation.</Heading>
             </div>
           </div>
-          <div className={styles.reviewGrid}>
-            {selectedReviews.map((selectedReview) => (
-              <figure className={styles.reviewCard} key={selectedReview.author} data-home-review>
-                <blockquote>&ldquo;{selectedReview.quote}&rdquo;</blockquote>
-                <figcaption>{selectedReview.author} / Google review</figcaption>
-              </figure>
-            ))}
+          <div className={`${styles.reviewGrid} ${styles.singleReview}`}>
+            <figure className={styles.reviewCard} data-home-review>
+              <blockquote>&ldquo;{selectedReviews[0]?.quote}&rdquo;</blockquote>
+              <figcaption>{selectedReviews[0]?.author} / Google review</figcaption>
+            </figure>
           </div>
           <div className={styles.reviewSummary}>
             <span>Rated {ratingText} from {review.count} Google reviews</span>
@@ -592,71 +460,10 @@ export default async function HomePage() {
               Read all reviews on Google
             </a>
           </div>
-          <MobileReviewCarousel
-            count={review.count}
-            rating={ratingText}
-            reviews={selectedReviews}
-            reviewsUrl={GOOGLE_PLACE.reviewsUrl}
-          />
         </Container>
       </Section>
 
-      <Section tone="neutral" aria-labelledby="project-assurances">
-        <Container>
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Project-specific assurances</Eyebrow>
-              <Heading id="project-assurances">Clear expectations before site work begins.</Heading>
-            </div>
-            <Text className={styles.mobileSecondaryCopy}>Before site work begins, Sanctuary records the agreed design, materials, inclusions, exclusions, current programme and applicable warranty information in writing.</Text>
-          </div>
-          <MobileDisclosure
-            summary="What is confirmed before work begins"
-            eventName="assurance_expand"
-          >
-            <SpecificationRows
-              rows={[
-                { label: 'Written scope', value: 'Design, materials, inclusions and exclusions recorded for approval' },
-                { label: 'Current programme', value: 'Confirmed against the completed scope and current schedule' },
-                { label: 'Installation', value: 'Carried out by the Sanctuary team to the documented project requirements' },
-                { label: 'Warranty information', value: 'Applicable workmanship and selected-product terms supplied in writing' },
-                { label: 'Ongoing support', value: 'Care information and a clear contact path provided at handover' },
-              ]}
-            />
-          </MobileDisclosure>
-        </Container>
-      </Section>
-
-      <Section aria-labelledby="pergola-guide-pathways">
-        <Container width="wide">
-          <div className={styles.guideGateway}>
-            <div>
-              <Eyebrow>Planning guides</Eyebrow>
-              <Heading id="pergola-guide-pathways">Still working through the options?</Heading>
-              <Text>Compare cost, roof approaches and complete outdoor-room planning before making an enquiry.</Text>
-            </div>
-            <nav aria-label="Featured pergola guides">
-              <ul className={styles.guideLinks}>
-              {guidePathways.map((guide) => (
-                <li key={guide.title}>
-                  <Link
-                    href={guide.href}
-                    data-homepage-event="guide_pathway_click"
-                    data-homepage-item={guide.title}
-                  >
-                    <span>{guide.title}</span>
-                    <span>{guide.copy}</span>
-                  </Link>
-                </li>
-              ))}
-              </ul>
-            </nav>
-            <TextLink href="/pergola-guides" data-homepage-event="guide_gateway_click">Explore all pergola guides</TextLink>
-          </div>
-        </Container>
-      </Section>
-
-      <Section tone="inverse" aria-labelledby="qualified-enquiry">
+      <Section tone="inverse" aria-labelledby="qualified-enquiry" data-home-section="qualified-enquiry">
         <Container width="wide" className={styles.finalGrid}>
           <div className={styles.finalCopy}>
             <Eyebrow>Start with the site and intended use</Eyebrow>
@@ -670,23 +477,45 @@ export default async function HomePage() {
             <nav className={styles.secondaryPathways} aria-label="Alternative enquiry pathways">
               <TextLink href="/commercial-pergolas-auckland#project-details" data-homepage-event="commercial_pathway_click">Discuss a commercial project</TextLink>
               <TextLink href={homeProfessionalEnquiryHref} data-homepage-event="professional_pathway_click">Send plans or a project brief</TextLink>
-              <TextLink href={homeGeneralContactHref} data-homepage-event="general_contact_click">General contact questions</TextLink>
             </nav>
           </div>
-          <div className={styles.finalChecklist}>
-            <h3>Useful first inputs</h3>
-            <ul>
-              {finalEnquiryChecklist.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
-            </ul>
-            <MobileDisclosure
-              className={styles.finalChecklistDisclosure}
-              summary="More helpful project information"
-              eventName="enquiry_inputs_expand"
-            >
+          <div className={styles.finalSupport}>
+            <div className={styles.finalChecklist}>
+              <h3>Useful first inputs</h3>
               <ul>
-                {finalEnquiryChecklist.slice(3).map((item) => <li key={item}>{item}</li>)}
+                {finalEnquiryChecklist.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
               </ul>
-            </MobileDisclosure>
+              <MobileDisclosure
+                className={styles.finalChecklistDisclosure}
+                summary="More helpful project information"
+                eventName="enquiry_inputs_expand"
+              >
+                <ul>
+                  {finalEnquiryChecklist.slice(3).map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </MobileDisclosure>
+            </div>
+            <div className={styles.finalGuides}>
+              <Eyebrow>Planning guides</Eyebrow>
+              <Heading id="pergola-guide-pathways" as="h3" variant="card">Compare before you enquire</Heading>
+              <nav aria-label="Featured pergola guides">
+                <ul className={styles.guideLinks}>
+                  {guidePathways.map((guide) => (
+                    <li key={guide.title}>
+                      <Link
+                        href={guide.href}
+                        data-homepage-event="guide_pathway_click"
+                        data-homepage-item={guide.title}
+                      >
+                        <span>{guide.title}</span>
+                        <span>{guide.copy}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+              <TextLink href="/pergola-guides" data-homepage-event="guide_gateway_click">Explore all pergola guides</TextLink>
+            </div>
           </div>
         </Container>
       </Section>
