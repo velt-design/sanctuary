@@ -325,10 +325,17 @@ a.proofItem:hover {
   min-height: 240px;
 }
 
-.pathwayDisclosure,
-.pathwayDisclosure > .mobileDisclosureBody,
+.pathwayDisclosure {
+  grid-column: 1 / -1;
+}
+
+.pathwayDisclosure > .mobileDisclosureBody {
+  display: block;
+}
+
 .pathwayDisclosureGrid {
-  display: contents;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .pathwayCard .cardAction,

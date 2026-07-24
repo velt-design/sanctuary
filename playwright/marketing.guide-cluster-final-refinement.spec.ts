@@ -145,10 +145,11 @@ test('linked project pages use the current evidence record rather than contradic
 test('homepage roof comparison uses written considerations instead of unsupported scores', async ({ page }) => {
   await preparePage(page);
   await page.goto('/');
-  const comparison = page.locator('.roof-comparison--editorial');
-  await expect(comparison).toBeVisible();
-  await expect(comparison.getByText('Depends on the exact clear, opal or tinted sheet and the roof composition.')).toBeVisible();
-  await expect(comparison.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
+  const planning = page.locator('main[data-homepage-variant="v2"]:visible section[aria-labelledby="planning-options"]');
+  await expect(planning).toBeVisible();
+  await expect(planning.getByRole('heading', { name: 'Acrylic roofing' })).toBeVisible();
+  await expect(planning.getByText('Transparent or translucent zones retain daylight, with tint and roof depth selected for the site.')).toBeVisible();
+  await expect(planning.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
   const copy = await page.locator('body').innerText();
   expect(copy).not.toMatch(/Strong heat and glare reduction, noticeably softer rain noise/i);
 });
