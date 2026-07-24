@@ -61,11 +61,11 @@ export default function ProjectsExperience({
           project={selectedProject}
           projectIndex={selectedIndex}
           projectCount={projects.length}
-          sourcePath={detailMode ? `/projects/${selectedProject.slug}` : '/projects'}
           relatedProjects={relatedProjects}
           previousProject={previousProject}
           nextProject={nextProject}
           showBreadcrumb={detailMode}
+          sourcePath={detailMode ? `/projects/${selectedProject.slug}` : '/projects'}
           titleAs={detailMode ? 'h1' : 'h2'}
         />
       </div>

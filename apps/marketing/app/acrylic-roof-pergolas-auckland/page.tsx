@@ -405,8 +405,9 @@ export default function AcrylicRoofPergolasAucklandPage() {
           <AcrylicPergolaEnquiryForm
             initialEnquiryType="residential"
             sourceContext={{
-              sourcePath: route,
-              sourceComponent: 'embedded-enquiry',
+              enquiryType: 'residential',
+              sourcePath: '/acrylic-roof-pergolas-auckland',
+              sourceComponent: 'embedded_form',
             }}
           />
         </Container>

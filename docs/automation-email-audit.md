@@ -67,29 +67,9 @@ The email preview route renders an outbox row by template ID and variables. It u
 
 `/staff/email-previews` is the fixture-only staging review surface for the website autoresponder. Its staff-authenticated API renders the same stable template IDs, subject, preheader, HTML and plain text used by the production customer sender. Residential, residential without blinds, commercial, commercial with blinds and professional variants use repository fixtures only. Preview delivery reads `RESEND_API_KEY_PREVIEW` and the single `EMAIL_PREVIEW_TO` recipient on the server, omits the production BCC, and is unavailable unless `EMAIL_PREVIEW_ENABLED=true` in a Vercel Preview deployment (or local development/test). The browser may select only a fixture variant; it cannot supply recipients or provider credentials. This path does not call enquiry intake or write contacts, projects, estimates, enquiries, outbox rows or audit records.
 
-Residential, commercial, and professional enquiry file uploads share one stored,
-verified contract. The browser mints signed upload URLs via
-`apps/marketing/app/api/enquiry/attachments/sign` and uploads directly to the
-private `enquiry-attachments` Supabase Storage bucket (bypassing the serverless
-request-body limit); the enquiry payload carries only storage paths. Signing is
-same-origin, durably rate-limited, and creates a 15-minute server-owned session
-bound to the client submission UUID, a token hash, and the exact expected
-paths/metadata. Intake accepts at most eight PDF/JPEG/PNG/WebP files and 20 MB
-total, checks matching extensions, sizes, private path ownership, session
-expiry/consumption, and downloaded content signatures before the atomic RPC
-consumes the session. A path or session from another submission cannot be
-attached.
+Residential, commercial, and professional enquiry file uploads are stored, not just counted. The browser mints signed upload URLs via `apps/marketing/app/api/enquiry/attachments/sign` and uploads directly to the private `enquiry-attachments` Supabase Storage bucket (bypassing the serverless request-body limit); the enquiry payload carries only storage paths. Signing is same-origin, durably rate-limited, and creates a 15-minute server-owned session bound to the client submission UUID, a token hash, and the exact expected paths/metadata. Intake accepts at most eight PDF/JPEG/PNG/WebP files and 20 MB total, checks matching extensions, sizes, private path ownership, session expiry/consumption, and downloaded content signatures before the atomic RPC consumes the session. A path or session from another submission cannot be attached.
 
-On send, `apps/marketing/app/api/enquiry` either inlines verified files as
-autoresponder attachments (total <= 8 MB) or adds 7-day signed download links to
-the matching residential, commercial, or professional template. Staff receive
-them via the autoresponder BCC. Storage transport remains best-effort: a missing
-client configuration or failed direct upload degrades that file to validated
-metadata-only and does not block the enquiry. Requires
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` for direct browser upload. The authenticated
-daily cleanup route removes objects for expired unconsumed sessions; database
-retention removes stale rate-limit state after two days and consumed session
-bindings after 30 days.
+On send, `apps/marketing/app/api/enquiry` either inlines verified files as autoresponder attachments (total <= 8 MB) or adds 7-day signed download links to the matching residential, commercial, or professional template. Staff receive the same files or links via the autoresponder BCC. Storage transport remains best-effort: a missing client configuration or failed direct upload degrades that file to validated metadata-only and does not block the enquiry. Requires `NEXT_PUBLIC_SUPABASE_ANON_KEY` for direct browser upload. The authenticated daily cleanup route removes objects for expired unconsumed sessions; database retention removes stale rate-limit state after two days and consumed session bindings after 30 days.
 
 The legacy JSON-only `/api/contact` compatibility send also uses the durable database limiter. It rejects multipart bodies; all public file intake belongs to the signed, submission-bound `/api/enquiry` path.
 

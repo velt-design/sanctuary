@@ -166,6 +166,13 @@ figure { margin:0; }
 
 /* Global scroll lock helper (applied to html/body) */
 html.scroll-locked, body.scroll-locked { overflow:hidden !important; height:100% !important; overscroll-behavior:none; }
+html.foundation-menu-open, body.foundation-menu-open { height:100% !important; overflow:hidden !important; }
+[data-marketing-foundation] :focus-visible,
+[data-marketing-foundation-page] :focus-visible { outline:var(--focus-ring); outline-offset:2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within { scroll-behavior:auto; }
+}
 
 /* iOS/mobile overflow fix: prevent horizontal crop */
 @media (max-width: 960px){

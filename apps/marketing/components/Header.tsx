@@ -11,7 +11,7 @@ import {
 } from '@/lib/startModalBridge';
 import {
   buildEnquiryHref,
-  getHeaderEnquiryContext,
+  inferEnquiryAudience,
 } from '@/lib/enquiryContext';
 
 const mobileNavItems = [
@@ -47,14 +47,11 @@ export default function Header() {
   const [startHeaderSuppressed, setStartHeaderSuppressed] = useState(false);
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
   const pathname = usePathname();
-  const headerEnquiryContext = getHeaderEnquiryContext(pathname ?? '');
+  const currentPath = pathname ?? '/';
   const headerEnquiryHref = buildEnquiryHref({
-    ...headerEnquiryContext,
+    enquiryType: inferEnquiryAudience(currentPath),
+    sourcePath: currentPath,
     sourceComponent: 'header',
-  });
-  const mobileEnquiryHref = buildEnquiryHref({
-    ...headerEnquiryContext,
-    sourceComponent: 'mobile-menu',
   });
   const isStartRoute = pathname?.startsWith('/start') ?? false;
   const isHeroOverlayRoute = heroOverlayRoutes.has(pathname ?? '');
@@ -386,7 +383,7 @@ export default function Header() {
               ))}
               <li>
                 <Link
-                  href={mobileEnquiryHref}
+                  href={headerEnquiryHref}
                   className="mobile-menu__link mobile-menu__link--estimate"
                   data-homepage-event="header_estimate_click"
                   onClick={() => setMobileMenuOpen(false)}

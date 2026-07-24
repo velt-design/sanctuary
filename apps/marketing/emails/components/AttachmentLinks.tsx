@@ -2,12 +2,12 @@ import * as React from 'react';
 import { Link, Section, Text } from '@react-email/components';
 import { THEME } from '../theme';
 
-export function AttachmentLinks({
-  files,
-}: {
-  files?: Array<{ name: string; url: string }>;
-}) {
-  if (!files?.length) return null;
+type AttachmentLinksProps = {
+  links?: Array<{ name: string; url: string }>;
+};
+
+export function AttachmentLinks({ links }: AttachmentLinksProps) {
+  if (!links?.length) return null;
 
   return (
     <Section
@@ -23,12 +23,12 @@ export function AttachmentLinks({
         Files received with your enquiry
       </Text>
       <Text style={{ margin: '0 0 9px', fontSize: 12, color: THEME.muted, lineHeight: 1.65 }}>
-        {files.map((file, index) => (
+        {links.map((file, index) => (
           <React.Fragment key={`${file.name}-${index}`}>
             <Link href={file.url} style={{ color: THEME.text, textDecoration: 'underline' }}>
               {file.name}
             </Link>
-            {index < files.length - 1 ? <br /> : null}
+            {index < links.length - 1 ? <br /> : null}
           </React.Fragment>
         ))}
       </Text>

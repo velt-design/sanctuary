@@ -195,4 +195,24 @@ describe('customer estimate autoresponder emails', () => {
     expect(missingOptional).toContain('Practice or company');
     expect(missingOptional).toContain('Not supplied');
   });
+
+  it('renders residential upload confirmation and expiring links', async () => {
+    const text = await render(
+      CustomerResidentialEmail({
+        ...residential,
+        filesReceivedCount: 1,
+        attachmentLinks: [{
+          name: 'deck-photo.jpg',
+          url: 'https://signed.example.test/deck-photo.jpg',
+        }],
+        callWindowText: 'within 30 minutes',
+      }),
+      { plainText: true },
+    );
+
+    expect(text).toContain('Files received');
+    expect(text).toContain('1');
+    expect(text).toContain('deck-photo.jpg');
+    expect(text).toContain('https://signed.example.test/deck-photo.jpg');
+  });
 });

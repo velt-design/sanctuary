@@ -1,4 +1,5 @@
 import { validateEnquiryAttachments } from '../../lib/enquiryAttachments';
+import type { EnquiryAudience } from '../../lib/enquiryContext';
 import type { EnquiryType } from './enquiryRoute';
 
 export type ContactField =
@@ -32,6 +33,6 @@ export function validateContactForm(
   return errors;
 }
 
-export function enquiryTypeValue(type: EnquiryType | null): string {
-  return type?.toLowerCase() ?? '';
+export function enquiryTypeValue(type: EnquiryType | null): EnquiryAudience | '' {
+  return type ? type.toLowerCase() as EnquiryAudience : '';
 }

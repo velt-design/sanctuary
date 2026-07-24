@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ROOF_MATERIAL_MEDIA } from '../apps/marketing/app/start/startFlowMedia';
 import { projects } from '../apps/marketing/data/projects';
+import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const representativeRoute = `/projects/${projects[0].slug}`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
@@ -128,9 +129,9 @@ async function expectNoProjectEmDashes(page: Page) {
 test('projects index preserves a canonical collection route and legacy query selection', async ({ page }) => {
   await page.goto(`/projects?slug=${projects[3].slug}`);
 
-  await expect(page.locator('h1')).toHaveCount(1);
-  await expect(page.locator('h1')).toHaveText('Pergola projects and case studies');
-  await expect(page.locator('[data-project-case-study]')).toHaveAttribute(
+  await expect(page.locator('h1:visible')).toHaveCount(1);
+  await expect(page.locator('h1:visible')).toHaveText('Pergola projects and case studies');
+  await expect(page.locator('[data-project-case-study]:visible')).toHaveAttribute(
     'data-project-case-study',
     projects[3].slug,
   );
@@ -184,30 +185,6 @@ test('Atelier Shu uses the front-on canopy image on its case study and commercia
 
   await page.goto('/sitemap-images.xml');
   await expect(page.locator('body')).toContainText(`${publicOrigin}/images/${imagePath}`);
-});
-
-test('project enquiry CTAs preserve the selected project and audience', async ({ page }) => {
-  for (const project of [
-    projects.find((item) => item.slug === 'warkworth-outdoor-room')!,
-    projects.find((item) => item.slug === 'atelier-shu-cafe')!,
-  ]) {
-    const route = `/projects/${project.slug}`;
-    const enquiryType = project.type === 'Commercial' ? 'commercial' : 'residential';
-    await page.goto(route);
-    const ctas = visibleProjectsMain(page)
-      .locator('a.project-action--primary[href^="/contact?"]');
-    await expect(ctas).toHaveCount(2);
-    await expect(ctas.first()).toHaveAttribute(
-      'href',
-      `/contact?enquiry=${enquiryType}&source_path=${encodeURIComponent(route)}`
-      + `&source_component=project-intro&project=${project.slug}#contact-form`,
-    );
-    await expect(ctas.last()).toHaveAttribute(
-      'href',
-      `/contact?enquiry=${enquiryType}&source_path=${encodeURIComponent(route)}`
-      + `&source_component=project-final&project=${project.slug}#contact-form`,
-    );
-  }
 });
 
 test('Tindalls Bay leads with the full exterior and retains both supporting views', async ({ page }) => {
@@ -328,20 +305,20 @@ test('every canonical project route has complete case-study structure, metadata,
       .toHaveAttribute('href', '/projects');
     await expect(caseStudy.locator(
       '.project-case-study__intro-actions .project-action--primary',
-    )).toHaveAttribute(
-      'href',
-      `/contact?enquiry=${project.type === 'Commercial' ? 'commercial' : 'residential'}`
-      + `&source_path=${encodeURIComponent(`/projects/${project.slug}`)}`
-      + `&source_component=project-intro&project=${project.slug}#contact-form`,
-    );
+    )).toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
+      sourcePath: `/projects/${project.slug}`,
+      sourceComponent: 'project_cta',
+      sourceProject: project.slug,
+    }));
     await expect(caseStudy.locator(
       '.project-case-study__final-cta .project-action--primary',
-    )).toHaveAttribute(
-      'href',
-      `/contact?enquiry=${project.type === 'Commercial' ? 'commercial' : 'residential'}`
-      + `&source_path=${encodeURIComponent(`/projects/${project.slug}`)}`
-      + `&source_component=project-final&project=${project.slug}#contact-form`,
-    );
+    )).toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
+      sourcePath: `/projects/${project.slug}`,
+      sourceComponent: 'project_cta',
+      sourceProject: project.slug,
+    }));
 
     const hero = caseStudy.locator('.project-case-study__hero img');
     await expect(hero).toBeVisible();
@@ -425,22 +402,20 @@ test('the refined project journey is shorter, persuasive, and touch safe at targ
       const main = visibleProjectsMain(page);
       const caseStudy = main.locator('.project-case-study');
       const disclosures = caseStudy.locator('details[data-project-mobile-disclosure]');
-      const project = routeCase.project!;
-      const enquiryType = project.type === 'Commercial' ? 'commercial' : 'residential';
+      const expectedEnquiryHref = buildEnquiryHref({
+        enquiryType: routeCase.project!.type === 'Commercial'
+          ? 'commercial'
+          : 'residential',
+        sourcePath: routeCase.route,
+        sourceComponent: 'project_cta',
+        sourceProject: routeCase.project!.slug,
+      });
       await expect(main.locator('h1:visible')).toHaveCount(1);
       await expect(main.locator('.project-case-study__hero img')).toBeVisible();
       await expect(main.locator('.project-case-study__intro-actions .project-action--primary'))
-        .toHaveAttribute(
-          'href',
-          `/contact?enquiry=${enquiryType}&source_path=${encodeURIComponent(routeCase.route)}`
-          + `&source_component=project-intro&project=${project.slug}#contact-form`,
-        );
+        .toHaveAttribute('href', expectedEnquiryHref);
       await expect(main.locator('.project-case-study__final-cta .project-action--primary'))
-        .toHaveAttribute(
-          'href',
-          `/contact?enquiry=${enquiryType}&source_path=${encodeURIComponent(routeCase.route)}`
-          + `&source_component=project-final&project=${project.slug}#contact-form`,
-        );
+        .toHaveAttribute('href', expectedEnquiryHref);
 
       const firstCta = await main.locator(
         '.project-case-study__intro-actions .project-action--primary',

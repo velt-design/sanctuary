@@ -57,7 +57,7 @@ export function CustomerProfessionalEmail(props: Professional & { callWindowText
         ]}
       />
 
-      <AttachmentLinks files={props.attachmentLinks} />
+      <AttachmentLinks links={props.attachmentLinks} />
 
       <ReplyInvitation copy="Reply directly with any additional drawings, project-stage context, boundary conditions, wind exposure or interface details that would help us understand the work." />
     </EmailLayout>

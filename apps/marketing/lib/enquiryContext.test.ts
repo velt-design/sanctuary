@@ -1,75 +1,83 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildEnquiryHref,
-  getHeaderEnquiryContext,
-  normalizeEnquirySourceContext,
+  getEnquiryContextProperties,
+  inferEnquiryAudience,
   parseEnquiryContext,
 } from './enquiryContext';
 
 describe('enquiry context', () => {
-  it('builds a stable, non-personal contact link', () => {
+  it('builds one canonical non-personal contact URL', () => {
     expect(buildEnquiryHref({
       enquiryType: 'commercial',
-      sourcePath: '/commercial-pergolas-auckland',
-      sourceComponent: 'header',
-      projectSlug: 'atelier-shu-cafe',
+      sourcePath: '/projects/goodhome-commercial-terrace',
+      sourceComponent: 'project_cta',
+      sourceProject: 'goodhome-commercial-terrace',
     })).toBe(
-      '/contact?enquiry=commercial&source_path=%2Fcommercial-pergolas-auckland'
-      + '&source_component=header&project=atelier-shu-cafe#contact-form',
+      '/contact?enquiry_type=commercial&source_path=%2Fprojects%2Fgoodhome-commercial-terrace&source_component=project_cta&source_project=goodhome-commercial-terrace#contact-form',
     );
   });
 
-  it('parses supported values and drops malformed or unknown context', () => {
-    expect(parseEnquiryContext(new URLSearchParams({
-      enquiry: 'Professional',
-      source_path: '/projects/warkworth-outdoor-room',
-      source_component: 'project-final',
-      project: 'warkworth-outdoor-room',
-      product: 'not valid!',
-    }))).toEqual({
+  it('parses canonical and legacy audience values while validating known items', () => {
+    expect(parseEnquiryContext(
+      {
+        enquiry_type: 'Professional',
+        source_path: '/products/pergolas/gable',
+        source_component: 'product_cta',
+        source_product: 'gable',
+      },
+      { productSlugs: ['gable'] },
+    )).toEqual({
       enquiryType: 'professional',
-      sourcePath: '/projects/warkworth-outdoor-room',
-      sourceComponent: 'project-final',
-      projectSlug: 'warkworth-outdoor-room',
-    });
-
-    expect(parseEnquiryContext({
-      enquiry: 'general',
-      source_path: 'https://example.com/private',
-      source_component: 'free-form-value',
-      project: '../customer-name',
-    })).toEqual({});
-  });
-
-  it('normalizes the submitted source context independently of URL parsing', () => {
-    expect(normalizeEnquirySourceContext({
       sourcePath: '/products/pergolas/gable',
-      sourceComponent: 'product-hero',
-      productSlug: 'gable',
-      extra: 'ignored',
-    })).toEqual({
-      sourcePath: '/products/pergolas/gable',
-      sourceComponent: 'product-hero',
-      productSlug: 'gable',
+      sourceComponent: 'product_cta',
+      sourceProduct: 'gable',
     });
-  });
-
-  it('keeps known header intent and leaves mixed or neutral routes unclassified', () => {
-    expect(getHeaderEnquiryContext('/commercial-pergolas-auckland')).toEqual({
-      enquiryType: 'commercial',
-      sourcePath: '/commercial-pergolas-auckland',
-    });
-    expect(getHeaderEnquiryContext('/products/pergolas/gable')).toEqual({
+    expect(parseEnquiryContext({ enquiry: 'residential' })).toEqual({
       enquiryType: 'residential',
-      sourcePath: '/products/pergolas/gable',
-      productSlug: 'gable',
     });
-    expect(getHeaderEnquiryContext('/projects/atelier-shu-cafe')).toEqual({
-      sourcePath: '/projects/atelier-shu-cafe',
-      projectSlug: 'atelier-shu-cafe',
+  });
+
+  it('drops malformed paths, unknown components and unknown item slugs', () => {
+    expect(parseEnquiryContext(
+      {
+        enquiry_type: 'other',
+        source_path: '//example.test/customer@example.test',
+        source_component: 'free_text',
+        source_project: 'unknown-project',
+        source_product: '../gable',
+      },
+      {
+        projectSlugs: ['warkworth-outdoor-room'],
+        productSlugs: ['gable'],
+      },
+    )).toEqual({});
+  });
+
+  it('does not serialize arbitrary or personal-looking values', () => {
+    expect(buildEnquiryHref({
+      sourcePath: '/contact?email=person@example.test',
+      sourceProject: 'person@example.test',
+    })).toBe('/contact#contact-form');
+  });
+
+  it('maps validated context to canonical submission and analytics properties', () => {
+    expect(getEnquiryContextProperties({
+      enquiryType: 'residential',
+      sourcePath: '/projects/warkworth-outdoor-room',
+      sourceComponent: 'project_cta',
+      sourceProject: 'warkworth-outdoor-room',
+    })).toEqual({
+      enquiry_type: 'residential',
+      source_path: '/projects/warkworth-outdoor-room',
+      source_component: 'project_cta',
+      source_project: 'warkworth-outdoor-room',
     });
-    expect(getHeaderEnquiryContext('/contact')).toEqual({
-      sourcePath: '/contact',
-    });
+  });
+
+  it('infers only known audience routes and keeps direct contact neutral', () => {
+    expect(inferEnquiryAudience('/commercial-pergolas-auckland')).toBe('commercial');
+    expect(inferEnquiryAudience('/projects')).toBe('residential');
+    expect(inferEnquiryAudience('/contact')).toBeUndefined();
   });
 });

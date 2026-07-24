@@ -6,6 +6,9 @@ import {
 
 describe('getEnquiryTypeFromSearch', () => {
   it.each([
+    ['?enquiry_type=residential', 'Residential'],
+    ['?source=homepage&enquiry_type=commercial', 'Commercial'],
+    ['?enquiry_type=Professional', 'Professional'],
     ['?enquiry=residential', 'Residential'],
     ['?source=homepage&enquiry=commercial', 'Commercial'],
     ['?enquiry=Professional', 'Professional'],

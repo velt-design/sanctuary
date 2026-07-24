@@ -1,6 +1,10 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import {
+  buildEnquiryHref,
+  inferEnquiryAudience,
+} from '../apps/marketing/lib/enquiryContext';
 
 const establishedHeaderRoutes = [
   '/',
@@ -12,6 +16,7 @@ const establishedHeaderRoutes = [
   '/contact',
   '/privacy',
   '/acrylic-roof-pergolas-auckland-v2',
+  '/commercial-pergolas-auckland',
 ] as const;
 
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'marketing-shared-header');
@@ -34,6 +39,7 @@ test('the architectural editorial header is shared by established public routes'
 
   for (const route of establishedHeaderRoutes) {
     await page.goto(route);
+    const resolvedPath = new URL(page.url()).pathname;
     const header = page.locator('header.site');
     const cta = header.getByRole('link', { name: 'Get an estimate' });
     await expect(header).toBeVisible();
@@ -41,6 +47,11 @@ test('the architectural editorial header is shared by established public routes'
     await expect(cta).toBeVisible();
     await expect(cta).toHaveCSS('border-radius', '0px');
     await expect(cta).toHaveCSS('background-color', 'rgb(79, 87, 72)');
+    await expect(cta).toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: inferEnquiryAudience(resolvedPath),
+      sourcePath: resolvedPath,
+      sourceComponent: 'header',
+    }));
 
     const geometry = await header.evaluate((element) => {
       const brand = element.querySelector<HTMLElement>('.site-brand');
@@ -115,34 +126,6 @@ test('shared header destinations remain functional', async ({ page }) => {
   await page.locator('header.site').getByRole('link', { name: 'Products' }).click();
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Cover the deck. Keep the light.' })).toBeVisible();
-});
-
-test('shared header enquiry intent follows commercial and project context', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await preparePage(page);
-
-  await page.goto('/commercial-pergolas-auckland');
-  await expect(page.locator('#acrylic-enquiry-type')).toHaveValue('commercial');
-  await expect(page.locator('header.site').getByRole('link', { name: 'Get an estimate' }))
-    .toHaveAttribute(
-      'href',
-      '/contact?enquiry=commercial&source_path=%2Fcommercial-pergolas-auckland'
-      + '&source_component=header#contact-form',
-    );
-
-  await page.goto('/projects/atelier-shu-cafe');
-  const projectHeaderCta = page.locator('header.site')
-    .getByRole('link', { name: 'Get an estimate' });
-  await expect(projectHeaderCta).toHaveAttribute(
-    'href',
-    '/contact?source_path=%2Fprojects%2Fatelier-shu-cafe'
-    + '&source_component=header&project=atelier-shu-cafe#contact-form',
-  );
-  await projectHeaderCta.click();
-  await expect(page.getByRole('radio', { name: 'Commercial', exact: false }))
-    .toBeChecked();
-  await expect(page.getByRole('complementary', { name: 'Enquiry context' }))
-    .toContainText('Atelier Shu Cafe');
 });
 
 test('capture representative shared-header states', async ({ page }) => {

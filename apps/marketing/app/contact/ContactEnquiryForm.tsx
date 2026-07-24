@@ -9,6 +9,7 @@ import {
   type FormEventHandler,
 } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
+import EnquiryErrorSummary from '@/components/enquiry/EnquiryErrorSummary';
 import { getBrowserMarketingAttribution } from '@/lib/attribution';
 import {
   createEnquirySubmissionId,
@@ -17,7 +18,11 @@ import {
   uploadEnquiryAttachments,
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
-import type { EnquirySourceContext } from '@/lib/enquiryContext';
+import {
+  getEnquiryContextProperties,
+  type EnquiryAudience,
+  type EnquiryContext,
+} from '@/lib/enquiryContext';
 import {
   enquiryTypeValue,
   validateContactForm,
@@ -28,11 +33,9 @@ import type { EnquiryType } from './enquiryRoute';
 
 type ContactEnquiryFormProps = {
   initialEnquiryType: EnquiryType | null;
-  initialSourceContext: EnquirySourceContext & {
-    hasEntryContext: boolean;
-    projectTitle?: string;
-    productName?: string;
-  };
+  initialContext: EnquiryContext;
+  sourceProjectLabel?: string;
+  sourceProductLabel?: string;
 };
 
 type SubmitState = 'idle' | 'sending' | 'success' | 'error';
@@ -83,6 +86,22 @@ const addOnOptions = [
   ['heating', 'Heating'],
 ] as const;
 
+const contactFieldTargets: Record<ContactField, string> = {
+  enquiryType: 'contact-enquiry-type-residential',
+  name: 'contact-name',
+  phone: 'contact-phone',
+  email: 'contact-email',
+  files: 'contact-files',
+};
+
+const contactFieldOrder: ContactField[] = [
+  'enquiryType',
+  'name',
+  'phone',
+  'email',
+  'files',
+];
+
 function errorId(field: ContactField): string {
   return `contact-${field}-error`;
 }
@@ -103,7 +122,9 @@ function formatFileSize(bytes: number): string {
 
 export default function ContactEnquiryForm({
   initialEnquiryType,
-  initialSourceContext,
+  initialContext,
+  sourceProjectLabel,
+  sourceProductLabel,
 }: ContactEnquiryFormProps) {
   const { consent, hasStoredChoice } = useConsent();
   const [enquiryType, setEnquiryType] = useState<EnquiryType | null>(
@@ -116,6 +137,8 @@ export default function ContactEnquiryForm({
   const submissionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const attachmentErrorRef = useRef<string | null>(null);
+  const errorSummaryRef = useRef<HTMLDivElement | null>(null);
+  const shouldFocusErrorSummaryRef = useRef(false);
   const successRef = useRef<HTMLElement | null>(null);
   const submitErrorRef = useRef<HTMLDivElement | null>(null);
 
@@ -123,6 +146,40 @@ export default function ContactEnquiryForm({
     if (submitState === 'success') successRef.current?.focus();
     if (submitState === 'error' && submitError) submitErrorRef.current?.focus();
   }, [submitError, submitState]);
+
+  useEffect(() => {
+    if (
+      shouldFocusErrorSummaryRef.current
+      && Object.values(fieldErrors).some(Boolean)
+    ) {
+      shouldFocusErrorSummaryRef.current = false;
+      errorSummaryRef.current?.focus();
+    }
+  }, [fieldErrors]);
+
+  const currentContext: EnquiryContext = {
+    ...initialContext,
+    ...(enquiryType
+      ? { enquiryType: enquiryTypeValue(enquiryType) as EnquiryAudience }
+      : {}),
+  };
+  const contextProperties = getEnquiryContextProperties(currentContext);
+  const contextItemLabel = sourceProjectLabel
+    ? `Project: ${sourceProjectLabel}`
+    : sourceProductLabel
+      ? `Pergola option: ${sourceProductLabel}`
+      : null;
+  const contextItemDescription = sourceProjectLabel
+    ? `the ${sourceProjectLabel} project`
+    : sourceProductLabel
+      ? `the ${sourceProductLabel} option`
+      : null;
+  const errorSummaryItems = contactFieldOrder.flatMap((field) => {
+    const message = fieldErrors[field];
+    return message
+      ? [{ field, message, targetId: contactFieldTargets[field] }]
+      : [];
+  });
 
   const clearFieldError = (field: ContactField) => {
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
@@ -139,21 +196,10 @@ export default function ContactEnquiryForm({
     const base = {
       event_category: 'contact',
       event_label: enquiryType ?? 'Unknown',
+      ...contextProperties,
       enquiry_type: enquiryType ?? 'Unknown',
       roof_count: selectedRoofs.length,
       addons_count: selectedAddOns.length,
-      ...(initialSourceContext.sourcePath
-        ? { source_path: initialSourceContext.sourcePath }
-        : {}),
-      ...(initialSourceContext.sourceComponent
-        ? { source_component: initialSourceContext.sourceComponent }
-        : {}),
-      ...(initialSourceContext.projectSlug
-        ? { project_slug: initialSourceContext.projectSlug }
-        : {}),
-      ...(initialSourceContext.productSlug
-        ? { product_slug: initialSourceContext.productSlug }
-        : {}),
     };
 
     try {
@@ -250,7 +296,7 @@ export default function ContactEnquiryForm({
 
     const firstError = Object.keys(nextErrors)[0] as ContactField | undefined;
     if (firstError) {
-      form.querySelector<HTMLElement>(`[name="${firstError}"]`)?.focus();
+      shouldFocusErrorSummaryRef.current = true;
       return;
     }
 
@@ -293,28 +339,15 @@ export default function ContactEnquiryForm({
             heating: selectedAddOns.includes('heating'),
           },
           company:
-            enquiryType === 'Professional'
+            enquiryType && enquiryType !== 'Residential'
               ? String(formData.get('company') ?? '').trim() || null
               : null,
           files: attachmentUpload.files,
           utm: attribution.utm,
           attribution,
+          enquiryContext: contextProperties,
           page: window.location.pathname,
           source: 'website',
-          sourceContext: {
-            ...(initialSourceContext.sourcePath
-              ? { sourcePath: initialSourceContext.sourcePath }
-              : {}),
-            ...(initialSourceContext.sourceComponent
-              ? { sourceComponent: initialSourceContext.sourceComponent }
-              : {}),
-            ...(initialSourceContext.projectSlug
-              ? { projectSlug: initialSourceContext.projectSlug }
-              : {}),
-            ...(initialSourceContext.productSlug
-              ? { productSlug: initialSourceContext.productSlug }
-              : {}),
-          },
           honeypot: String(formData.get('website') ?? ''),
         }),
       });
@@ -371,7 +404,9 @@ export default function ContactEnquiryForm({
         <p className="contact-eyebrow">Project details received</p>
         <h2>Thank you. We have your project brief.</h2>
         <p>
-          We will review the information and use it to understand the site,
+          We received your {enquiryType?.toLowerCase()} enquiry
+          {contextItemDescription ? ` about ${contextItemDescription}` : ''}.
+          {' '}We will review the information and use it to understand the site,
           scope and most useful next step.
         </p>
         <div className="contact-success__links">
@@ -409,35 +444,29 @@ export default function ContactEnquiryForm({
           Start with what you know. The design, materials and exact dimensions
           can be worked through later.
         </p>
-        {initialSourceContext.hasEntryContext ? (
-          <aside className="contact-form__context" aria-label="Enquiry context">
-            <p>We have kept your enquiry context.</p>
-            <dl>
-              {enquiryType ? (
-                <div>
-                  <dt>Pathway</dt>
-                  <dd>{enquiryType}</dd>
-                </div>
-              ) : null}
-              {initialSourceContext.projectTitle ? (
-                <div>
-                  <dt>Project reference</dt>
-                  <dd>{initialSourceContext.projectTitle}</dd>
-                </div>
-              ) : null}
-              {initialSourceContext.productName ? (
-                <div>
-                  <dt>Product interest</dt>
-                  <dd>{initialSourceContext.productName}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </aside>
-        ) : null}
         <p className="contact-form__required-note">
           Fields marked <span>Required</span> are needed to send the enquiry.
         </p>
+        {initialContext.sourcePath || contextItemLabel ? (
+          <div className="contact-form__context" aria-label="Enquiry context">
+            <strong>
+              {contextItemLabel ?? 'Your enquiry source is saved'}
+            </strong>
+            <span>
+              {enquiryType
+                ? `${enquiryType} enquiry`
+                : 'Choose the enquiry type that fits your project'}
+            </span>
+          </div>
+        ) : null}
       </header>
+
+      <EnquiryErrorSummary
+        className="contact-form__error-summary"
+        id="contact-error-summary"
+        items={errorSummaryItems}
+        ref={errorSummaryRef}
+      />
 
       <fieldset
         className="contact-form__section contact-form__type"
@@ -452,6 +481,7 @@ export default function ContactEnquiryForm({
           {enquiryOptions.map((option) => (
             <label key={option.value}>
               <input
+                id={`contact-enquiry-type-${option.value.toLowerCase()}`}
                 type="radio"
                 name="enquiryType"
                 value={option.value.toLowerCase()}
@@ -611,7 +641,7 @@ export default function ContactEnquiryForm({
         </div>
 
         <div className="contact-form__grid">
-          {enquiryType === 'Professional' ? (
+          {enquiryType && enquiryType !== 'Residential' ? (
             <div className="contact-form__field contact-form__field--wide">
               <label htmlFor="contact-company">
                 Company or practice <span>Optional</span>
@@ -744,7 +774,7 @@ export default function ContactEnquiryForm({
         </div>
       </section>
 
-      <div className="contact-form__honeypot" aria-hidden="true">
+      <div className="contact-form__honeypot" aria-hidden="true" inert>
         <label htmlFor="contact-website">Website</label>
         <input
           id="contact-website"

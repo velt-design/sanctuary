@@ -114,7 +114,7 @@ export function CustomerEstimateEmail(props: CustomerEstimateEmailProps) {
         ]}
       />
 
-      <AttachmentLinks files={props.attachmentLinks} />
+      <AttachmentLinks links={props.attachmentLinks} />
 
       <ReplyInvitation
         copy={
