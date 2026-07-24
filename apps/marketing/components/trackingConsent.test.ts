@@ -52,10 +52,10 @@ describe('optional tracking consent boundaries', () => {
   });
 
   it('emits non-PII enquiry conversion events only after an explicit relevant choice', () => {
-    const contact = read('../app/contact/page.tsx');
+    const contact = read('../app/contact/ContactEnquiryForm.tsx');
     const acrylicForm = read('../app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.tsx');
-    expect(contact).toContain('hasStoredChoice && consent.analytics');
-    expect(contact).toContain('hasStoredChoice && consent.marketing');
+    expect(contact).toMatch(/hasStoredChoice\s*&&\s*consent\.analytics/);
+    expect(contact).toMatch(/hasStoredChoice\s*&&\s*consent\.marketing/);
     expect(acrylicForm).toContain('if (!trackingConsent.hasStoredChoice) return');
     expect(acrylicForm).toContain('if (trackingConsent.analytics)');
     expect(acrylicForm).toContain('if (trackingConsent.marketing)');

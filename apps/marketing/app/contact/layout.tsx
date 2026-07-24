@@ -2,15 +2,15 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Request A Site Visit',
+  title: 'Start Your Pergola Project',
   description:
-    'Request a measure, quote or design advice for a custom aluminium pergola. Share dimensions, style preferences and site details to plan your build.',
+    'Share your site, rough dimensions and project priorities with Sanctuary Pergolas to start a custom fixed-roof pergola enquiry.',
   alternates: { canonical: '/contact' },
   openGraph: {
     url: '/contact',
-    title: 'Request A Site Visit – Sanctuary Pergolas',
+    title: 'Start Your Pergola Project | Sanctuary Pergolas',
     description:
-      'Request a measure, quote or design advice for a custom aluminium pergola. Share dimensions, style preferences and site details to plan your build.',
+      'Share your site, rough dimensions and project priorities with Sanctuary Pergolas to start a custom fixed-roof pergola enquiry.',
   },
 };
 

@@ -64,6 +64,18 @@ loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
 horizontal overflow, no nested content scroll and explicit handling of
 unpublished heater evidence.
 
+Contact-page changes should run
+`npx vitest run apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts`
+and
+`npx playwright test playwright/marketing.contact.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. The focused browser suite covers 320,
+390, 430, tablet and desktop widths; server-rendered query preselection;
+persistent labels and form metadata; minimum 44 pixel targets; reduced motion;
+zero textual or generated em dashes; no horizontal overflow or nested content
+scroll; focused client validation; retained values and UUID reuse after API
+failure; duplicate-submit exclusion; consent-controlled events; attribution;
+professional attachment policy errors; and metadata-only upload fallback.
+
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
 and

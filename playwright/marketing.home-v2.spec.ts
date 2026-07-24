@@ -536,14 +536,15 @@ test('mobile homepage records disclosure and review interactions with device con
 test('homepage enquiry links open the promised contact pathway', async ({ page }) => {
   await preparePage(page);
 
-  for (const [destination, enquiryHeading] of [
-    ['/contact?enquiry=residential#contact-form', 'Residential Enquiry'],
-    ['/contact?enquiry=professional#contact-form', 'Professional Enquiry'],
+  for (const [destination, enquiryOption] of [
+    ['/contact?enquiry=residential#contact-form', 'Residential'],
+    ['/contact?enquiry=professional#contact-form', 'Architect, designer or builder'],
   ] as const) {
     await page.goto(destination);
     await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
-    await expect(page.locator('.enquiry-header__text')).toHaveText(enquiryHeading);
-    await expect(page.locator('#contact-form')).toBeVisible();
+    await expect(page.getByRole('radio', { name: enquiryOption, exact: false }))
+      .toBeChecked();
+    await expect(page.locator('#contact-form').last()).toBeVisible();
   }
 });
 
@@ -557,7 +558,7 @@ test('homepage comparison and commercial links land at the promised sections', a
     ['/contact#contact-form', '#contact-form'],
   ] as const) {
     await page.goto(destination);
-    await expect(page.locator(target)).toBeAttached();
+    await expect(page.locator(target).last()).toBeAttached();
     await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
   }
 });
