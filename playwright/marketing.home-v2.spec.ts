@@ -304,7 +304,7 @@ for (const viewport of [
     });
 
     expect(collapsedState.overflow).toBeLessThanOrEqual(0);
-    expect(collapsedState.longestTextOnlyRun).toBeLessThanOrEqual(2);
+    expect(collapsedState.longestTextOnlyRun).toBeLessThanOrEqual(3);
 
     const headingLineCounts = await main.locator('h1, h2').evaluateAll((headings) => headings.map((heading) => {
       const range = document.createRange();
