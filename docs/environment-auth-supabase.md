@@ -96,6 +96,8 @@ Apply ordered migrations in `supabase/migrations/` for current portal behavior. 
 
 Use `docs/supabase-schema-map.md` to confirm table/RPC ownership, write paths, access boundaries, and migration sources before schema-affecting changes.
 
+Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
+
 Schedule V2 currently depends on migrations through the Schedule V2 RPC command migrations and later repair migrations. After deploy, confirm:
 
 ```bash
@@ -156,6 +158,7 @@ For JOB-01/JOB-02/JOB-03, the public job tables have RLS enabled with browser-ro
 ## Troubleshooting
 
 - Missing `public.contacts` or schema-cache errors usually mean migrations were not applied or Supabase schema cache has not refreshed.
+- `Unable to save enquiry` after the public rate-limit check can mean `marketing_enquiry_intake` is installed but its `enquiry_requests` pricing columns are not; apply `20260724043000_marketing_enquiry_budget_columns.sql` and rerun a rollback-only RPC contract.
 - Portal `no_access` means the Supabase user exists but lacks a `portal_users` role.
 - Portal `lookup_failed` means the role lookup errored.
 - Schedule fallback activation means Schedule V2 schema or client readiness failed and should be investigated before release.
