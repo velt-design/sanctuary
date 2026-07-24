@@ -4,10 +4,10 @@ import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
 import {
   ActionGroup, Button, CardGrid, CheckboxField, ComparisonTable, Container, ConversionSection,
-  EditorialCard, EditorialSplit, Eyebrow, FactList, FaqList, Field, Figure, FoundationNavigation,
+  Disclosure, EditorialCard, EditorialSplit, Eyebrow, FactList, FaqList, Field, Figure, FoundationNavigation,
   FullBleedStatement, Heading, ImageNarrative, IntroStatement, MarketingHero, MarketingPage,
   MaterialPalette, NavigationStates, NumberedPrinciples, ProcessSteps, ProjectMeta, ProjectStory,
-  RadioGroup, ResponsiveExamples, Section, SectionHeader, SelectField, SpecificationRows,
+  RadioGroup, ResponsiveExamples, ResponsiveGallery, Section, SectionHeader, SelectField, SpecificationRows,
   StaggeredGallery, TestimonialQuote, Text, TextareaField, TextLink,
 } from '@/components/marketing-foundation';
 import { WARKWORTH_EXTERIOR_IMAGE, WARKWORTH_EXTERIOR_OBJECT_POSITION } from '@/lib/projectImageFraming';
@@ -129,6 +129,61 @@ export default function MarketingFoundationPage() {
             mobileObjectPosition="42% 50%"
             caption="Responsive media"
             detail="16:10 desktop / 4:3 mobile"
+          />
+        </div>
+      </Container>
+    </Section>
+
+    <Section id="interaction-primitives" data-foundation-interactions>
+      <Container width="wide" className={styles.primitiveStack}>
+        <SectionHeader
+          eyebrow="Accessible interactions"
+          heading="One content tree, with controls that work without a gesture."
+          headingId="interaction-primitives-title"
+        >
+          <Text>Native disclosure semantics and a labelled image browser keep state, focus, position, and alternatives predictable across input methods.</Text>
+        </SectionHeader>
+        <div className={styles.interactionGrid}>
+          <div className={styles.disclosureSpecimen} role="group" aria-label="Disclosure examples">
+            <Disclosure summary="What information helps with an initial estimate?">
+              <Text>Share the site location, approximate dimensions, a few photographs, and how you want to use the finished space.</Text>
+            </Disclosure>
+            <Disclosure summary="Can I browse this content with a keyboard?">
+              <Text>Yes. The native summary control works with standard keyboard commands and keeps focus on the control as its state changes.</Text>
+            </Disclosure>
+          </div>
+          <ResponsiveGallery
+            label="Completed pergola examples"
+            items={[
+              {
+                id: 'warkworth',
+                image: WARKWORTH_EXTERIOR_IMAGE,
+                alt: 'Warkworth outdoor room integrated with a weatherboard home',
+                caption: 'Warkworth Outdoor Room',
+                detail: 'Residential · Gable',
+                ratio: 'landscape',
+                mobileRatio: 'standard',
+                objectPosition: WARKWORTH_EXTERIOR_OBJECT_POSITION,
+              },
+              {
+                id: 'dairy-flat',
+                image: '/images/project-dairy-flat-01.jpg',
+                alt: 'Dairy Flat gable pergola beside a rural home',
+                caption: 'Dairy Flat Estate',
+                detail: 'Residential · Gable',
+                ratio: 'landscape',
+                mobileRatio: 'standard',
+              },
+              {
+                id: 'velskov',
+                image: '/images/project-velskov-01.jpg',
+                alt: 'Pitched pergola in Velskov forest',
+                caption: 'Velskov Forest',
+                detail: 'Commercial · Pitched',
+                ratio: 'landscape',
+                mobileRatio: 'standard',
+              },
+            ]}
           />
         </div>
       </Container>

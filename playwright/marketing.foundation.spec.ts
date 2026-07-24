@@ -5,6 +5,8 @@ import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase-3-pr-6');
 const capture = process.env.MARKETING_FOUNDATION_CAPTURE?.trim();
+const interactionEvidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase-3-pr-7');
+const interactionCapture = process.env.MARKETING_FOUNDATION_INTERACTIONS_CAPTURE?.trim();
 
 const viewports = [
   { name: 'desktop', width: 1440, height: 1000 },
@@ -306,6 +308,181 @@ test('capture shared mobile primitive evidence', async ({ page }) => {
     ))).toBe(true);
     await specimen.screenshot({
       path: path.join(evidenceDirectory, `foundation-primitives-${viewport.width}x${viewport.height}.png`),
+    });
+  }
+});
+
+for (const viewport of [
+  { width: 430, height: 932 },
+  { width: 390, height: 844 },
+  { width: 360, height: 800 },
+] as const) {
+  test(`shared disclosure and gallery contracts remain accessible at ${viewport.width}px`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport,
+      hasTouch: true,
+    });
+    const page = await context.newPage();
+    await page.goto('/__foundation/marketing');
+
+    const foundation = await getVisibleFoundation(page);
+    const specimen = foundation.locator('[data-foundation-interactions]');
+    const disclosures = specimen.locator('details[data-disclosure="manual"]');
+    const firstDisclosure = disclosures.first();
+    const firstSummary = firstDisclosure.locator(':scope > summary');
+    const gallery = specimen.getByRole('region', { name: 'Completed pergola examples' });
+    const previous = gallery.getByRole('button', { name: 'Previous image in Completed pergola examples' });
+    const next = gallery.getByRole('button', { name: 'Next image in Completed pergola examples' });
+    const status = gallery.getByRole('status');
+
+    await expect(specimen.getByRole('heading', {
+      name: 'One content tree, with controls that work without a gesture.',
+    })).toBeVisible();
+    await expect(disclosures).toHaveCount(2);
+    await expect(firstDisclosure).not.toHaveAttribute('open', '');
+    await firstSummary.focus();
+    await page.keyboard.press('Enter');
+    await expect(firstDisclosure).toHaveAttribute('open', '');
+    await expect(firstDisclosure.getByText('Share the site location')).toBeVisible();
+    await expect(firstSummary).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(firstDisclosure).not.toHaveAttribute('open', '');
+    await expect(firstSummary).toBeFocused();
+
+    await expect(gallery).toHaveAttribute('aria-roledescription', 'carousel');
+    await expect(gallery.locator('img')).toHaveCount(1);
+    await expect(gallery.locator('img')).toHaveAttribute(
+      'alt',
+      'Warkworth outdoor room integrated with a weatherboard home',
+    );
+    await expect(status).toHaveText('Image 1 of 3');
+
+    for (const control of [previous, next]) {
+      const bounds = await control.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.width).toBeGreaterThanOrEqual(44);
+      expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    }
+
+    await next.tap();
+    await expect(status).toHaveText('Image 2 of 3');
+    await expect(gallery.locator('img')).toHaveCount(1);
+    await expect(gallery.locator('img')).toHaveAttribute('alt', 'Dairy Flat gable pergola beside a rural home');
+
+    await next.focus();
+    await page.keyboard.press('End');
+    await expect(status).toHaveText('Image 3 of 3');
+    await expect(next).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(status).toHaveText('Image 1 of 3');
+    await expect(next).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(status).toHaveText('Image 3 of 3');
+    await expect(next).toBeFocused();
+
+    const summaryBounds = await firstSummary.boundingBox();
+    expect(summaryBounds).not.toBeNull();
+    expect(summaryBounds!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => (
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    ))).toBe(true);
+
+    await context.close();
+  });
+}
+
+test('shared interactions retain stable desktop defaults and homepage compatibility', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/__foundation/marketing');
+
+  const foundation = await getVisibleFoundation(page);
+  const specimen = foundation.locator('[data-foundation-interactions]');
+  await specimen.scrollIntoViewIfNeeded();
+  const gridChildren = specimen.locator('[class*="interactionGrid"] > *');
+  const geometry = await gridChildren.evaluateAll((elements) => elements.map((element) => (
+    element.getBoundingClientRect().toJSON()
+  )));
+  expect(geometry).toHaveLength(2);
+  expect(Math.abs(geometry[0].top - geometry[1].top)).toBeLessThanOrEqual(1);
+  await expect(specimen.locator('[data-responsive-gallery] img')).toHaveCount(1);
+
+  await page.goto('/');
+  const disclosures = page.locator('main[data-homepage-variant="v2"] [data-mobile-disclosure]');
+  await expect(disclosures.first()).toHaveAttribute('data-disclosure', 'desktop-expanded');
+  await expect(disclosures.first()).toHaveAttribute('open', '');
+  await expect(disclosures.first().locator(':scope > summary')).toBeHidden();
+  await expect(disclosures.first().locator(':scope > div')).toBeVisible();
+  await expect(disclosures.first()).toHaveAttribute('data-homepage-toggle-event');
+});
+
+test('homepage disclosure adapter preserves mobile native state, focus and analytics attributes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  const disclosure = page.locator('main[data-homepage-variant="v2"] [data-mobile-disclosure]').first();
+  const summary = disclosure.locator(':scope > summary');
+  await expect(disclosure).toHaveAttribute('data-disclosure', 'desktop-expanded');
+  await expect(disclosure).toHaveAttribute('data-homepage-toggle-event');
+  await expect(disclosure).not.toHaveAttribute('open', '');
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await expect(disclosure).toHaveAttribute('open', '');
+  await expect(summary).toBeFocused();
+  await expect(disclosure.locator(':scope > div')).toBeVisible();
+});
+
+test('shared disclosure and gallery motion is removed when reduced motion is requested', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/__foundation/marketing');
+
+  const specimen = (await getVisibleFoundation(page)).locator('[data-foundation-interactions]');
+  const motionState = await specimen.evaluate((element) => {
+    const disclosureIcon = element.querySelector<HTMLElement>('[data-disclosure] summary > span:last-child');
+    const galleryButton = element.querySelector<HTMLElement>('[data-responsive-gallery] button');
+    return {
+      disclosureIconBefore: disclosureIcon
+        ? getComputedStyle(disclosureIcon, '::before').transitionDuration
+        : null,
+      disclosureIconAfter: disclosureIcon
+        ? getComputedStyle(disclosureIcon, '::after').transitionDuration
+        : null,
+      galleryButton: galleryButton ? getComputedStyle(galleryButton).transitionDuration : null,
+    };
+  });
+
+  for (const duration of Object.values(motionState)) {
+    expect(duration?.split(', ').every((value) => value === '0s')).toBe(true);
+  }
+});
+
+test('capture shared interaction evidence', async ({ page }) => {
+  test.skip(!interactionCapture, 'Set MARKETING_FOUNDATION_INTERACTIONS_CAPTURE=1 to capture PR 7 evidence.');
+  await mkdir(interactionEvidenceDirectory, { recursive: true });
+
+  for (const viewport of [
+    { width: 430, height: 932 },
+    { width: 390, height: 844 },
+    { width: 360, height: 800 },
+  ] as const) {
+    await page.setViewportSize(viewport);
+    await page.goto('/__foundation/marketing');
+    await page.addStyleTag({
+      content: '[data-foundation-navigation] { position: static !important; }',
+    });
+    const specimen = (await getVisibleFoundation(page)).locator('[data-foundation-interactions]');
+    await specimen.scrollIntoViewIfNeeded();
+    await expect.poll(() => specimen.locator('img').evaluateAll((images) => (
+      images.every((image) => image.complete && image.naturalWidth > 0)
+    ))).toBe(true);
+    await page.evaluate(() => {
+      document.querySelectorAll('nextjs-portal').forEach((portal) => portal.remove());
+    });
+    await specimen.screenshot({
+      path: path.join(
+        interactionEvidenceDirectory,
+        `foundation-interactions-${viewport.width}x${viewport.height}.png`,
+      ),
     });
   }
 });
