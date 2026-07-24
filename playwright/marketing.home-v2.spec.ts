@@ -538,13 +538,17 @@ test('mobile homepage records planning disclosure interactions with device conte
   });
 
   const planning = main.locator('section[aria-labelledby="planning-options"]');
-  await planning.getByText('How Sanctuary approaches the design', { exact: true }).click();
+  const designPrinciples = planning.locator('details').filter({ hasText: 'How Sanctuary approaches the design' });
+  await designPrinciples.locator('summary').click();
+  await expect(designPrinciples).toHaveAttribute('open', '');
 
-  const trackedEvents = await page.evaluate(() => (
+  const getTrackedEvents = () => page.evaluate(() => (
     (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
       ?.filter((entry): entry is Record<string, unknown> => !Array.isArray(entry))
-      .filter((entry) => entry.event === 'design_principles_expand')
+      .filter((entry) => entry.event === 'design_principles_expand') ?? []
   ));
+  await expect.poll(async () => (await getTrackedEvents()).length).toBe(1);
+  const trackedEvents = await getTrackedEvents();
 
   expect(trackedEvents).toEqual([
     {
