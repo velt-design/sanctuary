@@ -106,12 +106,12 @@ const routeCases: readonly RouteCase[] = [
     id: 'residential service',
     path: '/pergolas-auckland',
     canonicalPath: '/pergolas-auckland',
-    maximumVisibleWords: 1_500,
-    maximumVisibleHeadingRegions: 9,
+    maximumVisibleWords: 1_050,
+    maximumVisibleHeadingRegions: 8,
     mobileSignals: [
       'Pergolas for Auckland homes, designed from the house out',
-      'Different homes lead to different pergolas',
-      'open-edge constraints',
+      'Three homes. Three different answers.',
+      'Roof forms, site checks and useful guides',
       'Send photos and rough dimensions',
     ],
     primaryAction: {
@@ -120,13 +120,14 @@ const routeCases: readonly RouteCase[] = [
     },
     disclosures: {
       selector: 'details[data-mobile-content-disclosure]',
-      count: 3,
+      count: 1,
       idAttribute: 'data-mobile-content-disclosure',
-      ids: ['design-brief', 'roof-and-edges', 'supporting-guidance'],
+      ids: ['service-planning-support'],
     },
     supporting: {
-      selector: 'details[data-mobile-content-disclosure="roof-and-edges"]',
-      phrase: 'Plan the open edges with the same care as the roof',
+      selector:
+        'details[data-mobile-content-disclosure="service-planning-support"]',
+      phrase: 'Some answers should wait for the completed design',
     },
     stableSections: ['#project-evidence', '#clear-process', '#project-details'],
     meaningfulLinks: [
@@ -246,8 +247,8 @@ const routeCases: readonly RouteCase[] = [
       phrase: 'Structure and materials',
     },
     stableSections: [
-      '[data-product-gallery="primary"]',
       '#product-fit',
+      '[data-product-gallery="primary"]',
     ],
     meaningfulLinks: [
       '/products',
@@ -679,6 +680,49 @@ async function expectPrimaryAction(
 }
 
 async function expectResidentialPostEvidenceAction(main: Locator) {
+  await expect(main.locator('[data-service-major-section]')).toHaveCount(6);
+  await expect(main.locator('#project-evidence .acrylic-project-card')).toHaveCount(3);
+  await expect(main.locator('section:has(#clear-process) li')).toHaveCount(3);
+
+  const firstLayerWords = await main.evaluate((element) => {
+    const finalEnquiry = element.querySelector('[data-service-final-enquiry]');
+    const firstLayerRoots = [...element.children]
+      .filter((child) => (
+        !child.matches('script, style, noscript')
+        && (
+          !finalEnquiry
+          || Boolean(
+            child.compareDocumentPosition(finalEnquiry)
+            & Node.DOCUMENT_POSITION_FOLLOWING
+          )
+        )
+      ));
+    const firstLayer = firstLayerRoots.flatMap((root) => {
+      const words: string[] = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let current = walker.nextNode();
+
+      while (current) {
+        const parent = current.parentElement;
+        const closedDisclosure = parent?.closest('details:not([open])');
+        const isVisibleSummary = closedDisclosure
+          ? Boolean(parent?.closest('summary'))
+          : true;
+
+        if (parent?.checkVisibility() && isVisibleSummary) {
+          words.push(current.textContent ?? '');
+        }
+        current = walker.nextNode();
+      }
+
+      return words;
+    }).join(' ');
+
+    return firstLayer.trim().match(/\S+/g)?.length ?? 0;
+  });
+  expect(firstLayerWords).toBeGreaterThanOrEqual(630);
+  expect(firstLayerWords).toBeLessThanOrEqual(721);
+
   const action = main.getByRole('link', {
     name: 'Discuss my site',
     exact: true,
@@ -1154,7 +1198,7 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
   await expect(page).toHaveURL(/\/pergolas-auckland#roofing-options$/);
   const target = page.locator('#roofing-options');
   const targetDisclosure = page.locator(
-    'details[data-mobile-content-disclosure="roof-and-edges"]',
+    'details[data-mobile-content-disclosure="service-planning-support"]',
   );
   await expect(targetDisclosure).toHaveAttribute('open', '');
   await expect(target).toBeVisible();

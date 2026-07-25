@@ -56,12 +56,15 @@ for (const viewport of viewports) {
     await expect(main.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Send my project details' })).toBeVisible();
-    await expect(main.locator('.acrylic-project-card img')).toHaveCount(4);
-    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(7);
-    await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
-    await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
-    await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
-    await expect(main.locator('.seo-landing__project-facts')).toHaveCount(4);
+    await expect(main.locator('.acrylic-project-card img')).toHaveCount(3);
+    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(5);
+    await expect(
+      main.getByRole('navigation', { name: 'Pergola guide progression' }),
+    ).toHaveCount(0);
+    await expect(
+      main.locator('a[href="/pergola-cost-auckland"]'),
+    ).not.toHaveCount(0);
+    await expect(main.locator('.seo-landing__project-facts')).toHaveCount(3);
 
     const publicCopy = await main.innerText();
     expect(publicCopy).not.toContain('—');
@@ -82,14 +85,14 @@ for (const viewport of viewports) {
     if (capturePhase) {
       await mkdir(evidenceDirectory, { recursive: true });
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-top.png`) });
-      await main.getByRole('navigation', { name: 'Pergola guide progression' }).scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-navigation.png`) });
+      await page.locator('#design-brief').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-fit.png`) });
       await page.locator('#project-evidence').scrollIntoViewIfNeeded();
       await page.locator('.acrylic-project-card img').first().scrollIntoViewIfNeeded();
       await expect.poll(() => page.locator('.acrylic-project-card img').first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-proof.png`) });
-      await page.locator('#roof-material-effect').scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-options.png`) });
+      await page.locator('#investment-drivers').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-investment.png`) });
       await page.locator('#estimate-form-title').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-form.png`) });
     }

@@ -1,207 +1,153 @@
-export const designOutcomes = [
+export const residentialProjectProof = [
   {
-    title: 'Make the outdoor area useful for real routines',
-    text: 'Design around the table, barbecue, doors, paths and furniture that need to work below the roof. The goal is a space that supports ordinary days as well as larger gatherings.',
+    slug: 'warkworth-outdoor-room',
+    label: 'Freestanding gable outdoor room',
+    summary:
+      'A gable roof, clear glazing, solid roof zone, cedar lining, deck and fireplace were resolved as one room.',
+    facts: ['5.0 x 6.0 m footprint', '30 m² freestanding room'],
   },
   {
-    title: 'Protect the rooms beside it',
-    text: 'A new roof changes the view and daylight from the kitchen, lounge or dining room. Its depth, form and material should be judged from inside the home as well as from the deck.',
+    slug: 'tindalls-bay-pavilion',
+    label: 'Mixed roofing around a complex home',
+    summary:
+      'Acrylic and solid roof zones, timber battens and blinds respond to different uses and light conditions.',
+    facts: ['108 m² patio and carport scope', 'Mixed roof and edge treatments'],
   },
   {
-    title: 'Give the addition a reason to belong',
-    text: 'Roof geometry, frame colour, post locations, drainage and the house connection should read as one resolved architectural response, not a collection of separate products.',
-  },
-] as const;
-
-export const designQuestions = [
-  {
-    title: 'What cannot the space do today?',
-    text: 'Rain may end meals, afternoon sun may make the deck difficult to use, or an exposed edge may leave the area feeling temporary. The design brief starts with that practical limitation.',
-  },
-  {
-    title: 'What should remain open?',
-    text: 'Identify the views, doors, paths and daylight that matter. This gives post placement, roof depth and side protection a clear boundary to work within.',
-  },
-  {
-    title: 'What does the house suggest?',
-    text: 'Existing roof pitch, eaves, cladding, window heads and architectural character help determine whether a pitched, gable, hip or box-perimeter form will feel at home.',
-  },
-  {
-    title: 'Which weather reaches the site?',
-    text: 'Overhead rain is only one part of the exposure. Wind direction, low sun, privacy and the open edges of the structure may need their own design response.',
+    slug: 'muriwai-courtyard',
+    label: 'A new hip roof on a familiar footprint',
+    summary:
+      'A hipped aluminium pergola replaces an older structure while keeping the courtyard layout that worked.',
+    facts: ['8.0 x 5.0 m footprint', '40 m² courtyard cover'],
   },
 ] as const;
 
-export const roofForms = [
+export const residentialProcessSteps = [
   {
-    title: 'Mono-pitched pergola',
+    title: 'Share the site and outcome',
+    copy:
+      'Send the suburb, wide photos and rough dimensions. Explain how the area should work and what must stay open.',
+  },
+  {
+    title: 'Review fit and constraints',
+    copy:
+      'Sanctuary assesses the house connection, form, light, posts, drainage, access and open technical questions together.',
+  },
+  {
+    title: 'Confirm design and scope',
+    copy:
+      'The agreed design, selected products, inclusions, exclusions and project-specific checks become one clear proposal.',
+  },
+] as const;
+
+export const investmentDrivers = [
+  {
+    title: 'Size and structure',
+    text: 'Width, projection, height, spans and post positions shape material and engineering scope.',
+  },
+  {
+    title: 'Roof and connection',
+    text: 'Form, roofing, attachment, flashings and foundations respond to the actual house.',
+  },
+  {
+    title: 'Drainage and site',
+    text: 'Fall, gutters, discharge, exposure, access and existing conditions affect the work.',
+  },
+  {
+    title: 'Integrated options',
+    text: 'Screens, lighting, heating, electrical work and approvals add scope when required.',
+  },
+] as const;
+
+export const roofFormLinks = [
+  {
+    title: 'Pitched',
     href: '/products/pergolas/pitched',
-    text: 'A single roof plane can extend quietly from the house and create a direct drainage path. Available height, the low edge and the connection to the existing building guide the proportions.',
+    text: 'One roof plane where height, fall and discharge work together.',
   },
   {
-    title: 'Gable pergola',
+    title: 'Gable',
     href: '/products/pergolas/gable',
-    text: 'A central ridge creates height and a stronger architectural centre. The pitch, gable end and relationship to the existing roofline need to be resolved together.',
+    text: 'A central ridge where height and architectural presence are useful.',
   },
   {
-    title: 'Hip roof pergola',
+    title: 'Hip',
     href: '/products/pergolas/hip',
-    text: 'Multiple roof planes can respond to a courtyard, corner or more complex house geometry. Every fall affects framing, drainage and the appearance from above and below.',
+    text: 'Several roof planes for courtyards, corners or views from several sides.',
   },
   {
-    title: 'Box-perimeter pergola',
+    title: 'Box perimeter',
     href: '/products/pergolas/box-perimeter',
-    text: 'A crisp outer frame gives the roof a defined rectangular profile. The structure within it can then respond to the required fall, material and span.',
+    text: 'A level outer frame that contains structure, roof fall and drainage.',
   },
 ] as const;
 
-export const roofApproaches = [
+export const planningLinks = [
   {
-    title: 'Acrylic roofing',
-    outcome: 'Prioritises transmitted daylight and a lighter visual connection overhead.',
-    consider: 'Tint, roof depth, direct sun and the daylight available to adjacent rooms all change the result.',
-    href: '/acrylic-roof-pergolas-auckland',
+    title: 'Complex or architect-led work',
+    text: 'Review difficult connections, irregular sites, restricted posts, spans and changing levels.',
+    href: '/custom-pergolas-auckland',
+    label: 'Open the custom pergola guide',
   },
   {
-    title: 'Solid or lined roofing',
-    outcome: 'Creates a more ceiling-like room and stronger overhead shade.',
-    consider: 'The effect on adjoining rooms, roof build-up, drainage and the desired underside finish should be reviewed early.',
-    href: '/projects/riverhead-gable-pavilion',
+    title: 'Compare a complete scope',
+    text: 'See which inputs shape investment and what a useful proposal should include.',
+    href: '/pergola-cost-auckland',
+    label: 'Open the cost guide',
   },
   {
-    title: 'Combination roofing',
-    outcome: 'Places transparent and solid zones according to the use below and the light needed beside the deck.',
-    consider: 'The transition between materials must be designed as part of the roof, not treated as an afterthought.',
-    href: '/projects/tindalls-bay-pavilion',
-  },
-  {
-    title: 'Unsure at the start',
-    outcome: 'Keeps the brief focused on use, light, shelter and architecture before a product is selected.',
-    consider: 'Photos, orientation, approximate dimensions and comparable projects make the first comparison more useful.',
-    href: '#project-details',
+    title: 'Plan the room below',
+    text: 'Coordinate use, furniture, light, roof, edges and services as one outdoor room.',
+    href: '/outdoor-rooms-auckland',
+    label: 'Open the outdoor room guide',
   },
 ] as const;
 
-export const edgeDecisions = [
+export const siteSpecificChecks = [
   {
-    title: 'Rain from above',
-    text: 'Roof fall, flashings, gutters, downpipes and the discharge point form one rainwater path. The house connection and every change in roof plane need to support that path.',
+    title: 'Structure follows verified conditions',
+    text: 'Posts, spans and supports depend on dimensions, loads, exposure, existing construction and any engineering required.',
   },
   {
-    title: 'Wind and low sun',
-    text: 'Open sides allow air and views, but they also admit wind-driven rain and low-angle sun. Blinds, infill panels or a change in layout may be considered where an edge needs more protection.',
+    title: 'Approval follows the final design',
+    text: 'Property and consent requirements must be confirmed for the completed project.',
   },
   {
-    title: 'Privacy and enclosure',
-    text: 'Screens can make an exposed boundary more comfortable, yet every added edge changes outlook, airflow and how enclosed the room feels. Decide which edges should stay open before adding products.',
-  },
-] as const;
-
-export const processSteps = [
-  {
-    title: 'Share the site and the outcome',
-    copy: 'Send the project suburb, photos and rough dimensions. Explain how the area is used now, which rooms sit beside it and what you want the pergola to make easier.',
-  },
-  {
-    title: 'Receive a grounded first assessment',
-    copy: 'Sanctuary reviews the known scope, identifies missing information and outlines a useful next step. Early assumptions stay visible instead of being presented as final decisions.',
-  },
-  {
-    title: 'Review the site and design options',
-    copy: 'The house connection, roof form, post locations, daylight, drainage, access and edge protection can then be considered together. Comparable projects and drawings help make the trade-offs tangible.',
-  },
-  {
-    title: 'Confirm the design and quotation',
-    copy: 'The agreed dimensions, structure, roofing, finish, accessories, inclusions and exclusions are brought into one defined scope. Revisions can be resolved before commitment.',
-  },
-  {
-    title: 'Prepare and install',
-    copy: 'After approval and any required preliminary work, the pergola is prepared and installed to the agreed design. Timing is confirmed for the actual project and current programme.',
-  },
-] as const;
-
-export const scopeFactors = [
-  ['Size, height and spans', 'Width, projection, roof height and the feasible post layout affect material quantities, structure and the experience below the roof.'],
-  ['Roof form and materials', 'Pitched, gable, hip and box-perimeter forms use different geometry and detailing. Acrylic, solid and combination roofs also create different scopes.'],
-  ['House connection and foundations', 'An attached structure, a freestanding structure or work around an existing deck requires different support, flashing and foundation decisions.'],
-  ['Drainage and site exposure', 'Roof fall, gutters, downpipes, discharge, wind exposure and coastal conditions need to be understood for the actual site.'],
-  ['Access and existing conditions', 'Restricted access, sloping ground, existing structures and services can change how the work is designed and installed.'],
-  ['Integrated options and approvals', 'Blinds, infill panels, lighting, heating, engineering, documentation and council processes add scope where the design requires them.'],
-] as const;
-
-export const quoteChecklist = [
-  'Agreed footprint, heights and roof form',
-  'Frame, roof materials and finish',
-  'Posts, foundations and house connections',
-  'Flashings, gutters and downpipes',
-  'Blinds, screens, lighting or heating',
-  'Electrical and other trade responsibilities',
-  'Engineering or approval work, where applicable',
-  'Access assumptions, exclusions, GST and next steps',
-] as const;
-
-export const conditionalDecisions = [
-  {
-    title: 'Posts, spans and engineering',
-    text: 'The cleanest feasible structure depends on dimensions, loads, site exposure, support conditions and the completed design. A specific span or post-free result should wait for proper assessment.',
-  },
-  {
-    title: 'Consent and property requirements',
-    text: 'Requirements depend on the property and final design. Sanctuary can identify likely checks, but the approval pathway must be confirmed for the actual project.',
-  },
-  {
-    title: 'Products, warranties and maintenance',
-    text: 'The quotation should identify the selected products and the current written information that applies to them. Generic material claims are not a substitute for project-specific documents.',
+    title: 'Products stay product-specific',
+    text: 'Performance, warranty and care information should come from the exact products selected.',
   },
 ] as const;
 
 export const faqItems = [
   {
-    question: 'What type of pergola is best for an Auckland home?',
+    question: 'Which pergola form should I start with?',
     answer: [
-      'There is no single best form. A pitched, gable, hip or box-perimeter pergola can each be appropriate depending on the house roofline, available height, area to cover, drainage and the architectural presence you want.',
-      'Start with the site and intended use, then compare the forms against those constraints rather than choosing from appearance alone.',
+      'Start with the house, available height, drainage, area to cover and intended use. Pitched, gable, hip and box-perimeter forms suit different conditions.',
     ],
   },
   {
-    question: 'Does Sanctuary design and install aluminium pergolas?',
+    question: 'Should the roof be acrylic or solid?',
     answer: [
-      'Yes. Sanctuary designs and installs aluminium pergolas around the home, site and intended use. The final structure may also incorporate steel where the project design requires it.',
-      'Roof form, frame colour, post placement, drainage and integrated options are developed as parts of one design.',
+      'Acrylic can retain more transmitted daylight, while a solid or lined roof creates stronger shade. A combination can place each effect where it is useful.',
+      'The choice should be reviewed against orientation, roof depth, adjoining windows and the selected products.',
     ],
   },
   {
-    question: 'Should I choose acrylic or a solid pergola roof?',
+    question: 'Can the pergola attach to the house?',
     answer: [
-      'Acrylic roofing can retain more transmitted daylight and visual openness, while a solid or lined roof creates stronger overhead shade and a more ceiling-like character. A combination roof can place each effect where it is most useful.',
-      'The choice should be assessed against orientation, roof depth, adjoining windows, the activity below and the desired appearance from inside and outside.',
+      'Often, but support, cladding, clearances, flashing and drainage need review. A freestanding structure may be more suitable where attachment is constrained.',
     ],
   },
   {
-    question: 'Can a pergola attach to the existing house?',
+    question: 'Can blinds, screens, lighting or heaters be included?',
     answer: [
-      'Often, but the cladding, fascia, soffit, roof edge, available support, door clearances, flashing and drainage all need to be reviewed.',
-      'If attachment is not suitable, a freestanding structure may be considered close to the house, subject to the site and final design.',
+      'They can be considered where they suit the structure and exact products. Mounting, wiring, controls, drainage and clearances are best planned before fabrication.',
     ],
   },
   {
-    question: 'Can outdoor blinds, screens, lighting or heaters be included?',
+    question: 'What should I send for a first assessment?',
     answer: [
-      'These options can be considered where they suit the structure and selected products. Blinds or screens may help an exposed edge, while lighting and heating can support evening or cooler-season use.',
-      'Mounting, wiring, controls, drainage and clearances are best planned before fabrication.',
-    ],
-  },
-  {
-    question: 'Which parts of Auckland does Sanctuary service?',
-    answer: [
-      'Sanctuary is Auckland based. Include the project suburb in your enquiry so the team can confirm the current service area and any travel or access considerations.',
-    ],
-  },
-  {
-    question: 'What should I send for a useful first assessment?',
-    answer: [
-      'Send the project suburb, a few photos of the house and outdoor area, rough width and projection, and a short explanation of what you want the space to do.',
-      'A view from inside the adjoining room, plus any plans or sketches already available, can help the team assess daylight, connections and likely design constraints.',
+      'Send the suburb, wide photos of the house and deck, rough width and projection, and a short explanation of the intended change.',
     ],
   },
 ] as const;
@@ -209,9 +155,21 @@ export const faqItems = [
 export const generalRoofPreference = {
   detailKey: 'roofPreference' as const,
   options: [
-    { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },
-    { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] },
-    { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] },
+    {
+      label: 'Acrylic roofing',
+      value: 'Acrylic roofing',
+      roofMaterials: ['acrylic'],
+    },
+    {
+      label: 'Solid or lined roofing',
+      value: 'Solid or lined roofing',
+      roofMaterials: ['timber'],
+    },
+    {
+      label: 'Combination roofing',
+      value: 'Combination roofing',
+      roofMaterials: ['acrylic', 'timber'],
+    },
     { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ],
 } as const;
