@@ -1,6 +1,8 @@
 import type { Project } from '@/data/projects';
+import DesktopCollectionProjectDetail from './DesktopCollectionProjectDetail';
 import ProjectDetailContent from './ProjectDetailContent';
 import ProjectNavigator from './ProjectNavigator';
+import { getProjectCollectionItems } from './projectCollection';
 import './projects.css';
 import './projectCollection.css';
 
@@ -22,6 +24,7 @@ export default function ProjectsExperience({
     projects.findIndex((project) => project.slug === initialSlugFromUrl),
   );
   const selectedProject = projects[selectedIndex] ?? null;
+  const collectionProjects = getProjectCollectionItems(projects);
 
   if (!selectedProject) {
     return (
@@ -60,22 +63,26 @@ export default function ProjectsExperience({
       ) : null}
       <div className="projects-experience__layout">
         <ProjectNavigator
-          projects={projects}
-          activeProject={selectedProject}
+          projects={collectionProjects}
+          activeProject={collectionProjects[selectedIndex]!}
           collectionMode={!detailMode}
           initialSearchParams={initialSearchParams}
         />
-        <ProjectDetailContent
-          project={selectedProject}
-          projectIndex={selectedIndex}
-          projectCount={projects.length}
-          relatedProjects={relatedProjects}
-          previousProject={previousProject}
-          nextProject={nextProject}
-          showBreadcrumb={detailMode}
-          sourcePath={detailMode ? `/projects/${selectedProject.slug}` : '/projects'}
-          titleAs={detailMode ? 'h1' : 'h2'}
-        />
+        {detailMode ? (
+          <ProjectDetailContent
+            project={selectedProject}
+            projectIndex={selectedIndex}
+            projectCount={projects.length}
+            relatedProjects={relatedProjects}
+            previousProject={previousProject}
+            nextProject={nextProject}
+            showBreadcrumb
+            sourcePath={`/projects/${selectedProject.slug}`}
+            titleAs="h1"
+          />
+        ) : (
+          <DesktopCollectionProjectDetail initialSlug={selectedProject.slug} />
+        )}
       </div>
     </main>
   );

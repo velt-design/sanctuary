@@ -17,7 +17,6 @@ import {
   Disclosure,
   EditorialCard,
 } from '@/components/marketing-foundation';
-import type { Project } from '@/data/projects';
 import {
   ALL_PROJECT_FILTERS,
   PROJECT_AUDIENCE_OPTIONS,
@@ -28,11 +27,12 @@ import {
   type ProjectAudienceFilter,
   type ProjectFilters,
 } from './projectFilters';
+import type { ProjectCollectionItem } from './projectCollection';
 import { getProjectFormLabel } from './projectPresentation';
 
 type ProjectNavigatorProps = {
-  projects: Project[];
-  activeProject: Project;
+  projects: ProjectCollectionItem[];
+  activeProject: ProjectCollectionItem;
   collectionMode?: boolean;
   initialSearchParams?: string;
 };

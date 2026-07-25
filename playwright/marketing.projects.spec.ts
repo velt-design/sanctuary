@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { ROOF_MATERIAL_MEDIA } from '../apps/marketing/app/start/startFlowMedia';
 import { projects } from '../apps/marketing/data/projects';
@@ -5,6 +7,43 @@ import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const representativeRoute = `/projects/${projects[0].slug}`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
+const phaseTwoCapture = process.env.MARKETING_PHASE_TWO_CAPTURE === '1';
+const phaseTwoEvidenceDirectory = resolve('artifacts/mobile-ux-phase-2');
+const productionCollectionBaseline = [
+  {
+    width: 430,
+    htmlBytes: 174_571,
+    documentNodes: 510,
+    caseStudyCount: 1,
+    caseStudyTextCharacters: 4_047,
+    caseStudyImages: 10,
+    caseStudyGalleryFigures: 6,
+    transferredImageBytes: 239_179,
+    hiddenHeroLoaded: true,
+  },
+  {
+    width: 390,
+    htmlBytes: 174_571,
+    documentNodes: 510,
+    caseStudyCount: 1,
+    caseStudyTextCharacters: 4_047,
+    caseStudyImages: 10,
+    caseStudyGalleryFigures: 6,
+    transferredImageBytes: 139_605,
+    hiddenHeroLoaded: true,
+  },
+  {
+    width: 360,
+    htmlBytes: 174_571,
+    documentNodes: 510,
+    caseStudyCount: 1,
+    caseStudyTextCharacters: 4_047,
+    caseStudyImages: 10,
+    caseStudyGalleryFigures: 6,
+    transferredImageBytes: 139_605,
+    hiddenHeroLoaded: true,
+  },
+] as const;
 const mobileRefinementRoutes = [
   {
     name: 'residential outdoor room',
@@ -160,7 +199,9 @@ test('mobile project index is one image-led semantic card sequence at every targ
     const main = visibleProjectsMain(page);
     const cards = visibleProjectCards(page);
     await expect(main.locator('h1:visible')).toHaveText('Pergola projects and case studies');
-    await expect(main.locator('.project-case-study')).toBeHidden();
+    await expect(main.locator('.project-case-study')).toHaveCount(0);
+    await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
+    await expect(main.locator('.project-case-study__gallery')).toHaveCount(0);
     await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
     await expect(main.locator('.project-navigator__list')).toHaveCount(1);
     await expect(main.getByRole('navigation', { name: 'Project case studies' }))
@@ -233,6 +274,137 @@ test('mobile project index is one image-led semantic card sequence at every targ
     await expectMinimumTouchTargets(page);
     await expectLogicalVisibleHeadingOrder(page);
   }
+});
+
+test('mobile collection omits hidden project detail markup, payload and media requests', async ({
+  browser,
+}, testInfo) => {
+  test.slow();
+  const baseURL = String(testInfo.project.use.baseURL);
+  const selectedProject = projects.find((project) => project.slug === 'velskov-forest');
+  expect(selectedProject).toBeTruthy();
+
+  for (const width of [430, 390, 360]) {
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    const projectMediaRequests: string[] = [];
+    page.on('request', (request) => {
+      if (
+        ['image', 'media'].includes(request.resourceType())
+        || request.url().includes('youtube')
+      ) {
+        projectMediaRequests.push(request.url());
+      }
+    });
+
+    const response = await page.goto(
+      `/projects?slug=${selectedProject!.slug}&audience=residential`,
+      { waitUntil: 'networkidle' },
+    );
+    expect(response?.ok()).toBe(true);
+    const html = await response!.text();
+    const main = visibleProjectsMain(page);
+
+    await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
+    await expect(main.locator('.project-case-study__gallery')).toHaveCount(0);
+    await expect(main.locator('.project-case-study iframe')).toHaveCount(0);
+    await expect(visibleProjectCards(page)).toHaveCount(
+      projects.filter((project) => project.type === 'Residential').length,
+    );
+    expect(html).not.toContain('data-project-case-study');
+    expect(html).not.toContain(selectedProject!.constraint);
+    expect(html).not.toContain('/images/project-velskov-02.jpg');
+    expect(html).not.toContain('/images/project-velskov-03.jpg');
+    expect(Buffer.byteLength(html)).toBeLessThan(150_000);
+    expect(
+      projectMediaRequests.filter((url) => url.includes('project-velskov')),
+    ).toEqual([]);
+    expect(
+      projectMediaRequests.filter((url) => url.includes('youtube')),
+    ).toEqual([]);
+
+    await context.close();
+  }
+});
+
+test('capture Phase 2 project collection payload evidence', async ({
+  browser,
+}, testInfo) => {
+  test.skip(
+    !phaseTwoCapture,
+    'Set MARKETING_PHASE_TWO_CAPTURE=1 to capture Phase 2 evidence.',
+  );
+  await mkdir(phaseTwoEvidenceDirectory, { recursive: true });
+  const baseURL = String(testInfo.project.use.baseURL);
+  const after: Array<Record<string, number | boolean>> = [];
+
+  for (const width of [430, 390, 360]) {
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width, height: 932 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    const response = await page.goto('/projects', { waitUntil: 'networkidle' });
+    expect(response?.ok()).toBe(true);
+    await dismissConsent(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const body = await response!.body();
+    const metrics = await page.evaluate(() => {
+      const detail = document.querySelector('.project-case-study');
+      const resources = performance.getEntriesByType('resource');
+
+      return {
+        documentNodes: document.querySelectorAll('*').length,
+        caseStudyCount: document.querySelectorAll('.project-case-study').length,
+        caseStudyTextCharacters: detail?.textContent?.length ?? 0,
+        caseStudyImages: document.querySelectorAll('.project-case-study img').length,
+        caseStudyGalleryFigures: document.querySelectorAll(
+          '.project-case-study__gallery figure',
+        ).length,
+        hiddenHeroLoaded: [...document.querySelectorAll<HTMLImageElement>(
+          '.project-case-study img',
+        )].some((image) => image.currentSrc.length > 0),
+        projectCards: document.querySelectorAll('[data-project-card]').length,
+        transferredImageBytes: resources
+          .filter((entry) => entry.initiatorType === 'img')
+          .reduce((sum, entry) => sum + entry.transferSize, 0),
+      };
+    });
+
+    after.push({ width, htmlBytes: body.byteLength, ...metrics });
+    await page.screenshot({
+      path: resolve(
+        phaseTwoEvidenceDirectory,
+        `after-project-index-${width}.png`,
+      ),
+      fullPage: false,
+    });
+    await context.close();
+  }
+
+  await writeFile(
+    resolve(phaseTwoEvidenceDirectory, 'project-collection-payload.json'),
+    `${JSON.stringify({
+      baseline: {
+        capturedFrom: 'production before Phase 2',
+        route: '/projects',
+        values: productionCollectionBaseline,
+      },
+      after: {
+        capturedFrom: 'local Phase 2 checkpoint 1',
+        route: '/projects',
+        values: after,
+      },
+    }, null, 2)}\n`,
+    'utf8',
+  );
 });
 
 test('project filters persist through refresh, filter history, project Back, and reset', async ({

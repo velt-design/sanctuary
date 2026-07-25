@@ -18,12 +18,13 @@ export type ProjectFilters = {
 };
 
 type SearchParamReader = Pick<URLSearchParams, 'get' | 'toString'>;
+type ProjectFilterItem = Pick<Project, 'roof' | 'type'>;
 
 function toFilterValue(label: string): string {
   return label.toLowerCase();
 }
 
-export function getProjectFormOptions(projects: Project[]) {
+export function getProjectFormOptions(projects: ProjectFilterItem[]) {
   return Array.from(new Set(projects.map(getProjectFormLabel)))
     .sort()
     .map((label) => ({ label, value: toFilterValue(label) }));
@@ -31,7 +32,7 @@ export function getProjectFormOptions(projects: Project[]) {
 
 export function readProjectFilters(
   searchParams: SearchParamReader,
-  projects: Project[],
+  projects: ProjectFilterItem[],
 ): ProjectFilters {
   const audienceParam = searchParams.get('audience');
   const formParam = searchParams.get('form');
@@ -49,10 +50,10 @@ export function readProjectFilters(
   return { audience, form };
 }
 
-export function filterProjects(
-  projects: Project[],
+export function filterProjects<ProjectItem extends ProjectFilterItem>(
+  projects: ProjectItem[],
   filters: ProjectFilters,
-): Project[] {
+): ProjectItem[] {
   return projects.filter((project) => (
     (
       filters.audience === ALL_PROJECT_FILTERS

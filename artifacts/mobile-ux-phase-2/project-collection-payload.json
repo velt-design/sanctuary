@@ -1,0 +1,83 @@
+{
+  "baseline": {
+    "capturedFrom": "production before Phase 2",
+    "route": "/projects",
+    "values": [
+      {
+        "width": 430,
+        "htmlBytes": 174571,
+        "documentNodes": 510,
+        "caseStudyCount": 1,
+        "caseStudyTextCharacters": 4047,
+        "caseStudyImages": 10,
+        "caseStudyGalleryFigures": 6,
+        "transferredImageBytes": 239179,
+        "hiddenHeroLoaded": true
+      },
+      {
+        "width": 390,
+        "htmlBytes": 174571,
+        "documentNodes": 510,
+        "caseStudyCount": 1,
+        "caseStudyTextCharacters": 4047,
+        "caseStudyImages": 10,
+        "caseStudyGalleryFigures": 6,
+        "transferredImageBytes": 139605,
+        "hiddenHeroLoaded": true
+      },
+      {
+        "width": 360,
+        "htmlBytes": 174571,
+        "documentNodes": 510,
+        "caseStudyCount": 1,
+        "caseStudyTextCharacters": 4047,
+        "caseStudyImages": 10,
+        "caseStudyGalleryFigures": 6,
+        "transferredImageBytes": 139605,
+        "hiddenHeroLoaded": true
+      }
+    ]
+  },
+  "after": {
+    "capturedFrom": "local Phase 2 checkpoint 1",
+    "route": "/projects",
+    "values": [
+      {
+        "width": 430,
+        "htmlBytes": 82806,
+        "documentNodes": 298,
+        "caseStudyCount": 0,
+        "caseStudyTextCharacters": 0,
+        "caseStudyImages": 0,
+        "caseStudyGalleryFigures": 0,
+        "hiddenHeroLoaded": false,
+        "projectCards": 14,
+        "transferredImageBytes": 239829
+      },
+      {
+        "width": 390,
+        "htmlBytes": 82806,
+        "documentNodes": 298,
+        "caseStudyCount": 0,
+        "caseStudyTextCharacters": 0,
+        "caseStudyImages": 0,
+        "caseStudyGalleryFigures": 0,
+        "hiddenHeroLoaded": false,
+        "projectCards": 14,
+        "transferredImageBytes": 94501
+      },
+      {
+        "width": 360,
+        "htmlBytes": 82806,
+        "documentNodes": 298,
+        "caseStudyCount": 0,
+        "caseStudyTextCharacters": 0,
+        "caseStudyImages": 0,
+        "caseStudyGalleryFigures": 0,
+        "hiddenHeroLoaded": false,
+        "projectCards": 14,
+        "transferredImageBytes": 94501
+      }
+    ]
+  }
+}

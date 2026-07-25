@@ -13,7 +13,7 @@ import {
   getProjectTechnicalSections,
 } from './projectPresentation';
 
-type ProjectDetailContentProps = {
+export type ProjectDetailContentProps = {
   project: Project | null;
   projectIndex: number;
   projectCount: number;
