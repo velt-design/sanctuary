@@ -11,7 +11,7 @@ import {
 } from '@/lib/startModalBridge';
 import {
   buildEnquiryHref,
-  inferEnquiryAudience,
+  getEnquiryRouteContext,
 } from '@/lib/enquiryContext';
 import {
   getDesktopHeaderNavigation,
@@ -52,8 +52,9 @@ export default function Header() {
   const currentPath = pathname ?? '/';
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
+  const routeEnquiryContext = getEnquiryRouteContext(currentPath);
   const headerEnquiryHref = buildEnquiryHref({
-    enquiryType: inferEnquiryAudience(currentPath),
+    ...routeEnquiryContext,
     sourcePath: currentPath,
     sourceComponent: 'header',
   });

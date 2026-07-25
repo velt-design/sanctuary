@@ -72,7 +72,6 @@ const guideLinks = [
 
 export default function ProductsHub() {
   const enquiryHref = buildEnquiryHref({
-    enquiryType: 'residential',
     sourcePath: '/products',
     sourceComponent: 'product_cta',
   });

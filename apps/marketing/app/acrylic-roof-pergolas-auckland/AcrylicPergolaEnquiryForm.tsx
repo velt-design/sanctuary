@@ -14,10 +14,10 @@ import {
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
 import {
+  getEnquiryAnalyticsProperties,
   getEnquiryContextProperties,
   type EnquiryAudience,
   type EnquiryContext,
-  type EnquiryContextProperties,
 } from '@/lib/enquiryContext';
 import type { EnquiryBriefField } from '@/components/seo-landing/types';
 
@@ -84,10 +84,9 @@ function makeEventId(): string {
 }
 
 function trackLeadSubmitted(
-  enquiryType: string,
+  context: EnquiryContext,
   eventId: string,
   landingPage: string,
-  context: EnquiryContextProperties,
   trackingConsent: { analytics: boolean; marketing: boolean; hasStoredChoice: boolean },
 ): void {
   type TrackingWindow = typeof window & {
@@ -96,13 +95,12 @@ function trackLeadSubmitted(
     fbq?: (...args: unknown[]) => void;
   };
   const trackingWindow = window as TrackingWindow;
-  const eventData = {
+  const contextProperties = getEnquiryContextProperties(context);
+  const eventData = getEnquiryAnalyticsProperties(context, {
     event_category: 'contact',
-    event_label: enquiryType,
-    enquiry_type: enquiryType,
+    event_label: contextProperties.enquiry_type ?? 'unknown',
     landing_page: landingPage,
-    ...context,
-  };
+  });
 
   try {
     if (!trackingConsent.hasStoredChoice) return;
@@ -259,12 +257,13 @@ export default function AcrylicPergolaEnquiryForm({
       const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
       const selectedRoofOption = roofPreference.options.find((option) => option.value === selectedRoofPreference);
       const enquiryType = String(formData.get('enquiryType') ?? '');
-      const contextProperties = getEnquiryContextProperties({
+      const currentEnquiryContext: EnquiryContext = {
         ...sourceContext,
         ...(enquiryType
           ? { enquiryType: enquiryType as EnquiryAudience }
           : {}),
-      });
+      };
+      const contextProperties = getEnquiryContextProperties(currentEnquiryContext);
       const attribution = getBrowserMarketingAttribution();
       const addOns = {
         blinds: selectedAccessories.includes('Outdoor blinds'),
@@ -325,10 +324,9 @@ export default function AcrylicPergolaEnquiryForm({
       submissionIdRef.current = null;
       setSubmitState('success');
       trackLeadSubmitted(
-        enquiryType,
+        currentEnquiryContext,
         makeEventId(),
         window.location.pathname,
-        contextProperties,
         {
           analytics: consent.analytics,
           marketing: consent.marketing,

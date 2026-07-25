@@ -1,6 +1,10 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  buildEnquiryHref,
+  getEnquiryRouteContext,
+} from '../lib/enquiryContext';
 import Header from './Header';
 
 let currentPathname = '/projects';
@@ -96,6 +100,27 @@ async function pressKey(key: string, shiftKey = false) {
 }
 
 describe('shared mobile header interaction', () => {
+  it('uses governed project and product route context for the global enquiry action', async () => {
+    currentPathname = '/projects/goodhome-commercial-terrace';
+    await renderHeader();
+
+    const desktopCta = document.querySelector<HTMLAnchorElement>('header.site .nav-cta');
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      ...getEnquiryRouteContext(currentPathname),
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+    }));
+
+    currentPathname = '/products/pergolas/gable';
+    await act(async () => root?.render(<Header />));
+
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      ...getEnquiryRouteContext(currentPathname),
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+    }));
+  });
+
   it('opens one accessible menu tree, moves focus and reversibly locks page scroll', async () => {
     await renderHeader();
     const menu = document.querySelector<HTMLDivElement>('#mobile-menu');

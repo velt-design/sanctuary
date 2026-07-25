@@ -159,10 +159,21 @@ test('copy variant enquiry keeps validation, API attribution and route-specific 
     page: route,
     source: 'website',
   });
-  expect(await page.evaluate(() => {
+  const leadEvent = await page.evaluate(() => {
     type TrackingWindow = Window & { dataLayer?: Array<Record<string, unknown>> };
-    return (window as TrackingWindow).dataLayer?.find((event) => event.event === 'lead_submitted')?.landing_page;
-  })).toBe(route);
+    return (window as TrackingWindow).dataLayer?.find(
+      (event) => event.event === 'lead_submitted',
+    );
+  });
+  expect(leadEvent).toMatchObject({
+    enquiry_type: 'residential',
+    source_path: route,
+    source_component: 'embedded_form',
+    landing_page: route,
+  });
+  expect(JSON.stringify(leadEvent)).not.toContain('Test Person');
+  expect(JSON.stringify(leadEvent)).not.toContain('test@example.com');
+  expect(JSON.stringify(leadEvent)).not.toContain('021 000 0000');
 
   const faq = variantMain.locator('details').filter({ hasText: 'Which acrylic tint is best for an Auckland pergola?' });
   await expect(faq).toHaveCount(1);

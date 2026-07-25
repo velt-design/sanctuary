@@ -44,12 +44,10 @@ const homepageEnquiryHref = buildEnquiryHref({
   sourceComponent: 'hero',
 });
 const productsEnquiryHref = buildEnquiryHref({
-  enquiryType: 'residential',
   sourcePath: '/products',
   sourceComponent: 'product_cta',
 });
 const gableEnquiryHref = buildEnquiryHref({
-  enquiryType: 'residential',
   sourcePath: '/products/pergolas/gable',
   sourceComponent: 'product_cta',
   sourceProduct: 'gable',
