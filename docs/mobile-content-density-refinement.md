@@ -1,6 +1,7 @@
 # Mobile Content Density Refinement
 
-Status: current implementation record for `agent/mobile-content-density-refinement`.
+Status: current implementation record, including Mobile UX Roadmap Phase 3
+production follow-up.
 
 ## Index
 
@@ -14,11 +15,16 @@ Status: current implementation record for `agent/mobile-content-density-refineme
 
 ## Purpose and boundary
 
-This pass applies the content-density direction in
+The original pass applied the content-density direction in
 [`mobile-ux-roadmap.md`](mobile-ux-roadmap.md) to the current marketing
 implementation. It is a refinement of the Phase 5-7 foundations, not a new
 desktop copy programme or a substitute for the later service, product,
 commercial, professional, and guide migrations.
+
+Mobile UX Roadmap v2 Phase 3 subsequently completed the approved residential,
+custom, product-detail and product-hub consolidation. The historical baseline
+and first-pass results remain below; the dated Phase 3 follow-up is the current
+production state for those four surfaces.
 
 The pass covers the homepage, residential and custom service pages, the
 product hub and product pages, commercial and professional journeys, the guide
@@ -211,7 +217,7 @@ Focused automated coverage will assert:
 
 ## Implemented result
 
-The mobile first layer now has the same measured word and section count at
+The first density pass produced the same measured word and section count at
 430px, 390px and 360px. Counts below use the baseline audit method above; a
 range represents every route in that family.
 
@@ -244,10 +250,10 @@ is hidden from interaction.
 
 | Surface | Content moved into the optional mobile layer |
 | --- | --- |
-| Residential | Three groups: design tests and brief questions; roof forms, materials and open-edge constraints; specialist guides, site checks and FAQs. |
-| Custom | Three groups: reading the site; turning custom decisions into a clear scope; planning links, product context and FAQs. |
-| Product hub | Secondary planning guides. The existing four-form comparison remains the other mobile disclosure. |
-| Product details | Seven groups per route: product overview; definition; secondary suitability; secondary constraints; proposal specification; secondary trade-offs; alternatives, related products, guide and FAQs. |
+| Residential | One compact `service-planning-support` group for secondary planning questions, roof/edge detail and useful guide links. |
+| Custom | One compact `custom-planning-support` group for site-reading depth, technical boundaries and useful guide links. |
+| Product hub | The compact four-form comparison and one planning-guide group. Integrated options are direct secondary gateways, not disclosures. |
+| Product details | Three groups per route: `fit-and-definition`; `specification-and-tradeoffs`; and `related-support`. |
 | Commercial | Three groups: detailed operational outcomes; decisions, circulation and coordination risks; planning links and FAQs. |
 | Outdoor rooms | Everyday-use detail; coordinated room decisions; planning links and FAQs. |
 | Aluminium | Frame outcomes; specification detail; planning links and FAQs. |
@@ -360,6 +366,28 @@ Phase 2 follow-up, 25 July 2026:
 - Fourteen production smoke checks and a zero-CLS review passed at 430px,
   390px and 360px. Evidence is under `artifacts/mobile-ux-phase-2/`.
 
+Phase 3 follow-up, 25 July 2026:
+
+- Residential now records 739 full visible words and 706 comparable expanded
+  first-layer words, down from 1,246 and 901. It uses six major regions,
+  three projects, three process stages and one support disclosure.
+- Custom now records 841 full visible words, down from 1,162, with six major
+  regions, three constrained projects, three stages and one support
+  disclosure.
+- The product hub records 600 visible words, seven major regions and a
+  deployed 8,505 px page height at 390 px. Four forms lead, integrated options
+  use two compact gateways and all ten catalogue destinations remain.
+- Across all ten product routes, visible copy is 294-344 words, page height is
+  4,524-4,785 px, disclosures reduce from seven to three, gallery sequences
+  reduce from two to one and the active gallery DOM reduces from four images
+  to one.
+- Marketing units passed 44 files and 188 tests. The optimized browser result
+  is 240 passing non-capture checks. Seventy-nine deployed behavior checks and
+  one production capture passed; form requests were intercepted.
+- The deployed 39-record matrix at 430 px, 390 px and 360 px has zero
+  horizontal overflow, zero measured layout shift and a high-priority hero on
+  every record. Evidence is under `artifacts/mobile-ux-phase-3/`.
+
 ## Remaining risks and deliberate deferrals
 
 - The earlier open-then-close disclosure risk is resolved. The server retains
@@ -375,18 +403,17 @@ Phase 2 follow-up, 25 July 2026:
   unverified. The product owner accepted their explicit deferral to Phase 5 /
   PR 14 when marking Phase 1 complete; automated Chromium remains supporting
   evidence rather than a substitute.
-- Commercial proof ordering and a dedicated commercial capability
-  architecture remain Phase 7 work. This pass reduces the path to existing
-  proof but does not implement roadmap PR 17.
-- A dedicated professional capability page remains roadmap PR 18. The current
+- Commercial proof ordering remains Mobile UX Roadmap v2 Phase 4 / PR 10.
+  The earlier pass reduces copy but does not put proof directly after the hero
+  or reduce delivery to three stages.
+- A dedicated professional capability page remains Phase 4 / PR 11. The current
   professional journey continues through source-aware contact.
-- Guide filters, gateway changes and wider guide information architecture
-  remain roadmap PR 19. This pass only establishes accessible optional-detail
-  boundaries.
-- Product gallery duplication and any more aggressive hub or detail
-  restructuring remain aligned to the later product migration. Removing
-  primary options, evidence or trade-offs would weaken the current decision
-  path.
+- Guide-hub and guide-detail first-layer changes remain Phase 4 / PR 12. The
+  earlier pass only established accessible optional-detail boundaries.
+- Product gallery duplication and residual service/product restructuring are
+  resolved by Phase 3. Future changes must preserve the three-group product
+  contract, one controlled gallery, service six-region budgets and the honest
+  evidence states.
 - Project-index and project-detail copy, records, photography and desktop
   composition remain deliberately untouched; Phase 2 changed payload and
   mobile gallery interaction only.

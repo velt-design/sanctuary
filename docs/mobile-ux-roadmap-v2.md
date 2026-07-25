@@ -1,10 +1,10 @@
 # Sanctuary Pergolas Mobile UX Roadmap v2
 
-> **Status:** Phases 1 and 2 complete; Phase 3 is the recommended next phase
+> **Status:** Phases 1, 2 and 3 complete; Phase 4 is the recommended next phase
 > **Repository:** `velt-design/sanctuary`
 > **Recommended repository path:** `docs/mobile-ux-roadmap-v2.md`
 > **Live website:** `https://www.sanctuarypergolas.co.nz/`
-> **Reviewed repository commit:** `039bd1a240eff2e54d521ad4d55a53d66835b5fd` (`mobile copy reduction`)
+> **Reviewed implementation commit:** `e717fc57` (`test(marketing): verify phase three completion`)
 > **Review date:** 25 July 2026
 > **Mobile scope:** Approximately 430 px, 390 px and 360 px
 > **Implementation model:** One responsive Next.js website, one shared content source, shared React components, Tailwind styling, preserved semantic content and existing analytics
@@ -79,30 +79,69 @@ Real iOS Safari and Android Chrome Back gestures, VoiceOver and TalkBack remain
 unverified on physical devices. As agreed at Phase 1 closure, those tasks
 remain owned by Phase 5 / PR 14 and are not represented by Chromium emulation.
 
+### Phase 3 delivery update - 25 July 2026
+
+All four Phase 3 checkpoints are deployed from `main`: product-detail
+consolidation (`3cadd10a`), residential simplification (`53a65628`), custom
+simplification (`8f8d414c`) and product-index refinement (`f752ac8d`). The
+completion contract is recorded in `e717fc57`.
+
+All ten product details now use three purposeful disclosure groups and one
+controlled gallery with one active image. At 390 px, closed first-layer copy
+is 294-344 words, down from 391-471; page height is 4,524-4,785 px, down from
+6,578-6,850 px. Residential and custom each use six major regions before the
+final enquiry, three projects, three process stages and one compact support
+disclosure. Residential's comparable expanded first layer fell from 901 to
+706 words, a 21.6 percent reduction; full visible residential and custom copy
+fell to 739 and 841 words respectively.
+
+The product hub now leads with four image-led pergola forms, keeps a compact
+non-horizontal comparison and treats screens, walls, lighting and heating as
+secondary gateways. All ten product URLs, route metadata, evidence states and
+neutral product-enquiry behavior remain.
+
+The implementation deployment and portal status both reported success.
+Seventy-nine read-only or network-intercepted production behavior checks
+passed, followed by one explicit production evidence capture. The deployed
+39-route/width measurement matrix recorded zero horizontal overflow, zero
+layout shift and high-priority hero loading at 430 px, 390 px and 360 px.
+Evidence is under `artifacts/mobile-ux-phase-3/`.
+
+Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
+unverified and owned by Phase 5 / PR 14.
+
 ### Direction-of-travel judgement
 
-**Improved but inconsistent.**
+**The primary journeys are coherent; secondary journeys now set the pace.**
 
-The copy-reduction pass is a material improvement in the repository. It reduces first-layer mobile density without deleting the semantic source content or weakening the strongest project evidence. Its main limitation is that several journeys now rely on disclosure to compress an information architecture that remains too large. The production release gap also prevents the improved repository experience from being treated as a completed customer outcome.
+Production enquiry routing, project discovery, service journeys and product
+decisions now follow the intended mobile pattern. The remaining structural
+weaknesses are concentrated in commercial proof order, the missing
+professional capability journey, mechanical guide interaction and the
+oversized footer/homepage lower half.
 
 ---
 
 ## 2. Executive summary
 
-The latest work has improved the intended mobile experience. The repository evidence records a 47.5 percent reduction in initially visible words on the residential service page, 37.2 percent on custom, 41.3 percent on commercial, and a reduction from approximately 638 to 752 visible words to 391 to 471 words across representative product-detail pages. Heading regions were also reduced materially. No core claims, project evidence, metadata or desktop semantic content were removed.
+Phases 1-3 now give the primary customer path a consistent production
+contract. Enquiry links preserve validated non-personal source context,
+projects browse without a hidden detail payload, project and product galleries
+have visible accessible controls, and the main residential, custom and product
+journeys ask visitors to make fewer equal-weight decisions.
 
-The strongest current experience remains project discovery. Large project cards, specific dimensions, architectural constraints and design responses give Sanctuary credible, premium proof. The copy pass now allows that evidence to appear within a calmer first layer on service and commercial journeys.
+The strongest current experience remains project-led discovery. Service pages
+now reach three relevant cases early, use three-stage delivery explanations
+and keep secondary education in one support gateway. Product pages keep
+outcome, fit, one real constraint and honest evidence visible while reducing
+seven disclosure choices and two repeated gallery sequences to three and one.
 
-The largest remaining content weakness is disclosure dependence. A representative product page uses seven mobile disclosure groups, the guide hub uses ten repeated guide-description disclosures, and the residential and custom pages still expose more than 1,100 visible words. The site is shorter by default, but parts of it still feel like a long article divided into drawers.
-
-Phase 1 closed the production enquiry and responsive-state defects recorded by
-the audit. Phase 2 then removed hidden mobile project detail work and completed
-the controlled project gallery. The highest-value remaining work is editorial:
-shorter service and product decisions, fewer disclosure choices and one
-purposeful product gallery sequence.
-
-The next phase should consolidate the residential, custom and product journeys
-without changing taxonomy, claims or the established desktop design.
+The highest-value remaining work is Phase 4: put commercial evidence directly
+after its hero, give architects/designers/builders a real capability journey,
+simplify the guide hub and guide first layers, and replace the oversized footer
+with compact contact utility. These changes complete secondary pathways
+without reopening the now-stable conversion, project, service or product
+contracts.
 
 ---
 
@@ -111,10 +150,10 @@ without changing taxonomy, claims or the established desktop design.
 | Page or journey | Current quality | Change since previous review | Main remaining problem | Priority |
 |---|---|---|---|---:|
 | Homepage | Strong | Unchanged by the latest copy pass | Seven mobile disclosures remain, and the lower half still contains a separate testimonial, planning stack and oversized footer | P2 |
-| Residential service | Improved, still long | Material improvement | 1,245 visible mobile words, four project cards, a five-stage process and service content still framed as part of the guide series | P1 |
-| Custom service | Improved, still long | Material improvement | 1,161 visible mobile words, four project cards and three large disclosure groups preserve too much article structure | P1 |
-| Products index | Good foundation | Minor improvement | Eight major regions remain, with full screens, lighting and heating inventories before the final action | P2 |
-| Product detail | Clearer but over-disclosed | Material improvement | Seven disclosure groups, duplicated gallery media and residential-only enquiry assumptions | P1 |
+| Residential service | Strong and concise | Phase 3 reduced the journey to six major regions, three projects, three stages and one support disclosure | Physical-device and screen-reader validation remains | P2 |
+| Custom service | Strong and distinct | Phase 3 retained three constrained projects while reducing the journey to six regions and one support disclosure | Physical-device and screen-reader validation remains | P2 |
+| Products index | Clear hierarchy | Phase 3 made four pergola forms primary and converted integrated options into two compact gateways | Physical-device validation remains | P2 |
+| Product detail | Clear controlled decision | Phase 3 reduced every route to three disclosures, one controlled gallery and a neutral context-aware enquiry | Physical-device and screen-reader validation remains | P2 |
 | Projects index | Strong and hardened | Phase 2 removed the hidden mobile detail tree and cut production HTML and DOM weight materially | Physical-device Back gestures remain unverified | P1 |
 | Project detail | Strong controlled proof | Phase 2 added visible gallery controls, count, keyboard support and optional swipe while preserving desktop | Physical-device and screen-reader validation remains | P1 |
 | Commercial | Reliable routing, still structurally long | Phase 1 deployed commercial context; the earlier copy pass improved the repository journey | Two explanatory blocks still precede cases and the process still uses five stages | P1 |
@@ -138,31 +177,32 @@ Scores compare the current state with the previous implementation review complet
 | Premium brand perception | 8/10 | Restrained typography, specific projects and measured language remain strong | Unchanged | Remove full-screen footer treatment and mechanical disclosure repetition |
 | Architectural credibility | 9/10 | Dimensions, roof forms, constraints, materials and building relationships are specific | Unchanged | Retain this evidence while reducing repeated explanation around it |
 | Visual storytelling | 8/10 | Projects lead the homepage and portfolio, and service pages now reach evidence sooner | Unchanged | Move commercial cases directly after the first screen and complete project galleries |
-| Image use | 7/10 | Image scale and variety are strong, but product galleries repeat and exact production crops remain unverified | Unchanged | Remove duplicate product galleries and complete crop review at all target widths |
-| Copy restraint | 7/10 | The latest pass removes 21.7 to 47.5 percent of visible copy on major target routes | Improved from 5 | Replace disclosure-led compression with further editorial consolidation on service and product pages |
-| Ease of scanning | 7/10 | Heading regions and initial copy are substantially lower on the main service and commercial journeys | Improved from 6 | Limit each page to a smaller set of visible decisions and fewer disclosure triggers |
-| Reading effort | 6/10 | Reading is easier, but residential and custom still exceed 1,100 visible words | Improved from 5 | Reduce visible process, project-card and investment copy by another 20 to 30 percent |
-| Section pacing | 7/10 | The default mobile layer is calmer and evidence appears earlier | Improved from 6 | Consolidate consecutive disclosure summaries and remove repeated support sections |
-| Perceived page length | 6/10 | Page height is reduced, but several routes remain long and the footer adds a full viewport | Improved from 5 | Finish service-page consolidation and replace the footer treatment |
+| Image use | 8/10 | Product details and project details each use one controlled mobile gallery, with deliberate production crops and no repeated product inventory | Improved from 7 | Complete physical-device crop and control review |
+| Copy restraint | 8/10 | Phase 3 reduced residential, custom, hub and product first layers while preserving complete supporting content | Improved from 7 | Apply the same decision-led rule to commercial and guides |
+| Ease of scanning | 8/10 | Services use six major regions and one support disclosure; product details use three purposeful groups | Improved from 7 | Remove repeated guide-card controls |
+| Reading effort | 8/10 | Residential and custom visible copy is now 739 and 841 words, with three-stage processes and early proof | Improved from 6 | Condense commercial and guide first layers |
+| Section pacing | 8/10 | Project proof, product fit and meaningful constraints now lead before secondary depth | Improved from 7 | Move commercial cases immediately after its hero |
+| Perceived page length | 7/10 | Product page height fell materially and service structure is shorter, but the footer still adds a full viewport | Improved from 6 | Replace the footer treatment |
 | Navigation usability | 7/10 | Current `main` has strong menu focus and scroll behaviour | Unchanged | Deploy and verify context-aware routing, then add a real professional capability destination |
-| Pathway clarity | 6/10 | Home is correctly primary, but professional remains a form shortcut and service pages still present as guide entries | Unchanged | Separate service, capability and educational roles more clearly |
+| Pathway clarity | 7/10 | Home, service and product roles are now clear, but professional remains a form shortcut | Improved from 6 | Add the professional capability journey |
 | Project discovery | 9/10 | The one-column image-led index retains premium proof without a hidden case-study payload | Improved from 8 | Verify Back gestures and scroll restoration on physical iOS and Android devices |
-| Product comprehension | 7/10 | Outcome, fit, constraints and built evidence are clearer in the default layer | Unchanged | Combine seven disclosure groups into a maximum of three purposeful secondary-detail groups |
+| Product comprehension | 9/10 | Every product route exposes outcome, fit, one constraint, honest evidence and one controlled gallery before three optional groups | Improved from 7 | Validate the complete task on physical devices |
 | CTA visibility | 8/10 | Primary actions are easy to find across the main journeys | Unchanged | Make labels and destinations as reliable as their visual prominence |
 | Conversion effectiveness | 8/10 | Production commercial, project and product routes preserve validated source context and audience rules | Improved from 5 | Reconcile field analytics and successful submissions in Phase 5 |
 | Trust and evidence | 9/10 | Reviews, built projects, specific facts and honest caveats remain a major strength | Unchanged | Integrate proof into decisions rather than adding more proof sections |
 | Enquiry experience | 8/10 | Direct and embedded forms now share terminology, context, upload and validation contracts in production | Improved from 5 | Complete real-device and assistive-technology form tasks |
 | Touch usability | 8/10 | Shared targets, menus, filters and visible gallery controls are sound in automated tests | Improved from 7 | Complete physical-device thumb and Back-gesture testing |
 | Accessibility | 8/10 | Disclosures and galleries have deterministic semantics, visible controls, stable focus and no-JavaScript safeguards | Improved from 7 | Complete VoiceOver and TalkBack tasks |
-| Overall mobile customer experience | 8/10 | Production routing and project interactions are reliable; residual service and product density now limits the score | Improved from 7 | Complete Phase 3 editorial consolidation |
+| Overall mobile customer experience | 8/10 | Primary routing, project, service and product journeys are reliable; secondary audience and utility paths now limit the score | Improved from 7 | Complete Phase 4 secondary journeys and utility |
 
 ---
 
 ## 5. Copy-reduction findings
 
-### 5.1 Measured effect of the latest pass
+### 5.1 Measured effect of the earlier density pass
 
-The current repository report measures visible words after hydration with optional mobile disclosures closed.
+This table records the density pass that formed the Phase 3 baseline. It is
+retained for provenance rather than presented as current production.
 
 | Page group | Before | After | Recorded effect | Interpretation |
 |---|---:|---:|---:|---|
@@ -176,7 +216,22 @@ The current repository report measures visible words after hydration with option
 | Guide details | 1,360 to 1,680 words, 11 to 12 heading regions | 935 to 1,316 words, 7 to 9 heading regions | 21.7% to 31.3% fewer visible words | Useful first pass, still materially article-heavy |
 | Contact | 339 words, 2 heading regions | 339 words, 2 heading regions | No change | Copy is not the main problem; route, order and form parity are |
 
-### 5.2 Page-group assessment
+Phase 3 then measured the deployed result against commit `84faf19a` with the
+same closed mobile state:
+
+| Phase 3 surface | Baseline -> deployed | Structural result |
+|---|---:|---|
+| Residential | 1,246 -> 739 full visible words; 901 -> 706 comparable expanded first-layer words | Six major regions, three projects, three stages and one support disclosure |
+| Custom | 1,162 -> 841 full visible words | Six major regions, three constrained projects, three stages and one support disclosure |
+| Product hub | 741 -> 600 visible words; 9,878 -> 8,505 px page height | Four primary forms, two secondary option gateways and two project examples |
+| Product details, ten routes | 391-471 -> 294-344 visible words; 6,578-6,850 -> 4,524-4,785 px | Three disclosures, one controlled gallery and one active gallery image |
+
+### 5.2 Historical page-group assessment
+
+The assessment below is the planning record used to define Phases 1-4. Its
+Phase 1-3 actions are superseded by the dated delivery updates above; the
+commercial, professional, guide, footer and homepage lower-half rows remain
+the active Phase 4 input.
 
 | Page group | What improved | What remains too long or complex | Must remain visible | Move to disclosure | Move to supporting pages | Remove or consolidate | Essential meaning lost? | Remaining reduction opportunity |
 |---|---|---|---|---|---|---|---|---:|
@@ -541,6 +596,7 @@ Release evidence, 25 July 2026:
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - 25 July 2026** |
 | Objective | Replace residual article structure and disclosure density with shorter audience and product decisions |
 | User problem solved | Major pages are shorter than before but still require too much reading or too many disclosure choices |
 | Exact scope | Final residential and custom reduction; service versus guide role separation; product-detail disclosure consolidation; duplicate gallery removal; product-index hierarchy and compact integrated-option gateways |
@@ -571,6 +627,32 @@ Testing requirements:
 - Accordion and keyboard tests.
 - Image payload comparison.
 - Internal-link checks.
+
+Release evidence, 25 July 2026:
+
+- Checkpoint commits: `3cadd10a` consolidated product details, `53a65628`
+  simplified residential, `8f8d414c` simplified custom and `f752ac8d`
+  refined the product hub. `e717fc57` added the completion contract.
+- All ten product routes use three disclosure groups, one controlled gallery
+  and one active gallery image. At 390 px, visible copy is 294-344 words and
+  page height is 4,524-4,785 px, down from 391-471 words and
+  6,578-6,850 px.
+- Residential and custom each use six major regions, three projects, three
+  process stages and one support disclosure. Residential's comparable
+  expanded first layer reduced 21.6 percent.
+- The product hub preserves all ten canonical product destinations while
+  making four forms primary and integrated options secondary.
+- Marketing units passed 44 files and 188 tests. Workspace typecheck, lint,
+  the 64-page production build and changed-file architecture/dead-code guards
+  passed.
+- The optimized browser result is 240 passing non-capture checks. Seventy-nine
+  deployed behavior checks and one production evidence capture then passed
+  without a real enquiry submission.
+- The deployed 39-record responsive matrix has zero overflow, zero measured
+  layout shift and high-priority hero images at 430 px, 390 px and 360 px.
+  Measurements and screenshots are in `artifacts/mobile-ux-phase-3/`.
+- Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain
+  explicitly unverified and deferred to Phase 5 / PR 14.
 
 ### Phase 4: Secondary audiences, guides and site utility
 
@@ -742,6 +824,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `3cadd10a`** |
 | Single user outcome | A visitor can understand one product without opening seven separate controls or seeing the same gallery twice |
 | Exact scope | Merge overview and definition; merge fit groups; combine secondary specification, trade-off and support content; remove duplicate gallery; preserve one built project and product context |
 | Probable components | `ProductDetailPage`, mobile product disclosure, gallery pattern, product CSS and route fixtures |
@@ -756,6 +839,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `53a65628`** |
 | Single user outcome | Homeowners reach fit, proof, process and enquiry without reading a broad design article |
 | Exact scope | Reduce opening copy; retain two or three projects; reduce process to three stages; compact investment drivers; remove dominant guide-series framing; keep one support gateway |
 | Probable components | `/pergolas-auckland`, service disclosures, process, project grid, guide navigation and embedded form placement |
@@ -770,6 +854,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `8f8d414c`** |
 | Single user outcome | Complex clients understand why custom is needed through evidence rather than a second long general service page |
 | Exact scope | Keep three constrained projects; merge site-reading and boundaries; three-stage process; one compact support gateway; remove dominant guide-series framing |
 | Probable components | `/custom-pergolas-auckland`, shared SEO blocks, disclosure groups and form placement |
@@ -784,6 +869,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `f752ac8d`** |
 | Single user outcome | Visitors compare the main pergola forms first and treat accessories as secondary decisions |
 | Exact scope | Preserve four form cards and compact comparison; reduce full secondary product inventories; retain one or two built projects; compact guide gateway |
 | Probable components | `/products`, product cards, comparison and option chapters |
@@ -870,35 +956,37 @@ reduced motion, target widths and zero horizontal overflow.
 
 ### Recommended phase
 
-**Phase 3: Editorial consolidation of service and product journeys**
+**Phase 4: Secondary audiences, guides and site utility**
 
 ### Why it should be next
 
-Phases 1 and 2 made enquiry routing, responsive disclosures and the complete
-project browse loop reliable in production. The next highest-value problem is
-reading and interaction effort: residential and custom journeys remain long,
-and product details repeat gallery media while distributing one decision
-across seven disclosure groups.
+Phases 1-3 made enquiry routing, project proof, residential/custom services and
+product decisions reliable and concise in production. The remaining uneven
+journey is now outside the primary residential path: commercial visitors wait
+for proof, professional visitors reach a form without capability context,
+guides rely on repeated controls and the footer behaves like another full
+screen.
 
 ### Work that must be completed
 
-1. Consolidate product-detail first layers to no more than three purposeful
-   disclosure groups and one deliberate gallery sequence.
-2. Reduce residential service content to a clear fit, two or three projects,
-   three process stages, compact investment drivers and one support gateway.
-3. Apply the approved service pattern to the custom journey while keeping its
-   constrained-project evidence distinct.
-4. Make the product index lead with four pergola forms and treat screens,
-   lighting and heating as secondary integrated-option gateways.
-5. Preserve canonical enquiry context, existing URLs, honest caveats, product
-   taxonomy and the established desktop presentation.
+1. Put three commercial cases immediately after the hero, reduce delivery to
+   three stages and keep every commercial CTA correctly classified.
+2. Create one discoverable professional capability journey that explains
+   collaboration, responsibilities and project evidence before enquiry.
+3. Replace the guide hub's ten repeated description controls and make each
+   guide detail lead with a concise answer, relevant project and route back
+   before optional depth.
+4. Replace the full-screen footer with compact phone/email utility and finish
+   only the approved homepage lower-half consolidation.
+5. Preserve Phase 1 routing, Phase 2 project behavior, Phase 3 content rules,
+   guide URLs, claims and the established desktop presentation.
 
 ### Work that must wait
 
-- Commercial proof reordering.
-- Professional capability content.
-- Guide-hub and footer refinement.
-- Homepage lower-half consolidation.
+- Real-device and assistive-technology completion, owned by Phase 5 / PR 14.
+- Broad homepage or brand redesign.
+- A professional portal or document-management system.
+- Deleting guides or changing established service/product taxonomy.
 
 ### Recommended number of PRs
 
@@ -906,9 +994,9 @@ across seven disclosure groups.
 
 ### Completion gate
 
-Phases 1 and 2 are complete. Phase 3 can begin with PR 6. Real-device and
-assistive-technology validation deferred from the earlier phases remains owned
-by Phase 5 / PR 14.
+Phases 1-3 are complete. Phase 4 can begin with PR 10. Real-device and
+assistive-technology validation deferred from the completed phases remains
+owned by Phase 5 / PR 14.
 
 ---
 
@@ -916,7 +1004,7 @@ by Phase 5 / PR 14.
 
 The following PR 1-3 goal briefs are retained as the implementation record.
 They are complete and are no longer the recommended next work. Phase 2 / PRs
-4 and 5 are also complete; continue with Phase 3 / PR 6.
+4 and 5 and Phase 3 / PRs 6-9 are also complete; continue with Phase 4 / PR 10.
 
 ### Next PR 1: Close production enquiry routing and source context
 

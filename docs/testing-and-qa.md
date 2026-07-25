@@ -80,18 +80,31 @@ Set `MARKETING_SHARED_HEADER_CAPTURE=1` to write the approved PR 8 evidence to
 `artifacts/mobile-ux-phase-3-pr-8/`.
 
 Product-page changes should run
-`npx vitest run apps/marketing/data/products.test.ts` and
+`npx vitest run apps/marketing/data/products.test.ts apps/marketing/components/products/productDetailViewModel.test.ts apps/marketing/components/products/productHubViewModel.test.ts`
+and
 `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. The focused browser suite covers the
 product hub, one pergola form and one integrated accessory at 1440, 768 and 390
 pixel widths. Its mobile-refinement matrix adds 320, 390 and 430 pixel coverage
 for the hub, form, accessory and unpublished-evidence heater states, and it
 visits all ten detail routes at 390 pixels. The lane verifies sitemap discovery,
-one visible H1, early and final CTA continuity, both gallery placements,
+one visible H1, early and final CTA continuity, one controlled gallery,
 server-rendered keyboard-operable disclosure content, minimum 44 pixel targets,
 loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
 horizontal overflow, no nested content scroll and explicit handling of
 unpublished heater evidence.
+
+Phase 3 service/product changes should also run
+`npx playwright test playwright/marketing.phase-three.spec.ts --config=playwright.marketing.config.ts`.
+The suite visits the product hub, all ten product details, residential and
+custom at 430, 390 and 360 pixels. It enforces exact first-layer words and
+sections, three product disclosure IDs, one active controlled-gallery image,
+no duplicate product image requests, bounded HTML, six-region service
+structures, priority hero loading and cumulative layout shift at or below
+`0.1`. Set `MARKETING_PHASE_THREE_CAPTURE=1` to write the 39-record JSON and
+representative screenshots under `artifacts/mobile-ux-phase-3/`. Set
+`MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` only for a read-only
+deployed smoke or capture; form checks must still intercept `**/api/enquiry`.
 
 Mobile first-layer copy, responsive disclosure, shared public route-template,
 service, SEO-landing or guide-directory changes should also run
