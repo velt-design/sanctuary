@@ -1,0 +1,4516 @@
+{
+  "capturedAt": "2026-07-25T13:59:57.849Z",
+  "origin": "https://www.sanctuarypergolas.co.nz",
+  "production": true,
+  "records": [
+    {
+      "id": "acrylic-versus-louvre",
+      "path": "/acrylic-pergolas-vs-louvre-roofs",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 128688,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 14716
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 11,
+      "mainHeight": 14652,
+      "mainVisibleWords": 1315,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "aluminium",
+      "path": "/aluminium-pergolas-auckland",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 115954,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 87913,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11811
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 11747,
+      "mainVisibleWords": 966,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "blinds",
+      "path": "/pergolas-with-blinds",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 113223,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 72728,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11003
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 5,
+      "majorRegions": 10,
+      "mainHeight": 10939,
+      "mainVisibleWords": 936,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "commercial",
+      "path": "/commercial-pergolas-auckland",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 128282,
+      "imageRequests": 4,
+      "uniqueImageRequests": 4,
+      "transferredImageBytes": 103631,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11294
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 9,
+      "mainHeight": 11230,
+      "mainVisibleWords": 963,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "cost",
+      "path": "/pergola-cost-auckland",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 124857,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 14574
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 11,
+      "mainHeight": 14510,
+      "mainVisibleWords": 1209,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "gable",
+      "path": "/gable-pergolas-auckland",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 112807,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 83510,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12735
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12671,
+      "mainVisibleWords": 1090,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "guide-hub",
+      "path": "/pergola-guides",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 83288,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 10,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 6400
+      },
+      "guideDescriptionControls": 10,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 1,
+      "majorRegions": 6,
+      "mainHeight": 6336,
+      "mainVisibleWords": 452,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 67,
+      "undersizedTargetCount": 9,
+      "undersizedTargets": [
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        },
+        {
+          "label": "Contact",
+          "width": 111,
+          "height": 21
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 135,
+          "height": 15
+        },
+        {
+          "label": "Instagram",
+          "width": 94,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 85,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 229,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "home",
+      "path": "/",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 138015,
+      "imageRequests": 6,
+      "uniqueImageRequests": 6,
+      "transferredImageBytes": 308751,
+      "cls": 0,
+      "disclosureCount": 7,
+      "documentHeight": 9752,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 8820
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 8,
+      "imageElements": 13,
+      "majorRegions": 8,
+      "mainHeight": 8756,
+      "mainVisibleWords": 659,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 66,
+      "undersizedTargetCount": 9,
+      "undersizedTargets": [
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "outdoor-rooms",
+      "path": "/outdoor-rooms-auckland",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 116438,
+      "imageRequests": 4,
+      "uniqueImageRequests": 4,
+      "transferredImageBytes": 159157,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11730
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 11666,
+      "mainVisibleWords": 965,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "pitched",
+      "path": "/pitched-pergolas-auckland",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 111915,
+      "imageRequests": 4,
+      "uniqueImageRequests": 4,
+      "transferredImageBytes": 197726,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12775
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12711,
+      "mainVisibleWords": 1079,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "professional-entry",
+      "path": "/contact?enquiry_type=professional&source_path=%2F&source_component=pathway",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 200,
+      "htmlBytes": 42413,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 0,
+      "documentHeight": 5524,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 4592
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 1,
+      "majorRegions": 2,
+      "mainHeight": 4592,
+      "mainVisibleWords": 377,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 19,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 29,
+          "height": 52
+        },
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "professional-route",
+      "path": "/architects-designers-builders",
+      "width": 430,
+      "height": 932,
+      "responseStatus": 404,
+      "htmlBytes": 27802,
+      "imageRequests": 0,
+      "uniqueImageRequests": 0,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 0,
+      "documentHeight": 932,
+      "documentWidth": 430,
+      "footer": {
+        "height": 932,
+        "minHeight": "932px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 868
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 0,
+      "majorRegions": 0,
+      "mainHeight": 868,
+      "mainVisibleWords": 7,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 66,
+      "undersizedTargetCount": 10,
+      "undersizedTargets": [
+        {
+          "label": "Home page→",
+          "width": 124,
+          "height": 32
+        },
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "acrylic-versus-louvre",
+      "path": "/acrylic-pergolas-vs-louvre-roofs",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 128688,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 14998
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 11,
+      "mainHeight": 14934,
+      "mainVisibleWords": 1315,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "aluminium",
+      "path": "/aluminium-pergolas-auckland",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 115954,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 87913,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11931
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 11867,
+      "mainVisibleWords": 966,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "blinds",
+      "path": "/pergolas-with-blinds",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 113223,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 72728,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11143
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 5,
+      "majorRegions": 10,
+      "mainHeight": 11079,
+      "mainVisibleWords": 936,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "commercial",
+      "path": "/commercial-pergolas-auckland",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 128282,
+      "imageRequests": 4,
+      "uniqueImageRequests": 4,
+      "transferredImageBytes": 103631,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11433
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 9,
+      "mainHeight": 11369,
+      "mainVisibleWords": 963,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "cost",
+      "path": "/pergola-cost-auckland",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 124857,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 14942
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 11,
+      "mainHeight": 14878,
+      "mainVisibleWords": 1209,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "gable",
+      "path": "/gable-pergolas-auckland",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 112807,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 83510,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12835
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12771,
+      "mainVisibleWords": 1090,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "guide-hub",
+      "path": "/pergola-guides",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 83288,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 10,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 6409
+      },
+      "guideDescriptionControls": 10,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 1,
+      "majorRegions": 6,
+      "mainHeight": 6345,
+      "mainVisibleWords": 452,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 67,
+      "undersizedTargetCount": 9,
+      "undersizedTargets": [
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        },
+        {
+          "label": "Contact",
+          "width": 111,
+          "height": 21
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 135,
+          "height": 15
+        },
+        {
+          "label": "Instagram",
+          "width": 94,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 85,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 229,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "home",
+      "path": "/",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 138015,
+      "imageRequests": 5,
+      "uniqueImageRequests": 5,
+      "transferredImageBytes": 203127,
+      "cls": 0,
+      "disclosureCount": 7,
+      "documentHeight": 9544,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 8700
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 8,
+      "imageElements": 13,
+      "majorRegions": 8,
+      "mainHeight": 8636,
+      "mainVisibleWords": 659,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 66,
+      "undersizedTargetCount": 9,
+      "undersizedTargets": [
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "outdoor-rooms",
+      "path": "/outdoor-rooms-auckland",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 116438,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 127250,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11837
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 11773,
+      "mainVisibleWords": 965,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "pitched",
+      "path": "/pitched-pergolas-auckland",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 111915,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 125967,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12829
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12765,
+      "mainVisibleWords": 1079,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 335,
+          "height": 36
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "professional-entry",
+      "path": "/contact?enquiry_type=professional&source_path=%2F&source_component=pathway",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 200,
+      "htmlBytes": 42413,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 0,
+      "documentHeight": 5455,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 4611
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 1,
+      "majorRegions": 2,
+      "mainHeight": 4611,
+      "mainVisibleWords": 377,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 19,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 29,
+          "height": 52
+        },
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "professional-route",
+      "path": "/architects-designers-builders",
+      "width": 390,
+      "height": 844,
+      "responseStatus": 404,
+      "htmlBytes": 27802,
+      "imageRequests": 0,
+      "uniqueImageRequests": 0,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 0,
+      "documentHeight": 844,
+      "documentWidth": 390,
+      "footer": {
+        "height": 844,
+        "minHeight": "844px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 780
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 0,
+      "majorRegions": 0,
+      "mainHeight": 780,
+      "mainVisibleWords": 7,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 66,
+      "undersizedTargetCount": 10,
+      "undersizedTargets": [
+        {
+          "label": "Home page→",
+          "width": 124,
+          "height": 32
+        },
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "acrylic-versus-louvre",
+      "path": "/acrylic-pergolas-vs-louvre-roofs",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 128688,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 15379
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 11,
+      "mainHeight": 15315,
+      "mainVisibleWords": 1315,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "aluminium",
+      "path": "/aluminium-pergolas-auckland",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 115954,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 36266,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12117
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12053,
+      "mainVisibleWords": 966,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "blinds",
+      "path": "/pergolas-with-blinds",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 113223,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 29810,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11293
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 5,
+      "majorRegions": 10,
+      "mainHeight": 11229,
+      "mainVisibleWords": 936,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "commercial",
+      "path": "/commercial-pergolas-auckland",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 128282,
+      "imageRequests": 4,
+      "uniqueImageRequests": 4,
+      "transferredImageBytes": 48239,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 11672
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 9,
+      "mainHeight": 11608,
+      "mainVisibleWords": 963,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "cost",
+      "path": "/pergola-cost-auckland",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 124857,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 15125
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 11,
+      "mainHeight": 15061,
+      "mainVisibleWords": 1209,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "gable",
+      "path": "/gable-pergolas-auckland",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 112807,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 34719,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 13008
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12944,
+      "mainVisibleWords": 1090,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "guide-hub",
+      "path": "/pergola-guides",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 83288,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 10,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 6447
+      },
+      "guideDescriptionControls": 10,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 1,
+      "majorRegions": 6,
+      "mainHeight": 6383,
+      "mainVisibleWords": 452,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 67,
+      "undersizedTargetCount": 9,
+      "undersizedTargets": [
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        },
+        {
+          "label": "Contact",
+          "width": 111,
+          "height": 21
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 135,
+          "height": 15
+        },
+        {
+          "label": "Instagram",
+          "width": 94,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 85,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 229,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "home",
+      "path": "/",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 138015,
+      "imageRequests": 6,
+      "uniqueImageRequests": 6,
+      "transferredImageBytes": 308751,
+      "cls": 0,
+      "disclosureCount": 7,
+      "documentHeight": 9610,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 8810
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 8,
+      "imageElements": 13,
+      "majorRegions": 8,
+      "mainHeight": 8746,
+      "mainVisibleWords": 659,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 66,
+      "undersizedTargetCount": 9,
+      "undersizedTargets": [
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "outdoor-rooms",
+      "path": "/outdoor-rooms-auckland",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 116438,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 48503,
+      "cls": 0,
+      "disclosureCount": 3,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12046
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 11982,
+      "mainVisibleWords": 965,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "pitched",
+      "path": "/pitched-pergolas-auckland",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 111915,
+      "imageRequests": 3,
+      "uniqueImageRequests": 3,
+      "transferredImageBytes": 48440,
+      "cls": 0,
+      "disclosureCount": 2,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 12881
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 6,
+      "majorRegions": 10,
+      "mainHeight": 12817,
+      "mainVisibleWords": 1079,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 25,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 31,
+          "height": 49
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 83,
+          "height": 15
+        },
+        {
+          "label": "Home",
+          "width": 67,
+          "height": 21
+        },
+        {
+          "label": "Products",
+          "width": 126,
+          "height": 21
+        },
+        {
+          "label": "Projects",
+          "width": 121,
+          "height": 21
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 202,
+          "height": 21
+        }
+      ]
+    },
+    {
+      "id": "professional-entry",
+      "path": "/contact?enquiry_type=professional&source_path=%2F&source_component=pathway",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 200,
+      "htmlBytes": 42413,
+      "imageRequests": 1,
+      "uniqueImageRequests": 1,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 0,
+      "documentHeight": 5627,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 4827
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 1,
+      "majorRegions": 2,
+      "mainHeight": 4827,
+      "mainVisibleWords": 377,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 18,
+      "undersizedTargetCount": 19,
+      "undersizedTargets": [
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 18,
+          "height": 18
+        },
+        {
+          "label": "",
+          "width": 29,
+          "height": 52
+        },
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    },
+    {
+      "id": "professional-route",
+      "path": "/architects-designers-builders",
+      "width": 360,
+      "height": 800,
+      "responseStatus": 404,
+      "htmlBytes": 27802,
+      "imageRequests": 0,
+      "uniqueImageRequests": 0,
+      "transferredImageBytes": 0,
+      "cls": 0,
+      "disclosureCount": 0,
+      "documentHeight": 800,
+      "documentWidth": 360,
+      "footer": {
+        "height": 800,
+        "minHeight": "800px",
+        "phoneLinks": 0,
+        "emailLinks": 0,
+        "navigationLinks": 5,
+        "top": 736
+      },
+      "guideDescriptionControls": 0,
+      "guideFirstLayer": {
+        "projectCount": 0,
+        "projectBeforeOptional": false,
+        "returnBeforeOptional": false
+      },
+      "homepageRegions": 0,
+      "imageElements": 0,
+      "majorRegions": 0,
+      "mainHeight": 736,
+      "mainVisibleWords": 7,
+      "minimumTouchHeight": 15,
+      "minimumTouchWidth": 66,
+      "undersizedTargetCount": 10,
+      "undersizedTargets": [
+        {
+          "label": "Home page→",
+          "width": 124,
+          "height": 32
+        },
+        {
+          "label": "Home",
+          "width": 66,
+          "height": 24
+        },
+        {
+          "label": "Products",
+          "width": 118,
+          "height": 24
+        },
+        {
+          "label": "Projects",
+          "width": 108,
+          "height": 24
+        },
+        {
+          "label": "Pergola Guides",
+          "width": 191,
+          "height": 24
+        },
+        {
+          "label": "Contact",
+          "width": 103,
+          "height": 24
+        },
+        {
+          "label": "Privacy Policy",
+          "width": 124,
+          "height": 16
+        },
+        {
+          "label": "Instagram",
+          "width": 89,
+          "height": 16
+        },
+        {
+          "label": "Facebook",
+          "width": 79,
+          "height": 16
+        },
+        {
+          "label": "Rated 5.0 out of 5 from 61 Google reviews",
+          "width": 219,
+          "height": 15
+        }
+      ]
+    }
+  ]
+}

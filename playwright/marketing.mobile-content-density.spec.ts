@@ -274,7 +274,7 @@ const routeCases: readonly RouteCase[] = [
       count: 3,
       idAttribute: 'data-seo-landing-disclosure',
       ids: [
-        'commercial-outcomes-detail',
+        'commercial-value-detail',
         'commercial-coordination-detail',
         'commercial-planning-support',
       ],

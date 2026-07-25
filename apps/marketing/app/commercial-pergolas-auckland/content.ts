@@ -124,7 +124,7 @@ export const commercialPergolasConfig = {
       eyebrow: 'Hospitality projects first',
       title: 'See how completed venues made outdoor space part of the business',
       intro:
-        'The Good Home and Atelier Shu show two hospitality responses, followed by broader commercial work across recreation and workplace settings.',
+        'Three completed projects show how hospitality, recreation and workplace sites led to different commercial responses.',
       items: [
         {
           slug: 'goodhome-commercial-terrace',
@@ -132,18 +132,6 @@ export const commercialPergolasConfig = {
           summary:
             'A 10.09 by 6.7 metre, two-zone gable extends the restaurant into a covered courtyard while following the villa-style facade.',
           facts: ['67.7 m² hospitality cover', '25 degree gable relationship'],
-        },
-        {
-          slug: 'atelier-shu-cafe',
-          label: 'Cafe frontage',
-          summary:
-            'A 9.0 by 4.0 metre aluminium gable adds a sheltered outdoor zone while matching the existing cafe architecture and colours.',
-          facts: ['36 m² frontage cover', '30 degree gable form'],
-          image: {
-            src: '/images/project-atelier-shu-02.jpg',
-            alt: 'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
-            objectPosition: '50% 42%',
-          },
         },
         {
           slug: 'lilliput-mini-golf',
@@ -165,29 +153,21 @@ export const commercialPergolasConfig = {
       kind: 'process',
       id: 'commercial-process',
       eyebrow: 'One accountable pathway',
-      title: 'From the first venue conversation to the installed project',
+      title: 'Three stages from venue brief to installed project',
       intro:
         'Sanctuary leads each agreed stage, with site requirements and professional inputs confirmed for the actual project.',
       items: [
         {
-          title: 'Define the venue opportunity',
-          copy: 'Understand the customer or operational value, daily use, property stakeholders, existing information, access constraints and the outcome the space needs to support.',
+          title: 'Define the brief and design response',
+          copy: 'Understand the customer or operational value, daily use, property stakeholders and access constraints, then measure the site and develop the form, structure, roof, drainage, finishes and integrated features.',
         },
         {
-          title: 'Design the pergola in-house',
-          copy: 'Measure the site and develop the form, structure, roof, drainage, finishes and integrated features around the venue and building.',
-        },
-        {
-          title: 'Coordinate engineering and consent',
-          copy: 'Where required, coordinate the project engineer and manage the building consent documentation and process. Requirements and approval remain specific to the site and completed design.',
-        },
-        {
-          title: 'Align trades and project delivery',
-          copy: 'Confirm the interfaces with electrical, lighting, heating, blinds, signage or other trades, then project-manage procurement and the agreed site sequence.',
+          title: 'Coordinate approvals and interfaces',
+          copy: 'Where required, coordinate the project engineer, consent documentation and interfaces with electrical, lighting, heating, blinds, signage or other trades around one agreed design.',
         },
         {
           title: 'Build, install and hand over',
-          copy: 'Build and install the agreed pergola, coordinate completion items and provide the handover information included in the project scope.',
+          copy: 'Project-manage procurement and the agreed site sequence, build and install the pergola, coordinate completion items and provide the handover information included in scope.',
         },
       ],
     },
@@ -316,11 +296,22 @@ export const commercialPergolasConfig = {
       items: faqItems,
     },
   ],
+  blockOrder: [
+    'commercial-projects',
+    'commercial-process',
+    'commercial-value',
+    'commercial-outcomes',
+    'commercial-decisions',
+    'commercial-circulation',
+    'commercial-risks',
+    'commercial-next-decisions',
+    'commercial-pergolas-faq',
+  ],
   mobileDisclosureGroups: [
     {
-      id: 'commercial-outcomes-detail',
-      summary: 'How the pergola supports a working venue',
-      blockIds: ['commercial-outcomes'],
+      id: 'commercial-value-detail',
+      summary: 'How the pergola supports the venue',
+      blockIds: ['commercial-value', 'commercial-outcomes'],
     },
     {
       id: 'commercial-coordination-detail',

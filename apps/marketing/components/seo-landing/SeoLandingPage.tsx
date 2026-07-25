@@ -6,11 +6,13 @@ import { absoluteUrl } from '@/lib/seo';
 import SeoLandingBlocks from './SeoLandingBlocks';
 import PergolaGuideNavigation from './PergolaGuideNavigation';
 import type { SeoLandingPageConfig } from './types';
+import { orderSeoLandingBlocks } from './seoLandingViewModel';
 import { findPergolaGuide, pergolaGuideEditorialReview } from '@/data/pergolaGuides';
 
 export default function SeoLandingPage({ config }: { config: SeoLandingPageConfig }) {
   const guide = findPergolaGuide(config.route);
   const enquiryType = config.enquiryType ?? 'residential';
+  const blocks = orderSeoLandingBlocks(config.blocks, config.blockOrder);
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -41,7 +43,7 @@ export default function SeoLandingPage({ config }: { config: SeoLandingPageConfi
       {config.showGuideNavigation === false
         ? null
         : <PergolaGuideNavigation route={config.route} />}
-      <SeoLandingBlocks blocks={config.blocks} disclosureGroups={config.mobileDisclosureGroups} />
+      <SeoLandingBlocks blocks={blocks} disclosureGroups={config.mobileDisclosureGroups} />
       <Section tone="inverse" className="acrylic-section acrylic-section--final-cta" aria-labelledby={`${config.marker}-final-cta`}>
         <Container width="wide" className="acrylic-final-grid"><div><Eyebrow className="acrylic-eyebrow">{config.finalCta.eyebrow}</Eyebrow><Heading id={`${config.marker}-final-cta`}>{config.finalCta.title}</Heading><p>{config.finalCta.text}</p><div className="acrylic-hero__actions"><Button href="#project-details">{config.finalCta.button}</Button></div></div><div><h3>{config.finalCta.checklistTitle}</h3><ul className="acrylic-check-list">{config.finalCta.checklist.map((item) => <li key={item}>{item}</li>)}</ul></div></Container>
       </Section>

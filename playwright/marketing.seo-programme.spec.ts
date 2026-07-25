@@ -143,7 +143,7 @@ const pages: ProgrammePage[] = [
     faqCount: 8,
     role: 'service',
     briefFieldName: 'operatingConstraints',
-    projectCount: 4,
+    projectCount: 3,
     captureId: 'commercial-projects',
     comparisonId: 'commercial-decisions-title',
     comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-pergolas-vs-louvre-roofs', '/acrylic-roof-pergolas-auckland-v2'],
@@ -210,8 +210,8 @@ for (const programmePage of pages) {
       if (programmePage.marker === 'commercial-pergolas-auckland') {
         await expect(main.getByText('Designed in-house', { exact: true })).toBeVisible();
         await expect(main.getByText('Engineering, consent and trades coordinated', { exact: true })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'From the first venue conversation to the installed project' })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 3, name: 'Coordinate engineering and consent' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Three stages from venue brief to installed project' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 3, name: 'Coordinate approvals and interfaces' })).toBeVisible();
         await expect(main.getByRole('heading', { level: 3, name: 'Build, install and hand over' })).toBeVisible();
         const planningSupport = main.locator(
           'details[data-seo-landing-disclosure="commercial-planning-support"]',
@@ -227,7 +227,6 @@ for (const programmePage of pages) {
         await expect(main.getByRole('heading', { level: 2, name: 'Show us the venue and what the space needs to do' })).toBeVisible();
         await expect(main.locator('#commercial-projects .acrylic-project-card h3')).toHaveText([
           'The Good Home Takanini',
-          'Atelier Shu Cafe',
           'Lilliput Mini Golf',
           'KiwiRail Head Office',
         ]);

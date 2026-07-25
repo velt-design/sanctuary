@@ -119,6 +119,7 @@ export type SeoLandingPageConfig = {
     proof: readonly string[];
   };
   blocks: readonly SeoLandingBlock[];
+  blockOrder?: readonly string[];
   mobileDisclosureGroups?: readonly SeoLandingDisclosureGroup[];
   finalCta: {
     eyebrow: string;
