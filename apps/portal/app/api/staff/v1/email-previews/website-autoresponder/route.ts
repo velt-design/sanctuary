@@ -26,9 +26,10 @@ function privateNoStore(response: Response): Response {
 
 function previewEnvironmentLabel(): string {
   if (process.env.VERCEL_ENV === 'preview') return 'Vercel Preview';
+  if (process.env.VERCEL_ENV === 'production') return 'Vercel Production';
   if (process.env.NODE_ENV === 'development') return 'Local development';
   if (process.env.NODE_ENV === 'test') return 'Automated test';
-  return 'Preview environment';
+  return 'Production';
 }
 
 function unavailableResponse() {
@@ -51,7 +52,10 @@ async function requirePreviewStaff() {
     };
   }
   const availability = getWebsiteAutoresponderPreviewAvailability();
-  if (!availability.available) {
+  if (
+    !availability.available
+    && availability.reason !== 'environment_not_allowed'
+  ) {
     return {
       ok: false as const,
       response: unavailableResponse(),

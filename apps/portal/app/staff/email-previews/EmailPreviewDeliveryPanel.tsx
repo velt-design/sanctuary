@@ -80,7 +80,7 @@ export function EmailPreviewDeliveryPanel({
       <dl className={styles.deliveryFacts}>
         <div>
           <dt>Recipient</dt>
-          <dd>{preview?.recipient ?? 'Server configured'}</dd>
+          <dd>{preview?.recipient ?? 'Not configured'}</dd>
         </div>
         <div>
           <dt>Environment</dt>

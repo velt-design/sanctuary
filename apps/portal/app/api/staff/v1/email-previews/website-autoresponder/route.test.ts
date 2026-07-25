@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   requireStaffSession: vi.fn(),
@@ -118,6 +118,8 @@ describe('staff website autoresponder preview route', () => {
     });
   });
 
+  afterEach(() => vi.unstubAllEnvs());
+
   it('requires an authenticated staff session', async () => {
     h.requireStaffSession.mockResolvedValueOnce(null);
     const { GET } = await import('./route');
@@ -153,6 +155,32 @@ describe('staff website autoresponder preview route', () => {
       code: 'EMAIL_PREVIEW_DISABLED',
     });
     expect(h.render).not.toHaveBeenCalled();
+  });
+
+  it('renders a read-only workbench in production while delivery stays locked', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    h.availability.mockReturnValueOnce({
+      available: false,
+      sendReady: false,
+      recipient: null,
+      reason: 'environment_not_allowed',
+    });
+    const { GET } = await import('./route');
+
+    const response = await GET(
+      new Request(
+        'https://portal.sanctuarypergolas.co.nz/api/staff/v1/email-previews/website-autoresponder',
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(h.render).toHaveBeenCalledTimes(6);
+    await expect(response.json()).resolves.toMatchObject({
+      environment: 'Vercel Production',
+      recipient: null,
+      sendReady: false,
+      configurationReason: 'environment_not_allowed',
+    });
   });
 
   it('renders all three layouts in forced light and dark comparison modes', async () => {
@@ -328,6 +356,36 @@ describe('staff website autoresponder preview route', () => {
     await expect(response.json()).resolves.toMatchObject({
       code: 'EMAIL_PREVIEW_CONFIGURATION_MISSING',
       configurationReason: 'missing_api_key',
+    });
+    expect(h.send).not.toHaveBeenCalled();
+  });
+
+  it('keeps provider delivery locked in the production workbench', async () => {
+    h.availability.mockReturnValueOnce({
+      available: false,
+      sendReady: false,
+      recipient: null,
+      reason: 'environment_not_allowed',
+    });
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request(
+        'https://portal.sanctuarypergolas.co.nz/api/staff/v1/email-previews/website-autoresponder',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            variant: 'professional',
+            layout: 'compact',
+          }),
+        },
+      ),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'EMAIL_PREVIEW_CONFIGURATION_MISSING',
+      configurationReason: 'environment_not_allowed',
     });
     expect(h.send).not.toHaveBeenCalled();
   });
