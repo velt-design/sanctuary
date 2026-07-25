@@ -162,7 +162,6 @@ function EvidenceStory({ product }: ProductDetailPageProps) {
 
 export default function ProductDetailPage({ product }: ProductDetailPageProps) {
   const enquiryHref = buildEnquiryHref({
-    enquiryType: 'residential',
     sourcePath: product.route,
     sourceComponent: 'product_cta',
     sourceProduct: product.slug,

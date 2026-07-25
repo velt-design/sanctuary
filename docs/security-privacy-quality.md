@@ -42,6 +42,15 @@ contract. These properties use known paths, component identifiers, and canonical
 project/product slugs only. Names, contact details, messages, dimensions, upload
 names, and upload contents must not be placed in enquiry URLs or analytics events.
 
+Major public enquiry links use `buildEnquiryHref`. The global header resolves
+audience and item context through the parity-tested route index in
+`apps/marketing/lib/enquiryContext.ts`: known commercial and residential
+projects carry their governed audience and slug, while product routes carry the
+product slug without inventing a residential audience. Direct `/contact`, mixed
+collections and unknown routes remain audience-neutral. Analytics assembly
+removes caller-supplied canonical context keys before applying the validated,
+lower-case properties, so later event data cannot overwrite them.
+
 ## Portal Operational Performance Telemetry
 
 Authenticated portal Web Vitals are operational telemetry, not marketing analytics. `PortalVitalsReporter` submits CLS, FCP, INP, LCP, and TTFB to the first-party staff API with `sendBeacon` and a keepalive-fetch fallback. Failure is silent and never delays navigation.

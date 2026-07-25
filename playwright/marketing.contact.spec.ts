@@ -1,6 +1,12 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import {
+  buildEnquiryHref,
+  getEnquiryRouteContext,
+  type EnquiryAudience,
+  type EnquiryContext,
+} from '../apps/marketing/lib/enquiryContext';
 
 const route = '/contact';
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
@@ -223,6 +229,142 @@ test('canonical and legacy preselection are server rendered and invalid values l
   await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
 });
 
+test('neutral, audience, project and product entry routes use one canonical contract', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await preparePage(page);
+
+  await page.goto(route, { waitUntil: 'networkidle' });
+  expect(await page.getByRole('radio').evaluateAll((radios) =>
+    radios.every((radio) => !(radio as HTMLInputElement).checked),
+  )).toBe(true);
+  await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
+
+  type EntryCase = {
+    name: string;
+    route: string;
+    context: EnquiryContext;
+    audience?: EnquiryAudience;
+    contextLabel: string;
+    link: (currentPage: Page) => Locator;
+  };
+  const entryCases: EntryCase[] = [
+    {
+      name: 'residential service header',
+      route: '/pergolas-auckland',
+      context: {
+        enquiryType: 'residential',
+        sourcePath: '/pergolas-auckland',
+        sourceComponent: 'header',
+      },
+      audience: 'residential',
+      contextLabel: 'Residential enquiry',
+      link: (currentPage) => currentPage.locator('header.site')
+        .getByRole('link', { name: 'Get an estimate' }),
+    },
+    {
+      name: 'commercial service header',
+      route: '/commercial-pergolas-auckland',
+      context: {
+        enquiryType: 'commercial',
+        sourcePath: '/commercial-pergolas-auckland',
+        sourceComponent: 'header',
+      },
+      audience: 'commercial',
+      contextLabel: 'Commercial enquiry',
+      link: (currentPage) => currentPage.locator('header.site')
+        .getByRole('link', { name: 'Get an estimate' }),
+    },
+    {
+      name: 'professional homepage pathway',
+      route: '/',
+      context: {
+        enquiryType: 'professional',
+        sourcePath: '/',
+        sourceComponent: 'pathway',
+      },
+      audience: 'professional',
+      contextLabel: 'Professional enquiry',
+      link: (currentPage) => currentPage.locator(
+        '[data-home-section="qualified-enquiry"]',
+      ).getByRole('link', { name: 'Send plans or a project brief' }),
+    },
+    {
+      name: 'residential project CTA',
+      route: '/projects/warkworth-outdoor-room',
+      context: {
+        enquiryType: 'residential',
+        sourcePath: '/projects/warkworth-outdoor-room',
+        sourceComponent: 'project_cta',
+        sourceProject: 'warkworth-outdoor-room',
+      },
+      audience: 'residential',
+      contextLabel: 'Project: Warkworth Outdoor Room',
+      link: (currentPage) => currentPage.locator(
+        '.project-case-study__intro-actions .project-action--primary',
+      ),
+    },
+    {
+      name: 'commercial project header',
+      route: '/projects/goodhome-commercial-terrace',
+      context: {
+        ...getEnquiryRouteContext('/projects/goodhome-commercial-terrace'),
+        sourcePath: '/projects/goodhome-commercial-terrace',
+        sourceComponent: 'header',
+      },
+      audience: 'commercial',
+      contextLabel: 'Project: The Good Home Takanini',
+      link: (currentPage) => currentPage.locator('header.site')
+        .getByRole('link', { name: 'Get an estimate' }),
+    },
+    {
+      name: 'neutral product CTA',
+      route: '/products/pergolas/gable',
+      context: {
+        sourcePath: '/products/pergolas/gable',
+        sourceComponent: 'product_cta',
+        sourceProduct: 'gable',
+      },
+      contextLabel: 'Pergola option: Gable pergola',
+      link: (currentPage) => currentPage.locator(
+        'main[data-product-detail]',
+      ).getByRole('link', { name: 'Send your project details' }).first(),
+    },
+  ];
+
+  for (const entryCase of entryCases) {
+    await page.goto(entryCase.route, { waitUntil: 'networkidle' });
+    const link = entryCase.link(page);
+    const expectedHref = buildEnquiryHref(entryCase.context);
+    await expect(link, entryCase.name).toHaveAttribute('href', expectedHref);
+    await link.click();
+    await expect(page, entryCase.name).toHaveURL((currentUrl) =>
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` === expectedHref);
+    const destination = new URL(page.url());
+    expect(
+      `${destination.pathname}${destination.search}${destination.hash}`,
+      entryCase.name,
+    ).toBe(expectedHref);
+    await expect(page.getByLabel('Enquiry context')).toContainText(
+      entryCase.contextLabel,
+    );
+
+    if (entryCase.audience) {
+      await expect(page.getByRole('radio', {
+        name: entryCase.audience === 'professional'
+          ? 'Architect, designer or builder'
+          : entryCase.audience[0]!.toUpperCase() + entryCase.audience.slice(1),
+        exact: false,
+      })).toBeChecked();
+    } else {
+      expect(await page.getByRole('radio').evaluateAll((radios) =>
+        radios.every((radio) => !(radio as HTMLInputElement).checked),
+      )).toBe(true);
+    }
+  }
+});
+
 test('validation is specific, focuses an error summary and preserves entered details', async ({
   page,
 }) => {
@@ -376,6 +518,9 @@ test('the submit lock prevents duplicate requests and consent controls lead even
   expect(events.tracked?.some((entry) => entry.includes('contact_success'))).toBe(true);
   expect(JSON.stringify(events)).toContain('"source_path":"/"');
   expect(JSON.stringify(events)).toContain('"source_component":"hero"');
+  expect(JSON.stringify(events)).toContain('"enquiry_type":"residential"');
+  expect(JSON.stringify(events)).not.toContain('"enquiry_type":"Residential"');
+  expect(JSON.stringify(events)).not.toContain('"enquiry_type":"Unknown"');
   expect(JSON.stringify(events)).not.toContain('Test Person');
   await expect(page.getByRole('link', { name: 'Explore completed projects' }))
     .toHaveAttribute('href', '/projects');
@@ -518,15 +663,19 @@ test('product context is visible and included in the submitted payload', async (
   await expect(page.getByLabel('Enquiry context')).toContainText(
     'Pergola option: Gable pergola',
   );
+  expect(await page.getByRole('radio').evaluateAll((radios) =>
+    radios.every((radio) => !(radio as HTMLInputElement).checked),
+  )).toBe(true);
+  await page.getByRole('radio', { name: 'Commercial', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByRole('button', { name: 'Send us your project details' }).click();
   await expect(page.getByRole('status')).toContainText('Gable pergola option');
 
   expect(submittedBody).toMatchObject({
-    enquiryType: 'residential',
+    enquiryType: 'commercial',
     enquiryContext: {
-      enquiry_type: 'residential',
+      enquiry_type: 'commercial',
       source_path: '/products/pergolas/gable',
       source_component: 'product_cta',
       source_product: 'gable',
@@ -572,13 +721,13 @@ test('capture Phase 1 enquiry continuity at the target mobile widths', async ({ 
   for (const width of [360, 390, 430] as const) {
     await page.setViewportSize({ width, height: 932 });
     await page.goto(
-      `${route}?enquiry_type=residential&source_path=%2Fprojects%2Fwarkworth-outdoor-room&source_component=project_cta&source_project=warkworth-outdoor-room#contact-form`,
+      `${route}?enquiry_type=commercial&source_path=%2Fprojects%2Fgoodhome-commercial-terrace&source_component=header&source_project=goodhome-commercial-terrace#contact-form`,
       { waitUntil: 'networkidle' },
     );
     const form = page.locator('#contact-form');
     await expect(form).toBeVisible();
     await expect(page.getByLabel('Enquiry context')).toContainText(
-      'Project: Warkworth Outdoor Room',
+      'Project: The Good Home Takanini',
     );
     await form.screenshot({
       path: path.join(phaseOneEvidenceDirectory, `contact-context-${width}.png`),

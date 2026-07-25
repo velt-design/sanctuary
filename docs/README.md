@@ -12,7 +12,7 @@ These docs are current-state references and active guardrails for coding agents.
 6. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
 7. `agent-centric-portal-plan.md`: active roadmap for making the portal easier for agents to inspect, reproduce, test, and improve.
 8. `portal-ux-roadmap.md`: active roadmap for the highest-leverage staff usability work.
-9. `mobile-ux-roadmap.md`: active roadmap for public-site mobile conversion and UX work.
+9. `mobile-ux-roadmap-v2.md`: authoritative roadmap for the remaining public-site mobile conversion and UX work.
 10. `architecture.md`: workspace structure and app/package ownership.
 11. `target-architecture.md`: target workspace shape and migration direction.
 12. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
@@ -29,7 +29,8 @@ These docs are current-state references and active guardrails for coding agents.
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
-| `mobile-ux-roadmap.md` | Active roadmap | You are planning or implementing public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
+| `mobile-ux-roadmap-v2.md` | Authoritative roadmap | You are planning or implementing the remaining public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
+| `mobile-ux-roadmap.md` | Historical roadmap | You need the original mobile audit, principles, or completed-work record superseded by version 2. |
 | `mobile-content-density-refinement.md` | Current implementation record | You are changing the mobile first-layer copy, responsive disclosure boundaries, or regression coverage across marketing services, products, commercial, guides, or contact. |
 | `project-command-centre-v1.md` | Product contract | You are changing the Project Operational Command Centre product behavior, scope, exclusions, or acceptance criteria. |
 | `project-command-centre-roadmap.md` | Active programme | You need the current Command Centre stage, completion evidence, or next approved stage. |

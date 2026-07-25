@@ -187,7 +187,6 @@ for (const viewport of viewports) {
       const h1 = main.locator('h1:visible');
       const product = products.find((candidate) => candidate.route === route);
       const expectedEnquiryHref = buildEnquiryHref({
-        enquiryType: 'residential',
         sourcePath: route,
         sourceComponent: 'product_cta',
         ...(product ? { sourceProduct: product.slug } : {}),
