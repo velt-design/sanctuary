@@ -116,7 +116,7 @@
     transition: transform 160ms ease;
   }
 
-  .project-navigator__filter-disclosure[open] .project-navigator__filter-icon {
+  .project-navigator__filter-disclosure[open]:not([data-disclosure-state="pending"]) .project-navigator__filter-icon {
     transform: rotate(45deg);
   }
 

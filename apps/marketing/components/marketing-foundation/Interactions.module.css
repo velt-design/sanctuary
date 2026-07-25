@@ -52,13 +52,37 @@
   transform: rotate(90deg);
 }
 
-.disclosure[open] .disclosureIcon::after {
+.disclosure[open]:not([data-disclosure-state="pending"]) .disclosureIcon::after {
   transform: rotate(0);
 }
 
 .disclosureBody {
   max-width: 680px;
   padding: .25rem 0 1.5rem;
+}
+
+/*
+ * Responsive disclosures stay open in server markup so complete content
+ * remains available without JavaScript. When scripting is enabled, hide only
+ * the pending mobile body until hydration resolves the native details state.
+ * The supported breakpoints are intentionally closed over current consumers.
+ */
+@media (scripting: enabled) and (max-width: 640px) {
+  .responsiveDisclosure[data-disclosure-state="pending"][data-disclosure-desktop-min="641"] > .responsiveDisclosureBody {
+    display: none !important;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 720px) {
+  .responsiveDisclosure[data-disclosure-state="pending"][data-disclosure-desktop-min="721"] > .responsiveDisclosureBody {
+    display: none !important;
+  }
+}
+
+@media (scripting: enabled) and (max-width: 899px) {
+  .responsiveDisclosure[data-disclosure-state="pending"][data-disclosure-desktop-min="900"] > .responsiveDisclosureBody {
+    display: none !important;
+  }
 }
 
 .gallery {

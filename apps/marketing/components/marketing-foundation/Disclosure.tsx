@@ -12,6 +12,8 @@ import { cn } from '@/lib/cn';
 import styles from './Interactions.module.css';
 
 type DisclosureMode = 'manual' | 'desktop-expanded';
+type DisclosureDesktopMinWidth = 641 | 721 | 900;
+type DisclosureViewportState = 'manual' | 'pending' | 'mobile' | 'desktop';
 
 type DisclosureProps = Omit<
   DetailsHTMLAttributes<HTMLDetailsElement>,
@@ -19,7 +21,7 @@ type DisclosureProps = Omit<
 > & {
   bodyClassName?: string;
   children: ReactNode;
-  desktopMinWidth?: number;
+  desktopMinWidth?: DisclosureDesktopMinWidth;
   icon?: ReactNode;
   mode?: DisclosureMode;
   onOpenChange?: (open: boolean) => void;
@@ -50,7 +52,9 @@ export function Disclosure({
 }: DisclosureProps) {
   const responsive = mode === 'desktop-expanded';
   const detailsRef = useRef<HTMLDetailsElement>(null);
-  const [isDesktop, setIsDesktop] = useState(responsive);
+  const [viewportState, setViewportState] = useState<DisclosureViewportState>(
+    responsive ? 'pending' : 'manual',
+  );
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -88,7 +92,7 @@ export function Disclosure({
     };
 
     const syncViewport = () => {
-      setIsDesktop(media.matches);
+      setViewportState(media.matches ? 'desktop' : 'mobile');
       revealHashTarget();
     };
 
@@ -105,18 +109,26 @@ export function Disclosure({
 
   const handleToggle = (event: SyntheticEvent<HTMLDetailsElement>) => {
     const open = event.currentTarget.open;
-    if (responsive && !isDesktop) setIsMobileOpen(open);
-    onOpenChange?.(open);
+    if (responsive && viewportState === 'mobile') setIsMobileOpen(open);
+    if (!responsive || viewportState !== 'pending') onOpenChange?.(open);
   };
 
-  const stateProps = responsive ? { open: isDesktop || isMobileOpen } : {};
+  const stateProps = responsive
+    ? { open: viewportState === 'pending' || viewportState === 'desktop' || isMobileOpen }
+    : {};
 
   return (
     <details
       {...detailsProps}
       {...stateProps}
-      className={cn(!unstyled && styles.disclosure, className)}
+      className={cn(
+        responsive && styles.responsiveDisclosure,
+        !unstyled && styles.disclosure,
+        className,
+      )}
       data-disclosure={mode}
+      data-disclosure-desktop-min={responsive ? desktopMinWidth : undefined}
+      data-disclosure-state={viewportState}
       onToggle={handleToggle}
       ref={detailsRef}
     >
@@ -126,7 +138,13 @@ export function Disclosure({
           <span className={cn(!unstyled && styles.disclosureIcon)} aria-hidden="true" />
         ) : icon}
       </summary>
-      <div className={cn(!unstyled && styles.disclosureBody, bodyClassName)}>
+      <div
+        className={cn(
+          responsive && styles.responsiveDisclosureBody,
+          !unstyled && styles.disclosureBody,
+          bodyClassName,
+        )}
+      >
         {children}
       </div>
     </details>

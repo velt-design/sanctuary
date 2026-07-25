@@ -1,7 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
+import { expectStableDisclosureHydration } from './support/marketingDisclosureHydration';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
+const phaseOneCapture = process.env.MARKETING_PHASE_ONE_CAPTURE === '1';
 
 const mobileViewports = [
   { name: '430px', width: 430, height: 932 },
@@ -925,6 +927,14 @@ test('desktop keeps responsive detail expanded and preserves SEO, sections and l
       ).toBeAttached();
     }
   }
+});
+
+test('mobile responsive disclosures have the same visual height before and after hydration', async ({
+  page,
+}) => {
+  test.slow();
+  await preparePage(page);
+  await expectStableDisclosureHydration(page, mobileViewports, phaseOneCapture);
 });
 
 test('responsive disclosures are keyboard operable, visibly focused and reduced-motion safe', async ({

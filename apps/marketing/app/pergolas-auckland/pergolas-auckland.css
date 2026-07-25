@@ -141,7 +141,7 @@
     transform: translate(-50%, -50%) rotate(90deg);
   }
 
-  .pergolas-auckland__mobile-disclosure[open] .pergolas-auckland__mobile-disclosure-icon::after {
+  .pergolas-auckland__mobile-disclosure[open]:not([data-disclosure-state="pending"]) .pergolas-auckland__mobile-disclosure-icon::after {
     transform: translate(-50%, -50%) rotate(0deg);
   }
 

@@ -525,7 +525,7 @@
     transform: rotate(90deg);
   }
 
-  .guide-hub-card__disclosure[open] .guide-hub-card__disclosure-icon::after {
+  .guide-hub-card__disclosure[open]:not([data-disclosure-state="pending"]) .guide-hub-card__disclosure-icon::after {
     transform: rotate(0deg);
   }
 }

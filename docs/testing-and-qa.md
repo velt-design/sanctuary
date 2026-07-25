@@ -105,10 +105,13 @@ hierarchy, unique IDs, CTA and meaningful-link continuity, metadata, schema,
 source-aware enquiry context, unclipped product summaries, zero horizontal
 overflow with supporting detail closed and open, uniquely named guide controls,
 post-evidence residential CTA continuity, fragment-target disclosure reveal and
-expanded 1440 pixel desktop detail. Its JavaScript-disabled
-browser context is a required server-rendering check: one route-owned `main`
-and H1, the next action, and complete open supporting content must remain
-visible without hydration.
+expanded 1440 pixel desktop detail. A script-blocked, JavaScript-enabled lane
+holds homepage, service, product, guide and project disclosures in their
+pre-hydration state at every target width. It requires pending bodies to be
+hidden and unfocusable and compares pre/post-hydration disclosure height within
+one pixel. The separate JavaScript-disabled browser context is the required
+server-rendering check: one route-owned `main` and H1, the next action, and
+complete open supporting content must remain visible without hydration.
 
 Contact-page or embedded-enquiry changes should run
 `npx vitest run apps/marketing/lib/enquiryFormContract.test.ts apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts apps/marketing/app/api/enquiry/route.test.ts`

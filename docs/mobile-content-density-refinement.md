@@ -235,9 +235,12 @@ retain their existing destinations and form positions.
 
 ## Disclosure inventory
 
-Every new group uses the shared native `Disclosure` contract. It is closed
-after mobile hydration, rendered open in server HTML and without JavaScript,
-and expanded with its summary hidden from interaction on desktop.
+Every new group uses the shared native `Disclosure` contract. It is rendered
+open in server HTML and without JavaScript. When scripting is enabled, shared
+CSS hides the pending body at the route's governed mobile breakpoint, so the
+pre-hydration box already matches the final native closed state. Hydration
+resolves the same tree to closed mobile or open desktop state, where the summary
+is hidden from interaction.
 
 | Surface | Content moved into the optional mobile layer |
 | --- | --- |
@@ -300,9 +303,12 @@ The focused browser contract covers all target families at 430px, 390px and
 keyboard activation, visible focus, minimum 44px targets, reduced motion,
 heading hierarchy, unique IDs, first-layer budgets, CTA continuity, meaningful
 links, metadata, schema, enquiry attribution, no horizontal overflow and
-unclipped product summaries. A JavaScript-disabled browser lane verifies one
-visible `main`, one visible H1, complete open disclosure content and the next
-action on representative routes.
+unclipped product summaries. A script-blocked lane proves pending and hydrated
+mobile disclosures have the same height across homepage, service, product,
+guide and project consumers and that pending hidden content cannot receive
+focus. A separate JavaScript-disabled browser lane verifies one visible `main`,
+one visible H1, complete open disclosure content and the next action on
+representative routes.
 
 Like-for-like 390px and 1440px screenshots for the homepage, residential,
 product hub, product detail, commercial, guide hub, guide detail and contact
@@ -327,7 +333,7 @@ Final focused results:
 
 - production marketing build: 64 routes generated successfully, including all
   statically generated project-detail routes;
-- mobile content-density Playwright lane: 8 passed;
+- mobile content-density Playwright lane: 9 passed;
 - project route-shell compatibility selection: 5 passed;
 - complete marketing Playwright matrix: 235 passed and 6 intentional
   evidence-capture tests skipped;

@@ -1,13 +1,13 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { Disclosure } from '@/components/marketing-foundation/Disclosure';
 
 type MobileProjectDisclosureProps = {
   bodyClassName?: string;
   children: ReactNode;
   className: string;
-  desktopMinWidth?: number;
+  desktopMinWidth?: 641 | 721 | 900;
   kind: string;
   summary: ReactNode;
 };
@@ -20,29 +20,18 @@ export default function MobileProjectDisclosure({
   kind,
   summary,
 }: MobileProjectDisclosureProps) {
-  const [isDesktop, setIsDesktop] = useState(true);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(`(min-width: ${desktopMinWidth}px)`);
-    const syncViewport = () => setIsDesktop(media.matches);
-
-    syncViewport();
-    media.addEventListener('change', syncViewport);
-    return () => media.removeEventListener('change', syncViewport);
-  }, [desktopMinWidth]);
-
   return (
-    <details
+    <Disclosure
+      bodyClassName={bodyClassName}
       className={className}
       data-project-mobile-disclosure={kind}
-      open={isDesktop || isMobileOpen}
-      onToggle={(event) => {
-        if (!isDesktop) setIsMobileOpen(event.currentTarget.open);
-      }}
+      desktopMinWidth={desktopMinWidth}
+      icon={null}
+      mode="desktop-expanded"
+      summary={summary}
+      unstyled
     >
-      <summary>{summary}</summary>
-      <div className={bodyClassName}>{children}</div>
-    </details>
+      {children}
+    </Disclosure>
   );
 }

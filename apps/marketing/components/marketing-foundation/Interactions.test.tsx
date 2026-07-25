@@ -49,6 +49,20 @@ async function render(markup: ReactNode) {
   return container;
 }
 
+function installMatchMedia(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: vi.fn().mockImplementation((media: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches,
+      media,
+      onchange: null,
+      removeEventListener: vi.fn(),
+    })),
+  });
+}
+
 describe('marketing foundation disclosure', () => {
   it('renders one native semantic content tree without manual ARIA state', () => {
     document.body.innerHTML = renderToStaticMarkup(
@@ -94,6 +108,46 @@ describe('marketing foundation disclosure', () => {
     expect(details.open).toBe(false);
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
     expect(document.activeElement).toBe(summary);
+  });
+
+  it('server-renders responsive content open for no-JavaScript access', () => {
+    document.body.innerHTML = renderToStaticMarkup(
+      <Disclosure mode="desktop-expanded" desktopMinWidth={721} summary="More detail">
+        <a href="/contact">Contact Sanctuary</a>
+      </Disclosure>,
+    );
+
+    const details = document.querySelector('details') as HTMLDetailsElement;
+    expect(details.open).toBe(true);
+    expect(details.dataset.disclosureState).toBe('pending');
+    expect(details.dataset.disclosureDesktopMin).toBe('721');
+    expect(details.querySelectorAll('a')).toHaveLength(1);
+  });
+
+  it('resolves the pending state to native closed mobile or open desktop state', async () => {
+    installMatchMedia(false);
+    const mobile = await render(
+      <Disclosure mode="desktop-expanded" summary="More detail">
+        <p>Responsive content.</p>
+      </Disclosure>,
+    );
+    const mobileDetails = mobile.querySelector('details') as HTMLDetailsElement;
+    expect(mobileDetails.dataset.disclosureState).toBe('mobile');
+    expect(mobileDetails.open).toBe(false);
+
+    await act(async () => root?.unmount());
+    root = null;
+    document.body.innerHTML = '';
+    installMatchMedia(true);
+
+    const desktop = await render(
+      <Disclosure mode="desktop-expanded" summary="More detail">
+        <p>Responsive content.</p>
+      </Disclosure>,
+    );
+    const desktopDetails = desktop.querySelector('details') as HTMLDetailsElement;
+    expect(desktopDetails.dataset.disclosureState).toBe('desktop');
+    expect(desktopDetails.open).toBe(true);
   });
 });
 

@@ -569,6 +569,13 @@ remains part of the Phase 1 completion gate after PR 3.
 
 ### PR 3: Make responsive disclosure state deterministic
 
+Implementation status, 25 July 2026: implemented in the Phase 1 disclosure
+checkpoint on `main`. Homepage, service, product, project, SEO and guide
+adapters now delegate viewport state to the shared owner. Script-blocked tests
+prove pre/post-hydration height parity at 430px, 390px and 360px while the
+separate no-JavaScript lane remains complete. Production and real-device
+verification remain part of the Phase 1 completion gate.
+
 | Field | Definition |
 |---|---|
 | Single user outcome | Mobile content does not appear and collapse after the page loads |
