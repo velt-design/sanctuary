@@ -65,6 +65,44 @@ Current website enquiry autoresponders keep the existing payload shape for previ
 
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 
+`/staff/email-previews` is the fixture-only Enquiry Email Workbench for the website autoresponder. Its staff-authenticated review surface renders three preview-only alternatives from one shared enquiry content model: Editorial Refined, Image-led and Compact. The current production renderer remains unchanged until one alternative is explicitly approved. The review flow is explicitly ordered as project scenario, design review and inbox proof. Staff-facing copy uses project scenario, completed project and design language while keeping repository fixture identifiers behind the UI. The compact navigator synchronizes all layouts across residential and commercial enquiries with Pitched, Gable, Box perimeter and Hip forms, each with and without blinds, plus one fixed professional fixture: 17 combinations in total. It also identifies the governed completed-project image and its match quality so reviewers can verify the customer selection, image evidence and email content together.
+
+The workbench supports side-by-side comparison and a focused single-layout mode. Desktop, narrow and mobile canvases render the email at 760, 600 and 390 px respectively, with 50%, 75% and 100% inspection zoom and controlled light/dark simulations. Zoom is applied outside the sandboxed iframe: the iframe retains the selected real pixel width and exact rendered `srcDoc`, so workbench CSS cannot alter email HTML. Each layout exposes its differentiated inbox subject, preheader, design intent, best-use guidance and plain-text fallback. Refresh re-renders the current governed fixture; Reset returns the entire review state to the default residential pitched fixture. Simulations remain comparison aids, not proof of any particular inbox client's rendering.
+
+Preview delivery reads `RESEND_API_KEY_PREVIEW` and the single `EMAIL_PREVIEW_TO` recipient on the server, omits the production BCC, and is unavailable unless `EMAIL_PREVIEW_ENABLED=true` in a Vercel Preview deployment (or local development/test). The workbench shows the active fixture, selected layout, project image, recipient, environment and preview-only delivery mode before sending. A selected-layout send or sequential Send all action requires an in-page confirmation; confirmation focus moves to Cancel and returns to the originating Send action when cancelled. Each API call still delivers exactly one validated fixture/layout with a differentiated `[Preview: <layout>]` subject. Success feedback says the provider accepted the request and does not claim inbox delivery; batch delivery stops on the first failure, reports how many requests were accepted and offers a retry for only the failed layout. The browser may supply only a validated repository fixture ID and layout ID; it cannot supply recipients, content, provider credentials or arbitrary payload fields. This path does not call enquiry intake or write contacts, projects, estimates, enquiries, outbox rows or audit records.
+
+Send controls remain disabled until the authenticated preview API reports `sendReady=true`. The delivery panel must state the exact safe configuration reason (`missing_api_key`, `missing_recipient`, `invalid_recipient`, disabled flag or disallowed environment) beside the controls instead of presenting an unexplained grey button. It also keeps the fixed-recipient, no-BCC and no-write contract visible in every state. Vercel environment changes apply only to a new deployment, so adding or correcting any preview variable requires redeploying the branch. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value, not the display name assigned to that key in Resend.
+
+Website autoresponder hero imagery is resolved centrally by `apps/marketing/lib/websiteAutoresponderHero.ts` from the governed records in `apps/marketing/data/projects.ts`. The email identifies the image as a completed Sanctuary project and states that project's recorded roof approach; it does not claim the pictured build is an exact preview of the submitted project. The current selection policy is:
+
+| Enquiry selection | Completed project shown | Evidence note |
+| --- | --- | --- |
+| Gable with mixed acrylic and solid or timber-lined roofing | Warkworth Outdoor Room | Exact published gable and mixed-roof reference |
+| Gable with a solid or timber-lined roof | Riverhead Gable Pavilion | Exact published gable and timber-sarking reference |
+| Residential gable with acrylic | Dairy Flat Estate | Exact published residential gable and acrylic reference |
+| Commercial gable with acrylic | The Good Home Takanini | Exact published commercial gable and acrylic reference |
+| Pitched with acrylic | Lilliput Mini Golf | Exact published pitched and acrylic reference |
+| Pitched with mixed or timber-lined roofing | Tindalls Bay - Patio & Carport | Published pitched project with insulated, acrylic and timber-lined zones |
+| Hip, any roof selection | Muriwai Courtyard | Exact form; exact material only when acrylic is selected |
+| Box perimeter, any roof selection | Mt Maunganui Box | Exact form; exact material only when acrylic is selected |
+| Professional enquiry | KiwiRail Head Office | Published architect-led commercial collaboration |
+| Missing or unclear selection | Warkworth Outdoor Room | Governed homepage evidence fallback |
+
+The 17 preview fixtures deliberately exercise this customer/form policy:
+
+| Preview roof form | Residential reference | Commercial reference |
+| --- | --- | --- |
+| Pitched | Tindalls Bay - Patio & Carport (mixed roof) | Lilliput Mini Golf (acrylic) |
+| Gable | Warkworth Outdoor Room (mixed roof) | The Good Home Takanini (acrylic) |
+| Box perimeter | Mt Maunganui Box | Mt Maunganui Box |
+| Hip | Muriwai Courtyard | Muriwai Courtyard |
+
+Blinds selection changes the email options and investment sections but does not change the completed-project reference. Professional remains the fixed KiwiRail Head Office example. `npm run emails:preview -- enquiry-variants` writes one production-template HTML and plain-text artifact for every combination under `tmp/email-previews`. `npm run emails:preview -- enquiry-layouts` writes one representative HTML/plain-text pair for each of the three comparison alternatives.
+
+The comparison email shell uses a 760 px maximum desktop width, a fluid 100% table width and small-screen media-query padding reductions. Critical structure, typography and image sizing remain inline and table-based so the message is still usable in clients that ignore media queries. It declares supported light/dark colour schemes, owns solid backgrounds and text colours, and includes targeted dark-mode and Outlook `[data-ogsc]` fallbacks. The textual wordmark, solid CTA surfaces and explicit borders avoid depending on transparent-image inversion. Actual inbox delivery remains the final check because Gmail, Outlook and Apple Mail can apply different forced-colour behaviour.
+
+The gated `/qa/email-preview-workbench-fixture` route mirrors the real page composition only when `ENABLE_PORTAL_QA_FIXTURES=1`. It reads the real governed renderer through `/api/qa/email-preview-workbench`; that QA API accepts the same narrow fixture/layout send contract but returns a synthetic acceptance without importing or calling provider transport. Playwright can therefore verify responsive workbench geometry, isolated iframe content, confirmation and sequential-send states without authentication or email side effects. This fixture does not weaken `/staff/email-previews` authentication and is not a delivery surface.
+
 Residential, commercial, and professional enquiry file uploads are stored, not just counted. The browser mints signed upload URLs via `apps/marketing/app/api/enquiry/attachments/sign` and uploads directly to the private `enquiry-attachments` Supabase Storage bucket (bypassing the serverless request-body limit); the enquiry payload carries only storage paths. Signing is same-origin, durably rate-limited, and creates a 15-minute server-owned session bound to the client submission UUID, a token hash, and the exact expected paths/metadata. Intake accepts at most eight PDF/JPEG/PNG/WebP files and 20 MB total, checks matching extensions, sizes, private path ownership, session expiry/consumption, and downloaded content signatures before the atomic RPC consumes the session. A path or session from another submission cannot be attached.
 
 On send, `apps/marketing/app/api/enquiry` either inlines verified files as autoresponder attachments (total <= 8 MB) or adds 7-day signed download links to the matching residential, commercial, or professional template. Staff receive the same files or links via the autoresponder BCC. Storage transport remains best-effort: a missing client configuration or failed direct upload degrades that file to validated metadata-only and does not block the enquiry. Requires `NEXT_PUBLIC_SUPABASE_ANON_KEY` for direct browser upload. The authenticated daily cleanup route removes objects for expired unconsumed sessions; database retention removes stale rate-limit state after two days and consumed session bindings after 30 days.
@@ -81,6 +119,7 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 - Browser task and activity access should use current project/dashboard APIs and query helpers. Do not reintroduce direct browser automation table writes; prefer staff API routes for new write behavior.
 - Manual project-task checkboxes may show optimistic local feedback, but the owning staff API remains authoritative for `project_task_checks`, pipeline transitions, and automation events. Concurrent saves must roll back only the rejected task, expose explicit retry, and never claim an auto-advance side effect before the response confirms it.
 - Service-role keys, raw email provider responses, and private customer data must not reach client props, logs, generated documents, or public routes.
+- Preview-only Resend credentials and the fixed preview recipient stay server-owned. Preview-send requests accept only a repository fixture variant and never a browser-supplied address.
 
 ## Guardrails
 
@@ -134,6 +173,8 @@ npm run test:email-provider
 npm run test:worker -- apps/worker/src/effects
 npm run test:portal -- apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/app/api/webhooks/resend/route.test.ts apps/portal/lib/backgroundJobs/providerWebhookRepository.test.ts
 npm run test:marketing -- apps/marketing/lib/email apps/marketing/app/api/contact/route.test.ts apps/marketing/app/api/enquiry/route.test.ts
+npm run test:portal -- "apps/portal/app/api/staff/v1/email-previews/website-autoresponder/route.test.ts"
+npx playwright test playwright/portal.email-preview-workbench.spec.ts --project=portal-fixture
 npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/app/api/contacts/route.test.ts "apps/portal/app/api/contacts/[contactId]/route.test.ts"
 npm run test:marketing -- apps/marketing/emails/utils/callWindow.test.ts

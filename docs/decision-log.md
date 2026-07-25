@@ -24,6 +24,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-26 | Marketing Static Root Routing    | Promoted | Canonicalise Next's production-only `/index` root alias before the shared header derives navigation, hero presentation or enquiry context. Prove the optimized root HTML and deployed browser path, and let focus tests observe the menu's initial focus contract before moving focus elsewhere. |
 | 2026-07-26 | Marketing Guide First Layers     | Promoted | Share guide transformation and rendering, but keep supporting headings, the selected project and return route owned by each guide. Verify heading uniqueness across the programme and measure governed project cards with selectors that match their rendered primitive. |
 | 2026-07-25 | Marketing Editorial Consolidation | Promoted | Measure the complete mobile decision path, not disclosure count alone. Service first layers have explicit section/project/stage budgets; product routes use one typed decision model, three purposeful detail groups and one controlled gallery without repeated inventory. |
+| 2026-07-25 | Enquiry Email Layout Comparison  | Promoted | Keep layout exploration preview-only until approval, compare alternatives with identical governed fixture data, label each real send distinctly, and treat simulated dark mode as guidance rather than inbox proof. |
+| 2026-07-25 | Enquiry Email Preview Delivery   | Promoted | Never leave a staging email action silently disabled. Report the safe server-owned readiness reason beside the control, require the actual provider secret value in the portal Preview environment, and redeploy after environment changes while preserving fixed-recipient and no-write controls. |
 | 2026-07-25 | Marketing Disclosure Hydration   | Promoted | Keep responsive disclosures open in server markup for no-JavaScript access, but hide only pending mobile bodies through the shared scripting-aware breakpoint contract so hydration resolves native state without changing visual height. |
 | 2026-07-25 | Marketing Enquiry Form Contract  | Promoted | Keep direct and embedded enquiry forms on the shared intake validator, audience labels, context presentation and attachment copy; only project type, name and phone are required, and optional technical detail follows the useful first brief. |
 | 2026-07-25 | Marketing Enquiry Routing        | Promoted | Resolve audience from explicit service or governed project route metadata, keep product and unknown routes neutral, preserve canonical item slugs, and apply validated lower-case context after other analytics fields so callers cannot overwrite it. |
@@ -3502,3 +3504,25 @@ Why it mattered: The most prominent homepage enquiry action contradicted the can
 Current guardrail: Canonicalise the production static root alias once before header navigation, hero and enquiry decisions. Verify the optimized generated root HTML and deployed raw/browser output, not only development routing. In focus tests, first observe the component's promised initial focus, then move focus to another target.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/components/headerNavigation.ts`; `apps/marketing/components/headerNavigation.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.home-v2.spec.ts`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.phase-four.spec.ts`
+
+### 2026-07-25 - Enquiry Email Preview Delivery - Explain Readiness At The Control
+
+Date: 2026-07-25
+Area: Marketing autoresponder staging review
+Status: Promoted
+Decision or mistake: The fixture page disabled its Send button whenever the server reported `sendReady=false`, but did not render the accompanying configuration reason. A deployment that could render previews and show the fixed recipient therefore presented only an unexplained grey button when `RESEND_API_KEY_PREVIEW` was absent from that deployment.
+Why it mattered: Reviewers could not distinguish a deliberate safety lock from a broken control, and adding an environment value without rebuilding the deployment did not change the already-running function.
+Current guardrail: Show the safe server-owned readiness reason beside the Send control, including the exact missing variable and redeploy instruction. The Vercel `RESEND_API_KEY_PREVIEW` value must be the actual provider secret, not its Resend display name. Keep Send disabled until all checks pass; do not solve configuration gaps by accepting browser-supplied recipients, credentials or content.
+Promoted to: `docs/automation-email-audit.md`; `docs/environment-auth-supabase.md`
+Related docs/tests: `apps/marketing/lib/email/sendWebsiteAutoresponderPreview.test.ts`; `apps/portal/app/staff/email-previews/emailPreviewOptions.test.ts`; `apps/portal/app/api/staff/v1/email-previews/website-autoresponder/route.test.ts`
+
+### 2026-07-25 - Enquiry Email Layout Comparison - Preview Before Promotion
+
+Date: 2026-07-25
+Area: Marketing autoresponder layout exploration
+Status: Promoted
+Decision or mistake: Three materially different customer-email layouts were needed for an evidence-based design choice, but replacing the active production renderer before inbox review would have coupled exploration to a live conversion path.
+Why it mattered: Screen previews cannot reproduce every Gmail, Outlook or Apple Mail colour transformation, and differing fixture data would make layout comparisons unreliable. An exploratory template could otherwise change live customer communication without an explicit approval point.
+Current guardrail: Keep alternatives behind the staff-only fixture workbench until one is approved. Render all alternatives from one governed content model and synchronized fixture, send only the exact validated layout to the fixed staging inbox with a differentiated subject, and preserve the production renderer. Use desktop/mobile and forced light/dark views for comparison, but require actual inbox evidence before promotion.
+Promoted to: `docs/automation-email-audit.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/lib/websiteAutoresponderAlternatives.test.ts`; `apps/portal/app/staff/email-previews/EmailPreviewClient.test.tsx`; `apps/portal/app/api/staff/v1/email-previews/website-autoresponder/route.test.ts`

@@ -1,6 +1,12 @@
 import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
 import { getCallWindowText } from '../emails/utils/callWindow';
+import {
+  PROFESSIONAL_ENQUIRY_PREHEADER,
+  customerEstimatePreheader,
+  customerEstimateSubject,
+  professionalEnquirySubject,
+} from '../emails/customerAutoresponderCopy';
 
 import { CustomerResidentialEmail } from '../emails/templates/customerResidential';
 import { CustomerCommercialEmail } from '../emails/templates/customerCommercial';
@@ -10,7 +16,7 @@ export const EMAIL_WEBSITE_AUTORESPONDER_RES_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_R
 export const EMAIL_WEBSITE_AUTORESPONDER_COM_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_COM_V1' as const;
 export const EMAIL_WEBSITE_AUTORESPONDER_PRO_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_PRO_V1' as const;
 
-type WebsiteAutoresponderTemplateId =
+export type WebsiteAutoresponderTemplateId =
   | typeof EMAIL_WEBSITE_AUTORESPONDER_RES_V1
   | typeof EMAIL_WEBSITE_AUTORESPONDER_COM_V1
   | typeof EMAIL_WEBSITE_AUTORESPONDER_PRO_V1;
@@ -23,20 +29,49 @@ export function isWebsiteAutoresponderTemplateId(value: string): value is Websit
   );
 }
 
-export function customerEstimateSubject(name: unknown, enquiryType: 'residential' | 'commercial') {
-  const trimmedName = typeof name === 'string' ? name.trim() : '';
-  const prefix = trimmedName ? `${trimmedName}, ` : '';
-  return enquiryType === 'commercial'
-    ? `${prefix}your commercial pergola estimate is ready`
-    : `${prefix}your Sanctuary Pergolas estimate is ready`;
+export function websiteAutoresponderTemplateIdFor(
+  enquiryType: 'residential' | 'commercial' | 'professional',
+): WebsiteAutoresponderTemplateId {
+  if (enquiryType === 'commercial') return EMAIL_WEBSITE_AUTORESPONDER_COM_V1;
+  if (enquiryType === 'professional') return EMAIL_WEBSITE_AUTORESPONDER_PRO_V1;
+  return EMAIL_WEBSITE_AUTORESPONDER_RES_V1;
 }
 
-function subjectFor(templateId: WebsiteAutoresponderTemplateId, variables: Record<string, unknown>): string {
+export function websiteAutoresponderSubject(
+  templateId: WebsiteAutoresponderTemplateId,
+  variables: Record<string, unknown>,
+): string {
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) {
     return customerEstimateSubject(variables.name, 'commercial');
   }
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) return 'Professional enquiry received - next steps';
+  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
+    return professionalEnquirySubject(variables.name);
+  }
   return customerEstimateSubject(variables.name, 'residential');
+}
+
+function asMoneyRange(value: unknown): { lowIncGst: number; highIncGst: number } {
+  if (value && typeof value === 'object') {
+    const lowIncGst = Number((value as Record<string, unknown>).lowIncGst);
+    const highIncGst = Number((value as Record<string, unknown>).highIncGst);
+    if (Number.isFinite(lowIncGst) && Number.isFinite(highIncGst)) {
+      return { lowIncGst, highIncGst };
+    }
+  }
+  return { lowIncGst: 0, highIncGst: 0 };
+}
+
+function websiteAutoresponderPreheader(
+  templateId: WebsiteAutoresponderTemplateId,
+  variables: Record<string, unknown>,
+): string {
+  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
+    return PROFESSIONAL_ENQUIRY_PREHEADER;
+  }
+  return customerEstimatePreheader(
+    templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1 ? 'commercial' : 'residential',
+    asMoneyRange(variables.baseRange),
+  );
 }
 
 function asDate(value: unknown): Date | null {
@@ -58,7 +93,8 @@ export async function renderWebsiteAutoresponder(
       ? variables.callWindowText.trim()
       : getCallWindowText(submittedAt);
 
-  const subject = subjectFor(templateId, variables);
+  const subject = websiteAutoresponderSubject(templateId, variables);
+  const preheader = websiteAutoresponderPreheader(templateId, variables);
 
   let reactEmail: ReactElement;
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_RES_V1) {
@@ -71,5 +107,7 @@ export async function renderWebsiteAutoresponder(
 
   const html = await render(reactEmail);
   const text = await render(reactEmail, { plainText: true });
-  return { subject, html, text };
+  return { subject, preheader, html, text };
 }
+
+export { customerEstimateSubject, professionalEnquirySubject };

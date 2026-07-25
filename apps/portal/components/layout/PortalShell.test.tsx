@@ -142,6 +142,30 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('renders the email preview workbench QA fixture without auth redirects or portal chrome', () => {
+    mockPathname = '/qa/email-preview-workbench-fixture';
+    mockSession = {
+      status: 'unauthenticated',
+      email: null,
+      role: null,
+    } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Email preview fixture</div>
+      </PortalShell>,
+    );
+
+    expect(
+      rendered.container.querySelector('[data-testid="child"]')?.textContent,
+    ).toBe('Email preview fixture');
+    expect(
+      rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]'),
+    ).toBeNull();
+    expect(replaceMock).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
   it('renders protected routes with the pinned shell chrome for authenticated users', () => {
     const rendered = renderIntoDocument(
       <PortalShell>

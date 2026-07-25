@@ -55,7 +55,7 @@ describe('sendCustomerAutoresponder', () => {
       to: 'taylor@example.test',
       bcc: ['info@sanctuarypergolas.co.nz'],
       replyTo: 'info@sanctuarypergolas.co.nz',
-      subject: 'Taylor, your Sanctuary Pergolas estimate is ready',
+      subject: "Taylor, we've received your pergola enquiry",
       html: '<p>Rendered HTML</p>',
       text: 'Rendered plain text',
       attachments: [{ filename: 'plan.pdf', content: 'UERGREFUQQ==', contentType: 'application/pdf' }],

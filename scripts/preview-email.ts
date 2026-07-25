@@ -1,13 +1,20 @@
 import { render } from '@react-email/render';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { toIndicativeRangeOneSided } from '../apps/marketing/lib/enquiryEstimate';
 import { getCallWindowText } from '../apps/marketing/emails/utils/callWindow';
 import type { ResidentialOrCommercial, Professional } from '../apps/marketing/emails/types';
+import {
+  getWebsiteAutoresponderPreviewFixture,
+  WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS,
+  type WebsiteAutoresponderPreviewVariant,
+} from '../apps/marketing/lib/websiteAutoresponderPreviewFixtures';
+import { renderWebsiteAutoresponder } from '../apps/marketing/lib/websiteAutoresponder';
+import {
+  renderWebsiteAutoresponderAlternative,
+  WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS,
+  type WebsiteAutoresponderPreviewLayout,
+} from '../apps/marketing/lib/websiteAutoresponderAlternatives';
 
-import { CustomerResidentialEmail } from '../apps/marketing/emails/templates/customerResidential';
-import { CustomerCommercialEmail } from '../apps/marketing/emails/templates/customerCommercial';
-import { CustomerProfessionalEmail } from '../apps/marketing/emails/templates/customerProfessional';
 import { InternalResidentialEmail } from '../apps/marketing/emails/templates/internalResidential';
 import { InternalCommercialEmail } from '../apps/marketing/emails/templates/internalCommercial';
 import { InternalProfessionalEmail } from '../apps/marketing/emails/templates/internalProfessional';
@@ -29,11 +36,6 @@ const baseLead = {
   landingUrl: 'https://sanctuarypergolas.co.nz/contact',
 } as const;
 
-const residentialBaseRange = toIndicativeRangeOneSided(22000, 'residential');
-const residentialBlindsRange = toIndicativeRangeOneSided(6000, 'residential');
-const commercialBaseRange = toIndicativeRangeOneSided(42000, 'commercial');
-const commercialBlindsRange = toIndicativeRangeOneSided(12800, 'commercial');
-
 const residentialWithBlinds: ResidentialOrCommercial = {
   ...baseLead,
   enquiryType: 'residential',
@@ -44,14 +46,8 @@ const residentialWithBlinds: ResidentialOrCommercial = {
   roof: 'Acrylic',
   addons: ['Blinds', 'Lighting', 'Heating'],
   blindsSelected: true,
-  baseRange: residentialBaseRange,
-  blindsRange: residentialBlindsRange,
-};
-
-const residentialNoBlinds: ResidentialOrCommercial = {
-  ...residentialWithBlinds,
-  addons: ['Lighting', 'Heating'],
-  blindsSelected: false,
+  baseRange: { lowIncGst: 27_500, highIncGst: 27_500 },
+  blindsRange: { lowIncGst: 7_500, highIncGst: 8_750 },
 };
 
 const commercialNoBlinds: ResidentialOrCommercial = {
@@ -64,14 +60,7 @@ const commercialNoBlinds: ResidentialOrCommercial = {
   roof: 'Both',
   addons: ['Lighting', 'Fans'],
   blindsSelected: false,
-  baseRange: commercialBaseRange,
-};
-
-const commercialWithBlinds: ResidentialOrCommercial = {
-  ...commercialNoBlinds,
-  addons: ['Blinds', 'Lighting', 'Fans'],
-  blindsSelected: true,
-  blindsRange: commercialBlindsRange,
+  baseRange: { lowIncGst: 52_500, highIncGst: 52_500 },
 };
 
 const professionalLead: Professional = {
@@ -82,26 +71,6 @@ const professionalLead: Professional = {
 };
 
 const templates = {
-  'customer-residential': {
-    file: 'customer-residential.html',
-    render: () => CustomerResidentialEmail({ ...residentialWithBlinds, callWindowText }),
-  },
-  'customer-residential-no-blinds': {
-    file: 'customer-residential-no-blinds.html',
-    render: () => CustomerResidentialEmail({ ...residentialNoBlinds, callWindowText }),
-  },
-  'customer-commercial': {
-    file: 'customer-commercial.html',
-    render: () => CustomerCommercialEmail({ ...commercialNoBlinds, callWindowText }),
-  },
-  'customer-commercial-with-blinds': {
-    file: 'customer-commercial-with-blinds.html',
-    render: () => CustomerCommercialEmail({ ...commercialWithBlinds, callWindowText }),
-  },
-  'customer-professional': {
-    file: 'customer-professional.html',
-    render: () => CustomerProfessionalEmail({ ...professionalLead, callWindowText }),
-  },
   'internal-residential': {
     file: 'internal-residential.html',
     render: () => InternalResidentialEmail({ ...residentialWithBlinds, callWindowText }),
@@ -132,34 +101,100 @@ async function writePreview(outputDir: string, fileName: string, reactEmail: JSX
   console.log(`Wrote ${textPath}`);
 }
 
+async function writeWebsitePreview(
+  outputDir: string,
+  variant: WebsiteAutoresponderPreviewVariant,
+) {
+  const fixture = getWebsiteAutoresponderPreviewFixture(variant);
+  const rendered = await renderWebsiteAutoresponder(
+    fixture.templateId,
+    fixture.variables as unknown as Record<string, unknown>,
+  );
+  const htmlPath = path.join(outputDir, `${fixture.fileBaseName}.html`);
+  const textPath = path.join(outputDir, `${fixture.fileBaseName}.txt`);
+
+  await writeFile(htmlPath, rendered.html, 'utf8');
+  await writeFile(textPath, rendered.text, 'utf8');
+
+  console.log(`Wrote ${htmlPath}`);
+  console.log(`Wrote ${textPath}`);
+  console.log(`Subject: ${rendered.subject}`);
+  console.log(`Preheader: ${rendered.preheader}`);
+}
+
+async function writeAlternativeWebsitePreview(
+  outputDir: string,
+  variant: WebsiteAutoresponderPreviewVariant,
+  layout: WebsiteAutoresponderPreviewLayout,
+) {
+  const fixture = getWebsiteAutoresponderPreviewFixture(variant);
+  const rendered = await renderWebsiteAutoresponderAlternative(
+    fixture.templateId,
+    fixture.variables as unknown as Record<string, unknown>,
+    layout,
+  );
+  const fileBaseName = `alternative-${layout}-${variant}`;
+  const htmlPath = path.join(outputDir, `${fileBaseName}.html`);
+  const textPath = path.join(outputDir, `${fileBaseName}.txt`);
+
+  await writeFile(htmlPath, rendered.html, 'utf8');
+  await writeFile(textPath, rendered.text, 'utf8');
+
+  console.log(`Wrote ${htmlPath}`);
+  console.log(`Wrote ${textPath}`);
+  console.log(`Send subject: ${rendered.sendSubject}`);
+  console.log(`Preheader: ${rendered.preheader}`);
+}
+
+const customerTemplateVariants = Object.fromEntries(
+  WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS.map((variant) => {
+    const fixture = getWebsiteAutoresponderPreviewFixture(variant);
+    return [fixture.fileBaseName, variant];
+  }),
+) as Record<string, WebsiteAutoresponderPreviewVariant>;
+
 async function main() {
   const arg = (process.argv[2] ?? '').trim();
   const outputDir = path.join(process.cwd(), 'tmp', 'email-previews');
   await mkdir(outputDir, { recursive: true });
 
   if (arg === 'enquiry-variants') {
-    const keys: TemplateKey[] = [
-      'customer-residential',
-      'customer-residential-no-blinds',
-      'customer-commercial-with-blinds',
-      'customer-commercial',
-    ];
-
-    for (const key of keys) {
-      const selected = templates[key];
-      await writePreview(outputDir, selected.file, selected.render());
+    for (const variant of WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS) {
+      await writeWebsitePreview(outputDir, variant);
     }
     return;
   }
 
-  const templateKey = (arg as TemplateKey | '') || 'customer-residential';
+  if (arg === 'enquiry-layouts') {
+    const representativeVariant = 'residential-gable-with-blinds';
+    for (const layout of WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS) {
+      await writeAlternativeWebsitePreview(
+        outputDir,
+        representativeVariant,
+        layout.id,
+      );
+    }
+    return;
+  }
+
+  const customerVariant =
+    customerTemplateVariants[arg || 'customer-residential-pitched-without-blinds'];
+  if (customerVariant) {
+    await writeWebsitePreview(outputDir, customerVariant);
+    return;
+  }
+
+  const templateKey =
+    (arg as TemplateKey | '') || 'customer-residential-pitched-without-blinds';
   const selected = templates[templateKey as TemplateKey];
 
   if (!selected) {
     console.error(`Unknown template: ${process.argv[2]}`);
     console.error('Available templates:');
+    Object.keys(customerTemplateVariants).forEach((key) => console.error(`- ${key}`));
     Object.keys(templates).forEach((key) => console.error(`- ${key}`));
     console.error('- enquiry-variants');
+    console.error('- enquiry-layouts');
     process.exitCode = 1;
     return;
   }

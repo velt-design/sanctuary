@@ -21,6 +21,9 @@ Most local portal work needs:
 Common optional or feature-specific variables:
 
 - `RESEND_API_KEY`
+- `RESEND_API_KEY_PREVIEW` (server-only, sending-only Resend key used only by the authenticated website-autoresponder review flow in Vercel Preview deployments)
+- `EMAIL_PREVIEW_ENABLED` (must be exactly `true` for the fixture-only review route; keep unset or false in Production)
+- `EMAIL_PREVIEW_TO` (one server-configured review recipient; the browser cannot override it)
 - `RESEND_WEBHOOK_SECRET` (portal server only; verifies the untouched raw Resend/Svix webhook body at `/api/webhooks/resend` before reconciliation)
 - `EMAIL_FROM`
 - `EMAIL_REPLY_TO`
@@ -45,6 +48,8 @@ Common optional or feature-specific variables:
 - `NEXTAUTH_SECRET` or `AUTH_SECRET` for legacy NextAuth-backed paths.
 
 Never commit real env files. `.env*` is ignored.
+
+The marketing autoresponder inbox review is available only when the portal runs in a Vercel Preview environment, or locally in development/test, and `EMAIL_PREVIEW_ENABLED=true`. Configure all three preview variables on the `sanctuary-portal` Vercel project for Preview only. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value (normally beginning `re_`), not the display name assigned to that key in Resend. Redeploy the branch after adding or changing any preview variable because an already-built deployment does not receive the new value. Production remains unavailable even if the flag is accidentally set. The current review recipient is `jordan@sanctuarypergolas.co.nz`. The staff preview page reports the exact safe configuration reason when sending is not ready. Each alternative is sent with a distinct `[Preview: <layout>]` subject; the browser cannot override the recipient or email content.
 
 ## Staff Portal Auth
 
