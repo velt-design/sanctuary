@@ -15,6 +15,14 @@ export const acrylicVsLouvreConfig = {
   marker: 'acrylic-pergolas-vs-louvre-roofs', route: '/acrylic-pergolas-vs-louvre-roofs',
   description: 'Compare acrylic pergolas and louvre roof proposals by roof behaviour, daylight, shade, rain detailing, controls, maintenance evidence and complete installed scope.',
   schemaName: 'Acrylic Pergolas vs Louvre Roofs', serviceName: 'Pergola roof option consultation in Auckland', serviceType: 'Pergola roof design consultation',
+  guideFirstLayer: {
+    answerBlockId: 'comparison-brief',
+    projectBlockId: 'acrylic-comparison-projects',
+    projectSlug: 'mt-maunganui-box',
+    returnHref: '/products',
+    returnLabel: 'Compare Sanctuary pergola options',
+    supportingSummary: 'Explore roof behaviour, examples and comparison detail',
+  },
   hero: { image: '/images/box-landing.jpg', imageAlt: 'Fixed acrylic roof within a dark box-perimeter pergola between modern house wings', objectPosition: '50% 52%', eyebrow: 'Acrylic pergolas vs louvre roofs', title: 'Choose the roof behaviour before choosing the roof label', intro: 'Sanctuary designs fixed acrylic, solid and combination roof approaches. This guide compares those fixed roofs with an external proposal for movable louvres, using the rain, daylight, shade, view and control your site actually needs.', primaryCta: 'Compare your roof brief', secondaryCta: 'Review the matrix', secondaryHref: '#roof-comparison', proof: ['Sanctuary fixed roofs identified', 'External louvre proposals tested', 'Complete scope before headline price'] },
   blocks: [
     { kind: 'split-intro', id: 'comparison-brief', eyebrow: 'Define the required states', title: 'The decision starts with what the roof must do at 8am, 2pm and during rain', paragraphs: [

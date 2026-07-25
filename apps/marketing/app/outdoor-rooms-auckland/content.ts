@@ -15,6 +15,14 @@ export const outdoorRoomsConfig = {
   marker: 'outdoor-rooms-auckland', route: '/outdoor-rooms-auckland',
   description: 'Plan an outdoor room in Auckland around dining, lounging, light, shelter and the home. Explore roof, edge, lighting and scope decisions with Sanctuary.',
   schemaName: 'Outdoor Rooms Auckland', serviceName: 'Custom outdoor room design and installation in Auckland', serviceType: 'Outdoor room and pergola design and installation',
+  guideFirstLayer: {
+    answerBlockId: 'room-not-cover',
+    projectBlockId: 'outdoor-room-projects',
+    projectSlug: 'warkworth-outdoor-room',
+    returnHref: '/pergolas-auckland',
+    returnLabel: 'Return to the broad pergola brief',
+    supportingSummary: 'Explore outdoor-room layers, examples and planning detail',
+  },
   hero: { image: '/images/project-warkworth-outdoor-room-02.jpg', imageAlt: 'Cedar-lined custom outdoor room with lounge seating and integrated lighting', objectPosition: '50% 42%', eyebrow: 'Outdoor rooms in Auckland', title: 'Begin with the life inside the room, not the roof above it', intro: 'Sanctuary plans the structure around what should happen below it: dining, lounging, circulation, views and time together. The roof, edges, light and integrated features then support that use without losing the connection to the home and garden.', primaryCta: 'Describe the room you need', secondaryCta: 'Plan the layers', secondaryHref: '#room-layers', proof: ['Use leads the layout', 'Roof and edges planned together', 'Details coordinated before installation'] },
   blocks: [
     { kind: 'split-intro', id: 'room-not-cover', eyebrow: 'More than an area under cover', title: 'A roof creates shelter. A room needs relationships.', paragraphs: [

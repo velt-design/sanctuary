@@ -1,18 +1,26 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import JsonLd from '@/components/JsonLd';
 import { Button, Container, Eyebrow, Heading, Section, Text, TextLink } from '@/components/marketing-foundation';
 import AcrylicPergolaEnquiryForm from '@/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
 import { absoluteUrl } from '@/lib/seo';
 import SeoLandingBlocks from './SeoLandingBlocks';
+import SeoLandingMobileDisclosure from './SeoLandingMobileDisclosure';
 import PergolaGuideNavigation from './PergolaGuideNavigation';
 import type { SeoLandingPageConfig } from './types';
-import { orderSeoLandingBlocks } from './seoLandingViewModel';
+import {
+  buildGuideFirstLayer,
+  orderSeoLandingBlocks,
+} from './seoLandingViewModel';
 import { findPergolaGuide, pergolaGuideEditorialReview } from '@/data/pergolaGuides';
 
 export default function SeoLandingPage({ config }: { config: SeoLandingPageConfig }) {
   const guide = findPergolaGuide(config.route);
   const enquiryType = config.enquiryType ?? 'residential';
   const blocks = orderSeoLandingBlocks(config.blocks, config.blockOrder);
+  const guideFirstLayer = config.guideFirstLayer
+    ? buildGuideFirstLayer(blocks, config.guideFirstLayer)
+    : null;
   const currentBreadcrumb = {
     '@type': 'ListItem',
     position: guide ? 3 : 2,
@@ -67,7 +75,35 @@ export default function SeoLandingPage({ config }: { config: SeoLandingPageConfi
       {config.showGuideNavigation === false
         ? null
         : <PergolaGuideNavigation route={config.route} />}
-      <SeoLandingBlocks blocks={blocks} disclosureGroups={config.mobileDisclosureGroups} />
+      {guideFirstLayer && config.guideFirstLayer ? (
+        <>
+          <SeoLandingBlocks blocks={[guideFirstLayer.answerBlock]} />
+          <div data-guide-first-layer-project>
+            <SeoLandingBlocks blocks={[guideFirstLayer.projectBlock]} />
+          </div>
+          <nav
+            aria-label="Continue from this guide"
+            className="seo-landing__guide-return"
+            data-guide-first-layer-return
+          >
+            <Container width="wide">
+              <span>Ready to place this decision back in the wider project?</span>
+              <Link href={config.guideFirstLayer.returnHref}>
+                {config.guideFirstLayer.returnLabel}
+              </Link>
+            </Container>
+          </nav>
+          <SeoLandingMobileDisclosure
+            groupId={`${config.marker}-supporting-depth`}
+            summary={config.guideFirstLayer.supportingSummary}
+            supportingDepth
+          >
+            <SeoLandingBlocks blocks={guideFirstLayer.supportingBlocks} />
+          </SeoLandingMobileDisclosure>
+        </>
+      ) : (
+        <SeoLandingBlocks blocks={blocks} disclosureGroups={config.mobileDisclosureGroups} />
+      )}
       <Section tone="inverse" className="acrylic-section acrylic-section--final-cta" aria-labelledby={`${config.marker}-final-cta`}>
         <Container width="wide" className="acrylic-final-grid"><div><Eyebrow className="acrylic-eyebrow">{config.finalCta.eyebrow}</Eyebrow><Heading id={`${config.marker}-final-cta`}>{config.finalCta.title}</Heading><p>{config.finalCta.text}</p><div className="acrylic-hero__actions"><Button href="#project-details">{config.finalCta.button}</Button></div></div><div><h3>{config.finalCta.checklistTitle}</h3><ul className="acrylic-check-list">{config.finalCta.checklist.map((item) => <li key={item}>{item}</li>)}</ul></div></Container>
       </Section>

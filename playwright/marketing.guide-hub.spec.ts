@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { pergolaGuides } from '../apps/marketing/data/pergolaGuides';
 
 const route = '/pergola-guides';
 const title = 'Pergola Design Guides | Sanctuary Pergolas';
@@ -69,7 +70,16 @@ for (const viewport of viewports) {
       await expect(link).toHaveText(guide.title);
       await expect(card).toContainText(guide.number);
       await expect(card).toContainText(guide.label);
+      const guideContent = pergolaGuides.find(({ href }) => href === guide.href);
+      await expect(card.locator('.guide-hub-card__heading em')).toHaveText(
+        guideContent!.prompt,
+      );
+      await expect(card.locator('.guide-hub-card__summary')).toHaveText(
+        guideContent!.summary,
+      );
     }
+    await expect(main.locator('details[data-guide-description]')).toHaveCount(0);
+    await expect(main).not.toContainText('About this guide');
     const commercialGuide = main.locator(
       '[data-guide-card]:has([data-guide-link][href="/commercial-pergolas-auckland"])',
     );

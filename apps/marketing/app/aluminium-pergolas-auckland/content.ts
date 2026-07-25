@@ -15,6 +15,14 @@ export const aluminiumPergolasConfig = {
   marker: 'aluminium-pergolas-auckland', route: '/aluminium-pergolas-auckland',
   description: 'Explore aluminium pergolas in Auckland. Understand frame proportion, roof integration, finish, structure and project scope before requesting a site-specific assessment.',
   schemaName: 'Aluminium Pergolas Auckland', serviceName: 'Custom aluminium pergola design and installation in Auckland', serviceType: 'Aluminium pergola design and installation',
+  guideFirstLayer: {
+    answerBlockId: 'aluminium-role',
+    projectBlockId: 'aluminium-projects',
+    projectSlug: 'dairy-flat-estate',
+    returnHref: '/products',
+    returnLabel: 'Compare pergola options',
+    supportingSummary: 'Explore frame decisions, examples and specification detail',
+  },
   hero: {
     image: '/images/project-ardmore-carport-03.jpg', imageAlt: 'Detailed aluminium rafters and custom pergola framing in Auckland', objectPosition: '50% 42%',
     eyebrow: 'Aluminium pergolas in Auckland', title: 'The frame sets the rhythm long before the roof is noticed',

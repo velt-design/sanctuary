@@ -19,8 +19,8 @@ const hydrationCases = [
     selector: 'details[data-product-mobile-disclosure]',
   },
   {
-    path: '/pergola-guides',
-    selector: 'details[data-guide-description]',
+    path: '/pergola-cost-auckland',
+    selector: 'details[data-guide-supporting-depth]',
   },
   {
     path: '/projects/warkworth-outdoor-room',

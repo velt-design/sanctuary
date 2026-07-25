@@ -16,6 +16,14 @@ export const pergolasWithBlindsConfig = {
   marker: 'pergolas-with-blinds', route: '/pergolas-with-blinds',
   description: 'Plan a pergola with blinds in Auckland around wind direction, low sun, privacy and open views. Explore blind integration, controls, scope and project evidence.',
   schemaName: 'Pergolas With Blinds Auckland', serviceName: 'Custom pergola and outdoor blind design in Auckland', serviceType: 'Pergola design and blind integration',
+  guideFirstLayer: {
+    answerBlockId: 'blind-is-an-edge',
+    projectBlockId: 'blind-projects',
+    projectSlug: 'tindalls-bay-pavilion',
+    returnHref: '/products/screens-walls/drop-down-blinds',
+    returnLabel: 'Review the drop-down blind option',
+    supportingSummary: 'Explore edge planning, examples and blind integration detail',
+  },
   hero: { image: '/images/project-goodhome-02.jpg', imageAlt: 'Drop-down blinds enclosing one edge of a covered Auckland hospitality courtyard', objectPosition: '50% 50%', eyebrow: 'Pergolas with blinds', title: 'A blind works best when the edge was designed to receive it', intro: 'The roof covers from above. A blind responds at the side. Sanctuary plans the opening, frame, controls and view together so the edge can change when low sun, wind or privacy interrupts the space.', primaryCta: 'Describe the exposed edge', secondaryCta: 'Plan each side', secondaryHref: '#edge-map', proof: ['Protection where it is useful', 'Open views when retracted', 'Frame and controls coordinated'] },
   blocks: [
     { kind: 'split-intro', id: 'blind-is-an-edge', eyebrow: 'One moving boundary', title: 'Do not ask a blind to solve the whole weather pattern', paragraphs: [

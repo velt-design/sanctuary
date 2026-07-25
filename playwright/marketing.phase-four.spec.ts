@@ -41,6 +41,50 @@ const screenshotRoutes = new Set([
   'aluminium',
   'cost',
 ]);
+const guideDetailRoutes = [
+  {
+    path: '/outdoor-rooms-auckland',
+    projectSlug: 'warkworth-outdoor-room',
+    projectCount: 4,
+    returnHref: '/pergolas-auckland',
+  },
+  {
+    path: '/aluminium-pergolas-auckland',
+    projectSlug: 'dairy-flat-estate',
+    projectCount: 4,
+    returnHref: '/products',
+  },
+  {
+    path: '/gable-pergolas-auckland',
+    projectSlug: 'warkworth-outdoor-room',
+    projectCount: 4,
+    returnHref: '/products/pergolas/gable',
+  },
+  {
+    path: '/pitched-pergolas-auckland',
+    projectSlug: 'velskov-forest',
+    projectCount: 4,
+    returnHref: '/products/pergolas/pitched',
+  },
+  {
+    path: '/pergola-cost-auckland',
+    projectSlug: 'warkworth-outdoor-room',
+    projectCount: 4,
+    returnHref: '/pergolas-auckland',
+  },
+  {
+    path: '/pergolas-with-blinds',
+    projectSlug: 'tindalls-bay-pavilion',
+    projectCount: 3,
+    returnHref: '/products/screens-walls/drop-down-blinds',
+  },
+  {
+    path: '/acrylic-pergolas-vs-louvre-roofs',
+    projectSlug: 'mt-maunganui-box',
+    projectCount: 4,
+    returnHref: '/products',
+  },
+] as const;
 
 async function createMeasuredPage(
   browser: Browser,
@@ -566,4 +610,145 @@ test('professional form submits canonical context without personal analytics pro
   expect(JSON.stringify(leadEvent)).not.toContain('Phase Four Test Person');
   expect(JSON.stringify(leadEvent)).not.toContain('022 000 0044');
   expect(JSON.stringify(leadEvent)).not.toContain('Example Architects');
+});
+
+test('guide hub keeps all ten distinctions visible without repeated controls', async ({
+  page,
+}) => {
+  for (const viewport of targetViewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('/pergola-guides', { waitUntil: 'networkidle' });
+    const main = page.locator('main[data-pergola-guide-hub]');
+    await expect(main.locator('[data-guide-card]')).toHaveCount(10);
+    await expect(main.locator('.guide-hub-card__summary:visible')).toHaveCount(
+      10,
+    );
+    await expect(main.locator('details[data-guide-description]')).toHaveCount(0);
+    await expect(main).not.toContainText('About this guide');
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth + 1,
+      ),
+    ).toBe(true);
+  }
+});
+
+test('seven guide routes share answer, one project, route back and optional depth', async ({
+  page,
+}) => {
+  for (const viewport of targetViewports) {
+    await page.setViewportSize(viewport);
+    for (const guide of guideDetailRoutes) {
+      const response = await page.goto(guide.path, {
+        waitUntil: 'networkidle',
+      });
+      expect(response?.ok(), guide.path).toBe(true);
+      const main = page.locator('main[data-seo-landing]');
+      const firstLayerProject = main.locator(
+        '[data-guide-first-layer-project]',
+      );
+      const routeBack = main.locator('[data-guide-first-layer-return]');
+      const supportingDepth = main.locator(
+        'details[data-guide-supporting-depth]',
+      );
+
+      await expect(
+        main.locator(':scope > section.acrylic-section--opening .acrylic-prose > p'),
+      ).toHaveCount(1);
+      await expect(
+        firstLayerProject.locator('.acrylic-project-card'),
+      ).toHaveCount(1);
+      await expect(
+        firstLayerProject.locator(
+          `.acrylic-project-card[href="/projects/${guide.projectSlug}"]`,
+        ),
+      ).toHaveCount(1);
+      await expect(routeBack.locator(`a[href="${guide.returnHref}"]`)).toHaveCount(
+        1,
+      );
+      await expect(supportingDepth).toHaveCount(1);
+      await expect(supportingDepth).not.toHaveAttribute('open', '');
+      await expect(main.locator('.acrylic-project-card')).toHaveCount(
+        guide.projectCount,
+      );
+      expect(
+        await main.evaluate((element) => {
+          const project = element.querySelector(
+            '[data-guide-first-layer-project]',
+          );
+          const routeBackElement = element.querySelector(
+            '[data-guide-first-layer-return]',
+          );
+          const optional = element.querySelector(
+            'details[data-guide-supporting-depth]',
+          );
+          if (!project || !routeBackElement || !optional) return false;
+          return (
+            Boolean(
+              project.compareDocumentPosition(routeBackElement) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+            ) &&
+            Boolean(
+              routeBackElement.compareDocumentPosition(optional) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+            )
+          );
+        }),
+      ).toBe(true);
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth + 1,
+        ),
+      ).toBe(true);
+    }
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/pergola-cost-auckland', { waitUntil: 'networkidle' });
+  const supportingDepth = page.locator(
+    'details[data-guide-supporting-depth]',
+  );
+  await supportingDepth.locator(':scope > summary').click();
+  await expect(supportingDepth).toHaveAttribute('open', '');
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(supportingDepth).not.toHaveAttribute('open', '');
+  await page.locator('[data-guide-first-layer-return] a').click();
+  await expect(page).toHaveURL(/\/pergolas-auckland$/);
+  await page.goBack({ waitUntil: 'networkidle' });
+  await expect(page).toHaveURL(/\/pergola-cost-auckland$/);
+  await expect(page.locator('main[data-seo-landing]')).toBeVisible();
+});
+
+test('guide first layers remain complete without JavaScript', async ({
+  baseURL,
+  browser,
+}) => {
+  expect(baseURL).toBeTruthy();
+  const context = await browser.newContext({
+    baseURL,
+    javaScriptEnabled: false,
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  try {
+    for (const guide of guideDetailRoutes) {
+      const response = await page.goto(guide.path, { waitUntil: 'load' });
+      expect(response?.ok(), guide.path).toBe(true);
+      const main = page.locator('main[data-seo-landing]');
+      await expect(main.locator('[data-guide-first-layer-project]')).toBeVisible();
+      await expect(main.locator('[data-guide-first-layer-return]')).toBeVisible();
+      await expect(
+        main.locator('details[data-guide-supporting-depth]'),
+      ).toHaveAttribute('open', '');
+      await expect(main.locator('.acrylic-project-card')).toHaveCount(
+        guide.projectCount,
+      );
+    }
+  } finally {
+    await context.close();
+  }
 });

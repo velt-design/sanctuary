@@ -17,6 +17,14 @@ export const pergolaCostConfig = {
   marker: 'pergola-cost-auckland', route: '/pergola-cost-auckland',
   description: 'Understand pergola cost in Auckland without a misleading square-metre shortcut. See the real scope drivers, compare quotations and send details for an informed first assessment.',
   schemaName: 'Pergola Cost Auckland', serviceName: 'Custom pergola project assessment and quotation in Auckland', serviceType: 'Custom pergola design and quotation',
+  guideFirstLayer: {
+    answerBlockId: 'price-with-context',
+    projectBlockId: 'cost-projects',
+    projectSlug: 'warkworth-outdoor-room',
+    returnHref: '/pergolas-auckland',
+    returnLabel: 'Return to the broad project brief',
+    supportingSummary: 'Explore cost drivers, examples and scope comparison detail',
+  },
   hero: {
     image: '/images/project-waiheke-02.jpg', imageAlt: 'Custom pergola structure showing roof, frame and site-specific scope', objectPosition: '50% 46%',
     eyebrow: 'Pergola cost in Auckland', title: 'A useful pergola price starts with a defined scope, not a square-metre guess',

@@ -300,7 +300,7 @@ const routeCases: readonly RouteCase[] = [
     id: 'guide hub',
     path: '/pergola-guides',
     canonicalPath: '/pergola-guides',
-    maximumVisibleWords: 500,
+    maximumVisibleWords: 575,
     maximumVisibleHeadingRegions: 7,
     mobileSignals: [
       'Find the guide for the decision in front of you',
@@ -311,39 +311,6 @@ const routeCases: readonly RouteCase[] = [
     primaryAction: {
       name: 'Browse all guides',
       href: '#guide-library',
-    },
-    disclosures: {
-      selector: 'details[data-guide-description]',
-      count: 10,
-      idAttribute: 'data-guide-description',
-      ids: [
-        '/pergolas-auckland',
-        '/custom-pergolas-auckland',
-        '/outdoor-rooms-auckland',
-        '/commercial-pergolas-auckland',
-        '/aluminium-pergolas-auckland',
-        '/gable-pergolas-auckland',
-        '/pitched-pergolas-auckland',
-        '/pergola-cost-auckland',
-        '/pergolas-with-blinds',
-        '/acrylic-pergolas-vs-louvre-roofs',
-      ],
-      labels: [
-        'About this guide for Pergolas Auckland',
-        'About this guide for Custom Pergolas Auckland',
-        'About this guide for Outdoor Rooms Auckland',
-        'About this guide for Commercial Pergolas Auckland',
-        'About this guide for Aluminium Pergolas Auckland',
-        'About this guide for Gable Pergolas Auckland',
-        'About this guide for Pitched Pergolas Auckland',
-        'About this guide for Pergola Cost Auckland',
-        'About this guide for Pergolas With Blinds',
-        'About this guide for Acrylic Pergolas vs Louvre Roofs',
-      ],
-    },
-    supporting: {
-      selector: 'details[data-guide-description="/pergola-cost-auckland"]',
-      phrase: 'what information makes an early estimate more useful',
     },
     stableSections: [
       '#guide-library',
@@ -375,17 +342,18 @@ const routeCases: readonly RouteCase[] = [
     },
     disclosures: {
       selector: 'details[data-seo-landing-disclosure]',
-      count: 2,
+      count: 1,
       idAttribute: 'data-seo-landing-disclosure',
-      ids: ['cost-estimate-detail', 'cost-scope-support'],
+      ids: ['pergola-cost-auckland-supporting-depth'],
     },
     supporting: {
-      selector: 'details[data-seo-landing-disclosure="cost-scope-support"]',
+      selector:
+        'details[data-seo-landing-disclosure="pergola-cost-auckland-supporting-depth"]',
       phrase: 'A trustworthy total has a readable scope behind it',
     },
     stableSections: [
-      '#cost-drivers',
       '#cost-projects',
+      '#cost-drivers',
       '#cost-process',
       '#project-details',
     ],

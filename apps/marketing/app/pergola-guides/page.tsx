@@ -7,7 +7,6 @@ import JsonLd from '@/components/JsonLd';
 import {
   Button,
   Container,
-  Disclosure,
   Eyebrow,
   Heading,
   Section,
@@ -208,24 +207,7 @@ export default function PergolaGuidesPage() {
                       </Link>
                     </h3>
                   </div>
-                  <Disclosure
-                    bodyClassName="guide-hub-card__description-body"
-                    className="guide-hub-card__disclosure"
-                    data-guide-description={guide.href}
-                    desktopMinWidth={721}
-                    icon={<span className="guide-hub-card__disclosure-icon" aria-hidden="true" />}
-                    mode="desktop-expanded"
-                    summary={(
-                      <span>
-                        About this guide
-                        <span className="visually-hidden"> for {guide.title}</span>
-                      </span>
-                    )}
-                    summaryClassName="guide-hub-card__description-toggle"
-                    unstyled
-                  >
-                    <p className="guide-hub-card__summary">{guide.summary}</p>
-                  </Disclosure>
+                  <p className="guide-hub-card__summary">{guide.summary}</p>
                   <span className="guide-hub-card__arrow" aria-hidden="true">→</span>
                 </article>
               ))}

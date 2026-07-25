@@ -97,6 +97,15 @@ export type SeoLandingDisclosureGroup = {
   blockIds: readonly string[];
 };
 
+export type SeoLandingGuideFirstLayer = {
+  answerBlockId: string;
+  projectBlockId: string;
+  projectSlug: string;
+  returnHref: string;
+  returnLabel: string;
+  supportingSummary: string;
+};
+
 export type SeoLandingPageConfig = {
   marker: string;
   route: string;
@@ -122,6 +131,7 @@ export type SeoLandingPageConfig = {
   };
   blocks: readonly SeoLandingBlock[];
   blockOrder?: readonly string[];
+  guideFirstLayer?: SeoLandingGuideFirstLayer;
   mobileDisclosureGroups?: readonly SeoLandingDisclosureGroup[];
   finalCta: {
     eyebrow: string;

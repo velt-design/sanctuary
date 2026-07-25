@@ -14,6 +14,14 @@ export const gablePergolasConfig = {
   marker: 'gable-pergolas-auckland', route: '/gable-pergolas-auckland',
   description: 'Explore gable pergolas in Auckland. Understand ridge height, pitch, gable ends, roofing, drainage and house integration before planning your project.',
   schemaName: 'Gable Pergolas Auckland', serviceName: 'Custom gable pergola design and installation in Auckland', serviceType: 'Gable pergola design and installation',
+  guideFirstLayer: {
+    answerBlockId: 'gable-volume',
+    projectBlockId: 'gable-projects',
+    projectSlug: 'warkworth-outdoor-room',
+    returnHref: '/products/pergolas/gable',
+    returnLabel: 'Review the gable pergola option',
+    supportingSummary: 'Explore gable geometry, examples and planning detail',
+  },
   hero: { image: '/images/project-riverhead-gable-02.jpg', imageAlt: 'Custom black gable pergola beside a pool and Auckland home', objectPosition: '50% 45%', eyebrow: 'Gable pergolas in Auckland', title: 'A gable should borrow the home’s logic, not simply copy its pitch', intro: 'The central ridge gives an outdoor room height and presence. Sanctuary balances that volume with the existing roofline, available clearances, the view through the end and the practical path for structure and drainage.', primaryCta: 'Send the gable project', secondaryCta: 'Read the gable decisions', secondaryHref: '#gable-anatomy', proof: ['Ridge and eaves proportioned together', 'Openings protected where feasible', 'Roof and gable end resolved as one form'] },
   blocks: [
     { kind: 'split-intro', id: 'gable-volume', eyebrow: 'Height changes the room', title: 'The ridge is not decoration. It reorganises the space below.', paragraphs: [
