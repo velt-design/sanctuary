@@ -85,7 +85,7 @@ test('guide routes resolve directly with global business schema and responsive i
     expect(directResponse.status(), `${route} should return directly without a redirect`).toBe(200);
 
     await page.goto(route);
-    const main = page.locator('main[data-marketing-foundation-page]');
+    const main = page.locator('main[data-marketing-foundation-page]').last();
     const heroImage = route === '/pergola-guides'
       ? main.locator('.guide-hub-hero__image')
       : main.locator('.acrylic-hero__image');

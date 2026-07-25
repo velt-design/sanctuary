@@ -1,87 +1,391 @@
 import type { SeoLandingPageConfig } from '@/components/seo-landing/types';
 
 const faqItems = [
-  { question: 'What kinds of commercial pergola projects does Sanctuary undertake?', answer: ['Sanctuary publishes completed work across hospitality courtyards, cafe frontage, recreation settings, workplace circulation and other selected commercial sites.', 'Suitability depends on the brief, site, programme, procurement context and the responsibilities Sanctuary is being asked to carry.'] },
-  { question: 'Can a commercial pergola support an operating venue?', answer: ['The design can be planned around customer and staff routes, seating, doors, views, signage, services and access that must remain functional.', 'Construction staging and any operating constraints need to be agreed for the actual site; continuous operation should never be assumed without a confirmed programme.'] },
-  { question: 'Does Sanctuary work with architects and engineers?', answer: ['Published Sanctuary projects include collaboration with client architects, engineers and wider trade teams.', 'The project scope should identify the design author, document owner, reviewers, producer statements or other professional inputs and the party responsible for each decision.'] },
-  { question: 'Which roof types suit a commercial pergola?', answer: ['Acrylic, solid and combination roofs, along with pitched, gable and other forms, can serve different spatial and architectural briefs.', 'Selection depends on daylight, shade, building connection, drainage, services, appearance and the product evidence required for the project.'] },
-  { question: 'Can lighting, heating, blinds or signage be integrated?', answer: ['These elements can be considered where they suit the structure, products and commercial brief. Completed projects show examples of coordinated lighting, blinds and future fixing zones.', 'Loads, clearances, power, controls, fixing details, trade interfaces, access and approvals need named owners before fabrication.'] },
-  { question: 'Can the pergola align with an existing brand or building?', answer: ['Frame geometry, roof form, colour, sightlines and service placement can be developed in response to the building and venue identity.', 'Brand integration works best when exact colours, signage zones, landlord constraints and architectural references are supplied early.'] },
-  { question: 'What maintenance information should a commercial project receive?', answer: ['Request care, inspection, drainage access, product and warranty documentation that matches the exact installed assembly.', 'The handover should also identify who maintains integrated elements supplied by other trades and how safe access is provided.'] },
-  { question: 'What should be included in a commercial pergola enquiry?', answer: ['Share the site address, business or facility use, photos, drawings, approximate dimensions, required dates and the people involved in approval.', 'Include operating hours, customer and staff routes, services, signage, access, landlord conditions and any existing consultant documents.'] },
+  {
+    question: 'What kinds of commercial pergola projects does Sanctuary undertake?',
+    answer: [
+      'Sanctuary designs and builds pergolas for restaurants, cafes and other hospitality venues, along with selected workplace, recreation and customer-facing sites.',
+      'Each opportunity is assessed against the intended use, property, site conditions, operating requirements and the scope Sanctuary is being asked to manage.',
+    ],
+  },
+  {
+    question: 'Does Sanctuary design and build the complete pergola?',
+    answer: [
+      'Yes. Sanctuary develops the pergola design internally, confirms the agreed scope, project-manages delivery and builds and installs the structure.',
+      'Where specialist input or connected work is required, Sanctuary coordinates the project engineer and relevant trades so their requirements are carried through the design and site sequence.',
+    ],
+  },
+  {
+    question: 'Can Sanctuary coordinate engineering and building consent?',
+    answer: [
+      'Yes. Sanctuary has taken multiple pergola projects through the building consent process and can manage that pathway where it is required, including coordination with the project engineer and the documentation needed for the application.',
+      'Whether consent is required and whether it is granted depend on the site, use and completed design. The relevant authority remains responsible for its decision.',
+    ],
+  },
+  {
+    question: 'Can the project be planned around an operating venue?',
+    answer: [
+      'The design and delivery plan can account for opening hours, customer and staff routes, seating, doors, deliveries, noise, access and areas that must remain clear.',
+      'The achievable staging and any shutdowns need to be agreed for the actual site. Continuous operation should not be assumed until the programme and site controls are confirmed.',
+    ],
+  },
+  {
+    question: 'How does Sanctuary work with other commercial trades?',
+    answer: [
+      'Sanctuary can coordinate the interfaces with electrical, lighting, heating, blind, signage and other relevant trades within the agreed project scope.',
+      'Locations, loads, power, controls, fixings, access and installation responsibilities are identified before fabrication so each trade has a clear point of coordination.',
+    ],
+  },
+  {
+    question: 'Which roof types suit a commercial pergola?',
+    answer: [
+      'Acrylic, solid and combination roofs, together with pitched, gable and other forms, can serve different venue and architectural briefs.',
+      'The right approach depends on daylight, shade, building connection, drainage, services, appearance and the product evidence required for the project.',
+    ],
+  },
+  {
+    question: 'What does Sanctuary provide at handover?',
+    answer: [
+      'The agreed handover can include completion information, care guidance and the product and warranty documents that apply to the installed assembly.',
+      'The project scope should also identify maintenance access and the handover responsibilities of any connected trades.',
+    ],
+  },
+  {
+    question: 'What should I include in a commercial pergola enquiry?',
+    answer: [
+      'Start with the site address, venue or facility use, photos, rough dimensions and what the outdoor area should make possible for customers, staff or visitors.',
+      'Include operating hours, access constraints, landlord details, available plans, existing consultants and any target dates. The roof approach can remain undecided.',
+    ],
+  },
 ] as const;
 
 export const commercialPergolasConfig = {
-  marker: 'commercial-pergolas-auckland', route: '/commercial-pergolas-auckland',
+  marker: 'commercial-pergolas-auckland',
+  route: '/commercial-pergolas-auckland',
   enquiryType: 'commercial',
-  description: 'Plan a commercial pergola in Auckland around customers, staff, circulation, frontage, services, staging and clear project responsibility. Review Sanctuary project evidence.',
-  schemaName: 'Commercial Pergolas Auckland', serviceName: 'Commercial pergola design and installation in Auckland', serviceType: 'Commercial pergola design and installation',
-  hero: { image: '/images/project-goodhome-04.jpg', imageAlt: 'Occupied Auckland hospitality courtyard beneath a lit acrylic gable pergola', objectPosition: '50% 42%', eyebrow: 'Commercial pergolas in Auckland', title: 'A commercial pergola has to work before, during and after service', intro: 'Sanctuary plans commercial cover around the people moving below it, the building behind it and the teams required to deliver it. Customer experience, staff circulation, services, staging and responsibility belong in the brief from the start.', primaryCta: 'Share the commercial brief', secondaryCta: 'Map the operation', secondaryHref: '#commercial-brief', proof: ['Use and circulation first', 'Consultant and trade interfaces named', 'Scope built for handover'] },
+  description:
+    'Sanctuary designs and builds commercial pergolas in Auckland, coordinating engineering, consent and trades where required from venue brief to installation.',
+  schemaName: 'Commercial Pergolas Auckland',
+  serviceName: 'Commercial pergola design and build in Auckland',
+  serviceType: 'Commercial pergola design and build',
+  hero: {
+    image: '/images/project-goodhome-04.jpg',
+    imageAlt: 'Occupied Auckland hospitality courtyard beneath a lit acrylic gable pergola',
+    objectPosition: '50% 42%',
+    eyebrow: 'Commercial pergolas in Auckland',
+    title: 'You run the venue. We manage the pergola project.',
+    intro:
+      'Sanctuary designs and builds commercial pergolas, coordinating engineering, building consent and connected trades where required. You get one accountable pathway from the first site conversation through project management, installation and handover.',
+    primaryCta: 'Discuss your venue',
+    secondaryCta: 'See how we manage it',
+    secondaryHref: '#commercial-process',
+    proof: [
+      'Designed in-house',
+      'Engineering, consent and trades coordinated',
+      'Built and installed by Sanctuary',
+    ],
+  },
   blocks: [
-    { kind: 'split-intro', id: 'commercial-cover', eyebrow: 'Cover changes the operation', title: 'The structure becomes part of a working place', paragraphs: [
-      'At a restaurant it may sit over tables, queues and staff routes. At a workplace it may connect entrances. At a recreation site it may share space with visitors, signage and an active programme.',
-      'Those relationships define more than the roof footprint. They influence clearances, posts, lighting, drainage, edges, access and the sequence in which work can happen.',
-      'A commercial pergola should therefore be briefed as part of the operation and property, not as an isolated product purchase.',
-    ] },
-    { kind: 'numbered-cards', id: 'commercial-brief', eyebrow: 'Set three plans on the table', title: 'People, place and delivery need to agree', intro: 'The useful commercial brief connects daily use to architecture and procurement.', items: [
-      { title: 'The operating plan', text: 'Map customers, staff, seating, doors, queues, circulation, opening hours and the moments that must not be obstructed.' },
-      { title: 'The site plan', text: 'Locate the building, boundaries, services, drainage, foundations, access, signage and any landlord or consultant constraints.' },
-      { title: 'The responsibility plan', text: 'Name who designs, reviews, approves, supplies, powers, installs, commissions and maintains every connected element.' },
-    ] },
-    { kind: 'editorial-image', id: 'commercial-circulation', tone: 'neutral', eyebrow: 'Follow the people through the plan', title: 'A covered route is still a route', image: { src: '/images/project-kiwi-rail-01.jpg', alt: 'Long commercial canopy framing a pedestrian route between Auckland office buildings', objectPosition: '50% 50%' }, lead: 'The footprint must make sense from the first approach to the final doorway.', items: [
-      { title: 'Arrival and wayfinding', text: 'Protect the intended path without hiding entries, signs, frontage or the cues people use to understand the site.' },
-      { title: 'Clear movement', text: 'Test post positions, headroom, thresholds, doors, seating and service routes against the actual users of the space.' },
-      { title: 'Day and evening use', text: 'Coordinate daylight, artificial lighting and controls where the route or venue operates through changing conditions.' },
-      { title: 'Maintenance access', text: 'Keep drainage, lights, controls and other serviceable elements reachable within the documented operating plan.' },
-    ] },
-    { kind: 'projects', id: 'commercial-projects', eyebrow: 'Commercial proof across different briefs', title: 'The operation changes the architecture', intro: 'These completed Sanctuary projects respond to hospitality, workplace, recreation and retail-facing contexts.', items: [
-      { slug: 'goodhome-commercial-terrace', label: 'Hospitality courtyard', summary: 'A 10.09 by 6.7 metre, two-zone gable extends a restaurant courtyard while following the villa-style facade.', facts: ['67.7 m² hospitality cover', '25 degree gable relationship'] },
-      { slug: 'kiwi-rail-platform', label: 'Workplace circulation', summary: 'A 30 metre long aluminium and acrylic canopy forms a covered link between important routes at the KiwiRail head office.', facts: ['115 m² circulation canopy', 'Architect-led project'] },
-      { slug: 'lilliput-mini-golf', label: 'Recreation and staged renovation', summary: 'A 12.0 by 6.0 metre pitched pergola covers circulation and seating within a staged site refresh coordinated with the client design team.', facts: ['72 m² covered area', 'Existing levels and sightlines retained'] },
-      {
-        slug: 'atelier-shu-cafe',
-        label: 'Cafe frontage',
-        summary: 'A 9.0 by 4.0 metre aluminium gable creates a sheltered outdoor zone while responding to the existing cafe architecture and colours.',
-        facts: ['36 m² frontage cover', '30 degree gable form'],
-        image: {
-          src: '/images/project-atelier-shu-02.jpg',
-          alt: 'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
-          objectPosition: '50% 42%',
+    {
+      kind: 'split-intro',
+      id: 'commercial-value',
+      eyebrow: 'More usable space, less project to manage',
+      title: 'Make more of the venue without taking on another construction project',
+      paragraphs: [
+        'For a restaurant or cafe, a well-planned covered area can make more of existing seating, frontage or customer space. It can help the venue serve customers in changing conditions while keeping circulation and service clear.',
+        'The value is not only the finished structure. It is reaching that result without the owner having to brief and coordinate every designer, engineer, authority and trade.',
+        'Sanctuary designs the pergola internally, leads the agreed consent and coordination pathway, project-manages delivery and builds the finished structure.',
+      ],
+    },
+    {
+      kind: 'numbered-cards',
+      id: 'commercial-outcomes',
+      eyebrow: 'Practical value for a working venue',
+      title: 'The space should earn its place in the operation',
+      intro: 'Good design begins with what customers, staff and the property need the space to do.',
+      items: [
+        {
+          title: 'More usable customer space',
+          text: 'Plan cover over seating, frontage or arrival areas so valuable outdoor space can be used more often, within the limits of the site and completed design.',
         },
+        {
+          title: 'A design that belongs',
+          text: 'Shape the roof, frame, colour, light and integrated features around the venue architecture and the experience presented to customers.',
+        },
+        {
+          title: 'An easier delivery path',
+          text: 'Keep design, engineering, building consent, connected trades, site works and handover moving through one Sanctuary-led project plan.',
+        },
+      ],
+    },
+    {
+      kind: 'projects',
+      id: 'commercial-projects',
+      eyebrow: 'Hospitality projects first',
+      title: 'See how completed venues made outdoor space part of the business',
+      intro:
+        'The Good Home and Atelier Shu show two hospitality responses, followed by broader commercial work across recreation and workplace settings.',
+      items: [
+        {
+          slug: 'goodhome-commercial-terrace',
+          label: 'Restaurant courtyard',
+          summary:
+            'A 10.09 by 6.7 metre, two-zone gable extends the restaurant into a covered courtyard while following the villa-style facade.',
+          facts: ['67.7 m² hospitality cover', '25 degree gable relationship'],
+        },
+        {
+          slug: 'atelier-shu-cafe',
+          label: 'Cafe frontage',
+          summary:
+            'A 9.0 by 4.0 metre aluminium gable adds a sheltered outdoor zone while matching the existing cafe architecture and colours.',
+          facts: ['36 m² frontage cover', '30 degree gable form'],
+          image: {
+            src: '/images/project-atelier-shu-02.jpg',
+            alt: 'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
+            objectPosition: '50% 42%',
+          },
+        },
+        {
+          slug: 'lilliput-mini-golf',
+          label: 'Recreation venue',
+          summary:
+            'A 12.0 by 6.0 metre pitched pergola covers circulation and seating within a staged site refresh coordinated with the client design team.',
+          facts: ['72 m² covered area', 'Existing levels and sightlines retained'],
+        },
+        {
+          slug: 'kiwi-rail-platform',
+          label: 'Workplace circulation',
+          summary:
+            'A 30 metre long aluminium and acrylic canopy forms a covered link between important routes at the KiwiRail head office.',
+          facts: ['115 m² circulation canopy', 'Architect-led project'],
+        },
+      ],
+    },
+    {
+      kind: 'process',
+      id: 'commercial-process',
+      eyebrow: 'One accountable pathway',
+      title: 'From the first venue conversation to the installed project',
+      intro:
+        'Sanctuary leads each agreed stage, with site requirements and professional inputs confirmed for the actual project.',
+      items: [
+        {
+          title: 'Define the venue opportunity',
+          copy: 'Understand the customer or operational value, daily use, property stakeholders, existing information, access constraints and the outcome the space needs to support.',
+        },
+        {
+          title: 'Design the pergola in-house',
+          copy: 'Measure the site and develop the form, structure, roof, drainage, finishes and integrated features around the venue and building.',
+        },
+        {
+          title: 'Coordinate engineering and consent',
+          copy: 'Where required, coordinate the project engineer and manage the building consent documentation and process. Requirements and approval remain specific to the site and completed design.',
+        },
+        {
+          title: 'Align trades and project delivery',
+          copy: 'Confirm the interfaces with electrical, lighting, heating, blinds, signage or other trades, then project-manage procurement and the agreed site sequence.',
+        },
+        {
+          title: 'Build, install and hand over',
+          copy: 'Build and install the agreed pergola, coordinate completion items and provide the handover information included in the project scope.',
+        },
+      ],
+    },
+    {
+      kind: 'decision-cards',
+      id: 'commercial-decisions',
+      tone: 'warm',
+      eyebrow: 'What Sanctuary brings together',
+      title: 'The moving parts stay connected under one project plan',
+      intro: 'The commercial owner has one experienced team leading the agreed design and build pathway.',
+      items: [
+        {
+          title: 'Venue and architectural design',
+          outcome: 'An in-house design arranged around customers, staff, furniture, circulation and the character of the property.',
+          consider: 'Peak use, seating, accessibility, exits, service routes, sightlines, facade, roofline, colours and future layout changes.',
+        },
+        {
+          title: 'Engineering and consent',
+          outcome: 'A project-specific technical and documentation pathway coordinated alongside the evolving design.',
+          consider: 'Existing information, site conditions, structural inputs, required documents, authority process, reviews and sign-offs.',
+        },
+        {
+          title: 'Connected trades and services',
+          outcome: 'Lighting, heating, blinds, signage, power and controls coordinated with the structure rather than added as competing late decisions.',
+          consider: 'Loads, locations, clearances, fixings, cabling, controls, installers, commissioning and future access.',
+        },
+        {
+          title: 'Project management and build',
+          outcome: 'A clear scope and sequence from procurement through installation, completion and agreed handover.',
+          consider: 'Operating hours, site access, public separation, protection, other trades, inspections, documents and maintenance access.',
+        },
+      ],
+    },
+    {
+      kind: 'editorial-image',
+      id: 'commercial-circulation',
+      tone: 'neutral',
+      eyebrow: 'Keep the venue working',
+      title: 'Plan the installation around the operation, not just the footprint',
+      image: {
+        src: '/images/project-kiwi-rail-01.jpg',
+        alt: 'Long commercial canopy framing a pedestrian route between Auckland office buildings',
+        objectPosition: '50% 50%',
       },
-    ] },
-    { kind: 'decision-cards', id: 'commercial-decisions', tone: 'warm', eyebrow: 'Coordinate before fabrication', title: 'Four commercial decisions carry through the whole project', intro: 'Each one needs an owner, evidence and an agreed point of sign-off.', items: [
-      { title: 'Use and capacity', outcome: 'A structure arranged around customers, staff, furniture, paths and required clear space.', consider: 'Peak use, accessibility, exits, doors, queues, service routes, sightlines and future layout changes.' },
-      { title: 'Building and brand', outcome: 'A roof and frame that relate deliberately to the property and venue identity.', consider: 'Facade, roofline, colour references, signage, landlord requirements, boundaries and nearby windows.' },
-      { title: 'Structure and services', outcome: 'A coordinated assembly rather than competing late-stage installations.', consider: 'Loads, drainage, lighting, heating, blinds, power, controls, cabling, fire or other consultant requirements and access.' },
-      { title: 'Delivery and handover', outcome: 'A sequence and responsibility split the project team can act on.', consider: 'Approvals, procurement, site access, operating constraints, protection, other trades, commissioning, documents and maintenance.' },
-    ] },
-    { kind: 'dark-cards', id: 'commercial-risks', eyebrow: 'Protect the operation from ambiguity', title: 'The expensive gap is often between scopes', intro: 'A commercial project can look coordinated on a rendering while responsibilities remain unresolved.', items: [
-      { title: 'A service without a fixing owner', text: 'Lighting, heating, blinds, signage and cabling need loads, locations, power and installers assigned before the frame is made.' },
-      { title: 'A programme without operating rules', text: 'Access, noise, protection, public separation, shutdowns and other trades need an agreed site sequence.' },
-      { title: 'A quote without handover boundaries', text: 'Commissioning, product documents, care, warranties, inspections and maintenance access need to be included or clearly excluded.' },
-    ], links: [{ href: '/projects', label: 'Browse completed projects' }, { href: '/pergola-cost-auckland', label: 'Review commercial scope drivers' }] },
-    { kind: 'process', id: 'commercial-process', eyebrow: 'A project-team sequence', title: 'Move from operational brief to documented handover', intro: 'The exact pathway varies with procurement and approvals, but the responsibilities should remain visible.', items: [
-      { title: 'Establish use and stakeholders', copy: 'Confirm the business need, site users, decision-makers, property owner, consultants, operational constraints and desired outcome.' },
-      { title: 'Review the site and documents', copy: 'Assess photos, surveys, plans, existing structure, services, access, drainage and the information still required.' },
-      { title: 'Develop and coordinate the design', copy: 'Resolve geometry, structure, roof, edges, finishes, services and interfaces with the relevant project team.' },
-      { title: 'Confirm scope and approvals', copy: 'Document drawings, products, responsibilities, professional inputs, inclusions, exclusions, programme assumptions and sign-offs.' },
-      { title: 'Install and hand over', copy: 'Sequence procurement and site work around the agreed operating constraints, coordinate connected trades, then provide the agreed completion and product information.' },
-    ] },
-    { kind: 'link-cards', id: 'commercial-next-decisions', tone: 'neutral', eyebrow: 'Continue the procurement brief', title: 'Continue with the relevant specialist guidance', items: [
-      { title: 'Resolve a bespoke interface', text: 'Use the custom guide for difficult connections, restricted supports and consultant-led geometry.', href: '/custom-pergolas-auckland', linkLabel: 'Open the custom guide' },
-      { title: 'Compare commercial scope', text: 'Use the cost guide to align inclusions, exclusions, access, approvals and connected trades.', href: '/pergola-cost-auckland', linkLabel: 'Open the cost guide' },
-      { title: 'Review completed work', text: 'See dimensions, constraints and design responses in the project library.', href: '/projects', linkLabel: 'Browse projects' },
-    ] },
-    { kind: 'faq', id: 'commercial-pergolas-faq', tone: 'elevated', eyebrow: 'Questions for the project team', title: 'What to resolve before procuring a commercial pergola in Auckland', intro: 'The answer depends on the business use, property, project team, products and completed design.', items: faqItems },
+      lead: 'Commercial sites bring opening hours, customers, staff, neighbours, deliveries and other trades into the build plan.',
+      items: [
+        {
+          title: 'Customer and staff routes',
+          text: 'Test posts, headroom, thresholds, doors, seating and temporary work areas against the people who use the site.',
+        },
+        {
+          title: 'Access and protection',
+          text: 'Agree delivery access, storage, public separation, noise limits and protection of the existing venue before site work begins.',
+        },
+        {
+          title: 'Services and shutdowns',
+          text: 'Coordinate power, controls and connected work with the programme, including any periods when an area cannot operate normally.',
+        },
+        {
+          title: 'Completion and future access',
+          text: 'Keep drainage, lights, controls and other serviceable elements accessible and record the relevant handover responsibilities.',
+        },
+      ],
+    },
+    {
+      kind: 'dark-cards',
+      id: 'commercial-risks',
+      eyebrow: 'Less ambiguity, fewer owner handoffs',
+      title: 'One project lead helps close the gaps between scopes',
+      intro:
+        'Sanctuary cannot remove every project variable, but it can make ownership, dependencies and the next decision visible.',
+      items: [
+        {
+          title: 'Design and engineering stay connected',
+          text: 'The in-house design develops alongside coordinated project-specific engineering so structural requirements can inform the agreed form and details.',
+        },
+        {
+          title: 'Consent has a named pathway',
+          text: 'Where building consent is required, Sanctuary manages the process and coordinates the information needed while the authority retains the approval decision.',
+        },
+        {
+          title: 'The structure and other trades meet on one plan',
+          text: 'Fixings, power, loads, locations, installation responsibilities and completion items are assigned before they become site problems.',
+        },
+      ],
+      links: [
+        { href: '/projects', label: 'Browse completed projects' },
+        { href: '/pergola-cost-auckland', label: 'Review commercial scope drivers' },
+      ],
+    },
+    {
+      kind: 'link-cards',
+      id: 'commercial-next-decisions',
+      tone: 'neutral',
+      eyebrow: 'Continue planning',
+      title: 'Bring the next commercial decision into focus',
+      items: [
+        {
+          title: 'Resolve a bespoke interface',
+          text: 'Use the custom guide for difficult connections, restricted supports and consultant-led geometry.',
+          href: '/custom-pergolas-auckland',
+          linkLabel: 'Open the custom guide',
+        },
+        {
+          title: 'Compare complete scope',
+          text: 'Use the cost guide to align inclusions, exclusions, access, approvals and connected trades.',
+          href: '/pergola-cost-auckland',
+          linkLabel: 'Open the cost guide',
+        },
+        {
+          title: 'Review completed work',
+          text: 'See dimensions, constraints and design responses across hospitality and other commercial projects.',
+          href: '/projects',
+          linkLabel: 'Browse projects',
+        },
+      ],
+    },
+    {
+      kind: 'faq',
+      id: 'commercial-pergolas-faq',
+      tone: 'elevated',
+      eyebrow: 'Questions from commercial owners',
+      title: 'What to know before starting a commercial pergola in Auckland',
+      intro:
+        'Sanctuary can define the pathway with you. The exact design, engineering, consent and delivery requirements remain project-specific.',
+      items: faqItems,
+    },
   ],
-  finalCta: { eyebrow: 'Start with the operating brief', title: 'Give Sanctuary the site, stakeholders and constraints', text: 'A useful commercial enquiry explains who uses the space, what must keep working and which documents or project partners already exist.', button: 'Share the commercial brief', checklistTitle: 'Useful first inputs', checklist: ['Site address and business use', 'Photos, plans and rough dimensions', 'Customer and staff movement', 'Operating and access constraints', 'Property owner or landlord details', 'Architect and consultant contacts', 'Services and integrated features', 'Target dates and approval status'] },
-  form: { ariaLabel: 'Commercial pergola project enquiry form', eyebrow: 'Start with the project team', heading: 'Share the commercial pergola brief', intro: 'Select Commercial in the enquiry type, then outline the site, use, stakeholders, documents and delivery constraints. Roof preferences can remain provisional.', submitLabel: 'Share the commercial brief', messageLabel: 'Commercial project brief', messagePlaceholder: 'Describe the site use, operational outcome, stakeholders, procurement context and what must keep working during delivery.', briefFields: [
-    { name: 'siteAddress', label: 'Site address', type: 'text', placeholder: 'Street address', wide: true },
-    { name: 'projectStage', label: 'Project stage', type: 'select', options: ['Early feasibility', 'Concept design', 'Consultant documentation', 'Procurement', 'Ready for a detailed proposal'] },
-    { name: 'professionalInvolvement', label: 'Project team', type: 'text', placeholder: 'Client, architect, engineer, builder, landlord or other consultants' },
-    { name: 'operatingConstraints', label: 'Operating, access and staging constraints', type: 'textarea', placeholder: 'Include opening hours, public routes, shutdown limits, delivery access and other trades.', wide: true },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
-    { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
-  ] } },
+  finalCta: {
+    eyebrow: 'Start with the opportunity',
+    title: 'Show us the venue and what the space needs to do',
+    text: 'You do not need a complete consultant brief. Share the site, customer or operational outcome and known constraints, and Sanctuary can map the design, coordination and build pathway from there.',
+    button: 'Discuss your venue',
+    checklistTitle: 'Useful first inputs',
+    checklist: [
+      'Site address and business use',
+      'Photos, plans and rough dimensions',
+      'Customer, seating or service outcome',
+      'Opening hours and access constraints',
+      'Property owner or landlord details',
+      'Existing architect or consultant contacts',
+      'Services and integrated features',
+      'Target dates and current project stage',
+    ],
+  },
+  form: {
+    ariaLabel: 'Commercial pergola project enquiry form',
+    eyebrow: 'Talk to the design and build team',
+    heading: 'Discuss your commercial pergola project',
+    intro:
+      'Tell us about the venue and the outcome you want. Sanctuary can help define the design, engineering, consent, trade coordination and delivery pathway from there.',
+    submitLabel: 'Discuss your venue',
+    messageLabel: 'What should the space achieve?',
+    messagePlaceholder:
+      'Describe the venue, the customer or operational value you want, and anything that must keep working during the project.',
+    briefFields: [
+      {
+        name: 'siteAddress',
+        label: 'Site address',
+        type: 'text',
+        placeholder: 'Street address',
+        wide: true,
+      },
+      {
+        name: 'projectStage',
+        label: 'Project stage',
+        type: 'select',
+        options: [
+          'Initial idea',
+          'Site or landlord review',
+          'Concept design',
+          'Consent or consultant coordination',
+          'Ready for a detailed proposal',
+        ],
+      },
+      {
+        name: 'professionalInvolvement',
+        label: 'Existing project team or property contacts',
+        type: 'text',
+        placeholder: 'Landlord, architect, engineer, builder or other consultants',
+      },
+      {
+        name: 'operatingConstraints',
+        label: 'Operating, access and staging constraints',
+        type: 'textarea',
+        placeholder: 'Include opening hours, public routes, shutdown limits, delivery access and other trades.',
+        wide: true,
+      },
+    ],
+    roofPreference: {
+      label: 'Possible roof approach',
+      detailKey: 'roofPreference',
+      options: [
+        { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },
+        { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] },
+        { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] },
+        { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
+      ],
+    },
+  },
 } satisfies SeoLandingPageConfig;

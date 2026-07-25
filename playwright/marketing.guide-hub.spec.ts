@@ -48,14 +48,14 @@ for (const viewport of viewports) {
     await preparePage(page);
     await page.goto(route);
 
-    const main = page.locator('main[data-pergola-guide-hub]');
+    const main = page.locator('main[data-pergola-guide-hub]:visible');
     await expect(page).toHaveTitle(title);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', description);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
     await expect(page.getByRole('heading', { level: 1, name: 'Find the guide for the decision in front of you' })).toBeVisible();
-    await expect(page.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
-    await expect(page.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
+    await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
+    await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('[data-guide-link]')).toHaveCount(expectedGuides.length);
     await expect(main.getByRole('navigation', { name: 'Guide chapters' }).locator('a')).toHaveCount(3);
@@ -67,6 +67,11 @@ for (const viewport of viewports) {
       await expect(link).toContainText(guide.title);
       await expect(link).toContainText(guide.label);
     }
+    const commercialGuide = main.locator('[data-guide-link][href="/commercial-pergolas-auckland"]');
+    await expect(commercialGuide).toContainText('Make more of the venue');
+    await expect(commercialGuide).toContainText(
+      'How Sanctuary designs and builds commercial pergolas while coordinating engineering, consent and trades from the venue brief through installation.',
+    );
 
     const renderedGuides = await main.locator('[data-guide-link]').evaluateAll((links) => links.map((link) => ({
       number: link.querySelector('.guide-hub-card__number')?.textContent?.trim(),
@@ -143,7 +148,8 @@ test('all ten guide destinations, sitemap entry, footer discovery and ordered sc
   expect(historicBrochure.headers()['x-robots-tag']).toContain('noindex');
   await page.goto('/products/pergolas/gable');
   await expect(page.locator('a[href="/downloads/Sanctuary-Pergolas-Brochure.pdf"]')).toHaveCount(0);
-  const currentGuideLinks = page.locator('a[href="/pergola-guides"]', { hasText: 'Pergola Design Guides' });
-  expect(await currentGuideLinks.count()).toBeGreaterThan(0);
-  await expect(currentGuideLinks.first()).toContainText('Pergola Design Guides');
+  await expect(
+    page.getByRole('navigation', { name: 'Footer navigation' })
+      .getByRole('link', { name: 'Pergola Guides' }),
+  ).toHaveAttribute('href', '/pergola-guides');
 });

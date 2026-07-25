@@ -31,6 +31,14 @@ The source does not contain a formal legal claim-approval register. In this pack
 
 This is the clearest synthesis of recurring customer demand. Customers repeatedly want to cover a deck or outdoor area, but they do not want the result to feel dark, boxed in, visually awkward or detached from the architecture.
 
+### Commercial positioning statement
+
+**Sanctuary designs and builds commercial pergolas for hospitality and selected commercial sites, giving owners one experienced team to lead the project from the first venue brief through design, coordination and installation.**
+
+For commercial work, the customer is buying both a better-used space and a simpler delivery path. Sanctuary designs internally, coordinates the project engineer and connected trades, manages the building-consent process where it is required, project-manages delivery and builds and installs the pergola. Building-consent requirements and outcomes remain specific to the site, use and completed design, and the relevant authority retains the approval decision.
+
+The strongest hospitality message is not a revenue guarantee. It is that a restaurant or cafe can make more of its outdoor seating, frontage or customer area without the owner having to manage every designer, consultant, authority and trade. Lead with the practical value of the space and reduced owner workload, then substantiate it with the managed pathway and completed hospitality projects.
+
 ### Category and premium stance
 
 Sanctuary should be positioned as a **custom pergola design-and-installation specialist**, not a commodity roof supplier, generic kitset seller or cheapest-price operator.
@@ -200,6 +208,16 @@ Sanctuary should win through **fit, clarity, design judgement and proof**, not c
 **Main objections:** Removal, compatibility with existing structures, cost, weather performance and whether repair or full replacement is more sensible.
 
 **Best message:** Show before-and-after transformations and explain why the proposed scope is a repair, partial upgrade or replacement.
+
+### Commercial ICP: The hospitality owner who does not want another project to manage
+
+**Situation:** Runs a restaurant, cafe or other customer-facing venue with outdoor seating, frontage or circulation space that could be more useful with well-designed cover.
+
+**Desired outcome:** More usable customer space that suits the venue and one clear path from the initial idea through design, required professional input, approvals, installation and handover.
+
+**Main objections:** Owner workload, uncertainty about engineering or building consent, disruption to the operating venue, coordination between trades, architectural fit and whether the complete scope is clear.
+
+**Best message:** Lead with the value of making more of the venue and reducing the owner's coordination burden. Explain that Sanctuary designs internally, coordinates the engineer and connected trades, manages the building-consent pathway where required, project-manages delivery and builds and installs the structure. Use completed hospitality projects as proof, without promising revenue growth, consent approval or uninterrupted operation.
 
 ### Lower-fit or qualification-heavy enquiries
 

@@ -19,7 +19,7 @@ This document tracks the ten approved Sanctuary marketing landing pages. Pages a
 | 7 | Outdoor Rooms Auckland | `/outdoor-rooms-auckland` | Complete | Complete room planning across roof, edges, lighting, heating and use. |
 | 8 | Pergolas With Blinds | `/pergolas-with-blinds` | Complete | Edge protection, wind, low sun, privacy, enclosure and blind integration. |
 | 9 | Acrylic Pergolas vs Louvre Roofs | `/acrylic-pergolas-vs-louvre-roofs` | Complete | Decision-led comparison with all product and performance claims gated for review. |
-| 10 | Commercial Pergolas Auckland | `/commercial-pergolas-auckland` | Complete | Hospitality and selected commercial scope, coordination and operational context. |
+| 10 | Commercial Pergolas Auckland | `/commercial-pergolas-auckland` | Complete | Hospitality-first design-and-build service, with one Sanctuary-led pathway through required coordination and installation. |
 
 ## Public guide directory
 
@@ -145,11 +145,12 @@ Existing project photography and project facts come from `apps/marketing/data/pr
 
 ### Page 10: Commercial Pergolas Auckland
 
+- Current positioning: the page leads with more usable venue space and less owner coordination, then proves Sanctuary's in-house design, engineer and trade coordination, building-consent management where required, project management, build and installation. Good Home and Atelier Shu appear first, with recreation and workplace work retaining broader commercial credibility.
 - Focused browser contract: 7 of 7 passed across four widths and originality comparisons against all earlier pages.
 - Final marketing browser suite: 95 of 95 passed with one worker, including programme-wide unique route/title/description/H1 checks and a computed `#4f5748` olive-green accent assertion on every page.
 - Marketing typecheck and production build: passed; `/commercial-pergolas-auckland` generated as a static route. The final build used an isolated output directory because an existing local development server held the default `.next` directory open.
-- Visual evidence: `artifacts/marketing-seo-landing/commercial-pergolas-auckland/` includes operational hero, four fully loaded project proofs, coordination decisions and form captures at all four widths.
-- Distinct narrative: the page maps people, place and responsibility through use, circulation, building identity, services, staging and handover instead of presenting a residential page with commercial labels.
+- Visual evidence: `artifacts/marketing-seo-landing/commercial-pergolas-auckland/` includes the hospitality-first hero, four fully loaded project proofs, managed-project decisions and form captures at all four widths.
+- Distinct narrative: the page speaks first to restaurant and cafe owners who want a valuable outdoor area without managing another construction project, then shows how Sanctuary carries design, coordination and delivery through one commercial pathway.
 
 ## Programme closure
 

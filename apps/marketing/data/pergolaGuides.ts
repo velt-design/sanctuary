@@ -67,9 +67,9 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         number: '04',
         href: '/commercial-pergolas-auckland',
         title: 'Commercial Pergolas Auckland',
-        prompt: 'Coordinate operation and delivery',
+        prompt: 'Make more of the venue',
         summary:
-          'A project guide for hospitality, workplace and customer-facing outdoor areas with commercial use and coordination needs.',
+          'How Sanctuary designs and builds commercial pergolas while coordinating engineering, consent and trades from the venue brief through installation.',
         role: 'service',
         label: 'Service guide',
       },
