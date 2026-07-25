@@ -407,6 +407,45 @@ test('validation is specific, focuses an error summary and preserves entered det
   await expect(page.getByLabel('Email Optional')).toBeFocused();
 });
 
+test('direct form puts the useful first brief before optional technical detail', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  await page.goto(route, { waitUntil: 'networkidle' });
+
+  await expect(page.getByRole('group', { name: 'Project type Required' })).toBeVisible();
+  await expect(page.getByLabel('Name Required')).toHaveAttribute('required', '');
+  await expect(page.getByLabel('Phone Required')).toHaveAttribute('required', '');
+  await expect(page.getByLabel('Suburb Optional')).not.toHaveAttribute('required', '');
+  await expect(page.getByLabel('Project brief Optional')).not.toHaveAttribute('required', '');
+  await expect(page.getByLabel('Email Optional')).not.toHaveAttribute('required', '');
+
+  const orderedFields = [
+    '#contact-enquiry-type-residential',
+    '#contact-suburb',
+    '#contact-message',
+    '#contact-name',
+    '#contact-phone',
+    '#contact-email',
+    '#contact-width',
+  ];
+  expect(await page.locator(orderedFields.join(', ')).evaluateAll((fields) => (
+    fields.map((field) => `#${field.id}`)
+  ))).toEqual(orderedFields);
+
+  await expect(page.getByRole('group', { name: 'Roof approach Optional' })).toBeVisible();
+  await expect(page.locator('#contact-files')).toBeVisible();
+  await expect(page.locator('#contact-files')).toHaveAttribute(
+    'accept',
+    '.pdf,.jpg,.jpeg,.png,.webp',
+  );
+  await expect(page.getByText(
+    'PDF, JPG, JPEG, PNG or WebP. Add up to 8 files. Each file can be up to 20 MB, with 20 MB total.',
+    { exact: true },
+  )).toBeVisible();
+});
+
 test('API errors keep values and retries reuse the submission UUID', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
@@ -447,6 +486,10 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
     'Thank you. We have your project brief.',
   );
   await expect(page.getByRole('status')).toBeFocused();
+  await expect(page.getByLabel('Name Required')).toHaveValue('Test Person');
+  await expect(page.getByLabel('Project brief Optional')).toHaveValue(
+    'Keep this project brief.',
+  );
   expect(payloads).toHaveLength(2);
   expect(payloads[0]?.submissionId).toBe(payloads[1]?.submissionId);
   expect(payloads[0]).toMatchObject({

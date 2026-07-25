@@ -549,6 +549,12 @@ Acceptance criteria:
 
 ### PR 2: Align enquiry form contract, terminology and uploads
 
+Implementation status, 25 July 2026: implemented in the Phase 1 form-contract
+checkpoint on `main`. Direct and embedded forms now consume one validator,
+audience option set, context presentation and upload instruction contract.
+Focused unit, API and browser suites are green; deployed production verification
+remains part of the Phase 1 completion gate after PR 3.
+
 | Field | Definition |
 |---|---|
 | Single user outcome | A visitor sees one understandable first-step brief regardless of where the enquiry begins |

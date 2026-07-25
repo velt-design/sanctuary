@@ -68,7 +68,7 @@ export const pergolasWithBlindsConfig = {
     { name: 'openingDimensions', label: 'Approximate blind opening', type: 'text', placeholder: 'Width and height if known' },
     { name: 'controlPreference', label: 'Control preference', type: 'select', options: ['Manual', 'Motorised', 'Compare both', 'Unsure'] },
     { name: 'edgeCondition', label: 'Direction, timing and affected activity', type: 'textarea', placeholder: 'For example: western sun at the dining table in late afternoon.', wide: true },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

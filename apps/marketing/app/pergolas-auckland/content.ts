@@ -207,7 +207,6 @@ export const faqItems = [
 ] as const;
 
 export const generalRoofPreference = {
-  label: 'Preferred roof approach',
   detailKey: 'roofPreference' as const,
   options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },

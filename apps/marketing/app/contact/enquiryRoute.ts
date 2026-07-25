@@ -1,23 +1,10 @@
-import { parseEnquiryContext } from '../../lib/enquiryContext';
+import { parseEnquiryContext, type EnquiryAudience } from '../../lib/enquiryContext';
 
-export type EnquiryType = 'Residential' | 'Commercial' | 'Professional';
-
-const enquiryTypeLabels = {
-  residential: 'Residential',
-  commercial: 'Commercial',
-  professional: 'Professional',
-} as const satisfies Record<string, EnquiryType>;
-
-export function getEnquiryTypeFromRouteValue(
-  value: string | undefined,
-): EnquiryType | null {
-  const enquiryType = parseEnquiryContext({ enquiry_type: value }).enquiryType;
-  return enquiryType ? enquiryTypeLabels[enquiryType] : null;
+export function getEnquiryTypeFromRouteValue(value: string | undefined): EnquiryAudience | null {
+  return parseEnquiryContext({ enquiry_type: value }).enquiryType ?? null;
 }
 
-export function getEnquiryTypeFromSearch(search: string): EnquiryType | null {
+export function getEnquiryTypeFromSearch(search: string): EnquiryAudience | null {
   const params = Object.fromEntries(new URLSearchParams(search).entries());
-  return getEnquiryTypeFromRouteValue(
-    parseEnquiryContext(params).enquiryType,
-  );
+  return getEnquiryTypeFromRouteValue(parseEnquiryContext(params).enquiryType);
 }

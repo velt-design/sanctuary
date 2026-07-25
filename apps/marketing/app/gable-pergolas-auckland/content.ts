@@ -64,7 +64,7 @@ export const gablePergolasConfig = {
   form: { ariaLabel: 'Gable pergola project enquiry form', eyebrow: 'Start with the section', heading: 'Send your gable pergola project', intro: 'Share the roofline, openings, rough dimensions and intended use. You can leave the final pitch, ridge and roof material open for assessment.', submitLabel: 'Send the gable project', messageLabel: 'Why are you considering a gable?', messagePlaceholder: 'Describe the volume, roofline relationship, view or room arrangement you want the central ridge to support.', briefFields: [
     { name: 'gableEndPreference', label: 'Gable-end preference', type: 'select', options: ['Open end', 'Framed end', 'Infill to be explored', 'Unsure'] },
     { name: 'rooflineContext', label: 'Existing roofline and opening context', type: 'textarea', placeholder: 'Note door heads, eaves, windows, approximate ridge relationship or other height constraints.', wide: true },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

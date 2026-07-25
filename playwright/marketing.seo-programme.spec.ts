@@ -157,6 +157,8 @@ const viewports = [
   { name: '390x844', width: 390, height: 844 },
 ];
 const capturePhase = process.env.MARKETING_SEO_PROGRAMME_CAPTURE_PHASE?.trim();
+const phaseOneCapture = process.env.MARKETING_PHASE_ONE_CAPTURE === '1';
+const phaseOneEvidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase-1');
 
 async function preparePage(page: Page) {
   await page.addInitScript(() => window.localStorage.setItem('sp_consent_v1', JSON.stringify({ analytics: false, marketing: false, updatedAt: new Date().toISOString(), version: 1 })));
@@ -284,7 +286,37 @@ for (const programmePage of pages) {
       ? 'commercial'
       : 'residential';
     const main = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
+    const orderedFields = [
+      '#acrylic-enquiry-type',
+      '#acrylic-enquiry-suburb',
+      '#acrylic-enquiry-message',
+      '#acrylic-enquiry-name',
+      '#acrylic-enquiry-phone',
+      '#acrylic-enquiry-email',
+      'input[name="widthM"]',
+    ];
+
     await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(expectedEnquiryType);
+    await expect(main.locator('#acrylic-enquiry-type')).toHaveAttribute('required', '');
+    await expect(main.locator('#acrylic-enquiry-name')).toHaveAttribute('required', '');
+    await expect(main.locator('#acrylic-enquiry-phone')).toHaveAttribute('required', '');
+    await expect(main.locator('#acrylic-enquiry-suburb')).not.toHaveAttribute('required', '');
+    await expect(main.locator('#acrylic-enquiry-message')).not.toHaveAttribute('required', '');
+    await expect(main.locator('#acrylic-enquiry-email')).not.toHaveAttribute('required', '');
+    expect(await main.locator(orderedFields.join(', ')).evaluateAll((fields) => (
+      fields.map((field) => field.id ? `#${field.id}` : `input[name="${field.getAttribute('name')}"]`)
+    ))).toEqual(orderedFields);
+    await expect(main.getByLabel('Roof approach Optional')).toBeVisible();
+    await expect(main.getByText('Preferred roof approach', { exact: true })).toHaveCount(0);
+    await expect(main.getByText('Possible roof approach', { exact: true })).toHaveCount(0);
+    await expect(main.locator('#acrylic-enquiry-files')).toHaveAttribute(
+      'accept',
+      '.pdf,.jpg,.jpeg,.png,.webp',
+    );
+    await expect(main.getByText(
+      'PDF, JPG, JPEG, PNG or WebP. Add up to 8 files. Each file can be up to 20 MB, with 20 MB total.',
+      { exact: true },
+    )).toBeVisible();
     await main.locator('#acrylic-enquiry-name').fill('Test Person');
     await main.locator('#acrylic-enquiry-phone').fill('021 000 0000');
     await main.locator('#acrylic-enquiry-email').fill('test@example.com');
@@ -294,6 +326,9 @@ for (const programmePage of pages) {
     await main.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
     await page.getByRole('button', { name: programmePage.submitLabel }).click();
     await expect(main.getByText('Thanks, we have received your project details.')).toBeVisible();
+    await expect(main.locator('#acrylic-enquiry-name')).toHaveValue('Test Person');
+    await expect(main.locator('#acrylic-enquiry-phone')).toHaveValue('021 000 0000');
+    await expect(main.locator('#acrylic-enquiry-message')).toHaveValue('We need a site-specific design and can send photos.');
     expect(submittedBody).toMatchObject({
       enquiryType: expectedEnquiryType,
       enquiryContext: {
@@ -343,5 +378,33 @@ test('all programme pages keep unique SEO identities and the approved green acce
     await expect(main).toHaveCount(1);
     const accent = await main.evaluate((main) => getComputedStyle(main).getPropertyValue('--color-accent-olive').trim());
     expect(accent, `${programmePage.route} should retain the olive-green foundation accent`).toBe('#4f5748');
+  }
+});
+
+test('capture Phase 1 embedded commercial form at the target mobile widths', async ({
+  page,
+}) => {
+  test.skip(!phaseOneCapture, 'Set MARKETING_PHASE_ONE_CAPTURE=1 to capture Phase 1 evidence.');
+  await mkdir(phaseOneEvidenceDirectory, { recursive: true });
+  await preparePage(page);
+
+  for (const width of [360, 390, 430] as const) {
+    await page.setViewportSize({ width, height: 932 });
+    await page.goto('/commercial-pergolas-auckland#project-details', {
+      waitUntil: 'networkidle',
+    });
+    const form = page.locator(
+      'main[data-seo-landing="commercial-pergolas-auckland"] form.acrylic-form',
+    );
+    await expect(form).toBeVisible();
+    await expect(form.getByLabel('Enquiry context')).toContainText('Commercial enquiry');
+    await form.getByLabel('Enquiry context').scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -72));
+    await page.screenshot({
+      path: path.join(
+        phaseOneEvidenceDirectory,
+        `embedded-commercial-form-${width}.png`,
+      ),
+    });
   }
 });

@@ -137,7 +137,6 @@ export type SeoLandingPageConfig = {
     messagePlaceholder?: string;
     briefFields?: readonly EnquiryBriefField[];
     roofPreference?: {
-      label: string;
       detailKey: 'acrylicOption' | 'roofPreference';
       options: ReadonlyArray<{ label: string; value: string; roofMaterials: ReadonlyArray<string> }>;
     };

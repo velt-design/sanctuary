@@ -64,7 +64,7 @@ export const pitchedPergolasConfig = {
   form: { ariaLabel: 'Pitched pergola project enquiry form', eyebrow: 'Start with both edges', heading: 'Send your pitched pergola project', intro: 'Share the house connection, doors, side views and rough dimensions. You can leave the exact fall, support and roof material open for assessment.', submitLabel: 'Send the pitched project', messageLabel: 'What should the single roof plane resolve?', messagePlaceholder: 'Describe the house connection, available height, desired low edge, drainage direction and view you want to preserve.', briefFields: [
     { name: 'drainageEdge', label: 'Preferred drainage edge', type: 'text', placeholder: 'Note the side if known, or leave open' },
     { name: 'heightConstraints', label: 'High and low edge constraints', type: 'textarea', placeholder: 'Note eaves, soffits, door heads, windows, steps or boundaries that affect the section.', wide: true },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

@@ -110,19 +110,22 @@ browser context is a required server-rendering check: one route-owned `main`
 and H1, the next action, and complete open supporting content must remain
 visible without hydration.
 
-Contact-page changes should run
-`npx vitest run apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts`
+Contact-page or embedded-enquiry changes should run
+`npx vitest run apps/marketing/lib/enquiryFormContract.test.ts apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts apps/marketing/app/api/enquiry/route.test.ts`
 and
-`npx playwright test playwright/marketing.contact.spec.ts --config=playwright.marketing.config.ts`
-before the full marketing browser lane. The focused browser suite covers 320,
+`npx playwright test playwright/marketing.contact.spec.ts playwright/marketing.seo-landing.spec.ts playwright/marketing.seo-programme.spec.ts playwright/marketing.acrylic-foundation.spec.ts playwright/marketing.acrylic-copy-variant.spec.ts --config=playwright.marketing.config.ts`
+before the full marketing browser lane. These focused suites cover 320,
 390, 430, tablet and desktop widths; server-rendered query preselection;
 persistent labels and form metadata; minimum 44 pixel targets; reduced motion;
 zero textual or generated em dashes; no horizontal overflow or nested content
 scroll; a neutral/residential/commercial/professional/project/product entry
 matrix; focused client validation; retained values and UUID reuse after API
 failure; duplicate-submit exclusion; consent-controlled events; attribution;
-professional attachment policy errors; metadata-only upload fallback; and
-lower-case non-personal canonical context in payloads and analytics.
+attachment policy errors; metadata-only upload fallback; and lower-case
+non-personal canonical context in payloads and analytics. The embedded-route
+matrix additionally asserts the shared required/optional contract, field order,
+`Roof approach`, governed upload accept list and limits, commercial audience,
+route attribution and retained success values.
 
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
