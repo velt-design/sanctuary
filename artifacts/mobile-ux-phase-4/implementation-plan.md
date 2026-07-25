@@ -88,7 +88,7 @@ Implementation owners:
 
 ## Verification and evidence
 
-- Capture production-before and local-after metrics at all three required viewports.
+- Capture production-before and deployed-after metrics at all three required viewports.
 - Record HTML size, document height/width, first-layer words, major-region counts,
   disclosure counts, image requests/bytes, CLS, overflow, touch-target findings and footer
   geometry.

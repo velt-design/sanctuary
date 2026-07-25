@@ -1,7 +1,7 @@
 # Mobile Content Density Refinement
 
-Status: current implementation record, including Mobile UX Roadmap Phase 3
-production follow-up.
+Status: current implementation record, including Mobile UX Roadmap Phases 3
+and 4 production follow-up.
 
 ## Index
 
@@ -22,9 +22,10 @@ desktop copy programme or a substitute for the later service, product,
 commercial, professional, and guide migrations.
 
 Mobile UX Roadmap v2 Phase 3 subsequently completed the approved residential,
-custom, product-detail and product-hub consolidation. The historical baseline
-and first-pass results remain below; the dated Phase 3 follow-up is the current
-production state for those four surfaces.
+custom, product-detail and product-hub consolidation. Phase 4 completed the
+commercial, professional, guide, footer and homepage-close work. The
+historical baseline and first-pass results remain below; the dated Phase 3 and
+Phase 4 follow-ups define the current production state.
 
 The pass covers the homepage, residential and custom service pages, the
 product hub and product pages, commercial and professional journeys, the guide
@@ -134,8 +135,10 @@ names are not part of the editing surface.
 - Guide pages: secondary anatomy/layer detail; post-proof decisions,
   constraints, related guidance, and FAQs. Core comparison tables stay
   initially visible.
-- Guide hub: each card's existing complete description behind an accessible
-  "About this guide" disclosure without nesting controls.
+- Guide hub (historical first pass): each card's existing complete description
+  behind an accessible "About this guide" disclosure without nesting controls.
+  Phase 4 subsequently replaced these ten repeated controls with one useful
+  visible hub summary.
 
 Route-level grouping in the shared SEO renderer will be explicit and opt-in.
 Unconfigured consumers retain their current output. Complete sections remain
@@ -261,7 +264,7 @@ is hidden from interaction.
 | Cost guide | Estimate-quality detail; quote-scope checklist and FAQs. |
 | Blinds | Integration detail; coordinated blind decisions; planning links and FAQs. |
 | Acrylic versus louvres | Comparison method; fixed-acrylic detail; comparison links and FAQs. |
-| Guide hub | Each of the ten complete guide-card descriptions, behind a separate "About this guide" control. The guide title remains a direct link, so controls are not nested. |
+| Guide hub (historical first pass, superseded in Phase 4) | Each of the ten complete guide-card descriptions, behind a separate "About this guide" control. The guide title remains a direct link, so controls are not nested. |
 
 The mobile summaries paraphrase only existing content. No factual claim,
 project evidence record, product catalogue field, metadata field or schema
@@ -388,6 +391,31 @@ Phase 3 follow-up, 25 July 2026:
   horizontal overflow, zero measured layout shift and a high-priority hero on
   every record. Evidence is under `artifacts/mobile-ux-phase-3/`.
 
+Phase 4 follow-up, 26 July 2026:
+
+- Commercial now leads with three cases and three stages. At 390 px, visible
+  words fell from 963 to 773 and measured main height from 11,369 px to
+  9,554 px while commercial route and form context remain unchanged.
+- `/architects-designers-builders` is a discoverable HTTP 200 capability route
+  with role/collaboration/documentation guidance, three governed projects and
+  the existing professional form/upload contract. The production baseline was
+  a 404.
+- The guide hub has zero repeated description controls, down from ten. Seven
+  guide details lead with one answer, one governed project and a route back
+  before one optional supporting-depth disclosure. Their 390 px visible-word
+  range is 572-616, down from 936-1,315; measured main height is
+  7,280-7,535 px, down from 11,079-14,934 px.
+- Homepage regions/disclosures fell from 8/7 to 7/5. Review proof now shares
+  the final enquiry close. Footer height is 730 px at 430 px and 766 px at
+  390 px and 360 px, with visible phone/email utility and no viewport minimum.
+- Marketing units passed 45 files and 202 tests. The full deployed public
+  browser surface passed 229 checks, with 11 capture skips and 18 expected
+  failures confined to the deliberately production-disabled internal
+  foundation catalogue, whose complete file passed locally.
+- The deployed 36-record Phase 4 matrix recorded HTTP 200, zero horizontal
+  overflow and zero measured layout shift throughout. Form requests were
+  intercepted. Evidence is under `artifacts/mobile-ux-phase-4/`.
+
 ## Remaining risks and deliberate deferrals
 
 - The earlier open-then-close disclosure risk is resolved. The server retains
@@ -403,13 +431,11 @@ Phase 3 follow-up, 25 July 2026:
   unverified. The product owner accepted their explicit deferral to Phase 5 /
   PR 14 when marking Phase 1 complete; automated Chromium remains supporting
   evidence rather than a substitute.
-- Commercial proof ordering remains Mobile UX Roadmap v2 Phase 4 / PR 10.
-  The earlier pass reduces copy but does not put proof directly after the hero
-  or reduce delivery to three stages.
-- A dedicated professional capability page remains Phase 4 / PR 11. The current
-  professional journey continues through source-aware contact.
-- Guide-hub and guide-detail first-layer changes remain Phase 4 / PR 12. The
-  earlier pass only established accessible optional-detail boundaries.
+- Commercial proof ordering, the professional capability route, guide
+  first-layer simplification and compact footer/homepage close are resolved by
+  Phase 4. Future changes must preserve their evidence order, canonical
+  audience/source context, complete no-JavaScript depth, distinct guide
+  headings, seven-region homepage and neutral direct contact.
 - Product gallery duplication and residual service/product restructuring are
   resolved by Phase 3. Future changes must preserve the three-group product
   contract, one controlled gallery, service six-region budgets and the honest

@@ -1,11 +1,11 @@
 # Sanctuary Pergolas Mobile UX Roadmap v2
 
-> **Status:** Phases 1, 2 and 3 complete; Phase 4 is the recommended next phase
+> **Status:** Phases 1, 2, 3 and 4 complete; Phase 5 is the recommended next phase
 > **Repository:** `velt-design/sanctuary`
 > **Recommended repository path:** `docs/mobile-ux-roadmap-v2.md`
 > **Live website:** `https://www.sanctuarypergolas.co.nz/`
-> **Reviewed implementation commit:** `e717fc57` (`test(marketing): verify phase three completion`)
-> **Review date:** 25 July 2026
+> **Reviewed implementation commit:** `eda1cc1d` (`test(marketing): verify phase four completion`)
+> **Review date:** 26 July 2026
 > **Mobile scope:** Approximately 430 px, 390 px and 360 px
 > **Implementation model:** One responsive Next.js website, one shared content source, shared React components, Tailwind styling, preserved semantic content and existing analytics
 > **Primary outcome:** More qualified enquiries through a calm, project-led, reliable and easier-to-scan mobile customer journey
@@ -20,7 +20,8 @@ Version 2 reconciles five evidence sources:
 2. `docs/mobile-ux-roadmap.md`.
 3. The mobile implementation review completed after the first implementation phases.
 4. The live production website observed on 25 July 2026.
-5. The current `main` implementation and the evidence in `docs/mobile-content-density-refinement.md` at commit `039bd1a240eff2e54d521ad4d55a53d66835b5fd`.
+5. The current `main` implementation and Phase 1-4 evidence, most recently
+   verified at `eda1cc1d`.
 
 ### Evidence states
 
@@ -110,21 +111,61 @@ Evidence is under `artifacts/mobile-ux-phase-3/`.
 Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
 unverified and owned by Phase 5 / PR 14.
 
+### Phase 4 delivery update - 26 July 2026
+
+All four Phase 4 checkpoints are deployed from `main`: commercial
+consolidation (`19a89302`), the professional capability journey (`acc5ac12`),
+guide simplification (`bc07464a`) and the compact footer/homepage close
+(`35c1ea5f`). The production evidence and completion assertions are recorded
+in `eda1cc1d`.
+
+Commercial project evidence now follows the hero, delivery uses three stages
+and secondary operational detail sits in three purposeful disclosures. The
+discoverable `/architects-designers-builders` route explains collaboration,
+documentation, engineering interfaces and role boundaries, shows three
+governed projects and submits the existing professional form contract with
+canonical lower-case source context.
+
+The guide hub shows all ten distinctions without ten repeated controls. Each
+of the seven guide details now leads with one concise answer, one governed
+project and a route back before one optional supporting-depth control. Every
+canonical URL, authored paragraph, project record and useful internal link
+remains server rendered and available without JavaScript.
+
+The homepage now closes in seven regions with five disclosures, down from
+eight and seven. Its review is integrated into the final enquiry section. The
+footer has visible phone and email actions, three project-pathway links and no
+viewport minimum; production height is 730 px at 430 px and 766 px at both
+390 px and 360 px.
+
+The production 36-record route/width matrix recorded HTTP 200, zero horizontal
+overflow and zero measured layout shift everywhere. The full deployed public
+browser surface passed 229 checks; 11 evidence-only cases skipped and the 18
+expected failures were confined to the deliberately unavailable production
+foundation catalogue, which passed locally. Form requests were intercepted.
+Evidence is under `artifacts/mobile-ux-phase-4/`.
+
+Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
+unverified. They are Phase 5 / PR 14 work and Chromium emulation is not
+presented as a substitute.
+
 ### Direction-of-travel judgement
 
-**The primary journeys are coherent; secondary journeys now set the pace.**
+**The responsive information architecture is coherent; real-world validation
+now sets the pace.**
 
 Production enquiry routing, project discovery, service journeys and product
-decisions now follow the intended mobile pattern. The remaining structural
-weaknesses are concentrated in commercial proof order, the missing
-professional capability journey, mechanical guide interaction and the
-oversized footer/homepage lower half.
+decisions now follow the intended mobile pattern. Commercial, professional,
+guide and lower-page utility journeys use the same evidence-first discipline.
+The remaining roadmap work is physical-device, assistive-technology,
+performance and production-outcome validation rather than another structural
+redesign.
 
 ---
 
 ## 2. Executive summary
 
-Phases 1-3 now give the primary customer path a consistent production
+Phases 1-4 now give the primary and secondary customer paths a consistent production
 contract. Enquiry links preserve validated non-personal source context,
 projects browse without a hidden detail payload, project and product galleries
 have visible accessible controls, and the main residential, custom and product
@@ -136,12 +177,12 @@ and keep secondary education in one support gateway. Product pages keep
 outcome, fit, one real constraint and honest evidence visible while reducing
 seven disclosure choices and two repeated gallery sequences to three and one.
 
-The highest-value remaining work is Phase 4: put commercial evidence directly
-after its hero, give architects/designers/builders a real capability journey,
-simplify the guide hub and guide first layers, and replace the oversized footer
-with compact contact utility. These changes complete secondary pathways
-without reopening the now-stable conversion, project, service or product
-contracts.
+Phase 4 applies the same discipline to secondary journeys: commercial proof
+now leads, professional visitors have a capability route, guides expose a
+decision first layer and the footer is compact utility. The highest-value
+remaining work is Phase 5: validate the cumulative journey on physical iOS and
+Android devices, with VoiceOver and TalkBack, then reconcile performance and
+analytics evidence without reopening stable page architecture.
 
 ---
 
@@ -149,20 +190,20 @@ contracts.
 
 | Page or journey | Current quality | Change since previous review | Main remaining problem | Priority |
 |---|---|---|---|---:|
-| Homepage | Strong | Unchanged by the latest copy pass | Seven mobile disclosures remain, and the lower half still contains a separate testimonial, planning stack and oversized footer | P2 |
+| Homepage | Strong and concise | Phase 4 reduced the close to seven regions and five disclosures, with review proof integrated into final enquiry | Physical-device and screen-reader validation remains | P2 |
 | Residential service | Strong and concise | Phase 3 reduced the journey to six major regions, three projects, three stages and one support disclosure | Physical-device and screen-reader validation remains | P2 |
 | Custom service | Strong and distinct | Phase 3 retained three constrained projects while reducing the journey to six regions and one support disclosure | Physical-device and screen-reader validation remains | P2 |
 | Products index | Clear hierarchy | Phase 3 made four pergola forms primary and converted integrated options into two compact gateways | Physical-device validation remains | P2 |
 | Product detail | Clear controlled decision | Phase 3 reduced every route to three disclosures, one controlled gallery and a neutral context-aware enquiry | Physical-device and screen-reader validation remains | P2 |
 | Projects index | Strong and hardened | Phase 2 removed the hidden mobile detail tree and cut production HTML and DOM weight materially | Physical-device Back gestures remain unverified | P1 |
 | Project detail | Strong controlled proof | Phase 2 added visible gallery controls, count, keyboard support and optional swipe while preserving desktop | Physical-device and screen-reader validation remains | P1 |
-| Commercial | Reliable routing, still structurally long | Phase 1 deployed commercial context; the earlier copy pass improved the repository journey | Two explanatory blocks still precede cases and the process still uses five stages | P1 |
-| Professional pathway | Weak | Unchanged | Visitors are sent directly to a preselected form without capability, role or project evidence | P1 |
-| Guide hub | Easier to scan | Moderate improvement | Ten repeated `About this guide` controls create mechanical interaction and hide useful distinctions | P2 |
-| Guide detail | Improved, still article-heavy | Moderate improvement | Typical pages still expose 935 to 1,316 words and seven to nine heading regions | P2 |
+| Commercial | Strong and proof-led | Phase 4 puts three governed cases after the hero, uses three delivery stages and keeps operational depth optional | Physical-device and screen-reader validation remains | P1 |
+| Professional pathway | Strong and source-aware | Phase 4 adds one discoverable capability route with role boundaries, documentation inputs and three governed projects | Physical-device, assistive-technology and real-file task validation remains | P1 |
+| Guide hub | Clear and directly scannable | Phase 4 replaced ten repeated controls with ten visible distinctions | Physical-device reading and link-task validation remains | P2 |
+| Guide detail | Decision-led with complete optional depth | Seven routes now lead with one answer, one project and one route back before supporting content | Physical-device and screen-reader validation remains | P2 |
 | Contact and enquiry | Reliable and source-aware | Phase 1 deployed canonical routing, terminology, context and form parity | Real-device and assistive-technology completion remains unverified | P1 |
-| Mobile navigation | Strong and source-aware | Phase 1 deployed canonical route context and preserved focus/scroll behaviour | Professional capability is still a direct form pathway | P1 |
-| Footer | Weak | Unchanged | A minimum full viewport, repeated navigation and no visible tap-to-call or email utility | P2 |
+| Mobile navigation | Strong and source-aware | Phase 4 sends professional visitors to the capability route while retaining the established focus and scroll contract | Physical-device menu and Back-gesture validation remains | P1 |
+| Footer | Compact and useful | Phase 4 removes the viewport minimum, exposes phone/email and reduces navigation to three project pathways | Physical-device target/readability validation remains | P2 |
 
 ---
 
@@ -174,17 +215,17 @@ Scores compare the current state with the previous implementation review complet
 |---|---:|---|---|---|
 | First-screen impact | 8/10 | The homepage establishes bespoke fixed-roof pergolas, Auckland scope, project imagery and proof quickly | Unchanged | Remove the hero submission instruction and verify final crops on the deployed build |
 | Immediate clarity | 8/10 | Category, audience and design-build responsibility are clear | Unchanged | Replace outcome-implying estimate language with a consistent project-start label |
-| Premium brand perception | 8/10 | Restrained typography, specific projects and measured language remain strong | Unchanged | Remove full-screen footer treatment and mechanical disclosure repetition |
+| Premium brand perception | 8/10 | Restrained typography, specific projects, measured language and a compact utility close remain strong | Improved | Validate outdoor readability and final crops on physical devices |
 | Architectural credibility | 9/10 | Dimensions, roof forms, constraints, materials and building relationships are specific | Unchanged | Retain this evidence while reducing repeated explanation around it |
-| Visual storytelling | 8/10 | Projects lead the homepage and portfolio, and service pages now reach evidence sooner | Unchanged | Move commercial cases directly after the first screen and complete project galleries |
+| Visual storytelling | 8/10 | Projects lead home, residential, commercial and professional journeys before secondary explanation | Improved | Validate representative crops on physical devices |
 | Image use | 8/10 | Product details and project details each use one controlled mobile gallery, with deliberate production crops and no repeated product inventory | Improved from 7 | Complete physical-device crop and control review |
-| Copy restraint | 8/10 | Phase 3 reduced residential, custom, hub and product first layers while preserving complete supporting content | Improved from 7 | Apply the same decision-led rule to commercial and guides |
-| Ease of scanning | 8/10 | Services use six major regions and one support disclosure; product details use three purposeful groups | Improved from 7 | Remove repeated guide-card controls |
-| Reading effort | 8/10 | Residential and custom visible copy is now 739 and 841 words, with three-stage processes and early proof | Improved from 6 | Condense commercial and guide first layers |
-| Section pacing | 8/10 | Project proof, product fit and meaningful constraints now lead before secondary depth | Improved from 7 | Move commercial cases immediately after its hero |
-| Perceived page length | 7/10 | Product page height fell materially and service structure is shorter, but the footer still adds a full viewport | Improved from 6 | Replace the footer treatment |
-| Navigation usability | 7/10 | Current `main` has strong menu focus and scroll behaviour | Unchanged | Deploy and verify context-aware routing, then add a real professional capability destination |
-| Pathway clarity | 7/10 | Home, service and product roles are now clear, but professional remains a form shortcut | Improved from 6 | Add the professional capability journey |
+| Copy restraint | 8/10 | Decision-led first layers now cover residential, custom, products, commercial, professional and guides while retaining complete supporting content | Improved from 7 | Validate comprehension with real-device tasks and production outcomes |
+| Ease of scanning | 9/10 | Service, product and guide journeys use purposeful first layers instead of repeated equal-weight controls | Improved from 7 | Confirm screen-reader rotor and reading order on physical devices |
+| Reading effort | 8/10 | Commercial visible words fell from 963 to 773 at 390 px; guide details typically fell from 936-1,315 to 572-616 | Improved from 6 | Validate task completion rather than pursue further speculative cuts |
+| Section pacing | 9/10 | Project proof, product fit, commercial cases and guide answers lead before secondary depth | Improved from 7 | Confirm the sequence with physical-device tasks |
+| Perceived page length | 8/10 | The homepage is seven regions, guide first layers are materially shorter and the footer is 730-766 px without a viewport minimum | Improved from 6 | Measure field Core Web Vitals and real-device scroll effort |
+| Navigation usability | 8/10 | Menu focus, scroll behaviour and route-aware residential/commercial/professional destinations are stable | Improved | Validate physical Back gestures and short-viewport thumb reach |
+| Pathway clarity | 9/10 | Home, service, product, commercial and professional roles now have clear destinations and evidence | Improved from 6 | Reconcile pathway events with successful enquiries |
 | Project discovery | 9/10 | The one-column image-led index retains premium proof without a hidden case-study payload | Improved from 8 | Verify Back gestures and scroll restoration on physical iOS and Android devices |
 | Product comprehension | 9/10 | Every product route exposes outcome, fit, one constraint, honest evidence and one controlled gallery before three optional groups | Improved from 7 | Validate the complete task on physical devices |
 | CTA visibility | 8/10 | Primary actions are easy to find across the main journeys | Unchanged | Make labels and destinations as reliable as their visual prominence |
@@ -193,7 +234,7 @@ Scores compare the current state with the previous implementation review complet
 | Enquiry experience | 8/10 | Direct and embedded forms now share terminology, context, upload and validation contracts in production | Improved from 5 | Complete real-device and assistive-technology form tasks |
 | Touch usability | 8/10 | Shared targets, menus, filters and visible gallery controls are sound in automated tests | Improved from 7 | Complete physical-device thumb and Back-gesture testing |
 | Accessibility | 8/10 | Disclosures and galleries have deterministic semantics, visible controls, stable focus and no-JavaScript safeguards | Improved from 7 | Complete VoiceOver and TalkBack tasks |
-| Overall mobile customer experience | 8/10 | Primary routing, project, service and product journeys are reliable; secondary audience and utility paths now limit the score | Improved from 7 | Complete Phase 4 secondary journeys and utility |
+| Overall mobile customer experience | 9/10 | Primary and secondary route structure is reliable in production; remaining uncertainty is real-device, assistive-technology, performance and outcome validation | Improved from 7 | Complete Phase 5 validation |
 
 ---
 
@@ -228,10 +269,9 @@ same closed mobile state:
 
 ### 5.2 Historical page-group assessment
 
-The assessment below is the planning record used to define Phases 1-4. Its
-Phase 1-3 actions are superseded by the dated delivery updates above; the
-commercial, professional, guide, footer and homepage lower-half rows remain
-the active Phase 4 input.
+The assessment below is the historical planning record used to define Phases
+1-4. All of its implementation actions are superseded by the dated delivery
+updates above; retain the rows as baseline provenance rather than active work.
 
 | Page group | What improved | What remains too long or complex | Must remain visible | Move to disclosure | Move to supporting pages | Remove or consolidate | Essential meaning lost? | Remaining reduction opportunity |
 |---|---|---|---|---|---|---|---|---:|
@@ -658,6 +698,7 @@ Release evidence, 25 July 2026:
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `eda1cc1d`** |
 | Objective | Complete commercial and professional pathways, simplify guide interaction and finish lower-page utility |
 | User problem solved | Secondary audiences lack a consistent evidence journey, guides remain mechanically dense and the footer adds unnecessary length |
 | Exact scope | Commercial proof order and three-stage delivery; professional capability page; guide hub and guide-detail first-layer simplification; compact utility footer; targeted homepage lower-half consolidation |
@@ -686,6 +727,35 @@ Testing requirements:
 - Footer touch-target and contrast checks.
 - Homepage and desktop regression.
 - Content and analytics event checks.
+
+Release evidence, 26 July 2026:
+
+- Checkpoint commits: `19a89302` condensed commercial, `acc5ac12` added the
+  professional capability route, `bc07464a` simplified guides and `35c1ea5f`
+  refined the footer/homepage close. `eda1cc1d` added the completion contract
+  and production-compatible evidence.
+- At 390 px, commercial visible words fell from 963 to 773 and main height
+  from 11,369 px to 9,554 px. Three cases follow the hero and delivery uses
+  three stages.
+- `/architects-designers-builders` changed from production 404 to HTTP 200 and
+  now exposes capability, three governed projects, optional supported-file
+  guidance and canonical professional form/analytics context.
+- Guide-hub description controls fell from ten to zero. Across the seven guide
+  details, visible words fell from a 936-1,315 range to 572-616 and main height
+  from 11,079-14,934 px to 7,280-7,535 px at 390 px.
+- Homepage regions/disclosures fell from 8/7 to 7/5. Footer production height
+  is 730 px at 430 px and 766 px at 390 px and 360 px, with `min-height: 0`.
+- Marketing units passed 45 files and 202 tests. Workspace typecheck, lint,
+  the 65-page production build and base/head architecture/dead-code guards
+  passed.
+- The deployed public browser surface passed 229 tests. Eleven capture-only
+  cases skipped; 18 expected failures were confined to the production-disabled
+  internal foundation catalogue, whose complete file passed locally.
+- The production 36-record matrix has HTTP 200, zero horizontal overflow and
+  zero measured layout shift throughout. Screenshots and measurements are in
+  `artifacts/mobile-ux-phase-4/`.
+- Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
+  unverified and deferred to Phase 5 / PR 14.
 
 ### Phase 5: Real-device, accessibility, performance and outcome validation
 
@@ -884,6 +954,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `19a89302`** |
 | Single user outcome | Commercial visitors see relevant proof and delivery capability before extensive operational explanation |
 | Exact scope | Deploy current proposition; put three cases after hero; reduce process to three stages; consolidate responsibility and coordination; retain early and final commercial CTA |
 | Probable components | Commercial config, SEO landing blocks, project cards, process and embedded form entry |
@@ -898,6 +969,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `acc5ac12`** |
 | Single user outcome | Architects, designers and builders see clear capability and responsibilities before being asked for a brief |
 | Exact scope | Create or repurpose one capability route; collaboration model; documentation; engineering interfaces; role boundaries; three projects; plans or brief CTA |
 | Probable components | Professional route, navigation, project cards, enquiry context and upload entry |
@@ -912,6 +984,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `bc07464a`** |
 | Single user outcome | Visitors can select a guide quickly and return to the relevant project or service without navigating repeated drawers |
 | Exact scope | Replace ten per-card description controls; simplify guide-detail first layer; retain semantic article content, URLs and internal links; reduce conversion-page guide prominence |
 | Probable components | Guide hub, shared SEO landing disclosure groups, guide navigation and compact gateways |
@@ -926,6 +999,7 @@ reduced motion, target widths and zero horizontal overflow.
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - `35c1ea5f`** |
 | Single user outcome | The end of the page remains useful and calm rather than becoming another full-screen decision layer |
 | Exact scope | Compact footer with phone/email; reduce repeated navigation; merge testimonial proof; reduce homepage planning disclosures where justified; retain final CTA and compact guides |
 | Probable components | `SiteFooter`, homepage review, planning and final sections |
@@ -956,47 +1030,48 @@ reduced motion, target widths and zero horizontal overflow.
 
 ### Recommended phase
 
-**Phase 4: Secondary audiences, guides and site utility**
+**Phase 5: Real-device, accessibility, performance and outcome validation**
 
 ### Why it should be next
 
-Phases 1-3 made enquiry routing, project proof, residential/custom services and
-product decisions reliable and concise in production. The remaining uneven
-journey is now outside the primary residential path: commercial visitors wait
-for proof, professional visitors reach a form without capability context,
-guides rely on repeated controls and the footer behaves like another full
-screen.
+Phases 1-4 made enquiry routing, project proof, service/product decisions,
+secondary audiences, guides and site utility reliable in production. The
+remaining uncertainty cannot be closed by more Chromium emulation or structural
+rewrites: it concerns real browser gestures, screen-reader operation, outdoor
+readability, field performance and whether canonical events reconcile with
+successful enquiries.
 
 ### Work that must be completed
 
-1. Put three commercial cases immediately after the hero, reduce delivery to
-   three stages and keep every commercial CTA correctly classified.
-2. Create one discoverable professional capability journey that explains
-   collaboration, responsibilities and project evidence before enquiry.
-3. Replace the guide hub's ten repeated description controls and make each
-   guide detail lead with a concise answer, relevant project and route back
-   before optional depth.
-4. Replace the full-screen footer with compact phone/email utility and finish
-   only the approved homepage lower-half consolidation.
-5. Preserve Phase 1 routing, Phase 2 project behavior, Phase 3 content rules,
-   guide URLs, claims and the established desktop presentation.
+1. Run defined end-to-end tasks on physical iOS Safari and Android Chrome at
+   representative small and large mobile sizes.
+2. Run the same primary tasks with VoiceOver and TalkBack, plus the existing
+   desktop keyboard path.
+3. Verify production analytics in debug tooling and reconcile canonical,
+   non-personal events with intercepted tests and successful submissions.
+4. Review field and lab Core Web Vitals, image payload, layout shift and
+   interaction latency on the deployed primary routes.
+5. Make only bounded evidence-backed fixes, rerun the affected matrix and
+   document a prioritised backlog for anything that should not change now.
 
 ### Work that must wait
 
-- Real-device and assistive-technology completion, owned by Phase 5 / PR 14.
 - Broad homepage or brand redesign.
-- A professional portal or document-management system.
-- Deleting guides or changing established service/product taxonomy.
+- New analytics vendors or expanded personal tracking.
+- Taxonomy, route, form-contract or content-architecture changes without
+  evidence from the validation tasks.
+- Causal conversion claims without enough reconciled production data.
 
 ### Recommended number of PRs
 
-**4**
+**2, plus isolated evidence-backed fixes where needed**
 
 ### Completion gate
 
-Phases 1-3 are complete. Phase 4 can begin with PR 10. Real-device and
-assistive-technology validation deferred from the completed phases remains
-owned by Phase 5 / PR 14.
+Phases 1-4 are complete. Phase 5 can begin with PR 14. Completion requires a
+dated device/assistive-technology matrix, production performance and analytics
+evidence, explicit pass/fail/backlog outcomes and no claim that browser
+emulation substitutes for physical-device testing.
 
 ---
 
@@ -1004,7 +1079,8 @@ owned by Phase 5 / PR 14.
 
 The following PR 1-3 goal briefs are retained as the implementation record.
 They are complete and are no longer the recommended next work. Phase 2 / PRs
-4 and 5 and Phase 3 / PRs 6-9 are also complete; continue with Phase 4 / PR 10.
+4 and 5, Phase 3 / PRs 6-9 and Phase 4 / PRs 10-13 are also complete; continue
+with Phase 5 / PR 14.
 
 ### Next PR 1: Close production enquiry routing and source context
 

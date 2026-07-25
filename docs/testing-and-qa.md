@@ -106,6 +106,27 @@ representative screenshots under `artifacts/mobile-ux-phase-3/`. Set
 `MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` only for a read-only
 deployed smoke or capture; form checks must still intercept `**/api/enquiry`.
 
+Phase 4 commercial/professional/guide/footer/homepage changes should also run
+`npx playwright test playwright/marketing.phase-four.spec.ts --config=playwright.marketing.config.ts --workers=1`.
+The suite verifies three commercial cases and stages, commercial source
+context, professional route discovery/schema/sitemap, supported-file guidance,
+an intercepted professional payload, canonical consented analytics with no
+personal properties, ten visible guide distinctions, all seven guide first
+layers, refresh/Back, no-JavaScript completeness, seven homepage regions, five
+disclosures and compact footer utility at 430, 390 and 360 pixels. Set
+`MARKETING_PHASE_FOUR_CAPTURE=before|after` and
+`MARKETING_PHASE_FOUR_WIDTH=430|390|360` to write or update the 36-record JSON
+and representative screenshots under `artifacts/mobile-ux-phase-4/`. Add
+`MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` only for read-only
+deployed smoke/capture and continue intercepting `**/api/enquiry`.
+
+The internal `/__foundation/marketing` catalogue fails closed in production
+unless `ENABLE_MARKETING_FOUNDATION=true`. A full deployed browser sweep will
+therefore fail its 18 catalogue-only assertions by design. Report the public
+production result separately and prove the complete foundation file against a
+local build; do not weaken the production access rule to make that matrix
+green.
+
 Mobile first-layer copy, responsive disclosure, shared public route-template,
 service, SEO-landing or guide-directory changes should also run
 `npx playwright test playwright/marketing.mobile-content-density.spec.ts --config=playwright.marketing.config.ts`.
