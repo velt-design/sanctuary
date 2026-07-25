@@ -1196,7 +1196,7 @@
     transition: transform 160ms ease;
   }
 
-  .project-case-study__technical details[open] summary > span:last-child {
+  .project-case-study__technical details[open]:not([data-disclosure-state="pending"]) summary > span:last-child {
     transform: rotate(45deg);
   }
 
@@ -1474,9 +1474,9 @@
     transition: transform 160ms ease;
   }
 
-  .project-case-study__facts-disclosure[open] > summary > span:last-child,
-  .project-case-study__story-disclosure[open] > summary > span:last-child,
-  .project-case-study__story-more[open] > summary > span:last-child {
+  .project-case-study__facts-disclosure[open]:not([data-disclosure-state="pending"]) > summary > span:last-child,
+  .project-case-study__story-disclosure[open]:not([data-disclosure-state="pending"]) > summary > span:last-child,
+  .project-case-study__story-more[open]:not([data-disclosure-state="pending"]) > summary > span:last-child {
     transform: rotate(45deg);
   }
 

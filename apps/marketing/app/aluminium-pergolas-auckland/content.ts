@@ -72,7 +72,7 @@ export const aluminiumPergolasConfig = {
   form: { ariaLabel: 'Aluminium pergola project enquiry form', eyebrow: 'Show the frame context', heading: 'Send your aluminium pergola outline', intro: 'Add photos, rough dimensions and the openings the design needs to protect. You can leave the roof form and material undecided.', submitLabel: 'Send the project outline', messageLabel: 'What should the frame resolve?', messagePlaceholder: 'Describe the openings, connections, views or circulation that should shape the post and beam layout.', briefFields: [
     { name: 'openingPriorities', label: 'Openings and post positions to protect', type: 'textarea', placeholder: 'Note doors, paths, views, furniture or vehicle access that should remain clear.', wide: true },
     { name: 'finishReference', label: 'Existing finish reference', type: 'text', placeholder: 'For example: window joinery, roof or cladding colour' },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

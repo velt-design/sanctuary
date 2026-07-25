@@ -23,6 +23,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
 | 2026-07-25 | Enquiry Email Layout Comparison  | Promoted | Keep layout exploration preview-only until approval, compare alternatives with identical governed fixture data, label each real send distinctly, and treat simulated dark mode as guidance rather than inbox proof. |
 | 2026-07-25 | Enquiry Email Preview Delivery   | Promoted | Never leave a staging email action silently disabled. Report the safe server-owned readiness reason beside the control, require the actual provider secret value in the portal Preview environment, and redeploy after environment changes while preserving fixed-recipient and no-write controls. |
+| 2026-07-25 | Marketing Disclosure Hydration   | Promoted | Keep responsive disclosures open in server markup for no-JavaScript access, but hide only pending mobile bodies through the shared scripting-aware breakpoint contract so hydration resolves native state without changing visual height. |
+| 2026-07-25 | Marketing Enquiry Form Contract  | Promoted | Keep direct and embedded enquiry forms on the shared intake validator, audience labels, context presentation and attachment copy; only project type, name and phone are required, and optional technical detail follows the useful first brief. |
 | 2026-07-25 | Marketing Enquiry Routing        | Promoted | Resolve audience from explicit service or governed project route metadata, keep product and unknown routes neutral, preserve canonical item slugs, and apply validated lower-case context after other analytics fields so callers cannot overwrite it. |
 | 2026-07-25 | Marketing Fragment Navigation    | Promoted | Responsive disclosures must reveal any fragment target they contain, and global route scroll handling must prefer a valid hash target over resetting to the top. Verify the real cross-route link and Back journey, not only a direct URL or attached target. |
 | 2026-07-25 | Marketing Server Rendering       | Promoted | Keep the marketing route template server-rendered and non-landmark, let each page own its single `main`, and do not add a top-level App Router loading boundary whose streamed replacement requires JavaScript to reveal the real public page. Test visible no-JavaScript browser output, not response-string presence alone. |
@@ -3400,6 +3402,28 @@ Why it mattered: Prominent actions contradicted the page audience, lost reliable
 Current guardrail: Build every major enquiry destination through the shared utility. Resolve known services and projects from explicit parity-tested route metadata, keep mixed, product and unknown routes neutral unless reliable context supplies an audience, retain canonical item slugs, and apply validated context after other analytics properties so it cannot be overwritten.
 Promoted to: `docs/security-privacy-quality.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/lib/enquiryContext.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.contact.spec.ts`; `playwright/marketing.acrylic-copy-variant.spec.ts`
+
+### 2026-07-25 - Marketing Enquiry Form Contract - One Intake Rule
+
+Date: 2026-07-25
+Area: Direct and embedded public enquiry forms
+Status: Promoted
+Decision or mistake: Direct and embedded forms separately defined audience labels, validation, field order, roof terminology and upload instructions. Embedded routes required email, suburb and a project brief even though the enquiry API requires only project type, name and phone, and successful direct submissions replaced the form and discarded the entered context.
+Why it mattered: The same enquiry meant different things depending on its entry page, optional business information looked mandatory, upload claims could drift from backend validation, and visitors lost the brief they had just submitted.
+Current guardrail: Keep the minimum required-field contract, audience options, context presentation and upload instructions in `apps/marketing/lib/enquiryFormContract.ts`. Put audience, location, desired outcome and contact details before optional technical fields, use `Roof approach`, preserve values on failure and success, and retain the synchronous submission lock before uploads or requests. Route-specific content may configure optional brief and roof choices but must not redefine the intake contract.
+Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/lib/enquiryFormContract.test.ts`; `apps/marketing/app/contact/contactFormModel.test.ts`; `playwright/marketing.contact.spec.ts`; `playwright/marketing.seo-landing.spec.ts`; `playwright/marketing.seo-programme.spec.ts`
+
+### 2026-07-25 - Marketing Disclosure Hydration - Stable Before JavaScript
+
+Date: 2026-07-25
+Area: Shared responsive disclosures and route adapters
+Status: Promoted
+Decision or mistake: Responsive disclosures emitted open server markup and initialized client state as desktop, then a passive effect closed them on mobile. Large supporting regions could therefore paint open before hydration and visibly collapse. Product and project adapters also duplicated the viewport-state implementation.
+Why it mattered: Mobile visitors could lose their reading position or see a large layout jump even though the final native disclosure state, keyboard behavior and no-JavaScript content were individually correct.
+Current guardrail: Keep one native semantic tree and one shared viewport-state owner. Server markup remains open so no-JavaScript users retain complete content. When scripting is enabled, the shared breakpoint CSS hides only a pending mobile body and keeps its controls unfocusable; hydration then resolves native closed mobile or open desktop state without changing the disclosure box height. Keep supported breakpoints explicit and test pre/post-hydration height, hash reveal, keyboard focus, reduced motion, desktop expansion and a separate JavaScript-disabled journey.
+Promoted to: `docs/marketing-ui-foundation.md`; `docs/mobile-content-density-refinement.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/components/marketing-foundation/Interactions.test.tsx`; `playwright/marketing.mobile-content-density.spec.ts`; `playwright/marketing.projects.spec.ts`; `playwright/marketing.products.spec.ts`
 
 ### 2026-07-23 - Costing Configuration Provenance - Bind Version To Result
 

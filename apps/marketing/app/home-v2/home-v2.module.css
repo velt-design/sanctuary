@@ -1098,7 +1098,7 @@ a.proofItem:hover {
     transform: rotate(90deg);
   }
 
-  .mobileDisclosure[open] .mobileDisclosureIcon::after {
+  .mobileDisclosure[open]:not([data-disclosure-state="pending"]) .mobileDisclosureIcon::after {
     transform: rotate(0);
   }
 

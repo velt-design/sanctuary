@@ -66,7 +66,7 @@ export const outdoorRoomsConfig = {
   form: { ariaLabel: 'Outdoor room project enquiry form', eyebrow: 'Start with use', heading: 'Describe your outdoor room', intro: 'Share the site, rough dimensions and the activities the space needs to support. Include any roof, edge, lighting or heating ideas without treating them as fixed.', submitLabel: 'Describe the room you need', messageLabel: 'Describe a typical day in the room', messagePlaceholder: 'Tell us who uses the space, where dining, lounging or cooking should happen and which doors, paths or views need to remain open.', briefFields: [
     { name: 'furnitureAndUse', label: 'Furniture and activities', type: 'textarea', placeholder: 'List the table, lounge, barbecue, kitchen, fireplace or other elements the plan should allow for.', wide: true },
     { name: 'exposedEdges', label: 'Edges affected by sun, wind or privacy', type: 'text', placeholder: 'Note the condition and direction if known', wide: true },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

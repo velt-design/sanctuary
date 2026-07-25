@@ -78,7 +78,7 @@ export const pergolaCostConfig = {
     { name: 'siteAddress', label: 'Project address', type: 'text', placeholder: 'Street address, if you are ready to share it', wide: true },
     { name: 'siteAccess', label: 'Access and existing support conditions', type: 'textarea', placeholder: 'Note narrow access, upper levels, existing deck or concrete, demolition, services or other site constraints.', wide: true },
     { name: 'budgetContext', label: 'Budget or comparison context', type: 'text', placeholder: 'Optional budget range or details of another complete proposal', wide: true },
-  ], roofPreference: { label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

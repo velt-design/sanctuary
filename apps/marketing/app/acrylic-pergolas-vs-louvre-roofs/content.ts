@@ -79,7 +79,7 @@ export const acrylicVsLouvreConfig = {
     { name: 'externalProposal', label: 'External louvre proposal status', type: 'select', options: ['No proposal yet', 'Initial proposal received', 'Drawings and specification available', 'Unsure'] },
     { name: 'roofStates', label: 'Fixed and changing conditions you value', type: 'textarea', placeholder: 'Describe which overhead states matter and when you expect to use them.', wide: true },
     { name: 'comparisonPriorities', label: 'Most important comparison evidence', type: 'text', placeholder: 'For example: adjoining-room daylight, drainage, controls, maintenance or scope', wide: true },
-  ], roofPreference: { label: 'Sanctuary fixed-roof approach to explore', detailKey: 'roofPreference', options: [
+  ], roofPreference: { detailKey: 'roofPreference', options: [
     { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] }, { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] }, { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] }, { label: 'Unsure', value: 'Unsure', roofMaterials: [] },
   ] } },
 } satisfies SeoLandingPageConfig;

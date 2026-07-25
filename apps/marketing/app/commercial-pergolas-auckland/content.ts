@@ -395,7 +395,6 @@ export const commercialPergolasConfig = {
       },
     ],
     roofPreference: {
-      label: 'Possible roof approach',
       detailKey: 'roofPreference',
       options: [
         { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },

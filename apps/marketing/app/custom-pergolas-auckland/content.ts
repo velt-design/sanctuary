@@ -188,7 +188,7 @@ export const customPergolasConfig = {
       { name: 'intendedUse', label: 'Intended use of the finished space', type: 'text', placeholder: 'For example: dining, cooking, poolside or commercial service', wide: true },
     ],
     roofPreference: {
-      label: 'Possible roof approach', detailKey: 'roofPreference', options: [
+      detailKey: 'roofPreference', options: [
         { label: 'Acrylic roofing', value: 'Acrylic roofing', roofMaterials: ['acrylic'] },
         { label: 'Solid or lined roofing', value: 'Solid or lined roofing', roofMaterials: ['timber'] },
         { label: 'Combination roofing', value: 'Combination roofing', roofMaterials: ['acrylic', 'timber'] },

@@ -1,6 +1,6 @@
 # Sanctuary Pergolas Mobile UX Roadmap v2
 
-> **Status:** Authoritative implementation brief for remaining mobile UX work
+> **Status:** Phase 1 complete; Phase 2 is the recommended next phase
 > **Repository:** `velt-design/sanctuary`
 > **Recommended repository path:** `docs/mobile-ux-roadmap-v2.md`
 > **Live website:** `https://www.sanctuarypergolas.co.nz/`
@@ -29,11 +29,32 @@ Version 2 reconciles five evidence sources:
 - **Inferred:** A likely customer effect derived from the current responsive implementation where the corresponding production build is not yet live.
 - **Test required:** Behaviour requiring the deployed build, a real device, browser gestures, assistive technology or production analytics.
 
-### Production caveat
+### Production audit caveat (historical baseline)
 
-The public website does not currently match the reviewed `main` implementation. The repository contains a canonical enquiry-context utility, context-aware project and product links, `Roof approach` terminology, upload support and newer commercial content. Production still exposes legacy `enquiry=residential` links from commercial and product contexts, neutral project enquiries and the `Roof direction` label.
+At the time of the v2 audit, the public website did not match the reviewed
+`main` implementation. Production exposed legacy `enquiry=residential` links
+from commercial and product contexts, neutral project enquiries and the
+`Roof direction` label. Phase 1 replaced that audited state.
 
 Production behaviour is the customer-facing source of truth. Repository work is not classified as complete until it is deployed and verified against the live route and form matrix.
+
+### Phase 1 delivery update - 25 July 2026
+
+The three Phase 1 implementation checkpoints are now on `main`: canonical
+enquiry routing and source context (`e74a3021`), the shared direct/embedded form
+contract (`a445a5b6`) and deterministic responsive disclosures (`5ec38e07`).
+The marketing deployment for `5ec38e07` completed successfully, and nine
+read-only or network-intercepted production checks passed across neutral,
+residential, commercial, professional, project and product journeys. The live
+checks also covered canonical analytics context, refresh and browser history,
+no-JavaScript access and disclosure height at 430 px, 390 px and 360 px.
+
+The historical production findings below describe the audit baseline that
+motivated Phase 1; they are not the current deployed route/form state. On
+25 July 2026, the product owner marked Phase 1 complete and accepted that
+real-device iOS Safari and Android Chrome journeys, plus VoiceOver and TalkBack
+smoke checks, will be completed in Phase 5 / PR 14. This explicit deferral no
+longer blocks Phase 2.
 
 ### Direction-of-travel judgement
 
@@ -369,6 +390,7 @@ Products and guides support these journeys. They should not replace audience sel
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - 25 July 2026** |
 | Objective | Make every deployed enquiry route accurate, every form contract understandable and every responsive disclosure stable |
 | User problem solved | Visitors are misclassified, lose source context, encounter inconsistent fields or see content change state after hydration |
 | Exact scope | Canonical CTA routing; commercial project audience resolution; product audience rules; context display and payload; form terminology, field order and upload parity; canonical analytics properties; deterministic disclosure rendering |
@@ -403,6 +425,25 @@ Testing requirements:
 - Server-render and hydration tests at 430 px, 390 px and 360 px.
 - Keyboard and screen-reader smoke tests.
 - Deployed production smoke test before phase closure.
+
+Release evidence, 25 July 2026:
+
+- `npm run test:marketing`: 39 files and 173 tests passed.
+- Repository lint, the full workspace push-time typecheck, the 64-route
+  production marketing build and changed-file architecture guards passed.
+- The broad marketing browser matrix recorded 235 passes and seven intentional
+  evidence-capture skips. Its JavaScript-disabled timeout passed immediately
+  when isolated; two existing desktop hero-scroll assertions reproduced
+  serially in an untouched component and remain outside Phase 1's explicit
+  unrelated-desktop non-goal.
+- Nine focused production checks passed against
+  `https://www.sanctuarypergolas.co.nz`, including route context, intercepted
+  form payloads, canonical analytics, refresh and browser history,
+  no-JavaScript access, and hydration stability at 430 px, 390 px and 360 px.
+- Real iOS Safari, Android Chrome, VoiceOver and TalkBack checks remain
+  unverified and are explicitly deferred to Phase 5 / PR 14. Browser emulation
+  is not a substitute, but the product owner has accepted the deferral and
+  marked Phase 1 complete.
 
 ### Phase 2: Project portfolio hardening
 
@@ -535,6 +576,12 @@ Acceptance criteria:
 
 ### PR 1: Close production enquiry routing and source context
 
+Implementation status, 25 July 2026: implemented and deployed from the
+canonical enquiry checkpoint on `main` (`e74a3021`). The live production matrix
+confirms neutral direct contact, reliable residential/commercial/professional
+selection, visible project/product context, refresh and Back continuity, and
+canonical lower-case analytics properties without personal information.
+
 | Field | Definition |
 |---|---|
 | Single user outcome | Every visitor reaches an enquiry that recognises the correct audience, page, project or product |
@@ -549,6 +596,12 @@ Acceptance criteria:
 
 ### PR 2: Align enquiry form contract, terminology and uploads
 
+Implementation status, 25 July 2026: implemented in the Phase 1 form-contract
+checkpoint on `main`. Direct and embedded forms now consume one validator,
+audience option set, context presentation and upload instruction contract.
+Focused unit, API, browser and deployed production checks are green. Phase 1 is
+complete.
+
 | Field | Definition |
 |---|---|
 | Single user outcome | A visitor sees one understandable first-step brief regardless of where the enquiry begins |
@@ -562,6 +615,13 @@ Acceptance criteria:
 | Risk | Medium |
 
 ### PR 3: Make responsive disclosure state deterministic
+
+Implementation status, 25 July 2026: implemented in the Phase 1 disclosure
+checkpoint on `main`. Homepage, service, product, project, SEO and guide
+adapters now delegate viewport state to the shared owner. Script-blocked tests
+prove pre/post-hydration height parity at 430px, 390px and 360px while the
+separate no-JavaScript lane remains complete. Production verification passed;
+real-device and assistive-technology checks are deferred to Phase 5 / PR 14.
 
 | Field | Definition |
 |---|---|
@@ -735,25 +795,29 @@ Acceptance criteria:
 
 ### Recommended phase
 
-**Phase 1: Production conversion and responsive-state closure**
+**Phase 2: Project portfolio hardening**
 
 ### Why it should be next
 
-The repository now contains enough page and component work to continue, but production does not reliably preserve audience, project or product context. The shared disclosure also affects most of the new copy-reduction implementation. Starting another service, product or commercial redesign before these contracts are stable would increase the regression surface and make later reviews less trustworthy.
+Phase 1 made enquiry routing, forms and responsive disclosures reliable. The
+next highest-value problem is the project portfolio: mobile collection mode can
+still render detail content visitors cannot see, and project galleries remain
+too dependent on swipe.
 
 ### Work that must be completed
 
-1. Every major CTA uses the canonical context contract.
-2. Commercial project routes resolve commercial rather than residential.
-3. Product routes do not force residential without reliable evidence.
-4. Direct and embedded forms use one documented audience-aware contract.
-5. `Roof approach`, uploads, context display and payload are verified in production.
-6. Analytics properties remain canonical and non-personal.
-7. Mobile disclosure does not expose and then collapse content after hydration.
+1. Stop rendering or priority-loading hidden project-detail content on the
+   mobile project index.
+2. Preserve project filters, refresh and browser Back behaviour.
+3. Add visible previous, next and position controls to project galleries.
+4. Keep swipe optional and preserve keyboard, screen-reader and reduced-motion
+   behaviour.
+5. Verify the result at 430 px, 390 px and 360 px without changing the desktop
+   portfolio design.
 
 ### Work that must wait
 
-- Further residential or custom restructuring.
+- Residential or custom editorial restructuring.
 - Product-detail editorial consolidation.
 - Commercial reordering.
 - Professional capability content.
@@ -761,15 +825,20 @@ The repository now contains enough page and component work to continue, but prod
 
 ### Recommended number of PRs
 
-**3**
+**2**
 
 ### Completion gate
 
-Do not move to Phase 2 until the deployed route matrix, form behaviour and disclosure state have passed automated checks at 430 px, 390 px and 360 px, plus one iOS Safari and one Android Chrome smoke journey.
+Phase 1 is complete. Phase 2 can begin. Real-device and assistive-technology
+validation deferred from Phase 1 remains owned by Phase 5 / PR 14.
 
 ---
 
-## 13. Recommended next three PRs
+## 13. Completed Phase 1 goal archive
+
+The following PR 1-3 goal briefs are retained as the implementation record.
+They are complete and are no longer the recommended next work. Continue with
+Phase 2 / PR 4.
 
 ### Next PR 1: Close production enquiry routing and source context
 
