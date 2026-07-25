@@ -39,44 +39,44 @@
     ]
   },
   "after": {
-    "capturedFrom": "local Phase 2 checkpoint 1",
+    "capturedFrom": "production after Phase 2",
     "route": "/projects",
     "values": [
       {
         "width": 430,
-        "htmlBytes": 82806,
-        "documentNodes": 298,
+        "htmlBytes": 84549,
+        "documentNodes": 288,
         "caseStudyCount": 0,
         "caseStudyTextCharacters": 0,
         "caseStudyImages": 0,
         "caseStudyGalleryFigures": 0,
         "hiddenHeroLoaded": false,
         "projectCards": 14,
-        "transferredImageBytes": 239829
+        "transferredImageBytes": 344410
       },
       {
         "width": 390,
-        "htmlBytes": 82806,
-        "documentNodes": 298,
+        "htmlBytes": 84549,
+        "documentNodes": 288,
         "caseStudyCount": 0,
         "caseStudyTextCharacters": 0,
         "caseStudyImages": 0,
         "caseStudyGalleryFigures": 0,
         "hiddenHeroLoaded": false,
         "projectCards": 14,
-        "transferredImageBytes": 94501
+        "transferredImageBytes": 139605
       },
       {
         "width": 360,
-        "htmlBytes": 82806,
-        "documentNodes": 298,
+        "htmlBytes": 84549,
+        "documentNodes": 288,
         "caseStudyCount": 0,
         "caseStudyTextCharacters": 0,
         "caseStudyImages": 0,
         "caseStudyGalleryFigures": 0,
         "hiddenHeroLoaded": false,
         "projectCards": 14,
-        "transferredImageBytes": 94501
+        "transferredImageBytes": 139605
       }
     ]
   }

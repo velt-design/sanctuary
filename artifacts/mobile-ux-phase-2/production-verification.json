@@ -1,0 +1,155 @@
+{
+  "verifiedAt": "2026-07-25",
+  "productionOrigin": "https://www.sanctuarypergolas.co.nz",
+  "deployedCommit": "1306d502",
+  "checkpoints": [
+    {
+      "commit": "97766455",
+      "outcome": "mobile project collection omits the hidden selected-project detail payload"
+    },
+    {
+      "commit": "1306d502",
+      "outcome": "mobile project details use the accessible controlled gallery"
+    }
+  ],
+  "actualFilesChanged": {
+    "implementation": [
+      "apps/marketing/app/projects/DesktopCollectionProjectDetail.tsx",
+      "apps/marketing/app/projects/ProjectDetailContent.tsx",
+      "apps/marketing/app/projects/ProjectGallery.tsx",
+      "apps/marketing/app/projects/ProjectNavigator.tsx",
+      "apps/marketing/app/projects/ProjectsExperience.tsx",
+      "apps/marketing/app/projects/projectCollection.css",
+      "apps/marketing/app/projects/projectCollection.test.ts",
+      "apps/marketing/app/projects/projectCollection.ts",
+      "apps/marketing/app/projects/projectFilters.ts",
+      "apps/marketing/app/projects/projectPresentation.ts",
+      "apps/marketing/app/projects/projects.css",
+      "apps/marketing/components/marketing-foundation/Interactions.module.css",
+      "apps/marketing/components/marketing-foundation/Interactions.test.tsx",
+      "apps/marketing/components/marketing-foundation/ResponsiveGallery.tsx"
+    ],
+    "browserTests": [
+      "playwright/marketing.projects.spec.ts",
+      "playwright/marketing.projects-phase-two.spec.ts",
+      "playwright.marketing.config.ts"
+    ],
+    "documentation": [
+      "docs/marketing-ui-foundation.md",
+      "docs/mobile-content-density-refinement.md",
+      "docs/mobile-ux-roadmap-v2.md",
+      "docs/testing-and-qa.md"
+    ],
+    "evidenceDirectory": "artifacts/mobile-ux-phase-2/"
+  },
+  "productionSmoke": {
+    "passed": 14,
+    "failed": 0,
+    "coverage": [
+      "neutral, residential, commercial, professional, project and product enquiry routes",
+      "canonical lower-case non-personal analytics context",
+      "intercepted product form payload",
+      "project enquiry refresh and browser history",
+      "mobile collection markup, HTML payload and detail-media requests",
+      "seven responsive project layouts",
+      "project related and circular browse loop",
+      "touch gallery navigation and horizontal overflow"
+    ]
+  },
+  "productionCollection": {
+    "route": "/projects",
+    "targetWidths": [
+      430,
+      390,
+      360
+    ],
+    "before": {
+      "htmlBytes": 174571,
+      "documentNodes": 510,
+      "hiddenCaseStudyCount": 1,
+      "hiddenCaseStudyImages": 10,
+      "hiddenGalleryFigures": 6,
+      "hiddenHeroLoaded": true
+    },
+    "after": {
+      "htmlBytes": 84549,
+      "documentNodes": 288,
+      "hiddenCaseStudyCount": 0,
+      "hiddenCaseStudyImages": 0,
+      "hiddenGalleryFigures": 0,
+      "hiddenHeroLoaded": false,
+      "projectCards": 14
+    },
+    "change": {
+      "htmlBytesPercent": -51.6,
+      "documentNodesPercent": -43.5
+    }
+  },
+  "layoutShiftReview": [
+    {
+      "width": 430,
+      "route": "/projects",
+      "cls": 0
+    },
+    {
+      "width": 430,
+      "route": "/projects/warkworth-outdoor-room",
+      "cls": 0
+    },
+    {
+      "width": 390,
+      "route": "/projects",
+      "cls": 0
+    },
+    {
+      "width": 390,
+      "route": "/projects/warkworth-outdoor-room",
+      "cls": 0
+    },
+    {
+      "width": 360,
+      "route": "/projects",
+      "cls": 0
+    },
+    {
+      "width": 360,
+      "route": "/projects/warkworth-outdoor-room",
+      "cls": 0
+    }
+  ],
+  "imageRequestReview": {
+    "selectedDetailMediaRequestsOnMobileCollection": 0,
+    "selectedDetailVideoRequestsOnMobileCollection": 0,
+    "note": "Total transferred image bytes varied with CDN cache state and responsive candidate selection, so completion is based on request identity plus HTML and DOM evidence rather than a single transfer-size sample.",
+    "priorityImageReview": "The existing first mobile collection card can be reported as LCP by the development warning. It remains lazy because making it eager would also load desktop rail card media and would expand Phase 2 beyond its preserved desktop contract. Field performance remains a Phase 5 measurement task."
+  },
+  "broadBrowserGate": {
+    "passed": 235,
+    "skippedEvidenceCaptures": 9,
+    "isolatedRerunsPassed": [
+      "JavaScript-disabled browser journeys",
+      "product hub tablet imagery"
+    ],
+    "knownUnrelatedFailures": [
+      "desktop hero scroll state at 1920x1000",
+      "desktop hero scroll state at 1440x1000"
+    ]
+  },
+  "manualDeviceValidation": {
+    "iosSafari": "unverified",
+    "androidChrome": "unverified",
+    "voiceOver": "unverified",
+    "talkBack": "unverified",
+    "owner": "Phase 5 / PR 14",
+    "note": "Automated Chromium and touch emulation are supporting evidence, not a substitute for physical-device or assistive-technology validation."
+  },
+  "nonGoalsConfirmed": [
+    "no project narrative rewrite",
+    "no project URL change",
+    "no photography replacement",
+    "no desktop portfolio redesign",
+    "no form redesign",
+    "no required-field or upload change",
+    "no disclosure or gallery scope outside the project portfolio"
+  ]
+}

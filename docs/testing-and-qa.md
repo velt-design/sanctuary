@@ -133,7 +133,7 @@ route attribution and retained success values.
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
 and
-`npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
+`npx playwright test playwright/marketing.projects.spec.ts playwright/marketing.projects-phase-two.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. The project browser suite visits every
 canonical case study at 390 pixels and runs the collection plus four
 representative project states across 320, 360, 390 and 430 pixels. The
@@ -141,14 +141,20 @@ collection lane covers every audience and roof-form combination, all-project
 and empty states, URL reset, refresh and Back, one semantic image-led card
 tree, canonical destinations, native disclosure semantics, visible focus,
 minimum 44 pixel targets, responsive sizes, focal points, lazy loading,
-reserved image geometry and desktop rail/payload regression. The detail lane
-verifies one visible H1 and logical heading order, early and final contact
-actions, loaded and intentionally framed hero media, mobile height budgets,
-native server-rendered disclosures, selector focus and scroll behavior,
-metadata and schema, honest missing-data treatment, reduced motion, zero
-textual or generated em dashes, no horizontal overflow and no nested vertical
-content scroller. Its seven-width responsive matrix provides the remaining
-representative desktop regression coverage.
+reserved image geometry, absence of hidden case-study markup or media requests,
+payload size and desktop rail regression. The detail lane verifies one visible
+H1 and logical heading order, early and final contact actions, loaded and
+intentionally framed hero media, mobile height budgets, native server-rendered
+disclosures, selector focus and scroll behavior, one active gallery image,
+visible 44 pixel previous/next controls, announced position, optional touch
+swipe, stable keyboard focus, metadata and schema, honest missing-data
+treatment, enquiry context, browser Back/refresh, reduced motion, zero textual
+or generated em dashes, no horizontal overflow and no nested vertical content
+scroller. Its seven-width responsive matrix provides the remaining
+representative desktop regression coverage. Set
+`MARKETING_PHASE_TWO_CAPTURE=1` to run the focused evidence spec and write
+collection payload plus 430, 390, 360 and desktop screenshots under
+`artifacts/mobile-ux-phase-2/`.
 
 Portal readiness sweeps:
 

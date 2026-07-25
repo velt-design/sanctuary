@@ -1,6 +1,6 @@
 # Sanctuary Pergolas Mobile UX Roadmap v2
 
-> **Status:** Phase 1 complete; Phase 2 is the recommended next phase
+> **Status:** Phases 1 and 2 complete; Phase 3 is the recommended next phase
 > **Repository:** `velt-design/sanctuary`
 > **Recommended repository path:** `docs/mobile-ux-roadmap-v2.md`
 > **Live website:** `https://www.sanctuarypergolas.co.nz/`
@@ -56,6 +56,29 @@ real-device iOS Safari and Android Chrome journeys, plus VoiceOver and TalkBack
 smoke checks, will be completed in Phase 5 / PR 14. This explicit deferral no
 longer blocks Phase 2.
 
+### Phase 2 delivery update - 25 July 2026
+
+Both Phase 2 checkpoints are deployed from `main`: mobile collection payload
+separation (`97766455`) and the accessible controlled project gallery
+(`1306d502`). At 430 px, 390 px and 360 px, `/projects` no longer contains a
+hidden case-study tree, gallery or detail media request. Production HTML fell
+from 174,571 bytes to 84,549 bytes and the rendered DOM from 510 to 288 nodes
+while all 14 project cards and the established desktop rail remained.
+
+Project detail routes now use the shared controlled gallery below 900 px with
+visible previous and next controls, an announced position, stable keyboard
+focus and optional touch swipe. The established desktop editorial mosaic is
+unchanged. Fourteen production smoke checks passed across collection payload,
+seven responsive layouts, project browse and Back/refresh, touch navigation,
+canonical enquiry context, intercepted form payload and non-personal
+lower-case analytics. Automated layout-shift review recorded zero cumulative
+layout shift on the collection and representative detail route at all three
+target widths.
+
+Real iOS Safari and Android Chrome Back gestures, VoiceOver and TalkBack remain
+unverified on physical devices. As agreed at Phase 1 closure, those tasks
+remain owned by Phase 5 / PR 14 and are not represented by Chromium emulation.
+
 ### Direction-of-travel judgement
 
 **Improved but inconsistent.**
@@ -72,9 +95,14 @@ The strongest current experience remains project discovery. Large project cards,
 
 The largest remaining content weakness is disclosure dependence. A representative product page uses seven mobile disclosure groups, the guide hub uses ten repeated guide-description disclosures, and the residential and custom pages still expose more than 1,100 visible words. The site is shorter by default, but parts of it still feel like a long article divided into drawers.
 
-The most important unresolved conversion issue is production parity. The live commercial header still opens a residential enquiry, project and product source context is lost, and the live contact form still uses legacy terminology. Current `main` also continues to infer residential context for commercial project URLs and hard-codes residential context on product pages.
+Phase 1 closed the production enquiry and responsive-state defects recorded by
+the audit. Phase 2 then removed hidden mobile project detail work and completed
+the controlled project gallery. The highest-value remaining work is editorial:
+shorter service and product decisions, fewer disclosure choices and one
+purposeful product gallery sequence.
 
-The next phase should close the production enquiry contract, align form behaviour and analytics, and remove the responsive disclosure hydration shift. Do not begin another broad page-group redesign until those release gates pass.
+The next phase should consolidate the residential, custom and product journeys
+without changing taxonomy, claims or the established desktop design.
 
 ---
 
@@ -87,14 +115,14 @@ The next phase should close the production enquiry contract, align form behaviou
 | Custom service | Improved, still long | Material improvement | 1,161 visible mobile words, four project cards and three large disclosure groups preserve too much article structure | P1 |
 | Products index | Good foundation | Minor improvement | Eight major regions remain, with full screens, lighting and heating inventories before the final action | P2 |
 | Product detail | Clearer but over-disclosed | Material improvement | Seven disclosure groups, duplicated gallery media and residential-only enquiry assumptions | P1 |
-| Projects index | Strong | Unchanged by copy pass | Full project-detail content is still rendered and hidden on mobile, creating an avoidable payload risk | P0 |
-| Project detail | Strong proof, incomplete interaction | Unchanged by copy pass | Gallery remains swipe-led without visible previous and next controls; production loses project context | P0 |
-| Commercial | Improved in current `main`, not realised on live | Material repository improvement | Live production is behind; current `main` still places two explanatory blocks before cases and uses a five-stage process | P0 |
+| Projects index | Strong and hardened | Phase 2 removed the hidden mobile detail tree and cut production HTML and DOM weight materially | Physical-device Back gestures remain unverified | P1 |
+| Project detail | Strong controlled proof | Phase 2 added visible gallery controls, count, keyboard support and optional swipe while preserving desktop | Physical-device and screen-reader validation remains | P1 |
+| Commercial | Reliable routing, still structurally long | Phase 1 deployed commercial context; the earlier copy pass improved the repository journey | Two explanatory blocks still precede cases and the process still uses five stages | P1 |
 | Professional pathway | Weak | Unchanged | Visitors are sent directly to a preselected form without capability, role or project evidence | P1 |
 | Guide hub | Easier to scan | Moderate improvement | Ten repeated `About this guide` controls create mechanical interaction and hide useful distinctions | P2 |
 | Guide detail | Improved, still article-heavy | Moderate improvement | Typical pages still expose 935 to 1,316 words and seven to nine heading regions | P2 |
-| Contact and enquiry | Good foundations in `main`, unreliable in production | Little customer-facing improvement | Production routing, terminology, source context and form parity remain incomplete | P0 |
-| Mobile navigation | Strong interaction foundation in `main` | Improved in code | Production routing is stale, professional capability is absent and commercial project URLs still infer residential | P0 |
+| Contact and enquiry | Reliable and source-aware | Phase 1 deployed canonical routing, terminology, context and form parity | Real-device and assistive-technology completion remains unverified | P1 |
+| Mobile navigation | Strong and source-aware | Phase 1 deployed canonical route context and preserved focus/scroll behaviour | Professional capability is still a direct form pathway | P1 |
 | Footer | Weak | Unchanged | A minimum full viewport, repeated navigation and no visible tap-to-call or email utility | P2 |
 
 ---
@@ -118,15 +146,15 @@ Scores compare the current state with the previous implementation review complet
 | Perceived page length | 6/10 | Page height is reduced, but several routes remain long and the footer adds a full viewport | Improved from 5 | Finish service-page consolidation and replace the footer treatment |
 | Navigation usability | 7/10 | Current `main` has strong menu focus and scroll behaviour | Unchanged | Deploy and verify context-aware routing, then add a real professional capability destination |
 | Pathway clarity | 6/10 | Home is correctly primary, but professional remains a form shortcut and service pages still present as guide entries | Unchanged | Separate service, capability and educational roles more clearly |
-| Project discovery | 8/10 | The one-column image-led index and optional filters work as premium discovery | Unchanged | Remove hidden detail rendering and verify Back restoration on real devices |
+| Project discovery | 9/10 | The one-column image-led index retains premium proof without a hidden case-study payload | Improved from 8 | Verify Back gestures and scroll restoration on physical iOS and Android devices |
 | Product comprehension | 7/10 | Outcome, fit, constraints and built evidence are clearer in the default layer | Unchanged | Combine seven disclosure groups into a maximum of three purposeful secondary-detail groups |
 | CTA visibility | 8/10 | Primary actions are easy to find across the main journeys | Unchanged | Make labels and destinations as reliable as their visual prominence |
-| Conversion effectiveness | 5/10 | Live commercial, project and product routes still lose or misclassify context | Unchanged | Close the production route matrix before further visual work |
+| Conversion effectiveness | 8/10 | Production commercial, project and product routes preserve validated source context and audience rules | Improved from 5 | Reconcile field analytics and successful submissions in Phase 5 |
 | Trust and evidence | 9/10 | Reviews, built projects, specific facts and honest caveats remain a major strength | Unchanged | Integrate proof into decisions rather than adding more proof sections |
-| Enquiry experience | 5/10 | Current `main` improves context, upload and accessibility, but production is stale and forms remain inconsistent | Unchanged | Align direct and embedded form contracts, then verify on production |
-| Touch usability | 7/10 | Shared targets and menu mechanics are sound in tests | Unchanged | Add visible gallery controls and complete real-device thumb testing |
-| Accessibility | 7/10 | Semantic disclosure, focus, error and no-JavaScript safeguards have improved | Improved from 6 | Fix hydration state, replace swipe-only galleries and complete VoiceOver and TalkBack tasks |
-| Overall mobile customer experience | 7/10 | The site is clearer and less dense in the repository, but production and interaction defects prevent a higher score | Unchanged | Complete the production reliability phase and the project portfolio hardening phase |
+| Enquiry experience | 8/10 | Direct and embedded forms now share terminology, context, upload and validation contracts in production | Improved from 5 | Complete real-device and assistive-technology form tasks |
+| Touch usability | 8/10 | Shared targets, menus, filters and visible gallery controls are sound in automated tests | Improved from 7 | Complete physical-device thumb and Back-gesture testing |
+| Accessibility | 8/10 | Disclosures and galleries have deterministic semantics, visible controls, stable focus and no-JavaScript safeguards | Improved from 7 | Complete VoiceOver and TalkBack tasks |
+| Overall mobile customer experience | 8/10 | Production routing and project interactions are reliable; residual service and product density now limits the score | Improved from 7 | Complete Phase 3 editorial consolidation |
 
 ---
 
@@ -449,6 +477,7 @@ Release evidence, 25 July 2026:
 
 | Field | Definition |
 |---|---|
+| Status | **Complete - 25 July 2026** |
 | Objective | Complete the premium project browse and detail loop without hidden payload or swipe-only interaction |
 | User problem solved | Mobile visitors receive avoidable hidden page weight and cannot clearly control project galleries |
 | Exact scope | Remove hidden detail rendering from collection mode; preserve filter URL state; implement visible gallery controls, count, keyboard and reduced-motion behaviour; verify related, previous, next, all-projects and Back routes |
@@ -477,6 +506,36 @@ Testing requirements:
 - 430 px, 390 px and 360 px visual regression.
 - iOS Safari and Android Chrome Back gesture tests.
 - Image-request and layout-shift review.
+
+Release evidence, 25 July 2026:
+
+- Checkpoint commits: `97766455` removed the hidden mobile collection detail
+  payload; `1306d502` adopted the controlled gallery and optional touch swipe.
+- Production `/projects` HTML reduced from 174,571 to 84,549 bytes (51.6
+  percent) and DOM nodes reduced from 510 to 288 (43.5 percent) at 430 px,
+  390 px and 360 px. Hidden case-study text, images, gallery figures and hero
+  loading all reduced to zero while 14 cards remained.
+- The responsive project suite passed 28 behaviour checks with two intentional
+  evidence-capture skips. The shared foundation suite passed 26 behaviour
+  checks with two intentional evidence-capture skips.
+- The marketing unit suite passed 40 files and 175 tests. Repository lint,
+  all-workspace typecheck, the 64-route production marketing build,
+  changed-file architecture checks and strict dead-code checks passed.
+- The broad marketing browser matrix recorded 235 passes and nine intentional
+  evidence-capture skips. Its JavaScript-disabled and product-tablet
+  contention failures passed immediately in isolation. Two existing desktop
+  hero-scroll assertions remained red in an untouched, explicitly out-of-scope
+  component.
+- Fourteen deployed production smoke checks passed, covering the canonical
+  enquiry and analytics route matrix, intercepted form payloads,
+  refresh/Back, collection payload and media requests, seven responsive
+  project layouts, browse navigation and touch swipe.
+- Production layout-shift review recorded CLS `0` on `/projects` and
+  `/projects/warkworth-outdoor-room` at 430 px, 390 px and 360 px.
+- Same-environment payload data and before/after screenshots are stored in
+  `artifacts/mobile-ux-phase-2/`.
+- Physical iOS Safari, Android Chrome, VoiceOver and TalkBack validation
+  remains explicitly unverified and deferred to Phase 5 / PR 14.
 
 ### Phase 3: Editorial consolidation of service and product journeys
 
@@ -649,6 +708,14 @@ real-device and assistive-technology checks are deferred to Phase 5 / PR 14.
 | Effort | Medium |
 | Risk | Medium |
 
+Implementation status, 25 July 2026: complete in `97766455`. Mobile collection
+requests now receive typed project summaries and never mount the case-study
+tree. A desktop-only client boundary dynamically loads the governed full
+records and detail component at 900 px and above, preserving the selected
+legacy query, sticky rail, filters and canonical project links. Production
+network checks confirm no selected detail image or video request below the
+breakpoint.
+
 ### PR 5: Complete the accessible project gallery and browse loop
 
 | Field | Definition |
@@ -662,6 +729,14 @@ real-device and assistive-technology checks are deferred to Phase 5 / PR 14.
 | Non-goals | New photography, project narrative rewrite, desktop portfolio redesign |
 | Effort | Medium |
 | Risk | Medium |
+
+Implementation status, 25 July 2026: complete in `1306d502`. Mobile project
+details use the shared `ResponsiveGallery`, render one active image, expose
+44 px previous/next controls and a polite position status, and support
+Arrow/Home/End keys plus horizontal touch swipe without changing focus.
+The original desktop mosaic remains the desktop presentation. Production
+checks cover enquiry context, related and circular navigation, Back, refresh,
+reduced motion, target widths and zero horizontal overflow.
 
 ### PR 6: Consolidate product-detail first layers and remove duplicate galleries
 
@@ -795,50 +870,53 @@ real-device and assistive-technology checks are deferred to Phase 5 / PR 14.
 
 ### Recommended phase
 
-**Phase 2: Project portfolio hardening**
+**Phase 3: Editorial consolidation of service and product journeys**
 
 ### Why it should be next
 
-Phase 1 made enquiry routing, forms and responsive disclosures reliable. The
-next highest-value problem is the project portfolio: mobile collection mode can
-still render detail content visitors cannot see, and project galleries remain
-too dependent on swipe.
+Phases 1 and 2 made enquiry routing, responsive disclosures and the complete
+project browse loop reliable in production. The next highest-value problem is
+reading and interaction effort: residential and custom journeys remain long,
+and product details repeat gallery media while distributing one decision
+across seven disclosure groups.
 
 ### Work that must be completed
 
-1. Stop rendering or priority-loading hidden project-detail content on the
-   mobile project index.
-2. Preserve project filters, refresh and browser Back behaviour.
-3. Add visible previous, next and position controls to project galleries.
-4. Keep swipe optional and preserve keyboard, screen-reader and reduced-motion
-   behaviour.
-5. Verify the result at 430 px, 390 px and 360 px without changing the desktop
-   portfolio design.
+1. Consolidate product-detail first layers to no more than three purposeful
+   disclosure groups and one deliberate gallery sequence.
+2. Reduce residential service content to a clear fit, two or three projects,
+   three process stages, compact investment drivers and one support gateway.
+3. Apply the approved service pattern to the custom journey while keeping its
+   constrained-project evidence distinct.
+4. Make the product index lead with four pergola forms and treat screens,
+   lighting and heating as secondary integrated-option gateways.
+5. Preserve canonical enquiry context, existing URLs, honest caveats, product
+   taxonomy and the established desktop presentation.
 
 ### Work that must wait
 
-- Residential or custom editorial restructuring.
-- Product-detail editorial consolidation.
-- Commercial reordering.
+- Commercial proof reordering.
 - Professional capability content.
 - Guide-hub and footer refinement.
+- Homepage lower-half consolidation.
 
 ### Recommended number of PRs
 
-**2**
+**4**
 
 ### Completion gate
 
-Phase 1 is complete. Phase 2 can begin. Real-device and assistive-technology
-validation deferred from Phase 1 remains owned by Phase 5 / PR 14.
+Phases 1 and 2 are complete. Phase 3 can begin with PR 6. Real-device and
+assistive-technology validation deferred from the earlier phases remains owned
+by Phase 5 / PR 14.
 
 ---
 
 ## 13. Completed Phase 1 goal archive
 
 The following PR 1-3 goal briefs are retained as the implementation record.
-They are complete and are no longer the recommended next work. Continue with
-Phase 2 / PR 4.
+They are complete and are no longer the recommended next work. Phase 2 / PRs
+4 and 5 are also complete; continue with Phase 3 / PR 6.
 
 ### Next PR 1: Close production enquiry routing and source context
 
