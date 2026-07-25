@@ -10,14 +10,14 @@ import {
   Text,
 } from '@/components/marketing-foundation';
 import { projects } from '@/data/projects';
-import type { SeoLandingBlock } from './types';
+import SeoLandingMobileDisclosure from './SeoLandingMobileDisclosure';
+import type { SeoLandingBlock, SeoLandingDisclosureGroup } from './types';
 
 function sectionTone(tone: SeoLandingBlock['tone']) {
   return tone === 'canvas' || !tone ? undefined : tone;
 }
 
-export default function SeoLandingBlocks({ blocks }: { blocks: readonly SeoLandingBlock[] }) {
-  return blocks.map((block) => {
+function renderSeoLandingBlock(block: SeoLandingBlock) {
     if (block.kind === 'split-intro') {
       return (
         <Section id={block.id} tone={sectionTone(block.tone)} className="acrylic-section acrylic-section--opening" aria-labelledby={`${block.id}-title`} key={block.id}>
@@ -159,5 +159,82 @@ export default function SeoLandingBlocks({ blocks }: { blocks: readonly SeoLandi
         <Container width="wide"><header className="acrylic-section__header acrylic-section__header--wide"><Eyebrow className="acrylic-eyebrow">{block.eyebrow}</Eyebrow><Heading id={`${block.id}-title`}>{block.title}</Heading>{block.intro ? <p>{block.intro}</p> : null}</header><div className="acrylic-faq-list">{block.items.map((item, index) => <details key={item.question}><summary><span>{String(index + 1).padStart(2, '0')}</span><h3>{item.question}</h3><i aria-hidden="true" /></summary><div>{item.answer.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div></details>)}</div></Container>
       </Section>
     );
+}
+
+function indexDisclosureGroups(
+  blocks: readonly SeoLandingBlock[],
+  groups: readonly SeoLandingDisclosureGroup[],
+) {
+  const groupsByStartIndex = new Map<number, SeoLandingDisclosureGroup>();
+  const groupIds = new Set<string>();
+  const claimedBlockIds = new Set<string>();
+
+  groups.forEach((group) => {
+    if (group.blockIds.length === 0) {
+      throw new Error(`SEO landing disclosure group "${group.id}" must include at least one block.`);
+    }
+
+    const startIndex = blocks.findIndex((block) => block.id === group.blockIds[0]);
+    const actualBlockIds = blocks
+      .slice(startIndex, startIndex + group.blockIds.length)
+      .map((block) => block.id);
+    const isContiguous = startIndex >= 0
+      && actualBlockIds.length === group.blockIds.length
+      && actualBlockIds.every((blockId, index) => blockId === group.blockIds[index]);
+    const overlapsAnotherGroup = group.blockIds.some((blockId) => claimedBlockIds.has(blockId));
+
+    if (
+      !isContiguous
+      || groupIds.has(group.id)
+      || overlapsAnotherGroup
+      || groupsByStartIndex.has(startIndex)
+    ) {
+      throw new Error(
+        `SEO landing disclosure group "${group.id}" must reference unique, contiguous blocks in DOM order.`,
+      );
+    }
+
+    groupIds.add(group.id);
+    group.blockIds.forEach((blockId) => claimedBlockIds.add(blockId));
+    groupsByStartIndex.set(startIndex, group);
   });
+
+  return groupsByStartIndex;
+}
+
+type SeoLandingBlocksProps = {
+  blocks: readonly SeoLandingBlock[];
+  disclosureGroups?: readonly SeoLandingDisclosureGroup[];
+};
+
+export default function SeoLandingBlocks({
+  blocks,
+  disclosureGroups = [],
+}: SeoLandingBlocksProps) {
+  const groupsByStartIndex = indexDisclosureGroups(blocks, disclosureGroups);
+  const output = [];
+
+  for (let index = 0; index < blocks.length;) {
+    const group = groupsByStartIndex.get(index);
+
+    if (group) {
+      const groupedBlocks = blocks.slice(index, index + group.blockIds.length);
+      output.push(
+        <SeoLandingMobileDisclosure
+          groupId={group.id}
+          key={group.id}
+          summary={group.summary}
+        >
+          {groupedBlocks.map(renderSeoLandingBlock)}
+        </SeoLandingMobileDisclosure>,
+      );
+      index += group.blockIds.length;
+      continue;
+    }
+
+    output.push(renderSeoLandingBlock(blocks[index]));
+    index += 1;
+  }
+
+  return output;
 }

@@ -63,6 +63,11 @@ export const aluminiumPergolasConfig = {
     ] },
     { kind: 'faq', id: 'aluminium-faq', tone: 'elevated', eyebrow: 'Material questions in context', title: 'What to confirm before specifying an aluminium pergola', intro: 'These answers stay general until the site, structure, finish and exact products are known.', items: faqItems },
   ],
+  mobileDisclosureGroups: [
+    { id: 'aluminium-outcomes-detail', summary: 'What a resolved aluminium frame achieves', blockIds: ['frame-outcomes'] },
+    { id: 'aluminium-specification-detail', summary: 'How the aluminium specification is resolved', blockIds: ['aluminium-specification'] },
+    { id: 'aluminium-planning-support', summary: 'Aluminium planning links and common questions', blockIds: ['aluminium-next-decisions', 'aluminium-faq'] },
+  ],
   finalCta: { eyebrow: 'Start with the openings', title: 'Show where the frame needs to be quiet', text: 'Photos of doors, views, eaves and circulation are more useful than a preferred profile on its own. Share the whole setting so the frame can be considered in context.', button: 'Send the project outline', checklistTitle: 'Include if available', checklist: ['Project suburb', 'Wide site and house photos', 'Views from adjoining rooms', 'Rough width, depth and height', 'Doors and paths to keep clear', 'Preferred roof effect, if known', 'Finish references from the home', 'Plans or sketches'] },
   form: { ariaLabel: 'Aluminium pergola project enquiry form', eyebrow: 'Show the frame context', heading: 'Send your aluminium pergola outline', intro: 'Add photos, rough dimensions and the openings the design needs to protect. You can leave the roof form and material undecided.', submitLabel: 'Send the project outline', messageLabel: 'What should the frame resolve?', messagePlaceholder: 'Describe the openings, connections, views or circulation that should shape the post and beam layout.', briefFields: [
     { name: 'openingPriorities', label: 'Openings and post positions to protect', type: 'textarea', placeholder: 'Note doors, paths, views, furniture or vehicle access that should remain clear.', wide: true },

@@ -13,6 +13,26 @@ export default function ScrollReset() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    const findHashTarget = () => {
+      const rawId = window.location.hash.slice(1);
+      if (!rawId) return null;
+
+      try {
+        return document.getElementById(decodeURIComponent(rawId));
+      } catch {
+        return document.getElementById(rawId);
+      }
+    };
+
+    const scrollToHashTarget = () => {
+      const target = findHashTarget();
+      if (!target) return false;
+
+      target.scrollIntoView({ block: 'start', behavior: 'auto' });
+      return true;
+    };
+
     const reset = () => {
       try {
         window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -37,11 +57,38 @@ export default function ScrollReset() {
         });
     };
 
-    // Run immediately and again on the next frame so we catch
-    // both the old and newly-mounted route contents.
-    reset();
-    const raf = requestAnimationFrame(reset);
-    return () => cancelAnimationFrame(raf);
+    const settleRouteScroll = () => {
+      if (!scrollToHashTarget()) reset();
+    };
+
+    let firstFrame = 0;
+    let secondFrame = 0;
+    const scheduleHashScroll = () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      firstFrame = requestAnimationFrame(() => {
+        scrollToHashTarget();
+        secondFrame = requestAnimationFrame(scrollToHashTarget);
+      });
+    };
+
+    // Keep the established immediate/next-frame top reset for ordinary route
+    // changes. Fragment navigation gets one additional frame so a responsive
+    // disclosure can reveal its target before the final scroll.
+    settleRouteScroll();
+    firstFrame = requestAnimationFrame(() => {
+      settleRouteScroll();
+      if (window.location.hash) {
+        secondFrame = requestAnimationFrame(scrollToHashTarget);
+      }
+    });
+    window.addEventListener('hashchange', scheduleHashScroll);
+
+    return () => {
+      window.removeEventListener('hashchange', scheduleHashScroll);
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
   }, [pathname]);
 
   return null;

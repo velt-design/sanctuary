@@ -316,6 +316,23 @@ export const commercialPergolasConfig = {
       items: faqItems,
     },
   ],
+  mobileDisclosureGroups: [
+    {
+      id: 'commercial-outcomes-detail',
+      summary: 'How the pergola supports a working venue',
+      blockIds: ['commercial-outcomes'],
+    },
+    {
+      id: 'commercial-coordination-detail',
+      summary: 'How coordination protects the operation',
+      blockIds: ['commercial-decisions', 'commercial-circulation', 'commercial-risks'],
+    },
+    {
+      id: 'commercial-planning-support',
+      summary: 'Commercial planning links and common questions',
+      blockIds: ['commercial-next-decisions', 'commercial-pergolas-faq'],
+    },
+  ],
   finalCta: {
     eyebrow: 'Start with the opportunity',
     title: 'Show us the venue and what the space needs to do',

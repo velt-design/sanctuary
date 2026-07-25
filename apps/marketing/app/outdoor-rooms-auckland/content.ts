@@ -57,6 +57,11 @@ export const outdoorRoomsConfig = {
     ] },
     { kind: 'faq', id: 'outdoor-rooms-faq', tone: 'elevated', eyebrow: 'Questions beyond the roof', title: 'What to resolve when planning an Auckland outdoor room', intro: 'The final recommendation depends on the activities, site, products and completed design.', items: faqItems },
   ],
+  mobileDisclosureGroups: [
+    { id: 'outdoor-room-use-detail', summary: 'How everyday use shapes the room', blockIds: ['room-use'] },
+    { id: 'outdoor-room-coordination-detail', summary: 'How the room decisions work together', blockIds: ['outdoor-room-decisions'] },
+    { id: 'outdoor-room-planning-support', summary: 'Outdoor room planning links and common questions', blockIds: ['room-next-decisions', 'outdoor-rooms-faq'] },
+  ],
   finalCta: { eyebrow: 'Describe a day, not a product list', title: 'Tell Sanctuary what should happen in the room', text: 'Photos and dimensions establish the site. A short account of meals, evenings, children, guests, views or weather problems establishes why the room should exist.', button: 'Describe the room you need', checklistTitle: 'Useful first inputs', checklist: ['Project suburb', 'Wide site and house photos', 'Views from inside', 'Rough dimensions', 'Furniture and activity list', 'Rain, wind, sun or privacy issues', 'Desired lighting, heating or screens', 'Plans or sketches'] },
   form: { ariaLabel: 'Outdoor room project enquiry form', eyebrow: 'Start with use', heading: 'Describe your outdoor room', intro: 'Share the site, rough dimensions and the activities the space needs to support. Include any roof, edge, lighting or heating ideas without treating them as fixed.', submitLabel: 'Describe the room you need', messageLabel: 'Describe a typical day in the room', messagePlaceholder: 'Tell us who uses the space, where dining, lounging or cooking should happen and which doors, paths or views need to remain open.', briefFields: [
     { name: 'furnitureAndUse', label: 'Furniture and activities', type: 'textarea', placeholder: 'List the table, lounge, barbecue, kitchen, fireplace or other elements the plan should allow for.', wide: true },

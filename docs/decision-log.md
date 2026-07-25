@@ -21,6 +21,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| 2026-07-25 | Marketing Fragment Navigation    | Promoted | Responsive disclosures must reveal any fragment target they contain, and global route scroll handling must prefer a valid hash target over resetting to the top. Verify the real cross-route link and Back journey, not only a direct URL or attached target. |
+| 2026-07-25 | Marketing Server Rendering       | Promoted | Keep the marketing route template server-rendered and non-landmark, let each page own its single `main`, and do not add a top-level App Router loading boundary whose streamed replacement requires JavaScript to reveal the real public page. Test visible no-JavaScript browser output, not response-string presence alone. |
 | 2026-07-25 | Repository Security Scan         | Promoted | Search tracked, non-binary Git content for exact private-key markers; do not synchronously decode every tracked blob or let binary visual evidence consume the security gate's fixed timeout. |
 | 2026-07-24 | Marketing Mobile Navigation      | Promoted | Keep the global menu breakpoint identical in CSS and JavaScript, capture the reading position before fixing the body, make the closed portal inert, and verify focus/history/short-height behavior on public routes. Do not add a global sticky CTA while consent and route-local fixed surfaces prevent a non-obstruction guarantee. |
 | 2026-07-24 | Marketing Enquiry Schema Rollout | Promoted | Before deploying an RPC that writes fields introduced in a legacy root schema snapshot, add a forward migration for every consumed column and run the real RPC inside a rollback-only transaction against the exact target project; function existence alone is not schema readiness. |
@@ -3406,3 +3408,25 @@ Why it mattered: A healthy security check failed after an unrelated marketing UI
 Current guardrail: Search tracked, non-binary Git content for exact private-key markers through Git's own index-aware grep. Do not decode every repository blob or respond by repeatedly increasing the timeout.
 Promoted to: `docs/testing-and-qa.md`
 Related docs/tests: `test/repo-security.test.ts`; `.github/workflows/background-jobs.yml`
+
+### 2026-07-25 - Marketing Server Rendering - Public Content Must Not Need A Reveal Script
+
+Date: 2026-07-25
+Area: Marketing App Router template, loading boundary, and public-page landmarks
+Status: Promoted
+Decision or mistake: The global route template was a client component that wrapped page-owned `main` landmarks in another animated `main`, while the top-level `loading.tsx` boundary streamed the real route into a hidden segment. Raw response tests found all copy, but a browser with JavaScript disabled kept showing the empty loading shell because the replacement script never ran.
+Why it mattered: Search and response-level checks looked healthy while visitors without working JavaScript could not see the proposition, evidence, supporting content, or conversion action. Hydrated pages also exposed duplicate main landmarks.
+Current guardrail: Keep the root marketing template server-rendered and use only a non-landmark presentation wrapper; each page owns its single `main`. Do not restore a top-level App Router loading boundary unless a JavaScript-disabled browser proves that the actual page remains visible. Preserve route progress and restrained CSS entry motion as progressive enhancement, remove that motion for reduced-motion users, and test a visible H1, CTA, complete server-open disclosure content, and one main landmark with JavaScript disabled. Raw HTML string presence is necessary but not sufficient.
+Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/app/template.tsx`; `apps/marketing/components/AnimatedRouteTemplate.tsx`; `apps/marketing/app/globals.css`; `playwright/marketing.mobile-content-density.spec.ts`
+
+### 2026-07-25 - Marketing Fragment Navigation - Responsive Detail Must Reveal Its Target
+
+Date: 2026-07-25
+Area: Marketing responsive disclosures and route scroll
+Status: Promoted
+Decision or mistake: Moving established section anchors into closed mobile disclosures made a valid homepage deep link land on hidden content, while the global route scroll reset sent a separate commercial form fragment back to the top even though the URL retained its hash.
+Why it mattered: Meaningful internal links still existed in the DOM and passed response/attachment checks, but visitors did not reach the comparison or enquiry section promised by the action.
+Current guardrail: A responsive disclosure must open when it contains the current fragment target. Global route scroll handling must scroll to a valid target inside or outside a disclosure before applying its no-hash top reset. Test a real source-link click, destination visibility and Back navigation; direct `page.goto()` and URL assertions alone do not prove the interaction.
+Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/components/marketing-foundation/Disclosure.tsx`; `apps/marketing/components/ScrollReset.tsx`; `playwright/marketing.mobile-content-density.spec.ts`

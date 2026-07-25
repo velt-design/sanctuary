@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { cn } from '@/lib/cn';
@@ -48,6 +49,7 @@ export function Disclosure({
   ...detailsProps
 }: DisclosureProps) {
   const responsive = mode === 'desktop-expanded';
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const [isDesktop, setIsDesktop] = useState(responsive);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -55,11 +57,50 @@ export function Disclosure({
     if (!responsive) return;
 
     const media = window.matchMedia(`(min-width: ${desktopMinWidth}px)`);
-    const syncViewport = () => setIsDesktop(media.matches);
+    let firstScrollFrame = 0;
+    let secondScrollFrame = 0;
+
+    const findHashTarget = () => {
+      const rawId = window.location.hash.slice(1);
+      if (!rawId) return null;
+
+      try {
+        return document.getElementById(decodeURIComponent(rawId));
+      } catch {
+        return document.getElementById(rawId);
+      }
+    };
+
+    const revealHashTarget = () => {
+      if (media.matches) return;
+
+      const target = findHashTarget();
+      if (!target || !detailsRef.current?.contains(target)) return;
+
+      setIsMobileOpen(true);
+      cancelAnimationFrame(firstScrollFrame);
+      cancelAnimationFrame(secondScrollFrame);
+      firstScrollFrame = requestAnimationFrame(() => {
+        secondScrollFrame = requestAnimationFrame(() => {
+          target.scrollIntoView({ block: 'start' });
+        });
+      });
+    };
+
+    const syncViewport = () => {
+      setIsDesktop(media.matches);
+      revealHashTarget();
+    };
 
     syncViewport();
     media.addEventListener('change', syncViewport);
-    return () => media.removeEventListener('change', syncViewport);
+    window.addEventListener('hashchange', revealHashTarget);
+    return () => {
+      media.removeEventListener('change', syncViewport);
+      window.removeEventListener('hashchange', revealHashTarget);
+      cancelAnimationFrame(firstScrollFrame);
+      cancelAnimationFrame(secondScrollFrame);
+    };
   }, [desktopMinWidth, responsive]);
 
   const handleToggle = (event: SyntheticEvent<HTMLDetailsElement>) => {
@@ -77,6 +118,7 @@ export function Disclosure({
       className={cn(!unstyled && styles.disclosure, className)}
       data-disclosure={mode}
       onToggle={handleToggle}
+      ref={detailsRef}
     >
       <summary className={cn(!unstyled && styles.disclosureSummary, summaryClassName)}>
         {summary}

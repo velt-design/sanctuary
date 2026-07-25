@@ -7,6 +7,7 @@ import JsonLd from '@/components/JsonLd';
 import {
   Button,
   Container,
+  Disclosure,
   Eyebrow,
   Heading,
   Section,
@@ -187,21 +188,46 @@ export default function PergolaGuidesPage() {
 
             <div className="guide-hub-list">
               {chapter.guides.map((guide) => (
-                <Link
+                <article
+                  aria-labelledby={`guide-${guide.number}-title`}
                   key={guide.href}
-                  href={guide.href}
                   className="guide-hub-card"
-                  data-guide-link
+                  data-guide-card
                 >
                   <span className="guide-hub-card__number">{guide.number}</span>
-                  <span className="guide-hub-card__heading">
+                  <div className="guide-hub-card__heading">
                     <small>{guide.label}</small>
                     <em>{guide.prompt}</em>
-                    <strong>{guide.title}</strong>
-                  </span>
-                  <span className="guide-hub-card__summary">{guide.summary}</span>
+                    <h3 id={`guide-${guide.number}-title`}>
+                      <Link
+                        href={guide.href}
+                        className="guide-hub-card__link"
+                        data-guide-link
+                      >
+                        {guide.title}
+                      </Link>
+                    </h3>
+                  </div>
+                  <Disclosure
+                    bodyClassName="guide-hub-card__description-body"
+                    className="guide-hub-card__disclosure"
+                    data-guide-description={guide.href}
+                    desktopMinWidth={721}
+                    icon={<span className="guide-hub-card__disclosure-icon" aria-hidden="true" />}
+                    mode="desktop-expanded"
+                    summary={(
+                      <span>
+                        About this guide
+                        <span className="visually-hidden"> for {guide.title}</span>
+                      </span>
+                    )}
+                    summaryClassName="guide-hub-card__description-toggle"
+                    unstyled
+                  >
+                    <p className="guide-hub-card__summary">{guide.summary}</p>
+                  </Disclosure>
                   <span className="guide-hub-card__arrow" aria-hidden="true">→</span>
-                </Link>
+                </article>
               ))}
             </div>
           </Container>

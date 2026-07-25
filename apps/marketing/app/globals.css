@@ -385,7 +385,13 @@ body.header-flip .site-header {
 /* === Page transitions (content only; headers fixed) === */
 .page-viewport{ position: relative; }
 .page-layer{ will-change: transform, opacity; }
-.route-loading-shell{ min-height: 100dvh; }
+.route-content-enter{
+  animation:route-content-enter .28s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes route-content-enter{
+  from{ opacity:.96; }
+  to{ opacity:1; }
+}
 .route-progress{
   position:fixed;
   top:0;
@@ -416,6 +422,9 @@ body.portal-mode .route-progress{
 }
 
 @media (prefers-reduced-motion: reduce){
+  .route-content-enter{
+    animation:none;
+  }
   .route-progress{
     transition:none;
   }

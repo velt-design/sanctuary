@@ -30,6 +30,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
 | `mobile-ux-roadmap.md` | Active roadmap | You are planning or implementing public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
+| `mobile-content-density-refinement.md` | Current implementation record | You are changing the mobile first-layer copy, responsive disclosure boundaries, or regression coverage across marketing services, products, commercial, guides, or contact. |
 | `project-command-centre-v1.md` | Product contract | You are changing the Project Operational Command Centre product behavior, scope, exclusions, or acceptance criteria. |
 | `project-command-centre-roadmap.md` | Active programme | You need the current Command Centre stage, completion evidence, or next approved stage. |
 | `project-command-centre-architecture.md` | Current architecture | You are changing the Command Centre read model, resolver, API, Overview components, caching, fixtures, or later-stage technical plan. |

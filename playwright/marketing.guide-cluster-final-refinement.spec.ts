@@ -125,7 +125,9 @@ test('the acrylic page stays product-specific and the louvre comparison preserve
   await expect(acrylicPage.locator('details')).toHaveCount(9);
 
   await page.goto('/acrylic-pergolas-vs-louvre-roofs');
-  const louvreScopeAnswer = page.locator('details', { hasText: 'Does Sanctuary install louvre roofs?' });
+  const louvreScopeAnswer = page.locator('.acrylic-faq-list > details', {
+    hasText: 'Does Sanctuary install louvre roofs?',
+  });
   await louvreScopeAnswer.locator('summary').click();
   const comparisonCopy = await page.locator('main[data-marketing-foundation-page]').innerText();
   expect(comparisonCopy).toContain("Sanctuary's published roof offer is fixed acrylic, solid and combination roofs.");
@@ -136,7 +138,9 @@ test('linked project pages use the current evidence record rather than contradic
   await preparePage(page);
   for (const project of projectEvidence) {
     await page.goto(project.route);
-    const copy = await page.locator('main[aria-label="Project detail"]').innerText();
+    const main = page.locator('main[data-projects-experience]:visible').last();
+    await expect(main).toBeVisible();
+    const copy = await main.innerText();
     expect(copy, `${project.route} should expose the current project evidence`).toMatch(project.expected);
     expect(copy, `${project.route} should not expose retired legacy detail`).not.toMatch(project.retired);
   }

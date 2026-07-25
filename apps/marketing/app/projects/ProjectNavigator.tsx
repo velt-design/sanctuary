@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   usePathname,
   useRouter,
-  useSearchParams,
 } from 'next/navigation';
 import {
   useEffect,
@@ -35,16 +34,17 @@ type ProjectNavigatorProps = {
   projects: Project[];
   activeProject: Project;
   collectionMode?: boolean;
+  initialSearchParams?: string;
 };
 
 export default function ProjectNavigator({
   projects,
   activeProject,
   collectionMode = false,
+  initialSearchParams = '',
 }: ProjectNavigatorProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [detailAudienceFilter, setDetailAudienceFilter] = useState<ProjectAudienceFilter>(
     ALL_PROJECT_FILTERS,
   );
@@ -57,6 +57,10 @@ export default function ProjectNavigator({
 
   const activeIndex = projects.findIndex((project) => project.slug === activeProject.slug);
   const formOptions = useMemo(() => getProjectFormOptions(projects), [projects]);
+  const searchParams = useMemo(
+    () => new URLSearchParams(initialSearchParams),
+    [initialSearchParams],
+  );
   const urlFilters = useMemo(
     () => readProjectFilters(searchParams, projects),
     [projects, searchParams],

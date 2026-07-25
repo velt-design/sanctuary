@@ -62,22 +62,27 @@ for (const viewport of viewports) {
 
     for (const guide of expectedGuides) {
       const link = main.locator(`[data-guide-link][href="${guide.href}"]`);
+      const card = main.locator(
+        `[data-guide-card]:has([data-guide-link][href="${guide.href}"])`,
+      );
       await expect(link, `${guide.title} should be linked once`).toHaveCount(1);
-      await expect(link).toContainText(guide.number);
-      await expect(link).toContainText(guide.title);
-      await expect(link).toContainText(guide.label);
+      await expect(link).toHaveText(guide.title);
+      await expect(card).toContainText(guide.number);
+      await expect(card).toContainText(guide.label);
     }
-    const commercialGuide = main.locator('[data-guide-link][href="/commercial-pergolas-auckland"]');
+    const commercialGuide = main.locator(
+      '[data-guide-card]:has([data-guide-link][href="/commercial-pergolas-auckland"])',
+    );
     await expect(commercialGuide).toContainText('Make more of the venue');
     await expect(commercialGuide).toContainText(
       'How Sanctuary designs and builds commercial pergolas while coordinating engineering, consent and trades from the venue brief through installation.',
     );
 
-    const renderedGuides = await main.locator('[data-guide-link]').evaluateAll((links) => links.map((link) => ({
-      number: link.querySelector('.guide-hub-card__number')?.textContent?.trim(),
-      href: link.getAttribute('href'),
-      title: link.querySelector('.guide-hub-card__heading strong')?.textContent?.trim(),
-      label: link.querySelector('.guide-hub-card__heading small')?.textContent?.trim(),
+    const renderedGuides = await main.locator('[data-guide-card]').evaluateAll((cards) => cards.map((card) => ({
+      number: card.querySelector('.guide-hub-card__number')?.textContent?.trim(),
+      href: card.querySelector<HTMLAnchorElement>('[data-guide-link]')?.getAttribute('href'),
+      title: card.querySelector('[data-guide-link]')?.textContent?.trim(),
+      label: card.querySelector('.guide-hub-card__heading small')?.textContent?.trim(),
     })));
     expect(renderedGuides).toEqual(expectedGuides.map((guide) => ({ ...guide })));
 

@@ -90,6 +90,23 @@ loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
 horizontal overflow, no nested content scroll and explicit handling of
 unpublished heater evidence.
 
+Mobile first-layer copy, responsive disclosure, shared public route-template,
+service, SEO-landing or guide-directory changes should also run
+`npx playwright test playwright/marketing.mobile-content-density.spec.ts --config=playwright.marketing.config.ts`.
+The suite audits representative homepage, residential, custom, product,
+commercial, guide and contact journeys at 430, 390 and 360 pixels. It enforces
+bounded initially visible words and heading-bearing regions, retained
+proposition/evidence/constraint/action signals, native disclosure identity,
+44 pixel controls, keyboard operation, visible focus, reduced motion, heading
+hierarchy, unique IDs, CTA and meaningful-link continuity, metadata, schema,
+source-aware enquiry context, unclipped product summaries, zero horizontal
+overflow with supporting detail closed and open, uniquely named guide controls,
+post-evidence residential CTA continuity, fragment-target disclosure reveal and
+expanded 1440 pixel desktop detail. Its JavaScript-disabled
+browser context is a required server-rendering check: one route-owned `main`
+and H1, the next action, and complete open supporting content must remain
+visible without hydration.
+
 Contact-page changes should run
 `npx vitest run apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts`
 and

@@ -7,12 +7,14 @@ import './projectCollection.css';
 type ProjectsExperienceProps = {
   projects: Project[];
   initialSlugFromUrl?: string;
+  initialSearchParams?: string;
   detailMode?: boolean;
 };
 
 export default function ProjectsExperience({
   projects,
   initialSlugFromUrl = '',
+  initialSearchParams = '',
   detailMode = false,
 }: ProjectsExperienceProps) {
   const selectedIndex = Math.max(
@@ -61,6 +63,7 @@ export default function ProjectsExperience({
           projects={projects}
           activeProject={selectedProject}
           collectionMode={!detailMode}
+          initialSearchParams={initialSearchParams}
         />
         <ProjectDetailContent
           project={selectedProject}

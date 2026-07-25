@@ -301,39 +301,55 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
             </div>
             <div className={styles.outcomeCopy}>
               <Text size="large">{product.outcome.copy}</Text>
-              <Text>{product.details.overview}</Text>
+              <MobileProductDisclosure
+                className={styles.overviewDisclosure}
+                kind="product-overview"
+                summary="Read the product overview"
+              >
+                <Text>{product.details.overview}</Text>
+              </MobileProductDisclosure>
             </div>
           </div>
         </Container>
       </Section>
 
-      <Section tone="warm">
+      <Section tone="warm" className={styles.definitionSection}>
         <Container width="wide">
-          <div className={styles.sectionHeadingRow}>
-            <div>
-              <Eyebrow>
-                {product.variant === 'pergola-form'
-                  ? 'What defines the form'
-                  : 'What defines the product'}
-              </Eyebrow>
-              <Heading>
-                {product.variant === 'pergola-form'
-                  ? 'Geometry only matters when it improves the room.'
-                  : 'Integration matters as much as the product itself.'}
-              </Heading>
+          <MobileProductDisclosure
+            className={styles.definitionDisclosure}
+            kind="definition"
+            summary={
+              product.variant === 'pergola-form'
+                ? 'How this form works'
+                : 'How this option works'
+            }
+          >
+            <div className={styles.sectionHeadingRow}>
+              <div>
+                <Eyebrow>
+                  {product.variant === 'pergola-form'
+                    ? 'What defines the form'
+                    : 'What defines the product'}
+                </Eyebrow>
+                <Heading>
+                  {product.variant === 'pergola-form'
+                    ? 'Geometry only matters when it improves the room.'
+                    : 'Integration matters as much as the product itself.'}
+                </Heading>
+              </div>
+              {product.details.howItWorks ? (
+                <Text size="large">{product.details.howItWorks}</Text>
+              ) : null}
             </div>
-            {product.details.howItWorks ? (
-              <Text size="large">{product.details.howItWorks}</Text>
-            ) : null}
-          </div>
-          <ol className={styles.definitionList}>
-            {product.details.atAGlance.map((item, index) => (
-              <li key={item}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <p>{item}</p>
-              </li>
-            ))}
-          </ol>
+            <ol className={styles.definitionList}>
+              {product.details.atAGlance.map((item, index) => (
+                <li key={item}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <p>{item}</p>
+                </li>
+              ))}
+            </ol>
+          </MobileProductDisclosure>
         </Container>
       </Section>
 
@@ -348,32 +364,40 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
                 house or confirming the selected products.
               </Text>
             </div>
-            <MobileProductDisclosure
-              kind="works-when"
-              summary="When this choice can work"
-            >
-              <article className={styles.fitColumn}>
-                <span className={styles.fitLabel}>It can be a useful choice when</span>
+            <article className={styles.fitColumn}>
+              <span className={styles.fitLabel}>It can be a useful choice when</span>
+              <ul className={styles.fitPrimaryList}>
+                <li>{product.decision.worksWhen[0]}</li>
+              </ul>
+              <MobileProductDisclosure
+                className={styles.fitMoreDisclosure}
+                kind="works-when"
+                summary="More suitable conditions"
+              >
                 <ul>
-                  {product.decision.worksWhen.map((item) => (
+                  {product.decision.worksWhen.slice(1).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-              </article>
-            </MobileProductDisclosure>
-            <MobileProductDisclosure
-              kind="must-resolve"
-              summary="What the project must resolve"
-            >
-              <article className={styles.fitColumn}>
-                <span className={styles.fitLabel}>The project must resolve</span>
+              </MobileProductDisclosure>
+            </article>
+            <article className={styles.fitColumn}>
+              <span className={styles.fitLabel}>The project must resolve</span>
+              <ul className={styles.fitPrimaryList}>
+                <li>{product.decision.resolve[0]}</li>
+              </ul>
+              <MobileProductDisclosure
+                className={styles.fitMoreDisclosure}
+                kind="must-resolve"
+                summary="More project constraints"
+              >
                 <ul>
-                  {product.decision.resolve.map((item) => (
+                  {product.decision.resolve.slice(1).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-              </article>
-            </MobileProductDisclosure>
+              </MobileProductDisclosure>
+            </article>
           </div>
         </Container>
       </Section>
@@ -438,123 +462,140 @@ export default function ProductDetailPage({ product }: ProductDetailPageProps) {
                 ))}
               </ul>
             </div>
-            <MobileProductDisclosure
-              className={styles.tradeoffDisclosure}
-              kind="tradeoffs"
-              summary="Review the main trade-offs"
-            >
-              <div className={styles.tradeoffColumn}>
-                <Eyebrow>Honest trade-offs</Eyebrow>
-                <div className={styles.tradeoffList}>
-                  {product.tradeoffs.map((tradeoff, index) => (
-                    <article key={tradeoff.tension}>
-                      <span>{String(index + 1).padStart(2, '0')}</span>
-                      <Heading as="h3" variant="card">{tradeoff.tension}</Heading>
-                      <Text>{tradeoff.guidance}</Text>
-                    </article>
-                  ))}
-                </div>
+            <div className={styles.tradeoffColumn}>
+              <Eyebrow>Honest trade-offs</Eyebrow>
+              <div className={styles.tradeoffList}>
+                {product.tradeoffs.slice(0, 1).map((tradeoff) => (
+                  <article key={tradeoff.tension}>
+                    <span>01</span>
+                    <Heading as="h3" variant="card">{tradeoff.tension}</Heading>
+                    <Text>{tradeoff.guidance}</Text>
+                  </article>
+                ))}
+                <MobileProductDisclosure
+                  className={styles.tradeoffDisclosure}
+                  kind="tradeoffs"
+                  summary="Review more trade-offs"
+                >
+                  <div>
+                    {product.tradeoffs.slice(1).map((tradeoff, index) => (
+                      <article key={tradeoff.tension}>
+                        <span>{String(index + 2).padStart(2, '0')}</span>
+                        <Heading as="h3" variant="card">{tradeoff.tension}</Heading>
+                        <Text>{tradeoff.guidance}</Text>
+                      </article>
+                    ))}
+                  </div>
+                </MobileProductDisclosure>
               </div>
-            </MobileProductDisclosure>
+            </div>
           </div>
         </Container>
       </Section>
 
-      <Section tone="neutral">
-        <Container width="wide">
-          <div className={styles.sectionHeadingRow}>
-            <div>
-              <Eyebrow>Compare the closest choices</Eyebrow>
-              <Heading>Use the tension to narrow the answer.</Heading>
-            </div>
-            <Text>
-              The alternative is not “better” in the abstract. It may suit a
-              different priority around openness, height, control or scope.
-            </Text>
-          </div>
-          <div className={styles.alternativeGrid}>
-            {alternatives.map((alternative) => (
-              <ProductCard
-                key={alternative.slug}
-                product={alternative}
-                compact
-              />
-            ))}
-          </div>
-        </Container>
-      </Section>
-
-      <Section>
-        <Container width="wide">
-          <div className={styles.sectionHeadingRow}>
-            <div>
-              <Eyebrow>
-                {product.variant === 'pergola-form'
-                  ? 'Complete the room'
-                  : 'Coordinate the wider system'}
-              </Eyebrow>
-              <Heading>Related decisions work better when planned together.</Heading>
-            </div>
-            <Text>
-              Structure, edges, lighting and electrical items compete for the
-              same space. Resolve them before fabrication wherever possible.
-            </Text>
-          </div>
-          <div className={styles.relatedProductGrid}>
-            {relatedProducts.map((related) => (
-              <article className={styles.relatedProduct} key={related.slug}>
-                <div className={styles.relatedProductMedia}>
-                  <Image
-                    src={related.hero.src}
-                    alt={related.hero.alt}
-                    fill
-                    sizes="(max-width: 640px) 112px, (max-width: 700px) 100vw, 33vw"
-                    style={{ objectPosition: related.hero.objectPosition }}
+      <MobileProductDisclosure
+        className={styles.relatedSupportDisclosure}
+        kind="related-support"
+        summary="Compare alternatives and related guidance"
+      >
+        <div>
+          <Section tone="neutral">
+            <Container width="wide">
+              <div className={styles.sectionHeadingRow}>
+                <div>
+                  <Eyebrow>Compare the closest choices</Eyebrow>
+                  <Heading>Use the tension to narrow the answer.</Heading>
+                </div>
+                <Text>
+                  The alternative is not “better” in the abstract. It may suit a
+                  different priority around openness, height, control or scope.
+                </Text>
+              </div>
+              <div className={styles.alternativeGrid}>
+                {alternatives.map((alternative) => (
+                  <ProductCard
+                    key={alternative.slug}
+                    product={alternative}
+                    compact
                   />
+                ))}
+              </div>
+            </Container>
+          </Section>
+
+          <Section>
+            <Container width="wide">
+              <div className={styles.sectionHeadingRow}>
+                <div>
+                  <Eyebrow>
+                    {product.variant === 'pergola-form'
+                      ? 'Complete the room'
+                      : 'Coordinate the wider system'}
+                  </Eyebrow>
+                  <Heading>Related decisions work better when planned together.</Heading>
+                </div>
+                <Text>
+                  Structure, edges, lighting and electrical items compete for the
+                  same space. Resolve them before fabrication wherever possible.
+                </Text>
+              </div>
+              <div className={styles.relatedProductGrid}>
+                {relatedProducts.map((related) => (
+                  <article className={styles.relatedProduct} key={related.slug}>
+                    <div className={styles.relatedProductMedia}>
+                      <Image
+                        src={related.hero.src}
+                        alt={related.hero.alt}
+                        fill
+                        sizes="(max-width: 640px) 112px, (max-width: 700px) 100vw, 33vw"
+                        style={{ objectPosition: related.hero.objectPosition }}
+                      />
+                    </div>
+                    <div>
+                      <Heading as="h3" variant="card">{related.name}</Heading>
+                      <Text>{related.indexSummary}</Text>
+                      <TextLink href={related.route}>Explore this option</TextLink>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </Container>
+          </Section>
+
+          <Section tone="inverse">
+            <Container>
+              <div className={styles.guideFeature}>
+                <div>
+                  <Eyebrow>Related planning guide</Eyebrow>
+                  <Heading>{product.guide.label}</Heading>
                 </div>
                 <div>
-                  <Heading as="h3" variant="card">{related.name}</Heading>
-                  <Text>{related.indexSummary}</Text>
-                  <TextLink href={related.route}>Explore this option</TextLink>
+                  <Text size="large">{product.guide.summary}</Text>
+                  <TextLink href={product.guide.href}>Read the planning guide</TextLink>
                 </div>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
-      <Section tone="inverse">
-        <Container>
-          <div className={styles.guideFeature}>
-            <div>
-              <Eyebrow>Related planning guide</Eyebrow>
-              <Heading>{product.guide.label}</Heading>
-            </div>
-            <div>
-              <Text size="large">{product.guide.summary}</Text>
-              <TextLink href={product.guide.href}>Read the planning guide</TextLink>
-            </div>
-          </div>
-        </Container>
-      </Section>
-
-      {faqs.length ? (
-        <Section>
-          <Container>
-            <div className={styles.sectionHeadingRow}>
-              <div>
-                <Eyebrow>Focused questions</Eyebrow>
-                <Heading>What homeowners usually ask next.</Heading>
               </div>
-              <Text>
-                The final answer follows the measured site, selected product
-                and completed design.
-              </Text>
-            </div>
-            <FaqList items={faqs} />
-          </Container>
-        </Section>
-      ) : null}
+            </Container>
+          </Section>
+
+          {faqs.length ? (
+            <Section>
+              <Container>
+                <div className={styles.sectionHeadingRow}>
+                  <div>
+                    <Eyebrow>Focused questions</Eyebrow>
+                    <Heading>What homeowners usually ask next.</Heading>
+                  </div>
+                  <Text>
+                    The final answer follows the measured site, selected product
+                    and completed design.
+                  </Text>
+                </div>
+                <FaqList items={faqs} />
+              </Container>
+            </Section>
+          ) : null}
+        </div>
+      </MobileProductDisclosure>
 
       <ConversionSection
         eyebrow="Initial project assessment"

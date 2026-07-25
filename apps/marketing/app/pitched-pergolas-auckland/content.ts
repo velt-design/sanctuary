@@ -56,6 +56,10 @@ export const pitchedPergolasConfig = {
     ] },
     { kind: 'faq', id: 'pitched-faq', tone: 'elevated', eyebrow: 'Questions along the roof plane', title: 'What to confirm before choosing a pitched pergola', intro: 'The final section depends on the house, site, selected products and completed design.', items: faqItems },
   ],
+  mobileDisclosureGroups: [
+    { id: 'pitched-decisions-detail', summary: 'How the main pitched-roof decisions work together', blockIds: ['pitched-decisions'] },
+    { id: 'pitched-planning-support', summary: 'Pitched-roof planning links and common questions', blockIds: ['pitched-next-decisions', 'pitched-faq'] },
+  ],
   finalCta: { eyebrow: 'Photograph both edges', title: 'Show where the roof could start and where it needs to finish', text: 'A straight-on photo can hide the height problem. Include side views, door heads, eaves, ground and the preferred drainage edge so the first assessment can follow the whole plane.', button: 'Send the pitched project', checklistTitle: 'Useful first inputs', checklist: ['Project suburb', 'House-edge and side-view photos', 'Views from inside', 'Rough width and projection', 'Approximate high and low clearances', 'Preferred drainage side, if known', 'Roof material preference', 'Plans or sketches'] },
   form: { ariaLabel: 'Pitched pergola project enquiry form', eyebrow: 'Start with both edges', heading: 'Send your pitched pergola project', intro: 'Share the house connection, doors, side views and rough dimensions. You can leave the exact fall, support and roof material open for assessment.', submitLabel: 'Send the pitched project', messageLabel: 'What should the single roof plane resolve?', messagePlaceholder: 'Describe the house connection, available height, desired low edge, drainage direction and view you want to preserve.', briefFields: [
     { name: 'drainageEdge', label: 'Preferred drainage edge', type: 'text', placeholder: 'Note the side if known, or leave open' },

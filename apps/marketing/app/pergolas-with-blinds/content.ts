@@ -57,6 +57,11 @@ export const pergolasWithBlindsConfig = {
     ] },
     { kind: 'faq', id: 'pergolas-with-blinds-faq', tone: 'elevated', eyebrow: 'Questions about changing the edge', title: 'What to resolve before adding blinds to an Auckland pergola', intro: 'The answer depends on the opening, site exposure, selected system and completed pergola design.', items: faqItems },
   ],
+  mobileDisclosureGroups: [
+    { id: 'blind-integration-detail', summary: 'How a blind integrates with the pergola', blockIds: ['blind-integration'] },
+    { id: 'blind-decisions-detail', summary: 'How the main blind decisions work together', blockIds: ['blind-decisions'] },
+    { id: 'blind-planning-support', summary: 'Blind planning links and common questions', blockIds: ['blind-next-decisions', 'pergolas-with-blinds-faq'] },
+  ],
   finalCta: { eyebrow: 'Start with the direction', title: 'Show Sanctuary which edge interrupts the room', text: 'A wide photo and a note about when wind, low sun or overlooking occurs can turn a broad blind enquiry into a useful first design conversation.', button: 'Describe the exposed edge', checklistTitle: 'Useful first inputs', checklist: ['Project suburb', 'Wide photos of the pergola area', 'Problem edge marked on a photo', 'Rough opening dimensions', 'Time and season of low sun', 'Wind or privacy observations', 'New or existing pergola', 'Manual or motorised preference'] },
   form: { ariaLabel: 'Pergola with blinds enquiry form', eyebrow: 'Start with one edge', heading: 'Describe the pergola and blind brief', intro: 'Share the site, opening and condition you want to manage. The roof preference can remain open while Sanctuary reviews the whole structure.', submitLabel: 'Describe the exposed edge', messageLabel: 'Which edge needs to change?', messagePlaceholder: 'Describe whether low sun, wind, privacy or another condition affects the space, including direction and time of day if known.', briefFields: [
     { name: 'pergolaStatus', label: 'Pergola status', type: 'select', options: ['New pergola being planned', 'Existing Sanctuary pergola', 'Existing pergola by another supplier', 'Unsure'] },

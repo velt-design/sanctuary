@@ -63,6 +63,19 @@
   text-transform: uppercase;
 }
 
+.pergolas-auckland__mobile-disclosure,
+.pergolas-auckland__mobile-disclosure-body {
+  display: contents;
+}
+
+.pergolas-auckland__mobile-disclosure-summary {
+  display: none;
+}
+
+.pergolas-auckland__mobile-project-cta {
+  display: none;
+}
+
 @media (max-width: 1020px) {
   .pergolas-auckland__roof-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -70,11 +83,93 @@
 }
 
 @media (max-width: 720px) {
+  .pergolas-auckland__mobile-disclosure {
+    display: block;
+    border-block: 1px solid var(--color-rule-strong);
+    background: var(--color-surface-elevated);
+  }
+
+  .pergolas-auckland__mobile-disclosure + .pergolas-auckland__mobile-disclosure {
+    border-top: 0;
+  }
+
+  .pergolas-auckland__mobile-disclosure-summary {
+    min-height: 52px;
+    display: flex;
+    padding: 0.85rem var(--page-gutter);
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font: 600 0.76rem/1.35 var(--font-body);
+    letter-spacing: 0.06em;
+    list-style: none;
+    text-transform: uppercase;
+  }
+
+  .pergolas-auckland__mobile-disclosure-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .pergolas-auckland__mobile-disclosure-summary:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -3px;
+  }
+
+  .pergolas-auckland__mobile-disclosure-icon {
+    position: relative;
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+  }
+
+  .pergolas-auckland__mobile-disclosure-icon::before,
+  .pergolas-auckland__mobile-disclosure-icon::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0.75rem;
+    height: 1px;
+    background: currentColor;
+    content: '';
+    transform: translate(-50%, -50%);
+    transition: transform 180ms ease;
+  }
+
+  .pergolas-auckland__mobile-disclosure-icon::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .pergolas-auckland__mobile-disclosure[open] .pergolas-auckland__mobile-disclosure-icon::after {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  .pergolas-auckland__mobile-disclosure-body {
+    display: block;
+  }
+
+  .pergolas-auckland .acrylic-section__action {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .pergolas-auckland__mobile-project-cta {
+    display: inline-flex;
+  }
+
   .pergolas-auckland__roof-grid {
     grid-template-columns: 1fr;
   }
 
   .pergolas-auckland__roof-card h3 {
     min-height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pergolas-auckland__mobile-disclosure-icon::before,
+  .pergolas-auckland__mobile-disclosure-icon::after {
+    transition: none;
   }
 }

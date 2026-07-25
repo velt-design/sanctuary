@@ -56,6 +56,10 @@ export const gablePergolasConfig = {
     ] },
     { kind: 'faq', id: 'gable-faq', tone: 'elevated', eyebrow: 'Questions about the central ridge', title: 'What to resolve before choosing a gable pergola', intro: 'The final answer depends on the house, dimensions, products and completed design.', items: faqItems },
   ],
+  mobileDisclosureGroups: [
+    { id: 'gable-decisions-detail', summary: 'How the main gable decisions work together', blockIds: ['gable-decisions'] },
+    { id: 'gable-planning-support', summary: 'Gable planning links and common questions', blockIds: ['gable-next-decisions', 'gable-faq'] },
+  ],
   finalCta: { eyebrow: 'Show the roofline', title: 'A side-on photo can be as useful as the deck dimensions', text: 'Include the existing eaves, doors, windows and roof beyond the proposed area. That context helps Sanctuary assess whether a gable has a convincing place to begin and end.', button: 'Send the gable project', checklistTitle: 'Useful first inputs', checklist: ['Project suburb', 'Wide front and side photos', 'Views from inside the house', 'Rough width and projection', 'Approximate available height', 'Preferred open or treated gable end', 'Roof material preference, if known', 'Plans or sketches'] },
   form: { ariaLabel: 'Gable pergola project enquiry form', eyebrow: 'Start with the section', heading: 'Send your gable pergola project', intro: 'Share the roofline, openings, rough dimensions and intended use. You can leave the final pitch, ridge and roof material open for assessment.', submitLabel: 'Send the gable project', messageLabel: 'Why are you considering a gable?', messagePlaceholder: 'Describe the volume, roofline relationship, view or room arrangement you want the central ridge to support.', briefFields: [
     { name: 'gableEndPreference', label: 'Gable-end preference', type: 'select', options: ['Open end', 'Framed end', 'Infill to be explored', 'Unsure'] },

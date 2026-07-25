@@ -187,7 +187,7 @@ for (const programmePage of pages) {
       await expect(page.getByRole('heading', { level: 1, name: programmePage.h1 })).toBeVisible();
       await expect(main.locator('h1')).toHaveCount(1);
       await expect(main.locator('.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
-      await expect(main.locator('details')).toHaveCount(programmePage.faqCount);
+      await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
       await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
       await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
       await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
@@ -211,8 +211,17 @@ for (const programmePage of pages) {
         await expect(main.getByRole('heading', { level: 2, name: 'From the first venue conversation to the installed project' })).toBeVisible();
         await expect(main.getByRole('heading', { level: 3, name: 'Coordinate engineering and consent' })).toBeVisible();
         await expect(main.getByRole('heading', { level: 3, name: 'Build, install and hand over' })).toBeVisible();
-        await main.getByRole('heading', { level: 3, name: 'Can Sanctuary coordinate engineering and building consent?' }).click();
-        await expect(main.getByText('The relevant authority remains responsible for its decision.')).toBeVisible();
+        const planningSupport = main.locator(
+          'details[data-seo-landing-disclosure="commercial-planning-support"]',
+        );
+        if (viewport.width <= 720) {
+          await planningSupport.locator(':scope > summary').click();
+        }
+        const consentFaq = main.locator('.acrylic-faq-list > details').filter({
+          hasText: 'Can Sanctuary coordinate engineering and building consent?',
+        });
+        await consentFaq.locator(':scope > summary').click();
+        await expect(consentFaq.getByText('The relevant authority remains responsible for its decision.')).toBeVisible();
         await expect(main.getByRole('heading', { level: 2, name: 'Show us the venue and what the space needs to do' })).toBeVisible();
         await expect(main.locator('#commercial-projects .acrylic-project-card h3')).toHaveText([
           'The Good Home Takanini',

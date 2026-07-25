@@ -19,6 +19,7 @@ import { absoluteUrl } from '@/lib/seo';
 import { pergolaGuideEditorialReview } from '@/data/pergolaGuides';
 import AcrylicPergolaEnquiryForm from '../acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm';
 import PergolaGuideNavigation from '@/components/seo-landing/PergolaGuideNavigation';
+import MobileServiceDisclosure from './MobileServiceDisclosure';
 import {
   conditionalDecisions,
   designOutcomes,
@@ -183,50 +184,55 @@ export default function PergolasAucklandPage() {
         </Container>
       </Section>
 
-      <Section className="acrylic-section" aria-labelledby="three-tests">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Three tests for the finished room</Eyebrow>
-            <Heading id="three-tests">Useful outside. Considered inside. At home in the architecture.</Heading>
-            <Text size="large">The product choice matters, but the finished relationship between the home and outdoor area matters more.</Text>
-          </header>
-          <div className="acrylic-benefit-grid">
-            {designOutcomes.map((outcome, index) => (
-              <article className="acrylic-benefit" key={outcome.title}>
-                <span className="acrylic-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-                <h3>{outcome.title}</h3>
-                <p>{outcome.text}</p>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
-      <Section tone="neutral" className="acrylic-section" aria-labelledby="questions-before-form">
-        <Container width="wide" className="acrylic-editorial-grid">
-          <div className="acrylic-editorial-media pergolas-auckland__brief-image">
-            <Image
-              src="/images/project-tindalls-bay.jpg"
-              alt="Auckland pergola using different roof and edge treatments around an existing home"
-              fill
-              sizes="(max-width: 900px) 100vw, 48vw"
-            />
-          </div>
-          <div>
-            <Eyebrow className="acrylic-eyebrow">Before choosing the form</Eyebrow>
-            <Heading id="questions-before-form">Four questions make the first design conversation more useful</Heading>
-            <p className="acrylic-lead">A clear brief explains the intended change without pretending the technical answer is already known.</p>
-            <div className="acrylic-mini-grid">
-              {designQuestions.map((question) => (
-                <article key={question.title}>
-                  <h3>{question.title}</h3>
-                  <p>{question.text}</p>
+      <MobileServiceDisclosure
+        kind="design-brief"
+        summary="See the design tests that shape a useful brief"
+      >
+        <Section className="acrylic-section" aria-labelledby="three-tests">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">Three tests for the finished room</Eyebrow>
+              <Heading id="three-tests">Useful outside. Considered inside. At home in the architecture.</Heading>
+              <Text size="large">The product choice matters, but the finished relationship between the home and outdoor area matters more.</Text>
+            </header>
+            <div className="acrylic-benefit-grid">
+              {designOutcomes.map((outcome, index) => (
+                <article className="acrylic-benefit" key={outcome.title}>
+                  <span className="acrylic-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                  <h3>{outcome.title}</h3>
+                  <p>{outcome.text}</p>
                 </article>
               ))}
             </div>
-          </div>
-        </Container>
-      </Section>
+          </Container>
+        </Section>
+
+        <Section tone="neutral" className="acrylic-section" aria-labelledby="questions-before-form">
+          <Container width="wide" className="acrylic-editorial-grid">
+            <div className="acrylic-editorial-media pergolas-auckland__brief-image">
+              <Image
+                src="/images/project-tindalls-bay.jpg"
+                alt="Auckland pergola using different roof and edge treatments around an existing home"
+                fill
+                sizes="(max-width: 900px) 100vw, 48vw"
+              />
+            </div>
+            <div>
+              <Eyebrow className="acrylic-eyebrow">Before choosing the form</Eyebrow>
+              <Heading id="questions-before-form">Four questions make the first design conversation more useful</Heading>
+              <p className="acrylic-lead">A clear brief explains the intended change without pretending the technical answer is already known.</p>
+              <div className="acrylic-mini-grid">
+                {designQuestions.map((question) => (
+                  <article key={question.title}>
+                    <h3>{question.title}</h3>
+                    <p>{question.text}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </Container>
+        </Section>
+      </MobileServiceDisclosure>
 
       <Section className="acrylic-section" aria-labelledby="completed-projects" id="project-evidence">
         <Container width="wide">
@@ -252,73 +258,81 @@ export default function PergolasAucklandPage() {
               </Link>
             ))}
           </div>
-          <div className="acrylic-section__action"><Button href="/projects" variant="outline">Browse completed projects</Button></div>
-        </Container>
-      </Section>
-
-      <Section className="acrylic-section" aria-labelledby="roof-form-options">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Form follows the house and site</Eyebrow>
-            <Heading id="roof-form-options">Choose the roof geometry for a reason</Heading>
-            <p>Available height, the existing roofline, drainage, the area to cover and the desired architectural presence all help determine the most useful form.</p>
-          </header>
-          <div className="acrylic-form-grid">
-            {roofForms.map((form) => (
-              <Link className="acrylic-form-card" href={form.href} key={form.title}>
-                <h3>{form.title}</h3>
-                <p>{form.text}</p>
-                <span>Explore this pergola form</span>
-              </Link>
-            ))}
+          <div className="acrylic-section__action">
+            <Button href="/projects" variant="outline">Browse completed projects</Button>
+            <Button href="#project-details" className="pergolas-auckland__mobile-project-cta">Discuss my site</Button>
           </div>
         </Container>
       </Section>
 
-      <Section id="roofing-options" tone="warm" className="acrylic-section pergolas-auckland__roofing" aria-labelledby="roof-material-effect">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Material changes the room</Eyebrow>
-            <Heading id="roof-material-effect">Decide what the roof should do to light, shade and character</Heading>
-            <Text size="large">Acrylic, solid and combination roofs create different conditions below the pergola and inside the rooms beside it.</Text>
-          </header>
-          <div className="pergolas-auckland__roof-grid">
-            {roofApproaches.map((approach) => (
-              <article className="pergolas-auckland__roof-card" key={approach.title}>
-                <h3>{approach.title}</h3>
-                <dl>
-                  <div><dt>What it prioritises</dt><dd>{approach.outcome}</dd></div>
-                  <div><dt>What to check</dt><dd>{approach.consider}</dd></div>
-                </dl>
-                <Link href={approach.href}>Review this approach</Link>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </Section>
+      <MobileServiceDisclosure
+        kind="roof-and-edges"
+        summary="Compare roof forms, materials and open-edge constraints"
+      >
+        <Section className="acrylic-section" aria-labelledby="roof-form-options">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">Form follows the house and site</Eyebrow>
+              <Heading id="roof-form-options">Choose the roof geometry for a reason</Heading>
+              <p>Available height, the existing roofline, drainage, the area to cover and the desired architectural presence all help determine the most useful form.</p>
+            </header>
+            <div className="acrylic-form-grid">
+              {roofForms.map((form) => (
+                <Link className="acrylic-form-card" href={form.href} key={form.title}>
+                  <h3>{form.title}</h3>
+                  <p>{form.text}</p>
+                  <span>Explore this pergola form</span>
+                </Link>
+              ))}
+            </div>
+          </Container>
+        </Section>
 
-      <Section tone="inverse" className="acrylic-section acrylic-section--dark" aria-labelledby="weather-boundary" id="weather-boundary">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">A roof is only the upper boundary</Eyebrow>
-            <Heading id="weather-boundary">Plan the open edges with the same care as the roof</Heading>
-            <p>Overhead cover, wind, low sun and privacy are related, but they are not the same problem. Name the condition at each edge before deciding how enclosed the outdoor room should become.</p>
-          </header>
-          <div className="acrylic-weather-grid acrylic-weather-grid--three">
-            {edgeDecisions.map((decision) => (
-              <article key={decision.title}>
-                <h3>{decision.title}</h3>
-                <p>{decision.text}</p>
-              </article>
-            ))}
-          </div>
-          <nav className="acrylic-inline-links" aria-label="Pergola edge protection options">
-            <Link href="/products/screens-walls/drop-down-blinds">Review outdoor blinds</Link>
-            <Link href="/products/screens-walls/acrylic-infill-panels">Review acrylic infill panels</Link>
-            <Link href="/products/screens-walls/slat-screens">Review slat screens</Link>
-          </nav>
-        </Container>
-      </Section>
+        <Section id="roofing-options" tone="warm" className="acrylic-section pergolas-auckland__roofing" aria-labelledby="roof-material-effect">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">Material changes the room</Eyebrow>
+              <Heading id="roof-material-effect">Decide what the roof should do to light, shade and character</Heading>
+              <Text size="large">Acrylic, solid and combination roofs create different conditions below the pergola and inside the rooms beside it.</Text>
+            </header>
+            <div className="pergolas-auckland__roof-grid">
+              {roofApproaches.map((approach) => (
+                <article className="pergolas-auckland__roof-card" key={approach.title}>
+                  <h3>{approach.title}</h3>
+                  <dl>
+                    <div><dt>What it prioritises</dt><dd>{approach.outcome}</dd></div>
+                    <div><dt>What to check</dt><dd>{approach.consider}</dd></div>
+                  </dl>
+                  <Link href={approach.href}>Review this approach</Link>
+                </article>
+              ))}
+            </div>
+          </Container>
+        </Section>
+
+        <Section tone="inverse" className="acrylic-section acrylic-section--dark" aria-labelledby="weather-boundary-title" id="weather-boundary">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">A roof is only the upper boundary</Eyebrow>
+              <Heading id="weather-boundary-title">Plan the open edges with the same care as the roof</Heading>
+              <p>Overhead cover, wind, low sun and privacy are related, but they are not the same problem. Name the condition at each edge before deciding how enclosed the outdoor room should become.</p>
+            </header>
+            <div className="acrylic-weather-grid acrylic-weather-grid--three">
+              {edgeDecisions.map((decision) => (
+                <article key={decision.title}>
+                  <h3>{decision.title}</h3>
+                  <p>{decision.text}</p>
+                </article>
+              ))}
+            </div>
+            <nav className="acrylic-inline-links" aria-label="Pergola edge protection options">
+              <Link href="/products/screens-walls/drop-down-blinds">Review outdoor blinds</Link>
+              <Link href="/products/screens-walls/acrylic-infill-panels">Review acrylic infill panels</Link>
+              <Link href="/products/screens-walls/slat-screens">Review slat screens</Link>
+            </nav>
+          </Container>
+        </Section>
+      </MobileServiceDisclosure>
 
       <Section tone="warm" className="acrylic-section acrylic-section--process" aria-labelledby="clear-process">
         <Container width="wide">
@@ -351,57 +365,62 @@ export default function PergolasAucklandPage() {
         </Container>
       </Section>
 
-      <Section tone="neutral" className="acrylic-section" aria-labelledby="continue-the-brief">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Continue with the decision that matters</Eyebrow>
-            <Heading id="continue-the-brief">Use the specialist guides without losing the whole project</Heading>
-            <p>This guide provides an overview of Sanctuary's Auckland pergola design and installation service. Continue with the specialist guides where the brief needs more detail.</p>
-          </header>
-          <div className="acrylic-form-grid">
-            <Link className="acrylic-form-card" href="/custom-pergolas-auckland"><h3>Complex or architect-led work</h3><p>Resolve difficult connections, irregular sites, restricted posts, spans, changing levels and renovation coordination.</p><span>Open the custom pergola guide</span></Link>
-            <Link className="acrylic-form-card" href="/pergola-cost-auckland"><h3>Define a comparable scope</h3><p>See which inputs shape price and what a complete quotation should make visible.</p><span>Open the pergola cost guide</span></Link>
-            <Link className="acrylic-form-card" href="/outdoor-rooms-auckland"><h3>Plan the room below</h3><p>Coordinate use, furniture, roof, edges, light and services as one outdoor room.</p><span>Open the outdoor room guide</span></Link>
-          </div>
-        </Container>
-      </Section>
+      <MobileServiceDisclosure
+        kind="supporting-guidance"
+        summary="Explore specialist guides, site checks and common questions"
+      >
+        <Section tone="neutral" className="acrylic-section" aria-labelledby="continue-the-brief">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">Continue with the decision that matters</Eyebrow>
+              <Heading id="continue-the-brief">Use the specialist guides without losing the whole project</Heading>
+              <p>This guide provides an overview of Sanctuary's Auckland pergola design and installation service. Continue with the specialist guides where the brief needs more detail.</p>
+            </header>
+            <div className="acrylic-form-grid">
+              <Link className="acrylic-form-card" href="/custom-pergolas-auckland"><h3>Complex or architect-led work</h3><p>Resolve difficult connections, irregular sites, restricted posts, spans, changing levels and renovation coordination.</p><span>Open the custom pergola guide</span></Link>
+              <Link className="acrylic-form-card" href="/pergola-cost-auckland"><h3>Define a comparable scope</h3><p>See which inputs shape price and what a complete quotation should make visible.</p><span>Open the pergola cost guide</span></Link>
+              <Link className="acrylic-form-card" href="/outdoor-rooms-auckland"><h3>Plan the room below</h3><p>Coordinate use, furniture, roof, edges, light and services as one outdoor room.</p><span>Open the outdoor room guide</span></Link>
+            </div>
+          </Container>
+        </Section>
 
-      <Section tone="neutral" className="acrylic-section" aria-labelledby="site-dependent">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Project-specific by necessity</Eyebrow>
-            <Heading id="site-dependent">Some answers should wait for the completed design</Heading>
-            <Text size="large">Accurate advice includes being clear about what a photo, an approximate dimension or a generic product description cannot confirm.</Text>
-          </header>
-          <div className="acrylic-benefit-grid">
-            {conditionalDecisions.map((decision, index) => (
-              <article className="acrylic-benefit" key={decision.title}>
-                <span className="acrylic-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-                <h3>{decision.title}</h3>
-                <p>{decision.text}</p>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </Section>
+        <Section tone="neutral" className="acrylic-section" aria-labelledby="site-dependent">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">Project-specific by necessity</Eyebrow>
+              <Heading id="site-dependent">Some answers should wait for the completed design</Heading>
+              <Text size="large">Accurate advice includes being clear about what a photo, an approximate dimension or a generic product description cannot confirm.</Text>
+            </header>
+            <div className="acrylic-benefit-grid">
+              {conditionalDecisions.map((decision, index) => (
+                <article className="acrylic-benefit" key={decision.title}>
+                  <span className="acrylic-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                  <h3>{decision.title}</h3>
+                  <p>{decision.text}</p>
+                </article>
+              ))}
+            </div>
+          </Container>
+        </Section>
 
-      <Section tone="elevated" className="acrylic-section acrylic-section--faq" aria-labelledby="pergolas-auckland-faq">
-        <Container width="wide">
-          <header className="acrylic-section__header acrylic-section__header--wide">
-            <Eyebrow className="acrylic-eyebrow">Questions worth resolving early</Eyebrow>
-            <Heading id="pergolas-auckland-faq">Planning a pergola in Auckland</Heading>
-            <p>These answers explain the main decisions. The final recommendation still depends on the property, selected products and agreed design.</p>
-          </header>
-          <div className="acrylic-faq-list">
-            {faqItems.map((item, index) => (
-              <details key={item.question}>
-                <summary><span>{String(index + 1).padStart(2, '0')}</span><h3>{item.question}</h3><i aria-hidden="true" /></summary>
-                <div>{item.answer.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
-              </details>
-            ))}
-          </div>
-        </Container>
-      </Section>
+        <Section tone="elevated" className="acrylic-section acrylic-section--faq" aria-labelledby="pergolas-auckland-faq">
+          <Container width="wide">
+            <header className="acrylic-section__header acrylic-section__header--wide">
+              <Eyebrow className="acrylic-eyebrow">Questions worth resolving early</Eyebrow>
+              <Heading id="pergolas-auckland-faq">Planning a pergola in Auckland</Heading>
+              <p>These answers explain the main decisions. The final recommendation still depends on the property, selected products and agreed design.</p>
+            </header>
+            <div className="acrylic-faq-list">
+              {faqItems.map((item, index) => (
+                <details key={item.question}>
+                  <summary><span>{String(index + 1).padStart(2, '0')}</span><h3>{item.question}</h3><i aria-hidden="true" /></summary>
+                  <div>{item.answer.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
+                </details>
+              ))}
+            </div>
+          </Container>
+        </Section>
+      </MobileServiceDisclosure>
 
       <Section tone="inverse" className="acrylic-section acrylic-section--final-cta" aria-labelledby="useful-first-look">
         <Container width="wide" className="acrylic-final-grid">
