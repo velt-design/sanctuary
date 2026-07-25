@@ -132,7 +132,7 @@ test('capture Phase 2 project collection payload evidence', async ({
   );
 });
 
-test('capture Phase 2 controlled project gallery evidence', async ({
+test('capture current project gallery evidence', async ({
   browser,
 }, testInfo) => {
   test.skip(
@@ -152,7 +152,9 @@ test('capture Phase 2 controlled project gallery evidence', async ({
     const page = await context.newPage();
     await page.goto(representativeRoute);
     await dismissConsent(page);
-    const gallery = visibleProjectsMain(page).locator('[data-responsive-gallery]');
+    const gallery = visibleProjectsMain(page).locator(
+      '[data-project-gallery-layout="responsive-strip"]',
+    );
     await gallery.scrollIntoViewIfNeeded();
     await expect(gallery).toBeVisible();
     await gallery.screenshot({
@@ -172,7 +174,7 @@ test('capture Phase 2 controlled project gallery evidence', async ({
   await desktopPage.goto(representativeRoute);
   await dismissConsent(desktopPage);
   const desktopGallery = visibleProjectsMain(desktopPage).locator(
-    '[data-project-gallery-layout="desktop"]',
+    '[data-project-gallery-layout="responsive-strip"]',
   );
   for (const image of await desktopGallery.locator('img').all()) {
     await image.scrollIntoViewIfNeeded();

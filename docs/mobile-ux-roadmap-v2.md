@@ -80,6 +80,16 @@ Real iOS Safari and Android Chrome Back gestures, VoiceOver and TalkBack remain
 unverified on physical devices. As agreed at Phase 1 closure, those tasks
 remain owned by Phase 5 / PR 14 and are not represented by Chromium emulation.
 
+Product-owner interaction update, 26 July 2026: the mobile project-detail
+gallery has been restored to the earlier native horizontal strip. Its governed
+images retain alternating 4:3 and 3:4 heights, align to the top and move with
+their captions through native touch scrolling and scroll snap. The gallery
+region remains keyboard focusable, Back and refresh remain covered, and the
+desktop mosaic is unchanged. This explicit preference supersedes the
+controlled-project-gallery descriptions in the current-state tables and PR 5
+record below; those descriptions remain as historical delivery provenance.
+Product-detail galleries remain controlled and are not affected.
+
 ### Phase 3 delivery update - 25 July 2026
 
 All four Phase 3 checkpoints are deployed from `main`: product-detail
@@ -237,7 +247,7 @@ analytics evidence without reopening stable page architecture.
 | Products index | Clear hierarchy | Phase 3 made four pergola forms primary and converted integrated options into two compact gateways | Physical-device validation remains | P2 |
 | Product detail | Clear controlled decision | Phase 3 reduced every route to three disclosures, one controlled gallery and a neutral context-aware enquiry | Physical-device and screen-reader validation remains | P2 |
 | Projects index | Strong and hardened | Phase 2 removed the hidden mobile detail tree and cut production HTML and DOM weight materially | Physical-device Back gestures remain unverified | P1 |
-| Project detail | Strong controlled proof | Phase 2 added visible gallery controls, count, keyboard support and optional swipe while preserving desktop | Physical-device and screen-reader validation remains | P1 |
+| Project detail | Strong natural proof | The product-owner-preferred native strip restores variable-height, top-aligned images while preserving the desktop mosaic | Physical-device and screen-reader validation remains | P1 |
 | Commercial | Strong and proof-led | Phase 4 puts three governed cases after the hero, uses three delivery stages and keeps operational depth optional | Physical-device and screen-reader validation remains | P1 |
 | Professional pathway | Strong and source-aware | Phase 4 adds one discoverable capability route with role boundaries, documentation inputs and three governed projects | Physical-device, assistive-technology and real-file task validation remains | P1 |
 | Guide hub | Clear and directly scannable | Phase 4 replaced ten repeated controls with ten visible distinctions | Physical-device reading and link-task validation remains | P2 |
@@ -259,7 +269,7 @@ Scores compare the current state with the previous implementation review complet
 | Premium brand perception | 8/10 | Restrained typography, specific projects, measured language and a compact utility close remain strong | Improved | Validate outdoor readability and final crops on physical devices |
 | Architectural credibility | 9/10 | Dimensions, roof forms, constraints, materials and building relationships are specific | Unchanged | Retain this evidence while reducing repeated explanation around it |
 | Visual storytelling | 8/10 | Projects lead home, residential, commercial and professional journeys before secondary explanation | Improved | Validate representative crops on physical devices |
-| Image use | 8/10 | Product details and project details each use one controlled mobile gallery, with deliberate production crops and no repeated product inventory | Improved from 7 | Complete physical-device crop and control review |
+| Image use | 8/10 | Product details use one controlled gallery; project details use one native variable-height strip, with deliberate production crops and no repeated product inventory | Improved from 7 | Complete physical-device crop and interaction review |
 | Copy restraint | 8/10 | Decision-led first layers now cover residential, custom, products, commercial, professional and guides while retaining complete supporting content | Improved from 7 | Validate comprehension with real-device tasks and production outcomes |
 | Ease of scanning | 9/10 | Service, product and guide journeys use purposeful first layers instead of repeated equal-weight controls | Improved from 7 | Confirm screen-reader rotor and reading order on physical devices |
 | Reading effort | 8/10 | Commercial visible words fell from 963 to 773 at 390 px; guide details typically fell from 936-1,315 to 572-616 | Improved from 6 | Validate task completion rather than pursue further speculative cuts |
@@ -273,8 +283,8 @@ Scores compare the current state with the previous implementation review complet
 | Conversion effectiveness | 8/10 | Production commercial, project and product routes preserve validated source context and audience rules | Improved from 5 | Reconcile field analytics and successful submissions in Phase 5 |
 | Trust and evidence | 9/10 | Reviews, built projects, specific facts and honest caveats remain a major strength | Unchanged | Integrate proof into decisions rather than adding more proof sections |
 | Enquiry experience | 8/10 | Direct and embedded forms now share terminology, context, upload and validation contracts in production | Improved from 5 | Complete real-device and assistive-technology form tasks |
-| Touch usability | 8/10 | Shared targets, menus, filters and visible gallery controls are sound in automated tests | Improved from 7 | Complete physical-device thumb and Back-gesture testing |
-| Accessibility | 8/10 | Disclosures and galleries have deterministic semantics, visible controls, stable focus and no-JavaScript safeguards | Improved from 7 | Complete VoiceOver and TalkBack tasks |
+| Touch usability | 8/10 | Shared targets, menus and filters are sound in automated tests; project detail uses the product-owner-preferred native swipe strip | Improved from 7 | Complete physical-device thumb and Back-gesture testing |
+| Accessibility | 8/10 | Disclosures and galleries have deterministic semantics, visible focus and no-JavaScript safeguards; project captions remain in the gallery reading order | Improved from 7 | Complete VoiceOver and TalkBack tasks |
 | Overall mobile customer experience | 9/10 | Primary and secondary route structure is reliable in production; remaining uncertainty is real-device, assistive-technology, performance and outcome validation | Improved from 7 | Complete Phase 5 validation |
 
 ---
@@ -936,6 +946,12 @@ Arrow/Home/End keys plus horizontal touch swipe without changing focus.
 The original desktop mosaic remains the desktop presentation. Production
 checks cover enquiry context, related and circular navigation, Back, refresh,
 reduced motion, target widths and zero horizontal overflow.
+
+Current override, 26 July 2026: at the product owner's request, project details
+again use the earlier native horizontal strip with variable-height,
+top-aligned images. This intentionally supersedes PR 5's controlled-gallery
+interaction and acceptance criteria without changing the project collection,
+desktop mosaic, contextual enquiry path or product galleries.
 
 ### PR 6: Consolidate product-detail first layers and remove duplicate galleries
 

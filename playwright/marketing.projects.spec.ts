@@ -690,9 +690,15 @@ for (const viewport of [
     await expect(main.locator('.project-case-study')).toBeVisible();
     await expectNoPageOverflow(page);
 
+    const gallery = main.locator('[data-project-gallery-layout="responsive-strip"]');
+    await expect(gallery).toBeVisible();
+    await expect(gallery.locator('figure')).toHaveCount(
+      projectGalleryItemCount(representativeProject),
+    );
+    await expect(main.locator('[data-responsive-gallery]')).toHaveCount(0);
+
     if (viewport.width >= 900) {
-      await expect(main.locator('[data-project-gallery-layout="desktop"]')).toBeVisible();
-      await expect(main.locator('[data-responsive-gallery]')).toBeHidden();
+      await expect(gallery).toHaveCSS('display', 'grid');
       await expect(main.locator('.project-navigator__panel')).toBeVisible();
       await expect(main.locator('.project-navigator__trigger')).toBeHidden();
       await expect(main.locator(
@@ -703,29 +709,48 @@ for (const viewport of [
         'details[data-project-mobile-disclosure="brief"] summary',
       )).toBeHidden();
     } else {
-      const gallery = main.locator('[data-responsive-gallery]');
-      const expectedPosition = `1/${projectGalleryItemCount(representativeProject)}`;
-      await expect(main.locator('[data-project-gallery-layout="desktop"]')).toBeHidden();
-      await expect(gallery).toBeVisible();
-      await expect(gallery).toHaveAttribute('data-gallery-position', expectedPosition);
-      await expect(gallery).toHaveAttribute('data-gallery-swipe', 'true');
-      await expect(gallery.locator('img')).toHaveCount(1);
-      await expect(gallery.getByRole('status')).toHaveText(
-        `Image ${expectedPosition.replace('/', ' of ')}`,
-      );
+      const galleryMetrics = await gallery.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          alignItems: style.alignItems,
+          clientWidth: element.clientWidth,
+          display: style.display,
+          overflowX: style.overflowX,
+          scrollWidth: element.scrollWidth,
+        };
+      });
+      expect(galleryMetrics.display).toBe('flex');
+      expect(galleryMetrics.alignItems).toBe('flex-start');
+      expect(galleryMetrics.overflowX).toBe('auto');
+      expect(galleryMetrics.scrollWidth).toBeGreaterThan(galleryMetrics.clientWidth);
 
-      for (const control of await gallery.getByRole('button').all()) {
-        const box = await control.boundingBox();
-        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-        expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-      }
+      const frameMetrics = await gallery.locator('figure').evaluateAll((figures) => (
+        figures.map((figure) => {
+          const frame = figure.querySelector<HTMLElement>(
+            '.project-case-study__gallery-media',
+          );
+          const figureRect = figure.getBoundingClientRect();
+          const frameRect = frame?.getBoundingClientRect();
+          return {
+            frameHeight: Math.round(frameRect?.height ?? 0),
+            top: Math.round(figureRect.top),
+          };
+        })
+      ));
+      expect(new Set(frameMetrics.map(({ top }) => top)).size).toBe(1);
+      expect(new Set(frameMetrics.map(({ frameHeight }) => frameHeight)).size)
+        .toBeGreaterThan(1);
+      expect(await gallery.locator('img').evaluateAll((images) => (
+        images.every((image) => {
+          const galleryImage = image as HTMLImageElement;
+          return galleryImage.loading === 'lazy'
+            && galleryImage.sizes === '(max-width: 640px) 74vw, (max-width: 899px) 84vw, (max-width: 1280px) 52vw, 720px';
+        })
+      ))).toBe(true);
 
-      const next = gallery.getByRole('button', { name: /Next image/ });
-      await next.focus();
-      await page.keyboard.press('Shift+Tab');
-      await page.keyboard.press('Tab');
-      await expect(next).toBeFocused();
-      const focusState = await next.evaluate((element) => {
+      await gallery.focus();
+      await expect(gallery).toBeFocused();
+      const focusState = await gallery.evaluate((element) => {
         const style = getComputedStyle(element);
         return {
           outlineStyle: style.outlineStyle,
@@ -734,15 +759,7 @@ for (const viewport of [
       });
       expect(focusState.outlineStyle).not.toBe('none');
       expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
-      await next.click();
-      await expect(gallery).toHaveAttribute(
-        'data-gallery-position',
-        `2/${projectGalleryItemCount(representativeProject)}`,
-      );
-      await expect(next).toBeFocused();
-      await gallery.focus();
-      await page.keyboard.press('Home');
-      await expect(gallery).toHaveAttribute('data-gallery-position', expectedPosition);
+      await expect(gallery.getByRole('button')).toHaveCount(0);
       await expect(main.locator('.project-navigator__trigger')).toBeVisible();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
@@ -885,12 +902,12 @@ test('technical detail, contextual links, related work, and circular project nav
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
 
-  const gallery = main.locator('[data-responsive-gallery]');
-  await gallery.getByRole('button', { name: /Next image/ }).click();
-  await expect(gallery).toHaveAttribute(
-    'data-gallery-position',
-    `2/${projectGalleryItemCount(representativeProject)}`,
-  );
+  const gallery = main.locator('[data-project-gallery-layout="responsive-strip"]');
+  await gallery.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
   await expect(main.locator(
     '.project-case-study__intro-actions .project-action--primary',
   )).toHaveAttribute('href', buildEnquiryHref({
@@ -908,20 +925,25 @@ test('technical detail, contextual links, related work, and circular project nav
   await expect(page).toHaveURL(new RegExp(`${nextProjectHref}$`));
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
-  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+  await expect(visibleProjectsMain(page).locator(
+    '[data-project-gallery-layout="responsive-strip"]',
+  )).toBeVisible();
 
   await main.locator('.project-case-study__breadcrumbs a').click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(visibleProjectCards(page)).toHaveCount(projects.length);
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
-  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+  await expect(visibleProjectsMain(page).locator(
+    '[data-project-gallery-layout="responsive-strip"]',
+  )).toBeVisible();
 
   await page.reload();
-  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toHaveAttribute(
-    'data-gallery-position',
-    `1/${projectGalleryItemCount(representativeProject)}`,
+  const refreshedGallery = visibleProjectsMain(page).locator(
+    '[data-project-gallery-layout="responsive-strip"]',
   );
+  await expect(refreshedGallery).toBeVisible();
+  await expect.poll(() => refreshedGallery.evaluate((element) => element.scrollLeft)).toBe(0);
 });
 
 test('project disclosures are native, keyboard operable, and expanded on desktop', async ({
@@ -988,12 +1010,11 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
   await page.goto(representativeRoute);
   await dismissConsent(page);
 
-  const gallery = visibleProjectsMain(page).locator('[data-responsive-gallery]');
-  await gallery.scrollIntoViewIfNeeded();
-  await expect(gallery).toHaveAttribute(
-    'data-gallery-position',
-    `1/${projectGalleryItemCount(representativeProject)}`,
+  const gallery = visibleProjectsMain(page).locator(
+    '[data-project-gallery-layout="responsive-strip"]',
   );
+  await gallery.scrollIntoViewIfNeeded();
+  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft)).toBe(0);
   const box = await gallery.boundingBox();
   expect(box).not.toBeNull();
 
@@ -1014,10 +1035,8 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
     touchPoints: [],
   });
 
-  await expect(gallery).toHaveAttribute(
-    'data-gallery-position',
-    `2/${projectGalleryItemCount(representativeProject)}`,
-  );
+  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
   await expectNoPageOverflow(page);
   await context.close();
 });

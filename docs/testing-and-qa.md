@@ -200,15 +200,17 @@ reserved image geometry, absence of hidden case-study markup or media requests,
 payload size and desktop rail regression. The detail lane verifies one visible
 H1 and logical heading order, early and final contact actions, loaded and
 intentionally framed hero media, mobile height budgets, native server-rendered
-disclosures, selector focus and scroll behavior, one active gallery image,
-visible 44 pixel previous/next controls, announced position, optional touch
-swipe, stable keyboard focus, metadata and schema, honest missing-data
-treatment, enquiry context, browser Back/refresh, reduced motion, zero textual
-or generated em dashes, no horizontal overflow and no nested vertical content
-scroller. Its seven-width responsive matrix provides the remaining
+disclosures, selector focus and scroll behavior, one native horizontal gallery
+strip, top-aligned variable 4:3 and 3:4 image heights, native touch swipe,
+visible keyboard focus on the region, lazy image loading, metadata and schema,
+honest missing-data treatment, enquiry context, browser Back/refresh, reduced
+motion, zero textual or generated em dashes, no horizontal overflow and no
+nested vertical content scroller. Its seven-width responsive matrix provides
+the remaining
 representative desktop regression coverage. Set
 `MARKETING_PHASE_TWO_CAPTURE=1` to run the focused evidence spec and write
-collection payload plus 430, 390, 360 and desktop screenshots under
+collection payload plus current project-gallery screenshots at 430, 390, 360
+and desktop under
 `artifacts/mobile-ux-phase-2/`.
 
 Portal readiness sweeps:

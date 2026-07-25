@@ -90,14 +90,19 @@ form state.
    Back gesture.
 3. Confirm the filter and collection return predictably.
 4. Open `/projects/warkworth-outdoor-room`.
-5. Use visible previous and next gallery controls, then use an optional swipe.
-6. Confirm the position is understandable and focus is not lost.
-7. Follow the project enquiry action.
-8. Confirm the project name, project slug and Residential audience are visible
+5. Swipe through at least three images in the native horizontal gallery strip.
+6. Confirm the images retain different aspect-ratio heights, remain aligned to
+   the top, and each caption moves with its image.
+7. With a keyboard, focus the gallery region and confirm its focus indicator is
+   visible.
+8. Follow the project enquiry action.
+9. Confirm the project name, project slug and Residential audience are visible
    and preserved through refresh.
 
-Pass conditions: swipe is optional; Back is predictable; no priority crop is
-unreadable; the project and audience reach the form and eventual payload.
+Pass conditions: the native strip moves without moving the page sideways;
+different image heights remain top-aligned; Back is predictable; no priority
+crop is unreadable; the project and audience reach the form and eventual
+payload.
 
 ### T4 - Product comparison and contextual enquiry
 
@@ -206,9 +211,10 @@ Screenshot/video filename:
 Retest result, if fixed:
 ```
 
-For VoiceOver and TalkBack, include the spoken name, role and state for the
-menu, one disclosure, project gallery position/controls, form error summary,
-file control and success message. For the manual desktop run, include the first
+For VoiceOver and TalkBack, include the spoken name, role and focus state for
+the menu, one disclosure, the project gallery region and its image captions,
+the form error summary, file control and success message. For the manual
+desktop run, include the first
 unexpected focus jump, invisible focus indicator or trap, even if a later
 automated check passes.
 

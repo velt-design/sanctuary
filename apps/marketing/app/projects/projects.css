@@ -59,6 +59,7 @@
 }
 
 .projects-experience :where(a, button, select, summary):focus-visible,
+.projects-experience [data-project-gallery-layout]:focus-visible,
 .project-navigator-layer :where(a, button, select):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 3px;
@@ -627,10 +628,6 @@
   gap: clamp(2rem, 6vw, 7rem) var(--grid-gap);
 }
 
-.project-case-study__gallery-mobile {
-  display: none;
-}
-
 .project-case-study__gallery figure {
   min-width: 0;
   margin: 0;
@@ -1155,15 +1152,38 @@
   }
 
   .project-case-study__gallery {
-    display: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-inline: calc(-1 * var(--page-gutter));
+    padding: 0 var(--page-gutter) 1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding-inline: var(--page-gutter);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
   }
 
+  .project-case-study__gallery::-webkit-scrollbar,
   .project-case-study__related-list::-webkit-scrollbar {
     display: none;
   }
 
-  .project-case-study__gallery-mobile {
-    display: block;
+  .project-case-study__gallery figure,
+  .project-case-study__gallery figure:nth-child(n) {
+    flex: 0 0 min(84vw, 620px);
+    align-self: flex-start;
+    margin: 0;
+    scroll-snap-align: center;
+  }
+
+  .project-case-study__gallery .project-case-study__gallery-media,
+  .project-case-study__gallery figure:nth-child(n) .project-case-study__gallery-media {
+    aspect-ratio: 4 / 3;
+  }
+
+  .project-case-study__gallery figure:nth-child(3n + 2) .project-case-study__gallery-media {
+    aspect-ratio: 3 / 4;
   }
 
   .project-case-study__technical summary {
@@ -1534,6 +1554,28 @@
     font-size: .78rem;
   }
 
+  .project-case-study__gallery {
+    gap: .75rem;
+  }
+
+  .project-case-study__gallery figure,
+  .project-case-study__gallery figure:nth-child(n) {
+    flex-basis: min(74vw, 320px);
+  }
+
+  .project-case-study__gallery figure:nth-child(n) .project-case-study__gallery-media {
+    aspect-ratio: 4 / 3;
+  }
+
+  .project-case-study__gallery figure:nth-child(3n + 2) .project-case-study__gallery-media {
+    aspect-ratio: 3 / 4;
+  }
+
+  .project-case-study__gallery figcaption {
+    min-height: 58px;
+    font-size: .64rem;
+  }
+
   .project-case-study__technical {
     padding-block: 2.5rem;
   }
@@ -1603,6 +1645,12 @@
 @media (max-width: 560px) {
   .project-case-study__meta {
     margin-top: 0;
+  }
+
+  .project-case-study__gallery figcaption {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .2rem;
   }
 
   .project-case-study__pagination > a {
