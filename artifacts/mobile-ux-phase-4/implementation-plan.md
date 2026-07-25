@@ -58,7 +58,7 @@ Acceptance:
 Implementation owners:
 
 - `apps/marketing/app/pergola-guides/page.tsx`
-- `apps/marketing/app/pergola-guides/pergola-guides.module.css`
+- `apps/marketing/app/pergola-guides/pergola-guides.css`
 - `apps/marketing/components/seo-landing/`
 - the seven guide content configs
 - focused unit and browser coverage

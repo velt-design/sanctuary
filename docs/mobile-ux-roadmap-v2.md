@@ -4,7 +4,7 @@
 > **Repository:** `velt-design/sanctuary`
 > **Recommended repository path:** `docs/mobile-ux-roadmap-v2.md`
 > **Live website:** `https://www.sanctuarypergolas.co.nz/`
-> **Reviewed implementation commit:** `eda1cc1d` (`test(marketing): verify phase four completion`)
+> **Reviewed implementation commit:** `0002b2e1` (`fix(marketing): canonicalize production homepage header`)
 > **Review date:** 26 July 2026
 > **Mobile scope:** Approximately 430 px, 390 px and 360 px
 > **Implementation model:** One responsive Next.js website, one shared content source, shared React components, Tailwind styling, preserved semantic content and existing analytics
@@ -21,7 +21,7 @@ Version 2 reconciles five evidence sources:
 3. The mobile implementation review completed after the first implementation phases.
 4. The live production website observed on 25 July 2026.
 5. The current `main` implementation and Phase 1-4 evidence, most recently
-   verified at `eda1cc1d`.
+   verified at `0002b2e1`.
 
 ### Evidence states
 
@@ -139,11 +139,18 @@ viewport minimum; production height is 730 px at 430 px and 766 px at both
 390 px and 360 px.
 
 The production 36-record route/width matrix recorded HTTP 200, zero horizontal
-overflow and zero measured layout shift everywhere. The full deployed public
-browser surface passed 229 checks; 11 evidence-only cases skipped and the 18
-expected failures were confined to the deliberately unavailable production
-foundation catalogue, which passed locally. Form requests were intercepted.
-Evidence is under `artifacts/mobile-ux-phase-4/`.
+overflow and zero measured layout shift everywhere. A completion audit then
+found that one optimized build exposed the root to `usePathname()` as
+`/index`, making the homepage header lose its residential audience and desktop
+overlay. `0002b2e1` canonicalizes that framework alias before all shared-header
+decisions. The corrected deployed root emits canonical `source_path=/`.
+
+The current production audit covers 230 public cases outside the deliberately
+unavailable internal foundation catalogue: 221 active checks pass and nine
+evidence-only cases skip. Form requests were intercepted. Footer text contrast
+now has a permanent computed-colour check at all three target widths; all 18
+text runs pass 4.5:1 and the minimum is 7.71:1. Evidence is under
+`artifacts/mobile-ux-phase-4/`.
 
 Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
 unverified. They are Phase 5 / PR 14 work and Chromium emulation is not
@@ -733,7 +740,9 @@ Release evidence, 26 July 2026:
 - Checkpoint commits: `19a89302` condensed commercial, `acc5ac12` added the
   professional capability route, `bc07464a` simplified guides and `35c1ea5f`
   refined the footer/homepage close. `eda1cc1d` added the completion contract
-  and production-compatible evidence.
+  and production-compatible evidence. The completion audit added
+  `0002b2e1` for production root canonicalization and `88191ec2` for stable
+  focus/contrast assertions.
 - At 390 px, commercial visible words fell from 963 to 773 and main height
   from 11,369 px to 9,554 px. Three cases follow the hero and delivery uses
   three stages.
@@ -745,15 +754,19 @@ Release evidence, 26 July 2026:
   from 11,079-14,934 px to 7,280-7,535 px at 390 px.
 - Homepage regions/disclosures fell from 8/7 to 7/5. Footer production height
   is 730 px at 430 px and 766 px at 390 px and 360 px, with `min-height: 0`.
-- Marketing units passed 45 files and 202 tests. Workspace typecheck, lint,
+- Marketing units passed 45 files and 204 tests. Workspace typecheck, lint,
   the 65-page production build and base/head architecture/dead-code guards
   passed.
-- The deployed public browser surface passed 229 tests. Eleven capture-only
-  cases skipped; 18 expected failures were confined to the production-disabled
-  internal foundation catalogue, whose complete file passed locally.
+- The completion audit covered 230 deployed public cases outside the internal
+  catalogue: 221 active checks passed and nine capture-only cases skipped.
+  The production-disabled internal foundation catalogue remains separately
+  proven by its complete local file.
 - The production 36-record matrix has HTTP 200, zero horizontal overflow and
   zero measured layout shift throughout. Screenshots and measurements are in
   `artifacts/mobile-ux-phase-4/`.
+- The deployed root header emits residential `source_path=/`, retains its
+  desktop overlay, and computed footer text contrast has no failure below
+  4.5:1 at 430 px, 390 px or 360 px.
 - Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
   unverified and deferred to Phase 5 / PR 14.
 

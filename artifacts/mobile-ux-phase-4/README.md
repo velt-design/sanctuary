@@ -21,6 +21,16 @@ Authoritative brief: `docs/mobile-ux-roadmap-v2.md`, Phase 4 and PRs 10-13.
   `https://www.sanctuarypergolas.co.nz`.
 - The documentation closure is the separate
   `docs(marketing): close mobile phase four` commit containing this file.
+- A fresh completion audit found that one optimized deployment exposed the
+  root to `usePathname()` as `/index`. `0002b2e1`
+  (`fix(marketing): canonicalize production homepage header`) corrected the
+  homepage header context and overlay at their shared owner.
+- `88191ec2` (`test(marketing): close phase four audit gaps`) synchronizes the
+  short-height focus test with the menu's initial-focus contract and adds
+  computed footer text-contrast coverage.
+- The corrected marketing deployment:
+  [Vercel sanctuary deployment](https://vercel.com/jordans-projects-43df95bd/sanctuary/9UM5G5gJXCCiyYZD2GK11mTHvec8)
+  reported success.
 
 ## Completed checkpoints
 
@@ -31,6 +41,8 @@ Authoritative brief: `docs/mobile-ux-roadmap-v2.md`, Phase 4 and PRs 10-13.
 | PR 12, simplify guide journeys | `bc07464a` | The hub shows ten distinctions with no repeated controls; seven details lead with one answer, one project and a route back before optional depth. |
 | PR 13, refine site utility/homepage | `35c1ea5f` | The footer is compact phone/email utility; the homepage closes in seven regions and integrates review proof into final enquiry. |
 | Phase 4 completion contract | `eda1cc1d` | Route-specific guide headings, updated inherited assertions, 36 responsive records and production-compatible evidence. |
+| Production completion audit | `0002b2e1` | Canonicalizes the optimized root alias before shared-header navigation, overlay and enquiry context decisions. |
+| Audit test hardening | `88191ec2` | Waits for initial menu focus before moving focus and verifies computed footer contrast at every target width. |
 
 ## Actual implementation and test files
 
@@ -54,6 +66,9 @@ Authoritative brief: `docs/mobile-ux-roadmap-v2.md`, Phase 4 and PRs 10-13.
   `playwright/marketing.phase-four.spec.ts`,
   `playwright.marketing.config.ts`, and focused updates in contact, foundation,
   guide-hub, homepage, density, project, SEO-programme and shared-header specs.
+- Production root correction:
+  `apps/marketing/components/{Header.tsx,Header.test.tsx,headerNavigation.ts,headerNavigation.test.ts}`
+  and `playwright/marketing.shared-header.spec.ts`.
 - Baseline, implementation plan, screenshots and measurements:
   `artifacts/mobile-ux-phase-4/{before,after,implementation-plan.md}`.
 
@@ -103,9 +118,46 @@ full/footer states for homepage, commercial, professional entry/capability,
 guide hub, aluminium and cost routes. `before/` and `after/` are directly
 comparable production captures.
 
+## Completion-audit follow-up
+
+The 26 July completion audit re-read the production HTML rather than relying
+only on the earlier green development route. One optimized build rendered the
+root header with `source_path=/index`, no residential audience and no desktop
+hero-overlay state. The public route and `X-Matched-Path` were still `/`.
+
+The shared header now canonicalizes only that framework alias to `/` before it
+derives active navigation, overlay state and enquiry context. Unknown routes
+remain unknown; product routes remain neutral; governed project and service
+routes retain their existing metadata-driven context. Optimized generated HTML
+and the corrected deployed root both contain:
+
+- `enquiry_type=residential`;
+- canonical `source_path=/`;
+- `source_component=header`; and
+- `data-hero-navigation="overlay"` at the desktop root.
+
+The comprehensive public audit covered 230 cases outside the deliberately
+disabled internal catalogue. After correcting the five initially failing
+homepage/header assertions, 221 active checks passed and nine capture-only
+checks skipped. The inherited Phase 1-3 production subset passed 45 checks with
+two capture skips; the Phase 4 suite passed seven with one capture skip. The
+remaining public page-family sweep passed its 169 active checks after focused
+reruns of the corrected root/header cases, with six capture skips.
+
+The short-height menu failure was a test race: the test moved focus to the
+last link before the component's scheduled first-link focus had settled. The
+test now first observes the promised Home focus, then moves to the estimate
+link. All nine active shared-header checks pass against production.
+
+Footer text contrast is now calculated from deployed computed colours in the
+Phase 4 suite, including CSS `lab()` values and alpha compositing. All 18
+visible footer text runs pass the stricter 4.5:1 threshold at 430 px, 390 px
+and 360 px; the minimum measured ratio is 7.71:1.
+
 ## Verification
 
-- Marketing units: 45 files and 202 tests passed.
+- Original Phase 4 marketing units: 45 files and 202 tests passed. The
+  completion-audit regression additions increase this to 204 passing tests.
 - Route/view-model unit: 14 tests passed, including unique route-owned
   supporting headings and complete authored paragraph/project retention.
 - Affected browser files: 126 passed and four intentional capture skips;
@@ -113,10 +165,10 @@ comparable production captures.
   correction.
 - Phase 4: all seven active behavior tests passed. The seven-route
   no-JavaScript case passed under its standard extended multi-route budget.
-- Full deployed matrix: 229 public checks passed and 11 capture-only checks
-  skipped. Eighteen failures were all internal foundation-catalogue assertions;
-  `/__foundation/marketing` deliberately returns 404 in production and its
-  complete browser file passed locally.
+- The current public completion audit passed 221 active checks outside the
+  internal catalogue with nine capture-only skips. The complete local
+  foundation file passed 26 active checks with two capture skips;
+  `/__foundation/marketing` still deliberately returns 404 in production.
 - Full workspace `npm run typecheck` passed.
 - `npm run lint` passed, including docs, package, cache, brand, mojibake and
   ESLint guards.

@@ -79,6 +79,14 @@ motion, scroll and Back behavior, and established desktop routes and geometry.
 Set `MARKETING_SHARED_HEADER_CAPTURE=1` to write the approved PR 8 evidence to
 `artifacts/mobile-ux-phase-3-pr-8/`.
 
+The optimized static root may supply `/index` to `usePathname()` even though
+the public route is `/`. Header changes must verify the generated production
+`index.html` and the deployed root, asserting the residential estimate
+audience, canonical `source_path=/` and hero-overlay state. Development routing
+alone does not exercise this alias. Short-height focus checks must first wait
+for the menu's promised initial Home focus before programmatically moving to a
+later link; otherwise the scheduled focus owner and the assertion race.
+
 Product-page changes should run
 `npx vitest run apps/marketing/data/products.test.ts apps/marketing/components/products/productDetailViewModel.test.ts apps/marketing/components/products/productHubViewModel.test.ts`
 and

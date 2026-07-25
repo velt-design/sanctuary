@@ -63,6 +63,13 @@ Phase 3 PR 8 adds the shared public mobile-navigation contract:
 - The JavaScript breakpoint matches the CSS mobile range through 900px. Body position, inline styles and reading position are reversibly locked on every public route, while destination navigation leaves scroll ownership to the router. Short viewports scroll within the menu, every control remains at least 44px high, and directly relevant transitions are removed for reduced motion.
 - PR 8 does not add a global sticky action. The fixed consent banner, Projects selector sheet, existing route-local overlays and a legacy route-local mobile action cannot guarantee that another site-wide fixed control would avoid consent controls, form fields and content at short viewport heights. The shared menu and existing route-aware page actions remain the calm persistent path.
 
+The optimized Next.js root can expose `/index` to client route hooks while the
+public and matched route remains `/`. `getCanonicalHeaderPathname` converts
+that one framework alias before the header derives active navigation, hero
+overlay state or enquiry context. The generated and deployed root header must
+therefore contain a residential estimate action with canonical
+`source_path=/`, never `/index`.
+
 The internal catalogue is the complete fixture for the shared primitives and interactions. The approved homepage is the first public compatibility consumer for `MarketingPage`, `SectionHeader`, `ActionGroup`, balanced pathway cards, project facts, responsive featured-project media and the shared disclosure behavior. Project, product, residential-service and SEO-landing routes now reuse the same disclosure contract through route-scoped adapters without creating viewport-specific content trees.
 
 ## Catalogue Guard
