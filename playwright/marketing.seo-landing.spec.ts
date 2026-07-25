@@ -57,7 +57,7 @@ for (const viewport of viewports) {
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Send my project details' })).toBeVisible();
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(4);
-    await expect(main.locator('details')).toHaveCount(7);
+    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(7);
     await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
     await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
     await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
@@ -201,7 +201,7 @@ for (const viewport of viewports) {
     await expect(page.getByRole('heading', { level: 1, name: 'Custom pergolas for sites where the obvious answer does not fit' })).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(4);
-    await expect(main.locator('details')).toHaveCount(6);
+    await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(6);
     await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
     await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
     await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');

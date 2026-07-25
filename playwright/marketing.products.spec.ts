@@ -14,17 +14,49 @@ const viewports = [
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
 const mobileRefinementRoutes = [
-  { route: '/products', maximumHeightAt390: 10_258, disclosureCount: 1 },
-  { route: '/products/pergolas/gable', maximumHeightAt390: 9_873, disclosureCount: 4 },
+  {
+    route: '/products',
+    maximumHeightAt390: 10_258,
+    disclosureKinds: ['form-comparison', 'planning-guides'],
+  },
+  {
+    route: '/products/pergolas/gable',
+    maximumHeightAt390: 9_873,
+    disclosureKinds: [
+      'product-overview',
+      'definition',
+      'works-when',
+      'must-resolve',
+      'specification',
+      'tradeoffs',
+      'related-support',
+    ],
+  },
   {
     route: '/products/screens-walls/drop-down-blinds',
     maximumHeightAt390: 9_587,
-    disclosureCount: 4,
+    disclosureKinds: [
+      'product-overview',
+      'definition',
+      'works-when',
+      'must-resolve',
+      'specification',
+      'tradeoffs',
+      'related-support',
+    ],
   },
   {
     route: '/products/lighting-heating/patio-heaters',
     maximumHeightAt390: 9_611,
-    disclosureCount: 4,
+    disclosureKinds: [
+      'product-overview',
+      'definition',
+      'works-when',
+      'must-resolve',
+      'specification',
+      'tradeoffs',
+      'related-support',
+    ],
   },
 ] as const;
 
@@ -74,18 +106,26 @@ async function expectNoOverflowOrNestedScroll(page: Page, main: Locator) {
 }
 
 async function expectVisibleImagesLoaded(main: Locator) {
-  const images = main.locator('img:visible');
+  const images = main.locator('img');
   const count = await images.count();
   expect(count).toBeGreaterThan(0);
+  let visibleCount = 0;
 
   for (let index = 0; index < count; index += 1) {
     const image = images.nth(index);
+    const isVisible = await image.evaluate((element) => (
+      element.checkVisibility()
+      && !element.closest('details:not([open])')
+    ));
+    if (!isVisible) continue;
+    visibleCount += 1;
     await image.scrollIntoViewIfNeeded();
     await expect.poll(() => image.evaluate((element) => {
       const candidate = element as HTMLImageElement;
       return candidate.complete ? candidate.naturalWidth : 0;
     })).toBeGreaterThan(0);
   }
+  expect(visibleCount).toBeGreaterThan(0);
 }
 
 async function expectMinimumTouchTargets(main: Locator) {
@@ -187,10 +227,13 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
       const disclosures = main.locator('details[data-product-mobile-disclosure]');
 
       await expect(main.locator('h1:visible')).toHaveCount(1);
-      await expect(disclosures).toHaveCount(routeCase.disclosureCount);
+      await expect(disclosures).toHaveCount(routeCase.disclosureKinds.length);
+      await expect(disclosures.evaluateAll((items) => items.map(
+        (item) => item.getAttribute('data-product-mobile-disclosure'),
+      ))).resolves.toEqual([...routeCase.disclosureKinds]);
       for (const disclosure of await disclosures.all()) {
         await expect(disclosure).not.toHaveAttribute('open', '');
-        expect((await disclosure.locator('summary').boundingBox())?.height ?? 0)
+        expect((await disclosure.locator(':scope > summary').boundingBox())?.height ?? 0)
           .toBeGreaterThanOrEqual(44);
       }
 
@@ -237,7 +280,19 @@ test('all ten product routes retain the complete mobile content contract', async
     const main = page.locator('main[data-product-detail]:visible').last();
     await expect(main.locator('h1:visible')).toHaveCount(1);
     await expect(main.locator('[data-product-gallery]')).toHaveCount(2);
-    await expect(main.locator('details[data-product-mobile-disclosure]')).toHaveCount(4);
+    await expect(
+      main.locator('details[data-product-mobile-disclosure]').evaluateAll((items) => items.map(
+        (item) => item.getAttribute('data-product-mobile-disclosure'),
+      )),
+    ).resolves.toEqual([
+      'product-overview',
+      'definition',
+      'works-when',
+      'must-resolve',
+      'specification',
+      'tradeoffs',
+      'related-support',
+    ]);
     await expect(main).not.toContainText('—');
     await expect(main.getByRole('link', { name: 'Send your project details' }))
       .toHaveCount(2);
@@ -309,7 +364,7 @@ test('collapsed mobile decision content remains server rendered', async ({ reque
   );
   expect(html).toContain('Structure and materials');
   expect(html).toContain('Volume versus visual presence');
-  expect(html).toContain('What the project must resolve');
+  expect(html).toContain('Ridge height, eave height and the view from inside the house.');
 });
 
 test('a pergola form and an accessory preserve metadata, structured data and evidence', async ({ page }) => {

@@ -1,0 +1,148 @@
+import { act, type ReactNode } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { Disclosure } from './Disclosure';
+import { ResponsiveGallery, type ResponsiveGalleryItem } from './ResponsiveGallery';
+
+const galleryItems: ResponsiveGalleryItem[] = [
+  {
+    id: 'first',
+    image: '/images/project-riverhead-gable-01.jpg',
+    alt: 'First completed pergola',
+    caption: 'First project',
+  },
+  {
+    id: 'second',
+    image: '/images/project-dairy-flat-01.jpg',
+    alt: 'Second completed pergola',
+    caption: 'Second project',
+  },
+  {
+    id: 'third',
+    image: '/images/project-velskov-01.jpg',
+    alt: 'Third completed pergola',
+    caption: 'Third project',
+  },
+];
+
+let root: Root | null = null;
+
+beforeAll(() => {
+  (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
+    .IS_REACT_ACT_ENVIRONMENT = true;
+});
+
+afterEach(async () => {
+  if (root) {
+    await act(async () => root?.unmount());
+    root = null;
+  }
+  document.body.innerHTML = '';
+});
+
+async function render(markup: ReactNode) {
+  const container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root?.render(markup));
+  return container;
+}
+
+describe('marketing foundation disclosure', () => {
+  it('renders one native semantic content tree without manual ARIA state', () => {
+    document.body.innerHTML = renderToStaticMarkup(
+      <Disclosure summary="Project detail">
+        <p>One complete project description.</p>
+      </Disclosure>,
+    );
+
+    const details = document.querySelector('details[data-disclosure="manual"]');
+    const summary = details?.querySelector(':scope > summary');
+
+    expect(details).not.toBeNull();
+    expect(summary?.textContent).toContain('Project detail');
+    expect(summary?.hasAttribute('aria-expanded')).toBe(false);
+    expect(document.querySelectorAll('p')).toHaveLength(1);
+    expect(document.body.textContent?.match(/One complete project description/g)).toHaveLength(1);
+  });
+
+  it('uses native toggle state and keeps focus on the summary control', async () => {
+    const onOpenChange = vi.fn();
+    const container = await render(
+      <Disclosure summary="Project detail" onOpenChange={onOpenChange}>
+        <p>Disclosure content.</p>
+      </Disclosure>,
+    );
+    const details = container.querySelector('details') as HTMLDetailsElement;
+    const summary = container.querySelector('summary') as HTMLElement;
+
+    summary.focus();
+    await act(async () => {
+      summary.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(details.open).toBe(true);
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    expect(document.activeElement).toBe(summary);
+
+    await act(async () => {
+      summary.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(details.open).toBe(false);
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+    expect(document.activeElement).toBe(summary);
+  });
+});
+
+describe('marketing foundation responsive gallery', () => {
+  it('renders only the active item with labelled controls and live position status', async () => {
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={galleryItems} />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]');
+
+    expect(gallery?.getAttribute('role')).toBe('region');
+    expect(gallery?.getAttribute('aria-roledescription')).toBe('carousel');
+    expect(gallery?.getAttribute('aria-label')).toBe('Completed projects');
+    expect(gallery?.querySelectorAll('img')).toHaveLength(1);
+    expect(gallery?.querySelector('img')?.getAttribute('alt')).toBe('First completed pergola');
+    expect(gallery?.querySelector('[role="status"]')?.textContent).toBe('Image 1 of 3');
+    expect(gallery?.querySelector('[role="status"]')?.getAttribute('aria-live')).toBe('polite');
+    expect(gallery?.querySelectorAll('button')).toHaveLength(2);
+    expect(gallery?.querySelector('button')?.getAttribute('aria-label')).toContain('Previous image');
+  });
+
+  it('supports buttons and Arrow, Home and End keys without moving focus', async () => {
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={galleryItems} />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]') as HTMLElement;
+    const next = container.querySelector('button[aria-label^="Next"]') as HTMLButtonElement;
+
+    next.focus();
+    await act(async () => next.click());
+    expect(gallery.dataset.galleryPosition).toBe('2/3');
+    expect(gallery.querySelector('img')?.getAttribute('alt')).toBe('Second completed pergola');
+    expect(document.activeElement).toBe(next);
+
+    await act(async () => {
+      gallery.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'End' }));
+    });
+    expect(gallery.dataset.galleryPosition).toBe('3/3');
+
+    await act(async () => {
+      gallery.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Home' }));
+    });
+    expect(gallery.dataset.galleryPosition).toBe('1/3');
+
+    await act(async () => {
+      gallery.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowLeft' }));
+    });
+    expect(gallery.dataset.galleryPosition).toBe('3/3');
+    expect(gallery.querySelectorAll('img')).toHaveLength(1);
+    expect(document.activeElement).toBe(next);
+  });
+});

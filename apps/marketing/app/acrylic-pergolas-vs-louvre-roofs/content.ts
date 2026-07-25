@@ -69,6 +69,11 @@ export const acrylicVsLouvreConfig = {
     ] },
     { kind: 'faq', id: 'acrylic-vs-louvre-faq', tone: 'elevated', eyebrow: 'Questions before preference becomes specification', title: 'A practical acrylic pergola and louvre roof comparison', intro: 'The responsible answer stays tied to the actual product, drawings, site and complete installed scope.', items: faqItems },
   ],
+  mobileDisclosureGroups: [
+    { id: 'roof-comparison-method', summary: 'How to frame a fair roof comparison', blockIds: ['comparison-order'] },
+    { id: 'acrylic-fixed-detail', summary: 'How the fixed acrylic condition is resolved', blockIds: ['acrylic-fixed-condition'] },
+    { id: 'roof-comparison-support', summary: 'Roof comparison links and common questions', blockIds: ['comparison-next-decisions', 'acrylic-vs-louvre-faq'] },
+  ],
   finalCta: { eyebrow: 'Bring the brief and proposal evidence', title: 'Ask Sanctuary to test the roof decision against your site', text: 'Share the outcomes you want and any proposal you are comparing. Sanctuary can frame its own verified roof scope without pretending every product category performs the same way.', button: 'Compare your roof brief', checklistTitle: 'Useful comparison inputs', checklist: ['Project suburb', 'Wide site and interior photos', 'Rough dimensions and orientation', 'Required roof states', 'Daylight and shade priorities', 'Existing proposal drawings', 'Product and control documents', 'Inclusions, exclusions and warranties'] },
   form: { ariaLabel: 'Pergola roof comparison enquiry form', eyebrow: 'Start with the outcome', heading: 'Describe the roof decision', intro: 'Share the site, the fixed and changing conditions you value, and attach any external louvre proposal. The options below are Sanctuary fixed-roof approaches.', submitLabel: 'Compare your roof brief', messageLabel: 'Required roof behaviour', messagePlaceholder: 'Describe what should happen to rain cover, daylight, shade, sky view and ventilation at the times that matter.', briefFields: [
     { name: 'externalProposal', label: 'External louvre proposal status', type: 'select', options: ['No proposal yet', 'Initial proposal received', 'Drawings and specification available', 'Unsure'] },

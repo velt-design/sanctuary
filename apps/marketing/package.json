@@ -20,7 +20,6 @@
     "@sp/quote-format": "0.0.0",
     "@sp/theme": "0.0.0",
     "@supabase/supabase-js": "^2.90.1",
-    "framer-motion": "^12.23.12",
     "next": "^16.2.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",

@@ -91,6 +91,12 @@ export type SeoLandingBlock =
       items: readonly FaqItem[];
     });
 
+export type SeoLandingDisclosureGroup = {
+  id: string;
+  summary: string;
+  blockIds: readonly string[];
+};
+
 export type SeoLandingPageConfig = {
   marker: string;
   route: string;
@@ -112,6 +118,7 @@ export type SeoLandingPageConfig = {
     proof: readonly string[];
   };
   blocks: readonly SeoLandingBlock[];
+  mobileDisclosureGroups?: readonly SeoLandingDisclosureGroup[];
   finalCta: {
     eyebrow: string;
     title: string;

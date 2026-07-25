@@ -352,16 +352,22 @@ export default function ProductsHub() {
               the planning questions, scope and trade-offs in more detail.
             </Text>
           </div>
-          <div className={styles.guideGrid}>
-            {guideLinks.map((guide, index) => (
-              <article className={styles.guideCard} key={guide.href}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <Heading as="h3" variant="card">{guide.label}</Heading>
-                <Text>{guide.copy}</Text>
-                <TextLink href={guide.href}>Read the guide</TextLink>
-              </article>
-            ))}
-          </div>
+          <MobileProductDisclosure
+            className={styles.guideDisclosure}
+            kind="planning-guides"
+            summary="Explore planning guides"
+          >
+            <div className={styles.guideGrid}>
+              {guideLinks.map((guide, index) => (
+                <article className={styles.guideCard} key={guide.href}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <Heading as="h3" variant="card">{guide.label}</Heading>
+                  <Text>{guide.copy}</Text>
+                  <TextLink href={guide.href}>Read the guide</TextLink>
+                </article>
+              ))}
+            </div>
+          </MobileProductDisclosure>
         </Container>
       </Section>
 

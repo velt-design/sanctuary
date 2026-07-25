@@ -29,12 +29,21 @@ export const metadata: Metadata = {
 };
 
 type ProjectsPageProps = {
-  searchParams?: Promise<{ slug?: string | string[] }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
   const params = searchParams ? await searchParams : {};
   const slugParam = Array.isArray(params.slug) ? params.slug[0] : params.slug;
+  const projectSearchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => projectSearchParams.append(key, item));
+    } else if (value !== undefined) {
+      projectSearchParams.append(key, value);
+    }
+  });
 
   return (
     <>
@@ -64,7 +73,11 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
           },
         ]}
       />
-      <ProjectsExperience projects={projects} initialSlugFromUrl={slugParam ?? ''} />
+      <ProjectsExperience
+        projects={projects}
+        initialSlugFromUrl={slugParam ?? ''}
+        initialSearchParams={projectSearchParams.toString()}
+      />
     </>
   );
 }

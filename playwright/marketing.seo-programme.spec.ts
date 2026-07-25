@@ -136,10 +136,10 @@ const pages: ProgrammePage[] = [
     order: 10,
     marker: 'commercial-pergolas-auckland',
     route: '/commercial-pergolas-auckland',
-    title: 'Commercial Pergolas Auckland | Design & Installation',
-    description: 'Plan a commercial pergola in Auckland around customers, staff, circulation, frontage, services, staging and clear project responsibility. Review Sanctuary project evidence.',
-    h1: 'A commercial pergola has to work before, during and after service',
-    submitLabel: 'Share the commercial brief',
+    title: 'Commercial Pergolas Auckland | Design & Build',
+    description: 'Sanctuary designs and builds commercial pergolas in Auckland, coordinating engineering, consent and trades where required from venue brief to installation.',
+    h1: 'You run the venue. We manage the pergola project.',
+    submitLabel: 'Discuss your venue',
     faqCount: 8,
     role: 'service',
     briefFieldName: 'operatingConstraints',
@@ -187,7 +187,7 @@ for (const programmePage of pages) {
       await expect(page.getByRole('heading', { level: 1, name: programmePage.h1 })).toBeVisible();
       await expect(main.locator('h1')).toHaveCount(1);
       await expect(main.locator('.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
-      await expect(main.locator('details')).toHaveCount(programmePage.faqCount);
+      await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
       await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
       await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
       await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
@@ -205,6 +205,32 @@ for (const programmePage of pages) {
       expect(copy).not.toContain('[[VERIFY:');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
+      if (programmePage.marker === 'commercial-pergolas-auckland') {
+        await expect(main.getByText('Designed in-house', { exact: true })).toBeVisible();
+        await expect(main.getByText('Engineering, consent and trades coordinated', { exact: true })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'From the first venue conversation to the installed project' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 3, name: 'Coordinate engineering and consent' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 3, name: 'Build, install and hand over' })).toBeVisible();
+        const planningSupport = main.locator(
+          'details[data-seo-landing-disclosure="commercial-planning-support"]',
+        );
+        if (viewport.width <= 720) {
+          await planningSupport.locator(':scope > summary').click();
+        }
+        const consentFaq = main.locator('.acrylic-faq-list > details').filter({
+          hasText: 'Can Sanctuary coordinate engineering and building consent?',
+        });
+        await consentFaq.locator(':scope > summary').click();
+        await expect(consentFaq.getByText('The relevant authority remains responsible for its decision.')).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Show us the venue and what the space needs to do' })).toBeVisible();
+        await expect(main.locator('#commercial-projects .acrylic-project-card h3')).toHaveText([
+          'The Good Home Takanini',
+          'Atelier Shu Cafe',
+          'Lilliput Mini Golf',
+          'KiwiRail Head Office',
+        ]);
+      }
+
       if (viewport.width <= 900) {
         await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
         await expect(page.locator('header.site .desktop-nav')).toBeHidden();
@@ -213,15 +239,21 @@ for (const programmePage of pages) {
       if (capturePhase) {
         const directory = path.join(process.cwd(), 'artifacts', 'marketing-seo-landing', programmePage.marker);
         await mkdir(directory, { recursive: true });
+        await page.evaluate(() => {
+          document.scrollingElement?.scrollTo({ top: 0, behavior: 'instant' });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        });
+        await expect.poll(() => page.evaluate(() => document.scrollingElement?.scrollTop ?? window.scrollY)).toBe(0);
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-top.png`) });
-        await page.locator(`#${programmePage.captureId}`).scrollIntoViewIfNeeded();
+        await main.locator(`#${programmePage.captureId}`).scrollIntoViewIfNeeded();
         if (programmePage.projectCount) {
           await expect.poll(() => main.locator('.acrylic-project-card img').evaluateAll((images) => images.filter((image) => (image as HTMLImageElement).naturalWidth > 0).length)).toBe(programmePage.projectCount);
         }
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-proof.png`) });
-        await page.locator(`#${programmePage.comparisonId}`).scrollIntoViewIfNeeded();
+        await main.locator(`#${programmePage.comparisonId}`).scrollIntoViewIfNeeded();
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-decisions.png`) });
-        await page.locator('#estimate-form-title').scrollIntoViewIfNeeded();
+        await main.locator('#estimate-form-title').scrollIntoViewIfNeeded();
         await page.screenshot({ path: path.join(directory, `${capturePhase}-${viewport.name}-form.png`) });
       }
     });

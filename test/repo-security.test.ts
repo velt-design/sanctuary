@@ -1,16 +1,16 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const PRIVATE_KEY_PATTERNS = [
-  new RegExp(['BEGIN OPENSSH', 'PRIVATE KEY'].join(' ')),
-  new RegExp(['BEGIN RSA', 'PRIVATE KEY'].join(' ')),
-  new RegExp(['BEGIN EC', 'PRIVATE KEY'].join(' ')),
-  new RegExp(['BEGIN DSA', 'PRIVATE KEY'].join(' ')),
-  new RegExp(['BEGIN', 'PRIVATE KEY'].join(' ')),
-  new RegExp(['BEGIN ENCRYPTED', 'PRIVATE KEY'].join(' ')),
-  new RegExp(['PuTTY-User', 'Key-File-'].join('-')),
+const PRIVATE_KEY_MARKERS = [
+  ['BEGIN OPENSSH', 'PRIVATE KEY'].join(' '),
+  ['BEGIN RSA', 'PRIVATE KEY'].join(' '),
+  ['BEGIN EC', 'PRIVATE KEY'].join(' '),
+  ['BEGIN DSA', 'PRIVATE KEY'].join(' '),
+  ['BEGIN', 'PRIVATE KEY'].join(' '),
+  ['BEGIN ENCRYPTED', 'PRIVATE KEY'].join(' '),
+  ['PuTTY-User', 'Key-File-'].join('-'),
 ] as const;
 
 const FORBIDDEN_SQL_PATTERNS = [
@@ -69,19 +69,28 @@ function readTrackedFile(relativePath: string): string {
   return readFileSync(path.join(process.cwd(), relativePath), 'utf8');
 }
 
+function trackedFilesContaining(markers: readonly string[]): string[] {
+  const markerArgs = markers.flatMap((marker) => ['-e', marker]);
+  const result = spawnSync(
+    'git',
+    ['grep', '-I', '-F', '-l', '-z', ...markerArgs, '--', '.'],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  );
+
+  if (result.status === 1) return [];
+  if (result.status !== 0) {
+    throw new Error(`git grep failed: ${result.stderr.trim() || 'unknown error'}`);
+  }
+
+  return result.stdout.split('\0').filter(Boolean);
+}
+
 describe('repo security hardening', () => {
   it('does not track private key material', () => {
-    const offenders: string[] = [];
-
-    for (const relativePath of trackedFiles()) {
-      if (!existsSync(path.join(process.cwd(), relativePath))) continue;
-      const source = readTrackedFile(relativePath);
-      if (PRIVATE_KEY_PATTERNS.some((pattern) => pattern.test(source))) {
-        offenders.push(relativePath);
-      }
-    }
-
-    expect(offenders).toEqual([]);
+    expect(trackedFilesContaining(PRIVATE_KEY_MARKERS)).toEqual([]);
   }, 15_000);
 
   it('does not keep blanket anon/authenticated SQL grants in tracked schema files', () => {

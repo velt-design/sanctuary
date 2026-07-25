@@ -1,0 +1,137 @@
+.disclosure {
+  min-width: 0;
+  border-top: 1px solid var(--color-rule-strong);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.disclosureSummary {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: .85rem;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font: 600 .78rem/1.4 var(--font-body);
+  letter-spacing: .04em;
+  list-style: none;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosureSummary:focus-visible,
+.gallery:focus-visible,
+.galleryButton:focus-visible {
+  outline: var(--focus-ring, 2px solid #4f5748);
+  outline-offset: 4px;
+}
+
+.disclosureIcon {
+  width: 1rem;
+  height: 1rem;
+  position: relative;
+  flex: 0 0 1rem;
+}
+
+.disclosureIcon::before,
+.disclosureIcon::after {
+  content: "";
+  width: 100%;
+  height: 1px;
+  position: absolute;
+  top: calc(50% - .5px);
+  left: 0;
+  background: currentColor;
+  transition: transform 160ms ease;
+}
+
+.disclosureIcon::after {
+  transform: rotate(90deg);
+}
+
+.disclosure[open] .disclosureIcon::after {
+  transform: rotate(0);
+}
+
+.disclosureBody {
+  max-width: 680px;
+  padding: .25rem 0 1.5rem;
+}
+
+.gallery {
+  min-width: 0;
+}
+
+.galleryViewport {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-surface-neutral);
+}
+
+.gallerySlide {
+  min-width: 0;
+}
+
+.galleryControls {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: minmax(44px, auto) minmax(6.5rem, 1fr) minmax(44px, auto);
+  align-items: center;
+  gap: .75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.galleryButton {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  padding: .7rem .8rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font: 600 .7rem/1 var(--font-body);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.galleryButton:last-child {
+  justify-self: end;
+}
+
+.galleryButton:hover {
+  border-color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+}
+
+.galleryButton:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.galleryStatus {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font: 600 .7rem/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosureIcon::before,
+  .disclosureIcon::after,
+  .galleryButton {
+    transition: none;
+  }
+}

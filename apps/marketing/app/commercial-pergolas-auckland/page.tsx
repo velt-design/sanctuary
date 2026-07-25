@@ -6,5 +6,25 @@ import { commercialPergolasConfig } from './content';
 import '../acrylic-roof-pergolas-auckland/acrylic-roof-pergolas-auckland.css';
 import '../../components/seo-landing/seo-landing.css';
 
-export const metadata: Metadata = { title: { absolute: 'Commercial Pergolas Auckland | Design & Installation' }, description: commercialPergolasConfig.description, alternates: { canonical: commercialPergolasConfig.route }, openGraph: { type: 'website', url: commercialPergolasConfig.route, title: 'Commercial Pergolas Planned Around the Operation', description: 'Coordinate customers, staff, circulation, building, services and delivery in one Auckland commercial pergola brief.', images: [{ url: commercialPergolasConfig.hero.image, alt: commercialPergolasConfig.hero.imageAlt }] }, twitter: { card: 'summary_large_image', title: 'Commercial Pergolas Planned Around the Operation', description: 'A project-team guide to commercial pergola design and delivery in Auckland.', images: [commercialPergolasConfig.hero.image] } };
+export const metadata: Metadata = {
+  title: { absolute: 'Commercial Pergolas Auckland | Design & Build' },
+  description: commercialPergolasConfig.description,
+  alternates: { canonical: commercialPergolasConfig.route },
+  openGraph: {
+    type: 'website',
+    url: commercialPergolasConfig.route,
+    title: 'You Run the Venue. We Manage the Pergola Project.',
+    description:
+      'One experienced Auckland team for commercial pergola design, engineering and consent coordination, project management and installation.',
+    images: [{ url: commercialPergolasConfig.hero.image, alt: commercialPergolasConfig.hero.imageAlt }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Commercial Pergolas, Managed from Design to Build',
+    description:
+      'Sanctuary designs and builds commercial pergolas while coordinating the technical and trade pathway where required.',
+    images: [commercialPergolasConfig.hero.image],
+  },
+};
+
 export default function CommercialPergolasAucklandPage() { return <SeoLandingPage config={commercialPergolasConfig} />; }

@@ -47,8 +47,8 @@ for (const viewport of viewports) {
       await page.goto(route);
       const header = page.locator('header.site');
       const brand = header.locator('.site-brand');
-      const hero = page.locator(route === '/pergola-guides' ? '.guide-hub-hero' : '.acrylic-hero');
-      const heroImage = page.locator(route === '/pergola-guides' ? '.guide-hub-hero__figure' : '.acrylic-hero__image');
+      const hero = page.locator(route === '/pergola-guides' ? '.guide-hub-hero' : '.acrylic-hero').last();
+      const heroImage = page.locator(route === '/pergola-guides' ? '.guide-hub-hero__figure' : '.acrylic-hero__image').last();
 
       await expect(header).toBeVisible();
       await expect(hero).toBeVisible();
@@ -59,8 +59,10 @@ for (const viewport of viewports) {
         const headerElement = document.querySelector<HTMLElement>('header.site');
         const brandElement = headerElement?.querySelector<HTMLElement>('.site-brand');
         const guideRoute = window.location.pathname === '/pergola-guides';
-        const heroElement = document.querySelector<HTMLElement>(guideRoute ? '.guide-hub-hero' : '.acrylic-hero');
-        const imageElement = document.querySelector<HTMLElement>(guideRoute ? '.guide-hub-hero__figure' : '.acrylic-hero__image');
+        const heroElements = document.querySelectorAll<HTMLElement>(guideRoute ? '.guide-hub-hero' : '.acrylic-hero');
+        const imageElements = document.querySelectorAll<HTMLElement>(guideRoute ? '.guide-hub-hero__figure' : '.acrylic-hero__image');
+        const heroElement = heroElements.item(heroElements.length - 1);
+        const imageElement = imageElements.item(imageElements.length - 1);
         const projectsLink = headerElement?.querySelector<HTMLElement>('a[href="/projects"]');
         const productsLink = headerElement?.querySelector<HTMLElement>('a[href="/products"]');
         if (!headerElement || !brandElement || !heroElement || !imageElement || !projectsLink || !productsLink) return null;

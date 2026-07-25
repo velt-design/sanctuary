@@ -151,6 +151,23 @@ export const customPergolasConfig = {
       intro: 'These answers describe the design approach. The final response depends on the actual property and agreed project.', items: faqItems,
     },
   ],
+  mobileDisclosureGroups: [
+    {
+      id: 'custom-site-reading-detail',
+      summary: 'How Sanctuary reads a custom site',
+      blockIds: ['read-the-site'],
+    },
+    {
+      id: 'custom-definition-detail',
+      summary: 'How custom decisions become a clear scope',
+      blockIds: ['custom-clarity', 'custom-boundaries'],
+    },
+    {
+      id: 'custom-planning-support',
+      summary: 'Custom planning links and common questions',
+      blockIds: ['custom-next-decisions', 'custom-product-context', 'custom-pergolas-faq'],
+    },
+  ],
   finalCta: {
     eyebrow: 'Bring the awkward parts', title: 'The useful first message shows what makes the site specific',
     text: 'Do not crop out the roofline, corner, doorway or level change that makes the project difficult. Those details help Sanctuary understand why a custom response may be worthwhile.',

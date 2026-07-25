@@ -719,7 +719,8 @@
 }
 
 .productCardLink:focus-visible,
-.breadcrumbs a:focus-visible {
+.breadcrumbs a:focus-visible,
+.mobileDisclosureSummary:focus-visible {
   outline: var(--focus-ring);
   outline-offset: 4px;
 }
@@ -1036,12 +1037,8 @@
   }
 
   .productCardCompact .productCardSummary {
-    display: -webkit-box;
-    overflow: hidden;
     font-size: .82rem;
     line-height: 1.45;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
   }
 
   .productCardCompact .productCardAction {
@@ -1060,9 +1057,17 @@
     border-right: 0;
   }
 
+  .definitionSection {
+    padding-block: 1.5rem;
+  }
+
   .fitColumn {
     padding-left: 0;
     border-left: 0;
+  }
+
+  .fitColumn .fitLabel {
+    margin-bottom: 1rem;
   }
 
   .mobileDisclosure {
@@ -1119,19 +1124,37 @@
     padding-top: .75rem;
   }
 
-  .fitGrid > .mobileDisclosure .fitColumn {
-    padding-top: 0;
-    border-top: 0;
+  .fitPrimaryList li:last-child {
+    border-bottom: 0;
   }
 
-  .fitGrid > .mobileDisclosure .fitLabel {
-    margin-bottom: 1rem;
+  .fitMoreDisclosure .mobileDisclosureBody {
+    padding-top: 0;
   }
 
   .formComparisonDisclosure .mobileDisclosureBody,
+  .guideDisclosure .mobileDisclosureBody,
+  .definitionDisclosure .mobileDisclosureBody,
   .specificationDisclosure .mobileDisclosureBody,
-  .tradeoffDisclosure .mobileDisclosureBody {
+  .overviewDisclosure .mobileDisclosureBody {
     padding-top: 1rem;
+  }
+
+  .tradeoffColumn > .tradeoffList > article:first-child {
+    border-bottom: 0;
+  }
+
+  .tradeoffDisclosure .mobileDisclosureBody,
+  .relatedSupportDisclosure .mobileDisclosureBody {
+    padding-top: 0;
+  }
+
+  .relatedSupportDisclosure {
+    border-bottom: 1px solid var(--color-rule-strong);
+  }
+
+  .relatedSupportDisclosure > .mobileDisclosureSummary {
+    padding-inline: var(--page-gutter);
   }
 
   .specificationRows dl > div {
@@ -1180,12 +1203,8 @@
   }
 
   .relatedProduct > div:last-child > p {
-    display: -webkit-box;
-    overflow: hidden;
     font-size: .82rem;
     line-height: 1.45;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
   }
 
   .relatedProduct h3 {

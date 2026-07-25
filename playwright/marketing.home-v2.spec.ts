@@ -99,6 +99,7 @@ for (const viewport of viewports) {
     const header = page.locator('header.site');
     const brand = header.locator('.site-brand');
 
+    await expect(main).toHaveAttribute('data-marketing-foundation-page', 'true');
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.getByRole('heading', {
       level: 1,
@@ -129,6 +130,17 @@ for (const viewport of viewports) {
     await expect(main.getByRole('region', { name: 'Client reviews' })).toHaveCount(0);
     await expect(main.locator('[data-home-review]')).toHaveCount(1);
     await expect(main.locator('section[aria-labelledby="design-build-process"] ol > li')).toHaveCount(3);
+    await expect(main.locator('[data-section-header]')).toHaveCount(3);
+    await expect(main.locator('[data-editorial-card="balanced"]')).toHaveCount(3);
+    await expect(main.locator('[data-card-grid="2"]')).toHaveCount(1);
+    await expect(main.locator('[data-fact-list="columns"] dt')).toHaveCount(3);
+
+    const featuredMedia = main.locator('section[aria-labelledby="featured-warkworth-project"] figure[data-mobile-ratio="standard"]');
+    const featuredMediaState = await featuredMedia.locator(':scope > div').evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.width / bounds.height;
+    });
+    expect(featuredMediaState).toBeCloseTo(viewport.width <= 640 ? 4 / 3 : 16 / 10, 1);
 
     if (viewport.width > 640) {
       const desktopDisclosures = main.locator('details[data-mobile-disclosure]');

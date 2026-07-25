@@ -1,43 +1,6 @@
 .page {
-  --color-canvas: #e9eae6;
-  --color-surface-warm: #f1f0eb;
-  --color-surface-neutral: #e1e3de;
-  --color-surface-elevated: #f8f8f5;
-  --color-text-primary: #111210;
-  --color-text-secondary: #555852;
   --color-text-subtle: #7b7f77;
-  --color-rule: #c7cac3;
-  --color-rule-strong: #aeb2aa;
-  --color-accent-olive: #4f5748;
-  --color-accent-olive-hover: #41483c;
-  --color-inverse-surface: #181a17;
-  --color-inverse-text: #f4f4f0;
-  --color-success: #356747;
-  --color-error: #a33c42;
-  --font-display: "Instrument Sans Variable", "Helvetica Neue", sans-serif;
-  --font-body: "Inter Variable", Arial, sans-serif;
-  --text-display: clamp(3.5rem, 8vw, 8.4rem);
   --text-page: clamp(2.8rem, 6vw, 6.4rem);
-  --text-section: clamp(2rem, 4.2vw, 4.4rem);
-  --text-card: clamp(1.25rem, 2vw, 1.7rem);
-  --text-body-large: clamp(1.05rem, 1.5vw, 1.3rem);
-  --text-body: .95rem;
-  --text-small: .78rem;
-  --container-site: 1600px;
-  --container-wide: 1440px;
-  --container-standard: 1280px;
-  --container-compact: 1040px;
-  --container-reading: 680px;
-  --page-gutter: clamp(1.25rem, 4vw, 4.5rem);
-  --section-space: clamp(4.5rem, 8vw, 7.5rem);
-  --section-space-compact: clamp(3rem, 5vw, 5rem);
-  --grid-gap: clamp(1rem, 2.2vw, 2.25rem);
-  --header-height: 82px;
-  --focus-ring: 2px solid #4f5748;
-  min-height: 100vh;
-  background: var(--color-canvas);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
 }
 
 :global(body):has(.page) :global(header.site),
@@ -69,6 +32,10 @@
 .rule { background: var(--color-rule); }
 .typeSpecimen { display: grid; gap: 2rem; }
 .componentStack { display: grid; gap: 3rem; }
+.primitiveStack { display: grid; gap: clamp(2rem, 4vw, 4rem); }
+.primitivePair { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--grid-gap); align-items: start; }
+.interactionGrid { display: grid; grid-template-columns: minmax(16rem, .72fr) minmax(0, 1.28fr); gap: var(--grid-gap); align-items: start; }
+.disclosureSpecimen { display: grid; }
 .actionRow { display: flex; flex-wrap: wrap; gap: .75rem; }
 .forms { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem var(--grid-gap); }
 .formsWide { grid-column: 1 / -1; }
@@ -87,5 +54,5 @@
 .sectionHead { display: grid; grid-template-columns: 1fr 1fr; gap: var(--grid-gap); margin-bottom: clamp(2.5rem, 5vw, 4.5rem); align-items: end; }
 .sectionHead > :last-child { justify-self: end; max-width: 34rem; }
 @media (max-width: 900px) { .gridDemo { grid-template-columns: repeat(8, 1fr); } .gridDemo span:nth-child(n+9) { display: none; } }
-@media (max-width: 800px) { .swatches { grid-template-columns: repeat(2, 1fr); } .swatch:nth-child(2n) { border-right: 0; } .mastheadGrid, .sectionHead { grid-template-columns: 1fr; } .summary, .sectionHead > :last-child { justify-self: start; } }
+@media (max-width: 800px) { .swatches { grid-template-columns: repeat(2, 1fr); } .swatch:nth-child(2n) { border-right: 0; } .mastheadGrid, .sectionHead, .primitivePair, .interactionGrid { grid-template-columns: 1fr; } .summary, .sectionHead > :last-child { justify-self: start; } }
 @media (max-width: 600px) { .forms { grid-template-columns: 1fr; } .formsWide { grid-column: auto; } .gridDemo { grid-template-columns: repeat(4, 1fr); } .gridDemo span:nth-child(n+5) { display: none; } .spaceRow { grid-template-columns: 5rem 1fr; } }

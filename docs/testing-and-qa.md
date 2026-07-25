@@ -50,6 +50,32 @@ safe errors, atomic retry/concurrency semantics, and the migration contract.
 GA, Meta, ArchiPro, or a GTM noscript resource loads before the corresponding
 explicit consent.
 
+Shared marketing-foundation primitive changes should run
+`npx vitest run apps/marketing/components/marketing-foundation/Primitives.test.tsx`,
+`npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`,
+and the focused spec for each adopted public consumer. The Foundation spec
+covers 430, 390 and 360 pixel fixtures plus tablet and desktop smoke, semantic
+CTA tiers, 44/48 pixel targets, focus visibility, responsive media ratios and
+focal points, card/fact-list layout, reduced motion, reduced horizontal
+overflow risk, and stable desktop card geometry. Its isolated 390 and 1440
+pixel matrix covers each distinct direct Foundation consumer without crossing
+the animated route-transition boundary. Set `MARKETING_FOUNDATION_CAPTURE=1`
+to capture the three mobile primitive specimens under
+`artifacts/mobile-ux-phase-3-pr-6/`.
+
+Shared public-header changes should run
+`npx vitest run apps/marketing/components/Header.test.tsx apps/marketing/components/headerNavigation.test.ts`
+and
+`npx playwright test playwright/marketing.shared-header.spec.ts --config=playwright.marketing.config.ts`.
+The component lane owns open/closed state, inert hidden content, focus cycling,
+Escape return, reversible body scroll locking, history cleanup and the 901px
+CSS/JavaScript breakpoint contract. The browser lane covers the approved
+mobile destinations and route-aware enquiry URLs at 430px, 390px and 360px,
+tablet compatibility, a 360px by 480px short viewport, 44px targets, reduced
+motion, scroll and Back behavior, and established desktop routes and geometry.
+Set `MARKETING_SHARED_HEADER_CAPTURE=1` to write the approved PR 8 evidence to
+`artifacts/mobile-ux-phase-3-pr-8/`.
+
 Product-page changes should run
 `npx vitest run apps/marketing/data/products.test.ts` and
 `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
@@ -64,6 +90,23 @@ loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
 horizontal overflow, no nested content scroll and explicit handling of
 unpublished heater evidence.
 
+Mobile first-layer copy, responsive disclosure, shared public route-template,
+service, SEO-landing or guide-directory changes should also run
+`npx playwright test playwright/marketing.mobile-content-density.spec.ts --config=playwright.marketing.config.ts`.
+The suite audits representative homepage, residential, custom, product,
+commercial, guide and contact journeys at 430, 390 and 360 pixels. It enforces
+bounded initially visible words and heading-bearing regions, retained
+proposition/evidence/constraint/action signals, native disclosure identity,
+44 pixel controls, keyboard operation, visible focus, reduced motion, heading
+hierarchy, unique IDs, CTA and meaningful-link continuity, metadata, schema,
+source-aware enquiry context, unclipped product summaries, zero horizontal
+overflow with supporting detail closed and open, uniquely named guide controls,
+post-evidence residential CTA continuity, fragment-target disclosure reveal and
+expanded 1440 pixel desktop detail. Its JavaScript-disabled
+browser context is a required server-rendering check: one route-owned `main`
+and H1, the next action, and complete open supporting content must remain
+visible without hydration.
+
 Contact-page changes should run
 `npx vitest run apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts`
 and
@@ -77,19 +120,24 @@ failure; duplicate-submit exclusion; consent-controlled events; attribution;
 professional attachment policy errors; and metadata-only upload fallback.
 
 Project-page changes should run
-`npx vitest run apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
+`npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
 and
 `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 before the full marketing browser lane. The project browser suite visits every
 canonical case study at 390 pixels and runs the collection plus four
-representative project states at 320, 390 and 430 pixels. It verifies one
-visible H1 and logical heading order, early and final contact actions, loaded
-and intentionally framed hero media, mobile height budgets, minimum 44 pixel
-targets, native server-rendered disclosures, selector focus and scroll
-behavior, metadata and schema, honest missing-data treatment, reduced motion,
-zero textual or generated em dashes, no horizontal overflow and no nested
-vertical content scroller. Its seven-width responsive matrix and desktop
-navigator checks provide the representative desktop regression coverage.
+representative project states across 320, 360, 390 and 430 pixels. The
+collection lane covers every audience and roof-form combination, all-project
+and empty states, URL reset, refresh and Back, one semantic image-led card
+tree, canonical destinations, native disclosure semantics, visible focus,
+minimum 44 pixel targets, responsive sizes, focal points, lazy loading,
+reserved image geometry and desktop rail/payload regression. The detail lane
+verifies one visible H1 and logical heading order, early and final contact
+actions, loaded and intentionally framed hero media, mobile height budgets,
+native server-rendered disclosures, selector focus and scroll behavior,
+metadata and schema, honest missing-data treatment, reduced motion, zero
+textual or generated em dashes, no horizontal overflow and no nested vertical
+content scroller. Its seven-width responsive matrix provides the remaining
+representative desktop regression coverage.
 
 Portal readiness sweeps:
 
@@ -217,7 +265,7 @@ When `docs:impact` prints an advisory, update the suggested owner doc if the cod
 JOB-01 through JOB-03 have six distinct verification layers:
 
 - `npm run test:email-provider` runs the Node-only `@sp/email-provider` normalization, byte-stable durable identity, fixed 24-hour provider-retention/20-hour retry configuration, Resend outcome/timeout/abort, retry-after, integrity, and raw-body Svix verification tests. All network transport is injected or mocked; this command never sends a real email. On 2026-07-20 it passed 3 files and 47 tests.
-- `npm run test:jobs` runs the `@sp/jobs` contract/state-machine/runtime-parser tests, the `@sp/email-provider` tests, static migration contract assertions, and repository security-boundary tests. On 2026-07-20 the JOB-03 local suite passed 8 files and 144 tests.
+- `npm run test:jobs` runs the `@sp/jobs` contract/state-machine/runtime-parser tests, the `@sp/email-provider` tests, static migration contract assertions, and repository security-boundary tests. The private-key guard searches tracked, non-binary Git content directly so checked-in visual evidence cannot make the security gate scale with binary asset size. On 2026-07-20 the JOB-03 local suite passed 8 files and 144 tests.
 - `npm run test:jobs:db-contract` runs only `test/background-jobs-migration.test.ts`. Despite the name, it inspects SQL text and the checked-in SQL test shape; it does not connect to Postgres or execute a migration. On 2026-07-20 it passed 1 file and 26 tests.
 - `npm run test:jobs:db` is the live database contract. `scripts/test-background-jobs-db.mjs` starts a disposable PGMQ-capable container, reports the resolved image, PostgreSQL major version, and PGMQ extension version, applies `supabase/tests/background_jobs_bootstrap.sql`, discovers and applies the seven JOB-01/JOB-02/JOB-03 migrations in order with each migration protected by a transaction, runs real two-session enqueue and provider-message unique-index races, executes the rollback-wrapped `supabase/tests/background_jobs.sql`, and removes the container. The default image is `ghcr.io/pgmq/pg18-pgmq:v1.10.0`; intentional overrides can set `BACKGROUND_JOBS_DB_IMAGE` and the expected version variables.
 - `npm run test:worker` runs the Node-only worker configuration, safe logger, health server, RPC adapter, CLI, concurrency, execution, retry, heartbeat, shutdown, modes, and durable email coordinator tests. JOB-03 includes the required ten-point persistent-world hard-crash matrix from enqueue response loss through terminal queue archive/local return, plus an eleventh lost-return boundary after the business finaliser commits but before the `finalised` checkpoint. It asserts one frozen intent/key/body, one provider delivery, one business finalisation, monotonic checkpoints, and no redispatch after terminal state. On 2026-07-20 the JOB-03 local suite passed 12 files and 134 tests. `npm run typecheck:worker` and `npm run build:worker` prove the standalone TypeScript and bundled Node 22 entrypoint; `node apps/worker/dist/worker.mjs --help` is the built CLI smoke.

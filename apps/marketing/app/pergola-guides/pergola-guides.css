@@ -239,6 +239,7 @@
 
 .guide-hub-card {
   min-height: 11rem;
+  position: relative;
   display: grid;
   grid-template-columns: 3rem minmax(12rem, 0.68fr) minmax(14rem, 1fr) 2rem;
   gap: var(--grid-gap);
@@ -273,13 +274,40 @@
   font-style: normal;
 }
 
-.guide-hub-card__heading strong {
+.guide-hub-card__heading h3 {
+  margin: 0;
+}
+
+.guide-hub-card__link {
+  min-height: 44px;
+  display: inline-flex;
   max-width: 16ch;
+  align-items: center;
+  color: inherit;
   font: 500 var(--text-card)/1.08 var(--font-display);
   letter-spacing: -0.025em;
 }
 
+@media (min-width: 721px) {
+  .guide-hub-card__link::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+  }
+}
+
+.guide-hub-card__disclosure,
+.guide-hub-card__description-body {
+  display: contents;
+}
+
+.guide-hub-card__description-toggle {
+  display: none;
+}
+
 .guide-hub-card__summary {
+  margin: 0;
   max-width: 44rem;
   color: var(--color-text-secondary);
   font: 400 var(--text-small)/1.65 var(--font-body);
@@ -298,12 +326,18 @@
   color: var(--color-inverse-text);
 }
 
-.guide-hub-card:hover :is(.guide-hub-card__number, .guide-hub-card__heading small, .guide-hub-card__summary, .guide-hub-card__arrow) {
+.guide-hub-card:hover :is(.guide-hub-card__number, .guide-hub-card__heading small, .guide-hub-card__heading em, .guide-hub-card__summary, .guide-hub-card__arrow) {
   color: rgba(244, 244, 240, 0.74);
 }
 
 .guide-hub-card:hover .guide-hub-card__arrow {
   transform: translateX(0.25rem);
+}
+
+.guide-hub-card__link:focus-visible,
+.guide-hub-card__description-toggle:focus-visible {
+  outline: 2px solid var(--color-accent-olive);
+  outline-offset: 3px;
 }
 
 .guide-hub-conversion__layout {
@@ -431,10 +465,77 @@
   }
 }
 
+@media (max-width: 720px) {
+  .guide-hub-card__disclosure {
+    min-width: 0;
+    display: block;
+    grid-column: 2;
+  }
+
+  .guide-hub-card__description-toggle {
+    min-height: 44px;
+    display: flex;
+    margin-top: 0.35rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--color-accent-olive);
+    cursor: pointer;
+    font: 600 0.68rem/1.35 var(--font-body);
+    letter-spacing: 0.09em;
+    list-style: none;
+    text-transform: uppercase;
+  }
+
+  .guide-hub-card__description-toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .guide-hub-card__description-toggle::marker {
+    content: '';
+  }
+
+  .guide-hub-card__description-body {
+    display: block;
+  }
+
+  .guide-hub-card__summary {
+    margin-top: 0.5rem;
+  }
+
+  .guide-hub-card__disclosure-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .guide-hub-card__disclosure-icon::before,
+  .guide-hub-card__disclosure-icon::after {
+    content: '';
+    position: absolute;
+    inset: 50% 0 auto;
+    height: 1px;
+    background: currentColor;
+    transform-origin: center;
+    transition: transform 160ms ease;
+  }
+
+  .guide-hub-card__disclosure-icon::after {
+    transform: rotate(90deg);
+  }
+
+  .guide-hub-card__disclosure[open] .guide-hub-card__disclosure-icon::after {
+    transform: rotate(0deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .guide-hub-chapter-link,
   .guide-hub-card,
-  .guide-hub-card__arrow {
+  .guide-hub-card__arrow,
+  .guide-hub-card__disclosure-icon::before,
+  .guide-hub-card__disclosure-icon::after {
     transition: none;
   }
 }

@@ -3,14 +3,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import JsonLd from '@/components/JsonLd';
 import {
+  ActionGroup,
   Button,
+  CardGrid,
   Container,
+  EditorialCard,
   Eyebrow,
+  FactList,
   Figure,
   Heading,
+  MarketingPage,
   NumberedPrinciples,
   ProjectMeta,
   Section,
+  SectionHeader,
   SpecificationRows,
   StaggeredGallery,
   Text,
@@ -110,18 +116,18 @@ function PathwayCard({
   pathway: VisitorPathway;
 }) {
   return (
-    <Link
-      className={`${styles.pathwayCard} ${index === 0 ? styles.primaryPathway : ''}`}
+    <EditorialCard
+      className={index === 0 ? styles.primaryPathway : undefined}
       href={pathway.href}
+      variant="balanced"
+      indexLabel={String(index + 1).padStart(2, '0')}
+      eyebrow={pathway.eyebrow}
+      title={pathway.title}
+      copy={pathway.copy}
+      actionLabel={pathway.action}
       data-homepage-event={pathway.event}
       data-homepage-item={pathway.eyebrow}
-    >
-      <span className={styles.cardNumber}>{String(index + 1).padStart(2, '0')}</span>
-      <Eyebrow>{pathway.eyebrow}</Eyebrow>
-      <Heading as="h3" variant="card">{pathway.title}</Heading>
-      <Text>{pathway.copy}</Text>
-      <span className={styles.cardAction}>{pathway.action}</span>
-    </Link>
+    />
   );
 }
 
@@ -130,7 +136,7 @@ export default async function HomePage() {
   const ratingText = review.rating.toFixed(1);
 
   return (
-    <main className={styles.page} data-homepage-variant="v2">
+    <MarketingPage className={styles.page} data-homepage-variant="v2">
       <HomepageInteractionTracker />
       <JsonLd
         data={[
@@ -177,12 +183,12 @@ export default async function HomePage() {
               <Text size="large" className={styles.heroText}>
                 Sanctuary designs, builds and installs bespoke fixed-roof pergolas for Auckland homes and selected commercial projects.
               </Text>
-              <div className={styles.heroActions} aria-label="Homepage actions">
+              <ActionGroup className={styles.heroActions} aria-label="Homepage actions">
                 <Button href={homeHeroEnquiryHref} data-homepage-event="hero_estimate_click">Get an initial project estimate</Button>
                 <TextLink href="/projects" className={styles.heroLink} data-homepage-event="hero_projects_click">
                   View completed projects
                 </TextLink>
-              </div>
+              </ActionGroup>
               <p className={styles.heroMicrocopy}>
                 Send your suburb, photos and rough dimensions for an initial assessment and indicative range where feasible.
               </p>
@@ -227,6 +233,7 @@ export default async function HomePage() {
               image={leadProject.heroImage.src}
               alt={leadProject.heroImage.alt}
               ratio="landscape"
+              mobileRatio="standard"
               className={styles.featuredProjectMedia}
               objectPosition={leadProject.heroImage.objectPosition}
             />
@@ -236,11 +243,13 @@ export default async function HomePage() {
                 <Heading id="featured-warkworth-project">{leadProject.title}</Heading>
               </div>
               <Text size="large">{leadProject.description[0]}</Text>
-              <dl className={styles.projectFacts}>
-                <div><dt>Footprint</dt><dd>{projectDimensions(leadProject)}</dd></div>
-                <div><dt>Configuration</dt><dd>Freestanding gable</dd></div>
-                <div><dt>Roof and ceiling</dt><dd>Solid and clear acrylic zones with cedar lining</dd></div>
-              </dl>
+              <FactList
+                items={[
+                  { label: 'Footprint', value: projectDimensions(leadProject) },
+                  { label: 'Configuration', value: 'Freestanding gable' },
+                  { label: 'Roof and ceiling', value: 'Solid and clear acrylic zones with cedar lining' },
+                ]}
+              />
               <MobileDisclosure
                 summary="View the design response"
                 eventName="featured_project_response_expand"
@@ -256,12 +265,12 @@ export default async function HomePage() {
                   </div>
                 </div>
               </MobileDisclosure>
-              <div className={styles.sectionActions}>
+              <ActionGroup>
                 <Button href={`/projects/${leadProject.slug}`} data-homepage-event="project_case_study_click" data-homepage-item={leadProject.slug}>
                   View the Warkworth project
                 </Button>
                 <TextLink href="/projects" data-homepage-event="project_gallery_click">Browse all completed projects</TextLink>
-              </div>
+              </ActionGroup>
             </div>
           </article>
         </Container>
@@ -269,19 +278,17 @@ export default async function HomePage() {
 
       <Section aria-labelledby="project-pathways" data-home-section="project-pathways">
         <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Start with the project context</Eyebrow>
-              <Heading id="project-pathways">Home projects come first.</Heading>
-            </div>
-            <div className={styles.introAction}>
-              <Text>Residential enquiries begin with the home and intended use. Complex sites and custom details stay within that same design pathway.</Text>
-              <TextLink href="/custom-pergolas-auckland" data-homepage-event="custom_pathway_click">
-                Read about custom design conditions
-              </TextLink>
-            </div>
-          </div>
-          <div className={styles.pathwayGrid}>
+          <SectionHeader
+            eyebrow="Start with the project context"
+            heading="Home projects come first."
+            headingId="project-pathways"
+          >
+            <Text>Residential enquiries begin with the home and intended use. Complex sites and custom details stay within that same design pathway.</Text>
+            <TextLink href="/custom-pergolas-auckland" data-homepage-event="custom_pathway_click">
+              Read about custom design conditions
+            </TextLink>
+          </SectionHeader>
+          <CardGrid columns={2}>
             {visitorPathways.slice(0, 1).map((pathway, index) => (
               <PathwayCard index={index} key={pathway.title} pathway={pathway} />
             ))}
@@ -296,7 +303,7 @@ export default async function HomePage() {
                 ))}
               </div>
             </MobileDisclosure>
-          </div>
+          </CardGrid>
         </Container>
       </Section>
 
@@ -327,13 +334,13 @@ export default async function HomePage() {
 
       <Section tone="warm" aria-labelledby="planning-options" data-home-section="planning-options">
         <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Planning the design</Eyebrow>
-              <Heading id="planning-options">Resolve the form, roof and comfort as one brief.</Heading>
-            </div>
+          <SectionHeader
+            eyebrow="Planning the design"
+            heading="Resolve the form, roof and comfort as one brief."
+            headingId="planning-options"
+          >
             <Text>Start with the site and intended use. The detailed options can follow once the right constraints and priorities are clear.</Text>
-          </div>
+          </SectionHeader>
           <div className={styles.planningGroups}>
             <MobileDisclosure
               className={styles.planningDisclosure}
@@ -429,13 +436,13 @@ export default async function HomePage() {
 
       <Section tone="warm" aria-labelledby="design-build-process" data-home-section="design-build-process">
         <Container width="wide">
-          <div className={styles.sectionIntro}>
-            <div>
-              <Eyebrow>Design and build process</Eyebrow>
-              <Heading id="design-build-process">Three stages, with expectations confirmed in writing.</Heading>
-            </div>
+          <SectionHeader
+            eyebrow="Design and build process"
+            heading="Three stages, with expectations confirmed in writing."
+            headingId="design-build-process"
+          >
             <Text>Design, materials, inclusions, exclusions, price, programme and applicable warranty information are recorded before manufacture or site work proceeds.</Text>
-          </div>
+          </SectionHeader>
           <ol className={styles.processSteps}>
             {processSteps.map((step, index) => (
               <li key={step.title}>
@@ -482,9 +489,9 @@ export default async function HomePage() {
             <Text size="large">
               Sanctuary reviews the initial information, identifies likely options, flags site or scope considerations and recommends a next step. Where the brief is clear, an indicative price range may be possible.
             </Text>
-            <div className={styles.sectionActions}>
+            <ActionGroup>
               <Button href={homeFinalEnquiryHref} data-homepage-event="final_enquiry_click">Send your project details</Button>
-            </div>
+            </ActionGroup>
             <nav className={styles.secondaryPathways} aria-label="Alternative enquiry pathways">
               <TextLink href="/commercial-pergolas-auckland#project-details" data-homepage-event="commercial_pathway_click">Discuss a commercial project</TextLink>
               <TextLink href={homeProfessionalEnquiryHref} data-homepage-event="professional_pathway_click">Send plans or a project brief</TextLink>
@@ -530,6 +537,6 @@ export default async function HomePage() {
           </div>
         </Container>
       </Section>
-    </main>
+    </MarketingPage>
   );
 }

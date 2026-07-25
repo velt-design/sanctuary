@@ -60,13 +60,13 @@ This document records the required pre-rewrite strategy for `/pergola-guides` an
 ## `/commercial-pergolas-auckland`
 
 1. **Target query and intent:** Commercial pergolas Auckland; procurement and service intent for hospitality, workplace and customer-facing sites.
-2. **Page role:** Own operational briefing, stakeholder coordination, site access, interfaces, documentation, approvals and handover for commercial projects.
+2. **Page role:** Lead with the hospitality owner's value: more usable venue space without another complex project to manage. Show Sanctuary's in-house design, design-and-build ownership, engineer and trade coordination, building-consent management where required, project management, installation and handover.
 3. **Competing pages:** Pergolas Auckland if copy is generic; Custom Pergolas Auckland if complexity is described without commercial operations; Cost if price comparison displaces procurement scope.
-4. **Retain:** Operational lens, circulation, project-team coordination, scope boundaries, completed commercial evidence and documented handover.
+4. **Retain:** Hospitality-first customer value, Good Home and Atelier Shu as the leading proof, operational planning, project-team coordination, scope boundaries, selected broader commercial evidence and documented handover.
 5. **Remove or consolidate:** Remove residential process and repeated generic cost, product and consent answers. Keep only commercial-stage and coordination information.
-6. **Claims needing approval:** Compliance outcomes, structural or fire performance, delivery timing, warranty, maintenance intervals and commercial price guidance.
+6. **Claims needing approval:** Consent or compliance outcomes, structural or fire performance, delivery timing, warranty, maintenance intervals, commercial price guidance and any quantified revenue or capacity outcome.
 7. **Internal links:** Custom for bespoke interfaces; Aluminium and roof-form guides for design context; Cost for comparable scope; completed commercial projects for evidence.
-8. **CTA:** Submit site, operating constraints, project stage, stakeholders, available drawings, dimensions, access constraints, desired use and required programme context.
+8. **CTA:** Discuss the venue and desired customer or operational value. Request the site, photos or plans, rough dimensions, operating constraints, property stakeholders, existing consultants and target timing without requiring a completed consultant brief.
 
 ## `/aluminium-pergolas-auckland`
 
