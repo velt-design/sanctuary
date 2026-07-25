@@ -35,6 +35,24 @@ The public website does not currently match the reviewed `main` implementation. 
 
 Production behaviour is the customer-facing source of truth. Repository work is not classified as complete until it is deployed and verified against the live route and form matrix.
 
+### Phase 1 delivery update - 25 July 2026
+
+The three Phase 1 implementation checkpoints are now on `main`: canonical
+enquiry routing and source context (`e74a3021`), the shared direct/embedded form
+contract (`a445a5b6`) and deterministic responsive disclosures (`5ec38e07`).
+The marketing deployment for `5ec38e07` completed successfully, and nine
+read-only or network-intercepted production checks passed across neutral,
+residential, commercial, professional, project and product journeys. The live
+checks also covered canonical analytics context, refresh and browser history,
+no-JavaScript access and disclosure height at 430 px, 390 px and 360 px.
+
+The historical production findings below describe the audit baseline that
+motivated Phase 1; they are not the current deployed route/form state.
+Real-device iOS Safari and Android Chrome journeys, plus VoiceOver and TalkBack
+smoke checks, were not available in this delivery environment. That exact
+completion gate remains **Test required** and Phase 2 should not be treated as
+fully unblocked until it is recorded.
+
 ### Direction-of-travel judgement
 
 **Improved but inconsistent.**
@@ -404,6 +422,23 @@ Testing requirements:
 - Keyboard and screen-reader smoke tests.
 - Deployed production smoke test before phase closure.
 
+Release evidence, 25 July 2026:
+
+- `npm run test:marketing`: 39 files and 173 tests passed.
+- Repository lint, the full workspace push-time typecheck, the 64-route
+  production marketing build and changed-file architecture guards passed.
+- The broad marketing browser matrix recorded 235 passes and seven intentional
+  evidence-capture skips. Its JavaScript-disabled timeout passed immediately
+  when isolated; two existing desktop hero-scroll assertions reproduced
+  serially in an untouched component and remain outside Phase 1's explicit
+  unrelated-desktop non-goal.
+- Nine focused production checks passed against
+  `https://www.sanctuarypergolas.co.nz`, including route context, intercepted
+  form payloads, canonical analytics, refresh and browser history,
+  no-JavaScript access, and hydration stability at 430 px, 390 px and 360 px.
+- Real iOS Safari, Android Chrome, VoiceOver and TalkBack checks remain
+  unverified; browser emulation is not a substitute for that completion gate.
+
 ### Phase 2: Project portfolio hardening
 
 | Field | Definition |
@@ -534,6 +569,12 @@ Acceptance criteria:
 ## 11. Recommended PR sequence
 
 ### PR 1: Close production enquiry routing and source context
+
+Implementation status, 25 July 2026: implemented and deployed from the
+canonical enquiry checkpoint on `main` (`e74a3021`). The live production matrix
+confirms neutral direct contact, reliable residential/commercial/professional
+selection, visible project/product context, refresh and Back continuity, and
+canonical lower-case analytics properties without personal information.
 
 | Field | Definition |
 |---|---|

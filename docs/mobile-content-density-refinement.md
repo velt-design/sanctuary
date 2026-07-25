@@ -334,26 +334,34 @@ Final focused results:
 - production marketing build: 64 routes generated successfully, including all
   statically generated project-detail routes;
 - mobile content-density Playwright lane: 9 passed;
+- production Phase 1 route, payload, analytics and responsive-state smoke: 9
+  passed against `https://www.sanctuarypergolas.co.nz`;
 - project route-shell compatibility selection: 5 passed;
-- complete marketing Playwright matrix: 235 passed and 6 intentional
-  evidence-capture tests skipped;
+- broad marketing Playwright matrix: 235 passed and 7 intentional
+  evidence-capture tests skipped; its JavaScript-disabled timeout passed when
+  isolated, while two desktop hero-scroll assertions reproduced serially in an
+  untouched, out-of-scope component;
 - project-index cold/concurrent regression repeat: 10 passed across five
   workers;
-- marketing unit suite: 38 files and 164 tests passed; and
-- representative evidence: 44 PNG files across before, after, mobile,
+- marketing unit suite: 39 files and 173 tests passed;
+- Phase 1 form and disclosure evidence: 12 PNG files at 430px, 390px and 360px
+  in `artifacts/mobile-ux-phase-1/`; and
+- density-refinement evidence: 44 PNG files across before, after, mobile,
   desktop, top-of-page and scrolled-density states.
 
 ## Remaining risks and deliberate deferrals
 
-- The shared disclosure contract renders responsive detail open on the server,
-  then closes it after mobile hydration. That progressive-enhancement choice
-  keeps content available without JavaScript but can produce a small layout
-  shift on a slow mobile hydration; replacing it needs a separate shared
-  rendering decision rather than CSS hiding.
+- The earlier open-then-close disclosure risk is resolved. The server retains
+  complete responsive detail for no-JavaScript access, script-capable mobile
+  browsers hide pending detail before paint, and hydration establishes the
+  native closed state without a measurable height jump at 430px, 390px or
+  360px. Pending content is hidden and unfocusable.
 - Browser Back follows the pre-existing no-hash top-reset policy and does not
   restore a previously open disclosure or exact mobile reading position. The
   fragment regression test proves the destination and route return, not
   reading-position restoration.
+- Real iOS Safari, Android Chrome, VoiceOver and TalkBack journeys remain
+  unverified. Automated Chromium checks do not close that roadmap gate.
 - Commercial proof ordering and a dedicated commercial capability
   architecture remain Phase 7 work. This pass reduces the path to existing
   proof but does not implement roadmap PR 17.
