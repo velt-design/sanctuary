@@ -21,40 +21,28 @@ const mobileRefinementRoutes = [
   },
   {
     route: '/products/pergolas/gable',
-    maximumHeightAt390: 9_873,
+    maximumHeightAt390: 7_200,
     disclosureKinds: [
-      'product-overview',
-      'definition',
-      'works-when',
-      'must-resolve',
-      'specification',
-      'tradeoffs',
+      'fit-and-definition',
+      'specification-and-tradeoffs',
       'related-support',
     ],
   },
   {
     route: '/products/screens-walls/drop-down-blinds',
-    maximumHeightAt390: 9_587,
+    maximumHeightAt390: 7_200,
     disclosureKinds: [
-      'product-overview',
-      'definition',
-      'works-when',
-      'must-resolve',
-      'specification',
-      'tradeoffs',
+      'fit-and-definition',
+      'specification-and-tradeoffs',
       'related-support',
     ],
   },
   {
     route: '/products/lighting-heating/patio-heaters',
-    maximumHeightAt390: 9_611,
+    maximumHeightAt390: 7_200,
     disclosureKinds: [
-      'product-overview',
-      'definition',
-      'works-when',
-      'must-resolve',
-      'specification',
-      'tradeoffs',
+      'fit-and-definition',
+      'specification-and-tradeoffs',
       'related-support',
     ],
   },
@@ -249,11 +237,9 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
         await expect(categoryNav.locator('a')).toHaveCount(3);
       } else {
         const galleries = main.locator('[data-product-gallery]');
-        await expect(galleries).toHaveCount(2);
-        const introHeight = (await galleries.nth(0).boundingBox())?.height ?? 0;
-        const evidenceHeight = (await galleries.nth(1).boundingBox())?.height ?? 0;
-        expect(introHeight).toBeGreaterThan(0);
-        expect(introHeight).toBeLessThan(evidenceHeight * 0.5);
+        await expect(galleries).toHaveCount(1);
+        await expect(galleries).toHaveAttribute('data-product-gallery', 'primary');
+        await expect(galleries.locator('[data-responsive-gallery]')).toHaveCount(1);
       }
 
       if (width === 390) {
@@ -278,20 +264,21 @@ test('all ten product routes retain the complete mobile content contract', async
 
     const main = page.locator('main[data-product-detail]:visible').last();
     await expect(main.locator('h1:visible')).toHaveCount(1);
-    await expect(main.locator('[data-product-gallery]')).toHaveCount(2);
+    await expect(main.locator('[data-product-gallery="primary"]')).toHaveCount(1);
+    await expect(main.locator('[data-responsive-gallery]')).toHaveCount(1);
     await expect(
       main.locator('details[data-product-mobile-disclosure]').evaluateAll((items) => items.map(
         (item) => item.getAttribute('data-product-mobile-disclosure'),
       )),
     ).resolves.toEqual([
-      'product-overview',
-      'definition',
-      'works-when',
-      'must-resolve',
-      'specification',
-      'tradeoffs',
+      'fit-and-definition',
+      'specification-and-tradeoffs',
       'related-support',
     ]);
+    await expect(main.getByText(product.decision.worksWhen[0], { exact: true }))
+      .toBeVisible();
+    await expect(main.getByText(product.decision.resolve[0], { exact: true }))
+      .toBeVisible();
     await expect(main).not.toContainText('—');
     await expect(main.getByRole('link', { name: 'Send your project details' }))
       .toHaveCount(2);
@@ -334,23 +321,29 @@ test('mobile product disclosures are keyboard operable and desktop content stays
   await page.goto('/products/pergolas/gable', { waitUntil: 'networkidle' });
 
   const main = page.locator('main[data-product-detail]:visible').last();
-  const specification = main.locator(
-    'details[data-product-mobile-disclosure="specification"]',
+  const specificationAndTradeoffs = main.locator(
+    'details[data-product-mobile-disclosure="specification-and-tradeoffs"]',
   );
-  const summary = specification.locator('summary');
+  const summary = specificationAndTradeoffs.locator('summary');
 
-  await expect(specification).not.toHaveAttribute('open', '');
+  await expect(specificationAndTradeoffs).not.toHaveAttribute('open', '');
   await summary.focus();
   await expect(summary).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(specification).toHaveAttribute('open', '');
-  await expect(specification.getByText('Structure and materials', { exact: true }))
+  await expect(specificationAndTradeoffs).toHaveAttribute('open', '');
+  await expect(
+    specificationAndTradeoffs.getByText('Structure and materials', {
+      exact: true,
+    }),
+  )
     .toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await expect(specification).toHaveAttribute('open', '');
+  await expect(specificationAndTradeoffs).toHaveAttribute('open', '');
   await expect(summary).toBeHidden();
-  await expect(specification.getByText('Care', { exact: true })).toBeVisible();
+  await expect(
+    specificationAndTradeoffs.getByText('Care', { exact: true }),
+  ).toBeVisible();
 });
 
 test('collapsed mobile decision content remains server rendered', async ({ request }) => {
@@ -359,7 +352,7 @@ test('collapsed mobile decision content remains server rendered', async ({ reque
   const html = await response.text();
 
   expect(html).toMatch(
-    /<details[^>]*data-product-mobile-disclosure="specification"[^>]*open=""/,
+    /<details[^>]*data-product-mobile-disclosure="specification-and-tradeoffs"[^>]*open=""/,
   );
   expect(html).toContain('Structure and materials');
   expect(html).toContain('Volume versus visual presence');
@@ -399,7 +392,7 @@ test('a pergola form and an accessory preserve metadata, structured data and evi
   }
 });
 
-test('product galleries appear near the introduction and again with project evidence', async ({ page }) => {
+test('product details render one controlled gallery sequence', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await preparePage(page);
   const product = products.find((item) => item.slug === 'gable');
@@ -411,14 +404,21 @@ test('product galleries appear near the introduction and again with project evid
   expect((await hero.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(890);
   await expect(hero.locator('img').first()).toHaveCSS('object-position', '50% 18%');
 
-  const galleries = page.locator('[data-product-gallery]');
-  await expect(galleries).toHaveCount(2);
-  await expect(galleries.nth(0)).toHaveAttribute('data-product-gallery', 'intro');
-  await expect(galleries.nth(1)).toHaveAttribute('data-product-gallery', 'evidence');
+  const gallerySection = main.locator('[data-product-gallery="primary"]');
+  const gallery = gallerySection.locator('[data-responsive-gallery]');
+  await expect(gallerySection).toHaveCount(1);
+  await expect(gallery).toHaveCount(1);
+  await expect(gallery.locator('img')).toHaveCount(1);
+  await expect(gallery).toHaveAttribute('data-gallery-position', `1/${product.gallery.length}`);
+  await expect(gallery).toHaveAccessibleName(`${product.name} project gallery`);
 
-  for (const gallery of await galleries.all()) {
-    await expect(gallery.locator('img')).toHaveCount(product.gallery.length);
-  }
+  await gallery.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(gallery).toHaveAttribute('data-gallery-position', `2/${product.gallery.length}`);
+  await expect(gallery.locator('img')).toHaveAttribute(
+    'alt',
+    product.gallery[1].alt,
+  );
 });
 
 test('unpublished heater evidence is labelled rather than inferred from context imagery', async ({ page }) => {

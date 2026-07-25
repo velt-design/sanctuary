@@ -232,27 +232,22 @@ const routeCases: readonly RouteCase[] = [
     },
     disclosures: {
       selector: 'details[data-product-mobile-disclosure]',
-      count: 7,
+      count: 3,
       idAttribute: 'data-product-mobile-disclosure',
       ids: [
-        'product-overview',
-        'definition',
-        'works-when',
-        'must-resolve',
-        'specification',
-        'tradeoffs',
+        'fit-and-definition',
+        'specification-and-tradeoffs',
         'related-support',
       ],
     },
     supporting: {
       selector:
-        'details[data-product-mobile-disclosure="specification"]',
+        'details[data-product-mobile-disclosure="specification-and-tradeoffs"]',
       phrase: 'Structure and materials',
     },
     stableSections: [
-      '[data-product-gallery="intro"]',
+      '[data-product-gallery="primary"]',
       '#product-fit',
-      '[data-product-gallery="evidence"]',
     ],
     meaningfulLinks: [
       '/products',
