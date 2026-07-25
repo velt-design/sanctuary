@@ -361,7 +361,9 @@ Final focused results:
   fragment regression test proves the destination and route return, not
   reading-position restoration.
 - Real iOS Safari, Android Chrome, VoiceOver and TalkBack journeys remain
-  unverified. Automated Chromium checks do not close that roadmap gate.
+  unverified. The product owner accepted their explicit deferral to Phase 5 /
+  PR 14 when marking Phase 1 complete; automated Chromium remains supporting
+  evidence rather than a substitute.
 - Commercial proof ordering and a dedicated commercial capability
   architecture remain Phase 7 work. This pass reduces the path to existing
   proof but does not implement roadmap PR 17.
