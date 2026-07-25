@@ -1,4 +1,3 @@
-import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload } from '@/emails/types';
 import {
   renderWebsiteAutoresponder,
@@ -20,10 +19,9 @@ export async function sendCustomerAutoresponder(
     signal?: AbortSignal;
   },
 ): Promise<string> {
-  const callWindowText = getCallWindowText(enquiry.submittedAt);
   const rendered = await renderWebsiteAutoresponder(
     websiteAutoresponderTemplateIdFor(enquiry.enquiryType),
-    { ...enquiry, callWindowText },
+    { ...enquiry },
   );
 
   const attachments = options?.attachments?.length ? options.attachments : undefined;

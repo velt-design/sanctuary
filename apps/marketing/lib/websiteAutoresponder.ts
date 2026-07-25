@@ -1,113 +1,36 @@
 import { render } from '@react-email/render';
-import type { ReactElement } from 'react';
-import { getCallWindowText } from '../emails/utils/callWindow';
+import { EditorialRefinedEmail } from '../emails/alternatives/EditorialRefinedEmail';
+import { buildAlternativeEmailModel } from '../emails/alternatives/alternativeEmailModel';
 import {
-  PROFESSIONAL_ENQUIRY_PREHEADER,
-  customerEstimatePreheader,
+  type WebsiteAutoresponderTemplateId,
+  websiteAutoresponderPreheader,
+  websiteAutoresponderSubject,
+} from './websiteAutoresponderContract';
+
+export {
+  EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
+  EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
+  EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
   customerEstimateSubject,
+  isWebsiteAutoresponderTemplateId,
   professionalEnquirySubject,
-} from '../emails/customerAutoresponderCopy';
-
-import { CustomerResidentialEmail } from '../emails/templates/customerResidential';
-import { CustomerCommercialEmail } from '../emails/templates/customerCommercial';
-import { CustomerProfessionalEmail } from '../emails/templates/customerProfessional';
-
-export const EMAIL_WEBSITE_AUTORESPONDER_RES_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_RES_V1' as const;
-export const EMAIL_WEBSITE_AUTORESPONDER_COM_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_COM_V1' as const;
-export const EMAIL_WEBSITE_AUTORESPONDER_PRO_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_PRO_V1' as const;
-
-export type WebsiteAutoresponderTemplateId =
-  | typeof EMAIL_WEBSITE_AUTORESPONDER_RES_V1
-  | typeof EMAIL_WEBSITE_AUTORESPONDER_COM_V1
-  | typeof EMAIL_WEBSITE_AUTORESPONDER_PRO_V1;
-
-export function isWebsiteAutoresponderTemplateId(value: string): value is WebsiteAutoresponderTemplateId {
-  return (
-    value === EMAIL_WEBSITE_AUTORESPONDER_RES_V1 ||
-    value === EMAIL_WEBSITE_AUTORESPONDER_COM_V1 ||
-    value === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1
-  );
-}
-
-export function websiteAutoresponderTemplateIdFor(
-  enquiryType: 'residential' | 'commercial' | 'professional',
-): WebsiteAutoresponderTemplateId {
-  if (enquiryType === 'commercial') return EMAIL_WEBSITE_AUTORESPONDER_COM_V1;
-  if (enquiryType === 'professional') return EMAIL_WEBSITE_AUTORESPONDER_PRO_V1;
-  return EMAIL_WEBSITE_AUTORESPONDER_RES_V1;
-}
-
-export function websiteAutoresponderSubject(
-  templateId: WebsiteAutoresponderTemplateId,
-  variables: Record<string, unknown>,
-): string {
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) {
-    return customerEstimateSubject(variables.name, 'commercial');
-  }
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
-    return professionalEnquirySubject(variables.name);
-  }
-  return customerEstimateSubject(variables.name, 'residential');
-}
-
-function asMoneyRange(value: unknown): { lowIncGst: number; highIncGst: number } {
-  if (value && typeof value === 'object') {
-    const lowIncGst = Number((value as Record<string, unknown>).lowIncGst);
-    const highIncGst = Number((value as Record<string, unknown>).highIncGst);
-    if (Number.isFinite(lowIncGst) && Number.isFinite(highIncGst)) {
-      return { lowIncGst, highIncGst };
-    }
-  }
-  return { lowIncGst: 0, highIncGst: 0 };
-}
-
-function websiteAutoresponderPreheader(
-  templateId: WebsiteAutoresponderTemplateId,
-  variables: Record<string, unknown>,
-): string {
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
-    return PROFESSIONAL_ENQUIRY_PREHEADER;
-  }
-  return customerEstimatePreheader(
-    templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1 ? 'commercial' : 'residential',
-    asMoneyRange(variables.baseRange),
-  );
-}
-
-function asDate(value: unknown): Date | null {
-  if (value instanceof Date && Number.isFinite(value.getTime())) return value;
-  if (typeof value === 'string' && value.trim()) {
-    const d = new Date(value);
-    return Number.isFinite(d.getTime()) ? d : null;
-  }
-  return null;
-}
+  type WebsiteAutoresponderTemplateId,
+  websiteAutoresponderSubject,
+  websiteAutoresponderTemplateIdFor,
+} from './websiteAutoresponderContract';
 
 export async function renderWebsiteAutoresponder(
   templateId: WebsiteAutoresponderTemplateId,
   variables: Record<string, unknown>,
 ) {
-  const submittedAt = asDate(variables.submittedAt) ?? new Date();
-  const callWindowText =
-    typeof variables.callWindowText === 'string' && variables.callWindowText.trim()
-      ? variables.callWindowText.trim()
-      : getCallWindowText(submittedAt);
-
   const subject = websiteAutoresponderSubject(templateId, variables);
   const preheader = websiteAutoresponderPreheader(templateId, variables);
-
-  let reactEmail: ReactElement;
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_RES_V1) {
-    reactEmail = CustomerResidentialEmail({ ...(variables as any), callWindowText } as any);
-  } else if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) {
-    reactEmail = CustomerCommercialEmail({ ...(variables as any), callWindowText } as any);
-  } else {
-    reactEmail = CustomerProfessionalEmail({ ...(variables as any), callWindowText } as any);
-  }
+  const reactEmail = EditorialRefinedEmail({
+    model: buildAlternativeEmailModel(templateId, variables),
+    preheader,
+  });
 
   const html = await render(reactEmail);
   const text = await render(reactEmail, { plainText: true });
   return { subject, preheader, html, text };
 }
-
-export { customerEstimateSubject, professionalEnquirySubject };

@@ -79,7 +79,7 @@ describe('website autoresponder preview fixtures', () => {
       expect(rendered.subject).toContain('Alex');
       expect(rendered.preheader).toContain('Sanctuary');
       expect(rendered.html).toContain('Sanctuary');
-      expect(rendered.text).toContain('Project details received');
+      expect(rendered.text).toContain('Your project details');
       expect(rendered.text).not.toContain('within 30 minutes');
 
       if (fixture.selection.customerType === 'professional') {
@@ -87,7 +87,7 @@ describe('website autoresponder preview fixtures', () => {
         expect(rendered.subject).toBe("Alex, we've received your project enquiry");
         expect(rendered.text).toContain('KiwiRail Head Office');
         expect(rendered.html).toContain('/images/project-kiwi-rail-01.jpg');
-        expect(rendered.text).not.toContain('Indicative installed investment');
+        expect(rendered.text).not.toContain('Early installed estimate');
         return;
       }
 
@@ -102,7 +102,7 @@ describe('website autoresponder preview fixtures', () => {
       expect(fixture.templateId).toBe(expectedTemplate);
       expect(variables.enquiryType).toBe(customerType);
       expect(variables.blindsSelected).toBe(blinds === 'with-blinds');
-      expect(rendered.text).toContain('Indicative installed investment');
+      expect(rendered.text).toContain('Early installed estimate');
       expect(rendered.text).toContain(expectedHero.title);
       expect(rendered.html).toContain(expectedHero.image);
 

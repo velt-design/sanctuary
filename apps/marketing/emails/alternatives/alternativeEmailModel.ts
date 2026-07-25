@@ -3,7 +3,7 @@ import { resolveWebsiteAutoresponderHero } from '../../lib/websiteAutoresponderH
 import {
   EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
   type WebsiteAutoresponderTemplateId,
-} from '../../lib/websiteAutoresponder';
+} from '../../lib/websiteAutoresponderContract';
 import type { Professional, ResidentialOrCommercial } from '../types';
 import { formatInvestmentAmount } from '../components/InvestmentPanel';
 import { formatNZD } from '../utils/money';

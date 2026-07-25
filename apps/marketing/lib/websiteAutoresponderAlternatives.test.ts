@@ -147,22 +147,39 @@ describe('website autoresponder layout alternatives', () => {
     expect(adaptive.subject).toBe(light.subject);
   });
 
-  it('does not alter the current production autoresponder template', async () => {
+  it('promotes Editorial Refined as the exact production renderer', async () => {
     const fixture = getWebsiteAutoresponderPreviewFixture(
       'residential-pitched-without-blinds',
     );
-    const production = await renderWebsiteAutoresponder(
-      fixture.templateId,
-      fixture.variables as unknown as Record<string, unknown>,
-    );
+    const variables =
+      fixture.variables as unknown as Record<string, unknown>;
+    const [production, editorial, imageLed] = await Promise.all([
+      renderWebsiteAutoresponder(fixture.templateId, variables),
+      renderWebsiteAutoresponderAlternative(
+        fixture.templateId,
+        variables,
+        'editorial-refined',
+      ),
+      renderWebsiteAutoresponderAlternative(
+        fixture.templateId,
+        variables,
+        'image-led',
+      ),
+    ]);
 
-    expect(production.html).not.toContain('sp-preview-light');
-    expect(production.html).not.toContain('spx-button');
-    expect(production.text.toLowerCase()).toContain(
-      'your project starts here.',
+    expect(production.html).not.toContain('class="sp-preview-light"');
+    expect(production.html).not.toContain('class="sp-preview-dark"');
+    expect(production.html).toContain('spx-button');
+    expect(production.html).toContain('max-width:760px');
+    expect(production).toEqual({
+      subject: editorial.subject,
+      preheader: editorial.preheader,
+      html: editorial.html,
+      text: editorial.text,
+    });
+    expect(editorial.sendSubject).toBe(
+      `[Preview: Editorial Refined] ${production.subject}`,
     );
-    expect(production.text.toLowerCase()).not.toContain(
-      'your pergola brief is with us.',
-    );
+    expect(production.html).not.toBe(imageLed.html);
   });
 });

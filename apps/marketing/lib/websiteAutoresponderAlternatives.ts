@@ -8,15 +8,10 @@ import {
 } from '../emails/alternatives/alternativeEmailModel';
 import type { AlternativePreviewTheme } from '../emails/alternatives/AlternativeEmailShell';
 import {
-  PROFESSIONAL_ENQUIRY_PREHEADER,
-  customerEstimatePreheader,
-} from '../emails/customerAutoresponderCopy';
-import {
-  EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
-  EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
   type WebsiteAutoresponderTemplateId,
+  websiteAutoresponderPreheader,
   websiteAutoresponderSubject,
-} from './websiteAutoresponder';
+} from './websiteAutoresponderContract';
 
 export const WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS = [
   {
@@ -58,36 +53,6 @@ export function isWebsiteAutoresponderPreviewLayout(
   return typeof value === 'string' && layoutIds.has(value);
 }
 
-function moneyRange(value: unknown): {
-  lowIncGst: number;
-  highIncGst: number;
-} {
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    const lowIncGst = Number(record.lowIncGst);
-    const highIncGst = Number(record.highIncGst);
-    if (Number.isFinite(lowIncGst) && Number.isFinite(highIncGst)) {
-      return { lowIncGst, highIncGst };
-    }
-  }
-  return { lowIncGst: 0, highIncGst: 0 };
-}
-
-function preheaderFor(
-  templateId: WebsiteAutoresponderTemplateId,
-  variables: Record<string, unknown>,
-): string {
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
-    return PROFESSIONAL_ENQUIRY_PREHEADER;
-  }
-  return customerEstimatePreheader(
-    templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1
-      ? 'commercial'
-      : 'residential',
-    moneyRange(variables.baseRange),
-  );
-}
-
 function alternativeEmail(
   layout: WebsiteAutoresponderPreviewLayout,
   props: {
@@ -119,7 +84,7 @@ export async function renderWebsiteAutoresponderAlternative(
   options: { previewTheme?: AlternativePreviewTheme } = {},
 ) {
   const subject = websiteAutoresponderSubject(templateId, variables);
-  const preheader = preheaderFor(templateId, variables);
+  const preheader = websiteAutoresponderPreheader(templateId, variables);
   const model = buildAlternativeEmailModel(templateId, variables);
   const reactEmail = alternativeEmail(layout, {
     model,
