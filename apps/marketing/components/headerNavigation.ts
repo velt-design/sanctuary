@@ -42,6 +42,14 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
   },
 ];
 
+export function getCanonicalHeaderPathname(
+  pathname: string | null,
+): string {
+  // Next's production static render can expose the public root as its
+  // filesystem alias. Header state and enquiry context must use the public URL.
+  return !pathname || pathname === '/index' ? '/' : pathname;
+}
+
 function toNavigationItem(
   item: PrimaryNavigationItem,
   pathname: string,

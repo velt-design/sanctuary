@@ -100,6 +100,29 @@ async function pressKey(key: string, shiftKey = false) {
 }
 
 describe('shared mobile header interaction', () => {
+  it('uses the canonical homepage route during a production static root render', async () => {
+    currentPathname = '/index';
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      value: 0,
+    });
+    await renderHeader();
+
+    const header = document.querySelector<HTMLElement>('header.site');
+    const desktopCta = header?.querySelector<HTMLAnchorElement>('.nav-cta');
+    const homeLink = header?.querySelector<HTMLAnchorElement>(
+      'nav[aria-label="Primary"] a[href="/"]',
+    );
+
+    expect(header?.getAttribute('data-hero-navigation')).toBe('overlay');
+    expect(homeLink?.getAttribute('aria-current')).toBe('page');
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'header',
+    }));
+  });
+
   it('uses governed project and product route context for the global enquiry action', async () => {
     currentPathname = '/projects/goodhome-commercial-terrace';
     await renderHeader();

@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
 } from './headerNavigation';
 
 describe('shared header navigation model', () => {
+  it('canonicalizes the production static root alias without changing real routes', () => {
+    expect(getCanonicalHeaderPathname(null)).toBe('/');
+    expect(getCanonicalHeaderPathname('/index')).toBe('/');
+    expect(getCanonicalHeaderPathname('/products/pergolas/gable')).toBe(
+      '/products/pergolas/gable',
+    );
+  });
+
   it('keeps the established desktop destinations and labels unchanged', () => {
     expect(getDesktopHeaderNavigation('/').map(({ label, href }) => ({ label, href }))).toEqual([
       { label: 'Home', href: '/' },

@@ -14,6 +14,7 @@ import {
   getEnquiryRouteContext,
 } from '@/lib/enquiryContext';
 import {
+  getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
 } from './headerNavigation';
@@ -49,7 +50,7 @@ export default function Header() {
   const [startHeaderSuppressed, setStartHeaderSuppressed] = useState(false);
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
   const pathname = usePathname();
-  const currentPath = pathname ?? '/';
+  const currentPath = getCanonicalHeaderPathname(pathname);
   const desktopNavigationItems = getDesktopHeaderNavigation(currentPath);
   const mobileNavigationItems = getMobileHeaderNavigation(currentPath);
   const routeEnquiryContext = getEnquiryRouteContext(currentPath);
@@ -58,8 +59,8 @@ export default function Header() {
     sourcePath: currentPath,
     sourceComponent: 'header',
   });
-  const isStartRoute = pathname?.startsWith('/start') ?? false;
-  const isHeroOverlayRoute = heroOverlayRoutes.has(pathname ?? '');
+  const isStartRoute = currentPath.startsWith('/start');
+  const isHeroOverlayRoute = heroOverlayRoutes.has(currentPath);
   const startModalSuppressedRef = useRef(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -170,7 +171,7 @@ export default function Header() {
       if (rafId) window.cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', scheduleHeroHeaderSync);
     };
-  }, [isHeroOverlayRoute, pathname]);
+  }, [currentPath, isHeroOverlayRoute]);
 
   useEffect(() => {
     if (!isStartRoute) return;
