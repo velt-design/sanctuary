@@ -1,9 +1,16 @@
 import Link from 'next/link';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
+
+const homeProcessEnquiryHref = buildEnquiryHref({
+  enquiryType: 'residential',
+  sourcePath: '/',
+  sourceComponent: 'final_cta',
+});
 
 export function HomeProcessCtaBar() {
   return (
     <Link
-      href="/contact?enquiry=residential#contact-form"
+      href={homeProcessEnquiryHref}
       className="process-cta-bar"
       aria-label="Get an estimate"
     >

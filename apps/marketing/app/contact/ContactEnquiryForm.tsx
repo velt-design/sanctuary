@@ -19,6 +19,7 @@ import {
   validateEnquiryAttachments,
 } from '@/lib/enquiryAttachments';
 import {
+  getEnquiryAnalyticsProperties,
   getEnquiryContextProperties,
   type EnquiryAudience,
   type EnquiryContext,
@@ -193,14 +194,14 @@ export default function ContactEnquiryForm({
     eventId?: string,
   ) => {
     const trackingWindow = window as TrackingWindow;
-    const base = {
+    const canonicalAudience = contextProperties.enquiry_type ?? 'unknown';
+    const base = getEnquiryAnalyticsProperties(currentContext, {
       event_category: 'contact',
-      event_label: enquiryType ?? 'Unknown',
-      ...contextProperties,
-      enquiry_type: enquiryType ?? 'Unknown',
+      event_label: canonicalAudience,
       roof_count: selectedRoofs.length,
       addons_count: selectedAddOns.length,
-    };
+      ...extra,
+    });
 
     try {
       if (
@@ -208,7 +209,7 @@ export default function ContactEnquiryForm({
         && consent.analytics
         && typeof trackingWindow.gtag === 'function'
       ) {
-        trackingWindow.gtag('event', `contact_${phase}`, { ...base, ...extra });
+        trackingWindow.gtag('event', `contact_${phase}`, base);
       }
       if (
         phase === 'success'
@@ -219,7 +220,7 @@ export default function ContactEnquiryForm({
         trackingWindow.fbq(
           'track',
           'Lead',
-          { ...base, ...extra },
+          base,
           eventId ? { eventID: eventId } : undefined,
         );
       }
@@ -232,7 +233,6 @@ export default function ContactEnquiryForm({
         trackingWindow.dataLayer.push({
           event: 'lead_submitted',
           ...base,
-          ...extra,
           lead_event_id: eventId,
         });
       }
@@ -447,7 +447,7 @@ export default function ContactEnquiryForm({
         <p className="contact-form__required-note">
           Fields marked <span>Required</span> are needed to send the enquiry.
         </p>
-        {initialContext.sourcePath || contextItemLabel ? (
+        {initialContext.enquiryType || initialContext.sourcePath || contextItemLabel ? (
           <div className="contact-form__context" aria-label="Enquiry context">
             <strong>
               {contextItemLabel ?? 'Your enquiry source is saved'}

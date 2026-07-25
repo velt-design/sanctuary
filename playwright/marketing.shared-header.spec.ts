@@ -3,13 +3,14 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import {
   buildEnquiryHref,
-  inferEnquiryAudience,
+  getEnquiryRouteContext,
 } from '../apps/marketing/lib/enquiryContext';
 
 const establishedHeaderRoutes = [
   '/',
   '/projects',
   '/projects/warkworth-outdoor-room',
+  '/projects/goodhome-commercial-terrace',
   '/products',
   '/products/pergolas/pitched',
   '/gallery',
@@ -48,7 +49,7 @@ test('the architectural editorial header is shared by established public routes'
     await expect(cta).toHaveCSS('border-radius', '0px');
     await expect(cta).toHaveCSS('background-color', 'rgb(79, 87, 72)');
     await expect(cta).toHaveAttribute('href', buildEnquiryHref({
-      enquiryType: inferEnquiryAudience(resolvedPath),
+      ...getEnquiryRouteContext(resolvedPath),
       sourcePath: resolvedPath,
       sourceComponent: 'header',
     }));
@@ -298,6 +299,8 @@ test('audience-aware destinations and browser Back keep route and scroll context
 
   for (const route of [
     '/commercial-pergolas-auckland',
+    '/projects/goodhome-commercial-terrace',
+    '/products/pergolas/gable',
     '/contact',
   ] as const) {
     await page.goto(route);
@@ -311,7 +314,7 @@ test('audience-aware destinations and browser Back keep route and scroll context
       }));
     await expect(mobileNavigation.getByRole('link', { name: 'Get an estimate' }))
       .toHaveAttribute('href', buildEnquiryHref({
-        enquiryType: inferEnquiryAudience(route),
+        ...getEnquiryRouteContext(route),
         sourcePath: route,
         sourceComponent: 'header',
       }));

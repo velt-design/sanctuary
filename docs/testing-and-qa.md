@@ -70,7 +70,10 @@ and
 The component lane owns open/closed state, inert hidden content, focus cycling,
 Escape return, reversible body scroll locking, history cleanup and the 901px
 CSS/JavaScript breakpoint contract. The browser lane covers the approved
-mobile destinations and route-aware enquiry URLs at 430px, 390px and 360px,
+mobile destinations and route-aware enquiry URLs at 430px, 390px and 360px.
+Its established-route matrix includes a commercial project and verifies that
+known project headers carry the governed audience and slug while product
+headers carry the product slug without an inferred audience. It also covers
 tablet compatibility, a 360px by 480px short viewport, 44px targets, reduced
 motion, scroll and Back behavior, and established desktop routes and geometry.
 Set `MARKETING_SHARED_HEADER_CAPTURE=1` to write the approved PR 8 evidence to
@@ -115,9 +118,11 @@ before the full marketing browser lane. The focused browser suite covers 320,
 390, 430, tablet and desktop widths; server-rendered query preselection;
 persistent labels and form metadata; minimum 44 pixel targets; reduced motion;
 zero textual or generated em dashes; no horizontal overflow or nested content
-scroll; focused client validation; retained values and UUID reuse after API
+scroll; a neutral/residential/commercial/professional/project/product entry
+matrix; focused client validation; retained values and UUID reuse after API
 failure; duplicate-submit exclusion; consent-controlled events; attribution;
-professional attachment policy errors; and metadata-only upload fallback.
+professional attachment policy errors; metadata-only upload fallback; and
+lower-case non-personal canonical context in payloads and analytics.
 
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`

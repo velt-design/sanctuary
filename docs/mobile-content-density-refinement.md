@@ -266,10 +266,14 @@ payload was rewritten.
 - Route metadata, canonicals, Open Graph values and structured data remain
   driven by their existing config and catalogue owners. Supporting headings
   and links remain rendered, semantic and crawlable.
-- Residential, commercial, product and professional transitions retain
-  `enquiry_type`, `source_path`, `source_component` and product context. The
-  shared SEO page now honours its existing `enquiryType` configuration with
-  the prior residential default.
+- Residential, commercial and professional transitions retain validated
+  `enquiry_type`, `source_path` and `source_component`. Project transitions
+  also retain the governed project slug and audience. Product transitions
+  retain route, component and product context while remaining audience-neutral
+  until reliable entry context or the visitor's form choice supplies an
+  audience. The shared SEO page honours its explicit `enquiryType`
+  configuration with the prior residential default for configured service
+  pages.
 - Homepage analytics data attributes, consent handling, enquiry payloads,
   attachments and public routes are unchanged.
 - The shared SEO renderer affects its nine configured consumers only through
