@@ -100,6 +100,7 @@ export type SeoLandingDisclosureGroup = {
 export type SeoLandingPageConfig = {
   marker: string;
   route: string;
+  showGuideNavigation?: boolean;
   enquiryType?: EnquiryAudience;
   description: string;
   schemaName: string;

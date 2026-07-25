@@ -141,12 +141,12 @@ const routeCases: readonly RouteCase[] = [
     id: 'custom service',
     path: '/custom-pergolas-auckland',
     canonicalPath: '/custom-pergolas-auckland',
-    maximumVisibleWords: 1_350,
-    maximumVisibleHeadingRegions: 9,
+    maximumVisibleWords: 1_050,
+    maximumVisibleHeadingRegions: 8,
     mobileSignals: [
       'Custom pergolas for sites where the obvious answer does not fit',
-      'Four projects with four different reasons to be custom',
-      'Custom design happens at the joins between decisions',
+      'Three projects with three different reasons to be custom',
+      'The custom work happens where conditions collide',
       'Request a design review',
     ],
     primaryAction: {
@@ -155,18 +155,14 @@ const routeCases: readonly RouteCase[] = [
     },
     disclosures: {
       selector: 'details[data-seo-landing-disclosure]',
-      count: 3,
+      count: 1,
       idAttribute: 'data-seo-landing-disclosure',
-      ids: [
-        'custom-site-reading-detail',
-        'custom-definition-detail',
-        'custom-planning-support',
-      ],
+      ids: ['custom-planning-support'],
     },
     supporting: {
       selector:
         'details[data-seo-landing-disclosure="custom-planning-support"]',
-      phrase: 'Take product-level questions to the configuration being considered',
+      phrase: 'Custom does not make technical boundaries disappear',
     },
     stableSections: [
       '#custom-project-evidence',
@@ -176,7 +172,7 @@ const routeCases: readonly RouteCase[] = [
     meaningfulLinks: [
       '/projects',
       '/pergola-cost-auckland',
-      '/products/pergolas/gable',
+      '/products',
     ],
     schemaTypes: ['WebPage', 'Service', 'BreadcrumbList'],
   },
@@ -742,6 +738,34 @@ async function expectResidentialPostEvidenceAction(main: Locator) {
   expect(actionBounds!.y).toBeLessThan(formBounds!.y);
 }
 
+async function expectCustomServiceJourney(main: Locator) {
+  const majorSectionsBeforeFinalEnquiry = await main.evaluate((element) => {
+    const finalEnquiry = element.querySelector('.acrylic-section--final-cta');
+
+    return [...element.children]
+      .filter((child) => child.matches('section, details'))
+      .filter((child) => (
+        !finalEnquiry
+        || Boolean(
+          child.compareDocumentPosition(finalEnquiry)
+          & Node.DOCUMENT_POSITION_FOLLOWING
+        )
+      ))
+      .length;
+  });
+
+  expect(majorSectionsBeforeFinalEnquiry).toBe(6);
+  await expect(
+    main.locator('#custom-project-evidence .acrylic-project-card'),
+  ).toHaveCount(3);
+  await expect(
+    main.locator('section:has(#custom-process-title) li'),
+  ).toHaveCount(3);
+  await expect(
+    main.getByRole('navigation', { name: 'Pergola guide progression' }),
+  ).toHaveCount(0);
+}
+
 async function expectProductSummariesAreNotClamped(main: Locator) {
   const summaryText = main.locator([
     'a[aria-label^="Explore "] p',
@@ -865,6 +889,9 @@ for (const viewport of mobileViewports) {
 
       if (routeCase.id === 'residential service') {
         await expectResidentialPostEvidenceAction(main);
+      }
+      if (routeCase.id === 'custom service') {
+        await expectCustomServiceJourney(main);
       }
     }
   });

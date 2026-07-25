@@ -38,7 +38,9 @@ export default function SeoLandingPage({ config }: { config: SeoLandingPageConfi
           <ul className="acrylic-hero__proof" aria-label={`${config.schemaName} approach`}>{config.hero.proof.map((item) => <li key={item}>{item}</li>)}</ul>
         </Container>
       </section>
-      <PergolaGuideNavigation route={config.route} />
+      {config.showGuideNavigation === false
+        ? null
+        : <PergolaGuideNavigation route={config.route} />}
       <SeoLandingBlocks blocks={config.blocks} disclosureGroups={config.mobileDisclosureGroups} />
       <Section tone="inverse" className="acrylic-section acrylic-section--final-cta" aria-labelledby={`${config.marker}-final-cta`}>
         <Container width="wide" className="acrylic-final-grid"><div><Eyebrow className="acrylic-eyebrow">{config.finalCta.eyebrow}</Eyebrow><Heading id={`${config.marker}-final-cta`}>{config.finalCta.title}</Heading><p>{config.finalCta.text}</p><div className="acrylic-hero__actions"><Button href="#project-details">{config.finalCta.button}</Button></div></div><div><h3>{config.finalCta.checklistTitle}</h3><ul className="acrylic-check-list">{config.finalCta.checklist.map((item) => <li key={item}>{item}</li>)}</ul></div></Container>
