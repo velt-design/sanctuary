@@ -20,6 +20,12 @@ type PreviewStyle = CSSProperties & {
   '--preview-scaled-height': string;
 };
 
+const layoutQuickLabels: Record<PreviewLayoutId, string> = {
+  'editorial-refined': 'Balanced and polished',
+  'image-led': 'Photography and impact',
+  compact: 'Fastest to scan',
+};
+
 function frameHeight(viewport: EmailPreviewWorkbenchController['viewport']) {
   if (viewport === 'mobile') return 1120;
   if (viewport === 'narrow') return 1260;
@@ -75,6 +81,7 @@ function EmailLayoutPreview({
             size="small"
             variant="quiet"
             leadingIcon={<Expand aria-hidden="true" />}
+            aria-label={`Focus ${layout.name} design`}
             onClick={focusLayout}
           >
             Focus
@@ -121,7 +128,9 @@ function EmailLayoutPreview({
           <p>{layout.bestFor}</p>
         </div>
         <details className={styles.plainText}>
-          <summary>Plain-text version</summary>
+          <summary aria-label={`${layout.name} plain-text version`}>
+            Plain-text version
+          </summary>
           <pre>{layout.text}</pre>
         </details>
       </footer>
@@ -154,6 +163,7 @@ export function EmailPreviewCanvas({
 
   return (
     <section
+      id="email-preview-canvas"
       className={styles.canvas}
       aria-labelledby="email-preview-canvas-title"
       data-preview-mode={controller.displayMode}
@@ -166,19 +176,27 @@ export function EmailPreviewCanvas({
           <p className={styles.eyebrow}>Preview canvas</p>
           <h2 id="email-preview-canvas-title">
             {controller.displayMode === 'compare'
-              ? 'Three layouts. One identical brief.'
+              ? 'Compare three design directions'
               : selectedLayout.name}
           </h2>
           <p>
-            {viewport.label} {viewport.width}px · {controller.theme} simulation
-            · {controller.zoom}% zoom
+            {preview.label} · {viewport.label} {viewport.width}px ·{' '}
+            {controller.theme} simulation · {controller.zoom}% zoom
           </p>
         </div>
         <div className={styles.canvasContract}>
           <MailCheck aria-hidden="true" />
-          <span>Production autoresponder unchanged</span>
+          <span>Live autoresponder unchanged</span>
         </div>
       </header>
+
+      <div className={styles.layoutChoiceHeading}>
+        <div>
+          <span>Active design</span>
+          <strong>{selectedLayout.name}</strong>
+        </div>
+        <p>Select a design for sending. Use Focus for a larger review.</p>
+      </div>
 
       <div
         className={styles.layoutChoices}
@@ -193,11 +211,12 @@ export function EmailPreviewCanvas({
             aria-pressed={layout.id === controller.selectedLayoutId}
             disabled={controller.controlsLocked}
             key={layout.id}
+            aria-label={`${layout.name}: ${layoutQuickLabels[layout.id]}`}
             onClick={() => controller.setSelectedLayoutId(layout.id)}
           >
             <span>{layoutNumber(preview, layout.id)}</span>
             <strong>{layout.name}</strong>
-            <small>{layout.bestFor}</small>
+            <small>{layoutQuickLabels[layout.id]}</small>
           </button>
         ))}
       </div>

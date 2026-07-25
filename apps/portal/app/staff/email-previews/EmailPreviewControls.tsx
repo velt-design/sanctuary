@@ -20,10 +20,10 @@ import type { EmailPreviewWorkbenchController } from './useEmailPreviewWorkbench
 import styles from './email-previews.module.css';
 
 const imageMatchLabels = {
-  exact: 'Exact reference',
-  'form-only': 'Form reference',
-  professional: 'Professional reference',
-  fallback: 'Fallback reference',
+  exact: 'Matched project',
+  'form-only': 'Roof-form match',
+  professional: 'Professional default',
+  fallback: 'Default project',
 } as const;
 
 export function EmailPreviewControls({
@@ -33,6 +33,12 @@ export function EmailPreviewControls({
 }) {
   const position = previewVariantPosition(controller.variant);
   const professional = controller.customerType === 'professional';
+  const displayMode = previewDisplayModeOptions.find(
+    (option) => option.value === controller.displayMode,
+  );
+  const viewport = previewViewportOptions.find(
+    (option) => option.value === controller.viewport,
+  );
 
   return (
     <div className={styles.controlDeck}>
@@ -41,18 +47,20 @@ export function EmailPreviewControls({
         aria-labelledby="email-preview-fixture-title"
       >
         <header className={styles.panelHeading}>
+          <span className={styles.stepNumber} aria-hidden="true">01</span>
           <div>
-            <p className={styles.eyebrow}>Review brief</p>
-            <h2 id="email-preview-fixture-title">Choose a fixture</h2>
+            <p className={styles.eyebrow}>Project scenario</p>
+            <h2 id="email-preview-fixture-title">Choose the enquiry</h2>
           </div>
           <Badge>
-            {String(position.current).padStart(2, '0')} / {position.total}
+            Example {String(position.current).padStart(2, '0')} of{' '}
+            {position.total}
           </Badge>
         </header>
 
         <div className={styles.fixtureFields}>
           <Select
-            label="Customer"
+            label="Customer type"
             value={controller.customerType}
             disabled={controller.controlsLocked}
             onChange={(event) =>
@@ -125,7 +133,7 @@ export function EmailPreviewControls({
             <div className={styles.fixtureImagePlaceholder} aria-hidden="true" />
           )}
           <div>
-            <span>{controller.preview?.label ?? 'Loading fixture…'}</span>
+            <span>Completed project shown</span>
             <strong>
               {controller.preview?.image?.projectTitle
                 ?? 'Resolving project reference'}
@@ -150,9 +158,10 @@ export function EmailPreviewControls({
         aria-labelledby="email-preview-view-title"
       >
         <header className={styles.panelHeading}>
+          <span className={styles.stepNumber} aria-hidden="true">02</span>
           <div>
-            <p className={styles.eyebrow}>Canvas controls</p>
-            <h2 id="email-preview-view-title">Inspect the render</h2>
+            <p className={styles.eyebrow}>Design review</p>
+            <h2 id="email-preview-view-title">Compare the emails</h2>
           </div>
           <div className={styles.utilityActions}>
             <Button
@@ -182,6 +191,7 @@ export function EmailPreviewControls({
             options={previewDisplayModeOptions}
             value={controller.displayMode}
             disabled={controller.controlsLocked}
+            controls="email-preview-canvas"
             onChange={controller.setDisplayMode}
           />
           <EmailPreviewSegmentedControl
@@ -189,13 +199,16 @@ export function EmailPreviewControls({
             options={previewViewportOptions}
             value={controller.viewport}
             disabled={controller.controlsLocked}
+            showDescriptions
+            controls="email-preview-canvas"
             onChange={controller.setViewport}
           />
           <EmailPreviewSegmentedControl
-            label="Inbox theme"
+            label="Simulation"
             options={previewThemeOptions}
             value={controller.theme}
             disabled={controller.controlsLocked}
+            controls="email-preview-canvas"
             onChange={controller.setTheme}
           />
           <EmailPreviewSegmentedControl
@@ -203,12 +216,19 @@ export function EmailPreviewControls({
             options={previewZoomOptions}
             value={controller.zoom}
             disabled={controller.controlsLocked}
+            controls="email-preview-canvas"
             onChange={controller.setZoom}
           />
         </div>
-        <p className={styles.simulationNote}>
-          Theme controls are comparison simulations. The iframe contains the
-          exact rendered email and remains isolated from workbench styles.
+        <p className={styles.viewSummary} id="email-preview-view-summary">
+          <strong>
+            {displayMode?.label ?? 'Compare'} · {viewport?.label ?? 'Desktop'}{' '}
+            {viewport?.width ?? 760}px · {controller.theme} · {controller.zoom}%
+          </strong>
+          <span>
+            {displayMode?.description}. Theme is simulated; the exact email
+            HTML remains isolated.
+          </span>
         </p>
       </section>
 

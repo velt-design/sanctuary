@@ -11,7 +11,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/staff/email-previews/EmailPreviewWorkbenchPage', () => ({
   default: () => (
-    <main data-email-preview-workbench="true">Email design workbench</main>
+    <main data-email-preview-workbench="true">Enquiry email workbench</main>
   ),
 }));
 

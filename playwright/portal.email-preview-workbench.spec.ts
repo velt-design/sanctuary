@@ -68,6 +68,7 @@ test('email design workbench is responsive and keeps preview overflow contained'
   const viewports = [
     { name: 'desktop-1440', width: 1440, height: 1000 },
     { name: 'laptop-1024', width: 1024, height: 900 },
+    { name: 'tablet-768', width: 768, height: 1024 },
     { name: 'mobile-390', width: 390, height: 844 },
   ] as const;
 
@@ -76,7 +77,7 @@ test('email design workbench is responsive and keeps preview overflow contained'
     await page.goto('/qa/email-preview-workbench-fixture');
     await expect(
       page.getByRole('heading', {
-        name: 'Email design workbench',
+        name: 'Enquiry email workbench',
         exact: true,
       }),
     ).toBeVisible();
@@ -89,12 +90,22 @@ test('email design workbench is responsive and keeps preview overflow contained'
     ).toBeVisible();
     await expectEmailFramesHealthy(page, 3);
     await expectNoDocumentOverflow(page);
-    await capture(page, viewport.name, viewport.width === 1440);
+    if (viewport.width === 390) {
+      const segmentHeights = await page
+        .locator('[data-segment-value]')
+        .evaluateAll((segments) =>
+          segments.map((segment) => segment.getBoundingClientRect().height),
+        );
+      expect(Math.min(...segmentHeights)).toBeGreaterThanOrEqual(44);
+    }
+    await capture(page, `after-${viewport.name}`, viewport.width === 1440);
     if (viewport.width !== 1440) {
       const canvas = page.getByTestId('email-preview-canvas');
-      await canvas.scrollIntoViewIfNeeded();
+      await canvas.evaluate((element) =>
+        element.scrollIntoView({ block: 'start' }),
+      );
       await expect(canvas).toBeInViewport();
-      await capture(page, `${viewport.name}-canvas`, false);
+      await capture(page, `after-${viewport.name}-canvas`, false);
     }
   }
 
@@ -116,6 +127,15 @@ test('focus, theme, viewport, zoom and delivery confirmation remain synchronized
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/qa/email-preview-workbench-fixture');
   await expectEmailFramesHealthy(page, 3);
+
+  const selectedSend = page.getByRole('button', {
+    name: 'Send Editorial Refined',
+  });
+  await selectedSend.click();
+  const cancel = page.getByRole('button', { name: 'Cancel' });
+  await expect(cancel).toBeFocused();
+  await cancel.click();
+  await expect(selectedSend).toBeFocused();
 
   await page.locator('[data-segment-value="focus"]').click();
   await page.locator('[data-layout-choice="image-led"]').click();
@@ -147,9 +167,9 @@ test('focus, theme, viewport, zoom and delivery confirmation remain synchronized
   await page.getByRole('button', { name: 'Send all 3' }).click();
   await expect(page.getByText('Send all 3 alternatives?')).toBeVisible();
   await page.getByRole('button', { name: 'Confirm send' }).click();
-  await expect(page.getByText('3 alternatives sent')).toBeVisible();
+  await expect(page.getByText('3 alternatives accepted')).toBeVisible();
   expect(simulatedSendCount).toBe(3);
 
   await expectNoDocumentOverflow(page);
-  await capture(page, 'focus-image-led-mobile-dark');
+  await capture(page, 'after-focus-image-led-mobile-dark');
 });

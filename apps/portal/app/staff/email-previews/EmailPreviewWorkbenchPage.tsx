@@ -11,9 +11,9 @@ type EmailPreviewWorkbenchPageProps = {
 const headerProps = {
   variant: 'detail',
   eyebrow: 'Marketing',
-  title: 'Email design workbench',
+  title: 'Enquiry email workbench',
   description:
-    'Review governed enquiry fixtures, compare exact customer-email renders and send clearly labelled inbox tests without touching production.',
+    'Choose a project scenario, compare three exact email designs, then send labelled proofs to the fixed review inbox.',
 } as const;
 
 export default function EmailPreviewWorkbenchPage({

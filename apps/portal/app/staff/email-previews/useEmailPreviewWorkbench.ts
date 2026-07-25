@@ -147,7 +147,7 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
   async function deliverLayouts(layoutIds: readonly PreviewLayoutId[]) {
     if (!preview?.sendReady || layoutIds.length === 0) return;
     const recipient = preview.recipient ?? 'the configured review inbox';
-    const sentLayoutIds: PreviewLayoutId[] = [];
+    const acceptedLayoutIds: PreviewLayoutId[] = [];
 
     for (const [index, layoutId] of layoutIds.entries()) {
       setDelivery({
@@ -158,11 +158,11 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
       });
       try {
         await sendEmailPreview(variant, layoutId, previewEndpoint);
-        sentLayoutIds.push(layoutId);
+        acceptedLayoutIds.push(layoutId);
       } catch (caught) {
         setDelivery({
           status: 'error',
-          sentLayoutIds,
+          acceptedLayoutIds,
           failedLayoutId: layoutId,
           message:
             caught instanceof Error
@@ -175,7 +175,7 @@ export function useEmailPreviewWorkbench(previewEndpoint?: string) {
 
     setDelivery({
       status: 'success',
-      sentLayoutIds,
+      acceptedLayoutIds,
       recipient,
     });
   }

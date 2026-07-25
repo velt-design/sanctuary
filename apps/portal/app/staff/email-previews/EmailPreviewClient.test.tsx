@@ -175,9 +175,12 @@ describe('EmailPreviewClient', () => {
 
   it('provides synchronized fixture, comparison, focus, viewport, theme, zoom and reset controls', async () => {
     const rendered = renderIntoDocument(<EmailPreviewClient />);
+    expect(rendered.container.textContent).toContain(
+      'Rendering the workbench',
+    );
     await flushEffects();
 
-    expect(select(rendered.container, 'Customer').value).toBe('residential');
+    expect(select(rendered.container, 'Customer type').value).toBe('residential');
     expect(select(rendered.container, 'Roof form').value).toBe('pitched');
     expect(select(rendered.container, 'Outdoor blinds').value).toBe(
       'without-blinds',
@@ -195,11 +198,11 @@ describe('EmailPreviewClient', () => {
       'true',
     );
     expect(rendered.container.querySelectorAll('iframe')).toHaveLength(3);
-    expect(rendered.container.textContent).toContain('01 / 17');
+    expect(rendered.container.textContent).toContain('Example 01 of 17');
     expect(rendered.container.textContent).toContain('Warkworth Outdoor Room');
     expect(rendered.container.textContent).toContain('Vercel Preview');
     expect(rendered.container.textContent).toContain(
-      'Fixed recipient · no BCC · no database or audit writes',
+      'fixed recipient · no BCC · no database or audit writes',
     );
     expect(rendered.container.textContent).toContain(
       'RESEND_API_KEY_PREVIEW',
@@ -247,7 +250,7 @@ describe('EmailPreviewClient', () => {
       'true',
     );
 
-    await choose(rendered.container, 'Customer', 'commercial');
+    await choose(rendered.container, 'Customer type', 'commercial');
     await choose(rendered.container, 'Roof form', 'gable');
     await choose(rendered.container, 'Outdoor blinds', 'with-blinds');
     expect(fetch).toHaveBeenLastCalledWith(
@@ -255,7 +258,7 @@ describe('EmailPreviewClient', () => {
       expect.objectContaining({ cache: 'no-store' }),
     );
 
-    await choose(rendered.container, 'Customer', 'professional');
+    await choose(rendered.container, 'Customer type', 'professional');
     expect(rendered.container.textContent).toContain(
       'Professional uses the fixed KiwiRail Head Office reference',
     );
@@ -266,13 +269,55 @@ describe('EmailPreviewClient', () => {
       await Promise.resolve();
     });
     await flushEffects();
-    expect(select(rendered.container, 'Customer').value).toBe('residential');
+    expect(select(rendered.container, 'Customer type').value).toBe('residential');
     expect(select(rendered.container, 'Roof form').value).toBe('pitched');
     expect(segment(rendered.container, 'compare').getAttribute('aria-pressed')).toBe(
       'true',
     );
     expect(segment(rendered.container, '50').getAttribute('aria-pressed')).toBe(
       'true',
+    );
+    expect(rendered.container.querySelectorAll('iframe')).toHaveLength(3);
+
+    rendered.unmount();
+  });
+
+  it('explains rendering failures and lets staff retry', async () => {
+    let attempts = 0;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      attempts += 1;
+      if (attempts === 1) {
+        return Response.json(
+          { error: 'The preview renderer is temporarily unavailable.' },
+          { status: 503 },
+        );
+      }
+      const variant = new URL(
+        String(input),
+        'http://localhost',
+      ).searchParams.get('variant')!;
+      return Response.json(previewResponse(variant));
+    });
+
+    const rendered = renderIntoDocument(<EmailPreviewClient />);
+    await flushEffects();
+
+    expect(rendered.container.textContent).toContain(
+      'Preview rendering failed',
+    );
+    expect(rendered.container.textContent).toContain(
+      'The preview renderer is temporarily unavailable.',
+    );
+
+    await act(async () => {
+      button(rendered.container, 'Try again').click();
+      await Promise.resolve();
+    });
+    await flushEffects();
+
+    expect(attempts).toBe(2);
+    expect(rendered.container.textContent).not.toContain(
+      'Preview rendering failed',
     );
     expect(rendered.container.querySelectorAll('iframe')).toHaveLength(3);
 
@@ -310,9 +355,22 @@ describe('EmailPreviewClient', () => {
     });
     expect(postCalls()).toHaveLength(0);
     expect(rendered.container.textContent).toContain('Send Image-led?');
+    expect(document.activeElement).toBe(button(rendered.container, 'Cancel'));
     expect(rendered.container.textContent).toContain(
-      'residential pitched without blinds fixture',
+      'for residential pitched without blinds to',
     );
+
+    await act(async () => {
+      button(rendered.container, 'Cancel').click();
+      await Promise.resolve();
+    });
+    expect(document.activeElement).toBe(
+      button(rendered.container, 'Send Image-led'),
+    );
+
+    await act(async () => {
+      button(rendered.container, 'Send Image-led').click();
+    });
 
     await act(async () => {
       button(rendered.container, 'Confirm send').click();
@@ -330,7 +388,7 @@ describe('EmailPreviewClient', () => {
         }),
       }),
     );
-    expect(rendered.container.textContent).toContain('Image-led sent');
+    expect(rendered.container.textContent).toContain('Image-led accepted');
     expect(rendered.container.textContent).toContain(
       'jordan@sanctuarypergolas.co.nz',
     );
@@ -375,7 +433,7 @@ describe('EmailPreviewClient', () => {
     expect(
       postCalls().map(([, init]) => JSON.parse(String(init?.body)).layout),
     ).toEqual(['editorial-refined', 'image-led', 'compact']);
-    expect(rendered.container.textContent).toContain('3 alternatives sent');
+    expect(rendered.container.textContent).toContain('3 alternatives accepted');
 
     rendered.unmount();
   });
@@ -422,7 +480,7 @@ describe('EmailPreviewClient', () => {
 
     expect(postCalls()).toHaveLength(2);
     expect(rendered.container.textContent).toContain(
-      '1 sent before the failure',
+      '1 accepted before the failure',
     );
     expect(rendered.container.textContent).toContain(
       'Image-led failed. Provider temporarily unavailable.',
@@ -437,7 +495,7 @@ describe('EmailPreviewClient', () => {
     expect(JSON.parse(String(postCalls()[2]?.[1]?.body)).layout).toBe(
       'image-led',
     );
-    expect(rendered.container.textContent).toContain('Image-led sent');
+    expect(rendered.container.textContent).toContain('Image-led accepted');
 
     rendered.unmount();
   });

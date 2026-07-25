@@ -66,12 +66,12 @@ export type DeliveryState =
     }>
   | Readonly<{
       status: 'success';
-      sentLayoutIds: readonly PreviewLayoutId[];
+      acceptedLayoutIds: readonly PreviewLayoutId[];
       recipient: string;
     }>
   | Readonly<{
       status: 'error';
-      sentLayoutIds: readonly PreviewLayoutId[];
+      acceptedLayoutIds: readonly PreviewLayoutId[];
       failedLayoutId: PreviewLayoutId;
       message: string;
     }>;
