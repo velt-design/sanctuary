@@ -4,8 +4,11 @@ import {
   previewConfigurationErrorMessage,
   previewConfigurationMessage,
   previewCustomerTypes,
+  previewLayoutIds,
   previewRoofForms,
+  previewThemeOptions,
   previewVariantForSelection,
+  previewViewportOptions,
 } from './emailPreviewOptions';
 
 describe('email preview options', () => {
@@ -26,6 +29,22 @@ describe('email preview options', () => {
     expect(variants).toContain('residential-box-perimeter-with-blinds');
     expect(variants).toContain('commercial-hip-without-blinds');
     expect(variants).toContain('professional');
+  });
+
+  it('keeps the comparison dimensions explicit and finite', () => {
+    expect(previewLayoutIds).toEqual([
+      'editorial-refined',
+      'image-led',
+      'compact',
+    ]);
+    expect(previewViewportOptions.map((option) => option.value)).toEqual([
+      'desktop',
+      'mobile',
+    ]);
+    expect(previewThemeOptions.map((option) => option.value)).toEqual([
+      'light',
+      'dark',
+    ]);
   });
 
   it('turns every disabled-send reason into an actionable staff message', () => {

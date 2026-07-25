@@ -9,6 +9,11 @@ import {
   type WebsiteAutoresponderPreviewVariant,
 } from '../apps/marketing/lib/websiteAutoresponderPreviewFixtures';
 import { renderWebsiteAutoresponder } from '../apps/marketing/lib/websiteAutoresponder';
+import {
+  renderWebsiteAutoresponderAlternative,
+  WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS,
+  type WebsiteAutoresponderPreviewLayout,
+} from '../apps/marketing/lib/websiteAutoresponderAlternatives';
 
 import { InternalResidentialEmail } from '../apps/marketing/emails/templates/internalResidential';
 import { InternalCommercialEmail } from '../apps/marketing/emails/templates/internalCommercial';
@@ -117,6 +122,30 @@ async function writeWebsitePreview(
   console.log(`Preheader: ${rendered.preheader}`);
 }
 
+async function writeAlternativeWebsitePreview(
+  outputDir: string,
+  variant: WebsiteAutoresponderPreviewVariant,
+  layout: WebsiteAutoresponderPreviewLayout,
+) {
+  const fixture = getWebsiteAutoresponderPreviewFixture(variant);
+  const rendered = await renderWebsiteAutoresponderAlternative(
+    fixture.templateId,
+    fixture.variables as unknown as Record<string, unknown>,
+    layout,
+  );
+  const fileBaseName = `alternative-${layout}-${variant}`;
+  const htmlPath = path.join(outputDir, `${fileBaseName}.html`);
+  const textPath = path.join(outputDir, `${fileBaseName}.txt`);
+
+  await writeFile(htmlPath, rendered.html, 'utf8');
+  await writeFile(textPath, rendered.text, 'utf8');
+
+  console.log(`Wrote ${htmlPath}`);
+  console.log(`Wrote ${textPath}`);
+  console.log(`Send subject: ${rendered.sendSubject}`);
+  console.log(`Preheader: ${rendered.preheader}`);
+}
+
 const customerTemplateVariants = Object.fromEntries(
   WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS.map((variant) => {
     const fixture = getWebsiteAutoresponderPreviewFixture(variant);
@@ -132,6 +161,18 @@ async function main() {
   if (arg === 'enquiry-variants') {
     for (const variant of WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS) {
       await writeWebsitePreview(outputDir, variant);
+    }
+    return;
+  }
+
+  if (arg === 'enquiry-layouts') {
+    const representativeVariant = 'residential-gable-with-blinds';
+    for (const layout of WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS) {
+      await writeAlternativeWebsitePreview(
+        outputDir,
+        representativeVariant,
+        layout.id,
+      );
     }
     return;
   }
@@ -153,6 +194,7 @@ async function main() {
     Object.keys(customerTemplateVariants).forEach((key) => console.error(`- ${key}`));
     Object.keys(templates).forEach((key) => console.error(`- ${key}`));
     console.error('- enquiry-variants');
+    console.error('- enquiry-layouts');
     process.exitCode = 1;
     return;
   }

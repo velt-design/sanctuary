@@ -16,9 +16,28 @@ export const previewBlindsOptions = [
   { value: 'with-blinds', label: 'With blinds' },
 ] as const;
 
+export const previewLayoutIds = [
+  'editorial-refined',
+  'image-led',
+  'compact',
+] as const;
+
+export const previewViewportOptions = [
+  { value: 'desktop', label: 'Desktop' },
+  { value: 'mobile', label: 'Mobile' },
+] as const;
+
+export const previewThemeOptions = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+] as const;
+
 export type PreviewCustomerType = (typeof previewCustomerTypes)[number]['value'];
 export type PreviewRoofForm = (typeof previewRoofForms)[number]['value'];
 export type PreviewBlindsOption = (typeof previewBlindsOptions)[number]['value'];
+export type PreviewLayoutId = (typeof previewLayoutIds)[number];
+export type PreviewViewport = (typeof previewViewportOptions)[number]['value'];
+export type PreviewTheme = (typeof previewThemeOptions)[number]['value'];
 export type PreviewVariant =
   | `${Exclude<PreviewCustomerType, 'professional'>}-${PreviewRoofForm}-${PreviewBlindsOption}`
   | 'professional';

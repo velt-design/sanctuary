@@ -42,6 +42,7 @@ describe('website autoresponder preview sender', () => {
 
     const result = await sendWebsiteAutoresponderPreview(
       'residential-gable-with-blinds',
+      'editorial-refined',
     );
 
     expect(h.createResendEmailGateway).toHaveBeenCalledWith({
@@ -53,18 +54,22 @@ describe('website autoresponder preview sender', () => {
       from: 'Sanctuary Pergolas <info@sanctuarypergolas.co.nz>',
       to: 'jordan@sanctuarypergolas.co.nz',
       replyTo: 'info@sanctuarypergolas.co.nz',
-      subject: "Alex, we've received your pergola enquiry",
+      subject:
+        "[Preview: Editorial Refined] Alex, we've received your pergola enquiry",
     });
     expect(message).not.toHaveProperty('bcc');
-    expect(message.html).toContain('Project details received');
-    expect(message.text).toContain('Project details received');
+    expect(message.html).toContain('sp-preview');
+    expect(message.text).toContain('Your project details');
     expect(options).toMatchObject({ timeoutMs: 15_000 });
     expect(options.idempotencyKey).toMatch(
-      /^website-autoresponder-preview:residential-gable-with-blinds:/,
+      /^website-autoresponder-preview:residential-gable-with-blinds:editorial-refined:/,
     );
     expect(result).toMatchObject({
       recipient: 'jordan@sanctuarypergolas.co.nz',
-      subject: "Alex, we've received your pergola enquiry",
+      layout: 'editorial-refined',
+      subject:
+        "[Preview: Editorial Refined] Alex, we've received your pergola enquiry",
+      customerSubject: "Alex, we've received your pergola enquiry",
       providerMessageId: 'preview-message-1',
     });
   });
@@ -83,7 +88,9 @@ describe('website autoresponder preview sender', () => {
       sendReady: false,
       reason: 'disabled',
     });
-    await expect(sendWebsiteAutoresponderPreview('professional')).rejects.toMatchObject({
+    await expect(
+      sendWebsiteAutoresponderPreview('professional', 'compact'),
+    ).rejects.toMatchObject({
       code: 'EMAIL_PREVIEW_UNAVAILABLE',
     });
     expect(h.createResendEmailGateway).not.toHaveBeenCalled();
@@ -104,7 +111,10 @@ describe('website autoresponder preview sender', () => {
       reason: 'environment_not_allowed',
     });
     await expect(
-      sendWebsiteAutoresponderPreview('commercial-pitched-without-blinds'),
+      sendWebsiteAutoresponderPreview(
+        'commercial-pitched-without-blinds',
+        'image-led',
+      ),
     ).rejects.toMatchObject({
       code: 'EMAIL_PREVIEW_UNAVAILABLE',
     });

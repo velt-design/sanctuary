@@ -6,8 +6,10 @@ import {
 } from '@/lib/api/staffApi';
 import {
   getWebsiteAutoresponderPreviewFixture,
+  isWebsiteAutoresponderPreviewLayout,
   isWebsiteAutoresponderPreviewVariant,
-  renderWebsiteAutoresponder,
+  renderWebsiteAutoresponderAlternative,
+  WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS,
 } from '@/lib/sharedEmails';
 import {
   getWebsiteAutoresponderPreviewAvailability,
@@ -67,19 +69,42 @@ export async function GET(req: Request) {
   }
 
   const fixture = getWebsiteAutoresponderPreviewFixture(variant);
-  const rendered = await renderWebsiteAutoresponder(
-    fixture.templateId,
-    fixture.variables as unknown as Record<string, unknown>,
+  const layouts = await Promise.all(
+    WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS.map(async (layout) => {
+      const [light, dark] = await Promise.all([
+        renderWebsiteAutoresponderAlternative(
+          fixture.templateId,
+          fixture.variables as unknown as Record<string, unknown>,
+          layout.id,
+          { previewTheme: 'light' },
+        ),
+        renderWebsiteAutoresponderAlternative(
+          fixture.templateId,
+          fixture.variables as unknown as Record<string, unknown>,
+          layout.id,
+          { previewTheme: 'dark' },
+        ),
+      ]);
+      return {
+        id: layout.id,
+        name: layout.name,
+        description: layout.description,
+        bestFor: layout.bestFor,
+        subject: light.subject,
+        sendSubject: light.sendSubject,
+        preheader: light.preheader,
+        htmlLight: light.html,
+        htmlDark: dark.html,
+        text: light.text,
+      };
+    }),
   );
 
   return privateNoStore(
     jsonOk({
       variant,
       label: fixture.label,
-      subject: rendered.subject,
-      preheader: rendered.preheader,
-      html: rendered.html,
-      text: rendered.text,
+      layouts,
       recipient: access.availability.recipient,
       sendReady: access.availability.sendReady,
       configurationReason: access.availability.reason,
@@ -101,9 +126,13 @@ export async function POST(req: Request) {
   }
 
   const keys = Object.keys(parsed.body);
-  if (keys.length !== 1 || keys[0] !== 'variant') {
+  if (
+    keys.length !== 2
+    || !keys.includes('variant')
+    || !keys.includes('layout')
+  ) {
     return privateNoStore(
-      jsonError('Only the fixture variant may be supplied.', 400, null, {
+      jsonError('Only the fixture variant and preview layout may be supplied.', 400, null, {
         code: 'EMAIL_PREVIEW_BODY_INVALID',
       }),
     );
@@ -112,6 +141,13 @@ export async function POST(req: Request) {
     return privateNoStore(
       jsonError('Invalid email preview variant.', 400, null, {
         code: 'EMAIL_PREVIEW_VARIANT_INVALID',
+      }),
+    );
+  }
+  if (!isWebsiteAutoresponderPreviewLayout(parsed.body.layout)) {
+    return privateNoStore(
+      jsonError('Invalid email preview layout.', 400, null, {
+        code: 'EMAIL_PREVIEW_LAYOUT_INVALID',
       }),
     );
   }
@@ -130,13 +166,18 @@ export async function POST(req: Request) {
   }
 
   try {
-    const sent = await sendWebsiteAutoresponderPreview(parsed.body.variant);
+    const sent = await sendWebsiteAutoresponderPreview(
+      parsed.body.variant,
+      parsed.body.layout,
+    );
     return privateNoStore(
       jsonOk({
         ok: true,
         variant: sent.variant,
+        layout: sent.layout,
         recipient: sent.recipient,
         subject: sent.subject,
+        customerSubject: sent.customerSubject,
         preheader: sent.preheader,
         providerMessageId: sent.providerMessageId,
       }),

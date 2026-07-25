@@ -10,7 +10,10 @@ import {
   getWebsiteAutoresponderPreviewFixture,
   type WebsiteAutoresponderPreviewVariant,
 } from '../websiteAutoresponderPreviewFixtures';
-import { renderWebsiteAutoresponder } from '../websiteAutoresponder';
+import {
+  renderWebsiteAutoresponderAlternative,
+  type WebsiteAutoresponderPreviewLayout,
+} from '../websiteAutoresponderAlternatives';
 
 const FROM = 'Sanctuary Pergolas <info@sanctuarypergolas.co.nz>';
 const REPLY_TO = 'info@sanctuarypergolas.co.nz';
@@ -131,6 +134,7 @@ function previewGateway(apiKey: string): ResendEmailGateway {
 
 export async function sendWebsiteAutoresponderPreview(
   variant: WebsiteAutoresponderPreviewVariant,
+  layout: WebsiteAutoresponderPreviewLayout,
 ) {
   const availability = getWebsiteAutoresponderPreviewAvailability();
   if (!availability.available) {
@@ -148,9 +152,10 @@ export async function sendWebsiteAutoresponderPreview(
 
   const apiKey = process.env.RESEND_API_KEY_PREVIEW!.trim();
   const fixture = getWebsiteAutoresponderPreviewFixture(variant);
-  const rendered = await renderWebsiteAutoresponder(
+  const rendered = await renderWebsiteAutoresponderAlternative(
     fixture.templateId,
     fixture.variables as unknown as Record<string, unknown>,
+    layout,
   );
 
   let outcome: ResendDispatchOutcome;
@@ -160,13 +165,13 @@ export async function sendWebsiteAutoresponderPreview(
         from: FROM,
         to: availability.recipient,
         replyTo: REPLY_TO,
-        subject: rendered.subject,
+        subject: rendered.sendSubject,
         html: rendered.html,
         text: rendered.text,
       },
       {
         timeoutMs: EMAIL_TIMEOUT_MS,
-        idempotencyKey: `website-autoresponder-preview:${variant}:${randomUUID()}`,
+        idempotencyKey: `website-autoresponder-preview:${variant}:${layout}:${randomUUID()}`,
       },
     );
   } catch {
@@ -185,8 +190,10 @@ export async function sendWebsiteAutoresponderPreview(
 
   return {
     variant,
+    layout,
     recipient: availability.recipient,
-    subject: rendered.subject,
+    subject: rendered.sendSubject,
+    customerSubject: rendered.subject,
     preheader: rendered.preheader,
     providerMessageId: outcome.messageId,
   };

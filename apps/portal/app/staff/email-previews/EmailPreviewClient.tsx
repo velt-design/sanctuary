@@ -8,22 +8,37 @@ import {
   previewConfigurationMessage,
   previewCustomerTypes,
   previewRoofForms,
+  previewThemeOptions,
   previewVariantForSelection,
+  previewViewportOptions,
   type PreviewBlindsOption,
   type PreviewConfigurationReason,
   type PreviewCustomerType,
+  type PreviewLayoutId,
   type PreviewRoofForm,
+  type PreviewTheme,
   type PreviewVariant,
+  type PreviewViewport,
 } from './emailPreviewOptions';
 import styles from './email-previews.module.css';
+
+type LayoutPreview = Readonly<{
+  id: PreviewLayoutId;
+  name: string;
+  description: string;
+  bestFor: string;
+  subject: string;
+  sendSubject: string;
+  preheader: string;
+  htmlLight: string;
+  htmlDark: string;
+  text: string;
+}>;
 
 type PreviewResponse = Readonly<{
   variant: PreviewVariant;
   label: string;
-  subject: string;
-  preheader: string;
-  html: string;
-  text: string;
+  layouts: readonly LayoutPreview[];
   recipient: string | null;
   sendReady: boolean;
   configurationReason: PreviewConfigurationReason;
@@ -42,15 +57,36 @@ function responseMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+function SelectorButton<T extends string>(props: {
+  value: T;
+  selected: T;
+  label: string;
+  onSelect: (value: T) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.variant}
+      aria-pressed={props.selected === props.value}
+      onClick={() => props.onSelect(props.value)}
+    >
+      {props.label}
+    </button>
+  );
+}
+
 export default function EmailPreviewClient() {
   const [customerType, setCustomerType] =
     useState<PreviewCustomerType>('residential');
   const [roofForm, setRoofForm] = useState<PreviewRoofForm>('pitched');
   const [blinds, setBlinds] =
     useState<PreviewBlindsOption>('without-blinds');
+  const [viewport, setViewport] = useState<PreviewViewport>('desktop');
+  const [theme, setTheme] = useState<PreviewTheme>('light');
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+  const [sendingLayout, setSendingLayout] =
+    useState<PreviewLayoutId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const variant = previewVariantForSelection(customerType, roofForm, blinds);
@@ -71,7 +107,9 @@ export default function EmailPreviewClient() {
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(responseMessage(body, 'Unable to load this email preview.'));
+          throw new Error(
+            responseMessage(body, 'Unable to load these email previews.'),
+          );
         }
         return body as PreviewResponse;
       })
@@ -84,7 +122,7 @@ export default function EmailPreviewClient() {
         setError(
           caught instanceof Error
             ? caught.message
-            : 'Unable to load this email preview.',
+            : 'Unable to load these email previews.',
         );
       })
       .finally(() => {
@@ -94,8 +132,8 @@ export default function EmailPreviewClient() {
     return () => controller.abort();
   }, [variant]);
 
-  async function sendPreview() {
-    setSending(true);
+  async function sendPreview(layout: LayoutPreview) {
+    setSendingLayout(layout.id);
     setError(null);
     setNotice(null);
     try {
@@ -104,12 +142,14 @@ export default function EmailPreviewClient() {
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ variant }),
+          body: JSON.stringify({ variant, layout: layout.id }),
         },
       );
       const body = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(responseMessage(body, 'Unable to send this email preview.'));
+        throw new Error(
+          responseMessage(body, 'Unable to send this email preview.'),
+        );
       }
       const recipient =
         body
@@ -117,7 +157,7 @@ export default function EmailPreviewClient() {
         && typeof (body as Record<string, unknown>).recipient === 'string'
           ? String((body as Record<string, unknown>).recipient)
           : 'the configured review inbox';
-      setNotice(`${preview?.label ?? 'Email'} preview sent to ${recipient}.`);
+      setNotice(`${layout.name} sent to ${recipient}.`);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -125,36 +165,37 @@ export default function EmailPreviewClient() {
           : 'Unable to send this email preview.',
       );
     } finally {
-      setSending(false);
+      setSendingLayout(null);
     }
   }
 
   return (
-    <section className={styles.workspace} aria-label="Website autoresponder review">
+    <section
+      className={styles.workspace}
+      aria-label="Website autoresponder layout comparison"
+    >
       <div className={styles.toolbar}>
         <div className={styles.configurator}>
-          <p className={styles.eyebrow}>Preview configuration</p>
+          <p className={styles.eyebrow}>Synchronized enquiry</p>
           <div className={styles.selectors}>
             <fieldset className={styles.selector}>
               <legend>Customer type</legend>
               <div className={styles.variants}>
                 {previewCustomerTypes.map((option) => (
-                  <button
+                  <SelectorButton
                     key={option.value}
-                    type="button"
-                    className={styles.variant}
-                    aria-pressed={customerType === option.value}
-                    onClick={() => setCustomerType(option.value)}
-                  >
-                    {option.label}
-                  </button>
+                    {...option}
+                    selected={customerType}
+                    onSelect={setCustomerType}
+                  />
                 ))}
               </div>
             </fieldset>
 
             {customerType === 'professional' ? (
               <p className={styles.professionalNote}>
-                Professional enquiries use the fixed KiwiRail Head Office reference.
+                Professional enquiries use the fixed KiwiRail Head Office
+                reference.
               </p>
             ) : (
               <>
@@ -162,15 +203,12 @@ export default function EmailPreviewClient() {
                   <legend>Roof form</legend>
                   <div className={styles.variants}>
                     {previewRoofForms.map((option) => (
-                      <button
+                      <SelectorButton
                         key={option.value}
-                        type="button"
-                        className={styles.variant}
-                        aria-pressed={roofForm === option.value}
-                        onClick={() => setRoofForm(option.value)}
-                      >
-                        {option.label}
-                      </button>
+                        {...option}
+                        selected={roofForm}
+                        onSelect={setRoofForm}
+                      />
                     ))}
                   </div>
                 </fieldset>
@@ -179,15 +217,12 @@ export default function EmailPreviewClient() {
                   <legend>Outdoor blinds</legend>
                   <div className={styles.variants}>
                     {previewBlindsOptions.map((option) => (
-                      <button
+                      <SelectorButton
                         key={option.value}
-                        type="button"
-                        className={styles.variant}
-                        aria-pressed={blinds === option.value}
-                        onClick={() => setBlinds(option.value)}
-                      >
-                        {option.label}
-                      </button>
+                        {...option}
+                        selected={blinds}
+                        onSelect={setBlinds}
+                      />
                     ))}
                   </div>
                 </fieldset>
@@ -215,56 +250,143 @@ export default function EmailPreviewClient() {
               {previewConfigurationMessage(preview.configurationReason)}
             </p>
           ) : null}
-          <Button
-            onClick={sendPreview}
-            loading={sending}
-            disabled={loading || !preview?.sendReady}
-            aria-describedby="email-preview-send-status"
-          >
-            Send this preview
-          </Button>
+          <p className={styles.safetyNote}>
+            Preview delivery only: no production BCC or database records.
+          </p>
         </div>
       </div>
 
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
-      {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+      <div className={styles.viewToolbar}>
+        <div>
+          <p className={styles.eyebrow}>Comparison view</p>
+          <p className={styles.viewHelp}>
+            All three cards use the same enquiry data. Dark mode is a controlled
+            simulation; the real inbox remains the final client test.
+          </p>
+        </div>
+        <div className={styles.viewSelectors}>
+          <fieldset className={styles.selector}>
+            <legend>Viewport</legend>
+            <div className={styles.variants}>
+              {previewViewportOptions.map((option) => (
+                <SelectorButton
+                  key={option.value}
+                  {...option}
+                  selected={viewport}
+                  onSelect={setViewport}
+                />
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className={styles.selector}>
+            <legend>Inbox theme</legend>
+            <div className={styles.variants}>
+              {previewThemeOptions.map((option) => (
+                <SelectorButton
+                  key={option.value}
+                  {...option}
+                  selected={theme}
+                  onSelect={setTheme}
+                />
+              ))}
+            </div>
+          </fieldset>
+        </div>
+      </div>
+
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className={styles.notice} role="status">
+          {notice}
+        </p>
+      ) : null}
 
       {loading ? (
-        <div className={styles.loading}>Rendering the customer email…</div>
+        <div className={styles.loading}>Rendering three customer emails…</div>
       ) : preview ? (
-        <div className={styles.reviewGrid}>
-          <aside className={styles.details}>
-            <div className={styles.detail}>
-              <span>Subject</span>
-              <strong>{preview.subject}</strong>
-            </div>
-            <div className={styles.detail}>
-              <span>Inbox preheader</span>
-              <p>{preview.preheader}</p>
-            </div>
-            <div className={styles.detail}>
-              <span>Delivery contract</span>
-              <p>Fixture data only. No production BCC and no enquiry, contact, project, estimate, outbox or audit record.</p>
-            </div>
-            <details className={styles.plainText}>
-              <summary>View plain-text version</summary>
-              <pre>{preview.text}</pre>
-            </details>
-          </aside>
-
-          <div className={styles.frameShell}>
-            <div className={styles.frameBar}>
-              <span>Rendered customer HTML</span>
-              <span>{preview.label}</span>
-            </div>
-            <iframe
-              className={styles.frame}
-              title={`${preview.label} enquiry email preview`}
-              srcDoc={preview.html}
-              sandbox=""
-            />
+        <>
+          <div className={styles.selectionSummary}>
+            <span>Comparing</span>
+            <strong>{preview.label}</strong>
+            <p>
+              The live production autoresponder remains unchanged until one
+              alternative is approved.
+            </p>
           </div>
-        </div>
+
+          <div
+            className={styles.comparisonRail}
+            data-preview-viewport={viewport}
+            data-preview-theme={theme}
+            aria-label={`${viewport} ${theme} email layout alternatives`}
+          >
+            {preview.layouts.map((layout, index) => (
+              <article className={styles.layoutCard} key={layout.id}>
+                <header className={styles.layoutHeader}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <div>
+                    <h2>{layout.name}</h2>
+                    <p>{layout.description}</p>
+                  </div>
+                </header>
+
+                <div className={styles.layoutDecision}>
+                  <span>Best for</span>
+                  <p>{layout.bestFor}</p>
+                </div>
+
+                <div className={styles.inboxDetails}>
+                  <div>
+                    <span>Inbox test subject</span>
+                    <strong>{layout.sendSubject}</strong>
+                  </div>
+                  <div>
+                    <span>Preheader</span>
+                    <p>{layout.preheader}</p>
+                  </div>
+                </div>
+
+                <div className={styles.frameShell}>
+                  <div className={styles.frameBar}>
+                    <span>{viewport} · {theme}</span>
+                    <span>{layout.name}</span>
+                  </div>
+                  <iframe
+                    className={styles.frame}
+                    title={`${layout.name} ${viewport} ${theme} enquiry email preview`}
+                    srcDoc={
+                      theme === 'dark' ? layout.htmlDark : layout.htmlLight
+                    }
+                    sandbox=""
+                  />
+                </div>
+
+                <footer className={styles.layoutActions}>
+                  <details className={styles.plainText}>
+                    <summary>Plain-text version</summary>
+                    <pre>{layout.text}</pre>
+                  </details>
+                  <Button
+                    onClick={() => sendPreview(layout)}
+                    loading={sendingLayout === layout.id}
+                    disabled={
+                      loading
+                      || Boolean(sendingLayout)
+                      || !preview.sendReady
+                    }
+                    aria-describedby="email-preview-send-status"
+                  >
+                    Send {layout.name}
+                  </Button>
+                </footer>
+              </article>
+            ))}
+          </div>
+        </>
       ) : null}
     </section>
   );

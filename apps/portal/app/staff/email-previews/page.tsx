@@ -13,8 +13,8 @@ export default function EmailPreviewsPage() {
       <StaffPageHeader
         variant="detail"
         eyebrow="Marketing"
-        title="Enquiry email previews"
-        description="Review every customer, roof-form and blinds combination, then send the exact rendered email to the configured staging inbox."
+        title="Enquiry email comparison"
+        description="Compare three production-capable layouts with synchronized enquiry data, responsive sizes and controlled light or dark inbox previews."
         searchShortcutEnabled={false}
       />
       <EmailPreviewClient />
