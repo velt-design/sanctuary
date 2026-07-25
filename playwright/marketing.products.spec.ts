@@ -232,9 +232,16 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
         .toBeLessThan(844);
 
       if (routeCase.route === '/products') {
-        const categoryNav = main.locator('[data-product-category-nav]');
-        await expect(categoryNav).toBeVisible();
-        await expect(categoryNav.locator('a')).toHaveCount(3);
+        const formGrid = main.locator('[data-product-form-grid]');
+        await expect(formGrid.locator(':scope > article')).toHaveCount(4);
+        expect((await formGrid.boundingBox())?.y ?? Number.POSITIVE_INFINITY)
+          .toBeLessThan(844 * 2.5);
+        await expect(main.locator('[data-product-option-gateway]'))
+          .toHaveCount(2);
+        await expect(main.locator('[data-product-option-gateway] img'))
+          .toHaveCount(0);
+        await expect(main.locator('[data-product-project-grid] > article'))
+          .toHaveCount(2);
       } else {
         const galleries = main.locator('[data-product-gallery]');
         await expect(galleries).toHaveCount(1);

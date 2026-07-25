@@ -180,8 +180,8 @@ const routeCases: readonly RouteCase[] = [
     id: 'product hub',
     path: '/products',
     canonicalPath: '/products',
-    maximumVisibleWords: 900,
-    maximumVisibleHeadingRegions: 9,
+    maximumVisibleWords: 700,
+    maximumVisibleHeadingRegions: 8,
     mobileSignals: [
       'Cover the deck. Keep the light.',
       'Different houses lead to different answers.',
