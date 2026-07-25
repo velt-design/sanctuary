@@ -731,6 +731,18 @@ for (const viewport of [
 
       const next = gallery.getByRole('button', { name: /Next image/ });
       await next.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(next).toBeFocused();
+      const focusState = await next.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          outlineStyle: style.outlineStyle,
+          outlineWidth: Number.parseFloat(style.outlineWidth),
+        };
+      });
+      expect(focusState.outlineStyle).not.toBe('none');
+      expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
       await next.click();
       await expect(gallery).toHaveAttribute(
         'data-gallery-position',
@@ -868,6 +880,20 @@ test('technical detail, contextual links, related work, and circular project nav
   await expect(main.locator('.project-case-study__pagination a')).toHaveCount(2);
   await expect(main.locator('.project-case-study__intro-actions a')).not.toHaveCount(0);
 
+  const relatedProject = main.locator('.project-case-study__related-list a').first();
+  const relatedProjectHref = await relatedProject.getAttribute('href');
+  await relatedProject.click();
+  await expect(page).toHaveURL(new RegExp(`${relatedProjectHref}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+
+  const previousProject = main.locator('.project-case-study__pagination a[rel="prev"]');
+  const previousProjectHref = await previousProject.getAttribute('href');
+  await previousProject.click();
+  await expect(page).toHaveURL(new RegExp(`${previousProjectHref}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+
   const gallery = main.locator('[data-responsive-gallery]');
   await gallery.getByRole('button', { name: /Next image/ }).click();
   await expect(gallery).toHaveAttribute(
@@ -892,6 +918,14 @@ test('technical detail, contextual links, related work, and circular project nav
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
   await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+
+  await main.locator('.project-case-study__breadcrumbs a').click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(visibleProjectCards(page)).toHaveCount(projects.length);
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+
   await page.reload();
   await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toHaveAttribute(
     'data-gallery-position',
