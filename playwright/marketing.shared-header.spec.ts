@@ -142,11 +142,7 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   await expect(mobileNavigation.getByRole('link', { name: 'Contact' }))
     .toHaveAttribute('aria-current', 'page');
   await expect(mobileNavigation.getByRole('link', { name: 'Architects, designers & builders' }))
-    .toHaveAttribute('href', buildEnquiryHref({
-      enquiryType: 'professional',
-      sourcePath: '/contact',
-      sourceComponent: 'header',
-    }));
+    .toHaveAttribute('href', '/architects-designers-builders');
   await expect(mobileNavigation.getByRole('link', { name: 'Get an estimate' }))
     .toHaveAttribute('href', buildEnquiryHref({
       sourcePath: '/contact',
@@ -307,11 +303,7 @@ test('audience-aware destinations and browser Back keep route and scroll context
     await page.getByRole('button', { name: 'Open menu' }).click();
     const mobileNavigation = page.getByRole('navigation', { name: 'Mobile primary' });
     await expect(mobileNavigation.getByRole('link', { name: 'Architects, designers & builders' }))
-      .toHaveAttribute('href', buildEnquiryHref({
-        enquiryType: 'professional',
-        sourcePath: route,
-        sourceComponent: 'header',
-      }));
+      .toHaveAttribute('href', '/architects-designers-builders');
     await expect(mobileNavigation.getByRole('link', { name: 'Get an estimate' }))
       .toHaveAttribute('href', buildEnquiryHref({
         ...getEnquiryRouteContext(route),

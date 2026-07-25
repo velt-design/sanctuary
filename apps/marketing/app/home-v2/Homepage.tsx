@@ -56,12 +56,6 @@ const homeFinalEnquiryHref = buildEnquiryHref({
   sourcePath: '/',
   sourceComponent: 'final_cta',
 });
-const homeProfessionalEnquiryHref = buildEnquiryHref({
-  enquiryType: 'professional',
-  sourcePath: '/',
-  sourceComponent: 'pathway',
-});
-
 export const metadata: Metadata = {
   title: { absolute: homepageTitle },
   description: homepageDescription,
@@ -494,7 +488,7 @@ export default async function HomePage() {
             </ActionGroup>
             <nav className={styles.secondaryPathways} aria-label="Alternative enquiry pathways">
               <TextLink href="/commercial-pergolas-auckland#project-details" data-homepage-event="commercial_pathway_click">Discuss a commercial project</TextLink>
-              <TextLink href={homeProfessionalEnquiryHref} data-homepage-event="professional_pathway_click">Send plans or a project brief</TextLink>
+              <TextLink href="/architects-designers-builders" data-homepage-event="professional_pathway_click">Review professional capability</TextLink>
             </nav>
           </div>
           <div className={styles.finalSupport}>

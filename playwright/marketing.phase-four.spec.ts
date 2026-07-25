@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
+import { ENQUIRY_ATTACHMENT_ACCEPT } from '../apps/marketing/lib/enquiryAttachments';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const captureLabel = process.env.MARKETING_PHASE_FOUR_CAPTURE?.trim();
@@ -403,4 +404,166 @@ test('commercial journey leads with three cases and three delivery stages', asyn
       sourceComponent: 'header',
     }),
   );
+});
+
+test('professional capability route is discoverable, governed and source aware', async ({
+  page,
+}) => {
+  for (const viewport of targetViewports) {
+    await page.setViewportSize(viewport);
+    const response = await page.goto('/architects-designers-builders', {
+      waitUntil: 'networkidle',
+    });
+    expect(response?.ok()).toBe(true);
+
+    const main = page.locator(
+      'main[data-seo-landing="architects-designers-builders"]',
+    );
+    await expect(
+      main.getByRole('heading', {
+        level: 1,
+        name: 'Bring Sanctuary into the project at the right level.',
+      }),
+    ).toBeVisible();
+    await expect(
+      main.locator('#professional-projects .acrylic-project-card h3'),
+    ).toHaveText([
+      'KiwiRail Head Office',
+      'Lilliput Mini Golf',
+      'The Good Home Takanini',
+    ]);
+    await expect(main.locator('#professional-inputs article')).toHaveCount(3);
+    await expect(
+      main.locator('details[data-seo-landing-disclosure]'),
+    ).toHaveCount(2);
+    await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(
+      'professional',
+    );
+    await expect(main.locator('#acrylic-enquiry-files')).toHaveAttribute(
+      'accept',
+      ENQUIRY_ATTACHMENT_ACCEPT,
+    );
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      `${publicOrigin}/architects-designers-builders`,
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth + 1,
+      ),
+    ).toBe(true);
+
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Mobile primary' })
+        .getByRole('link', { name: 'Architects, designers & builders' }),
+    ).toHaveAttribute('aria-current', 'page');
+    await page.keyboard.press('Escape');
+  }
+
+  await page.goto('/');
+  await expect(
+    page.locator(
+      'a[data-homepage-event="professional_pathway_click"][href="/architects-designers-builders"]',
+    ),
+  ).toHaveCount(2);
+  await page.goto('/sitemap.xml');
+  await expect(page.locator('body')).toContainText(
+    `${publicOrigin}/architects-designers-builders`,
+  );
+});
+
+test('professional form submits canonical context without personal analytics properties', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'sp_consent_v1',
+      JSON.stringify({
+        analytics: true,
+        marketing: false,
+        updatedAt: '2026-07-25T00:00:00.000Z',
+        version: 1,
+      }),
+    );
+    (
+      window as typeof window & {
+        dataLayer?: Array<Record<string, unknown>>;
+      }
+    ).dataLayer = [];
+  });
+  let submittedPayload: Record<string, unknown> | null = null;
+  await page.route('**/api/enquiry', async (route) => {
+    submittedPayload = route.request().postDataJSON() as Record<
+      string,
+      unknown
+    >;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  await page.goto('/architects-designers-builders', {
+    waitUntil: 'networkidle',
+  });
+  await page.locator('#acrylic-enquiry-suburb').fill('Greenlane');
+  await page
+    .locator('#acrylic-enquiry-message')
+    .fill('Please review the canopy brief and the structural interfaces.');
+  await page.locator('#acrylic-enquiry-name').fill('Phase Four Test Person');
+  await page.locator('#acrylic-enquiry-phone').fill('022 000 0044');
+  await page
+    .locator('#acrylic-enquiry-organisationAndRole')
+    .fill('Example Architects — project architect');
+  await page
+    .locator('#acrylic-enquiry-requestedScope')
+    .fill('Design development, engineering coordination and installation.');
+  await page
+    .getByRole('button', { name: 'Send professional project brief' })
+    .click();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Thanks, we have received your project details.',
+    }),
+  ).toBeVisible();
+
+  expect(submittedPayload).toMatchObject({
+    enquiryType: 'professional',
+    page: '/architects-designers-builders',
+    projectDetails: {
+      organisationAndRole: 'Example Architects — project architect',
+      requestedScope:
+        'Design development, engineering coordination and installation.',
+    },
+    enquiryContext: {
+      enquiry_type: 'professional',
+      source_path: '/architects-designers-builders',
+      source_component: 'embedded_form',
+    },
+  });
+
+  const leadEvent = await page.evaluate(() =>
+    (
+      window as typeof window & {
+        dataLayer?: Array<Record<string, unknown>>;
+      }
+    ).dataLayer?.find(({ event }) => event === 'lead_submitted'),
+  );
+  expect(leadEvent).toMatchObject({
+    event: 'lead_submitted',
+    enquiry_type: 'professional',
+    source_path: '/architects-designers-builders',
+    source_component: 'embedded_form',
+    event_category: 'contact',
+    event_label: 'professional',
+    landing_page: '/architects-designers-builders',
+  });
+  expect(JSON.stringify(leadEvent)).not.toContain('Phase Four Test Person');
+  expect(JSON.stringify(leadEvent)).not.toContain('022 000 0044');
+  expect(JSON.stringify(leadEvent)).not.toContain('Example Architects');
 });

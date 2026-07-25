@@ -1,5 +1,3 @@
-import { buildEnquiryHref } from '../lib/enquiryContext';
-
 type HeaderNavigationItem = {
   id: 'home' | 'projects' | 'products' | 'commercial' | 'professional' | 'contact';
   label: string;
@@ -84,12 +82,8 @@ export function getMobileHeaderNavigation(
     {
       id: 'professional',
       label: 'Architects, designers & builders',
-      href: buildEnquiryHref({
-        enquiryType: 'professional',
-        sourcePath: pathname,
-        sourceComponent: 'header',
-      }),
-      current: false,
+      href: '/architects-designers-builders',
+      current: pathname === '/architects-designers-builders',
     },
     contact,
   ];

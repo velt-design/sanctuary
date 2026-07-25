@@ -101,7 +101,9 @@ export type SeoLandingPageConfig = {
   marker: string;
   route: string;
   showGuideNavigation?: boolean;
+  breadcrumbLabel?: string;
   enquiryType?: EnquiryAudience;
+  schemaKind?: 'service';
   description: string;
   schemaName: string;
   serviceName: string;

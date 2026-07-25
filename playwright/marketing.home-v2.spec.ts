@@ -343,7 +343,7 @@ for (const viewport of [
     await expect(visitorPathways.locator('a[href="/custom-pergolas-auckland"]')).toBeVisible();
     await expect(visitorPathways.getByText('Commercial and professional projects', { exact: true })).toBeVisible();
     await expect(visitorPathways.locator('a[href^="/commercial-pergolas-auckland"]')).toBeHidden();
-    await expect(visitorPathways.getByRole('link', { name: 'Send plans or a project brief' })).toBeHidden();
+    await expect(visitorPathways.getByRole('link', { name: 'Review professional capability' })).toBeHidden();
 
     const selectedPreview = main.locator('section[aria-labelledby="selected-projects"]');
     await expect(selectedPreview).toBeVisible();
@@ -453,11 +453,7 @@ test('homepage V2 exposes the approved pathways, evidence and production-ready S
   const expectedPathways = [
     ['/pergolas-auckland', 'Plan your home pergola'],
     ['/commercial-pergolas-auckland#project-details', 'Discuss a commercial project'],
-    [buildEnquiryHref({
-      enquiryType: 'professional',
-      sourcePath: '/',
-      sourceComponent: 'pathway',
-    }), 'Send plans or a project brief'],
+    ['/architects-designers-builders', 'Review professional capability'],
   ] as const;
   const pathwaySection = main.locator('section[aria-labelledby="project-pathways"]');
   for (const [href, name] of expectedPathways) {

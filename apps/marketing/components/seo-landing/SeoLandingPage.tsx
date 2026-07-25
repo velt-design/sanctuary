@@ -13,18 +13,42 @@ export default function SeoLandingPage({ config }: { config: SeoLandingPageConfi
   const guide = findPergolaGuide(config.route);
   const enquiryType = config.enquiryType ?? 'residential';
   const blocks = orderSeoLandingBlocks(config.blocks, config.blockOrder);
+  const currentBreadcrumb = {
+    '@type': 'ListItem',
+    position: guide ? 3 : 2,
+    name: config.breadcrumbLabel ?? config.schemaName,
+    item: absoluteUrl(config.route),
+  };
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
-      { '@type': 'ListItem', position: 2, name: 'Pergola Guides', item: absoluteUrl('/pergola-guides') },
-      { '@type': 'ListItem', position: 3, name: config.schemaName, item: absoluteUrl(config.route) },
+      ...(guide
+        ? [{ '@type': 'ListItem', position: 2, name: 'Pergola Guides', item: absoluteUrl('/pergola-guides') }]
+        : []),
+      currentBreadcrumb,
     ],
   };
   const pageSchemas = [
-    { '@context': 'https://schema.org', '@type': 'WebPage', name: config.schemaName, url: absoluteUrl(config.route), description: config.description, primaryImageOfPage: absoluteUrl(config.hero.image), dateModified: pergolaGuideEditorialReview.date, reviewedBy: { '@type': 'Organization', name: pergolaGuideEditorialReview.reviewer, url: absoluteUrl('/') }, isPartOf: { '@type': 'CollectionPage', name: 'Sanctuary Pergola Design Library', url: absoluteUrl('/pergola-guides') } },
-    ...(guide?.role === 'service' ? [{ '@context': 'https://schema.org', '@type': 'Service', name: config.serviceName, serviceType: config.serviceType, areaServed: { '@type': 'City', name: 'Auckland' }, provider: { '@type': 'Organization', name: 'Sanctuary Pergolas', url: absoluteUrl('/') }, url: absoluteUrl(config.route) }] : []),
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: config.schemaName,
+      url: absoluteUrl(config.route),
+      description: config.description,
+      primaryImageOfPage: absoluteUrl(config.hero.image),
+      ...(guide
+        ? {
+            dateModified: pergolaGuideEditorialReview.date,
+            reviewedBy: { '@type': 'Organization', name: pergolaGuideEditorialReview.reviewer, url: absoluteUrl('/') },
+            isPartOf: { '@type': 'CollectionPage', name: 'Sanctuary Pergola Design Library', url: absoluteUrl('/pergola-guides') },
+          }
+        : {}),
+    },
+    ...(guide?.role === 'service' || config.schemaKind === 'service'
+      ? [{ '@context': 'https://schema.org', '@type': 'Service', name: config.serviceName, serviceType: config.serviceType, areaServed: { '@type': 'City', name: 'Auckland' }, provider: { '@type': 'Organization', name: 'Sanctuary Pergolas', url: absoluteUrl('/') }, url: absoluteUrl(config.route) }]
+      : []),
     breadcrumbSchema,
   ];
 

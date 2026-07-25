@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { buildEnquiryHref } from '../lib/enquiryContext';
 import {
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
@@ -23,26 +22,22 @@ describe('shared header navigation model', () => {
       { label: 'Commercial', href: '/commercial-pergolas-auckland' },
       {
         label: 'Architects, designers & builders',
-        href: buildEnquiryHref({
-          enquiryType: 'professional',
-          sourcePath: '/projects',
-          sourceComponent: 'header',
-        }),
+        href: '/architects-designers-builders',
       },
       { label: 'Contact', href: '/contact' },
     ]);
   });
 
-  it('preserves the current source path in the professional enquiry destination', () => {
+  it('sends professional visitors to the capability route', () => {
     const professional = getMobileHeaderNavigation('/products/pergolas/gable')
       .find((item) => item.id === 'professional');
 
     expect(professional?.href).toBe(
-      '/contact?enquiry_type=professional&source_path=%2Fproducts%2Fpergolas%2Fgable&source_component=header#contact-form',
+      '/architects-designers-builders',
     );
   });
 
-  it('marks parent destinations current on nested routes without claiming enquiry links', () => {
+  it('marks the relevant destination current on nested and audience routes', () => {
     expect(getMobileHeaderNavigation('/projects/warkworth-outdoor-room')
       .filter((item) => item.current)
       .map((item) => item.id)).toEqual(['projects']);
@@ -52,6 +47,9 @@ describe('shared header navigation model', () => {
     expect(getMobileHeaderNavigation('/commercial-pergolas-auckland')
       .filter((item) => item.current)
       .map((item) => item.id)).toEqual(['commercial']);
+    expect(getMobileHeaderNavigation('/architects-designers-builders')
+      .filter((item) => item.current)
+      .map((item) => item.id)).toEqual(['professional']);
     expect(getMobileHeaderNavigation('/contact')
       .filter((item) => item.current)
       .map((item) => item.id)).toEqual(['contact']);

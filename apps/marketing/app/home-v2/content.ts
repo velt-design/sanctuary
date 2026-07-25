@@ -1,5 +1,3 @@
-import { buildEnquiryHref } from '@/lib/enquiryContext';
-
 export const homepageDescription =
   'Sanctuary designs, builds and installs bespoke fixed-roof architectural pergolas for Auckland homes and selected commercial projects.';
 
@@ -45,12 +43,8 @@ export const visitorPathways = [
     eyebrow: 'Professional collaboration',
     title: 'Plans, specifications or an early brief',
     copy: 'Architects, designers and builders can share drawings, concepts, tender information and defined responsibilities.',
-    href: buildEnquiryHref({
-      enquiryType: 'professional',
-      sourcePath: '/',
-      sourceComponent: 'pathway',
-    }),
-    action: 'Send plans or a project brief',
+    href: '/architects-designers-builders',
+    action: 'Review professional capability',
     event: 'professional_pathway_click',
   },
 ] as const;
