@@ -74,14 +74,12 @@ const routeCases: readonly RouteCase[] = [
     },
     disclosures: {
       selector: 'details[data-mobile-disclosure]',
-      count: 7,
+      count: 5,
       labels: [
         'View the design response',
         'Commercial and professional projects',
-        'How Sanctuary approaches the design',
-        'Compare four pergola forms',
-        'Compare roof and material approaches',
-        'Plan integrated comfort options',
+        'Design approach and four pergola forms',
+        'Roof, material and comfort options',
         'More helpful project information',
       ],
     },

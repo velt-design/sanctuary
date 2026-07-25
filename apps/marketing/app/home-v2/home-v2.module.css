@@ -432,52 +432,6 @@ a.proofItem:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.inverseIntro {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(18rem, .6fr);
-  gap: var(--grid-gap);
-  align-items: end;
-  margin-bottom: clamp(2.75rem, 5vw, 5rem);
-}
-
-.inverseIntro > p {
-  margin: 0;
-  color: rgba(255, 255, 255, .68);
-  font: 400 .9rem/1.65 var(--font-body);
-}
-
-.reviewGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid rgba(255, 255, 255, .28);
-  border-left: 1px solid rgba(255, 255, 255, .18);
-}
-
-.reviewCard {
-  min-height: 320px;
-  display: grid;
-  align-content: space-between;
-  gap: 2rem;
-  margin: 0;
-  padding: clamp(1.5rem, 3vw, 2.5rem);
-  border-right: 1px solid rgba(255, 255, 255, .18);
-  border-bottom: 1px solid rgba(255, 255, 255, .18);
-}
-
-.reviewCard blockquote {
-  margin: 0;
-  color: var(--color-inverse-text);
-  font: 500 clamp(1.2rem, 2vw, 1.65rem)/1.35 var(--font-display);
-  letter-spacing: -.015em;
-}
-
-.reviewCard figcaption {
-  color: rgba(255, 255, 255, .62);
-  font: 600 .68rem/1.4 var(--font-body);
-  letter-spacing: .09em;
-  text-transform: uppercase;
-}
-
 .guideGateway {
   display: grid;
   grid-template-columns: minmax(0, .8fr) minmax(24rem, 1.2fr);
@@ -486,10 +440,6 @@ a.proofItem:hover {
   padding: clamp(1.75rem, 4vw, 3.5rem);
   border: 1px solid var(--color-rule-strong);
   background: var(--color-surface-elevated);
-}
-
-.singleReview {
-  grid-template-columns: minmax(0, 52rem);
 }
 
 .guideGateway > div {
@@ -568,6 +518,33 @@ a.proofItem:hover {
 .finalSupport {
   display: grid;
   gap: clamp(2.5rem, 5vw, 4rem);
+}
+
+.finalReview {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .28);
+}
+
+.finalReview blockquote {
+  margin: 0;
+  color: var(--color-inverse-text);
+  font: 500 clamp(1.1rem, 1.6vw, 1.4rem)/1.4 var(--font-display);
+  letter-spacing: -.015em;
+}
+
+.finalReview figcaption {
+  color: rgba(255, 255, 255, .62);
+  font: 600 .68rem/1.4 var(--font-body);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.finalReview .reviewSummary {
+  margin-top: .5rem;
+  padding-top: 1rem;
 }
 
 .finalChecklistDisclosure,
@@ -719,7 +696,6 @@ a.proofItem:hover {
   }
 
   .featuredProject,
-  .inverseIntro,
   .finalGrid {
     grid-template-columns: 1fr;
   }
@@ -729,13 +705,11 @@ a.proofItem:hover {
   }
 
   .roofApproachGrid,
-  .reviewGrid,
   .guideGrid {
     grid-template-columns: 1fr;
   }
 
   .roofApproachCard,
-  .reviewCard,
   .guideCard {
     min-height: 0;
   }
@@ -981,14 +955,6 @@ a.proofItem:hover {
 
   .roofRow > * {
     grid-column: 1;
-  }
-
-  .singleReview {
-    grid-template-columns: 1fr;
-  }
-
-  .reviewCard {
-    min-height: 245px;
   }
 
   .processSteps {

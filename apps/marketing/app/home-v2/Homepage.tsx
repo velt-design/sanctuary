@@ -338,16 +338,10 @@ export default async function HomePage() {
           <div className={styles.planningGroups}>
             <MobileDisclosure
               className={styles.planningDisclosure}
-              summary="How Sanctuary approaches the design"
-              eventName="design_principles_expand"
+              summary="Design approach and four pergola forms"
+              eventName="design_planning_expand"
             >
               <NumberedPrinciples items={designPrinciples.map((item) => ({ ...item }))} />
-            </MobileDisclosure>
-            <MobileDisclosure
-              className={styles.planningDisclosure}
-              summary="Compare four pergola forms"
-              eventName="pergola_forms_expand"
-            >
               <div className={styles.roofRows}>
               {roofForms.map((roof, index) => (
                 <article className={styles.roofRow} key={roof.title}>
@@ -372,8 +366,8 @@ export default async function HomePage() {
             </MobileDisclosure>
             <MobileDisclosure
               className={styles.planningDisclosure}
-              summary="Compare roof and material approaches"
-              eventName="roof_approaches_expand"
+              summary="Roof, material and comfort options"
+              eventName="roof_and_comfort_expand"
             >
               <div className={styles.roofApproachGrid}>
                 {roofApproaches.map((approach, index) => (
@@ -405,12 +399,6 @@ export default async function HomePage() {
                 ]}
               />
               <TextLink href="/pergolas-auckland#roofing-options" data-homepage-event="roof_comparison_click">Compare roof approaches</TextLink>
-            </MobileDisclosure>
-            <MobileDisclosure
-              className={styles.planningDisclosure}
-              summary="Plan integrated comfort options"
-              eventName="integrated_options_expand"
-            >
               <div className={styles.integrationRows}>
                 {integratedOptions.map((option, index) => (
                   <article className={styles.integrationRow} key={option.title}>
@@ -452,29 +440,6 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section tone="inverse" aria-labelledby="homepage-review-heading" data-home-section="client-review">
-        <Container width="wide">
-          <div className={styles.inverseIntro}>
-            <div>
-              <Eyebrow>Client perspective</Eyebrow>
-              <Heading id="homepage-review-heading">Trusted for the design, build and installation.</Heading>
-            </div>
-          </div>
-          <div className={`${styles.reviewGrid} ${styles.singleReview}`}>
-            <figure className={styles.reviewCard} data-home-review>
-              <blockquote>&ldquo;{selectedReviews[0]?.quote}&rdquo;</blockquote>
-              <figcaption>{selectedReviews[0]?.author} / Google review</figcaption>
-            </figure>
-          </div>
-          <div className={styles.reviewSummary}>
-            <span>Rated {ratingText} from {review.count} Google reviews</span>
-            <a href={GOOGLE_PLACE.reviewsUrl} target="_blank" rel="noopener noreferrer">
-              Read all reviews on Google
-            </a>
-          </div>
-        </Container>
-      </Section>
-
       <Section tone="inverse" aria-labelledby="qualified-enquiry" data-home-section="qualified-enquiry">
         <Container width="wide" className={styles.finalGrid}>
           <div className={styles.finalCopy}>
@@ -492,6 +457,17 @@ export default async function HomePage() {
             </nav>
           </div>
           <div className={styles.finalSupport}>
+            <figure className={styles.finalReview} data-home-review>
+              <Eyebrow>Client perspective</Eyebrow>
+              <blockquote>&ldquo;{selectedReviews[0]?.quote}&rdquo;</blockquote>
+              <figcaption>{selectedReviews[0]?.author} / Google review</figcaption>
+              <div className={styles.reviewSummary}>
+                <span>Rated {ratingText} from {review.count} Google reviews</span>
+                <a href={GOOGLE_PLACE.reviewsUrl} target="_blank" rel="noopener noreferrer">
+                  Read all reviews on Google
+                </a>
+              </div>
+            </figure>
             <div className={styles.finalChecklist}>
               <h3>Useful first inputs</h3>
               <ul>

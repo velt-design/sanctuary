@@ -113,7 +113,7 @@ for (const viewport of viewports) {
     const visitorPathways = main.locator('section[aria-labelledby="project-pathways"]');
     await expect(visitorPathways).toBeVisible();
     const primarySections = main.locator('[data-home-section]');
-    await expect(primarySections).toHaveCount(8);
+    await expect(primarySections).toHaveCount(7);
     expect(await primarySections.evaluateAll((sections) => sections.map((section) => section.getAttribute('data-home-section'))))
       .toEqual([
       'hero',
@@ -122,7 +122,6 @@ for (const viewport of viewports) {
       'selected-projects',
       'planning-options',
       'design-build-process',
-      'client-review',
       'qualified-enquiry',
       ]);
     await expect(main.locator('section[aria-labelledby="selected-projects"]')).toHaveCount(1);
@@ -144,7 +143,7 @@ for (const viewport of viewports) {
 
     if (viewport.width > 640) {
       const desktopDisclosures = main.locator('details[data-mobile-disclosure]');
-      await expect(desktopDisclosures).toHaveCount(7);
+      await expect(desktopDisclosures).toHaveCount(5);
       await expect.poll(() => desktopDisclosures.evaluateAll((items) => items.every((item) => item.hasAttribute('open'))))
         .toBe(true);
       await expect(desktopDisclosures.locator('summary').first()).toBeHidden();
@@ -284,12 +283,12 @@ for (const viewport of [
 
     const main = await getSettledHomepageMain(page);
     const disclosures = main.locator('details[data-mobile-disclosure]');
-    await expect(disclosures).toHaveCount(7);
+    await expect(disclosures).toHaveCount(5);
     await expect.poll(() => disclosures.evaluateAll((items) => items.every((item) => !item.hasAttribute('open'))))
       .toBe(true);
 
     const summaries = disclosures.locator('summary');
-    await expect(summaries).toHaveCount(7);
+    await expect(summaries).toHaveCount(5);
     for (let index = 0; index < await summaries.count(); index += 1) {
       await expect(summaries.nth(index)).toBeVisible();
       const bounds = await summaries.nth(index).boundingBox();
@@ -557,21 +556,21 @@ test('mobile homepage records planning disclosure interactions with device conte
   });
 
   const planning = main.locator('section[aria-labelledby="planning-options"]');
-  const designPrinciples = planning.locator('details').filter({ hasText: 'How Sanctuary approaches the design' });
+  const designPrinciples = planning.locator('details').filter({ hasText: 'Design approach and four pergola forms' });
   await designPrinciples.locator('summary').click();
   await expect(designPrinciples).toHaveAttribute('open', '');
 
   const getTrackedEvents = () => page.evaluate(() => (
     (window as typeof window & { dataLayer?: Array<Record<string, unknown> | unknown[]> }).dataLayer
       ?.filter((entry): entry is Record<string, unknown> => !Array.isArray(entry))
-      .filter((entry) => entry.event === 'design_principles_expand') ?? []
+      .filter((entry) => entry.event === 'design_planning_expand') ?? []
   ));
   await expect.poll(async () => (await getTrackedEvents()).length).toBe(1);
   const trackedEvents = await getTrackedEvents();
 
   expect(trackedEvents).toEqual([
     {
-      event: 'design_principles_expand',
+      event: 'design_planning_expand',
       homepage_variant: 'v2',
       viewport_category: 'mobile',
     },
@@ -589,27 +588,21 @@ test('mobile homepage records planning disclosure interactions with device conte
   await expect(mobileEstimate).toHaveAttribute('data-homepage-event', 'header_estimate_click');
 });
 
-test('homepage enquiry links open the promised contact pathway', async ({ page }) => {
+test('homepage residential enquiry link opens the promised contact pathway', async ({ page }) => {
   await preparePage(page);
 
-  for (const [destination, enquiryOption] of [
-    [buildEnquiryHref({
-      enquiryType: 'residential',
-      sourcePath: '/',
-      sourceComponent: 'hero',
-    }), 'Residential'],
-    [buildEnquiryHref({
-      enquiryType: 'professional',
-      sourcePath: '/',
-      sourceComponent: 'pathway',
-    }), 'Architect, designer or builder'],
-  ] as const) {
-    await page.goto(destination);
-    await expect(page).toHaveURL(new RegExp(`${destination.replace(/[?]/g, '\\?')}$`));
-    await expect(page.getByRole('radio', { name: enquiryOption, exact: false }))
-      .toBeChecked();
-    await expect(page.locator('#contact-form').last()).toBeVisible();
-  }
+  const destination = buildEnquiryHref({
+    enquiryType: 'residential',
+    sourcePath: '/',
+    sourceComponent: 'hero',
+  });
+  await page.goto(destination);
+  await expect(page).toHaveURL(
+    new RegExp(`${destination.replace(/[?]/g, '\\?')}$`),
+  );
+  await expect(page.getByRole('radio', { name: 'Residential', exact: false }))
+    .toBeChecked();
+  await expect(page.locator('#contact-form').last()).toBeVisible();
 });
 
 test('homepage comparison and commercial links land at the promised sections', async ({ page }) => {

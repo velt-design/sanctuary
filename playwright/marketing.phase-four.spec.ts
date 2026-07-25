@@ -752,3 +752,100 @@ test('guide first layers remain complete without JavaScript', async ({
     await context.close();
   }
 });
+
+test('homepage closes in seven regions and the footer stays compact and useful', async ({
+  page,
+}) => {
+  for (const viewport of targetViewports) {
+    await page.setViewportSize(viewport);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const main = page.locator('main[data-homepage-variant="v2"]');
+    const footer = page.locator('footer');
+
+    await expect(main.locator('[data-home-section]')).toHaveCount(7);
+    expect(
+      await main
+        .locator('[data-home-section]')
+        .evaluateAll((sections) =>
+          sections.map((section) => section.getAttribute('data-home-section')),
+        ),
+    ).toEqual([
+      'hero',
+      'featured-project',
+      'project-pathways',
+      'selected-projects',
+      'planning-options',
+      'design-build-process',
+      'qualified-enquiry',
+    ]);
+    await expect(
+      main.locator(
+        '[data-home-section="planning-options"] details[data-mobile-disclosure]',
+      ),
+    ).toHaveCount(2);
+    await expect(
+      main.locator('details[data-mobile-disclosure]'),
+    ).toHaveCount(5);
+    await expect(
+      main.locator('[data-home-section="client-review"]'),
+    ).toHaveCount(0);
+    await expect(
+      main.locator('[data-home-section="qualified-enquiry"] [data-home-review]'),
+    ).toHaveCount(1);
+    await expect(
+      main
+        .getByRole('navigation', { name: 'Featured pergola guides' })
+        .getByRole('link'),
+    ).toHaveCount(2);
+
+    await expect(footer.locator('a[href="tel:+64228545633"]')).toHaveText(
+      '022 854 5633',
+    );
+    await expect(
+      footer.locator('a[href="mailto:info@sanctuarypergolas.co.nz"]'),
+    ).toHaveText('info@sanctuarypergolas.co.nz');
+    await expect(
+      footer.getByRole('navigation', { name: 'Footer navigation' }).getByRole(
+        'link',
+      ),
+    ).toHaveCount(3);
+    await expect(
+      footer.getByRole('link', { name: 'Discuss your project' }),
+    ).toHaveAttribute('href', '/contact');
+
+    const footerState = await footer.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const targets = [
+        ...element.querySelectorAll<HTMLElement>('a[href], button'),
+      ]
+        .filter((target) => target.checkVisibility())
+        .map((target) => {
+          const bounds = target.getBoundingClientRect();
+          return {
+            height: Math.round(bounds.height),
+            label:
+              target.getAttribute('aria-label') ??
+              target.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80),
+            width: Math.round(bounds.width),
+          };
+        });
+      return {
+        height: Math.round(element.scrollHeight),
+        minHeight: style.minHeight,
+        undersized: targets.filter(
+          ({ width, height }) => width < 44 || height < 44,
+        ),
+      };
+    });
+    expect(footerState.minHeight).toBe('0px');
+    expect(footerState.undersized).toEqual([]);
+    expect(footerState.height).toBeLessThan(900);
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth + 1,
+      ),
+    ).toBe(true);
+  }
+});

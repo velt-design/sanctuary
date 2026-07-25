@@ -11,93 +11,91 @@ type SiteFooterProps = {
 
 export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProps) {
   return (
-    <footer className="bg-[#121212] text-[#f5f6f7] min-h-[100dvh] flex items-center justify-center relative">
-      <div className="mx-auto w-full max-w-5xl px-8 md:px-12 py-16 grid gap-16 md:grid-cols-2">
-        {/* Left column: navigation + privacy + social */}
-        <div className="flex flex-col items-start text-left gap-10 pl-2 md:pl-6">
-          <nav
-            aria-label="Footer navigation"
-            className="space-y-5 text-lg md:text-3xl font-medium tracking-[0.18em] uppercase"
+    <footer className="relative bg-[#121212] text-[#f5f6f7]">
+      <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 py-12 sm:px-8 md:grid-cols-2 md:px-12 md:py-16 lg:grid-cols-[1.15fr_0.85fr_0.9fr]">
+        <section aria-labelledby="footer-contact-heading" className="grid content-start gap-5">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#f5f6f7]/65">
+            Have a project in mind?
+          </p>
+          <h2 id="footer-contact-heading" className="max-w-lg text-3xl font-semibold tracking-[0.08em] uppercase sm:text-4xl">
+            Start with the site and intended use.
+          </h2>
+          <Link
+            href="/contact"
+            className="inline-flex min-h-11 w-fit items-center justify-center border border-[#f5f6f7] px-6 py-3 text-sm font-medium tracking-[0.16em] uppercase lg:hover:bg-[#f5f6f7] lg:hover:text-[#121212]"
           >
-            <div>
-              <Link href="/" className="lg:hover:opacity-80">
-                Home
-              </Link>
-            </div>
-            <div>
-              <Link href="/products" className="lg:hover:opacity-80">
-                Products
-              </Link>
-            </div>
-            <div>
-              <Link href="/projects" className="lg:hover:opacity-80">
-                Projects
-              </Link>
-            </div>
-            <div>
-              <Link href="/pergola-guides" className="lg:hover:opacity-80">
-                Pergola Guides
-              </Link>
-            </div>
-            <div>
-              <Link href="/contact" className="lg:hover:opacity-80">
-                Contact
-              </Link>
-            </div>
+            Discuss your project
+          </Link>
+          <div className="grid gap-1 text-sm">
+            <a
+              href="tel:+64228545633"
+              className="inline-flex min-h-11 w-fit items-center underline underline-offset-4 lg:hover:opacity-80"
+            >
+              022 854 5633
+            </a>
+            <a
+              href="mailto:info@sanctuarypergolas.co.nz"
+              className="inline-flex min-h-11 w-fit items-center break-all underline underline-offset-4 lg:hover:opacity-80"
+            >
+              info@sanctuarypergolas.co.nz
+            </a>
+          </div>
+        </section>
+
+        <section aria-labelledby="footer-pathways-heading" className="grid content-start gap-4">
+          <h2 id="footer-pathways-heading" className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f5f6f7]/65">
+            Project pathways
+          </h2>
+          <nav aria-label="Footer navigation" className="grid text-sm font-medium uppercase tracking-[0.12em]">
+            <Link href="/commercial-pergolas-auckland" className="inline-flex min-h-11 items-center border-b border-white/15 lg:hover:opacity-80">
+              Commercial
+            </Link>
+            <Link href="/architects-designers-builders" className="inline-flex min-h-11 items-center border-b border-white/15 lg:hover:opacity-80">
+              Architects, designers &amp; builders
+            </Link>
+            <Link href="/pergola-guides" className="inline-flex min-h-11 items-center border-b border-white/15 lg:hover:opacity-80">
+              Pergola Guides
+            </Link>
           </nav>
+          <ReviewBadge
+            className="min-h-11"
+            rating={reviewRating}
+            count={reviewCount}
+            variant="onDark"
+          />
+        </section>
 
-          <div className="space-y-3 text-xs md:text-base tracking-[0.22em] uppercase text-[#f5f6f7]/80">
-            <div>
-              <Link href="/privacy" className="underline underline-offset-4 lg:hover:opacity-80">
-                Privacy Policy
-              </Link>
-            </div>
-            <div className="flex items-center gap-6">
-              <a
-                href="https://www.instagram.com/sanctuarypergolas/"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-4 lg:hover:opacity-80"
-              >
-                Instagram
-              </a>
-              <a
-                href="https://www.facebook.com/SanctuaryPergolas"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-4 lg:hover:opacity-80"
-              >
-                Facebook
-              </a>
-            </div>
-          </div>
-
-          <ReviewBadge rating={reviewRating} count={reviewCount} variant="onDark" />
-        </div>
-
-        {/* Right column: CTA and warehouse address */}
-        <div className="flex flex-col items-end text-right gap-10 pr-2 md:pr-6">
-          <div className="space-y-6 md:space-y-8">
-            <p className="text-xs md:text-base font-medium uppercase tracking-[0.2em] text-[#f5f6f7]/70">
-              Have a project in mind?
-            </p>
-            <h2 className="text-3xl font-semibold tracking-[0.18em] uppercase sm:text-4xl md:text-5xl">
-              <Link
-                href="/contact"
-                className="inline-flex items-center justify-center border border-[#f5f6f7] px-7 py-3 text-sm md:text-lg font-medium tracking-[0.22em] uppercase lg:hover:bg-[#f5f6f7] lg:hover:text-[#121212]"
-              >
-                Let&apos;s talk
-              </Link>
+        <section aria-labelledby="footer-details-heading" className="grid content-start gap-5 text-sm leading-relaxed">
+          <div>
+            <h2 id="footer-details-heading" className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#f5f6f7]/65">
+              Auckland warehouse
             </h2>
-          </div>
-
-          <div className="mt-auto space-y-1 text-sm md:text-lg leading-relaxed">
-            <p className="font-semibold md:text-xl tracking-[0.18em] uppercase text-[#f5f6f7]/80">Warehouse</p>
             <p>71G Montgomerie Road</p>
             <p>Mangere, Auckland 2022</p>
             <p>New Zealand</p>
           </div>
-        </div>
+          <nav aria-label="Footer legal and social links" className="flex flex-wrap gap-x-5 text-xs uppercase tracking-[0.12em]">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center underline underline-offset-4 lg:hover:opacity-80">
+              Privacy
+            </Link>
+            <a
+              href="https://www.instagram.com/sanctuarypergolas/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center underline underline-offset-4 lg:hover:opacity-80"
+            >
+              Instagram
+            </a>
+            <a
+              href="https://www.facebook.com/SanctuaryPergolas"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center underline underline-offset-4 lg:hover:opacity-80"
+            >
+              Facebook
+            </a>
+          </nav>
+        </section>
       </div>
     </footer>
   );
