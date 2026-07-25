@@ -1,41 +1,67 @@
 import * as React from 'react';
-import { Img, Section } from '@react-email/components';
+import { Img, Link, Section, Text } from '@react-email/components';
+import type { WebsiteAutoresponderHero } from '../../lib/websiteAutoresponderHero';
+import { THEME } from '../theme';
 
-export const ENQUIRY_HERO_IMAGE_URL =
-  'https://www.sanctuarypergolas.co.nz/images/riverhead-gable-01.jpg';
-
-export function HeroImage() {
+export function HeroImage({ hero }: { hero: WebsiteAutoresponderHero }) {
   return (
     <Section style={{ margin: '0 0 28px' }}>
-      <Img
-        src={ENQUIRY_HERO_IMAGE_URL}
-        alt="Timber-lined gable pergola by Sanctuary Pergolas"
-        style={{
-          display: 'block',
-          width: '100%',
-          maxWidth: '100%',
-          height: 'auto',
-          border: '0',
-        }}
-      />
+      <Link href={hero.projectHref} style={{ display: 'block', textDecoration: 'none' }}>
+        <Img
+          src={hero.imageUrl}
+          alt={hero.imageAlt}
+          style={{
+            display: 'block',
+            width: '100%',
+            maxWidth: '100%',
+            height: 'auto',
+            border: '0',
+          }}
+        />
+      </Link>
       <Section
         style={{
-          padding: '9px 0 0',
-          borderTop: '1px solid #C7CAC3',
+          padding: '11px 0 0',
+          borderTop: `1px solid ${THEME.ruleStrong}`,
         }}
       >
-        <span
+        <Text
           style={{
-            color: '#6B6F68',
-            fontFamily: 'Arial, "Helvetica Neue", Helvetica, sans-serif',
+            margin: '0 0 3px',
+            color: THEME.subtle,
+            fontFamily: THEME.font,
             fontSize: 9,
             lineHeight: 1.4,
-            letterSpacing: '0.08em',
+            letterSpacing: '0.12em',
             textTransform: 'uppercase',
           }}
         >
-          Riverhead gable pergola · Designed and built by Sanctuary
-        </span>
+          Completed Sanctuary project
+        </Text>
+        <Link
+          href={hero.projectHref}
+          style={{
+            color: THEME.text,
+            fontFamily: THEME.font,
+            fontSize: 12,
+            fontWeight: 700,
+            lineHeight: 1.45,
+            textDecoration: 'none',
+          }}
+        >
+          {hero.projectTitle} · {hero.location}
+        </Link>
+        <Text
+          style={{
+            margin: '3px 0 0',
+            color: THEME.subtle,
+            fontFamily: THEME.font,
+            fontSize: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          {hero.roofApproach}
+        </Text>
       </Section>
     </Section>
   );

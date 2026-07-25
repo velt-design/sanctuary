@@ -24,5 +24,5 @@ export const THEME = {
   // Email-safe system stack
   font: 'Arial, "Helvetica Neue", Helvetica, sans-serif',
 
-  maxWidth: 640,
+  maxWidth: 760,
 };

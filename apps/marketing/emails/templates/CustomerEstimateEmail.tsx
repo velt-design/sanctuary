@@ -10,6 +10,7 @@ import { Summary } from '../components/Summary';
 import { customerEstimatePreheader } from '../customerAutoresponderCopy';
 import { formatNZD } from '../utils/money';
 import type { ResidentialOrCommercial } from '../types';
+import { resolveWebsiteAutoresponderHero } from '../../lib/websiteAutoresponderHero';
 
 type CustomerEstimateEmailProps = ResidentialOrCommercial & {
   callWindowText: string;
@@ -66,6 +67,7 @@ function dimensions(props: ResidentialOrCommercial): string {
 
 export function CustomerEstimateEmail(props: CustomerEstimateEmailProps) {
   const isCommercial = props.enquiryType === 'commercial';
+  const hero = resolveWebsiteAutoresponderHero(props);
   const baseIsSingleAmount = props.baseRange.lowIncGst === props.baseRange.highIncGst;
   const baseRange = formatInvestmentAmount(props.baseRange, formatNZD);
   const blindsRange =
@@ -83,7 +85,7 @@ export function CustomerEstimateEmail(props: CustomerEstimateEmailProps) {
 
   return (
     <EmailLayout preview={customerEstimatePreheader(props.enquiryType, props.baseRange)}>
-      <HeroImage />
+      <HeroImage hero={hero} />
 
       <EmailIntro
         eyebrow={`${isCommercial ? 'Commercial' : 'Residential'} enquiry · received`}

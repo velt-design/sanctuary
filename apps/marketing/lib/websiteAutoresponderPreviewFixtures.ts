@@ -49,7 +49,7 @@ const residentialWithBlinds: ResidentialOrCommercial = {
   depthM: 3.6,
   heightM: 2.7,
   style: 'Gable',
-  roof: 'Acrylic',
+  roof: 'Both',
   addons: ['Outdoor blinds', 'Integrated lighting'],
   blindsSelected: true,
   baseRange: { lowIncGst: 27_500, highIncGst: 27_500 },
@@ -63,6 +63,11 @@ const residentialWithBlinds: ResidentialOrCommercial = {
 
 const residentialWithoutBlinds: ResidentialOrCommercial = {
   ...residentialWithBlinds,
+  suburb: 'Tindalls Bay',
+  message:
+    'We want a single-pitch outdoor dining roof with a warmer lined zone while keeping daylight near the house.',
+  style: 'Pitched',
+  roof: 'Both',
   addons: ['Integrated lighting', 'Heating'],
   blindsSelected: false,
   blindsRange: undefined,
@@ -73,14 +78,14 @@ const residentialWithoutBlinds: ResidentialOrCommercial = {
 const commercial: ResidentialOrCommercial = {
   ...baseLead,
   enquiryType: 'commercial',
-  suburb: 'Grey Lynn',
+  suburb: 'Tamaki Drive',
   message:
     'The covered terrace needs to support day-to-day hospitality use while keeping clear movement along the shopfront.',
   widthM: 8.5,
   depthM: 4.2,
   heightM: 3.2,
-  style: 'Hip',
-  roof: 'Acrylic and timber-lined',
+  style: 'Pitched',
+  roof: 'Acrylic',
   addons: ['Integrated lighting', 'Fans'],
   blindsSelected: false,
   baseRange: { lowIncGst: 52_500, highIncGst: 52_500 },
@@ -89,6 +94,11 @@ const commercial: ResidentialOrCommercial = {
 
 const commercialWithBlinds: ResidentialOrCommercial = {
   ...commercial,
+  suburb: 'Takanini',
+  message:
+    'We need a gable roof over a hospitality courtyard, with integrated lighting and blinds to manage the exposed edges.',
+  style: 'Gable',
+  roof: 'Acrylic',
   addons: ['Outdoor blinds', 'Integrated lighting', 'Fans'],
   blindsSelected: true,
   blindsRange: { lowIncGst: 14_900, highIncGst: 17_250 },

@@ -9,6 +9,29 @@ import {
 } from './websiteAutoresponderPreviewFixtures';
 
 describe('website autoresponder preview fixtures', () => {
+  const expectedHeroByVariant = {
+    residential: {
+      title: 'Warkworth Outdoor Room',
+      image: '/images/project-warkworth-outdoor-room-07.jpg',
+    },
+    'residential-no-blinds': {
+      title: 'Tindalls Bay - Patio & Carport',
+      image: '/images/project-tindalls-bay-03.jpg',
+    },
+    commercial: {
+      title: 'Lilliput Mini Golf',
+      image: '/images/project-tamaki-dr-01.jpg',
+    },
+    'commercial-with-blinds': {
+      title: 'The Good Home Takanini',
+      image: '/images/project-goodhome-03.jpg',
+    },
+    professional: {
+      title: 'KiwiRail Head Office',
+      image: '/images/project-kiwi-rail-01.jpg',
+    },
+  } as const;
+
   it.each(WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS)(
     'renders the exact production contract for %s',
     async (variant) => {
@@ -23,6 +46,8 @@ describe('website autoresponder preview fixtures', () => {
       expect(rendered.html).toContain('Sanctuary');
       expect(rendered.text).toContain('Project details received');
       expect(rendered.text).not.toContain('within 30 minutes');
+      expect(rendered.text).toContain(expectedHeroByVariant[variant].title);
+      expect(rendered.html).toContain(expectedHeroByVariant[variant].image);
 
       if (fixture.templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) {
         expect(rendered.subject).toBe("Alex, we've received your project enquiry");

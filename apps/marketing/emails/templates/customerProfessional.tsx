@@ -8,6 +8,7 @@ import { ReplyInvitation } from '../components/ReplyInvitation';
 import { Summary } from '../components/Summary';
 import { PROFESSIONAL_ENQUIRY_PREHEADER } from '../customerAutoresponderCopy';
 import type { Professional } from '../types';
+import { resolveWebsiteAutoresponderHero } from '../../lib/websiteAutoresponderHero';
 
 const professionalSteps: readonly EmailNextStep[] = [
   {
@@ -32,9 +33,11 @@ function supplied(value: unknown): string {
 }
 
 export function CustomerProfessionalEmail(props: Professional & { callWindowText: string }) {
+  const hero = resolveWebsiteAutoresponderHero(props);
+
   return (
     <EmailLayout preview={PROFESSIONAL_ENQUIRY_PREHEADER}>
-      <HeroImage />
+      <HeroImage hero={hero} />
 
       <EmailIntro
         eyebrow="Professional enquiry · received"

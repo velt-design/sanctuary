@@ -67,6 +67,23 @@ The email preview route renders an outbox row by template ID and variables. It u
 
 `/staff/email-previews` is the fixture-only staging review surface for the website autoresponder. Its staff-authenticated API renders the same stable template IDs, subject, preheader, HTML and plain text used by the production customer sender. Residential, residential without blinds, commercial, commercial with blinds and professional variants use repository fixtures only. Preview delivery reads `RESEND_API_KEY_PREVIEW` and the single `EMAIL_PREVIEW_TO` recipient on the server, omits the production BCC, and is unavailable unless `EMAIL_PREVIEW_ENABLED=true` in a Vercel Preview deployment (or local development/test). The browser may select only a fixture variant; it cannot supply recipients or provider credentials. This path does not call enquiry intake or write contacts, projects, estimates, enquiries, outbox rows or audit records.
 
+Website autoresponder hero imagery is resolved centrally by `apps/marketing/lib/websiteAutoresponderHero.ts` from the governed records in `apps/marketing/data/projects.ts`. The email identifies the image as a completed Sanctuary project and states that project's recorded roof approach; it does not claim the pictured build is an exact preview of the submitted project. The current selection policy is:
+
+| Enquiry selection | Completed project shown | Evidence note |
+| --- | --- | --- |
+| Gable with mixed acrylic and solid or timber-lined roofing | Warkworth Outdoor Room | Exact published gable and mixed-roof reference |
+| Gable with a solid or timber-lined roof | Riverhead Gable Pavilion | Exact published gable and timber-sarking reference |
+| Residential gable with acrylic | Dairy Flat Estate | Exact published residential gable and acrylic reference |
+| Commercial gable with acrylic | The Good Home Takanini | Exact published commercial gable and acrylic reference |
+| Pitched with acrylic | Lilliput Mini Golf | Exact published pitched and acrylic reference |
+| Pitched with mixed or timber-lined roofing | Tindalls Bay - Patio & Carport | Published pitched project with insulated, acrylic and timber-lined zones |
+| Hip, any roof selection | Muriwai Courtyard | Exact form; exact material only when acrylic is selected |
+| Box perimeter, any roof selection | Mt Maunganui Box | Exact form; exact material only when acrylic is selected |
+| Professional enquiry | KiwiRail Head Office | Published architect-led commercial collaboration |
+| Missing or unclear selection | Warkworth Outdoor Room | Governed homepage evidence fallback |
+
+The customer email shell uses a 760 px maximum desktop width, a fluid 100% table width and small-screen media-query padding reductions. Critical structure, typography and image sizing remain inline and table-based so the message is still usable in clients that ignore media queries.
+
 Residential, commercial, and professional enquiry file uploads are stored, not just counted. The browser mints signed upload URLs via `apps/marketing/app/api/enquiry/attachments/sign` and uploads directly to the private `enquiry-attachments` Supabase Storage bucket (bypassing the serverless request-body limit); the enquiry payload carries only storage paths. Signing is same-origin, durably rate-limited, and creates a 15-minute server-owned session bound to the client submission UUID, a token hash, and the exact expected paths/metadata. Intake accepts at most eight PDF/JPEG/PNG/WebP files and 20 MB total, checks matching extensions, sizes, private path ownership, session expiry/consumption, and downloaded content signatures before the atomic RPC consumes the session. A path or session from another submission cannot be attached.
 
 On send, `apps/marketing/app/api/enquiry` either inlines verified files as autoresponder attachments (total <= 8 MB) or adds 7-day signed download links to the matching residential, commercial, or professional template. Staff receive the same files or links via the autoresponder BCC. Storage transport remains best-effort: a missing client configuration or failed direct upload degrades that file to validated metadata-only and does not block the enquiry. Requires `NEXT_PUBLIC_SUPABASE_ANON_KEY` for direct browser upload. The authenticated daily cleanup route removes objects for expired unconsumed sessions; database retention removes stale rate-limit state after two days and consumed session bindings after 30 days.

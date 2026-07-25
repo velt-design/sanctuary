@@ -23,6 +23,7 @@ export function EmailIntro(props: {
         {props.eyebrow}
       </Text>
       <Heading
+        className="sp-email-heading"
         as="h1"
         style={{
           margin: '0 0 16px',

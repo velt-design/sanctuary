@@ -5,6 +5,7 @@ import { THEME } from '../theme';
 export function ReplyInvitation(props: { copy: string }) {
   return (
     <Section
+      className="sp-email-reply"
       style={{
         margin: '4px 0 0',
         padding: '22px',

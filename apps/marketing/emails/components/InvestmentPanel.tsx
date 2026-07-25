@@ -22,6 +22,7 @@ export function InvestmentPanel(props: {
   return (
     <>
       <Section
+        className="sp-email-investment"
         style={{
           margin: '24px 0 12px',
           padding: '26px 24px 24px',

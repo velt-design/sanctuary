@@ -8,7 +8,7 @@ import {
   customerEstimateSubject,
   professionalEnquirySubject,
 } from '../../lib/sharedEmails';
-import { ENQUIRY_HERO_IMAGE_URL } from '../components/HeroImage';
+import { resolveWebsiteAutoresponderHero } from '../../lib/websiteAutoresponderHero';
 import { INVESTMENT_PANEL_BACKGROUND } from '../components/InvestmentPanel';
 import type { Professional, ResidentialOrCommercial } from '../types';
 import { CustomerCommercialEmail } from './customerCommercial';
@@ -66,12 +66,16 @@ describe('customer estimate autoresponder emails', () => {
       plainText: true,
     });
     const normalizedText = text.toLowerCase();
+    const hero = resolveWebsiteAutoresponderHero(residential);
 
-    expect(html).toContain(ENQUIRY_HERO_IMAGE_URL);
+    expect(html).toContain(hero.imageUrl);
     expect(html).not.toContain('email-logo.png');
     expect(html).toContain(INVESTMENT_PANEL_BACKGROUND);
-    expect(html).toContain('max-width:640px');
+    expect(html).toContain('max-width:760px');
+    expect(html).toContain('@media only screen and (max-width: 620px)');
     expect(normalizedText).toContain('sanctuary');
+    expect(text).toContain('Completed Sanctuary project');
+    expect(text).toContain('Dairy Flat Estate');
     expect(text).toContain('Bespoke pergolas, built around the architecture.');
     expect(normalizedText).toContain('residential enquiry · received');
     expect(normalizedText).toContain('thanks, alex morgan. your project starts here.');
@@ -153,6 +157,7 @@ describe('customer estimate autoresponder emails', () => {
     );
     expect(text).toContain('We review the brief');
     expect(text).toContain('We agree the useful response');
+    expect(text).toContain('KiwiRail Head Office');
     expect(text).toContain('Studio North Architects');
     expect(text).not.toContain('within 30 minutes');
     expect(PROFESSIONAL_ENQUIRY_PREHEADER).toContain('Your brief is with Sanctuary');
