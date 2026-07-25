@@ -15,7 +15,9 @@ type ProjectMobileFactSummary = {
   roofApproach: string;
 };
 
-export function getProjectFormLabel(project: Project): string {
+export function getProjectFormLabel(
+  project: Pick<Project, 'roof'>,
+): string {
   return project.roof === 'Perimeter' ? 'Box-perimeter' : project.roof;
 }
 

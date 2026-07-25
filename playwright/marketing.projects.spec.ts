@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ROOF_MATERIAL_MEDIA } from '../apps/marketing/app/start/startFlowMedia';
-import { projects } from '../apps/marketing/data/projects';
+import { projects, type Project } from '../apps/marketing/data/projects';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
-const representativeRoute = `/projects/${projects[0].slug}`;
+const representativeProject = projects[0];
+const representativeRoute = `/projects/${representativeProject.slug}`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const mobileRefinementRoutes = [
   {
@@ -45,6 +46,14 @@ function visibleMain(page: Page) {
 
 function visibleProjectsMain(page: Page) {
   return page.locator('main[data-projects-experience]:visible').last();
+}
+
+function projectGalleryItemCount(project: Project) {
+  const heroImage = project.caseStudyHeroImage ?? project.heroImage;
+  return new Set([
+    heroImage.src,
+    ...project.gallery.map((image) => image.src),
+  ]).size - 1;
 }
 
 async function expectNoPageOverflow(page: Page) {
@@ -160,7 +169,9 @@ test('mobile project index is one image-led semantic card sequence at every targ
     const main = visibleProjectsMain(page);
     const cards = visibleProjectCards(page);
     await expect(main.locator('h1:visible')).toHaveText('Pergola projects and case studies');
-    await expect(main.locator('.project-case-study')).toBeHidden();
+    await expect(main.locator('.project-case-study')).toHaveCount(0);
+    await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
+    await expect(main.locator('.project-case-study__gallery')).toHaveCount(0);
     await expect(main.locator('.project-navigator__trigger')).toHaveCount(0);
     await expect(main.locator('.project-navigator__list')).toHaveCount(1);
     await expect(main.getByRole('navigation', { name: 'Project case studies' }))
@@ -232,6 +243,62 @@ test('mobile project index is one image-led semantic card sequence at every targ
     await expectNoNestedVerticalScroll(page);
     await expectMinimumTouchTargets(page);
     await expectLogicalVisibleHeadingOrder(page);
+  }
+});
+
+test('mobile collection omits hidden project detail markup, payload and media requests', async ({
+  browser,
+}, testInfo) => {
+  test.slow();
+  const baseURL = String(testInfo.project.use.baseURL);
+  const selectedProject = projects.find((project) => project.slug === 'velskov-forest');
+  expect(selectedProject).toBeTruthy();
+
+  for (const width of [430, 390, 360]) {
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    const projectMediaRequests: string[] = [];
+    page.on('request', (request) => {
+      if (
+        ['image', 'media'].includes(request.resourceType())
+        || request.url().includes('youtube')
+      ) {
+        projectMediaRequests.push(request.url());
+      }
+    });
+
+    const response = await page.goto(
+      `/projects?slug=${selectedProject!.slug}&audience=residential`,
+      { waitUntil: 'networkidle' },
+    );
+    expect(response?.ok()).toBe(true);
+    const html = await response!.text();
+    const main = visibleProjectsMain(page);
+
+    await expect(main.locator('[data-project-case-study]')).toHaveCount(0);
+    await expect(main.locator('.project-case-study__gallery')).toHaveCount(0);
+    await expect(main.locator('.project-case-study iframe')).toHaveCount(0);
+    await expect(visibleProjectCards(page)).toHaveCount(
+      projects.filter((project) => project.type === 'Residential').length,
+    );
+    expect(html).not.toContain('data-project-case-study');
+    expect(html).not.toContain(selectedProject!.constraint);
+    expect(html).not.toContain('/images/project-velskov-02.jpg');
+    expect(html).not.toContain('/images/project-velskov-03.jpg');
+    expect(Buffer.byteLength(html)).toBeLessThan(150_000);
+    expect(
+      projectMediaRequests.filter((url) => url.includes('project-velskov')),
+    ).toEqual([]);
+    expect(
+      projectMediaRequests.filter((url) => url.includes('youtube')),
+    ).toEqual([]);
+
+    await context.close();
   }
 });
 
@@ -633,6 +700,8 @@ for (const viewport of [
     await expectNoPageOverflow(page);
 
     if (viewport.width >= 900) {
+      await expect(main.locator('[data-project-gallery-layout="desktop"]')).toBeVisible();
+      await expect(main.locator('[data-responsive-gallery]')).toBeHidden();
       await expect(main.locator('.project-navigator__panel')).toBeVisible();
       await expect(main.locator('.project-navigator__trigger')).toBeHidden();
       await expect(main.locator(
@@ -643,6 +712,46 @@ for (const viewport of [
         'details[data-project-mobile-disclosure="brief"] summary',
       )).toBeHidden();
     } else {
+      const gallery = main.locator('[data-responsive-gallery]');
+      const expectedPosition = `1/${projectGalleryItemCount(representativeProject)}`;
+      await expect(main.locator('[data-project-gallery-layout="desktop"]')).toBeHidden();
+      await expect(gallery).toBeVisible();
+      await expect(gallery).toHaveAttribute('data-gallery-position', expectedPosition);
+      await expect(gallery).toHaveAttribute('data-gallery-swipe', 'true');
+      await expect(gallery.locator('img')).toHaveCount(1);
+      await expect(gallery.getByRole('status')).toHaveText(
+        `Image ${expectedPosition.replace('/', ' of ')}`,
+      );
+
+      for (const control of await gallery.getByRole('button').all()) {
+        const box = await control.boundingBox();
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+      }
+
+      const next = gallery.getByRole('button', { name: /Next image/ });
+      await next.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(next).toBeFocused();
+      const focusState = await next.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          outlineStyle: style.outlineStyle,
+          outlineWidth: Number.parseFloat(style.outlineWidth),
+        };
+      });
+      expect(focusState.outlineStyle).not.toBe('none');
+      expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
+      await next.click();
+      await expect(gallery).toHaveAttribute(
+        'data-gallery-position',
+        `2/${projectGalleryItemCount(representativeProject)}`,
+      );
+      await expect(next).toBeFocused();
+      await gallery.focus();
+      await page.keyboard.press('Home');
+      await expect(gallery).toHaveAttribute('data-gallery-position', expectedPosition);
       await expect(main.locator('.project-navigator__trigger')).toBeVisible();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
@@ -770,6 +879,58 @@ test('technical detail, contextual links, related work, and circular project nav
   await expect(main.locator('.project-case-study__related-list a')).not.toHaveCount(0);
   await expect(main.locator('.project-case-study__pagination a')).toHaveCount(2);
   await expect(main.locator('.project-case-study__intro-actions a')).not.toHaveCount(0);
+
+  const relatedProject = main.locator('.project-case-study__related-list a').first();
+  const relatedProjectHref = await relatedProject.getAttribute('href');
+  await relatedProject.click();
+  await expect(page).toHaveURL(new RegExp(`${relatedProjectHref}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+
+  const previousProject = main.locator('.project-case-study__pagination a[rel="prev"]');
+  const previousProjectHref = await previousProject.getAttribute('href');
+  await previousProject.click();
+  await expect(page).toHaveURL(new RegExp(`${previousProjectHref}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+
+  const gallery = main.locator('[data-responsive-gallery]');
+  await gallery.getByRole('button', { name: /Next image/ }).click();
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `2/${projectGalleryItemCount(representativeProject)}`,
+  );
+  await expect(main.locator(
+    '.project-case-study__intro-actions .project-action--primary',
+  )).toHaveAttribute('href', buildEnquiryHref({
+    enquiryType: representativeProject.type === 'Commercial'
+      ? 'commercial'
+      : 'residential',
+    sourcePath: representativeRoute,
+    sourceComponent: 'project_cta',
+    sourceProject: representativeProject.slug,
+  }));
+
+  const nextProject = main.locator('.project-case-study__pagination a[rel="next"]');
+  const nextProjectHref = await nextProject.getAttribute('href');
+  await nextProject.click();
+  await expect(page).toHaveURL(new RegExp(`${nextProjectHref}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+
+  await main.locator('.project-case-study__breadcrumbs a').click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(visibleProjectCards(page)).toHaveCount(projects.length);
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+
+  await page.reload();
+  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toHaveAttribute(
+    'data-gallery-position',
+    `1/${projectGalleryItemCount(representativeProject)}`,
+  );
 });
 
 test('project disclosures are native, keyboard operable, and expanded on desktop', async ({
@@ -836,8 +997,12 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
   await page.goto(representativeRoute);
   await dismissConsent(page);
 
-  const gallery = visibleProjectsMain(page).locator('.project-case-study__gallery');
+  const gallery = visibleProjectsMain(page).locator('[data-responsive-gallery]');
   await gallery.scrollIntoViewIfNeeded();
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `1/${projectGalleryItemCount(representativeProject)}`,
+  );
   const box = await gallery.boundingBox();
   expect(box).not.toBeNull();
 
@@ -858,7 +1023,10 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
     touchPoints: [],
   });
 
-  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `2/${projectGalleryItemCount(representativeProject)}`,
+  );
   await expectNoPageOverflow(page);
   await context.close();
 });

@@ -349,6 +349,17 @@ Final focused results:
 - density-refinement evidence: 44 PNG files across before, after, mobile,
   desktop, top-of-page and scrolled-density states.
 
+Phase 2 follow-up, 25 July 2026:
+
+- `/projects` no longer mounts the selected case-study tree below 900px.
+  Same-environment production capture records 84,549 HTML bytes and 288 DOM
+  nodes after the release, down from 174,571 bytes and 510 nodes.
+- Mobile project details use the shared controlled gallery with one active
+  image, visible 44px controls, announced position, keyboard support and
+  optional touch swipe. The desktop mosaic remains unchanged.
+- Fourteen production smoke checks and a zero-CLS review passed at 430px,
+  390px and 360px. Evidence is under `artifacts/mobile-ux-phase-2/`.
+
 ## Remaining risks and deliberate deferrals
 
 - The earlier open-then-close disclosure risk is resolved. The server retains
@@ -376,5 +387,6 @@ Final focused results:
   restructuring remain aligned to the later product migration. Removing
   primary options, evidence or trade-offs would weaken the current decision
   path.
-- Project-index and project-detail copy, records and roadmap PR 10 remain
-  deliberately untouched.
+- Project-index and project-detail copy, records, photography and desktop
+  composition remain deliberately untouched; Phase 2 changed payload and
+  mobile gallery interaction only.

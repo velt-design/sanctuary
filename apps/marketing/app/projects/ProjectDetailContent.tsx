@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Project } from '@/data/projects';
 import { buildEnquiryHref } from '@/lib/enquiryContext';
 import MobileProjectDisclosure from './MobileProjectDisclosure';
+import ProjectGallery from './ProjectGallery';
 import {
   getProjectContextLinks,
   getProjectFacts,
@@ -13,7 +14,7 @@ import {
   getProjectTechnicalSections,
 } from './projectPresentation';
 
-type ProjectDetailContentProps = {
+export type ProjectDetailContentProps = {
   project: Project | null;
   projectIndex: number;
   projectCount: number;
@@ -232,28 +233,9 @@ export default function ProjectDetailContent({
               <p className="project-case-study__eyebrow">Project gallery</p>
               <h2 id="project-gallery-title">See the project in detail.</h2>
             </div>
-            <p>Swipe through the project on smaller screens.</p>
+            <p>Use the controls or swipe on smaller screens.</p>
           </div>
-          <div className="project-case-study__gallery">
-            {detailImages.map((image, index) => (
-              <figure key={image.src}>
-                <div className="project-case-study__gallery-media">
-                  <Image
-                    src={image.src}
-                    alt={image.alt}
-                    fill
-                    loading="lazy"
-                    sizes="(max-width: 899px) 84vw, (max-width: 1280px) 52vw, 720px"
-                    style={{ objectPosition: image.objectPosition ?? 'center' }}
-                  />
-                </div>
-                <figcaption>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <span>{image.alt}</span>
-                </figcaption>
-              </figure>
-            ))}
-          </div>
+          <ProjectGallery images={detailImages} projectTitle={project.title} />
         </section>
       ) : null}
 
