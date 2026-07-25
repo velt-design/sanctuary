@@ -40,7 +40,9 @@ describe('website autoresponder preview sender', () => {
       './sendWebsiteAutoresponderPreview'
     );
 
-    const result = await sendWebsiteAutoresponderPreview('residential');
+    const result = await sendWebsiteAutoresponderPreview(
+      'residential-gable-with-blinds',
+    );
 
     expect(h.createResendEmailGateway).toHaveBeenCalledWith({
       apiKey: 'preview-test-api-key',
@@ -58,7 +60,7 @@ describe('website autoresponder preview sender', () => {
     expect(message.text).toContain('Project details received');
     expect(options).toMatchObject({ timeoutMs: 15_000 });
     expect(options.idempotencyKey).toMatch(
-      /^website-autoresponder-preview:residential:/,
+      /^website-autoresponder-preview:residential-gable-with-blinds:/,
     );
     expect(result).toMatchObject({
       recipient: 'jordan@sanctuarypergolas.co.nz',
@@ -101,7 +103,9 @@ describe('website autoresponder preview sender', () => {
       recipient: null,
       reason: 'environment_not_allowed',
     });
-    await expect(sendWebsiteAutoresponderPreview('commercial')).rejects.toMatchObject({
+    await expect(
+      sendWebsiteAutoresponderPreview('commercial-pitched-without-blinds'),
+    ).rejects.toMatchObject({
       code: 'EMAIL_PREVIEW_UNAVAILABLE',
     });
   });

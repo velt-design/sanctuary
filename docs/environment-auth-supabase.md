@@ -49,7 +49,7 @@ Common optional or feature-specific variables:
 
 Never commit real env files. `.env*` is ignored.
 
-The marketing autoresponder inbox review is available only when the portal runs in a Vercel Preview environment, or locally in development/test, and `EMAIL_PREVIEW_ENABLED=true`. Configure all three preview variables on the `sanctuary-portal` Vercel project for Preview only. Production remains unavailable even if the flag is accidentally set. The current review recipient is `jordan@sanctuarypergolas.co.nz`.
+The marketing autoresponder inbox review is available only when the portal runs in a Vercel Preview environment, or locally in development/test, and `EMAIL_PREVIEW_ENABLED=true`. Configure all three preview variables on the `sanctuary-portal` Vercel project for Preview only. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value (normally beginning `re_`), not the display name assigned to that key in Resend. Redeploy the branch after adding or changing any preview variable because an already-built deployment does not receive the new value. Production remains unavailable even if the flag is accidentally set. The current review recipient is `jordan@sanctuarypergolas.co.nz`. The staff preview page reports the exact safe configuration reason when sending is not ready.
 
 ## Staff Portal Auth
 

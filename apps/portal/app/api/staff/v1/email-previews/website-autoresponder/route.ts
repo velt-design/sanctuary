@@ -55,7 +55,9 @@ export async function GET(req: Request) {
   const access = await requirePreviewStaff();
   if (!access.ok) return access.response;
 
-  const variant = new URL(req.url).searchParams.get('variant') ?? 'residential';
+  const variant =
+    new URL(req.url).searchParams.get('variant')
+    ?? 'residential-pitched-without-blinds';
   if (!isWebsiteAutoresponderPreviewVariant(variant)) {
     return privateNoStore(
       jsonError('Invalid email preview variant.', 400, null, {
@@ -115,9 +117,15 @@ export async function POST(req: Request) {
   }
   if (!access.availability.sendReady) {
     return privateNoStore(
-      jsonError('Website autoresponder preview sending is not configured.', 503, null, {
-        code: 'EMAIL_PREVIEW_CONFIGURATION_MISSING',
-      }),
+      jsonError(
+        'Website autoresponder preview sending is not configured.',
+        503,
+        null,
+        {
+          code: 'EMAIL_PREVIEW_CONFIGURATION_MISSING',
+          configurationReason: access.availability.reason,
+        },
+      ),
     );
   }
 

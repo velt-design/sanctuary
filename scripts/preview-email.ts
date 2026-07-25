@@ -117,13 +117,12 @@ async function writeWebsitePreview(
   console.log(`Preheader: ${rendered.preheader}`);
 }
 
-const customerTemplateVariants: Record<string, WebsiteAutoresponderPreviewVariant> = {
-  'customer-residential': 'residential',
-  'customer-residential-no-blinds': 'residential-no-blinds',
-  'customer-commercial': 'commercial',
-  'customer-commercial-with-blinds': 'commercial-with-blinds',
-  'customer-professional': 'professional',
-};
+const customerTemplateVariants = Object.fromEntries(
+  WEBSITE_AUTORESPONDER_PREVIEW_VARIANTS.map((variant) => {
+    const fixture = getWebsiteAutoresponderPreviewFixture(variant);
+    return [fixture.fileBaseName, variant];
+  }),
+) as Record<string, WebsiteAutoresponderPreviewVariant>;
 
 async function main() {
   const arg = (process.argv[2] ?? '').trim();
@@ -137,13 +136,15 @@ async function main() {
     return;
   }
 
-  const customerVariant = customerTemplateVariants[arg || 'customer-residential'];
+  const customerVariant =
+    customerTemplateVariants[arg || 'customer-residential-pitched-without-blinds'];
   if (customerVariant) {
     await writeWebsitePreview(outputDir, customerVariant);
     return;
   }
 
-  const templateKey = (arg as TemplateKey | '') || 'customer-residential';
+  const templateKey =
+    (arg as TemplateKey | '') || 'customer-residential-pitched-without-blinds';
   const selected = templates[templateKey as TemplateKey];
 
   if (!selected) {

@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/foundation';
+import {
+  previewBlindsOptions,
+  previewConfigurationErrorMessage,
+  previewConfigurationMessage,
+  previewCustomerTypes,
+  previewRoofForms,
+  previewVariantForSelection,
+  type PreviewBlindsOption,
+  type PreviewConfigurationReason,
+  type PreviewCustomerType,
+  type PreviewRoofForm,
+  type PreviewVariant,
+} from './emailPreviewOptions';
 import styles from './email-previews.module.css';
-
-const variants = [
-  { value: 'residential', label: 'Residential' },
-  { value: 'residential-no-blinds', label: 'Residential without blinds' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'commercial-with-blinds', label: 'Commercial with blinds' },
-  { value: 'professional', label: 'Professional' },
-] as const;
-
-type PreviewVariant = (typeof variants)[number]['value'];
 
 type PreviewResponse = Readonly<{
   variant: PreviewVariant;
@@ -23,10 +26,12 @@ type PreviewResponse = Readonly<{
   text: string;
   recipient: string | null;
   sendReady: boolean;
-  configurationReason: string;
+  configurationReason: PreviewConfigurationReason;
 }>;
 
 function responseMessage(body: unknown, fallback: string): string {
+  const configurationMessage = previewConfigurationErrorMessage(body);
+  if (configurationMessage) return configurationMessage;
   if (
     body
     && typeof body === 'object'
@@ -38,12 +43,17 @@ function responseMessage(body: unknown, fallback: string): string {
 }
 
 export default function EmailPreviewClient() {
-  const [variant, setVariant] = useState<PreviewVariant>('residential');
+  const [customerType, setCustomerType] =
+    useState<PreviewCustomerType>('residential');
+  const [roofForm, setRoofForm] = useState<PreviewRoofForm>('pitched');
+  const [blinds, setBlinds] =
+    useState<PreviewBlindsOption>('without-blinds');
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const variant = previewVariantForSelection(customerType, roofForm, blinds);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -122,20 +132,67 @@ export default function EmailPreviewClient() {
   return (
     <section className={styles.workspace} aria-label="Website autoresponder review">
       <div className={styles.toolbar}>
-        <div>
-          <p className={styles.eyebrow}>Customer variant</p>
-          <div className={styles.variants} aria-label="Choose an email variant">
-            {variants.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={styles.variant}
-                aria-pressed={variant === option.value}
-                onClick={() => setVariant(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
+        <div className={styles.configurator}>
+          <p className={styles.eyebrow}>Preview configuration</p>
+          <div className={styles.selectors}>
+            <fieldset className={styles.selector}>
+              <legend>Customer type</legend>
+              <div className={styles.variants}>
+                {previewCustomerTypes.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={styles.variant}
+                    aria-pressed={customerType === option.value}
+                    onClick={() => setCustomerType(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            {customerType === 'professional' ? (
+              <p className={styles.professionalNote}>
+                Professional enquiries use the fixed KiwiRail Head Office reference.
+              </p>
+            ) : (
+              <>
+                <fieldset className={styles.selector}>
+                  <legend>Roof form</legend>
+                  <div className={styles.variants}>
+                    {previewRoofForms.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={styles.variant}
+                        aria-pressed={roofForm === option.value}
+                        onClick={() => setRoofForm(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset className={styles.selector}>
+                  <legend>Outdoor blinds</legend>
+                  <div className={styles.variants}>
+                    {previewBlindsOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={styles.variant}
+                        aria-pressed={blinds === option.value}
+                        onClick={() => setBlinds(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
           </div>
         </div>
 
@@ -145,12 +202,26 @@ export default function EmailPreviewClient() {
               ? `Fixed recipient: ${preview.recipient}`
               : 'The recipient is configured on the server.'}
           </p>
+          {preview ? (
+            <p
+              id="email-preview-send-status"
+              className={
+                preview.sendReady
+                  ? styles.sendStatusReady
+                  : styles.sendStatusWarning
+              }
+              role="status"
+            >
+              {previewConfigurationMessage(preview.configurationReason)}
+            </p>
+          ) : null}
           <Button
             onClick={sendPreview}
             loading={sending}
             disabled={loading || !preview?.sendReady}
+            aria-describedby="email-preview-send-status"
           >
-            Send this fixture
+            Send this preview
           </Button>
         </div>
       </div>

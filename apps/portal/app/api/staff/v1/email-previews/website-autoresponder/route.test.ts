@@ -17,13 +17,13 @@ vi.mock('@/lib/api/staffApi', async () => ({
 
 vi.mock('@/lib/sharedEmails', () => ({
   isWebsiteAutoresponderPreviewVariant: (value: unknown) =>
-    [
-      'residential',
-      'residential-no-blinds',
-      'commercial',
-      'commercial-with-blinds',
-      'professional',
-    ].includes(String(value)),
+    typeof value === 'string'
+    && (
+      value === 'professional'
+      || /^(residential|commercial)-(pitched|gable|box-perimeter|hip)-(without-blinds|with-blinds)$/.test(
+        value,
+      )
+    ),
   getWebsiteAutoresponderPreviewFixture: h.fixture,
   renderWebsiteAutoresponder: h.render,
 }));
@@ -37,8 +37,8 @@ vi.mock('@/lib/sharedEmailPreviewSender', () => ({
 }));
 
 const fixture = {
-  variant: 'residential',
-  label: 'Residential',
+  variant: 'residential-gable-with-blinds',
+  label: 'Residential · Gable · With blinds',
   templateId: 'EMAIL_WEBSITE_AUTORESPONDER_RES_V1',
   variables: { name: 'Alex' },
 };
@@ -63,7 +63,7 @@ describe('staff website autoresponder preview route', () => {
       text: 'Preview',
     });
     h.send.mockReset().mockResolvedValue({
-      variant: 'residential',
+      variant: 'residential-gable-with-blinds',
       recipient: 'jordan@sanctuarypergolas.co.nz',
       subject: "Alex, we've received your pergola enquiry",
       preheader: 'Your project details and next steps.',
@@ -113,20 +113,20 @@ describe('staff website autoresponder preview route', () => {
 
     const response = await GET(
       new Request(
-        'http://localhost/api/staff/v1/email-previews/website-autoresponder?variant=residential',
+        'http://localhost/api/staff/v1/email-previews/website-autoresponder?variant=residential-gable-with-blinds',
       ),
     );
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(h.fixture).toHaveBeenCalledWith('residential');
+    expect(h.fixture).toHaveBeenCalledWith('residential-gable-with-blinds');
     expect(h.render).toHaveBeenCalledWith(
       fixture.templateId,
       fixture.variables,
     );
     await expect(response.json()).resolves.toEqual({
-      variant: 'residential',
-      label: 'Residential',
+      variant: 'residential-gable-with-blinds',
+      label: 'Residential · Gable · With blinds',
       subject: "Alex, we've received your pergola enquiry",
       preheader: 'Your project details and next steps.',
       html: '<html><body>Preview</body></html>',
@@ -135,6 +135,23 @@ describe('staff website autoresponder preview route', () => {
       sendReady: true,
       configurationReason: 'ready',
     });
+  });
+
+  it('rejects obsolete or invented fixture identifiers', async () => {
+    const { GET } = await import('./route');
+
+    const response = await GET(
+      new Request(
+        'http://localhost/api/staff/v1/email-previews/website-autoresponder?variant=residential',
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'EMAIL_PREVIEW_VARIANT_INVALID',
+    });
+    expect(h.fixture).not.toHaveBeenCalled();
+    expect(h.render).not.toHaveBeenCalled();
   });
 
   it('rejects browser-supplied recipients and all fields except the fixture variant', async () => {
@@ -147,7 +164,7 @@ describe('staff website autoresponder preview route', () => {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            variant: 'residential',
+            variant: 'residential-gable-with-blinds',
             recipient: 'other@example.test',
           }),
         },
@@ -170,14 +187,14 @@ describe('staff website autoresponder preview route', () => {
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ variant: 'residential' }),
+          body: JSON.stringify({ variant: 'residential-gable-with-blinds' }),
         },
       ),
     );
 
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(h.send).toHaveBeenCalledWith('residential');
+    expect(h.send).toHaveBeenCalledWith('residential-gable-with-blinds');
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
       recipient: 'jordan@sanctuarypergolas.co.nz',
@@ -209,6 +226,7 @@ describe('staff website autoresponder preview route', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
       code: 'EMAIL_PREVIEW_CONFIGURATION_MISSING',
+      configurationReason: 'missing_api_key',
     });
     expect(h.send).not.toHaveBeenCalled();
   });

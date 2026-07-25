@@ -65,7 +65,9 @@ Current website enquiry autoresponders keep the existing payload shape for previ
 
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 
-`/staff/email-previews` is the fixture-only staging review surface for the website autoresponder. Its staff-authenticated API renders the same stable template IDs, subject, preheader, HTML and plain text used by the production customer sender. Residential, residential without blinds, commercial, commercial with blinds and professional variants use repository fixtures only. Preview delivery reads `RESEND_API_KEY_PREVIEW` and the single `EMAIL_PREVIEW_TO` recipient on the server, omits the production BCC, and is unavailable unless `EMAIL_PREVIEW_ENABLED=true` in a Vercel Preview deployment (or local development/test). The browser may select only a fixture variant; it cannot supply recipients or provider credentials. This path does not call enquiry intake or write contacts, projects, estimates, enquiries, outbox rows or audit records.
+`/staff/email-previews` is the fixture-only staging review surface for the website autoresponder. Its staff-authenticated API renders the same stable template IDs, subject, preheader, HTML and plain text used by the production customer sender. The configurator covers residential and commercial enquiries across Pitched, Gable, Box perimeter and Hip forms, each with and without blinds, plus one fixed professional fixture: 17 combinations in total. Preview delivery reads `RESEND_API_KEY_PREVIEW` and the single `EMAIL_PREVIEW_TO` recipient on the server, omits the production BCC, and is unavailable unless `EMAIL_PREVIEW_ENABLED=true` in a Vercel Preview deployment (or local development/test). The browser may select only a validated repository fixture; it cannot supply recipients, content, provider credentials or arbitrary payload fields. This path does not call enquiry intake or write contacts, projects, estimates, enquiries, outbox rows or audit records.
+
+The Send control remains disabled until the authenticated preview API reports `sendReady=true`. The page must state the exact safe configuration reason beside the control (`missing_api_key`, `missing_recipient`, `invalid_recipient`, disabled flag or disallowed environment) instead of presenting an unexplained grey button. Vercel environment changes apply only to a new deployment, so adding or correcting any preview variable requires redeploying the branch. `RESEND_API_KEY_PREVIEW` must contain the actual Resend secret value, not the display name assigned to that key in Resend.
 
 Website autoresponder hero imagery is resolved centrally by `apps/marketing/lib/websiteAutoresponderHero.ts` from the governed records in `apps/marketing/data/projects.ts`. The email identifies the image as a completed Sanctuary project and states that project's recorded roof approach; it does not claim the pictured build is an exact preview of the submitted project. The current selection policy is:
 
@@ -81,6 +83,17 @@ Website autoresponder hero imagery is resolved centrally by `apps/marketing/lib/
 | Box perimeter, any roof selection | Mt Maunganui Box | Exact form; exact material only when acrylic is selected |
 | Professional enquiry | KiwiRail Head Office | Published architect-led commercial collaboration |
 | Missing or unclear selection | Warkworth Outdoor Room | Governed homepage evidence fallback |
+
+The 17 preview fixtures deliberately exercise this customer/form policy:
+
+| Preview roof form | Residential reference | Commercial reference |
+| --- | --- | --- |
+| Pitched | Tindalls Bay - Patio & Carport (mixed roof) | Lilliput Mini Golf (acrylic) |
+| Gable | Warkworth Outdoor Room (mixed roof) | The Good Home Takanini (acrylic) |
+| Box perimeter | Mt Maunganui Box | Mt Maunganui Box |
+| Hip | Muriwai Courtyard | Muriwai Courtyard |
+
+Blinds selection changes the email options and investment sections but does not change the completed-project reference. Professional remains the fixed KiwiRail Head Office example. `npm run emails:preview -- enquiry-variants` writes one HTML and one plain-text artifact for every combination under `tmp/email-previews`.
 
 The customer email shell uses a 760 px maximum desktop width, a fluid 100% table width and small-screen media-query padding reductions. Critical structure, typography and image sizing remain inline and table-based so the message is still usable in clients that ignore media queries.
 

@@ -6,7 +6,7 @@
 
 .toolbar {
   display: flex;
-  align-items: end;
+  align-items: start;
   justify-content: space-between;
   gap: var(--ui-space-5);
   padding: var(--ui-space-4);
@@ -14,8 +14,15 @@
   background: var(--ui-surface-primary);
 }
 
+.configurator {
+  min-width: 0;
+}
+
 .eyebrow,
-.recipient {
+.recipient,
+.professionalNote,
+.sendStatusReady,
+.sendStatusWarning {
   margin: 0;
   color: var(--ui-text-muted);
   font-size: var(--ui-font-size-caption);
@@ -27,6 +34,25 @@
   font-weight: 700;
   letter-spacing: var(--ui-letter-spacing-label);
   text-transform: uppercase;
+}
+
+.selectors {
+  display: grid;
+  gap: var(--ui-space-3);
+}
+
+.selector {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.selector legend {
+  margin-bottom: var(--ui-space-1);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
 }
 
 .variants {
@@ -63,10 +89,37 @@
   outline-offset: -2px;
 }
 
+.professionalNote {
+  max-width: 540px;
+  padding: var(--ui-space-3);
+  border-left: var(--ui-border-width-emphasis) solid var(--ui-border-strong);
+  background: var(--ui-surface-secondary);
+}
+
 .send {
   display: grid;
+  max-width: 360px;
   justify-items: end;
   gap: var(--ui-space-2);
+  text-align: right;
+}
+
+.sendStatusReady,
+.sendStatusWarning {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border: var(--ui-border-width) solid;
+}
+
+.sendStatusReady {
+  border-color: var(--ui-status-success-border);
+  background: var(--ui-status-success-bg);
+  color: var(--ui-text-strong);
+}
+
+.sendStatusWarning {
+  border-color: var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
 }
 
 .reviewGrid {
@@ -186,7 +239,9 @@
   }
 
   .send {
+    max-width: none;
     justify-items: start;
+    text-align: left;
   }
 
   .reviewGrid {

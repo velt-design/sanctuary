@@ -14,7 +14,7 @@ export default function EmailPreviewsPage() {
         variant="detail"
         eyebrow="Marketing"
         title="Enquiry email previews"
-        description="Review the fixture-based customer email and send the exact rendered version to the configured staging inbox."
+        description="Review every customer, roof-form and blinds combination, then send the exact rendered email to the configured staging inbox."
         searchShortcutEnabled={false}
       />
       <EmailPreviewClient />
