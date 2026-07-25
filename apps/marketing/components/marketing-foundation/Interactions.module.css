@@ -95,6 +95,10 @@
   background: var(--color-surface-neutral);
 }
 
+.gallery[data-gallery-swipe="true"] .galleryViewport {
+  touch-action: pan-y;
+}
+
 .gallerySlide {
   min-width: 0;
 }

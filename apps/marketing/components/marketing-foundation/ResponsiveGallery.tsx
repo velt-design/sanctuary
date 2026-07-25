@@ -3,6 +3,7 @@
 import {
   type KeyboardEvent,
   useId,
+  useRef,
   useState,
 } from 'react';
 import { cn } from '@/lib/cn';
@@ -30,7 +31,10 @@ type ResponsiveGalleryProps = {
   initialIndex?: number;
   items: ResponsiveGalleryItem[];
   label: string;
+  swipe?: boolean;
 };
+
+const SWIPE_THRESHOLD_PX = 48;
 
 function clampInitialIndex(index: number, itemCount: number) {
   return Math.min(Math.max(index, 0), Math.max(itemCount - 1, 0));
@@ -41,8 +45,14 @@ export function ResponsiveGallery({
   initialIndex = 0,
   items,
   label,
+  swipe = false,
 }: ResponsiveGalleryProps) {
   const statusId = `${useId()}-gallery-status`;
+  const pointerOrigin = useRef<{
+    id: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [activeIndex, setActiveIndex] = useState(() => (
     clampInitialIndex(initialIndex, items.length)
   ));
@@ -78,11 +88,44 @@ export function ResponsiveGallery({
     }
   };
 
+  const clearPointerOrigin = () => {
+    pointerOrigin.current = null;
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!swipe || !hasMultipleItems || event.pointerType !== 'touch') return;
+
+    pointerOrigin.current = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const origin = pointerOrigin.current;
+    clearPointerOrigin();
+    if (!origin || origin.id !== event.pointerId) return;
+
+    const horizontalDistance = event.clientX - origin.x;
+    const verticalDistance = event.clientY - origin.y;
+    if (
+      Math.abs(horizontalDistance) < SWIPE_THRESHOLD_PX
+      || Math.abs(horizontalDistance) <= Math.abs(verticalDistance)
+    ) {
+      return;
+    }
+
+    showRelativeItem(horizontalDistance < 0 ? 1 : -1);
+  };
+
   return (
     <section
       className={cn(styles.gallery, className)}
       data-responsive-gallery
       data-gallery-position={`${safeIndex + 1}/${items.length}`}
+      data-gallery-swipe={swipe || undefined}
       role="region"
       aria-roledescription="carousel"
       aria-label={label}
@@ -90,7 +133,12 @@ export function ResponsiveGallery({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <div className={styles.galleryViewport}>
+      <div
+        className={styles.galleryViewport}
+        onPointerCancel={clearPointerOrigin}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      >
         <div
           className={styles.gallerySlide}
           data-gallery-active-item={activeItem.id ?? activeItem.image}

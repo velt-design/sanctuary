@@ -199,4 +199,45 @@ describe('marketing foundation responsive gallery', () => {
     expect(gallery.querySelectorAll('img')).toHaveLength(1);
     expect(document.activeElement).toBe(next);
   });
+
+  it('supports intentional horizontal touch swipes without treating vertical movement as navigation', async () => {
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={galleryItems} swipe />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]') as HTMLElement;
+    const viewport = gallery.firstElementChild as HTMLElement;
+    const dispatchPointer = (
+      type: 'pointerdown' | 'pointerup',
+      clientX: number,
+      clientY: number,
+    ) => {
+      const event = new Event(type, { bubbles: true });
+      Object.defineProperties(event, {
+        clientX: { value: clientX },
+        clientY: { value: clientY },
+        pointerId: { value: 1 },
+        pointerType: { value: 'touch' },
+      });
+      viewport.dispatchEvent(event);
+    };
+
+    expect(gallery.dataset.gallerySwipe).toBe('true');
+    await act(async () => {
+      dispatchPointer('pointerdown', 300, 200);
+      dispatchPointer('pointerup', 180, 205);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('2/3');
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 200, 100);
+      dispatchPointer('pointerup', 190, 220);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('2/3');
+
+    await act(async () => {
+      dispatchPointer('pointerdown', 180, 200);
+      dispatchPointer('pointerup', 300, 205);
+    });
+    expect(gallery.dataset.galleryPosition).toBe('1/3');
+  });
 });

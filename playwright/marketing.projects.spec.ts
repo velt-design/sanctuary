@@ -2,10 +2,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { ROOF_MATERIAL_MEDIA } from '../apps/marketing/app/start/startFlowMedia';
-import { projects } from '../apps/marketing/data/projects';
+import { projects, type Project } from '../apps/marketing/data/projects';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
-const representativeRoute = `/projects/${projects[0].slug}`;
+const representativeProject = projects[0];
+const representativeRoute = `/projects/${representativeProject.slug}`;
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const phaseTwoCapture = process.env.MARKETING_PHASE_TWO_CAPTURE === '1';
 const phaseTwoEvidenceDirectory = resolve('artifacts/mobile-ux-phase-2');
@@ -84,6 +85,14 @@ function visibleMain(page: Page) {
 
 function visibleProjectsMain(page: Page) {
   return page.locator('main[data-projects-experience]:visible').last();
+}
+
+function projectGalleryItemCount(project: Project) {
+  const heroImage = project.caseStudyHeroImage ?? project.heroImage;
+  return new Set([
+    heroImage.src,
+    ...project.gallery.map((image) => image.src),
+  ]).size - 1;
 }
 
 async function expectNoPageOverflow(page: Page) {
@@ -405,6 +414,69 @@ test('capture Phase 2 project collection payload evidence', async ({
     }, null, 2)}\n`,
     'utf8',
   );
+});
+
+test('capture Phase 2 controlled project gallery evidence', async ({
+  browser,
+}, testInfo) => {
+  test.skip(
+    !phaseTwoCapture,
+    'Set MARKETING_PHASE_TWO_CAPTURE=1 to capture Phase 2 evidence.',
+  );
+  await mkdir(phaseTwoEvidenceDirectory, { recursive: true });
+  const baseURL = String(testInfo.project.use.baseURL);
+
+  for (const width of [430, 390, 360]) {
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width, height: 932 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    await page.goto(representativeRoute);
+    await dismissConsent(page);
+    const gallery = visibleProjectsMain(page).locator('[data-responsive-gallery]');
+    await gallery.scrollIntoViewIfNeeded();
+    await expect(gallery).toBeVisible();
+    await gallery.screenshot({
+      path: resolve(
+        phaseTwoEvidenceDirectory,
+        `after-project-gallery-${width}.png`,
+      ),
+    });
+    await context.close();
+  }
+
+  const desktopContext = await browser.newContext({
+    baseURL,
+    viewport: { width: 1440, height: 1000 },
+  });
+  const desktopPage = await desktopContext.newPage();
+  await desktopPage.goto(representativeRoute);
+  await dismissConsent(desktopPage);
+  const desktopGallery = visibleProjectsMain(desktopPage).locator(
+    '[data-project-gallery-layout="desktop"]',
+  );
+  for (const image of await desktopGallery.locator('img').all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(
+      () => image.evaluate(
+        (element: HTMLImageElement) => element.complete && element.naturalWidth > 0,
+      ),
+    ).toBe(true);
+  }
+  await dismissConsent(desktopPage);
+  await desktopGallery.locator('figure').first().scrollIntoViewIfNeeded();
+  await expect(desktopGallery).toBeVisible();
+  await desktopPage.screenshot({
+    path: resolve(
+      phaseTwoEvidenceDirectory,
+      'after-project-gallery-desktop.png',
+    ),
+    fullPage: false,
+  });
+  await desktopContext.close();
 });
 
 test('project filters persist through refresh, filter history, project Back, and reset', async ({
@@ -805,6 +877,8 @@ for (const viewport of [
     await expectNoPageOverflow(page);
 
     if (viewport.width >= 900) {
+      await expect(main.locator('[data-project-gallery-layout="desktop"]')).toBeVisible();
+      await expect(main.locator('[data-responsive-gallery]')).toBeHidden();
       await expect(main.locator('.project-navigator__panel')).toBeVisible();
       await expect(main.locator('.project-navigator__trigger')).toBeHidden();
       await expect(main.locator(
@@ -815,6 +889,34 @@ for (const viewport of [
         'details[data-project-mobile-disclosure="brief"] summary',
       )).toBeHidden();
     } else {
+      const gallery = main.locator('[data-responsive-gallery]');
+      const expectedPosition = `1/${projectGalleryItemCount(representativeProject)}`;
+      await expect(main.locator('[data-project-gallery-layout="desktop"]')).toBeHidden();
+      await expect(gallery).toBeVisible();
+      await expect(gallery).toHaveAttribute('data-gallery-position', expectedPosition);
+      await expect(gallery).toHaveAttribute('data-gallery-swipe', 'true');
+      await expect(gallery.locator('img')).toHaveCount(1);
+      await expect(gallery.getByRole('status')).toHaveText(
+        `Image ${expectedPosition.replace('/', ' of ')}`,
+      );
+
+      for (const control of await gallery.getByRole('button').all()) {
+        const box = await control.boundingBox();
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+      }
+
+      const next = gallery.getByRole('button', { name: /Next image/ });
+      await next.focus();
+      await next.click();
+      await expect(gallery).toHaveAttribute(
+        'data-gallery-position',
+        `2/${projectGalleryItemCount(representativeProject)}`,
+      );
+      await expect(next).toBeFocused();
+      await gallery.focus();
+      await page.keyboard.press('Home');
+      await expect(gallery).toHaveAttribute('data-gallery-position', expectedPosition);
       await expect(main.locator('.project-navigator__trigger')).toBeVisible();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
@@ -942,6 +1044,36 @@ test('technical detail, contextual links, related work, and circular project nav
   await expect(main.locator('.project-case-study__related-list a')).not.toHaveCount(0);
   await expect(main.locator('.project-case-study__pagination a')).toHaveCount(2);
   await expect(main.locator('.project-case-study__intro-actions a')).not.toHaveCount(0);
+
+  const gallery = main.locator('[data-responsive-gallery]');
+  await gallery.getByRole('button', { name: /Next image/ }).click();
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `2/${projectGalleryItemCount(representativeProject)}`,
+  );
+  await expect(main.locator(
+    '.project-case-study__intro-actions .project-action--primary',
+  )).toHaveAttribute('href', buildEnquiryHref({
+    enquiryType: representativeProject.type === 'Commercial'
+      ? 'commercial'
+      : 'residential',
+    sourcePath: representativeRoute,
+    sourceComponent: 'project_cta',
+    sourceProject: representativeProject.slug,
+  }));
+
+  const nextProject = main.locator('.project-case-study__pagination a[rel="next"]');
+  const nextProjectHref = await nextProject.getAttribute('href');
+  await nextProject.click();
+  await expect(page).toHaveURL(new RegExp(`${nextProjectHref}$`));
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
+  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toBeVisible();
+  await page.reload();
+  await expect(visibleProjectsMain(page).locator('[data-responsive-gallery]')).toHaveAttribute(
+    'data-gallery-position',
+    `1/${projectGalleryItemCount(representativeProject)}`,
+  );
 });
 
 test('project disclosures are native, keyboard operable, and expanded on desktop', async ({
@@ -1008,8 +1140,12 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
   await page.goto(representativeRoute);
   await dismissConsent(page);
 
-  const gallery = visibleProjectsMain(page).locator('.project-case-study__gallery');
+  const gallery = visibleProjectsMain(page).locator('[data-responsive-gallery]');
   await gallery.scrollIntoViewIfNeeded();
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `1/${projectGalleryItemCount(representativeProject)}`,
+  );
   const box = await gallery.boundingBox();
   expect(box).not.toBeNull();
 
@@ -1030,7 +1166,10 @@ test('mobile gallery responds to a touch drag without moving the page sideways',
     touchPoints: [],
   });
 
-  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(gallery).toHaveAttribute(
+    'data-gallery-position',
+    `2/${projectGalleryItemCount(representativeProject)}`,
+  );
   await expectNoPageOverflow(page);
   await context.close();
 });
