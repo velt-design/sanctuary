@@ -245,8 +245,15 @@ test('the mobile menu remains operable at tablet width and short viewport height
   await page.goto('/projects');
   await page.getByRole('button', { name: 'Open menu' }).click();
   const menu = page.locator('#mobile-menu');
-  const estimate = page.getByRole('navigation', { name: 'Mobile primary' })
-    .getByRole('link', { name: 'Get an estimate' });
+  const mobileNavigation = page.getByRole('navigation', {
+    name: 'Mobile primary',
+  });
+  await expect(
+    mobileNavigation.getByRole('link', { name: 'Home' }),
+  ).toBeFocused();
+  const estimate = mobileNavigation.getByRole('link', {
+    name: 'Get an estimate',
+  });
   const shortViewportState = await menu.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     return {

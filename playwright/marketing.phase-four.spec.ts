@@ -1,6 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Browser,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 import { ENQUIRY_ATTACHMENT_ACCEPT } from '../apps/marketing/lib/enquiryAttachments';
 
@@ -85,6 +91,123 @@ const guideDetailRoutes = [
     returnHref: '/products',
   },
 ] as const;
+
+async function readTextContrast(root: Locator) {
+  return root.evaluate((element) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      return {
+        minimumRatio: 0,
+        textRuns: 0,
+        violations: ['Canvas colour conversion unavailable'],
+      };
+    }
+
+    const toRgba = (value: string) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = value;
+      context.fillRect(0, 0, 1, 1);
+      const [red, green, blue, alpha] = context
+        .getImageData(0, 0, 1, 1)
+        .data;
+      return {
+        alpha: alpha / 255,
+        blue,
+        green,
+        red,
+      };
+    };
+    const composite = (
+      foreground: ReturnType<typeof toRgba>,
+      background: ReturnType<typeof toRgba>,
+    ) => ({
+      blue:
+        foreground.blue * foreground.alpha
+        + background.blue * (1 - foreground.alpha),
+      green:
+        foreground.green * foreground.alpha
+        + background.green * (1 - foreground.alpha),
+      red:
+        foreground.red * foreground.alpha
+        + background.red * (1 - foreground.alpha),
+    });
+    const linearChannel = (value: number) => {
+      const channel = value / 255;
+      return channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = (
+      colour: Pick<ReturnType<typeof toRgba>, 'red' | 'green' | 'blue'>,
+    ) => (
+      0.2126 * linearChannel(colour.red)
+      + 0.7152 * linearChannel(colour.green)
+      + 0.0722 * linearChannel(colour.blue)
+    );
+    const contrastRatio = (
+      foreground: Pick<ReturnType<typeof toRgba>, 'red' | 'green' | 'blue'>,
+      background: Pick<ReturnType<typeof toRgba>, 'red' | 'green' | 'blue'>,
+    ) => {
+      const foregroundLuminance = luminance(foreground);
+      const backgroundLuminance = luminance(background);
+      return (
+        (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05)
+      );
+    };
+    const effectiveBackground = (candidate: Element) => {
+      let current: Element | null = candidate;
+      while (current) {
+        const value = getComputedStyle(current).backgroundColor;
+        if (value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') {
+          return value;
+        }
+        current = current.parentElement;
+      }
+      return 'rgb(255, 255, 255)';
+    };
+
+    const textRuns = [element, ...element.querySelectorAll('*')]
+      .filter((candidate): candidate is HTMLElement => (
+        candidate instanceof HTMLElement
+        && candidate.checkVisibility()
+        && [...candidate.childNodes].some(
+          (node) => (
+            node.nodeType === Node.TEXT_NODE
+            && Boolean(node.textContent?.trim())
+          ),
+        )
+      ))
+      .map((candidate) => {
+        const background = toRgba(effectiveBackground(candidate));
+        const foreground = composite(
+          toRgba(getComputedStyle(candidate).color),
+          background,
+        );
+        return {
+          label: [...candidate.childNodes]
+            .filter((node) => node.nodeType === Node.TEXT_NODE)
+            .map((node) => node.textContent?.trim())
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .slice(0, 80),
+          ratio: contrastRatio(foreground, background),
+        };
+      });
+
+    return {
+      minimumRatio: Math.min(...textRuns.map(({ ratio }) => ratio)),
+      textRuns: textRuns.length,
+      violations: textRuns
+        .filter(({ ratio }) => ratio < 4.5)
+        .map(({ label, ratio }) => `${label}: ${ratio.toFixed(2)}`),
+    };
+  });
+}
 
 async function createMeasuredPage(
   browser: Browser,
@@ -843,6 +966,10 @@ test('homepage closes in seven regions and the footer stays compact and useful',
     expect(footerState.minHeight).toBe('0px');
     expect(footerState.undersized).toEqual([]);
     expect(footerState.height).toBeLessThan(900);
+    const footerContrast = await readTextContrast(footer);
+    expect(footerContrast.textRuns).toBeGreaterThan(0);
+    expect(footerContrast.violations).toEqual([]);
+    expect(footerContrast.minimumRatio).toBeGreaterThanOrEqual(4.5);
     expect(
       await page.evaluate(
         () =>
