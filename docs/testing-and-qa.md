@@ -135,6 +135,19 @@ production result separately and prove the complete foundation file against a
 local build; do not weaken the production access rule to make that matrix
 green.
 
+Phase 5 production-supporting validation should run
+`npx playwright test playwright/marketing.phase-five.spec.ts --config=playwright.marketing.config.ts --workers=1`
+locally and with
+`MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` for the read-only
+deployed matrix. Set `MARKETING_PHASE_FIVE_CAPTURE=1` only for the dated
+production evidence run. It writes a 30-record route/width payload and
+representative screenshots under `artifacts/mobile-ux-phase-5/automated/`.
+The lane covers ten primary routes at 430, 390 and 360 pixels, including HTTP
+and request failures, document overflow, CLS, landmarks, H1s, duplicate IDs,
+visible images, 44 pixel controls, FCP, LCP, TTFB, transfer size, image/script
+payload and long tasks. It supplements but never replaces the physical-device,
+VoiceOver and TalkBack matrix in `docs/mobile-ux-phase-5-validation.md`.
+
 Mobile first-layer copy, responsive disclosure, shared public route-template,
 service, SEO-landing or guide-directory changes should also run
 `npx playwright test playwright/marketing.mobile-content-density.spec.ts --config=playwright.marketing.config.ts`.

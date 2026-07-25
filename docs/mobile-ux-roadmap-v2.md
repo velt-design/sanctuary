@@ -1,6 +1,6 @@
 # Sanctuary Pergolas Mobile UX Roadmap v2
 
-> **Status:** Phases 1, 2, 3 and 4 complete; Phase 5 is the recommended next phase
+> **Status:** Phases 1, 2, 3 and 4 complete; Phase 5 validation is in progress
 > **Repository:** `velt-design/sanctuary`
 > **Recommended repository path:** `docs/mobile-ux-roadmap-v2.md`
 > **Live website:** `https://www.sanctuarypergolas.co.nz/`
@@ -155,6 +155,40 @@ text runs pass 4.5:1 and the minimum is 7.71:1. Evidence is under
 Physical iOS Safari, Android Chrome, VoiceOver and TalkBack remain explicitly
 unverified. They are Phase 5 / PR 14 work and Chromium emulation is not
 presented as a substitute.
+
+### Phase 5 validation update - 26 July 2026
+
+The dated operator matrix, task scripts, analytics reconciliation protocol,
+performance evidence and backlog are now owned by
+`docs/mobile-ux-phase-5-validation.md`.
+
+A dedicated production-supporting capture passed 30 records across ten primary
+routes at 430 px, 390 px and 360 px. It recorded HTTP 200, zero horizontal
+overflow, zero measured CLS, no failed user requests or responses, no broken
+viewport images, no duplicate IDs and no primary target below 44 px. Evidence
+is under `artifacts/mobile-ux-phase-5/automated/`.
+
+Production homepage Lighthouse lab results are 0.98 mobile performance and
+1.00 desktop performance, with 1.00 accessibility, 0.96 best practices and
+1.00 SEO in both profiles. The deployed audit found that two Google review
+links overrode their visible rating/count with a different accessible name.
+The local `main` worktree removes those overrides, and direct plus embedded
+enquiry forms now reuse the validated non-personal submission UUID as
+`lead_event_id` so a success event can reconcile exactly with one accepted
+intake. Focused browser tests pass for both fixes; deployment and production
+retesting remain required. Read-only deployed tests intercepted the direct and
+professional requests and confirmed the current production mismatch without
+sending a real enquiry. Updated homepage and footer checks also fail against
+the deployed label overrides and pass against the local fixes.
+
+Phase 5 is not complete. Physical iOS Safari, Android Chrome, VoiceOver and
+TalkBack results, a dated manual desktop-keyboard pass, production analytics
+debug/submission reconciliation and exact deployment release identity remain
+blocked on devices, account access or explicit production
+submission/deployment authority. Public PageSpeed/CrUX field data now records a
+passing 28-day homepage assessment on mobile and desktop, while INP/TTFB and
+non-home URL-level samples remain unavailable. Automated Chromium is supporting
+evidence only.
 
 ### Direction-of-travel judgement
 

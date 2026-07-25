@@ -47,15 +47,6 @@ function errorId(field: ContactField): string {
   return `contact-${field}-error`;
 }
 
-function makeEventId(): string {
-  try {
-    if (typeof window.crypto?.randomUUID === 'function') {
-      return window.crypto.randomUUID();
-    }
-  } catch {}
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -204,7 +195,6 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
 
     const selectedRoofs = formData.getAll('roofMaterials').map(String);
     const selectedAddOns = formData.getAll('addOns').map(String);
-    const eventId = makeEventId();
     const submissionId = submissionIdRef.current ?? createEnquirySubmissionId();
     submissionIdRef.current = submissionId;
     submittingRef.current = true;
@@ -268,7 +258,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
 
       submissionIdRef.current = null;
       setSubmitState('success');
-      trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, eventId);
+      trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId);
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : 'We could not send your enquiry. Please try again.';
       setSubmitError(message);

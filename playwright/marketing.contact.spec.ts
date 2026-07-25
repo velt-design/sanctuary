@@ -524,8 +524,10 @@ test('the submit lock prevents duplicate requests and consent controls lead even
       (...args: unknown[]) => tracked.push(['fbq', ...args]);
   });
   let requestCount = 0;
+  let submittedPayload: Record<string, unknown> | null = null;
   await page.route('**/api/enquiry', async (handler) => {
     requestCount += 1;
+    submittedPayload = handler.request().postDataJSON() as Record<string, unknown>;
     await new Promise((resolve) => setTimeout(resolve, 200));
     await handler.fulfill({
       status: 200,
@@ -556,6 +558,11 @@ test('the submit lock prevents duplicate requests and consent controls lead even
   }));
   expect(events.dataLayer?.filter((event) => event.event === 'lead_submitted'))
     .toHaveLength(1);
+  expect(
+    events.dataLayer?.find((event) => event.event === 'lead_submitted'),
+  ).toMatchObject({
+    lead_event_id: (submittedPayload as Record<string, unknown>).submissionId,
+  });
   expect(events.tracked?.some((entry) => entry.includes('contact_start'))).toBe(true);
   expect(events.tracked?.some((entry) => entry.includes('contact_success'))).toBe(true);
   expect(JSON.stringify(events)).toContain('"source_path":"/"');

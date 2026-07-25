@@ -18,7 +18,6 @@ export default function ReviewBadge({
   className = '',
 }: ReviewBadgeProps) {
   const ratingText = rating.toFixed(1);
-  const label = `Rated ${ratingText} out of 5 from ${count} Google reviews`;
   const tone =
     variant === 'onDark' ? 'text-white/90 hover:text-white' : 'text-ink/80 hover:text-ink';
 
@@ -27,7 +26,6 @@ export default function ReviewBadge({
       href={GOOGLE_PLACE.reviewsUrl}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={label}
       className={`inline-flex items-center gap-2 text-[14px] font-medium leading-none no-underline transition-colors ${tone} ${className}`}
     >
       <span aria-hidden="true" className="text-[15px] tracking-[0.05em] text-[#FFB400]">

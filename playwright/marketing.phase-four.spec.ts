@@ -725,6 +725,7 @@ test('professional form submits canonical context without personal analytics pro
   );
   expect(leadEvent).toMatchObject({
     event: 'lead_submitted',
+    lead_event_id: (submittedPayload as Record<string, unknown>).submissionId,
     enquiry_type: 'professional',
     source_path: '/architects-designers-builders',
     source_component: 'embedded_form',
@@ -938,6 +939,12 @@ test('homepage closes in seven regions and the footer stays compact and useful',
     await expect(
       footer.getByRole('link', { name: 'Discuss your project' }),
     ).toHaveAttribute('href', '/contact');
+    await expect(
+      footer.getByRole('link', {
+        name: '5.0 · 61 Google reviews',
+        exact: true,
+      }),
+    ).toHaveAttribute('href', /search\.google\.com\/local\/reviews/);
 
     const footerState = await footer.evaluate((element) => {
       const style = getComputedStyle(element);

@@ -203,7 +203,6 @@ export default async function HomePage() {
               href={GOOGLE_PLACE.reviewsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Rated ${ratingText} out of 5 from ${review.count} Google reviews`}
               data-live-rating
               data-proof-item
             >

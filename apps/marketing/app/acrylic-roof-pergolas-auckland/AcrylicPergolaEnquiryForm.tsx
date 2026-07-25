@@ -75,13 +75,6 @@ const priorities = [
 ];
 const accessories = ['Outdoor blinds', 'Lighting', 'Heaters', 'Slat screens', 'Acrylic infill panels', 'Other'];
 
-function makeEventId(): string {
-  try {
-    if (typeof window.crypto?.randomUUID === 'function') return window.crypto.randomUUID();
-  } catch {}
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
 function trackLeadSubmitted(
   context: EnquiryContext,
   eventId: string,
@@ -293,7 +286,7 @@ export default function AcrylicPergolaEnquiryForm({
 
       submissionIdRef.current = null;
       setSubmitState('success');
-      trackLeadSubmitted(currentEnquiryContext, makeEventId(), window.location.pathname, {
+      trackLeadSubmitted(currentEnquiryContext, submissionId, window.location.pathname, {
         analytics: consent.analytics,
         marketing: consent.marketing,
         hasStoredChoice,

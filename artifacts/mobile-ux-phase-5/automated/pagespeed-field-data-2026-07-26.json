@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-07-26T08:23:12+10:00",
+  "source": "https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.sanctuarypergolas.co.nz%2F&form_factor=mobile",
+  "period": "Latest 28-day Chrome UX Report period",
+  "homepageUrl": {
+    "mobile": {
+      "coreWebVitalsAssessment": "passed",
+      "largestContentfulPaintMs": 1600,
+      "interactionToNextPaintMs": null,
+      "cumulativeLayoutShift": 0.02,
+      "firstContentfulPaintMs": 1200,
+      "timeToFirstByteMs": null
+    },
+    "desktop": {
+      "coreWebVitalsAssessment": "passed",
+      "largestContentfulPaintMs": 1100,
+      "interactionToNextPaintMs": null,
+      "cumulativeLayoutShift": 0.07,
+      "firstContentfulPaintMs": 900,
+      "timeToFirstByteMs": null
+    }
+  },
+  "routeAvailability": {
+    "/": "URL-level field data available",
+    "/projects/warkworth-outdoor-room": "URL-level field data unavailable; PageSpeed selected the origin aggregate",
+    "/contact": "URL-level field data unavailable; PageSpeed selected the origin aggregate"
+  },
+  "limitations": [
+    "INP and TTFB are unavailable in the displayed field dataset.",
+    "Primary non-home routes do not have sufficient URL-level field data in the checked samples.",
+    "The ten-route production lab matrix supplies route-level paint, response, payload, CLS and long-task evidence."
+  ]
+}

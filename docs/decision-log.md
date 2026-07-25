@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| 2026-07-26 | Marketing Enquiry Reconciliation | Promoted | Reuse the intake's validated, client-generated submission UUID as the non-personal analytics lead identifier. Do not create an unrelated event UUID when production evidence must reconcile one success event with one accepted submission. |
 | 2026-07-26 | Marketing Static Root Routing    | Promoted | Canonicalise Next's production-only `/index` root alias before the shared header derives navigation, hero presentation or enquiry context. Prove the optimized root HTML and deployed browser path, and let focus tests observe the menu's initial focus contract before moving focus elsewhere. |
 | 2026-07-26 | Marketing Guide First Layers     | Promoted | Share guide transformation and rendering, but keep supporting headings, the selected project and return route owned by each guide. Verify heading uniqueness across the programme and measure governed project cards with selectors that match their rendered primitive. |
 | 2026-07-26 | Enquiry Email Preview Access     | Promoted | Gate provider delivery separately from safe authenticated rendering. Production staff may compare governed email fixtures read-only; preview-only environment and credential checks must disable sending without making the renderer appear broken. |
@@ -3505,6 +3506,17 @@ Why it mattered: The most prominent homepage enquiry action contradicted the can
 Current guardrail: Canonicalise the production static root alias once before header navigation, hero and enquiry decisions. Verify the optimized generated root HTML and deployed raw/browser output, not only development routing. In focus tests, first observe the component's promised initial focus, then move focus to another target.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/components/headerNavigation.ts`; `apps/marketing/components/headerNavigation.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.home-v2.spec.ts`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.phase-four.spec.ts`
+
+### 2026-07-26 - Marketing Enquiry Reconciliation - One Opaque Identifier
+
+Date: 2026-07-26
+Area: Marketing enquiry analytics and durable intake
+Status: Promoted
+Decision or mistake: The direct and embedded forms generated one UUID for the durable submission and a second unrelated UUID for the analytics lead event. Both were safe opaque values, but the production event could not be joined exactly to the accepted intake.
+Why it mattered: Phase 5 requires one successful form submission to reconcile with one success event. Matching only timestamp and route context is weaker evidence and can miscount concurrent enquiries.
+Current guardrail: Reuse the intake boundary's validated client-generated submission UUID as `lead_event_id`. Keep it opaque and never add names, contact details, messages, dimensions, filenames or upload contents to analytics. Preserve the same submission UUID across a retry and emit the success event only after the API confirms acceptance.
+Promoted to: `docs/security-privacy-quality.md`; `docs/mobile-ux-phase-5-validation.md`
+Related docs/tests: `apps/marketing/app/contact/ContactEnquiryForm.tsx`; `apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.tsx`; `playwright/marketing.contact.spec.ts`; `playwright/marketing.phase-four.spec.ts`
 
 ### 2026-07-25 - Enquiry Email Preview Delivery - Explain Readiness At The Control
 

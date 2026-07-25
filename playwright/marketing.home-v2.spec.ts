@@ -164,9 +164,8 @@ for (const viewport of viewports) {
 
     const liveRating = main.locator('[data-live-rating]');
     await expect(liveRating).toBeVisible();
-    await expect(liveRating).toHaveAttribute(
-      'aria-label',
-      /^Rated \d+(?:\.\d)? out of 5 from \d+ Google reviews$/,
+    await expect(liveRating).toHaveAccessibleName(
+      /^\d+(?:\.\d)? \d+ Google reviews$/,
     );
     await expect(liveRating).toHaveAttribute('href', /search\.google\.com\/local\/reviews/);
 

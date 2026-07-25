@@ -30,6 +30,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
 | `mobile-ux-roadmap-v2.md` | Authoritative roadmap | You are planning or implementing the remaining public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
+| `mobile-ux-phase-5-validation.md` | Active evidence record | You are running the final real-device, assistive-technology, analytics or performance validation phase. |
 | `mobile-ux-roadmap.md` | Historical roadmap | You need the original mobile audit, principles, or completed-work record superseded by version 2. |
 | `mobile-content-density-refinement.md` | Current implementation record | You are changing the mobile first-layer copy, responsive disclosure boundaries, or regression coverage across marketing services, products, commercial, guides, or contact. |
 | `project-command-centre-v1.md` | Product contract | You are changing the Project Operational Command Centre product behavior, scope, exclusions, or acceptance criteria. |

@@ -41,6 +41,10 @@ available they also include validated `source_path`, `source_component`,
 contract. These properties use known paths, component identifiers, and canonical
 project/product slugs only. Names, contact details, messages, dimensions, upload
 names, and upload contents must not be placed in enquiry URLs or analytics events.
+The success event's `lead_event_id` reuses the client-generated submission UUID
+that the intake boundary already validates. This non-personal opaque identifier
+allows one analytics success event to reconcile exactly with one accepted
+submission without exposing form content.
 
 Major public enquiry links use `buildEnquiryHref`. The global header resolves
 audience and item context through the parity-tested route index in
