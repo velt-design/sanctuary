@@ -103,6 +103,8 @@ export type SeoLandingGuideFirstLayer = {
   projectSlug: string;
   returnHref: string;
   returnLabel: string;
+  supportingAnswerTitle: string;
+  supportingProjectsTitle: string;
   supportingSummary: string;
 };
 

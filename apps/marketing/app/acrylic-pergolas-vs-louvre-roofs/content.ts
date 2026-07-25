@@ -21,6 +21,8 @@ export const acrylicVsLouvreConfig = {
     projectSlug: 'mt-maunganui-box',
     returnHref: '/products',
     returnLabel: 'Compare Sanctuary pergola options',
+    supportingAnswerTitle: 'Roof comparison detail',
+    supportingProjectsTitle: 'More completed roof examples',
     supportingSummary: 'Explore roof behaviour, examples and comparison detail',
   },
   hero: { image: '/images/box-landing.jpg', imageAlt: 'Fixed acrylic roof within a dark box-perimeter pergola between modern house wings', objectPosition: '50% 52%', eyebrow: 'Acrylic pergolas vs louvre roofs', title: 'Choose the roof behaviour before choosing the roof label', intro: 'Sanctuary designs fixed acrylic, solid and combination roof approaches. This guide compares those fixed roofs with an external proposal for movable louvres, using the rain, daylight, shade, view and control your site actually needs.', primaryCta: 'Compare your roof brief', secondaryCta: 'Review the matrix', secondaryHref: '#roof-comparison', proof: ['Sanctuary fixed roofs identified', 'External louvre proposals tested', 'Complete scope before headline price'] },

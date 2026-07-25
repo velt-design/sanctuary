@@ -101,7 +101,7 @@ for (const viewport of viewports) {
       sourceComponent: 'hero',
     }));
     await expect(main.getByRole('heading', { name: 'Three stages, with expectations confirmed in writing.' })).toBeAttached();
-    await expect(main.locator('[data-home-section]')).toHaveCount(8);
+    await expect(main.locator('[data-home-section]')).toHaveCount(7);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }

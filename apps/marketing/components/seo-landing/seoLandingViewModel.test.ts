@@ -53,6 +53,15 @@ const guideConfigs = [
 ] as const;
 
 describe('buildGuideFirstLayer', () => {
+  it('keeps generated supporting headings distinct across the guide programme', () => {
+    const headings = guideConfigs.flatMap(({ guideFirstLayer }) => [
+      guideFirstLayer.supportingAnswerTitle,
+      guideFirstLayer.supportingProjectsTitle,
+    ]);
+
+    expect(new Set(headings).size).toBe(headings.length);
+  });
+
   it.each(guideConfigs)(
     'builds a concise, complete first layer for $route',
     (config) => {

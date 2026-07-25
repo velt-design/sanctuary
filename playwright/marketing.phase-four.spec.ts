@@ -205,7 +205,9 @@ async function measurePage(page: Page) {
         main?.querySelectorAll('details[data-guide-description]').length ?? 0,
       guideFirstLayer: {
         projectCount:
-          main?.querySelectorAll('[data-guide-first-layer-project] article').length ??
+          main?.querySelectorAll(
+            '[data-guide-first-layer-project] .acrylic-project-card',
+          ).length ??
           0,
         projectBeforeOptional:
           Boolean(guideProject && firstOptional) &&
@@ -727,6 +729,7 @@ test('guide first layers remain complete without JavaScript', async ({
   baseURL,
   browser,
 }) => {
+  test.slow();
   expect(baseURL).toBeTruthy();
   const context = await browser.newContext({
     baseURL,

@@ -22,6 +22,8 @@ export const pergolasWithBlindsConfig = {
     projectSlug: 'tindalls-bay-pavilion',
     returnHref: '/products/screens-walls/drop-down-blinds',
     returnLabel: 'Review the drop-down blind option',
+    supportingAnswerTitle: 'Blind and edge detail',
+    supportingProjectsTitle: 'More completed privacy projects',
     supportingSummary: 'Explore edge planning, examples and blind integration detail',
   },
   hero: { image: '/images/project-goodhome-02.jpg', imageAlt: 'Drop-down blinds enclosing one edge of a covered Auckland hospitality courtyard', objectPosition: '50% 50%', eyebrow: 'Pergolas with blinds', title: 'A blind works best when the edge was designed to receive it', intro: 'The roof covers from above. A blind responds at the side. Sanctuary plans the opening, frame, controls and view together so the edge can change when low sun, wind or privacy interrupts the space.', primaryCta: 'Describe the exposed edge', secondaryCta: 'Plan each side', secondaryHref: '#edge-map', proof: ['Protection where it is useful', 'Open views when retracted', 'Frame and controls coordinated'] },

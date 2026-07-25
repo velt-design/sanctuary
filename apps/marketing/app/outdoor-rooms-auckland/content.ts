@@ -21,6 +21,8 @@ export const outdoorRoomsConfig = {
     projectSlug: 'warkworth-outdoor-room',
     returnHref: '/pergolas-auckland',
     returnLabel: 'Return to the broad pergola brief',
+    supportingAnswerTitle: 'How the outdoor room is resolved',
+    supportingProjectsTitle: 'More completed outdoor rooms',
     supportingSummary: 'Explore outdoor-room layers, examples and planning detail',
   },
   hero: { image: '/images/project-warkworth-outdoor-room-02.jpg', imageAlt: 'Cedar-lined custom outdoor room with lounge seating and integrated lighting', objectPosition: '50% 42%', eyebrow: 'Outdoor rooms in Auckland', title: 'Begin with the life inside the room, not the roof above it', intro: 'Sanctuary plans the structure around what should happen below it: dining, lounging, circulation, views and time together. The roof, edges, light and integrated features then support that use without losing the connection to the home and garden.', primaryCta: 'Describe the room you need', secondaryCta: 'Plan the layers', secondaryHref: '#room-layers', proof: ['Use leads the layout', 'Roof and edges planned together', 'Details coordinated before installation'] },

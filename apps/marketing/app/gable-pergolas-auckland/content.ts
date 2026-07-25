@@ -20,6 +20,8 @@ export const gablePergolasConfig = {
     projectSlug: 'warkworth-outdoor-room',
     returnHref: '/products/pergolas/gable',
     returnLabel: 'Review the gable pergola option',
+    supportingAnswerTitle: 'Gable design detail',
+    supportingProjectsTitle: 'More completed gable projects',
     supportingSummary: 'Explore gable geometry, examples and planning detail',
   },
   hero: { image: '/images/project-riverhead-gable-02.jpg', imageAlt: 'Custom black gable pergola beside a pool and Auckland home', objectPosition: '50% 45%', eyebrow: 'Gable pergolas in Auckland', title: 'A gable should borrow the home’s logic, not simply copy its pitch', intro: 'The central ridge gives an outdoor room height and presence. Sanctuary balances that volume with the existing roofline, available clearances, the view through the end and the practical path for structure and drainage.', primaryCta: 'Send the gable project', secondaryCta: 'Read the gable decisions', secondaryHref: '#gable-anatomy', proof: ['Ridge and eaves proportioned together', 'Openings protected where feasible', 'Roof and gable end resolved as one form'] },

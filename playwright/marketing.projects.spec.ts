@@ -386,7 +386,7 @@ test('every canonical project remains discoverable in the public sitemap', async
   }
 });
 
-test('Atelier Shu uses the front-on canopy image on its case study and commercial guide proof', async ({ page }) => {
+test('Atelier Shu retains its governed front-on canopy case-study image', async ({ page }) => {
   const imagePath = 'project-atelier-shu-02.jpg';
 
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -402,14 +402,6 @@ test('Atelier Shu uses the front-on canopy image on its case study and commercia
   await expect(visibleProjectsMain(page).locator(
     '.project-case-study__gallery img[src*="project-atelier-shu-03.jpg"]',
   )).toHaveCount(1);
-
-  await page.goto('/commercial-pergolas-auckland');
-  const atelierCard = visibleMain(page).locator('a[href="/projects/atelier-shu-cafe"]');
-  await expect(atelierCard.locator('img')).toHaveAttribute('src', new RegExp(imagePath));
-  await expect(atelierCard.locator('img')).toHaveAttribute(
-    'alt',
-    'Front-on view of the dark-tint acrylic gable canopy over outdoor seating at Atelier Shu Cafe in Newmarket',
-  );
 
   await page.goto('/sitemap-images.xml');
   await expect(page.locator('body')).toContainText(`${publicOrigin}/images/${imagePath}`);
@@ -435,14 +427,13 @@ test('Tindalls Bay leads with the full exterior and retains both supporting view
 });
 
 test('Atelier imagery stays selective and claim-aligned across guide surfaces', async ({ page }) => {
-  for (const route of ['/projects/atelier-shu-cafe', '/commercial-pergolas-auckland']) {
-    await page.goto(route);
-    await expect(visibleMain(page).locator(
-      'img[src*="project-atelier-shu-02.jpg"]',
-    )).toHaveCount(1);
-  }
+  await page.goto('/projects/atelier-shu-cafe');
+  await expect(visibleMain(page).locator(
+    'img[src*="project-atelier-shu-02.jpg"]',
+  )).toHaveCount(1);
 
   for (const route of [
+    '/commercial-pergolas-auckland',
     '/acrylic-roof-pergolas-auckland',
     '/acrylic-roof-pergolas-auckland-v2',
     '/acrylic-pergolas-vs-louvre-roofs',

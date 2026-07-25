@@ -28,7 +28,7 @@ export function orderSeoLandingBlocks(
   return orderedBlocks;
 }
 
-export type GuideFirstLayerViewModel = {
+type GuideFirstLayerViewModel = {
   answerBlock: SeoLandingBlock;
   projectBlock: SeoLandingBlock;
   supportingBlocks: readonly SeoLandingBlock[];
@@ -71,7 +71,7 @@ export function buildGuideFirstLayer(
     supportingBlocks.push({
       ...answerBlock,
       id: `${answerBlock.id}-supporting`,
-      title: 'Supporting context',
+      title: config.supportingAnswerTitle,
       paragraphs: remainingParagraphs,
     });
   }
@@ -83,7 +83,7 @@ export function buildGuideFirstLayer(
     supportingBlocks.push({
       ...projectBlock,
       id: `${projectBlock.id}-supporting`,
-      title: 'More completed project evidence',
+      title: config.supportingProjectsTitle,
       intro:
         'Additional completed projects preserve the wider comparison behind this guide.',
       items: remainingProjects,

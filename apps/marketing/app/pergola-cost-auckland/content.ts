@@ -23,6 +23,8 @@ export const pergolaCostConfig = {
     projectSlug: 'warkworth-outdoor-room',
     returnHref: '/pergolas-auckland',
     returnLabel: 'Return to the broad project brief',
+    supportingAnswerTitle: 'Scope and cost context',
+    supportingProjectsTitle: 'More completed project scope',
     supportingSummary: 'Explore cost drivers, examples and scope comparison detail',
   },
   hero: {

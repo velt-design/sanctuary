@@ -21,6 +21,8 @@ export const aluminiumPergolasConfig = {
     projectSlug: 'dairy-flat-estate',
     returnHref: '/products',
     returnLabel: 'Compare pergola options',
+    supportingAnswerTitle: 'Frame and material detail',
+    supportingProjectsTitle: 'More completed aluminium projects',
     supportingSummary: 'Explore frame decisions, examples and specification detail',
   },
   hero: {

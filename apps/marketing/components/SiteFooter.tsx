@@ -12,8 +12,8 @@ type SiteFooterProps = {
 export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProps) {
   return (
     <footer className="relative bg-[#121212] text-[#f5f6f7]">
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 py-12 sm:px-8 md:grid-cols-2 md:px-12 md:py-16 lg:grid-cols-[1.15fr_0.85fr_0.9fr]">
-        <section aria-labelledby="footer-contact-heading" className="grid content-start gap-5">
+      <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 py-8 sm:px-8 md:grid-cols-2 md:gap-10 md:px-12 md:py-16 lg:grid-cols-[1.15fr_0.85fr_0.9fr]">
+        <section aria-labelledby="footer-contact-heading" className="grid content-start gap-3 md:gap-5">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#f5f6f7]/65">
             Have a project in mind?
           </p>
@@ -42,7 +42,7 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
           </div>
         </section>
 
-        <section aria-labelledby="footer-pathways-heading" className="grid content-start gap-4">
+        <section aria-labelledby="footer-pathways-heading" className="grid content-start gap-2 md:gap-4">
           <h2 id="footer-pathways-heading" className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f5f6f7]/65">
             Project pathways
           </h2>
@@ -65,7 +65,7 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
           />
         </section>
 
-        <section aria-labelledby="footer-details-heading" className="grid content-start gap-5 text-sm leading-relaxed">
+        <section aria-labelledby="footer-details-heading" className="grid content-start gap-3 text-sm leading-relaxed md:gap-5">
           <div>
             <h2 id="footer-details-heading" className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#f5f6f7]/65">
               Auckland warehouse

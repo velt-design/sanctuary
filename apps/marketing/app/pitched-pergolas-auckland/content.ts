@@ -20,6 +20,8 @@ export const pitchedPergolasConfig = {
     projectSlug: 'velskov-forest',
     returnHref: '/products/pergolas/pitched',
     returnLabel: 'Review the pitched pergola option',
+    supportingAnswerTitle: 'Pitched-roof design detail',
+    supportingProjectsTitle: 'More completed pitched-roof projects',
     supportingSummary: 'Explore roof-plane decisions, examples and planning detail',
   },
   hero: { image: '/images/product-pitched-01.jpg', imageAlt: 'Custom mono-pitched pergola with a clean single roof plane', objectPosition: '50% 46%', eyebrow: 'Pitched pergolas in Auckland', title: 'One roof plane leaves nowhere for a weak line to hide', intro: 'A mono-pitched pergola looks simple because the high edge, low edge, fall and frame have been resolved together. Sanctuary sets that plane around the house connection, the doors below, the daylight inside and the path for rainwater.', primaryCta: 'Send the pitched project', secondaryCta: 'Follow the roof plane', secondaryHref: '#pitched-anatomy', proof: ['High and low edges resolved together', 'One clear drainage direction', 'Custom attached or freestanding design'] },

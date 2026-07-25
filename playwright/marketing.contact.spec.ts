@@ -241,6 +241,19 @@ test('neutral, audience, project and product entry routes use one canonical cont
   )).toBe(true);
   await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
 
+  await page.goto('/', { waitUntil: 'networkidle' });
+  const professionalPathway = page.locator(
+    '[data-home-section="qualified-enquiry"]',
+  ).getByRole('link', { name: 'Review professional capability' });
+  await expect(professionalPathway).toHaveAttribute(
+    'href',
+    '/architects-designers-builders',
+  );
+  await professionalPathway.click();
+  await expect(page).toHaveURL('/architects-designers-builders');
+  await expect(page.locator('[data-seo-landing="architects-designers-builders"]'))
+    .toBeVisible();
+
   type EntryCase = {
     name: string;
     route: string;
@@ -275,20 +288,6 @@ test('neutral, audience, project and product entry routes use one canonical cont
       contextLabel: 'Commercial enquiry',
       link: (currentPage) => currentPage.locator('header.site')
         .getByRole('link', { name: 'Get an estimate' }),
-    },
-    {
-      name: 'professional homepage pathway',
-      route: '/',
-      context: {
-        enquiryType: 'professional',
-        sourcePath: '/',
-        sourceComponent: 'pathway',
-      },
-      audience: 'professional',
-      contextLabel: 'Professional enquiry',
-      link: (currentPage) => currentPage.locator(
-        '[data-home-section="qualified-enquiry"]',
-      ).getByRole('link', { name: 'Send plans or a project brief' }),
     },
     {
       name: 'residential project CTA',
