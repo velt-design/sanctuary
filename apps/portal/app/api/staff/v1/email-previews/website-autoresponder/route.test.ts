@@ -90,6 +90,18 @@ describe('staff website autoresponder preview route', () => {
         subject: "Alex, we've received your pergola enquiry",
         sendSubject: `[Preview: ${layout}] Alex, we've received your pergola enquiry`,
         preheader: 'Your project details and next steps.',
+        hero: {
+          projectSlug: 'warkworth-outdoor-room',
+          projectTitle: 'Warkworth Outdoor Room',
+          projectHref:
+            'https://www.sanctuarypergolas.co.nz/projects/warkworth-outdoor-room',
+          imageUrl:
+            'https://www.sanctuarypergolas.co.nz/images/project-warkworth-outdoor-room-07.jpg',
+          imageAlt: 'Warkworth outdoor room',
+          location: 'Warkworth',
+          roofApproach: 'Mixed roof',
+          match: 'exact',
+        },
         html: `<html class="${options.previewTheme}"><body>${layout}</body></html>`,
         text: `${layout} preview`,
       }),
@@ -183,7 +195,13 @@ describe('staff website autoresponder preview route', () => {
         { id: 'image-led', name: 'Image-led' },
         { id: 'compact', name: 'Compact' },
       ],
+      image: {
+        projectTitle: 'Warkworth Outdoor Room',
+        match: 'exact',
+      },
       recipient: 'jordan@sanctuarypergolas.co.nz',
+      environment: 'Automated test',
+      deliveryMode: 'Preview-only Resend · exact fixture · no writes',
       sendReady: true,
       configurationReason: 'ready',
     });

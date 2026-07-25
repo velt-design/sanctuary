@@ -133,6 +133,7 @@ export async function renderWebsiteAutoresponderAlternative(
     subject,
     sendSubject: websiteAutoresponderPreviewSendSubject(layout, subject),
     preheader,
+    hero: model.hero,
     html,
     text,
   };

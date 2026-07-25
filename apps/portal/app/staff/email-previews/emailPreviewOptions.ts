@@ -22,9 +22,23 @@ export const previewLayoutIds = [
   'compact',
 ] as const;
 
+export const previewDisplayModeOptions = [
+  {
+    value: 'compare',
+    label: 'Compare',
+    description: 'Review all three alternatives together',
+  },
+  {
+    value: 'focus',
+    label: 'Focus',
+    description: 'Inspect one alternative at a larger scale',
+  },
+] as const;
+
 export const previewViewportOptions = [
-  { value: 'desktop', label: 'Desktop' },
-  { value: 'mobile', label: 'Mobile' },
+  { value: 'desktop', label: 'Desktop', width: 760, description: '760 px' },
+  { value: 'narrow', label: 'Narrow', width: 600, description: '600 px' },
+  { value: 'mobile', label: 'Mobile', width: 390, description: '390 px' },
 ] as const;
 
 export const previewThemeOptions = [
@@ -32,12 +46,21 @@ export const previewThemeOptions = [
   { value: 'dark', label: 'Dark' },
 ] as const;
 
+export const previewZoomOptions = [
+  { value: 50, label: '50%' },
+  { value: 75, label: '75%' },
+  { value: 100, label: '100%' },
+] as const;
+
 export type PreviewCustomerType = (typeof previewCustomerTypes)[number]['value'];
 export type PreviewRoofForm = (typeof previewRoofForms)[number]['value'];
 export type PreviewBlindsOption = (typeof previewBlindsOptions)[number]['value'];
 export type PreviewLayoutId = (typeof previewLayoutIds)[number];
+export type PreviewDisplayMode =
+  (typeof previewDisplayModeOptions)[number]['value'];
 export type PreviewViewport = (typeof previewViewportOptions)[number]['value'];
 export type PreviewTheme = (typeof previewThemeOptions)[number]['value'];
+export type PreviewZoom = (typeof previewZoomOptions)[number]['value'];
 export type PreviewVariant =
   | `${Exclude<PreviewCustomerType, 'professional'>}-${PreviewRoofForm}-${PreviewBlindsOption}`
   | 'professional';
@@ -58,6 +81,41 @@ export function previewVariantForSelection(
   return customerType === 'professional'
     ? 'professional'
     : `${customerType}-${roofForm}-${blinds}`;
+}
+
+const previewVariants = Object.freeze([
+  ...previewCustomerTypes
+    .filter((customerType) => customerType.value !== 'professional')
+    .flatMap((customerType) =>
+      previewRoofForms.flatMap((roofForm) =>
+        previewBlindsOptions.map((blinds) =>
+          previewVariantForSelection(
+            customerType.value,
+            roofForm.value,
+            blinds.value,
+          ),
+        ),
+      ),
+    ),
+  'professional',
+]) as readonly PreviewVariant[];
+
+export function previewVariantPosition(variant: PreviewVariant): {
+  current: number;
+  total: number;
+} {
+  const index = previewVariants.indexOf(variant);
+  return {
+    current: index >= 0 ? index + 1 : 1,
+    total: previewVariants.length,
+  };
+}
+
+export function previewViewportDefinition(viewport: PreviewViewport) {
+  return (
+    previewViewportOptions.find((option) => option.value === viewport)
+    ?? previewViewportOptions[0]
+  );
 }
 
 export function previewConfigurationMessage(

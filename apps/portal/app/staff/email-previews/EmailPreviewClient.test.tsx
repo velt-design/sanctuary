@@ -43,17 +43,44 @@ function previewResponse(
       htmlDark: `<html class="sp-preview-dark"><body>${layout.id} dark</body></html>`,
       text: `${layout.name} plain text`,
     })),
+    image: {
+      projectSlug: 'warkworth-outdoor-room',
+      projectTitle: 'Warkworth Outdoor Room',
+      projectHref:
+        'https://www.sanctuarypergolas.co.nz/projects/warkworth-outdoor-room',
+      imageUrl:
+        'https://www.sanctuarypergolas.co.nz/images/project-warkworth-outdoor-room-07.jpg',
+      imageAlt: 'Warkworth outdoor room',
+      location: 'Warkworth',
+      roofApproach: 'Mixed acrylic and timber-lined roof',
+      match: 'exact',
+    },
     recipient: 'jordan@sanctuarypergolas.co.nz',
+    environment: 'Vercel Preview',
+    deliveryMode: 'Preview-only Resend · exact fixture · no writes',
     sendReady: options.sendReady ?? false,
     configurationReason: options.reason ?? 'missing_api_key',
   };
 }
 
-async function flushEffects() {
+function successfulSend(variant: string, layout: string) {
+  return {
+    ok: true,
+    variant,
+    layout,
+    recipient: 'jordan@sanctuarypergolas.co.nz',
+    subject: `[Preview: ${layout}] Alex, we've received your pergola enquiry`,
+    customerSubject: "Alex, we've received your pergola enquiry",
+    preheader: 'Your project details and next steps from Sanctuary.',
+    providerMessageId: `preview-message-${layout}`,
+  };
+}
+
+async function flushEffects(steps = 5) {
   await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let index = 0; index < steps; index += 1) {
+      await Promise.resolve();
+    }
   });
 }
 
@@ -67,6 +94,58 @@ function button(container: HTMLElement, label: string): HTMLButtonElement {
   return matches[0]!;
 }
 
+function segment(container: HTMLElement, value: string): HTMLButtonElement {
+  const control = container.querySelector<HTMLButtonElement>(
+    `[data-segment-value="${value}"]`,
+  );
+  if (!control) throw new Error(`Missing segment ${value}`);
+  return control;
+}
+
+function layoutChoice(
+  container: HTMLElement,
+  layout: string,
+): HTMLButtonElement {
+  const control = container.querySelector<HTMLButtonElement>(
+    `[data-layout-choice="${layout}"]`,
+  );
+  if (!control) throw new Error(`Missing layout choice ${layout}`);
+  return control;
+}
+
+function select(
+  container: HTMLElement,
+  labelText: string,
+): HTMLSelectElement {
+  const label = Array.from(container.querySelectorAll('label')).find(
+    (candidate) => candidate.textContent?.trim() === labelText,
+  );
+  if (!label?.htmlFor) throw new Error(`Missing select label ${labelText}`);
+  const control = container.querySelector<HTMLSelectElement>(
+    `#${label.htmlFor}`,
+  );
+  if (!control) throw new Error(`Missing select ${labelText}`);
+  return control;
+}
+
+async function choose(
+  container: HTMLElement,
+  label: string,
+  value: string,
+) {
+  await act(async () => {
+    const control = select(container, label);
+    control.value = value;
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    await Promise.resolve();
+  });
+  await flushEffects();
+}
+
+function postCalls() {
+  return vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === 'POST');
+}
+
 describe('EmailPreviewClient', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -78,16 +157,7 @@ describe('EmailPreviewClient', () => {
             variant: string;
             layout: string;
           };
-          return Response.json({
-            ok: true,
-            variant: body.variant,
-            layout: body.layout,
-            recipient: 'jordan@sanctuarypergolas.co.nz',
-            subject: `[Preview: ${body.layout}] Alex, we've received your pergola enquiry`,
-            customerSubject: "Alex, we've received your pergola enquiry",
-            preheader: 'Your project details and next steps from Sanctuary.',
-            providerMessageId: 'preview-message-1',
-          });
+          return Response.json(successfulSend(body.variant, body.layout));
         }
         const variant = new URL(
           url,
@@ -103,90 +173,113 @@ describe('EmailPreviewClient', () => {
     document.body.innerHTML = '';
   });
 
-  it('synchronizes all enquiry, viewport and theme controls across three layouts', async () => {
+  it('provides synchronized fixture, comparison, focus, viewport, theme, zoom and reset controls', async () => {
     const rendered = renderIntoDocument(<EmailPreviewClient />);
     await flushEffects();
 
-    expect(
-      button(rendered.container, 'Residential').getAttribute('aria-pressed'),
-    ).toBe('true');
-    expect(
-      button(rendered.container, 'Pitched').getAttribute('aria-pressed'),
-    ).toBe('true');
-    expect(
-      button(rendered.container, 'Without blinds').getAttribute('aria-pressed'),
-    ).toBe('true');
-    expect(button(rendered.container, 'Desktop').getAttribute('aria-pressed')).toBe(
+    expect(select(rendered.container, 'Customer').value).toBe('residential');
+    expect(select(rendered.container, 'Roof form').value).toBe('pitched');
+    expect(select(rendered.container, 'Outdoor blinds').value).toBe(
+      'without-blinds',
+    );
+    expect(segment(rendered.container, 'compare').getAttribute('aria-pressed')).toBe(
       'true',
     );
-    expect(button(rendered.container, 'Light').getAttribute('aria-pressed')).toBe(
+    expect(segment(rendered.container, 'desktop').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(segment(rendered.container, 'light').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(segment(rendered.container, '50').getAttribute('aria-pressed')).toBe(
       'true',
     );
     expect(rendered.container.querySelectorAll('iframe')).toHaveLength(3);
-    expect(rendered.container.textContent).toContain('Editorial Refined');
-    expect(rendered.container.textContent).toContain('Image-led');
-    expect(rendered.container.textContent).toContain('Compact');
+    expect(rendered.container.textContent).toContain('01 / 17');
+    expect(rendered.container.textContent).toContain('Warkworth Outdoor Room');
+    expect(rendered.container.textContent).toContain('Vercel Preview');
+    expect(rendered.container.textContent).toContain(
+      'Fixed recipient · no BCC · no database or audit writes',
+    );
     expect(rendered.container.textContent).toContain(
       'RESEND_API_KEY_PREVIEW',
     );
     expect(button(rendered.container, 'Send Editorial Refined').disabled).toBe(
       true,
     );
+    expect(button(rendered.container, 'Send all 3').disabled).toBe(true);
 
     await act(async () => {
-      button(rendered.container, 'Dark').click();
-      button(rendered.container, 'Mobile').click();
+      segment(rendered.container, 'dark').click();
+      segment(rendered.container, 'mobile').click();
+      segment(rendered.container, '75').click();
+      segment(rendered.container, 'focus').click();
     });
 
-    const comparison = rendered.container.querySelector(
-      '[data-preview-viewport]',
+    const canvas = rendered.container.querySelector(
+      '[data-testid="email-preview-canvas"]',
     );
-    expect(comparison?.getAttribute('data-preview-viewport')).toBe('mobile');
-    expect(comparison?.getAttribute('data-preview-theme')).toBe('dark');
+    expect(canvas?.getAttribute('data-preview-mode')).toBe('focus');
+    expect(canvas?.getAttribute('data-preview-viewport')).toBe('mobile');
+    expect(canvas?.getAttribute('data-preview-theme')).toBe('dark');
+    expect(rendered.container.querySelectorAll('iframe')).toHaveLength(1);
     expect(
       rendered.container.querySelector('iframe')?.getAttribute('srcdoc'),
     ).toContain('editorial-refined dark');
+    const focusedCard = rendered.container.querySelector<HTMLElement>(
+      '[data-layout-id="editorial-refined"]',
+    );
+    expect(focusedCard?.style.getPropertyValue('--preview-frame-width')).toBe(
+      '390px',
+    );
+    expect(focusedCard?.style.getPropertyValue('--preview-frame-scale')).toBe(
+      '0.75',
+    );
 
     await act(async () => {
-      button(rendered.container, 'Commercial').click();
-      await Promise.resolve();
+      layoutChoice(rendered.container, 'image-led').click();
     });
-    await flushEffects();
-    await act(async () => {
-      button(rendered.container, 'Gable').click();
-      await Promise.resolve();
-    });
-    await flushEffects();
-    await act(async () => {
-      button(rendered.container, 'With blinds').click();
-      await Promise.resolve();
-    });
-    await flushEffects();
+    expect(rendered.container.querySelectorAll('iframe')).toHaveLength(1);
+    expect(
+      rendered.container.querySelector('iframe')?.getAttribute('title'),
+    ).toContain('Image-led');
+    expect(layoutChoice(rendered.container, 'image-led').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
 
+    await choose(rendered.container, 'Customer', 'commercial');
+    await choose(rendered.container, 'Roof form', 'gable');
+    await choose(rendered.container, 'Outdoor blinds', 'with-blinds');
     expect(fetch).toHaveBeenLastCalledWith(
       '/api/staff/v1/email-previews/website-autoresponder?variant=commercial-gable-with-blinds',
       expect.objectContaining({ cache: 'no-store' }),
     );
 
+    await choose(rendered.container, 'Customer', 'professional');
+    expect(rendered.container.textContent).toContain(
+      'Professional uses the fixed KiwiRail Head Office reference',
+    );
+    expect(rendered.container.querySelectorAll('select')).toHaveLength(1);
+
     await act(async () => {
-      button(rendered.container, 'Professional').click();
+      button(rendered.container, 'Reset').click();
       await Promise.resolve();
     });
     await flushEffects();
-
-    expect(rendered.container.textContent).toContain(
-      'Professional enquiries use the fixed KiwiRail Head Office reference.',
+    expect(select(rendered.container, 'Customer').value).toBe('residential');
+    expect(select(rendered.container, 'Roof form').value).toBe('pitched');
+    expect(segment(rendered.container, 'compare').getAttribute('aria-pressed')).toBe(
+      'true',
     );
-    expect(
-      Array.from(rendered.container.querySelectorAll('legend')).map(
-        (legend) => legend.textContent,
-      ),
-    ).toEqual(['Customer type', 'Viewport', 'Inbox theme']);
+    expect(segment(rendered.container, '50').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(rendered.container.querySelectorAll('iframe')).toHaveLength(3);
 
     rendered.unmount();
   });
 
-  it('sends the selected layout only when the server reports ready', async () => {
+  it('requires confirmation and sends only the active layout', async () => {
     vi.mocked(fetch).mockImplementation(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         if (init?.method === 'POST') {
@@ -194,15 +287,7 @@ describe('EmailPreviewClient', () => {
             variant: string;
             layout: string;
           };
-          return Response.json({
-            ok: true,
-            variant: body.variant,
-            layout: body.layout,
-            recipient: 'jordan@sanctuarypergolas.co.nz',
-            subject: `[Preview: ${body.layout}] Alex, we've received your pergola enquiry`,
-            customerSubject: "Alex, we've received your pergola enquiry",
-            providerMessageId: 'preview-message-1',
-          });
+          return Response.json(successfulSend(body.variant, body.layout));
         }
         const variant = new URL(
           String(input),
@@ -216,21 +301,27 @@ describe('EmailPreviewClient', () => {
 
     const rendered = renderIntoDocument(<EmailPreviewClient />);
     await flushEffects();
+    await act(async () => {
+      layoutChoice(rendered.container, 'image-led').click();
+    });
 
-    const send = button(rendered.container, 'Send Image-led');
-    expect(send.disabled).toBe(false);
+    await act(async () => {
+      button(rendered.container, 'Send Image-led').click();
+    });
+    expect(postCalls()).toHaveLength(0);
+    expect(rendered.container.textContent).toContain('Send Image-led?');
     expect(rendered.container.textContent).toContain(
-      'Ready to send from this preview deployment.',
+      'residential pitched without blinds fixture',
     );
 
     await act(async () => {
-      send.click();
-      await Promise.resolve();
+      button(rendered.container, 'Confirm send').click();
       await Promise.resolve();
     });
+    await flushEffects(8);
 
-    expect(fetch).toHaveBeenLastCalledWith(
-      '/api/staff/v1/email-previews/website-autoresponder',
+    expect(postCalls()).toHaveLength(1);
+    expect(postCalls()[0]?.[1]).toEqual(
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
@@ -239,9 +330,114 @@ describe('EmailPreviewClient', () => {
         }),
       }),
     );
+    expect(rendered.container.textContent).toContain('Image-led sent');
     expect(rendered.container.textContent).toContain(
-      'Image-led sent to jordan@sanctuarypergolas.co.nz',
+      'jordan@sanctuarypergolas.co.nz',
     );
+
+    rendered.unmount();
+  });
+
+  it('confirms and sends all three exact layouts sequentially', async () => {
+    vi.mocked(fetch).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          const body = JSON.parse(String(init.body)) as {
+            variant: string;
+            layout: string;
+          };
+          return Response.json(successfulSend(body.variant, body.layout));
+        }
+        const variant = new URL(
+          String(input),
+          'http://localhost',
+        ).searchParams.get('variant')!;
+        return Response.json(
+          previewResponse(variant, { sendReady: true, reason: 'ready' }),
+        );
+      },
+    );
+
+    const rendered = renderIntoDocument(<EmailPreviewClient />);
+    await flushEffects();
+    await act(async () => {
+      button(rendered.container, 'Send all 3').click();
+    });
+    expect(rendered.container.textContent).toContain('Send all 3 alternatives?');
+    expect(postCalls()).toHaveLength(0);
+
+    await act(async () => {
+      button(rendered.container, 'Confirm send').click();
+      await Promise.resolve();
+    });
+    await flushEffects(12);
+
+    expect(
+      postCalls().map(([, init]) => JSON.parse(String(init?.body)).layout),
+    ).toEqual(['editorial-refined', 'image-led', 'compact']);
+    expect(rendered.container.textContent).toContain('3 alternatives sent');
+
+    rendered.unmount();
+  });
+
+  it('stops a batch after failure and offers a focused retry', async () => {
+    let imageLedFailures = 1;
+    vi.mocked(fetch).mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          const body = JSON.parse(String(init.body)) as {
+            variant: string;
+            layout: string;
+          };
+          if (body.layout === 'image-led' && imageLedFailures > 0) {
+            imageLedFailures -= 1;
+            return Response.json(
+              { error: 'Provider temporarily unavailable.' },
+              { status: 502 },
+            );
+          }
+          return Response.json(successfulSend(body.variant, body.layout));
+        }
+        const variant = new URL(
+          String(input),
+          'http://localhost',
+        ).searchParams.get('variant')!;
+        return Response.json(
+          previewResponse(variant, { sendReady: true, reason: 'ready' }),
+        );
+      },
+    );
+
+    const rendered = renderIntoDocument(<EmailPreviewClient />);
+    await flushEffects();
+    await act(async () => {
+      button(rendered.container, 'Send all 3').click();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      button(rendered.container, 'Confirm send').click();
+      await Promise.resolve();
+    });
+    await flushEffects(10);
+
+    expect(postCalls()).toHaveLength(2);
+    expect(rendered.container.textContent).toContain(
+      '1 sent before the failure',
+    );
+    expect(rendered.container.textContent).toContain(
+      'Image-led failed. Provider temporarily unavailable.',
+    );
+
+    await act(async () => {
+      button(rendered.container, 'Retry failed').click();
+      await Promise.resolve();
+    });
+    await flushEffects(8);
+    expect(postCalls()).toHaveLength(3);
+    expect(JSON.parse(String(postCalls()[2]?.[1]?.body)).layout).toBe(
+      'image-led',
+    );
+    expect(rendered.container.textContent).toContain('Image-led sent');
 
     rendered.unmount();
   });

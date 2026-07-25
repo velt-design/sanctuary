@@ -11,3 +11,6 @@ export {
   getWebsiteAutoresponderPreviewFixture,
   isWebsiteAutoresponderPreviewVariant,
 } from '../../../apps/marketing/lib/websiteAutoresponderPreviewFixtures';
+export type {
+  WebsiteAutoresponderPreviewVariant,
+} from '../../../apps/marketing/lib/websiteAutoresponderPreviewFixtures';

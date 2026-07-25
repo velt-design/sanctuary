@@ -4,11 +4,14 @@ import {
   previewConfigurationErrorMessage,
   previewConfigurationMessage,
   previewCustomerTypes,
+  previewDisplayModeOptions,
   previewLayoutIds,
   previewRoofForms,
   previewThemeOptions,
   previewVariantForSelection,
+  previewVariantPosition,
   previewViewportOptions,
+  previewZoomOptions,
 } from './emailPreviewOptions';
 
 describe('email preview options', () => {
@@ -39,12 +42,34 @@ describe('email preview options', () => {
     ]);
     expect(previewViewportOptions.map((option) => option.value)).toEqual([
       'desktop',
+      'narrow',
       'mobile',
+    ]);
+    expect(previewViewportOptions.map((option) => option.width)).toEqual([
+      760,
+      600,
+      390,
     ]);
     expect(previewThemeOptions.map((option) => option.value)).toEqual([
       'light',
       'dark',
     ]);
+    expect(previewDisplayModeOptions.map((option) => option.value)).toEqual([
+      'compare',
+      'focus',
+    ]);
+    expect(previewZoomOptions.map((option) => option.value)).toEqual([
+      50,
+      75,
+      100,
+    ]);
+    expect(
+      previewVariantPosition('residential-pitched-without-blinds'),
+    ).toEqual({ current: 1, total: 17 });
+    expect(previewVariantPosition('professional')).toEqual({
+      current: 17,
+      total: 17,
+    });
   });
 
   it('turns every disabled-send reason into an actionable staff message', () => {

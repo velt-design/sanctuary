@@ -5,23 +5,30 @@ import {
   requireStaffSession,
 } from '@/lib/api/staffApi';
 import {
-  getWebsiteAutoresponderPreviewFixture,
   isWebsiteAutoresponderPreviewLayout,
   isWebsiteAutoresponderPreviewVariant,
-  renderWebsiteAutoresponderAlternative,
-  WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS,
 } from '@/lib/sharedEmails';
 import {
   getWebsiteAutoresponderPreviewAvailability,
   sendWebsiteAutoresponderPreview,
   WebsiteAutoresponderPreviewError,
 } from '@/lib/sharedEmailPreviewSender';
+import {
+  renderWebsiteAutoresponderPreviewPayload,
+} from '@/lib/emailPreviews/websiteAutoresponderPreviewRenderer';
 
 export const runtime = 'nodejs';
 
 function privateNoStore(response: Response): Response {
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
+}
+
+function previewEnvironmentLabel(): string {
+  if (process.env.VERCEL_ENV === 'preview') return 'Vercel Preview';
+  if (process.env.NODE_ENV === 'development') return 'Local development';
+  if (process.env.NODE_ENV === 'test') return 'Automated test';
+  return 'Preview environment';
 }
 
 function unavailableResponse() {
@@ -68,44 +75,23 @@ export async function GET(req: Request) {
     );
   }
 
-  const fixture = getWebsiteAutoresponderPreviewFixture(variant);
-  const layouts = await Promise.all(
-    WEBSITE_AUTORESPONDER_PREVIEW_LAYOUTS.map(async (layout) => {
-      const [light, dark] = await Promise.all([
-        renderWebsiteAutoresponderAlternative(
-          fixture.templateId,
-          fixture.variables as unknown as Record<string, unknown>,
-          layout.id,
-          { previewTheme: 'light' },
-        ),
-        renderWebsiteAutoresponderAlternative(
-          fixture.templateId,
-          fixture.variables as unknown as Record<string, unknown>,
-          layout.id,
-          { previewTheme: 'dark' },
-        ),
-      ]);
-      return {
-        id: layout.id,
-        name: layout.name,
-        description: layout.description,
-        bestFor: layout.bestFor,
-        subject: light.subject,
-        sendSubject: light.sendSubject,
-        preheader: light.preheader,
-        htmlLight: light.html,
-        htmlDark: dark.html,
-        text: light.text,
-      };
-    }),
-  );
+  let rendered;
+  try {
+    rendered = await renderWebsiteAutoresponderPreviewPayload(variant);
+  } catch {
+    return privateNoStore(
+      jsonError('Email preview image metadata is unavailable.', 500, null, {
+        code: 'EMAIL_PREVIEW_RENDER_INVALID',
+      }),
+    );
+  }
 
   return privateNoStore(
     jsonOk({
-      variant,
-      label: fixture.label,
-      layouts,
+      ...rendered,
       recipient: access.availability.recipient,
+      environment: previewEnvironmentLabel(),
+      deliveryMode: 'Preview-only Resend · exact fixture · no writes',
       sendReady: access.availability.sendReady,
       configurationReason: access.availability.reason,
     }),

@@ -38,9 +38,11 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `dashboard` | `/dashboard` | core | staff | none | agent-access | not-applicable | `docs/platform-workflow.md` |
 | `ui-foundation` | `/staff/ui-foundation` | core | staff | none | agent-access | not-applicable | `docs/ui-foundation.md` |
 | `email-previews` | `/staff/email-previews` | core | staff | none | catalog-only | not-applicable | `docs/automation-email-audit.md` |
+| `qa-email-preview-workbench-fixture` | `/qa/email-preview-workbench-fixture` | diagnostic | fixture | fixture_flag | fixture-only | not-applicable | `docs/automation-email-audit.md` |
 | `projects-index` | `/staff/projects` | project | staff | visible_project | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `contacts-index` | `/staff/contacts` | project | staff | none | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `schedule` | `/staff/schedule` | schedule | staff | none | agent-access | planned | `docs/schedule.md` |
+| `admin-costing` | `/admin/costing` | admin | admin | admin_role | admin-only | planned | `docs/costing-and-geometry.md` |
 | `project-detail` | `/staff/projects/:projectId` | project | staff | project_id | scenario-required | exported | `docs/projects-contacts-estimates-calculator.md` |
 | `estimate-detail` | `/staff/projects/:projectId/estimate/:estimateId` | commercial | staff | estimate_id | scenario-required | exported | `docs/projects-contacts-estimates-calculator.md` |
 | `quote-detail` | `/staff/projects/:projectId/quotes/:quoteId` | commercial | staff | quote_id | scenario-required | exported | `docs/quotes-invoices-job-packs.md` |

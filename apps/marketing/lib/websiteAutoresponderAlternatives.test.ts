@@ -48,6 +48,7 @@ describe('website autoresponder layout alternatives', () => {
         expect(rendered.layout).toBe(layout.id);
         expect(rendered.subject).toBe(production.subject);
         expect(rendered.preheader).toBe(production.preheader);
+        expect(rendered.hero).toEqual(hero);
         expect(rendered.sendSubject).toBe(
           `[Preview: ${layout.name}] ${production.subject}`,
         );
