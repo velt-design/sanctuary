@@ -14,6 +14,14 @@
   font: 600 0.68rem/1 var(--font-body);
   letter-spacing: 0.09em;
   text-transform: uppercase;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.project-navigator__filter-reset:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .project-navigator--collection .project-navigator__card {
@@ -84,6 +92,14 @@
     gap: 1rem;
     cursor: pointer;
     list-style: none;
+    transition:
+      background-color var(--motion-duration-instant) var(--motion-ease-standard),
+      opacity var(--motion-duration-instant) var(--motion-ease-standard);
+  }
+
+  .project-navigator__filter-summary:active {
+    background: var(--color-surface-neutral);
+    opacity: var(--motion-press-opacity);
   }
 
   .project-navigator__filter-summary::-webkit-details-marker {
@@ -113,7 +129,7 @@
   .project-navigator__filter-icon {
     flex: 0 0 auto;
     font: 300 1.4rem/1 var(--font-display);
-    transition: transform 160ms ease;
+    transition: transform var(--motion-duration-short) var(--motion-ease-standard);
   }
 
   .project-navigator__filter-disclosure[open]:not([data-disclosure-state="pending"]) .project-navigator__filter-icon {

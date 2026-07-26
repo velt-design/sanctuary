@@ -7,7 +7,7 @@ const distDir = process.env.MARKETING_PLAYWRIGHT_DIST_DIR?.trim()
 
 export default defineConfig({
   testDir: './playwright',
-  testMatch: /marketing\.(?:consent|contact|foundation|acrylic-foundation|acrylic-copy-variant|guide-cluster-final-refinement|guide-hub|hero-navigation|homepage|mobile-content-density|phase-(?:three|four|five)|products|projects(?:-phase-two)?|seo-copy-hygiene|seo-landing|seo-programme|shared-header)\.spec\.ts/,
+  testMatch: /marketing\.(?:consent|contact|foundation|acrylic-foundation|acrylic-copy-variant|guide-cluster-final-refinement|guide-hub|hero-navigation|homepage|mobile-content-density|phase-(?:three|four|five)|products|projects(?:-phase-two)?|seo-copy-hygiene|seo-landing|seo-programme|shared-header|touch-motion)\.spec\.ts/,
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

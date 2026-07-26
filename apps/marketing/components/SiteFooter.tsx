@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import ReviewBadge from '@/components/reviews/ReviewBadge';
+import styles from './SiteFooter.module.css';
 
 type SiteFooterProps = {
   reviewRating: number;
@@ -22,20 +23,20 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
           </h2>
           <Link
             href="/contact"
-            className="inline-flex min-h-11 w-fit items-center justify-center border border-[#f5f6f7] px-6 py-3 text-sm font-medium tracking-[0.16em] uppercase lg:hover:bg-[#f5f6f7] lg:hover:text-[#121212]"
+            className={`inline-flex min-h-11 w-fit items-center justify-center border border-[#f5f6f7] px-6 py-3 text-sm font-medium tracking-[0.16em] uppercase ${styles.primaryAction}`}
           >
             Discuss your project
           </Link>
           <div className="grid gap-1 text-sm">
             <a
               href="tel:+64228545633"
-              className="inline-flex min-h-11 w-fit items-center underline underline-offset-4 lg:hover:opacity-80"
+              className={`inline-flex min-h-11 w-fit items-center underline underline-offset-4 ${styles.quietLink}`}
             >
               022 854 5633
             </a>
             <a
               href="mailto:info@sanctuarypergolas.co.nz"
-              className="inline-flex min-h-11 w-fit items-center break-all underline underline-offset-4 lg:hover:opacity-80"
+              className={`inline-flex min-h-11 w-fit items-center break-all underline underline-offset-4 ${styles.quietLink}`}
             >
               info@sanctuarypergolas.co.nz
             </a>
@@ -47,18 +48,18 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
             Project pathways
           </h2>
           <nav aria-label="Footer navigation" className="grid text-sm font-medium uppercase tracking-[0.12em]">
-            <Link href="/commercial-pergolas-auckland" className="inline-flex min-h-11 items-center border-b border-white/15 lg:hover:opacity-80">
+            <Link href="/commercial-pergolas-auckland" className={`inline-flex min-h-11 items-center border-b border-white/15 ${styles.navigationLink}`}>
               Commercial
             </Link>
-            <Link href="/architects-designers-builders" className="inline-flex min-h-11 items-center border-b border-white/15 lg:hover:opacity-80">
+            <Link href="/architects-designers-builders" className={`inline-flex min-h-11 items-center border-b border-white/15 ${styles.navigationLink}`}>
               Architects, designers &amp; builders
             </Link>
-            <Link href="/pergola-guides" className="inline-flex min-h-11 items-center border-b border-white/15 lg:hover:opacity-80">
+            <Link href="/pergola-guides" className={`inline-flex min-h-11 items-center border-b border-white/15 ${styles.navigationLink}`}>
               Pergola Guides
             </Link>
           </nav>
           <ReviewBadge
-            className="min-h-11"
+            className={`min-h-11 ${styles.reviewAction}`}
             rating={reviewRating}
             count={reviewCount}
             variant="onDark"
@@ -75,14 +76,14 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
             <p>New Zealand</p>
           </div>
           <nav aria-label="Footer legal and social links" className="flex flex-wrap gap-x-5 text-xs uppercase tracking-[0.12em]">
-            <Link href="/privacy" className="inline-flex min-h-11 items-center underline underline-offset-4 lg:hover:opacity-80">
+            <Link href="/privacy" className={`inline-flex min-h-11 items-center underline underline-offset-4 ${styles.quietLink}`}>
               Privacy
             </Link>
             <a
               href="https://www.instagram.com/sanctuarypergolas/"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-11 items-center underline underline-offset-4 lg:hover:opacity-80"
+              className={`inline-flex min-h-11 items-center underline underline-offset-4 ${styles.quietLink}`}
             >
               Instagram
             </a>
@@ -90,7 +91,7 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
               href="https://www.facebook.com/SanctuaryPergolas"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-11 items-center underline underline-offset-4 lg:hover:opacity-80"
+              className={`inline-flex min-h-11 items-center underline underline-offset-4 ${styles.quietLink}`}
             >
               Facebook
             </a>

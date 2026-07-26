@@ -19,14 +19,14 @@ export default function ReviewBadge({
 }: ReviewBadgeProps) {
   const ratingText = rating.toFixed(1);
   const tone =
-    variant === 'onDark' ? 'text-white/90 hover:text-white' : 'text-ink/80 hover:text-ink';
+    variant === 'onDark' ? 'text-white/90' : 'text-ink/80';
 
   return (
     <a
       href={GOOGLE_PLACE.reviewsUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-2 text-[14px] font-medium leading-none no-underline transition-colors ${tone} ${className}`}
+      className={`inline-flex items-center gap-2 text-[14px] font-medium leading-none no-underline ${tone} ${className}`}
     >
       <span aria-hidden="true" className="text-[15px] tracking-[0.05em] text-[#FFB400]">
         {'★★★★★'}

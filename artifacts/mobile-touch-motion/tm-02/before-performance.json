@@ -1,0 +1,61 @@
+{
+  "browser": "Playwright Chromium",
+  "capturedAt": "2026-07-26T05:35:58.392Z",
+  "reducedMotion": "no-preference",
+  "route": "/",
+  "runs": [
+    {
+      "run": 1,
+      "failedResponses": [],
+      "cls": 0.01818313267896049,
+      "domNodes": 264,
+      "firstContentfulPaint": 92,
+      "imageRequestCount": 0,
+      "imageTransferBytes": 0,
+      "longTaskCount": 0,
+      "longTaskMaxDuration": 0,
+      "resourceRequestCount": 53,
+      "scriptRequestCount": 14,
+      "scriptTransferBytes": 190417,
+      "stylesheetRequestCount": 11,
+      "stylesheetTransferBytes": 95875
+    },
+    {
+      "run": 2,
+      "failedResponses": [],
+      "cls": 0.01818313267896049,
+      "domNodes": 264,
+      "firstContentfulPaint": 72,
+      "imageRequestCount": 0,
+      "imageTransferBytes": 0,
+      "longTaskCount": 0,
+      "longTaskMaxDuration": 0,
+      "resourceRequestCount": 53,
+      "scriptRequestCount": 14,
+      "scriptTransferBytes": 190417,
+      "stylesheetRequestCount": 11,
+      "stylesheetTransferBytes": 95875
+    },
+    {
+      "run": 3,
+      "failedResponses": [],
+      "cls": 0.01818313267896049,
+      "domNodes": 264,
+      "firstContentfulPaint": 72,
+      "imageRequestCount": 0,
+      "imageTransferBytes": 0,
+      "longTaskCount": 0,
+      "longTaskMaxDuration": 0,
+      "resourceRequestCount": 53,
+      "scriptRequestCount": 14,
+      "scriptTransferBytes": 190417,
+      "stylesheetRequestCount": 11,
+      "stylesheetTransferBytes": 95875
+    }
+  ],
+  "source": "before",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  }
+}

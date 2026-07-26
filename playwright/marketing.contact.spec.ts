@@ -242,9 +242,9 @@ test('neutral, audience, project and product entry routes use one canonical cont
   await expect(page.getByLabel('Enquiry context')).toHaveCount(0);
 
   await page.goto('/', { waitUntil: 'networkidle' });
-  const professionalPathway = page.locator(
-    '[data-home-section="qualified-enquiry"]',
-  ).getByRole('link', { name: 'Review professional capability' });
+  const professionalPathway = page.getByRole('link', {
+    name: 'Work with Sanctuary',
+  });
   await expect(professionalPathway).toHaveAttribute(
     'href',
     '/architects-designers-builders',
