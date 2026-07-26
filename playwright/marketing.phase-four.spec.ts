@@ -526,7 +526,7 @@ test('commercial journey leads with three cases and three delivery stages', asyn
     ).toHaveCount(3);
     await expect(
       main.getByRole('navigation', { name: 'Pergola guide progression' }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(main.locator('#acrylic-enquiry-type')).toHaveValue('commercial');
 
     expect(

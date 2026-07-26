@@ -23,6 +23,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
 | 2026-07-26 | Enquiry Email Production Layout  | Promoted | Promote an approved layout through the canonical renderer so live send, staff preview and generated fixtures stay identical. Keep template IDs, subjects and delivery side effects stable; unapproved layouts remain preview-only. |
 | 2026-07-26 | Marketing Project Gallery        | Promoted | Project detail mobile uses the product-owner-preferred native, variable-height, top-aligned horizontal strip. Do not replace it with a single-frame controlled carousel without explicit approval; keep the desktop mosaic and product galleries unchanged. |
+| 2026-07-26 | Marketing Release Identity       | Promoted | Production parity evidence must identify one sanitized source revision on normal and cache-busted responses; visible copy, HTTP 200 and cache status cannot prove which commit is deployed. |
 | 2026-07-26 | Marketing Enquiry Reconciliation | Promoted | Reuse the intake's validated, client-generated submission UUID as the non-personal analytics lead identifier. Do not create an unrelated event UUID when production evidence must reconcile one success event with one accepted submission. |
 | 2026-07-26 | Marketing Static Root Routing    | Promoted | Canonicalise Next's production-only `/index` root alias before the shared header derives navigation, hero presentation or enquiry context. Prove the optimized root HTML and deployed browser path, and let focus tests observe the menu's initial focus contract before moving focus elsewhere. |
 | 2026-07-26 | Marketing Guide First Layers     | Promoted | Share guide transformation and rendering, but keep supporting headings, the selected project and return route owned by each guide. Verify heading uniqueness across the programme and measure governed project cards with selectors that match their rendered primitive. |
@@ -3563,6 +3564,17 @@ Why it mattered: The technically accessible control model changed the tactile rh
 Current guardrail: Below 900 px, render the governed project gallery as one native horizontally scrollable, keyboard-focusable region with lazy images, captions, scroll snap, alternating 4:3 and 3:4 frames and top alignment. Keep the desktop mosaic unchanged. Do not replace this route-owned project interaction with a single-frame controlled carousel without explicit product-owner approval; the controlled product gallery is unaffected.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`; `docs/mobile-ux-roadmap-v2.md`
 Related docs/tests: `apps/marketing/app/projects/ProjectGallery.tsx`; `apps/marketing/app/projects/projects.css`; `playwright/marketing.projects.spec.ts`
+
+### 2026-07-26 - Marketing Release Identity - Prove The Deployed Revision
+
+Date: 2026-07-26
+Area: Marketing deployment and semantic parity evidence
+Status: Promoted
+Decision or mistake: Production route checks could prove HTTP success, stable responsive layout and matching semantic markers, but the public response exposed no repository revision. A deployment catching up after a review also made earlier production findings stale while still leaving no exact way to prove the change.
+Why it mattered: Cache-busted and ordinary responses can look identical while serving an unknown release. Without an exact revision, production closure and regression attribution depend on inference.
+Current guardrail: Add `X-Sanctuary-Release` to every marketing response from an explicitly supplied or provider commit SHA, accept only bounded hexadecimal revisions, and expose only `local` outside a revisioned build. Post-deployment validation must see one value across the complete normal/cache-busted route matrix and may pin the expected SHA. Keep route-owned semantic markers in the same contract; HTTP 200, cache state and visual similarity alone are not deployment identity.
+Promoted to: `docs/security-privacy-quality.md`; `docs/testing-and-qa.md`; `docs/mobile-ux-phase-5-validation.md`
+Related docs/tests: `apps/marketing/lib/releaseIdentity.ts`; `apps/marketing/next.config.ts`; `playwright/marketing.phase-five.spec.ts`
 
 ### 2026-07-26 - Enquiry Email Production Layout - Promote Through The Canonical Renderer
 

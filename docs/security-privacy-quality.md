@@ -55,6 +55,21 @@ collections and unknown routes remain audience-neutral. Analytics assembly
 removes caller-supplied canonical context keys before applying the validated,
 lower-case properties, so later event data cannot overwrite them.
 
+## Public Marketing Release Identity
+
+Every marketing response exposes `X-Sanctuary-Release` so production evidence
+can identify the exact repository revision instead of inferring it from visible
+copy or cache behavior. The value accepts only a 7-to-40-character hexadecimal
+commit SHA. Build resolution prefers an explicit `MARKETING_RELEASE_SHA`, then
+Vercel's `VERCEL_GIT_COMMIT_SHA`, then `GITHUB_SHA`; invalid values are ignored
+and local development reports the non-production sentinel `local`.
+
+The header must contain no deployment URL, environment name, account, secret,
+token or private infrastructure identifier. Production validation requires the
+same SHA on normal and cache-busted responses across the primary route matrix;
+`MARKETING_EXPECTED_RELEASE_SHA` may pin the exact expected revision in a
+post-deployment check.
+
 ## Portal Operational Performance Telemetry
 
 Authenticated portal Web Vitals are operational telemetry, not marketing analytics. `PortalVitalsReporter` submits CLS, FCP, INP, LCP, and TTFB to the first-party staff API with `sendBeacon` and a keepalive-fetch fallback. Failure is silent and never delays navigation.
