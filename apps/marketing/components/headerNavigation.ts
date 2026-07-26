@@ -42,12 +42,31 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
   },
 ];
 
+const heroOverlayPaths = new Set([
+  '/',
+  '/pergola-guides',
+  '/pergolas-auckland',
+  '/custom-pergolas-auckland',
+  '/aluminium-pergolas-auckland',
+  '/pergola-cost-auckland',
+  '/gable-pergolas-auckland',
+  '/pitched-pergolas-auckland',
+  '/outdoor-rooms-auckland',
+  '/pergolas-with-blinds',
+  '/acrylic-pergolas-vs-louvre-roofs',
+  '/commercial-pergolas-auckland',
+]);
+
 export function getCanonicalHeaderPathname(
   pathname: string | null,
 ): string {
   // Next's production static render can expose the public root as its
   // filesystem alias. Header state and enquiry context must use the public URL.
   return !pathname || pathname === '/index' ? '/' : pathname;
+}
+
+export function isHeaderHeroOverlayPath(pathname: string): boolean {
+  return heroOverlayPaths.has(pathname);
 }
 
 function toNavigationItem(

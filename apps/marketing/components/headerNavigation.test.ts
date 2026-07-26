@@ -3,6 +3,7 @@ import {
   getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
+  isHeaderHeroOverlayPath,
 } from './headerNavigation';
 
 describe('shared header navigation model', () => {
@@ -21,6 +22,14 @@ describe('shared header navigation model', () => {
       { label: 'Products', href: '/products' },
       { label: 'Contact', href: '/contact' },
     ]);
+  });
+
+  it('keeps the experimental project opening within the shared hero treatment', () => {
+    expect(isHeaderHeroOverlayPath('/')).toBe(true);
+    expect(isHeaderHeroOverlayPath('/')).toBe(true);
+    expect(isHeaderHeroOverlayPath('/home-experimental')).toBe(false);
+    expect(isHeaderHeroOverlayPath('/home-v2')).toBe(false);
+    expect(isHeaderHeroOverlayPath('/contact')).toBe(false);
   });
 
   it('clarifies product discovery and exposes the approved mobile pathways', () => {

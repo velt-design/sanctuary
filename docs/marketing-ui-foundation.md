@@ -42,7 +42,7 @@ Phase 3 PR 7 adds the following interaction contract:
 - `Disclosure` renders one native `details` and `summary` tree. Manual disclosures leave open state to the browser. The compatible `desktop-expanded` mode renders complete open server markup for no-JavaScript access, but its shared scripting-aware CSS hides only a pending mobile body before hydration. Hydration resolves the same native tree to closed mobile or open desktop state without changing its visual height. Supported route breakpoints are the governed 641px, 721px and 900px boundaries. A fragment target inside responsive detail opens its mobile ancestor and is brought into view, so established deep links do not land on hidden content. Consumers may retain route-owned classes and data attributes without duplicating viewport content or viewport state.
 - `ResponsiveGallery` renders only the active `Figure`, with a labelled carousel region, visible Previous and Next buttons, a polite `Image n of total` status and Arrow Left, Arrow Right, Home and End support. Navigation wraps, focus stays on the control used, and no swipe gesture is required.
 - Shared disclosure summaries and gallery controls have visible focus treatment and targets at least 44px high. Gallery controls remain visible at 360px. Directly relevant transitions are removed when reduced motion is requested.
-- The internal catalogue owns the complete disclosure/gallery fixture. Approved public adapters now cover homepage, project, product, residential-service, guide and config-driven SEO-landing content. Each adapter delegates viewport state to the shared owner while retaining route-owned labels, classes and stable data attributes. Responsive detail is visually closed before and after mobile hydration, expanded on desktop and complete without JavaScript.
+- The internal catalogue owns the complete disclosure/gallery fixture. Approved public adapters now cover project, product, residential-service, guide and config-driven SEO-landing content. Each adapter delegates viewport state to the shared owner while retaining route-owned labels, classes and stable data attributes. Responsive detail is visually closed before and after mobile hydration, expanded on desktop and complete without JavaScript. The current homepage uses its bounded radio conversation instead of a responsive disclosure.
 
 TM-01 establishes the shared motion and pressed-state contract:
 
@@ -80,7 +80,7 @@ overlay state or enquiry context. The generated and deployed root header must
 therefore contain a residential estimate action with canonical
 `source_path=/`, never `/index`.
 
-The internal catalogue is the complete fixture for the shared primitives and interactions. The approved homepage is the first public compatibility consumer for `MarketingPage`, `SectionHeader`, `ActionGroup`, balanced pathway cards, project facts, responsive featured-project media and the shared disclosure behavior. Project, product, residential-service and SEO-landing routes now reuse the same disclosure contract through route-scoped adapters without creating viewport-specific content trees.
+The internal catalogue is the complete fixture for the shared primitives and interactions. The approved homepage consumes `MarketingPage`, `ActionGroup`, project facts and responsive project media while its route-local radio group owns the first design-conversation state. Project, product, residential-service and SEO-landing routes reuse the shared disclosure contract through route-scoped adapters without creating viewport-specific content trees.
 
 ## Catalogue Guard
 
@@ -196,24 +196,55 @@ The direct and embedded residential, custom, commercial and professional enquiry
 
 The forms keep the existing `/api/enquiry` payload, browser-generated submission UUID across retries, shared residential/commercial/professional attachment policy and metadata fallback, attribution fields, consent-gated conversion events, privacy link and direct contact routes. Every visible field has a persistent label, validation focuses a linked error summary, result focus is explicit, and failed or successful submissions retain entered values. A synchronous ref lock closes the double-click window before any asynchronous upload or request begins. The shared enquiry-context contract server-renders validated audience, source path, source component, project slug and product slug values above the form and repeats recognised context in the success state; direct `/contact` stays neutral and unknown values are ignored. Visible and generated contact content must not use em dashes.
 
-The approved public homepage lives at `/` and is implemented by `apps/marketing/app/home-v2/`; the former `/home-v2` comparison URL permanently redirects to `/`. The root page reuses the production foundation primitives, project data, curated review content, live Google rating source, shared header and footer, analytics, consent and existing `/contact` enquiry destination. Its hero is included in the shared header's desktop overlay allowlist, while tablet and mobile keep the solid 64px header.
+The approved public homepage lives at `/` and is owned by
+`apps/marketing/app/_home/`. It opens with the completed Warkworth Outdoor Room
+and asks one bounded design-conversation question: `What are you trying to
+create?` Three closed answers map deterministically to exactly two governed
+project records each. Visitors may open either case study, carry its canonical
+slug and validated audience into `/contact`, browse all projects or leave for a
+general enquiry. No second or third question, scoring, free-text URL state or
+automated recommendation is present.
 
-The bounded `/home-experimental` route is a separate noindex experiment and
-does not replace or re-export the root homepage. It reuses the same foundation,
-header/footer, project catalogue, Google proof, enquiry-context builder and
-consent owner, while a route-local client island owns only the first
-`What are you trying to create?` answer. Each closed answer maps
-deterministically to two existing project records and may carry one canonical
-project slug into `/contact`; no second or third question, free-text URL state
-or recommendation scoring is present. Server output retains a complete
-JavaScript-disabled set of all three pathways, project links and direct enquiry
-actions.
+The root reuses the Foundation page/actions, shared project catalogue, live
+Google rating, header/footer, consent owner and enquiry-context builder. A
+narrow client island owns radio state, optional session restoration and
+consent-aware interaction measurement; the route shell, metadata, structured
+data, proof, capability pathways, process and enquiry close remain server
+rendered. With JavaScript disabled, the interactive controls are replaced by
+all three pathways, their six governed project references and direct enquiry
+links while the Auckland capability and three-stage process content stays
+visible.
 
-The homepage presents Sanctuary as an Auckland designer, builder and installer of bespoke fixed-roof architectural pergolas. It keeps the Warkworth project as the first strong evidence after the hero and proof rail, then follows one seven-section semantic order at every width: hero, featured project, audience pathways, selected projects, planning options, process and qualified enquiry. Home is the primary pathway; custom conditions are explained within it, while commercial and professional capability routes remain discoverable. Selected work, process and review content do not use duplicated mobile and desktop render trees. Forms/pergola forms share one planning disclosure and roof/material/comfort decisions share a second, with three further purposeful disclosures elsewhere for five total. The process exposes three concise stages and incorporates the former project-assurance content. Review proof is integrated into the qualified-enquiry close. The final enquiry keeps one primary residential action, quieter commercial/professional routes, two featured guide links and the all-guides link. Desktop uses the same content tree and retains the established grid-led composition.
+The homepage remains an indexable, self-canonical Auckland service entrypoint
+with the approved title, description, Open Graph identity and WebSite/WebPage
+schema. Residential, commercial and professional capability links, products,
+planning guides, review proof, direct phone and enquiry actions preserve the
+useful responsibilities of the retired long-form homepage without restoring
+its repeated planning inventory or five disclosures. The shared header keeps
+the root hero-overlay treatment on desktop and the solid 64px header on tablet
+and mobile.
 
-Homepage interaction links and controls expose stable event attributes. The route-local tracker records only the event name, V2 variant, viewport category, destination and optional editorial label, and only after analytics consent. Hero, pathway, pergola-form, roof, project, disclosure, guide and final-enquiry interactions therefore remain distinguishable without collecting project or customer details.
+Homepage controls expose stable `data-design-conversation-event` attributes.
+`HomepageDesignConversationTracker.tsx` records only the event name,
+`design_conversation_home_v1` variant, viewport category, destination, closed
+intent, canonical project slugs, matched pair, step and validated audience
+after analytics consent. It captures no visitor-entered content and does not
+backfill pre-consent interactions.
 
-The homepage owns its content and route-specific presentation under `apps/marketing/app/home-v2/`, while its shared page tokens, section headers, action groups, pathway cards, project facts and responsive featured media use the Foundation owners described above. The root page is indexable, self-canonical at `/`, present in the sitemap and backed by the approved title, description, Open Graph identity and WebSite/WebPage schema. The retired `/home-v2` URL remains absent from navigation, footer and sitemap output and must continue to redirect permanently to `/`. The established legacy owners `apps/marketing/app/home.css` and `apps/marketing/components/home/**` remain unchanged.
+The former production implementation under `apps/marketing/app/home-v2/` is
+retired except for its redirect entrypoint. `/home-v2` and
+`/home-experimental` permanently redirect to `/`; neither is navigated, emitted
+in the sitemap or retained as a second homepage implementation. The established
+legacy owners `apps/marketing/app/home.css` and
+`apps/marketing/components/home/**` remain unchanged because they are a
+separate retirement lane.
+
+The promotion baseline uses one eager hero image and adds no runtime
+dependencies. A local production-build check at 390px and DPR 2 measured
+256ms LCP, 0.0182 CLS, a 65ms first-answer response, a 60.4KiB opening image
+transfer and a 3.8KiB gzip feature chunk. These figures verify the bounded
+release budget; deployed real-user monitoring remains the source for
+production performance.
 
 Root height and overflow normalisation must preserve the shared mobile-menu and consent locks. The homepage browser suite opens the mobile menu from a non-zero scroll position and verifies that the document stays fixed, Escape restores focus, and the prior reading position returns when the menu closes.
 
@@ -228,7 +259,7 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - `npm run test:marketing:browser`
 - `npm run build:marketing`
 - `npx playwright test playwright/marketing.foundation.spec.ts --config=playwright.marketing.config.ts`
-- `npx playwright test playwright/marketing.home-v2.spec.ts --config=playwright.marketing.config.ts`
+- `npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.projects.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.products.spec.ts --config=playwright.marketing.config.ts`
 - `npx playwright test playwright/marketing.contact.spec.ts --config=playwright.marketing.config.ts`
@@ -237,7 +268,7 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - `npx playwright test playwright/marketing.shared-header.spec.ts --config=playwright.marketing.config.ts`
 - Shared-header Playwright coverage at desktop and mobile widths, including geometry, green accent, keyboard focus, and representative public-route screenshots.
 
-The Foundation browser suite exercises the shared responsive specimens at 430px, 390px, 360px, tablet, compact desktop, and desktop widths. It asserts single-tree card and fact-list presentation, semantic CTA hierarchy, minimum touch targets, focus visibility, reduced-motion behavior, mobile and desktop media ratios and focal points, stable desktop card geometry, and no horizontal overflow. Its interaction lane additionally verifies native disclosure state, keyboard and focus behavior, touch gallery controls, one active accessible image, live position text, reduced motion, homepage adapter compatibility and stable desktop composition. An isolated-context matrix also smoke-tests every distinct direct Foundation consumer type at 390px and 1440px so the existing animated route transition cannot leave an exiting page in a strict locator. Set `MARKETING_FOUNDATION_CAPTURE=1` when running the focused spec to write PR 6 screenshots to `artifacts/mobile-ux-phase-3-pr-6/`. Set `MARKETING_FOUNDATION_INTERACTIONS_CAPTURE=1` to write the three PR 7 interaction screenshots to `artifacts/mobile-ux-phase-3-pr-7/`.
+The Foundation browser suite exercises the shared responsive specimens at 430px, 390px, 360px, tablet, compact desktop, and desktop widths. It asserts single-tree card and fact-list presentation, semantic CTA hierarchy, minimum touch targets, focus visibility, reduced-motion behavior, mobile and desktop media ratios and focal points, stable desktop card geometry, and no horizontal overflow. Its interaction lane additionally verifies native disclosure state, keyboard and focus behavior, touch gallery controls, one active accessible image, live position text, reduced motion, homepage radio compatibility and stable desktop composition. An isolated-context matrix also smoke-tests every distinct direct Foundation consumer type at 390px and 1440px so the existing animated route transition cannot leave an exiting page in a strict locator. Set `MARKETING_FOUNDATION_CAPTURE=1` when running the focused spec to write PR 6 screenshots to `artifacts/mobile-ux-phase-3-pr-6/`. Set `MARKETING_FOUNDATION_INTERACTIONS_CAPTURE=1` to write the three PR 7 interaction screenshots to `artifacts/mobile-ux-phase-3-pr-7/`.
 
 The TM-01 browser lane additionally checks active-state feedback without layout
 geometry changes, fine-pointer hover gating, touch release without sticky hover,
@@ -254,8 +285,9 @@ The dedicated Phase 3 suite visits the hub, all ten product routes, residential 
 The dedicated Phase 4 suite covers commercial proof/stages/context, the
 professional capability route and intercepted payload/analytics, the guide hub
 and all seven guide first layers, refresh/Back, no-JavaScript completeness,
-homepage region/disclosure budgets and footer utility at 430px, 390px and
-360px. Set `MARKETING_PHASE_FOUR_CAPTURE=before|after` and
+the bounded homepage question/capability/process structure and footer utility
+at 430px, 390px and 360px. Set
+`MARKETING_PHASE_FOUR_CAPTURE=before|after` and
 `MARKETING_PHASE_FOUR_WIDTH=430|390|360` for reproducible evidence under
 `artifacts/mobile-ux-phase-4/`. A deployed capture must also set
 `MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz`; every form test must

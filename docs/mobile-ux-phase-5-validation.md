@@ -269,11 +269,11 @@ analytics/submission run:
 $env:MARKETING_BASE_URL='https://www.sanctuarypergolas.co.nz'
 npx playwright test `
   playwright/marketing.contact.spec.ts `
-  playwright/marketing.home-v2.spec.ts `
+  playwright/marketing.homepage.spec.ts `
   playwright/marketing.phase-four.spec.ts `
   --config=playwright.marketing.config.ts `
   --workers=1 `
-  --grep "submit lock prevents duplicate|professional form submits canonical context|homepage V2 is responsive and complete at 390x844|homepage closes in seven regions"
+  --grep "submit lock prevents duplicate|professional form submits canonical context|first design conversation is responsive at 390x844|homepage keeps the first design conversation bounded"
 Remove-Item Env:MARKETING_BASE_URL
 ```
 

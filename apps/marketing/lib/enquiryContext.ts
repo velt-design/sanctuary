@@ -65,7 +65,6 @@ const contextPropertyKeys = [
 
 const residentialAudiencePaths = new Set([
   '/',
-  '/home-v2',
   '/pergolas-auckland',
   '/custom-pergolas-auckland',
   '/aluminium-pergolas-auckland',

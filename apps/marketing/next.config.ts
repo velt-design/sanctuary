@@ -123,6 +123,7 @@ const nextConfig: NextConfig = {
     return [
       // Core marketing pages
       { source: '/home-v2', destination: '/', permanent: true },
+      { source: '/home-experimental', destination: '/', permanent: true },
       { source: '/about-us', destination: '/', permanent: true },
       { source: '/gallery', destination: '/projects', permanent: true },
       { source: '/testimonials', destination: '/projects', permanent: true },

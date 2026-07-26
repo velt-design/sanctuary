@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| 2026-07-26 | Marketing Homepage Promotion     | Promoted | Promote an approved experiment by moving it into one production owner, transferring canonical SEO, proof, service, process, enquiry and analytics responsibilities, and retiring the parallel implementation. Redirect comparison URLs to `/`; do not retain hidden duplicate homepages. |
 | 2026-07-26 | Enquiry Email Production Layout  | Promoted | Promote an approved layout through the canonical renderer so live send, staff preview and generated fixtures stay identical. Keep template IDs, subjects and delivery side effects stable; unapproved layouts remain preview-only. |
 | 2026-07-26 | Marketing Project Gallery        | Promoted | Project detail mobile uses the product-owner-preferred native, variable-height, top-aligned horizontal strip. Do not replace it with a single-frame controlled carousel without explicit approval; keep the desktop mosaic and product galleries unchanged. |
 | 2026-07-26 | Marketing Release Identity       | Promoted | Production parity evidence must identify one sanitized source revision on normal and cache-busted responses; visible copy, HTTP 200 and cache status cannot prove which commit is deployed. |
@@ -3508,7 +3509,7 @@ Decision or mistake: Next's optimized static root rendered `usePathname()` as th
 Why it mattered: The most prominent homepage enquiry action contradicted the canonical Phase 1 context contract in raw production HTML, while a real menu focus contract looked flaky only because the test raced its owner.
 Current guardrail: Canonicalise the production static root alias once before header navigation, hero and enquiry decisions. Verify the optimized generated root HTML and deployed raw/browser output, not only development routing. In focus tests, first observe the component's promised initial focus, then move focus to another target.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
-Related docs/tests: `apps/marketing/components/headerNavigation.ts`; `apps/marketing/components/headerNavigation.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.home-v2.spec.ts`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.phase-four.spec.ts`
+Related docs/tests: `apps/marketing/components/headerNavigation.ts`; `apps/marketing/components/headerNavigation.test.ts`; `apps/marketing/components/Header.test.tsx`; `playwright/marketing.homepage.spec.ts`; `playwright/marketing.shared-header.spec.ts`; `playwright/marketing.phase-four.spec.ts`
 
 ### 2026-07-26 - Marketing Enquiry Reconciliation - One Opaque Identifier
 
@@ -3586,3 +3587,14 @@ Why it mattered: Switching only the public send adapter or only the workbench wo
 Current guardrail: Promote an approved layout through `renderWebsiteAutoresponder`, retain the stable template IDs, customer subjects and delivery contract, and make the active workbench layout render the same adaptive HTML and plain text. Keep Image-led and Compact preview-only until separately approved.
 Promoted to: `docs/automation-email-audit.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/lib/websiteAutoresponder.ts`; `apps/marketing/lib/websiteAutoresponderAlternatives.test.ts`; `apps/marketing/lib/websiteAutoresponderPreviewFixtures.test.ts`
+
+### 2026-07-26 - Marketing Homepage Promotion - Replace The Owner, Not The Responsibilities
+
+Date: 2026-07-26
+Area: Public homepage promotion and legacy retirement
+Status: Promoted
+Decision or mistake: The approved first-design-conversation prototype replaced the long-form production homepage. Keeping the prototype, former root implementation and production route as separate maintained trees would have left duplicate content, analytics contracts and regression suites.
+Why it mattered: A visual promotion can silently discard canonical metadata, structured data, crawlable Auckland capability, process and enquiry pathways, while preserving every old page as a fallback creates permanent drift and bloat.
+Current guardrail: Move the approved experience into one production owner, explicitly transfer SEO, proof, capability, process, enquiry, consent and no-JavaScript responsibilities, then delete the superseded implementation. Keep comparison URLs only as permanent redirects to the canonical root and prove the production page plus redirects in one focused browser lane.
+Promoted to: `docs/marketing-ui-foundation.md`; `docs/security-privacy-quality.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/marketing/app/_home/`; `apps/marketing/app/page.tsx`; `apps/marketing/next.config.ts`; `playwright/marketing.homepage.spec.ts`; `playwright/marketing.phase-four.spec.ts`

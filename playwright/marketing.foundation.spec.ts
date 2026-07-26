@@ -1,7 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
 const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase-3-pr-6');
 const capture = process.env.MARKETING_FOUNDATION_CAPTURE?.trim();
@@ -164,15 +163,11 @@ for (const viewport of viewports) {
   test(`public homepage retains its approved implementation at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
-    const main = page.locator('main[data-homepage-variant="v2"]');
-    await expect(main.getByRole('heading', { level: 1, name: 'Bespoke pergolas, built around the architecture.' })).toBeVisible();
-    await expect(main.getByRole('link', { name: 'Get an initial project estimate' })).toHaveAttribute('href', buildEnquiryHref({
-      enquiryType: 'residential',
-      sourcePath: '/',
-      sourceComponent: 'hero',
-    }));
-    await expect(main.getByRole('heading', { name: 'Three stages, with expectations confirmed in writing.' })).toBeAttached();
-    await expect(main.locator('[data-home-section]')).toHaveCount(7);
+    const main = page.locator('main[data-homepage-variant="design_conversation_home_v1"]');
+    await expect(main.getByRole('heading', { level: 1, name: 'Begin with built work.' })).toBeVisible();
+    await expect(main.getByRole('link', { name: 'Start with your project' })).toHaveAttribute('href', '#design-conversation');
+    await expect(main.getByRole('heading', { name: 'From a useful brief to an installed structure.' })).toBeAttached();
+    await expect(main.getByRole('radio')).toHaveCount(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
@@ -600,28 +595,31 @@ test('shared interactions retain stable desktop defaults and homepage compatibil
   await expect(specimen.locator('[data-responsive-gallery] img')).toHaveCount(1);
 
   await page.goto('/');
-  const disclosures = page.locator('main[data-homepage-variant="v2"] [data-mobile-disclosure]');
-  await expect(disclosures.first()).toHaveAttribute('data-disclosure', 'desktop-expanded');
-  await expect(disclosures.first()).toHaveAttribute('open', '');
-  await expect(disclosures.first().locator(':scope > summary')).toBeHidden();
-  await expect(disclosures.first().locator(':scope > div')).toBeVisible();
-  await expect(disclosures.first()).toHaveAttribute('data-homepage-toggle-event');
+  const main = page.locator(
+    'main[data-homepage-variant="design_conversation_home_v1"]',
+  );
+  await expect(main.getByRole('radio')).toHaveCount(3);
+  await expect(main.locator('details[data-mobile-disclosure]')).toHaveCount(0);
 });
 
-test('homepage disclosure adapter preserves mobile native state, focus and analytics attributes', async ({ page }) => {
+test('homepage design conversation preserves mobile radio state, focus and analytics attributes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
-  const disclosure = page.locator('main[data-homepage-variant="v2"] [data-mobile-disclosure]').first();
-  const summary = disclosure.locator(':scope > summary');
-  await expect(disclosure).toHaveAttribute('data-disclosure', 'desktop-expanded');
-  await expect(disclosure).toHaveAttribute('data-homepage-toggle-event');
-  await expect(disclosure).not.toHaveAttribute('open', '');
-  await summary.focus();
-  await page.keyboard.press('Enter');
-  await expect(disclosure).toHaveAttribute('open', '');
-  await expect(summary).toBeFocused();
-  await expect(disclosure.locator(':scope > div')).toBeVisible();
+  const main = page.locator(
+    'main[data-homepage-variant="design_conversation_home_v1"]',
+  );
+  const radios = main.getByRole('radio');
+  await radios.first().focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(radios.nth(1)).toBeFocused();
+  await expect(radios.nth(1)).toHaveAttribute('aria-checked', 'true');
+  await expect(radios.nth(1)).toHaveAttribute(
+    'data-project-intent',
+    'outdoor-room',
+  );
+  await expect(main.locator('[data-intent-response="outdoor-room"]'))
+    .toBeVisible();
 });
 
 test('shared disclosure and gallery motion is removed when reduced motion is requested', async ({ page }) => {

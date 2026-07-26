@@ -146,14 +146,23 @@ test('linked project pages use the current evidence record rather than contradic
   }
 });
 
-test('homepage roof comparison uses written considerations instead of unsupported scores', async ({ page }) => {
+test('homepage design conversation uses written project context instead of unsupported scores', async ({ page }) => {
   await preparePage(page);
   await page.goto('/');
-  const planning = page.locator('main[data-homepage-variant="v2"]:visible section[aria-labelledby="planning-options"]');
-  await expect(planning).toBeVisible();
-  await expect(planning.getByRole('heading', { name: 'Acrylic roofing' })).toBeVisible();
-  await expect(planning.getByText('Transparent or translucent zones retain daylight, with tint and roof depth selected for the site.')).toBeVisible();
-  await expect(planning.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
+  const conversation = page.locator(
+    'main[data-homepage-variant="design_conversation_home_v1"]:visible #design-conversation',
+  );
+  await expect(conversation).toBeVisible();
+  await expect(conversation.getByText(
+    'This changes the built work shown below, not a design recommendation.',
+  )).toBeVisible();
+  await conversation.getByRole('radio', {
+    name: /Cover an outdoor area at home/,
+  }).click();
+  await expect(conversation.getByText(
+    'Start with how the cover should relate to the home, preserve light and make the existing outdoor area more usable.',
+  )).toBeVisible();
+  await expect(conversation.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
   const copy = await page.locator('body').innerText();
   expect(copy).not.toMatch(/Strong heat and glare reduction, noticeably softer rain noise/i);
 });

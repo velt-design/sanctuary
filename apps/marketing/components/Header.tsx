@@ -17,6 +17,7 @@ import {
   getCanonicalHeaderPathname,
   getDesktopHeaderNavigation,
   getMobileHeaderNavigation,
+  isHeaderHeroOverlayPath,
 } from './headerNavigation';
 
 const HEADER_SCROLL_THRESHOLD_PX = 12;
@@ -27,22 +28,6 @@ const MENU_FOCUSABLE_SELECTOR = [
   'a[href]:not([tabindex="-1"])',
   'button:not([disabled]):not([tabindex="-1"])',
 ].join(',');
-const heroOverlayRoutes = new Set([
-  '/',
-  '/home-v2',
-  '/pergola-guides',
-  '/pergolas-auckland',
-  '/custom-pergolas-auckland',
-  '/aluminium-pergolas-auckland',
-  '/pergola-cost-auckland',
-  '/gable-pergolas-auckland',
-  '/pitched-pergolas-auckland',
-  '/outdoor-rooms-auckland',
-  '/pergolas-with-blinds',
-  '/acrylic-pergolas-vs-louvre-roofs',
-  '/commercial-pergolas-auckland',
-]);
-
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -60,7 +45,7 @@ export default function Header() {
     sourceComponent: 'header',
   });
   const isStartRoute = currentPath.startsWith('/start');
-  const isHeroOverlayRoute = heroOverlayRoutes.has(currentPath);
+  const isHeroOverlayRoute = isHeaderHeroOverlayPath(currentPath);
   const startModalSuppressedRef = useRef(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);

@@ -636,9 +636,9 @@ test('professional capability route is discoverable, governed and source aware',
   await page.goto('/');
   await expect(
     page.locator(
-      'a[data-homepage-event="professional_pathway_click"][href="/architects-designers-builders"]',
+      'a[data-design-conversation-event="design_conversation_capability_open"][href="/architects-designers-builders"]',
     ),
-  ).toHaveCount(2);
+  ).toHaveCount(1);
   await page.goto('/sitemap.xml');
   await expect(page.locator('body')).toContainText(
     `${publicOrigin}/architects-designers-builders`,
@@ -880,50 +880,32 @@ test('guide first layers remain complete without JavaScript', async ({
   }
 });
 
-test('homepage closes in seven regions and the footer stays compact and useful', async ({
+test('homepage keeps the first design conversation bounded and the footer compact and useful', async ({
   page,
 }) => {
   for (const viewport of targetViewports) {
     await page.setViewportSize(viewport);
     await page.goto('/', { waitUntil: 'networkidle' });
-    const main = page.locator('main[data-homepage-variant="v2"]');
+    const main = page.locator(
+      'main[data-homepage-variant="design_conversation_home_v1"]',
+    );
     const footer = page.locator('footer');
 
-    await expect(main.locator('[data-home-section]')).toHaveCount(7);
-    expect(
-      await main
-        .locator('[data-home-section]')
-        .evaluateAll((sections) =>
-          sections.map((section) => section.getAttribute('data-home-section')),
-        ),
-    ).toEqual([
-      'hero',
-      'featured-project',
-      'project-pathways',
-      'selected-projects',
-      'planning-options',
-      'design-build-process',
-      'qualified-enquiry',
-    ]);
-    await expect(
-      main.locator(
-        '[data-home-section="planning-options"] details[data-mobile-disclosure]',
-      ),
-    ).toHaveCount(2);
-    await expect(
-      main.locator('details[data-mobile-disclosure]'),
-    ).toHaveCount(5);
-    await expect(
-      main.locator('[data-home-section="client-review"]'),
-    ).toHaveCount(0);
-    await expect(
-      main.locator('[data-home-section="qualified-enquiry"] [data-home-review]'),
-    ).toHaveCount(1);
-    await expect(
-      main
-        .getByRole('navigation', { name: 'Featured pergola guides' })
-        .getByRole('link'),
-    ).toHaveCount(2);
+    await expect(main.locator(':scope > section, :scope > aside')).toHaveCount(
+      6,
+    );
+    await expect(main.getByRole('radio')).toHaveCount(3);
+    await expect(main.locator('[data-intent-response]')).toHaveCount(0);
+    await expect(main.locator('details')).toHaveCount(0);
+    await expect(main.locator('section[aria-labelledby="homepage-capability-heading"] article'))
+      .toHaveCount(3);
+    await expect(main.locator('section[aria-labelledby="homepage-process-heading"] li'))
+      .toHaveCount(3);
+    await expect(main.getByText('What matters most for the space?')).toHaveCount(
+      0,
+    );
+    await expect(main.getByText('What information do you already have?'))
+      .toHaveCount(0);
 
     await expect(footer.locator('a[href="tel:+64228545633"]')).toHaveText(
       '022 854 5633',

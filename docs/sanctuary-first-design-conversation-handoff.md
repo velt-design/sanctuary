@@ -2,12 +2,18 @@
 
 ## Experimental Mobile Homepage Handoff Brief
 
-Repository: `velt-design/sanctuary`  
-Prototype route: `/home-experimental`  
-Primary application: `apps/marketing`  
-Status: Experimental prototype brief  
-Primary viewport: Mobile  
-Production homepage: Must remain unchanged during prototype development
+- Repository: `velt-design/sanctuary`
+- Prototype route: `/home-experimental`
+- Primary application: `apps/marketing`
+- Status: Implemented prototype brief; promoted to `/` on 2026-07-26
+- Primary viewport: Mobile
+- Original phase constraint: Keep the production homepage unchanged during
+  prototype development; superseded by the approved promotion on 2026-07-26
+
+Historical note: this brief governed the bounded noindex prototype phase. The
+approved production owner and current behavior now live in
+`docs/marketing-ui-foundation.md`; `/home-experimental` permanently redirects
+to `/`.
 
 ---
 
@@ -52,7 +58,7 @@ Each answer changes the project evidence and next step shown to the visitor.
 
 The interaction should feel like this:
 
-> Show us what you are trying to create.  
+> Show us what you are trying to create.
 > We will show you relevant built work and what information would help us assess it.
 
 The experience should remain restrained. It should feel like an architectural design conversation, not a consumer product selector.

@@ -9,7 +9,6 @@ type MobileViewport = {
 };
 
 const hydrationCases = [
-  { path: '/', selector: 'details[data-mobile-disclosure]' },
   {
     path: '/pergolas-auckland',
     selector: 'details[data-mobile-content-disclosure]',
@@ -27,6 +26,7 @@ const hydrationCases = [
     selector: 'details[data-project-mobile-disclosure]',
   },
 ] as const;
+const capturePath = '/pergolas-auckland';
 
 const phaseOneEvidenceDirectory = path.join(
   process.cwd(),
@@ -71,7 +71,7 @@ export async function expectStableDisclosureHydration(
       const pendingHeight = await pending.evaluate(
         (element) => element.getBoundingClientRect().height,
       );
-      if (captureEvidence && hydrationCase.path === '/') {
+      if (captureEvidence && hydrationCase.path === capturePath) {
         await pending.screenshot({
           path: path.join(
             phaseOneEvidenceDirectory,
@@ -81,7 +81,7 @@ export async function expectStableDisclosureHydration(
       }
 
       await page.unrouteAll({ behavior: 'wait' });
-      await page.reload({ waitUntil: 'networkidle' });
+      await page.reload({ waitUntil: 'load' });
 
       const hydrated = page.locator(hydrationCase.selector).first();
       const hydratedBody = hydrated.locator(':scope > div');
@@ -91,7 +91,7 @@ export async function expectStableDisclosureHydration(
       const hydratedHeight = await hydrated.evaluate(
         (element) => element.getBoundingClientRect().height,
       );
-      if (captureEvidence && hydrationCase.path === '/') {
+      if (captureEvidence && hydrationCase.path === capturePath) {
         await hydrated.screenshot({
           path: path.join(
             phaseOneEvidenceDirectory,
