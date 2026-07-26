@@ -233,7 +233,7 @@ export default function ProjectDetailContent({
               <p className="project-case-study__eyebrow">Project gallery</p>
               <h2 id="project-gallery-title">See the project in detail.</h2>
             </div>
-            <p>Swipe through the project on smaller screens.</p>
+            <p>Swipe or use the controls to review the project on smaller screens.</p>
           </div>
           <ProjectGallery images={detailImages} projectTitle={project.title} />
         </section>

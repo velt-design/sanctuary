@@ -33,16 +33,23 @@ submission authority was not available. It is not a pass or a fail.
 |---|---|---|
 | Evidence date | 26 July 2026 | Recorded |
 | Local branch | `main` | Recorded |
-| Local commit at audit start | `0da7b665` | Recorded |
-| Remote checkpoint | `origin/main` at `cdda8093` | Recorded |
-| Local divergence at audit start | 13 commits ahead, clean worktree | Recorded |
+| Local commit at Phase 6 audit start | `a1ccfacd` | Recorded |
+| Remote checkpoint | `origin/main` at `a1ccfacd` | Recorded |
+| Local divergence at audit start | No commit divergence; the supplied untracked completion review was preserved unchanged | Recorded |
 | Production origin | `https://www.sanctuarypergolas.co.nz` | Reachable |
-| Public deployment identity | No commit identifier is exposed by the public response | Blocked pending Vercel release access or a release annotation |
+| Public deployment identity at audit start | No commit identifier was exposed by normal or cache-busted public responses | Blocked for the current deployment |
+| Repository release identity fix | All marketing responses now receive `X-Sanctuary-Release` from an explicitly supplied or provider commit SHA; non-SHA values are rejected and local development reports `local` | Passed locally; deployment/retest required |
+| Protected preview release identity | PR #25 identified `59e6f25e106f8e34ad20074f2452db1b38f6c531`; stacked PR #26 identified `f2a2e2e22eb23b0fe96e592a0a86c3f06f128f75` | Passed with authenticated, read-only Vercel CLI requests |
 
-The public deployment serves the completed Phase 4 route structure, including
-the homepage, project collection and detail, products, commercial,
-professional, guides and neutral contact route. A visible production match is
-not enough to prove the exact deployed commit.
+The public deployment now serves the approved Phase 3 and Phase 4 route
+structure and the intercepted enquiry/review-name fixes. Normal and
+cache-busted responses returned the same semantic markers, but that visible
+match is still not proof of the exact deployed commit because the current
+deployment has no release header. The protected PR #25 and stacked PR #26
+previews each passed 24 normal/cache-busted response checks across the 12-route
+matrix and identified their exact head commit. The Phase 6 commercial framing,
+project gallery controls and response identity are therefore proven on preview
+but are not live until an identified production deployment is retested.
 
 ## Primary task scripts
 
@@ -90,19 +97,23 @@ form state.
    Back gesture.
 3. Confirm the filter and collection return predictably.
 4. Open `/projects/warkworth-outdoor-room`.
-5. Swipe through at least three images in the native horizontal gallery strip.
-6. Confirm the images retain different aspect-ratio heights, remain aligned to
+5. Swipe through at least three images in the native horizontal gallery strip,
+   then use Previous and Next without swiping.
+6. Confirm the visible position text changes, disabled-edge state is conveyed,
+   and focus remains on the operated control.
+7. Confirm the images retain different aspect-ratio heights, remain aligned to
    the top, and each caption moves with its image.
-7. With a keyboard, focus the gallery region and confirm its focus indicator is
-   visible.
-8. Follow the project enquiry action.
-9. Confirm the project name, project slug and Residential audience are visible
+8. With a keyboard, focus the gallery region, confirm its focus indicator is
+   visible, and operate Arrow Left/Right, Home and End.
+9. Follow the project enquiry action.
+10. Confirm the project name, project slug and Residential audience are visible
    and preserved through refresh.
 
 Pass conditions: the native strip moves without moving the page sideways;
-different image heights remain top-aligned; Back is predictable; no priority
-crop is unreadable; the project and audience reach the form and eventual
-payload.
+different image heights remain top-aligned; the controls are at least 44 px,
+have contextual names and report `Image n of total`; reduced motion removes
+smooth scrolling; Back is predictable; no priority crop is unreadable; the
+project and audience reach the form and eventual payload.
 
 ### T4 - Product comparison and contextual enquiry
 
@@ -242,11 +253,11 @@ automated check passes.
 
 | Evidence | Result | Notes |
 |---|---|---|
-| Intercepted form payload and event shape | Pass on local `main` worktree | Direct and embedded-form tests reconcile `lead_event_id` to `submissionId`, preserve canonical context and exclude personal form values |
-| Intercepted deployed direct and professional-form reconciliation | Fail on current production | Read-only production browser tests intercepted both API requests and proved that deployed `lead_event_id` and `submissionId` are different UUIDs; no real enquiry was sent |
+| Intercepted form payload and event shape | Pass locally and on current production | Direct and embedded-form tests reconcile `lead_event_id` to `submissionId`, preserve canonical context and exclude personal form values |
+| Intercepted deployed direct and professional-form reconciliation | Pass on 26 July 2026 | Read-only production browser tests intercepted both API requests; exact IDs matched and no real enquiry was sent |
 | Production analytics debug access | Blocked | Requires access to the production analytics property/debug tooling |
 | Successful production test submission | Blocked | Requires explicit authority and approved test contact details |
-| Exact event-to-submission reconciliation | Production fail; local fix passed | The local `main` worktree reuses the validated submission UUID as `lead_event_id`; deployment and authorised production reconciliation remain required |
+| Exact event-to-submission reconciliation | Automated contract passed; authorised end-to-end run blocked | Production event transmission, received-enquiry and analytics-debug reconciliation still requires authority and access |
 
 ### Required post-deployment retest
 
@@ -267,9 +278,25 @@ npx playwright test `
 Remove-Item Env:MARKETING_BASE_URL
 ```
 
-Expected result: four passed tests. On 26 July 2026 the local lane passed
-four of four; the current deployment fails all four new assertions across the
-two UUID-reconciliation and two review-link accessible-name checks.
+Expected result: four passed tests. On 26 July 2026 the lane passed four of four
+both locally and against the current deployment. The production run intercepted
+both enquiry endpoints and sent no real enquiry.
+
+The Phase 6 release and semantic-parity lane is separate:
+
+```powershell
+$env:MARKETING_BASE_URL='https://www.sanctuarypergolas.co.nz'
+npx playwright test `
+  playwright/marketing.phase-five.spec.ts `
+  --config=playwright.marketing.config.ts `
+  --workers=1 `
+  --grep "release identity and semantic route state"
+Remove-Item Env:MARKETING_BASE_URL
+```
+
+It must report one hexadecimal `X-Sanctuary-Release` value across all normal and
+cache-busted responses, retain the approved route markers, and exclude guide
+progression from the custom, commercial and professional service routes.
 
 ## Performance evidence
 
@@ -282,11 +309,13 @@ cannot prove field improvement.
 - `/projects`
 - `/projects/warkworth-outdoor-room`
 - `/pergolas-auckland`
+- `/custom-pergolas-auckland`
 - `/products`
 - `/products/pergolas/gable`
 - `/commercial-pergolas-auckland`
 - `/architects-designers-builders`
 - `/pergola-guides`
+- `/pergola-cost-auckland`
 - `/contact`
 
 ### Required measures
@@ -303,7 +332,8 @@ cannot prove field improvement.
 | Evidence | Result | Notes |
 |---|---|---|
 | Existing pre-Phase 5 lab evidence | Available | Repository artifacts contain earlier homepage and Phase 2-4 measurements |
-| Current production Chromium route matrix | Pass | 30 records across ten routes and 430/390/360 px: HTTP 200, zero overflow and CLS, no failed responses, broken viewport images, duplicate IDs or primary target failures; FCP, LCP, TTFB, payload and long-task data are recorded per route |
+| Current production Chromium route matrix | Pass | 36 records across 12 routes and 430/390/360 px: HTTP 200, zero overflow and CLS, no failed requests/responses, broken viewport images, duplicate IDs or primary target failures |
+| Phase 6 local Chromium route matrix | Pass | 36 records across 12 routes and 430/390/360 px: HTTP 200, zero overflow and CLS, no failed responses, broken viewport images, duplicate IDs or primary target failures; every response identified the local build |
 | Current Lighthouse lab run | Pass with runner cleanup warning | Valid reports were written before a Windows temporary-profile cleanup error; mobile scores 0.98/1.00/0.96/1.00 and desktop 1.00/1.00/0.96/1.00 |
 | Production field Core Web Vitals | Pass with data limitations | Public PageSpeed/CrUX URL-level homepage data passes on mobile and desktop; INP and TTFB are unavailable, and checked non-home routes fall back to origin-level data because URL-level samples are insufficient |
 
@@ -311,13 +341,16 @@ cannot prove field improvement.
 
 | ID | Priority | Evidence | Finding | Resolution / owner | Status |
 |---|---:|---|---|---|---|
-| P5-01 | P1 | Source audit and deployed intercepted tests | Production direct and professional forms emit different opaque UUIDs for `lead_event_id` and the durable `submissionId`, so an event cannot be joined exactly to its submission | The local `main` worktree uses the already-generated non-personal submission UUID as the lead event identifier; direct and embedded tests pass | Confirmed production failure; fixed locally; deployment/retest required |
+| P5-01 | P1 | Source audit and deployed intercepted tests | Direct and professional forms previously emitted different opaque UUIDs for `lead_event_id` and the durable `submissionId` | The validated submission UUID is now reused; local and production intercepted contracts pass without sending an enquiry | Automated production contract resolved; authorised analytics reconciliation remains P5-03 |
 | P5-02 | Gate | Environment | Physical iOS/Android, VoiceOver and TalkBack evidence is unavailable in this environment | Product owner supplies dated matrix results using T1-T8 | Blocked |
 | P5-03 | Gate | Access | Production analytics debug and successful-submission reconciliation require account access and submission authority | Product owner or authorised operator completes the production run | Blocked |
-| P5-04 | P2 | Release metadata | The public response exposes no source commit, so exact release-to-commit identity is not independently verifiable | Record the Vercel deployment commit or release annotation | Blocked |
-| P5-05 | P1 | Lighthouse 13.4.1 and deployed browser tests | Homepage and footer review links override their visible labels with a different accessible name, failing the experimental WCAG 2.5.3 label-in-name audit | The local `main` worktree lets the visible rating and review count provide the accessible name; homepage and footer browser tests pass locally and fail as expected against the deployed release | Confirmed production failure; fixed locally; deployment/retest required |
+| P5-04 | P2 | Release metadata | The current public response exposes no source commit, so exact release-to-commit identity is not independently verifiable | Repository responses now use a sanitized `X-Sanctuary-Release` commit SHA with normal/cache-busted parity coverage | Passed on exact PR previews; production deployment/retest required |
+| P5-05 | P1 | Lighthouse 13.4.1 and deployed browser tests | Homepage and footer review links previously overrode their visible labels with a different accessible name | The shared badge now lets the visible rating and review count provide the name | Resolved locally and on current production browser contract |
 | P5-06 | P3 | Local tooling | Lighthouse writes a valid report, then exits non-zero on Windows while deleting its temporary Chrome profile | Preserve the valid JSON evidence; rerun the canonical LHCI command in CI/Linux before closure | Open tooling follow-up |
 | P5-07 | P3 | Local Next development warning | The test's deliberate full-page lazy-image warm causes Next's development observer to report the reused Warkworth image as a late LCP candidate even though the initial product/project hero path is already eager/high-priority | Freeze initial-load paint metrics before the warm and retain lazy offscreen galleries; do not eager-load below-fold images without real initial-viewport evidence | Test-harness observation; no product fix justified |
+| P6-01 | P1 | Production/main semantic comparison | The commercial service route still rendered numbered guide progression after its high-intent three-case/three-stage journey | Set `showGuideNavigation: false` and pin the commercial content contract and mobile journey | Passed on exact PR previews; production deployment/retest required |
+| P6-02 | P1 | Production/main project-gallery comparison | The preferred native strip had no visible alternative to swipe and no current-position feedback | Retain the variable-height strip and desktop mosaic; add contextual Previous/Next controls, live position, edge state, keyboard navigation, focus preservation and reduced-motion behavior | Passed locally and on exact stacked-preview semantic markers; physical touch/AT and production retest required |
+| P6-03 | P3 | Long sequential local development browser lanes | A 1024 px hero-navigation assertion can retain the commercial overlay state after a scripted 140 px scroll in Next development mode; the same production check passes. Two long sequential `networkidle`/context-close checks also timed out once and passed immediately in isolation | Keep the optimized/production lane authoritative for release behavior and investigate development HMR/network-idle timing separately; do not change customer UI to satisfy an isolated dev-only state | Open tooling follow-up; no production failure reproduced |
 
 ## Automated evidence - 26 July 2026
 
@@ -331,30 +364,38 @@ cannot prove field improvement.
   cold-context matrix recorded no broken viewport image. The failure is
   retained as transient evidence rather than hidden or presented as a product
   fix.
-- The dedicated Phase 5 capture then passed all three width tests and wrote 30
-  records under `artifacts/mobile-ux-phase-5/automated/`.
+- The Phase 6 production capture passed all three width tests and wrote 36
+  records under `artifacts/mobile-ux-phase-5/automated/`. Its separate release
+  identity contract failed as expected because the deployed responses expose no
+  `X-Sanctuary-Release`.
+- The protected PR #25 preview passed 24 of 24 normal/cache-busted semantic
+  requests across the 12 routes with one release value, its exact
+  `59e6f25e106f8e34ad20074f2452db1b38f6c531` head commit.
+- The protected stacked PR #26 preview passed the same 24 of 24 requests,
+  including the gallery control/status markers, with its exact
+  `f2a2e2e22eb23b0fe96e592a0a86c3f06f128f75` head commit.
 
 Phase 5 route-matrix summary:
 
 | Measure | Result |
 |---|---:|
-| Routes | 10 |
+| Routes | 12 |
 | Widths | 430, 390 and 360 px |
-| Records | 30 |
+| Records | 36 |
 | HTTP failures | 0 |
 | Non-prefetch request failures | 0 |
 | Horizontal overflow | 0 |
 | Maximum measured CLS | 0 |
-| FCP range | 156-896 ms |
-| LCP range | 172-896 ms |
-| TTFB range | 49-111 ms |
+| FCP range | 172-2,964 ms |
+| LCP range | 172-2,964 ms |
+| TTFB range | 46-2,784 ms |
 | Recorded long tasks | 0 |
 | Broken viewport images | 0 |
 | Duplicate IDs | 0 |
 | Primary controls below 44 px | 0 |
-| Maximum total transferred bytes | 759,497 |
+| Maximum total transferred bytes | 764,111 |
 | Maximum image transferred bytes | 344,410 |
-| Maximum script transferred bytes | 206,168 |
+| Maximum script transferred bytes | 205,977 |
 
 Aborted Next.js RSC prefetches are recorded separately from failed user
 requests because the browser may cancel speculative prefetches without a failed
@@ -366,15 +407,18 @@ evidence, not mobile-network field timings.
 
 | Check | Result |
 |---|---|
-| Marketing Vitest suite | Pass: 49 files, 251 tests |
+| Marketing Vitest suite | Pass: 51 files, 259 tests |
 | Marketing TypeScript | Pass |
-| Repository lint and policy guards | Pass |
+| Repository lint and policy guards | Downstream package, cache, brand, mojibake and ESLint checks pass; the aggregate command is blocked before ESLint by intentional smart quotes in the supplied untracked review copy, which was preserved unchanged |
 | Marketing production build | Pass: 65 static pages generated |
-| Changed-file architecture sweep | Pass; no warning or critical changed source files, dead-code pressure or boundary findings |
-| Changed-behaviour Playwright retest | Pass: five tests covering direct and professional reconciliation, homepage review-link naming, no-JavaScript guide completeness and footer naming |
+| Changed-file architecture sweep | Pass: no warning/critical files, dead-code pressure, root compatibility growth, browser/service-role Supabase access or boundary findings |
+| Changed-behaviour Playwright retest | Pass: Phase 3/4/5 12 tests; project changed contracts 10 tests; project capture 2 tests; product 18 tests; Foundation 34 tests; commercial SEO four-width retest 4 tests |
 | Production keyboard/focus Playwright set | Pass: 13 tests covering header/menu focus, disclosures, project filters/modal, product interactions, validation and retry |
-| Production direct/professional UUID reconciliation | Expected failures: both deployed event IDs differ from their intercepted submission IDs; both local fixed tests pass |
-| Production review-link label-in-name checks | Expected failures: homepage and footer still expose the mismatched deployed accessible names; both local fixed tests pass |
+| Production direct/professional UUID reconciliation | Pass: both intercepted deployed event IDs equal their submission IDs; no real enquiry sent |
+| Production review-link label-in-name checks | Pass: homepage and footer names contain the visible rating/review text |
+| Production Phase 6 deployment checks | Expected failures retained: no release header, commercial guide progression still present, and project gallery controls/status absent |
+| Protected PR preview release/semantic checks | Pass: PR #25 24/24 and stacked PR #26 24/24; every normal/cache-busted response identified its exact head SHA |
+| Current Lighthouse command | Blocked by documented Windows `EPERM` temporary-profile cleanup after the mobile homepage audit; the valid earlier reports and the current 36-record route matrix remain the performance evidence |
 
 The initial 50-test local browser sweep recorded one failure in the unchanged
 no-JavaScript guide loop. Its exact test passed immediately in isolation and
@@ -418,9 +462,8 @@ lab results, not field Core Web Vitals. The reports are
 `artifacts/mobile-ux-phase-5/automated/lighthouse-mobile-home.json` and
 `artifacts/mobile-ux-phase-5/automated/lighthouse-desktop-home.json`.
 
-The deployed Lighthouse report found P5-05. The local `main` worktree fix is
-covered locally but cannot be represented as a production Lighthouse pass
-until it is deployed. Lighthouse also recorded 25.6 KB of potentially unused JavaScript,
+The earlier deployed Lighthouse report found P5-05; current production browser
+contracts now confirm that shared name fix. Lighthouse also recorded 25.6 KB of potentially unused JavaScript,
 about 14 ms of named forced reflow plus unattributed work, and no estimated
 image-format savings. These are observations, not evidence for a broad rewrite.
 

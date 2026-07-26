@@ -1,0 +1,81 @@
+.shell {
+  min-width: 0;
+}
+
+.controls {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .shell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .shell :global(.project-case-study__gallery) {
+    scroll-behavior: smooth;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+    order: -1;
+    margin-bottom: 0.75rem;
+  }
+
+  .control {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid var(--color-rule-strong);
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-text-primary);
+    font: 600 0.7rem/1 var(--font-body);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .control:hover {
+    border-color: var(--color-accent-olive);
+    color: var(--color-accent-olive);
+  }
+
+  .control:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .control[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.42;
+  }
+
+  .position {
+    min-width: 5.8rem;
+    margin: 0;
+    color: var(--color-text-secondary);
+    font: 600 0.72rem/1.2 var(--font-body);
+    letter-spacing: 0.08em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell :global(.project-case-study__gallery) {
+    scroll-behavior: auto;
+  }
+
+  .control {
+    transition: none;
+  }
+}

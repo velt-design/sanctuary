@@ -140,13 +140,18 @@ Phase 5 production-supporting validation should run
 locally and with
 `MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` for the read-only
 deployed matrix. Set `MARKETING_PHASE_FIVE_CAPTURE=1` only for the dated
-production evidence run. It writes a 30-record route/width payload and
+production evidence run. It writes a 36-record route/width payload and
 representative screenshots under `artifacts/mobile-ux-phase-5/automated/`.
-The lane covers ten primary routes at 430, 390 and 360 pixels, including HTTP
+The lane covers twelve primary routes at 430, 390 and 360 pixels, including the
+custom service and a representative guide detail in addition to HTTP
 and request failures, document overflow, CLS, landmarks, H1s, duplicate IDs,
 visible images, 44 pixel controls, FCP, LCP, TTFB, transfer size, image/script
-payload and long tasks. It supplements but never replaces the physical-device,
-VoiceOver and TalkBack matrix in `docs/mobile-ux-phase-5-validation.md`.
+payload and long tasks. A raw-response contract also requires one sanitized
+`X-Sanctuary-Release` value across normal and cache-busted requests and checks
+the intended semantic markers and service-route guide framing. Set
+`MARKETING_EXPECTED_RELEASE_SHA` for an exact deployment assertion. This
+supplements but never replaces the physical-device, VoiceOver and TalkBack
+matrix in `docs/mobile-ux-phase-5-validation.md`.
 
 Mobile first-layer copy, responsive disclosure, shared public route-template,
 service, SEO-landing or guide-directory changes should also run
@@ -202,7 +207,9 @@ H1 and logical heading order, early and final contact actions, loaded and
 intentionally framed hero media, mobile height budgets, native server-rendered
 disclosures, selector focus and scroll behavior, one native horizontal gallery
 strip, top-aligned variable 4:3 and 3:4 image heights, native touch swipe,
-visible keyboard focus on the region, lazy image loading, metadata and schema,
+contextual Previous/Next controls, live position and edge state, retained
+control focus, Arrow/Home/End keyboard navigation, visible keyboard focus on
+the region, lazy image loading, metadata and schema,
 honest missing-data treatment, enquiry context, browser Back/refresh, reduced
 motion, zero textual or generated em dashes, no horizontal overflow and no
 nested vertical content scroller. Its seven-width responsive matrix provides

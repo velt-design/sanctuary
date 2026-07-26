@@ -152,12 +152,12 @@ test('capture current project gallery evidence', async ({
     const page = await context.newPage();
     await page.goto(representativeRoute);
     await dismissConsent(page);
-    const gallery = visibleProjectsMain(page).locator(
-      '[data-project-gallery-layout="responsive-strip"]',
+    const galleryShell = visibleProjectsMain(page).locator(
+      '[data-project-gallery-shell]',
     );
-    await gallery.scrollIntoViewIfNeeded();
-    await expect(gallery).toBeVisible();
-    await gallery.screenshot({
+    await galleryShell.scrollIntoViewIfNeeded();
+    await expect(galleryShell).toBeVisible();
+    await galleryShell.screenshot({
       path: resolve(
         phaseTwoEvidenceDirectory,
         `after-project-gallery-${width}.png`,
