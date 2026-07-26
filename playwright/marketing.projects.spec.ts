@@ -691,6 +691,9 @@ for (const viewport of [
     await expectNoPageOverflow(page);
 
     const gallery = main.locator('[data-project-gallery-layout="responsive-strip"]');
+    const galleryShell = main.locator('[data-project-gallery-shell]');
+    const galleryControls = galleryShell.locator('button');
+    const galleryPosition = galleryShell.locator('[aria-live="polite"]');
     await expect(gallery).toBeVisible();
     await expect(gallery.locator('figure')).toHaveCount(
       projectGalleryItemCount(representativeProject),
@@ -699,6 +702,9 @@ for (const viewport of [
 
     if (viewport.width >= 900) {
       await expect(gallery).toHaveCSS('display', 'grid');
+      await expect(galleryControls).toHaveCount(2);
+      await expect(galleryControls.first()).toBeHidden();
+      await expect(galleryPosition).toBeHidden();
       await expect(main.locator('.project-navigator__panel')).toBeVisible();
       await expect(main.locator('.project-navigator__trigger')).toBeHidden();
       await expect(main.locator(
@@ -748,6 +754,7 @@ for (const viewport of [
         })
       ))).toBe(true);
 
+      await page.keyboard.press('Tab');
       await gallery.focus();
       await expect(gallery).toBeFocused();
       const focusState = await gallery.evaluate((element) => {
@@ -759,12 +766,70 @@ for (const viewport of [
       });
       expect(focusState.outlineStyle).not.toBe('none');
       expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
-      await expect(gallery.getByRole('button')).toHaveCount(0);
+      await expect(galleryControls).toHaveCount(2);
+      await expect(galleryControls.first()).toBeVisible();
+      await expect(galleryPosition).toHaveText(
+        `Image 1 of ${projectGalleryItemCount(representativeProject)}`,
+      );
+      for (const control of await galleryControls.all()) {
+        const bounds = await control.boundingBox();
+        expect(bounds?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(bounds?.width ?? 0).toBeGreaterThanOrEqual(44);
+      }
       await expect(main.locator('.project-navigator__trigger')).toBeVisible();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
   });
 }
+
+test('mobile gallery controls report position and support pointer and keyboard use', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(representativeRoute);
+  await dismissConsent(page);
+
+  const shell = visibleProjectsMain(page).locator('[data-project-gallery-shell]');
+  const gallery = shell.locator('[data-project-gallery-layout="responsive-strip"]');
+  const previous = shell.getByRole('button', {
+    name: `Previous image in ${representativeProject.title} project gallery`,
+  });
+  const next = shell.getByRole('button', {
+    name: `Next image in ${representativeProject.title} project gallery`,
+  });
+  const position = shell.locator('[aria-live="polite"]');
+  const total = projectGalleryItemCount(representativeProject);
+
+  await expect(position).toHaveText(`Image 1 of ${total}`);
+  await expect(previous).toHaveAttribute('aria-disabled', 'true');
+  await expect(next).toHaveAttribute('aria-disabled', 'false');
+
+  await next.focus();
+  await next.click();
+  await expect(next).toBeFocused();
+  await expect(position).toHaveText(`Image 2 of ${total}`);
+  await expect.poll(() => gallery.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
+
+  await previous.focus();
+  await previous.click();
+  await expect(previous).toBeFocused();
+  await expect(position).toHaveText(`Image 1 of ${total}`);
+  await expect(previous).toHaveAttribute('aria-disabled', 'true');
+
+  await gallery.focus();
+  await page.keyboard.press('End');
+  await expect(position).toHaveText(`Image ${total} of ${total}`);
+  await expect(next).toHaveAttribute('aria-disabled', 'true');
+
+  await page.keyboard.press('Home');
+  await expect(position).toHaveText(`Image 1 of ${total}`);
+  await page.keyboard.press('ArrowRight');
+  await expect(position).toHaveText(`Image 2 of ${total}`);
+  await page.keyboard.press('ArrowLeft');
+  await expect(position).toHaveText(`Image 1 of ${total}`);
+  await expect(gallery).toBeFocused();
+});
 
 test('desktop navigator filters projects, remains sticky, and supports list keyboard navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -1058,4 +1123,16 @@ test('reduced-motion preference removes material project transitions', async ({ 
       ? Number.parseFloat(value) / 1000
       : Number.parseFloat(value));
   expect(Math.max(...seconds)).toBeLessThanOrEqual(0.001);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  const shell = visibleProjectsMain(page).locator('[data-project-gallery-shell]');
+  const gallery = shell.locator('[data-project-gallery-layout="responsive-strip"]');
+  await expect(gallery).toHaveCSS('scroll-behavior', 'auto');
+  const next = shell.getByRole('button', {
+    name: `Next image in ${representativeProject.title} project gallery`,
+  });
+  await next.focus();
+  await page.keyboard.press('Enter');
+  await expect(shell.locator('[aria-live="polite"]')).toContainText('Image 2 of');
 });

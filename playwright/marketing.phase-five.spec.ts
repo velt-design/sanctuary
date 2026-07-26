@@ -55,7 +55,12 @@ const semanticParityRoutes = [
   },
   {
     path: '/projects/warkworth-outdoor-room',
-    requiredMarkers: ['data-project-gallery-layout="responsive-strip"'],
+    requiredMarkers: [
+      'data-project-gallery-shell',
+      'data-project-gallery-layout="responsive-strip"',
+      'aria-label="Previous image in Warkworth Outdoor Room project gallery"',
+      'aria-live="polite"',
+    ],
   },
   {
     path: '/pergolas-auckland',
