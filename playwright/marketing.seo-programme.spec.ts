@@ -17,6 +17,7 @@ type ProgrammePage = {
   captureId: string;
   comparisonId: string;
   comparisonReferences: readonly string[];
+  showGuideNavigation?: false;
 };
 
 const pages: ProgrammePage[] = [
@@ -147,6 +148,7 @@ const pages: ProgrammePage[] = [
     captureId: 'commercial-projects',
     comparisonId: 'commercial-decisions-title',
     comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-pergolas-vs-louvre-roofs', '/acrylic-roof-pergolas-auckland-v2'],
+    showGuideNavigation: false,
   },
 ];
 
@@ -190,9 +192,26 @@ for (const programmePage of pages) {
       await expect(main.locator('h1')).toHaveCount(1);
       await expect(main.locator('.acrylic-project-card img')).toHaveCount(programmePage.projectCount);
       await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(programmePage.faqCount);
-      await expect(main.getByRole('navigation', { name: 'Pergola guide progression' })).toBeVisible();
-      await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
-      await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
+      const guideNavigation = main.getByRole('navigation', {
+        name: 'Pergola guide progression',
+      });
+      if (programmePage.showGuideNavigation === false) {
+        await expect(guideNavigation).toHaveCount(0);
+        await expect(
+          main.getByText('Editorial review: Sanctuary Pergolas'),
+        ).toHaveCount(0);
+        await expect(main.locator('time[datetime="2026-07-22"]')).toHaveCount(
+          0,
+        );
+      } else {
+        await expect(guideNavigation).toBeVisible();
+        await expect(
+          main.getByText('Editorial review: Sanctuary Pergolas'),
+        ).toBeVisible();
+        await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText(
+          '22 July 2026',
+        );
+      }
       await expect(main.locator('.seo-landing__project-facts')).toHaveCount(programmePage.projectCount);
       await expect(main.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`)).toBeVisible();
       await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(

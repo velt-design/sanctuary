@@ -62,6 +62,7 @@ const faqItems = [
 export const commercialPergolasConfig = {
   marker: 'commercial-pergolas-auckland',
   route: '/commercial-pergolas-auckland',
+  showGuideNavigation: false,
   enquiryType: 'commercial',
   description:
     'Sanctuary designs and builds commercial pergolas in Auckland, coordinating engineering, consent and trades where required from venue brief to installation.',

@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 import { expect, test, type Browser } from '@playwright/test';
 
 const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
+const releaseHeader = 'x-sanctuary-release';
+const releaseShaPattern = /^[a-f0-9]{7,40}$/;
 const capture = process.env.MARKETING_PHASE_FIVE_CAPTURE === '1';
 const evidenceDirectory = resolve('artifacts/mobile-ux-phase-5/automated');
 const targetViewports = [
@@ -18,21 +20,96 @@ const evidenceRoutes = [
     path: '/projects/warkworth-outdoor-room',
   },
   { id: 'residential-service', path: '/pergolas-auckland' },
+  { id: 'custom-service', path: '/custom-pergolas-auckland' },
   { id: 'products', path: '/products' },
   { id: 'product-detail', path: '/products/pergolas/gable' },
   { id: 'commercial', path: '/commercial-pergolas-auckland' },
   { id: 'professional', path: '/architects-designers-builders' },
   { id: 'guides', path: '/pergola-guides' },
+  { id: 'guide-detail', path: '/pergola-cost-auckland' },
   { id: 'contact', path: '/contact' },
 ] as const;
 const screenshotRoutes = new Set([
   'home',
   'project-detail',
+  'residential-service',
+  'custom-service',
   'product-detail',
   'commercial',
   'professional',
+  'guide-detail',
   'contact',
 ]);
+
+const semanticParityRoutes = [
+  {
+    path: '/',
+    requiredMarkers: [
+      'data-homepage-variant="v2"',
+      'id="footer-contact-heading"',
+    ],
+  },
+  {
+    path: '/projects',
+    requiredMarkers: ['data-projects-experience'],
+  },
+  {
+    path: '/projects/warkworth-outdoor-room',
+    requiredMarkers: ['data-project-gallery-layout="responsive-strip"'],
+  },
+  {
+    path: '/pergolas-auckland',
+    requiredMarkers: [
+      'data-seo-landing="pergolas-auckland"',
+      'data-service-major-section="support"',
+    ],
+  },
+  {
+    path: '/custom-pergolas-auckland',
+    requiredMarkers: ['data-seo-landing="custom-pergolas-auckland"'],
+    forbiddenMarkers: ['Pergola guide progression'],
+  },
+  {
+    path: '/products',
+    requiredMarkers: ['data-products-index'],
+  },
+  {
+    path: '/products/pergolas/gable',
+    requiredMarkers: ['data-product-detail'],
+  },
+  {
+    path: '/commercial-pergolas-auckland',
+    requiredMarkers: [
+      'data-seo-landing="commercial-pergolas-auckland"',
+      'id="commercial-projects"',
+      'id="commercial-process"',
+    ],
+    forbiddenMarkers: ['Pergola guide progression'],
+  },
+  {
+    path: '/architects-designers-builders',
+    requiredMarkers: [
+      'data-seo-landing="architects-designers-builders"',
+    ],
+    forbiddenMarkers: ['Pergola guide progression'],
+  },
+  {
+    path: '/pergola-guides',
+    requiredMarkers: ['data-pergola-guide-hub'],
+  },
+  {
+    path: '/pergola-cost-auckland',
+    requiredMarkers: [
+      'data-guide-first-layer-project',
+      'data-guide-first-layer-return',
+      'data-guide-supporting-depth',
+    ],
+  },
+  {
+    path: '/contact',
+    requiredMarkers: ['data-contact-page'],
+  },
+] as const;
 
 async function createMeasuredPage(
   browser: Browser,
@@ -357,6 +434,7 @@ for (const viewport of targetViewports) {
           path: route.path,
           ...viewport,
           responseStatus: response?.status() ?? null,
+          releaseId: response?.headers()[releaseHeader] ?? null,
           htmlBytes: response ? (await response.body()).byteLength : null,
           abortedPrefetches,
           failedRequests,
@@ -416,3 +494,59 @@ for (const viewport of targetViewports) {
     }
   });
 }
+
+test('release identity and semantic route state survive cache-busted requests', async ({
+  baseURL,
+  request,
+}) => {
+  expect(baseURL).toBeTruthy();
+  const production = new URL(String(baseURL)).origin === publicOrigin;
+  const expectedRelease = process.env.MARKETING_EXPECTED_RELEASE_SHA
+    ?.trim()
+    .toLowerCase();
+  const releaseIds = new Set<string>();
+
+  for (const route of semanticParityRoutes) {
+    for (const cacheBusted of [false, true]) {
+      const separator = route.path.includes('?') ? '&' : '?';
+      const path = cacheBusted
+        ? `${route.path}${separator}phase6_release_check=${Date.now()}`
+        : route.path;
+      const response = await request.get(path);
+      const releaseId = response.headers()[releaseHeader];
+      const html = await response.text();
+
+      expect(response.status(), path).toBe(200);
+      expect(releaseId, `${path} release identity`).toBeTruthy();
+      expect(
+        releaseId === 'local' || releaseShaPattern.test(releaseId),
+        `${path} release identity format`,
+      ).toBe(true);
+      if (production) {
+        expect(releaseId, `${path} production release identity`).toMatch(
+          releaseShaPattern,
+        );
+      }
+      if (expectedRelease) {
+        expect(releaseId, `${path} expected release identity`).toBe(
+          expectedRelease,
+        );
+      }
+      releaseIds.add(releaseId);
+
+      for (const marker of route.requiredMarkers) {
+        expect(html, `${path} should include ${marker}`).toContain(marker);
+      }
+      for (const marker of 'forbiddenMarkers' in route
+        ? route.forbiddenMarkers
+        : []) {
+        expect(html, `${path} should exclude ${marker}`).not.toContain(marker);
+      }
+    }
+  }
+
+  expect(
+    [...releaseIds],
+    'all normal and cache-busted route responses identify one release',
+  ).toHaveLength(1);
+});

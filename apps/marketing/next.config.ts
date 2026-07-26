@@ -1,7 +1,12 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
+import {
+  MARKETING_RELEASE_HEADER,
+  resolveMarketingReleaseId,
+} from './lib/releaseIdentity';
 
 const marketingPlaywrightDistDir = process.env.MARKETING_PLAYWRIGHT_DIST_DIR?.trim();
+const marketingReleaseId = resolveMarketingReleaseId(process.env);
 
 const nextConfig: NextConfig = {
   ...(marketingPlaywrightDistDir ? { distDir: marketingPlaywrightDistDir } : {}),
@@ -19,6 +24,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     const securityHeaders: { key: string; value: string }[] = [
+      { key: MARKETING_RELEASE_HEADER, value: marketingReleaseId },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
