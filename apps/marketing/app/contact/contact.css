@@ -93,10 +93,13 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   text-align: center;
   text-decoration: none;
   text-transform: uppercase;
+  transform-origin: center;
   transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard),
+    transform var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
 .contact-action--primary {
@@ -106,7 +109,11 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   cursor: pointer;
 }
 
-.contact-action--primary:hover {
+.contact-action:not(:disabled):active {
+  transform: scale(var(--motion-press-scale));
+}
+
+.contact-action--primary:not(:disabled):active {
   border-color: var(--color-accent-olive-hover);
   background: var(--color-accent-olive-hover);
 }
@@ -114,6 +121,7 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
 .contact-action--primary:disabled {
   cursor: wait;
   opacity: .64;
+  transform: none;
 }
 
 .contact-action--text {
@@ -121,8 +129,21 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   color: inherit;
 }
 
-.contact-action--text:hover {
+.contact-action--text:active {
   border-color: currentColor;
+  background: var(--color-surface-warm);
+  opacity: var(--motion-press-opacity);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .contact-action--primary:hover {
+    border-color: var(--color-accent-olive-hover);
+    background: var(--color-accent-olive-hover);
+  }
+
+  .contact-action--text:hover {
+    border-color: currentColor;
+  }
 }
 
 .contact-hero {
@@ -346,13 +367,24 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   background: var(--color-surface-warm);
   cursor: pointer;
   transition:
-    background-color 180ms ease,
-    color 180ms ease;
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.contact-form__type-options > label:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .contact-form__type-options > label:has(input:checked) {
   background: var(--color-accent-olive);
   color: #fff;
+  opacity: 1;
+}
+
+.contact-form__type-options > label:has(input:checked):active {
+  background: var(--color-accent-olive);
 }
 
 .contact-form__type-options input,
@@ -526,11 +558,21 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   cursor: pointer;
   font-size: .75rem;
   line-height: 1.3;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.contact-form__checks label:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .contact-form__checks label:has(input:checked) {
   background: var(--color-surface-neutral);
   color: var(--color-text-primary);
+  opacity: 1;
 }
 
 .contact-form input[type="file"] {
@@ -550,6 +592,15 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   font: 650 .7rem/1 var(--font-body);
   letter-spacing: .06em;
   text-transform: uppercase;
+  transform-origin: center;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    transform var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.contact-form input[type="file"]::file-selector-button:active {
+  background: var(--color-accent-olive-hover);
+  transform: scale(var(--motion-press-scale));
 }
 
 .contact-form__files {
@@ -595,6 +646,14 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   text-decoration: underline;
   text-underline-offset: .25em;
   cursor: pointer;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.contact-form__files button:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .contact-form__error {
@@ -953,7 +1012,10 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
 
 @media (prefers-reduced-motion: reduce) {
   .contact-action,
-  .contact-form__type-options > label {
+  .contact-form__type-options > label,
+  .contact-form__checks label,
+  .contact-form input[type="file"]::file-selector-button,
+  .contact-form__files button {
     transition: none;
   }
 }

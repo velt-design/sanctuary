@@ -146,6 +146,14 @@
   font: 600 .68rem/1 var(--font-body);
   letter-spacing: .1em;
   text-transform: uppercase;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.project-navigator__close:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .project-navigator__filters {
@@ -216,7 +224,11 @@
   padding: .9rem .5rem .9rem 0;
   color: inherit;
   text-decoration: none;
-  transition: background-color 160ms ease, color 160ms ease, padding 160ms ease;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard),
+    padding var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .project-navigator__list a::before {
@@ -225,13 +237,23 @@
   position: absolute;
   inset: .75rem auto .75rem 0;
   background: transparent;
-  transition: background-color 160ms ease;
+  transition: background-color var(--motion-duration-short) var(--motion-ease-standard);
+}
+
+.project-navigator__list a:active {
+  background: color-mix(in srgb, var(--color-surface-neutral) 72%, transparent);
+  opacity: var(--motion-press-opacity);
 }
 
 .project-navigator__list a.is-active {
   padding-left: .75rem;
   color: var(--color-text-primary);
   background: color-mix(in srgb, var(--color-accent-olive) 7%, transparent);
+}
+
+.project-navigator__list a.is-active:active {
+  background: color-mix(in srgb, var(--color-accent-olive) 12%, transparent);
+  opacity: 1;
 }
 
 .project-navigator__list a.is-active::before {
@@ -297,6 +319,14 @@
   font: 600 .7rem/1 var(--font-body);
   letter-spacing: .09em;
   text-transform: uppercase;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.project-navigator__empty button:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .project-case-study {
@@ -391,6 +421,11 @@
   letter-spacing: .085em;
   text-decoration: none;
   text-transform: uppercase;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    border-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard),
+    transform var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
 .project-action--primary {
@@ -398,17 +433,27 @@
   border: 1px solid var(--color-accent-olive);
   background: var(--color-accent-olive);
   color: var(--color-inverse-text);
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transform-origin: center;
 }
 
 .project-action--text {
   border-bottom: 1px solid currentColor;
 }
 
+.project-action--primary:active {
+  border-color: var(--color-accent-olive-hover);
+  background: var(--color-accent-olive-hover);
+  transform: scale(var(--motion-press-scale));
+}
+
+.project-action--text:active {
+  opacity: var(--motion-press-opacity);
+}
+
 .project-action--text::after {
   content: "→";
   margin-left: .55rem;
-  transition: transform 160ms ease;
+  transition: transform var(--motion-duration-short) var(--motion-ease-standard);
 }
 
 .project-case-study__hero {
@@ -706,6 +751,9 @@
   gap: 1rem;
   cursor: default;
   list-style: none;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
 .project-case-study__technical summary::-webkit-details-marker {
@@ -777,8 +825,17 @@
   min-width: 0;
   display: grid;
   gap: 1rem;
+  background: transparent;
   color: inherit;
   text-decoration: none;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.project-case-study__related-list > a:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .project-case-study__related-image {
@@ -790,7 +847,7 @@
 }
 
 .project-case-study__related-image img {
-  transition: transform 500ms cubic-bezier(.22, .61, .36, 1);
+  transition: transform 500ms cubic-bezier(.22, .61, .36, 1); /* motion-contract-exempt: retain the existing desktop image-hover timing. */
 }
 
 .project-case-study__related-copy {
@@ -829,8 +886,17 @@
   align-content: center;
   gap: .55rem;
   padding: 1.5rem 1.5rem 1.5rem 0;
+  background: transparent;
   color: inherit;
   text-decoration: none;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.project-case-study__pagination > a:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .project-case-study__pagination > a:last-child {
@@ -903,7 +969,7 @@
   color: var(--color-text-secondary);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .project-navigator__list a:hover {
     background: color-mix(in srgb, var(--color-surface-elevated) 70%, transparent);
   }
@@ -993,6 +1059,14 @@
     color: var(--color-text-primary);
     text-align: left;
     backdrop-filter: blur(14px);
+    transition:
+      background-color var(--motion-duration-instant) var(--motion-ease-standard),
+      opacity var(--motion-duration-instant) var(--motion-ease-standard);
+  }
+
+  .project-navigator__trigger:active {
+    background: var(--color-surface-neutral);
+    opacity: var(--motion-press-opacity);
   }
 
   .project-navigator__trigger-count,
@@ -1038,12 +1112,16 @@
     background: var(--color-surface-elevated);
     transform: translateY(102%);
     visibility: hidden;
-    transition: transform 220ms cubic-bezier(.22, .61, .36, 1), visibility 220ms;
+    transition:
+      transform var(--motion-duration-panel-exit) var(--motion-ease-exit),
+      visibility var(--motion-duration-panel-exit) var(--motion-ease-exit);
   }
 
   .project-navigator__panel[data-open="true"] {
     transform: translateY(0);
     visibility: visible;
+    transition-duration: var(--motion-duration-panel-enter);
+    transition-timing-function: var(--motion-ease-enter);
   }
 
   .project-navigator__header {
@@ -1191,13 +1269,18 @@
     cursor: pointer;
   }
 
+  .project-case-study__technical summary:active {
+    background: var(--color-surface-neutral);
+    opacity: var(--motion-press-opacity);
+  }
+
   .project-case-study__technical summary > span:first-child > span:last-child {
     font-size: clamp(1.6rem, 7vw, 2.5rem);
   }
 
   .project-case-study__technical summary > span:last-child {
     display: block;
-    transition: transform 160ms ease;
+    transition: transform var(--motion-duration-short) var(--motion-ease-standard);
   }
 
   .project-case-study__technical details[open]:not([data-disclosure-state="pending"]) summary > span:last-child {
@@ -1437,6 +1520,16 @@
     gap: 1rem;
     cursor: pointer;
     list-style: none;
+    transition:
+      background-color var(--motion-duration-instant) var(--motion-ease-standard),
+      opacity var(--motion-duration-instant) var(--motion-ease-standard);
+  }
+
+  .project-case-study__facts-disclosure > summary:active,
+  .project-case-study__story-disclosure > summary:active,
+  .project-case-study__story-more > summary:active {
+    background: var(--color-surface-neutral);
+    opacity: var(--motion-press-opacity);
   }
 
   .project-case-study__facts-disclosure > summary::-webkit-details-marker,
@@ -1475,7 +1568,7 @@
   .project-case-study__story-more > summary > span:last-child {
     flex: 0 0 auto;
     font: 300 1.35rem/1 var(--font-display);
-    transition: transform 160ms ease;
+    transition: transform var(--motion-duration-short) var(--motion-ease-standard);
   }
 
   .project-case-study__facts-disclosure[open]:not([data-disclosure-state="pending"]) > summary > span:last-child,

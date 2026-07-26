@@ -303,7 +303,7 @@ TM1 is delivered through TM-01 and TM-02:
 - `apps/marketing/app/projects/ProjectGallery.module.css`
 - `apps/marketing/app/projects/projects.css`
 - `apps/marketing/components/products/product-pages.module.css`
-- `apps/marketing/app/home-v2/home-v2.module.css`
+- `apps/marketing/app/_home/homepage.module.css`
 - `apps/marketing/app/pergolas-auckland/pergolas-auckland.css`
 - `apps/marketing/components/seo-landing/seo-landing.css`
 - `apps/marketing/app/contact/contact.css`
@@ -347,7 +347,7 @@ TM1 is delivered through TM-01 and TM-02:
 - Foundation component and interaction Vitest suites
 - `playwright/marketing.foundation.spec.ts`
 - `playwright/marketing.shared-header.spec.ts`
-- `playwright/marketing.home-v2.spec.ts`
+- `playwright/marketing.homepage.spec.ts`
 - `playwright/marketing.projects.spec.ts`
 - `playwright/marketing.products.spec.ts`
 - `playwright/marketing.contact.spec.ts`
@@ -859,7 +859,7 @@ The same immediate, restrained touch response is present across the customer jou
 - `apps/marketing/app/projects/ProjectGallery.module.css`
 - `apps/marketing/app/projects/projects.css`
 - `apps/marketing/components/products/product-pages.module.css`
-- `apps/marketing/app/home-v2/home-v2.module.css`
+- `apps/marketing/app/_home/homepage.module.css`
 - `apps/marketing/app/pergolas-auckland/pergolas-auckland.css`
 - `apps/marketing/components/seo-landing/seo-landing.css`
 - `apps/marketing/app/contact/contact.css`

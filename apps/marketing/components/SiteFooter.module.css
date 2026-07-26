@@ -1,0 +1,56 @@
+.primaryAction,
+.quietLink,
+.navigationLink,
+.reviewAction {
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard),
+    transform var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.primaryAction {
+  transform-origin: center;
+}
+
+.primaryAction:active {
+  background: #f5f6f7;
+  color: #121212;
+  transform: scale(var(--motion-press-scale));
+}
+
+.quietLink:active,
+.navigationLink:active,
+.reviewAction:active {
+  opacity: var(--motion-press-opacity);
+}
+
+.navigationLink:active {
+  background: rgba(245, 246, 247, 0.08);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primaryAction:hover {
+    background: #f5f6f7;
+    color: #121212;
+  }
+
+  .quietLink:hover,
+  .navigationLink:hover,
+  .reviewAction:hover {
+    opacity: 0.8;
+  }
+
+  .reviewAction:hover {
+    color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .quietLink,
+  .navigationLink,
+  .reviewAction {
+    transition: none;
+  }
+}

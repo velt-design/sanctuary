@@ -124,6 +124,17 @@
   color: inherit;
 }
 
+.proofGrid > a {
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.proofGrid > a:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
+}
+
 .proofGrid strong {
   font: 500 clamp(1.35rem, 2vw, 2rem)/1.05 var(--font-display);
   letter-spacing: -.025em;
@@ -238,7 +249,6 @@
     opacity var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-.intentOption:hover,
 .intentOption:active {
   background: var(--color-surface-elevated);
 }
@@ -250,6 +260,11 @@
 .intentOption[data-selected="true"] {
   background: var(--color-accent-olive);
   color: var(--color-inverse-text);
+}
+
+.intentOption[data-selected="true"]:active {
+  background: var(--color-accent-olive);
+  opacity: 1;
 }
 
 .intentOption:focus-visible {
@@ -318,6 +333,14 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   touch-action: manipulation;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.selectedSummary button:active {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .response {
@@ -360,6 +383,14 @@
   grid-template-rows: auto 1fr;
   border: 1px solid var(--color-rule);
   background: var(--color-surface-elevated);
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.projectCard:has(a:active) {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .projectFigure {
@@ -440,6 +471,18 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   touch-action: manipulation;
+  transition:
+    background-color var(--motion-duration-instant) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard),
+    transform var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.projectActions a:active,
+.escapeActions a:active,
+.initialEscapeActions a:active,
+.closeActions a:active,
+.noScriptFallback a:active {
+  opacity: var(--motion-press-opacity);
 }
 
 .projectActions .referenceAction {
@@ -448,6 +491,13 @@
   border: 1px solid var(--color-accent-olive);
   background: var(--color-accent-olive);
   color: var(--color-inverse-text);
+  transform-origin: center;
+}
+
+.projectActions .referenceAction:active {
+  background: var(--color-accent-olive-hover);
+  opacity: 1;
+  transform: scale(var(--motion-press-scale));
 }
 
 .responseCaveat {
@@ -528,6 +578,14 @@
   padding: clamp(1.25rem, 2.5vw, 2rem);
   border-right: 1px solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.audienceGrid article:has(a:active) {
+  background: var(--color-surface-neutral);
+  opacity: var(--motion-press-opacity);
 }
 
 .audienceGrid article > span,
@@ -563,6 +621,12 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   touch-action: manipulation;
+  transition: opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.audienceGrid a:active,
+.supportLinks a:active {
+  opacity: var(--motion-press-opacity);
 }
 
 .supportLinks {
@@ -703,6 +767,10 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .intentOption:hover {
+    background: var(--color-surface-elevated);
+  }
+
   .proofGrid > a:hover,
   .projectCard:hover {
     background: var(--color-surface-neutral);
