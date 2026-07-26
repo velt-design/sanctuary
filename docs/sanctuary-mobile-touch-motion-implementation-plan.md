@@ -1515,5 +1515,5 @@ Implement PR TM-01 from `docs/mobile-touch-motion-implementation-plan.md` as the
 
 Add the shared marketing motion and press tokens to `apps/marketing/styles/tokens.css`, migrate only the Foundation Button, TextLink, EditorialCard, Disclosure and controlled-gallery control styles to those tokens, add restrained pressed states and fine-pointer hover gating, remove the persistent `.page-layer` will-change hint, and add the scoped marketing motion contract plus focused Foundation tests.
 
-Preserve semantic markup, focus, reduced motion, current gallery behaviour, route progress logic, page layouts, copy, analytics and desktop composition. Do not touch route-specific consumers, product-gallery gesture architecture, native project-gallery behaviour, scroll restoration or overlay locking. Run the roadmap’s TM-01 unit, Playwright, build, type and performance checks and report exact before-and-after evidence.
+Preserve semantic markup, focus, reduced motion, current gallery behaviour, route progress logic, page layouts, copy, analytics and desktop composition. Do not touch route-specific consumers, product-gallery gesture architecture, native project-gallery behaviour, scroll restoration or overlay locking. Run the roadmap's TM-01 unit, Playwright, build, type and performance checks and report exact before-and-after evidence.
 ```

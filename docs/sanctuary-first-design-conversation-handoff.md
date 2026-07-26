@@ -539,21 +539,21 @@ Preferred approach:
 
 ```text
 apps/marketing/app/home-experimental/
-├── page.tsx
-├── HomepageExperimental.tsx
-├── ExperimentalHomepageTracker.tsx
-├── experimental-content.ts
-├── matching.ts
-├── home-experimental.module.css
-└── components/
-    ├── ProjectOpening.tsx
-    ├── DesignConversation.tsx
-    ├── ConversationQuestion.tsx
-    ├── SelectedAnswerSummary.tsx
-    ├── ProjectVisualResponse.tsx
-    ├── MatchedProjects.tsx
-    ├── ProjectReferenceAction.tsx
-    └── ContextualEnquirySection.tsx
+|-- page.tsx
+|-- HomepageExperimental.tsx
+|-- ExperimentalHomepageTracker.tsx
+|-- experimental-content.ts
+|-- matching.ts
+|-- home-experimental.module.css
+`-- components/
+    |-- ProjectOpening.tsx
+    |-- DesignConversation.tsx
+    |-- ConversationQuestion.tsx
+    |-- SelectedAnswerSummary.tsx
+    |-- ProjectVisualResponse.tsx
+    |-- MatchedProjects.tsx
+    |-- ProjectReferenceAction.tsx
+    `-- ContextualEnquirySection.tsx
 ```
 
 Keep client-side boundaries narrow.
@@ -594,7 +594,7 @@ The prototype should feel:
 - precise
 - tactile
 - visually led
-- premium without luxury clichés
+- premium without luxury cliches
 - contemporary without looking like a technology product
 
 ### 10.2 Photography
