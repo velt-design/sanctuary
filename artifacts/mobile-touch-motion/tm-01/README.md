@@ -82,8 +82,8 @@ route progress bar retains its existing narrow `will-change`.
 
 ## Clean-worktree validation
 
-- Focused motion and Foundation unit suites: 3 files, 13 tests passed
-- Marketing unit suite: 51 files, 259 tests passed
+- Focused motion and Foundation unit suites: 3 files, 14 tests passed
+- Marketing unit suite: 51 files, 260 tests passed
 - Foundation browser suite with evidence capture: 29 passed, 2 unrelated
   capture-only tests skipped
 - Existing 12-route performance matrix at 430, 390 and 360 px: 3 passed,

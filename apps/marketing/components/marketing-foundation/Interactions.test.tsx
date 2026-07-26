@@ -169,6 +169,19 @@ describe('marketing foundation responsive gallery', () => {
     expect(gallery?.querySelector('button')?.getAttribute('aria-label')).toContain('Previous image');
   });
 
+  it('keeps single-item gallery controls disabled without changing status semantics', async () => {
+    const container = await render(
+      <ResponsiveGallery label="Completed projects" items={[galleryItems[0]]} />,
+    );
+    const gallery = container.querySelector('[data-responsive-gallery]');
+    const buttons = [...(gallery?.querySelectorAll('button') ?? [])];
+
+    expect(buttons).toHaveLength(2);
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+    expect(gallery?.querySelectorAll('img')).toHaveLength(1);
+    expect(gallery?.querySelector('[role="status"]')?.textContent).toBe('Image 1 of 1');
+  });
+
   it('supports buttons and Arrow, Home and End keys without moving focus', async () => {
     const container = await render(
       <ResponsiveGallery label="Completed projects" items={galleryItems} />,
