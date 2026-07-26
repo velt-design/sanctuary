@@ -180,8 +180,17 @@
   height: 100%;
   display: grid;
   align-content: start;
+  background: transparent;
   color: inherit;
   text-decoration: none;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-ease-standard),
+    opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.productCardLink:active {
+  background: var(--color-surface-elevated);
+  opacity: var(--motion-press-opacity);
 }
 
 .productCardMedia {
@@ -200,11 +209,7 @@
 }
 
 .productCardMedia img {
-  transition: transform 500ms cubic-bezier(.22, .61, .36, 1);
-}
-
-.productCardLink:hover .productCardMedia img {
-  transform: scale(1.025);
+  transition: transform 500ms cubic-bezier(.22, .61, .36, 1); /* motion-contract-exempt: retain the existing desktop image-hover timing. */
 }
 
 .productCardIndex {
@@ -466,6 +471,12 @@
 
 .mobileDisclosureSummary {
   display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .productCardLink:hover .productCardMedia img {
+    transform: scale(1.025);
+  }
 }
 
 .detailHeroCopy {
@@ -1089,6 +1100,14 @@
     letter-spacing: .08em;
     list-style: none;
     text-transform: uppercase;
+    transition:
+      background-color var(--motion-duration-instant) var(--motion-ease-standard),
+      opacity var(--motion-duration-instant) var(--motion-ease-standard);
+  }
+
+  .mobileDisclosureSummary:active {
+    background: var(--color-surface-neutral);
+    opacity: var(--motion-press-opacity);
   }
 
   .mobileDisclosureSummary::-webkit-details-marker {
@@ -1111,7 +1130,7 @@
     top: calc(50% - .5px);
     left: 0;
     background: currentColor;
-    transition: transform 160ms ease;
+    transition: transform var(--motion-duration-short) var(--motion-ease-standard);
   }
 
   .mobileDisclosureIcon::after {

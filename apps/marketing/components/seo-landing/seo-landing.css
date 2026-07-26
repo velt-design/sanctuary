@@ -147,6 +147,14 @@
     letter-spacing: 0.08em;
     list-style: none;
     text-transform: uppercase;
+    transition:
+      background-color var(--motion-duration-instant) var(--motion-ease-standard),
+      opacity var(--motion-duration-instant) var(--motion-ease-standard);
+  }
+
+  .seo-landing__mobile-disclosure-summary:active {
+    background: var(--color-surface-neutral);
+    opacity: var(--motion-press-opacity);
   }
 
   .seo-landing__mobile-disclosure-summary::-webkit-details-marker {
@@ -177,7 +185,7 @@
     height: 1px;
     background: currentColor;
     transform-origin: center;
-    transition: transform 160ms ease;
+    transition: transform var(--motion-duration-short) var(--motion-ease-standard);
   }
 
   .seo-landing__mobile-disclosure-icon::after {
@@ -202,6 +210,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .seo-landing__mobile-disclosure-summary,
   .seo-landing__mobile-disclosure-icon::before,
   .seo-landing__mobile-disclosure-icon::after {
     transition: none;

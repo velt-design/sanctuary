@@ -45,7 +45,7 @@ const semanticParityRoutes = [
   {
     path: '/',
     requiredMarkers: [
-      'data-homepage-variant="v2"',
+      'data-homepage-variant="design_conversation_home_v2"',
       'id="footer-contact-heading"',
     ],
   },

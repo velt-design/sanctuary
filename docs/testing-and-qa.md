@@ -120,13 +120,32 @@ The suite verifies three commercial cases and stages, commercial source
 context, professional route discovery/schema/sitemap, supported-file guidance,
 an intercepted professional payload, canonical consented analytics with no
 personal properties, ten visible guide distinctions, all seven guide first
-layers, refresh/Back, no-JavaScript completeness, seven homepage regions, five
-disclosures and compact footer utility at 430, 390 and 360 pixels. Set
+layers, refresh/Back, no-JavaScript completeness, the production homepage's one
+first-question radio group, three capability pathways and three process stages,
+plus compact footer utility at 430, 390 and 360 pixels. The retired homepage's
+seven-region/five-disclosure budget is historical evidence only. Set
 `MARKETING_PHASE_FOUR_CAPTURE=before|after` and
 `MARKETING_PHASE_FOUR_WIDTH=430|390|360` to write or update the 36-record JSON
 and representative screenshots under `artifacts/mobile-ux-phase-4/`. Add
 `MARKETING_BASE_URL=https://www.sanctuarypergolas.co.nz` only for read-only
 deployed smoke/capture and continue intercepting `**/api/enquiry`.
+
+The production first-design-conversation homepage has a focused lane:
+`npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`.
+It covers the complete required 320-to-1440 responsive matrix, canonical
+indexable metadata and WebSite/WebPage schema, permanent comparison-route
+redirects, first-question radio keyboard and screen-reader structure,
+stable project-specific link names, hero-fragment visibility at narrow and
+200-percent-zoom viewports, selected hover and inverse/selected focus contrast,
+44-pixel touch dimensions, reduced motion, JavaScript-disabled fallback,
+unavailable session storage, image failure, consent granted/denied pointer and
+keyboard analytics, deterministic fail-closed two-project responses, validated
+project-reference handoff to `/contact`, retained capability/process content,
+the shared mobile-menu scroll/focus contract, and local CLS/first-answer
+performance ceilings. For the LCP ceiling, start a local production build,
+point `MARKETING_BASE_URL` at it, and add
+`MARKETING_HOMEPAGE_PRODUCTION_PERF=1`; development compilation is deliberately
+excluded from LCP evidence.
 
 The internal `/__foundation/marketing` catalogue fails closed in production
 unless `ENABLE_MARKETING_FOUNDATION=true`. A full deployed browser sweep will
@@ -166,12 +185,14 @@ source-aware enquiry context, unclipped product summaries, zero horizontal
 overflow with supporting detail closed and open, uniquely named guide controls,
 post-evidence residential CTA continuity, fragment-target disclosure reveal and
 expanded 1440 pixel desktop detail. A script-blocked, JavaScript-enabled lane
-holds homepage, service, product, guide and project disclosures in their
-pre-hydration state at every target width. It requires pending bodies to be
-hidden and unfocusable and compares pre/post-hydration disclosure height within
-one pixel. The separate JavaScript-disabled browser context is the required
-server-rendering check: one route-owned `main` and H1, the next action, and
-complete open supporting content must remain visible without hydration.
+holds service, product, guide and project disclosures in their pre-hydration
+state at every target width. It requires pending bodies to be hidden and
+unfocusable and compares pre/post-hydration disclosure height within one pixel.
+The homepage has no responsive disclosure; its focused JavaScript-disabled
+browser contract verifies all three intent pathways and six project references.
+The wider JavaScript-disabled context remains the required server-rendering
+check: one route-owned `main` and H1, the next action, and complete open
+supporting content remain visible without hydration.
 
 Contact-page or embedded-enquiry changes should run
 `npx vitest run apps/marketing/lib/enquiryFormContract.test.ts apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts apps/marketing/app/api/enquiry/route.test.ts`

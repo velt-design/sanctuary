@@ -79,16 +79,17 @@
 .inverse .text { color: color-mix(in srgb, var(--color-inverse-text) 74%, transparent); }
 
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.5rem; }
-.button { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; padding: .8rem 1.25rem; border: 1px solid transparent; border-radius: 0; font: 600 .78rem/1 var(--font-body); letter-spacing: .09em; text-align: center; text-transform: uppercase; transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease; }
+.button { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; padding: .8rem 1.25rem; border: 1px solid transparent; border-radius: 0; font: 600 .78rem/1 var(--font-body); letter-spacing: .09em; text-align: center; text-transform: uppercase; transform-origin: center; transition: background-color var(--motion-duration-short) var(--motion-ease-standard), color var(--motion-duration-short) var(--motion-ease-standard), border-color var(--motion-duration-short) var(--motion-ease-standard), transform var(--motion-duration-instant) var(--motion-ease-standard); }
 .buttonPrimary { background: var(--color-accent-olive); color: var(--color-inverse-text); }
-.buttonPrimary:hover { background: var(--color-accent-olive-hover); }
 .buttonSecondary { border-color: var(--color-rule-strong); color: var(--color-text-primary); background: transparent; }
-.buttonSecondary:hover { border-color: var(--color-text-primary); }
 .inverse .buttonSecondary { border-color: color-mix(in srgb, var(--color-inverse-text) 46%, transparent); color: var(--color-inverse-text); }
-.inverse .buttonSecondary:hover { border-color: var(--color-inverse-text); }
-.textLink { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; gap: .6rem; color: inherit; font: 600 .78rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; border-bottom: 1px solid currentColor; }
-.textLink::after { content: "\2192"; transition: transform 160ms ease; }
-.textLink:hover::after { transform: translateX(.25rem); }
+.button:active { transform: scale(var(--motion-press-scale)); }
+.buttonPrimary:active { background: var(--color-accent-olive-hover); }
+.buttonSecondary:active { border-color: var(--color-text-primary); background: var(--color-surface-warm); }
+.inverse .buttonSecondary:active { border-color: var(--color-inverse-text); background: color-mix(in srgb, var(--color-inverse-text) 10%, transparent); }
+.textLink { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; gap: .6rem; color: inherit; font: 600 .78rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; border-bottom: 1px solid currentColor; transition: opacity var(--motion-duration-instant) var(--motion-ease-standard); }
+.textLink::after { content: "\2192"; transition: transform var(--motion-duration-short) var(--motion-ease-standard); }
+.textLink:active { opacity: var(--motion-press-opacity); }
 .button:focus-visible, .textLink:focus-visible { outline: var(--focus-ring, 2px solid #4f5748); outline-offset: 4px; }
 .rule { height: 1px; width: 100%; margin: 0; border: 0; background: var(--color-rule); }
 
@@ -115,8 +116,8 @@
 .factItem dd { margin: 0; color: var(--color-text-primary); font: 500 .85rem/1.5 var(--font-body); overflow-wrap: anywhere; }
 
 .cardGrid { display: grid; grid-template-columns: repeat(var(--card-grid-columns, 3), minmax(0, 1fr)); border-top: 1px solid var(--color-rule-strong); border-left: 1px solid var(--color-rule); }
-.editorialCard { min-width: 0; min-height: 290px; display: grid; align-content: stretch; border-right: 1px solid var(--color-rule); border-bottom: 1px solid var(--color-rule); background: transparent; color: inherit; transition: background-color 160ms ease; }
-.editorialCard:hover { background: var(--color-surface-elevated); }
+.editorialCard { min-width: 0; min-height: 290px; display: grid; align-content: stretch; border-right: 1px solid var(--color-rule); border-bottom: 1px solid var(--color-rule); background: transparent; color: inherit; transition: background-color var(--motion-duration-short) var(--motion-ease-standard), opacity var(--motion-duration-instant) var(--motion-ease-standard); }
+.editorialCard:active { background: var(--color-surface-elevated); opacity: var(--motion-press-opacity); }
 .editorialCard:focus-visible { position: relative; z-index: 1; outline: var(--focus-ring, 2px solid #4f5748); outline-offset: -3px; }
 .editorialCardContent { min-width: 0; display: grid; align-content: start; justify-items: start; gap: 1rem; padding: clamp(1.5rem, 3vw, 2.5rem); }
 .editorialCardContent > .editorialCardAction { margin-top: auto; }
@@ -129,6 +130,14 @@
 .editorialCardCompact .editorialCardMedia > div { height: 100%; aspect-ratio: auto; }
 .editorialCardCompact .editorialCardContent { padding: 1rem; gap: .7rem; }
 .editorialCardCompact .editorialCardNumber { margin-bottom: .25rem; }
+
+@media (hover: hover) and (pointer: fine) {
+  .buttonPrimary:hover { background: var(--color-accent-olive-hover); }
+  .buttonSecondary:hover { border-color: var(--color-text-primary); }
+  .inverse .buttonSecondary:hover { border-color: var(--color-inverse-text); }
+  .textLink:hover::after { transform: translateX(.25rem); }
+  .editorialCard:hover { background: var(--color-surface-elevated); }
+}
 
 .fieldGroup { display: grid; gap: .55rem; }
 .label { color: var(--color-text-primary); font: 600 .78rem/1.3 var(--font-body); }

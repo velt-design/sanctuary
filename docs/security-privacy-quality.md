@@ -29,11 +29,25 @@ boundary is `playwright/marketing.consent.spec.ts`.
 | Meta Pixel browser | marketing | `apps/marketing/components/MetaPixel.tsx`, `apps/marketing/app/runtime-meta.js/route.ts` | Browser-side lead attribution | Marketing |
 | Meta Conversions API | marketing | `apps/marketing/app/api/contact/route.ts` | Legacy server-side lead conversion reporting; requires an explicit marketing-consent flag | Marketing and Engineering |
 | ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing |
-| Homepage interaction events | analytics | `apps/marketing/app/home-v2/HomepageInteractionTracker.tsx` | Distinguishes non-PII hero, pathway, product, project, disclosure, review-control, guide and enquiry-link interactions on `/` after analytics consent, segmented by mobile, tablet or desktop viewport | Marketing and Engineering |
+| Homepage design-conversation events | analytics | `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx` | Measures the production `/` view, first-question start and answer, governed matched-project views, project opens, project-reference selection, capability/support navigation and general-enquiry exits after analytics consent | Marketing and Engineering |
 
 When adding or removing tracking, update this table and the privacy behavior.
 
-Homepage interaction events contain only the stable event name, homepage variant, viewport category, link destination and optional editorial card label. They do not contain form values, photos, dimensions, contact details or other project/customer data, and the route-local listener is inactive unless analytics consent is granted. Homepage enquiry links may pass the non-sensitive `residential`, `commercial` or `professional` enquiry type so the contact form opens on the promised pathway; no customer-entered data is placed in the URL.
+Homepage design-conversation events contain only the stable event name,
+`design_conversation_home_v2` variant, viewport category, link destination,
+closed non-personal project-intent values, canonical project slugs, the two
+governed matched-project slugs, step number and validated enquiry audience
+where known. They do not contain form values, photos, dimensions, contact
+details or other project/customer data. The route-local listener is inactive
+unless analytics consent is granted and does not backfill earlier interactions.
+Radio selection by Arrow, Home or End follows the same consent-gated activation
+path as pointer selection, so keyboard engagement is neither dropped nor
+double-counted. The shared header exposes its validated route audience to the
+homepage listener; the canonical root therefore records `residential` on its
+header enquiry without inferring any customer-entered data.
+Homepage enquiry links may pass a validated `residential`, `commercial` or
+`professional` audience so the contact form opens on the promised pathway; no
+customer-entered data is placed in the URL.
 
 Enquiry conversion events retain their existing consent gates and event names. Where
 available they also include validated `source_path`, `source_component`,

@@ -27,6 +27,12 @@ commercial, professional, guide, footer and homepage-close work. The
 historical baseline and first-pass results remain below; the dated Phase 3 and
 Phase 4 follow-ups define the current production state.
 
+The 2026-07-26 homepage promotion supersedes only the homepage measurements and
+disclosure inventory in this record. The production root now uses the bounded
+first-question design conversation documented in
+`docs/marketing-ui-foundation.md`; disclosure measurements below remain
+historical evidence for the retired homepage.
+
 The pass covers the homepage, residential and custom service pages, the
 product hub and product pages, commercial and professional journeys, the guide
 hub and guide pages, and the contact introduction. Project-index and
@@ -91,7 +97,7 @@ distributed.
 
 | Surface | Content and composition owners | Contracts that must remain stable |
 | --- | --- | --- |
-| Homepage | `app/home-v2/Homepage.tsx`, `content.ts`, `MobileDisclosure.tsx`, `home-v2.module.css` | `data-homepage-event` analytics names, project/review evidence, enquiry links, metadata/schema |
+| Homepage | `app/_home/Homepage.tsx`, `DesignConversation.tsx`, `matching.ts`, `content.ts`, `homepage.module.css` | `data-design-conversation-event` analytics names, governed project/review evidence, enquiry references, metadata/schema and the first-question-only boundary |
 | Residential | `app/pergolas-auckland/page.tsx`, route `content.ts` and CSS, shared acrylic/SEO styles | Public section anchors, guide links, project evidence, embedded enquiry attribution |
 | Custom, commercial, guide detail | Thin route config plus `components/seo-landing/SeoLandingPage.tsx`, `SeoLandingBlocks.tsx`, `types.ts`, and `seo-landing.css` | Nine shared-renderer consumers, route-specific metadata/schema, claims, section IDs, related links, enquiry audience |
 | Products | `data/products.ts`, `ProductsHub.tsx`, `ProductDetailPage.tsx`, `ProductCard.tsx`, `MobileProductDisclosure.tsx`, `product-pages.module.css` | Catalogue as claim/metadata/schema/sitemap truth, product slugs, project references, product enquiry context |
@@ -313,11 +319,12 @@ keyboard activation, visible focus, minimum 44px targets, reduced motion,
 heading hierarchy, unique IDs, first-layer budgets, CTA continuity, meaningful
 links, metadata, schema, enquiry attribution, no horizontal overflow and
 unclipped product summaries. A script-blocked lane proves pending and hydrated
-mobile disclosures have the same height across homepage, service, product,
-guide and project consumers and that pending hidden content cannot receive
-focus. A separate JavaScript-disabled browser lane verifies one visible `main`,
-one visible H1, complete open disclosure content and the next action on
-representative routes.
+mobile disclosures have the same height across service, product, guide and
+project consumers and that pending hidden content cannot receive focus. The
+homepage has no responsive disclosure; its focused lane verifies the radio
+conversation separately. A JavaScript-disabled browser lane verifies one
+visible `main`, one visible H1, complete supporting content and the next action
+on representative routes.
 
 Like-for-like 390px and 1440px screenshots for the homepage, residential,
 product hub, product detail, commercial, guide hub, guide detail and contact
@@ -405,9 +412,10 @@ Phase 4 follow-up, 26 July 2026:
   before one optional supporting-depth disclosure. Their 390 px visible-word
   range is 572-616, down from 936-1,315; measured main height is
   7,280-7,535 px, down from 11,079-14,934 px.
-- Homepage regions/disclosures fell from 8/7 to 7/5. Review proof now shares
-  the final enquiry close. Footer height is 730 px at 430 px and 766 px at
-  390 px and 360 px, with visible phone/email utility and no viewport minimum.
+- The historical Phase 4 homepage fell from 8/7 regions/disclosures to 7/5.
+  The production promotion later replaced that composition with the first
+  design conversation, three capability pathways, three process stages and no
+  responsive disclosure. Review proof and direct phone/enquiry utility remain.
 - Marketing units passed 45 files and 202 tests. The full deployed public
   browser surface passed 229 checks, with 11 capture skips and 18 expected
   failures confined to the deliberately production-disabled internal

@@ -384,7 +384,6 @@ body.header-flip .site-header {
 
 /* === Page transitions (content only; headers fixed) === */
 .page-viewport{ position: relative; }
-.page-layer{ will-change: transform, opacity; }
 .route-content-enter{
   animation:route-content-enter .28s cubic-bezier(.22, 1, .36, 1) both;
 }
@@ -403,7 +402,9 @@ body.header-flip .site-header {
   background:linear-gradient(90deg, var(--sp-accent, #A8192E), #111);
   opacity:0;
   transform-origin:left center;
-  transition:transform .36s cubic-bezier(.22,.61,.36,1), opacity .24s ease;
+  transition:
+    transform var(--motion-duration-panel-enter) var(--motion-ease-standard),
+    opacity var(--motion-duration-short) var(--motion-ease-standard);
   will-change:transform, opacity;
 }
 .route-progress--loading,
@@ -411,7 +412,7 @@ body.header-flip .site-header {
   opacity:.9;
 }
 .route-progress--complete{
-  transition-duration:.18s, .24s;
+  transition-duration:var(--motion-duration-short), var(--motion-duration-instant);
 }
 body.portal-mode .route-progress{
   display:none;

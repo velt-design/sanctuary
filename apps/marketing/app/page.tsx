@@ -1,1 +1,1 @@
-export { default, metadata } from './home-v2/Homepage';
+export { default, metadata } from './_home/Homepage';

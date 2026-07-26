@@ -23,6 +23,7 @@ type RouteCase = {
   id: string;
   path: string;
   canonicalPath: string;
+  minimumVisibleWords?: number;
   maximumVisibleWords: number;
   maximumVisibleHeadingRegions: number;
   mobileSignals: readonly string[];
@@ -40,11 +41,6 @@ type RouteCase = {
   schemaTypes: readonly string[];
 };
 
-const homepageEnquiryHref = buildEnquiryHref({
-  enquiryType: 'residential',
-  sourcePath: '/',
-  sourceComponent: 'hero',
-});
 const productsEnquiryHref = buildEnquiryHref({
   sourcePath: '/products',
   sourceComponent: 'product_cta',
@@ -60,37 +56,23 @@ const routeCases: readonly RouteCase[] = [
     id: 'homepage',
     path: '/',
     canonicalPath: '',
+    minimumVisibleWords: 140,
     maximumVisibleWords: 800,
     maximumVisibleHeadingRegions: 9,
     mobileSignals: [
-      'Bespoke pergolas, built around the architecture.',
+      'Begin with built work.',
       'Warkworth Outdoor Room',
-      'Read about custom design conditions',
-      'Get an initial project estimate',
+      'What are you trying to create?',
+      'Start with your project',
     ],
     primaryAction: {
-      name: 'Get an initial project estimate',
-      href: homepageEnquiryHref,
-    },
-    disclosures: {
-      selector: 'details[data-mobile-disclosure]',
-      count: 5,
-      labels: [
-        'View the design response',
-        'Commercial and professional projects',
-        'Design approach and four pergola forms',
-        'Roof, material and comfort options',
-        'More helpful project information',
-      ],
-    },
-    supporting: {
-      selector: 'details[data-mobile-disclosure]',
-      phrase: 'Design constraint',
+      name: 'Start with your project',
+      href: '#design-conversation',
     },
     stableSections: [
-      '[data-home-section="featured-project"]',
-      '[data-home-section="planning-options"]',
-      '[data-home-section="qualified-enquiry"]',
+      '[data-homepage-hero]',
+      'section[aria-labelledby="homepage-capability-heading"]',
+      'section[aria-labelledby="homepage-process-heading"]',
     ],
     meaningfulLinks: [
       '/projects',
@@ -805,7 +787,7 @@ for (const viewport of mobileViewports) {
       expect(
         state.words,
         `${routeCase.id} should stay within its measured mobile word budget`,
-      ).toBeGreaterThanOrEqual(200);
+      ).toBeGreaterThanOrEqual(routeCase.minimumVisibleWords ?? 200);
       expect(
         state.words,
         `${routeCase.id} should stay within its measured mobile word budget`,
@@ -1042,7 +1024,7 @@ test('server-rendered journeys remain complete in JavaScript-disabled browser co
   try {
     for (const routeCase of noJavaScriptCases) {
       const response = await page.goto(routeCase.path, {
-        waitUntil: 'load',
+        waitUntil: 'domcontentloaded',
       });
       expect(response?.ok(), `${routeCase.path} should resolve without JS`).toBe(
         true,
@@ -1151,13 +1133,8 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
 
   const commercialLink = page.locator(
     'a[href="/commercial-pergolas-auckland#project-details"]',
-    { hasText: 'Discuss a commercial project' },
+    { hasText: 'Review commercial capability' },
   ).first();
-  const commercialSourceDisclosure = page.locator(
-    'details[data-mobile-disclosure]',
-    { has: commercialLink },
-  );
-  await commercialSourceDisclosure.locator(':scope > summary').click();
   await commercialLink.click();
 
   await expect(page).toHaveURL(
@@ -1176,28 +1153,8 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
   await page.goBack({ waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.locator('main[data-homepage-variant="v2"]:visible'),
+    page.locator(
+      'main[data-homepage-variant="design_conversation_home_v2"]:visible',
+    ),
   ).toBeVisible();
-
-  const comparisonLink = page.locator(
-    'a[href="/pergolas-auckland#roofing-options"]',
-  );
-  const sourceDisclosure = page.locator('details[data-mobile-disclosure]', {
-    has: comparisonLink,
-  });
-  await sourceDisclosure.locator(':scope > summary').click();
-  await comparisonLink.click();
-
-  await expect(page).toHaveURL(/\/pergolas-auckland#roofing-options$/);
-  const target = page.locator('#roofing-options');
-  const targetDisclosure = page.locator(
-    'details[data-mobile-content-disclosure="service-planning-support"]',
-  );
-  await expect(targetDisclosure).toHaveAttribute('open', '');
-  await expect(target).toBeVisible();
-  await expect
-    .poll(() =>
-      target.evaluate((element) => Math.round(element.getBoundingClientRect().top)),
-    )
-    .toBeLessThan(844);
 });
