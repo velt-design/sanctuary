@@ -34,12 +34,17 @@ boundary is `playwright/marketing.consent.spec.ts`.
 When adding or removing tracking, update this table and the privacy behavior.
 
 Homepage design-conversation events contain only the stable event name,
-`design_conversation_home_v1` variant, viewport category, link destination,
+`design_conversation_home_v2` variant, viewport category, link destination,
 closed non-personal project-intent values, canonical project slugs, the two
 governed matched-project slugs, step number and validated enquiry audience
 where known. They do not contain form values, photos, dimensions, contact
 details or other project/customer data. The route-local listener is inactive
 unless analytics consent is granted and does not backfill earlier interactions.
+Radio selection by Arrow, Home or End follows the same consent-gated activation
+path as pointer selection, so keyboard engagement is neither dropped nor
+double-counted. The shared header exposes its validated route audience to the
+homepage listener; the canonical root therefore records `residential` on its
+header enquiry without inferring any customer-entered data.
 Homepage enquiry links may pass a validated `residential`, `commercial` or
 `professional` audience so the contact form opens on the promised pathway; no
 customer-entered data is placed in the URL.

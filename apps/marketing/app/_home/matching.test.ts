@@ -47,25 +47,19 @@ describe('production homepage intent matching', () => {
       ],
       'commercial-professional': [
         'goodhome-commercial-terrace',
-        'atelier-shu-cafe',
+        'kiwi-rail-platform',
       ],
     });
   });
 
-  it('falls back safely when a configured record is unavailable', () => {
+  it('fails closed when a governed project record is unavailable', () => {
     const withoutDairyFlat = projects.filter(
       (project) => project.slug !== 'dairy-flat-estate',
     );
-    const homeCover = getIntentResponses(withoutDairyFlat).find(
-      (response) => response.value === 'home-cover',
-    );
 
-    expect(homeCover?.projects).toHaveLength(2);
-    expect(new Set(homeCover?.projects.map((project) => project.slug)).size)
-      .toBe(2);
-    expect(homeCover?.projects.some(
-      (project) => project.slug === 'dairy-flat-estate',
-    )).toBe(false);
+    expect(() => getIntentResponses(withoutDairyFlat)).toThrow(
+      'Missing governed homepage project: dairy-flat-estate',
+    );
   });
 
   it('accepts only the closed intent enum', () => {

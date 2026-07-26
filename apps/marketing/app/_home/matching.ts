@@ -5,7 +5,7 @@ import {
 } from '../../lib/enquiryContext';
 
 export const HOME_PATH = '/';
-export const HOME_VARIANT = 'design_conversation_home_v1';
+export const HOME_VARIANT = 'design_conversation_home_v2';
 export const HOME_INTENT_STORAGE_KEY =
   'sanctuary:homepage-design-conversation:intent';
 
@@ -71,13 +71,13 @@ const intentConfigs: readonly IntentConfig[] = [
       {
         slug: 'mt-maunganui-box',
         rationale:
-          'A compact first-floor cover protects the deck while preserving its outlook, glass edge and soft daylight.',
+          'A first-floor cover follows the deck geometry while preserving its outlook, glass edge and soft daylight.',
       },
     ],
   },
   {
     value: 'outdoor-room',
-    label: 'Create a more complete outdoor room',
+    label: 'Create a complete outdoor room',
     summaryLabel: 'A complete outdoor room',
     statement:
       'A more complete room brings the roof, structure, ceiling, lighting and intended use into one coordinated design response.',
@@ -99,8 +99,8 @@ const intentConfigs: readonly IntentConfig[] = [
   },
   {
     value: 'commercial-professional',
-    label: 'Resolve a commercial or professional project',
-    summaryLabel: 'A commercial or professional project',
+    label: 'Plan a commercial or architect-led project',
+    summaryLabel: 'A commercial or architect-led project',
     statement:
       'Built precedents can clarify how Sanctuary coordinates architectural intent, structure, operations and installation responsibilities.',
     matches: [
@@ -110,21 +110,13 @@ const intentConfigs: readonly IntentConfig[] = [
           'Two linked gables extend an established hospitality facade while coordinating shelter, screens, lighting and day-to-day use.',
       },
       {
-        slug: 'atelier-shu-cafe',
+        slug: 'kiwi-rail-platform',
         rationale:
-          'A restrained acrylic canopy adds useful cafe seating while remaining open to the street and aligned with the frontage.',
-        imageIndex: 1,
+          'An architect-led aluminium and acrylic canopy coordinates a long workplace route, integrated lighting and installation within a wider project team.',
       },
     ],
   },
 ];
-
-const fallbackProjectSlugs = [
-  'warkworth-outdoor-room',
-  'dairy-flat-estate',
-  'goodhome-commercial-terrace',
-  'tindalls-bay-pavilion',
-] as const;
 
 export function isProjectIntent(value: unknown): value is ProjectIntent {
   return typeof value === 'string'
@@ -141,18 +133,7 @@ function resolveConfiguredProject(
   ));
   if (configured) return configured;
 
-  const fallback = fallbackProjectSlugs
-    .map((slug) => catalogue.find((project) => project.slug === slug))
-    .find((project): project is Project => Boolean(
-      project && !usedSlugs.has(project.slug),
-    ))
-    ?? catalogue.find((project) => !usedSlugs.has(project.slug));
-
-  if (!fallback) {
-    throw new Error('The homepage requires two unique projects per intent.');
-  }
-
-  return fallback;
+  throw new Error(`Missing governed homepage project: ${match.slug}`);
 }
 
 function projectEnquiryType(project: Project): EnquiryAudience {

@@ -28,7 +28,7 @@ export const audiencePathways: readonly AudiencePathway[] = [
   {
     title: 'Commercial projects',
     copy:
-      'Plan hospitality, accommodation, workplace and selected commercial structures around operations, access and delivery.',
+      'Plan hospitality, workplace and other selected commercial structures around operations, access and delivery.',
     href: '/commercial-pergolas-auckland#project-details',
     action: 'Review commercial capability',
     enquiryType: 'commercial',
@@ -54,7 +54,7 @@ export const processSteps = [
   {
     title: 'Develop and confirm the design',
     copy:
-      'The site, exposure, connections and access inform the form, materials, inclusions, price and current programme confirmed in writing.',
+      'The site, exposure, connections and access shape the design. Sanctuary confirms the form, materials, inclusions, price and current programme in writing.',
   },
   {
     title: 'Build, install and hand over',

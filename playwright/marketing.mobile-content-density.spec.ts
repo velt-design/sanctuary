@@ -1154,7 +1154,7 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
   await expect(page).toHaveURL(/\/$/);
   await expect(
     page.locator(
-      'main[data-homepage-variant="design_conversation_home_v1"]:visible',
+      'main[data-homepage-variant="design_conversation_home_v2"]:visible',
     ),
   ).toBeVisible();
 });

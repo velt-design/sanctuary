@@ -121,6 +121,7 @@ describe('shared mobile header interaction', () => {
       sourcePath: '/',
       sourceComponent: 'header',
     }));
+    expect(desktopCta?.getAttribute('data-enquiry-type')).toBe('residential');
   });
 
   it('uses governed project and product route context for the global enquiry action', async () => {

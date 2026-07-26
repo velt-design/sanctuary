@@ -80,10 +80,10 @@ export default function DesignConversation({
     if (nextIndex === null) return;
 
     event.preventDefault();
-    const nextResponse = responses[nextIndex];
-    if (!nextResponse) return;
-    selectIntent(nextResponse.value);
-    optionRefs.current[nextIndex]?.focus();
+    const nextOption = optionRefs.current[nextIndex];
+    if (!nextOption) return;
+    nextOption.click();
+    nextOption.focus();
   };
 
   return (
@@ -94,16 +94,12 @@ export default function DesignConversation({
       <fieldset
         className={styles.questionGroup}
         role="radiogroup"
-        aria-labelledby="intent-question-legend"
-        aria-describedby="intent-question-guidance"
+        aria-labelledby="design-conversation-heading"
+        aria-describedby="design-conversation-guidance intent-question-caveat"
       >
-        <legend className={styles.questionLegend} id="intent-question-legend">
+        <legend className="visually-hidden">
           What are you trying to create?
         </legend>
-        <p className={styles.questionGuidance} id="intent-question-guidance">
-          Choose the closest starting point. This changes the built work shown
-          below, not a design recommendation.
-        </p>
         <div className={styles.intentOptions}>
           {responses.map((response, index) => {
             const isSelected = response.value === selectedIntent;
@@ -141,13 +137,16 @@ export default function DesignConversation({
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <span className={styles.optionLabel}>{response.label}</span>
-                <span className={styles.optionState}>
+                <span className={styles.optionState} aria-hidden="true">
                   {isSelected ? 'Selected' : 'Choose'}
                 </span>
               </button>
             );
           })}
         </div>
+        <p className={styles.questionCaveat} id="intent-question-caveat">
+          These are starting points, not design recommendations.
+        </p>
       </fieldset>
 
       <p
@@ -184,7 +183,7 @@ export default function DesignConversation({
                 optionRefs.current[0]?.focus();
               }}
             >
-              Change
+              Change starting point
             </button>
           </div>
 
@@ -230,6 +229,7 @@ export default function DesignConversation({
                   <div className={styles.projectActions}>
                     <Link
                       href={project.projectHref}
+                      aria-label={`View ${project.title} project`}
                       data-design-conversation-event="design_conversation_project_open"
                       data-matched-projects={matchedProjectSlugs}
                       data-project-intent={selectedResponse.value}
@@ -240,6 +240,7 @@ export default function DesignConversation({
                     <Link
                       className={styles.referenceAction}
                       href={project.enquiryHref}
+                      aria-label={`Use ${project.title} as an enquiry reference`}
                       data-design-conversation-event="design_conversation_reference_select"
                       data-enquiry-type={
                         project.type === 'Commercial'
@@ -250,7 +251,7 @@ export default function DesignConversation({
                       data-project-intent={selectedResponse.value}
                       data-selected-project={project.slug}
                     >
-                      Use as enquiry reference
+                      Use this project as a reference
                     </Link>
                   </div>
                 </div>
@@ -273,7 +274,7 @@ export default function DesignConversation({
               data-matched-projects={matchedProjectSlugs}
               data-project-intent={selectedResponse.value}
             >
-              Start a general enquiry
+              Continue without a project reference
             </Link>
           </div>
         </section>
@@ -287,7 +288,7 @@ export default function DesignConversation({
             })}
             data-design-conversation-event="design_conversation_general_enquiry_click"
           >
-            Start a general enquiry
+            Start without choosing a project
           </Link>
         </div>
       )}

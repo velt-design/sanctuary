@@ -79,8 +79,18 @@ function NoScriptProjectCard({
       <p>{project.location} / {project.type} / {project.roof}</p>
       <p>{project.rationale}</p>
       <div>
-        <a href={project.projectHref}>View project</a>
-        <a href={project.enquiryHref}>Use as an enquiry reference</a>
+        <a
+          href={project.projectHref}
+          aria-label={`View ${project.title} project`}
+        >
+          View project
+        </a>
+        <a
+          href={project.enquiryHref}
+          aria-label={`Use ${project.title} as an enquiry reference`}
+        >
+          Use this project as a reference
+        </a>
       </div>
     </article>
   );
@@ -94,16 +104,7 @@ function NoScriptConversationFallback({
   return (
     <noscript>
       <style>{'[data-design-conversation-interactive]{display:none!important}'}</style>
-      <section
-        className={styles.noScriptFallback}
-        aria-labelledby="no-script-conversation-heading"
-      >
-        <h2 id="no-script-conversation-heading">
-          What are you trying to create?
-        </h2>
-        <p>
-          Explore the three starting points below, or begin a general enquiry.
-        </p>
+      <div className={styles.noScriptFallback}>
         {responses.map((response) => (
           <section
             className={styles.noScriptPathway}
@@ -118,13 +119,15 @@ function NoScriptConversationFallback({
                 <NoScriptProjectCard project={project} key={project.slug} />
               ))}
             </div>
-            <a href={response.generalEnquiryHref}>Start a general enquiry</a>
+            <a href={response.generalEnquiryHref}>
+              Continue without a project reference
+            </a>
           </section>
         ))}
         <p>
           <a href="/projects">Browse all completed projects</a>
         </p>
-      </section>
+      </div>
     </noscript>
   );
 }
@@ -195,8 +198,8 @@ export default async function HomePage() {
               Begin with built work.
             </Heading>
             <Text size="large" className={styles.heroProposition}>
-              Bespoke fixed-roof pergolas designed around the home, the site
-              and how the space will be used.
+              Bespoke fixed-roof pergolas designed around the home or
+              commercial site, its architecture and intended use.
             </Text>
             <ActionGroup
               className={styles.heroActions}
@@ -215,12 +218,12 @@ export default async function HomePage() {
                 data-design-conversation-event="design_conversation_project_open"
                 data-selected-project={leadProject.slug}
               >
-                Explore the Warkworth project
+                View Warkworth project
               </TextLink>
             </ActionGroup>
           </div>
           <div className={styles.heroProjectMeta}>
-            <span>Opening project / 01</span>
+            <span>Completed project</span>
             <strong>{leadProject.title}</strong>
             <ProjectMeta
               items={[
@@ -257,28 +260,28 @@ export default async function HomePage() {
 
       <section
         className={styles.conversationSection}
-        id="design-conversation"
-        aria-labelledby="design-conversation-introduction"
+        aria-labelledby="design-conversation-heading"
       >
         <Container width="wide">
-          <div className={styles.conversationIntroduction}>
+          <div
+            className={styles.conversationIntroduction}
+            id="design-conversation"
+          >
             <div>
-              <p>First design conversation / One useful starting point</p>
-              <h2 id="design-conversation-introduction">
-                Start with the project, not a product.
+              <p>One useful starting point</p>
+              <h2 id="design-conversation-heading">
+                What are you trying to create?
               </h2>
             </div>
-            <p>
-              Choose one practical starting point. Sanctuary will show two
-              relevant built examples and let you carry either project into an
-              enquiry as a reference.
+            <p id="design-conversation-guidance">
+              Choose the closest starting point and we will show two completed
+              projects with a related brief.
             </p>
           </div>
           <DesignConversation responses={responses} />
+          <NoScriptConversationFallback responses={responses} />
         </Container>
       </section>
-
-      <NoScriptConversationFallback responses={responses} />
 
       <section
         className={styles.capabilitySection}
@@ -293,8 +296,10 @@ export default async function HomePage() {
               </h2>
             </div>
             <p>
-              {homepageDescription} The form, roof, drainage and integrated
-              details are resolved as one project-specific structure.
+              Sanctuary designs and builds project-specific fixed-roof
+              pergolas for Auckland homes and selected commercial sites.
+              Form, roof, drainage and integrated details are resolved
+              together around the architecture and intended use.
             </p>
           </div>
           <div className={styles.audienceGrid}>
@@ -378,7 +383,7 @@ export default async function HomePage() {
                 href={generalEnquiryHref}
                 data-design-conversation-event="design_conversation_general_enquiry_click"
               >
-                Start a general enquiry
+                Share your project details
               </Link>
               <a href="tel:+64228545633">Call 022 854 5633</a>
             </div>
