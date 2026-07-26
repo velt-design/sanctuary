@@ -69,6 +69,7 @@ describe('marketing motion contract', () => {
     expect(governedSources[0].source).toContain('var(--motion-press-opacity)');
     expect(governedSources[1].source).toContain('var(--motion-duration-instant)');
     expect(governedSources[1].source).toContain('var(--motion-duration-short)');
+    expect(governedSources[1].source).toContain('.galleryButton:not(:disabled):active');
   });
 
   it('removes only the persistent page-layer hint and retains the short-lived progress hint', () => {
