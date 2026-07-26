@@ -52,23 +52,33 @@ The browser suite also proves:
 
 Both sources were built with `npm run build:marketing` and served with
 `next start`. The public homepage was sampled in five fresh Chromium contexts
-at 390 x 844 with analytics and marketing consent disabled.
+at 390 x 844 with analytics and marketing consent disabled. The completion
+audit captured exact successful initial script and image response URLs as well
+as paint, layout, memory, CLS and long-task measurements.
 
-| Measure | Before `4139abb2` | After `302b5b81` |
+| Measure | Before `4139abb2` | After TM-01 |
 | --- | ---: | ---: |
 | `.page-layer` computed `will-change` | `transform, opacity` | `auto` |
 | Median first contentful paint | 60 ms | 60 ms |
-| Median cumulative layout shift | 0 | 0 |
-| DOM nodes | 891 | 891 |
-| Median layout count | 6 (range 6-7) | 7 (range 6-8) |
-| Median style recalculation count | 20 (range 19-23) | 21 (range 19-22) |
-| Median used JS heap | 4,112,272 bytes | 4,130,116 bytes |
-| Median total JS heap | 7,077,888 bytes | 7,077,888 bytes |
+| Cumulative layout shift | 0 in all 5 | 0 in all 5 |
+| Long tasks | 0 in all 5 | 0 in all 5 |
+| DOM nodes | 485 in all 5 | 485 in all 5 |
+| Successful initial script requests | 14 identical URLs | 14 identical URLs |
+| Successful initial image requests | 4 identical URLs | 4 identical URLs |
+| Median layout count | 8 (range 7-8) | 7 (range 7-8) |
+| Median style recalculation count | 19 (range 18-21) | 19 (range 18-22) |
+| Median used JS heap | 4,184,792 bytes | 4,172,772 bytes |
+| Median total JS heap | 7,340,032 bytes | 7,077,888 bytes |
+
+The existing Phase 5 route-performance lane was also run against TM-01 at
+430, 390 and 360 px. All three tests passed across 36 route/viewport records:
+maximum CLS was `0`, long-task count was `0`, no request or response failed,
+and script transfer bytes matched the before source in every paired record.
 
 The layout, style and heap samples overlap their run-to-run ranges; no paint,
-CLS, DOM-size or total-heap regression was observed. TM-01 adds no runtime
-JavaScript, package or image request. The actively transformed two-pixel route
-progress bar retains its existing narrow `will-change`.
+CLS, DOM-size, request-set or long-task regression was observed. TM-01 adds no
+runtime JavaScript, package or image asset. The actively transformed two-pixel
+route progress bar retains its existing narrow `will-change`.
 
 ## Clean-worktree validation
 
@@ -76,6 +86,8 @@ progress bar retains its existing narrow `will-change`.
 - Marketing unit suite: 51 files, 259 tests passed
 - Foundation browser suite with evidence capture: 29 passed, 2 unrelated
   capture-only tests skipped
+- Existing 12-route performance matrix at 430, 390 and 360 px: 3 passed,
+  covering 36 route/viewport records
 - Marketing TypeScript: passed
 - Repository lint and policy guards: passed
 - Marketing production build: passed
