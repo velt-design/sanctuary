@@ -163,7 +163,7 @@ for (const viewport of viewports) {
   test(`public homepage retains its approved implementation at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('/');
-    const main = page.locator('main[data-homepage-variant="design_conversation_home_v1"]');
+    const main = page.locator('main[data-homepage-variant="design_conversation_home_v2"]');
     await expect(main.getByRole('heading', { level: 1, name: 'Begin with built work.' })).toBeVisible();
     await expect(main.getByRole('link', { name: 'Start with your project' })).toHaveAttribute('href', '#design-conversation');
     await expect(main.getByRole('heading', { name: 'From a useful brief to an installed structure.' })).toBeAttached();
@@ -596,7 +596,7 @@ test('shared interactions retain stable desktop defaults and homepage compatibil
 
   await page.goto('/');
   const main = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v1"]',
+    'main[data-homepage-variant="design_conversation_home_v2"]',
   );
   await expect(main.getByRole('radio')).toHaveCount(3);
   await expect(main.locator('details[data-mobile-disclosure]')).toHaveCount(0);
@@ -607,7 +607,7 @@ test('homepage design conversation preserves mobile radio state, focus and analy
   await page.goto('/');
 
   const main = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v1"]',
+    'main[data-homepage-variant="design_conversation_home_v2"]',
   );
   const radios = main.getByRole('radio');
   await radios.first().focus();

@@ -887,7 +887,7 @@ test('homepage keeps the first design conversation bounded and the footer compac
     await page.setViewportSize(viewport);
     await page.goto('/', { waitUntil: 'networkidle' });
     const main = page.locator(
-      'main[data-homepage-variant="design_conversation_home_v1"]',
+      'main[data-homepage-variant="design_conversation_home_v2"]',
     );
     const footer = page.locator('footer');
 

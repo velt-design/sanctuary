@@ -225,6 +225,7 @@ body.mobile-menu-open .mobile-toggle:active{background:color-mix(in srgb, var(--
   }
   header.site.site--hero-overlay:not(.site--hero-scrolled) :is(.site-brand,.navlink-btn){color:#fff}
   header.site.site--hero-overlay:not(.site--hero-scrolled) .navlink-btn:hover{color:#fff}
+  header.site.site--hero-overlay:not(.site--hero-scrolled) .nav-cta:focus-visible{outline-color:#fff}
 }
 
 @media (max-width:900px){

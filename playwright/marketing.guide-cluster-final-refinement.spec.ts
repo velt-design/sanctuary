@@ -150,11 +150,11 @@ test('homepage design conversation uses written project context instead of unsup
   await preparePage(page);
   await page.goto('/');
   const conversation = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v1"]:visible #design-conversation',
+    'main[data-homepage-variant="design_conversation_home_v2"]:visible section[aria-labelledby="design-conversation-heading"]',
   );
   await expect(conversation).toBeVisible();
   await expect(conversation.getByText(
-    'This changes the built work shown below, not a design recommendation.',
+    'These are starting points, not design recommendations.',
   )).toBeVisible();
   await conversation.getByRole('radio', {
     name: /Cover an outdoor area at home/,

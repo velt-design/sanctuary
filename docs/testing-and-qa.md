@@ -135,11 +135,17 @@ The production first-design-conversation homepage has a focused lane:
 It covers the complete required 320-to-1440 responsive matrix, canonical
 indexable metadata and WebSite/WebPage schema, permanent comparison-route
 redirects, first-question radio keyboard and screen-reader structure,
+stable project-specific link names, hero-fragment visibility at narrow and
+200-percent-zoom viewports, selected hover and inverse/selected focus contrast,
 44-pixel touch dimensions, reduced motion, JavaScript-disabled fallback,
-unavailable session storage, image failure, consent granted/denied analytics,
-deterministic two-project responses, validated project-reference handoff to
-`/contact`, retained capability/process content and the shared mobile-menu
-scroll/focus contract.
+unavailable session storage, image failure, consent granted/denied pointer and
+keyboard analytics, deterministic fail-closed two-project responses, validated
+project-reference handoff to `/contact`, retained capability/process content,
+the shared mobile-menu scroll/focus contract, and local CLS/first-answer
+performance ceilings. For the LCP ceiling, start a local production build,
+point `MARKETING_BASE_URL` at it, and add
+`MARKETING_HOMEPAGE_PRODUCTION_PERF=1`; development compilation is deliberately
+excluded from LCP evidence.
 
 The internal `/__foundation/marketing` catalogue fails closed in production
 unless `ENABLE_MARKETING_FOUNDATION=true`. A full deployed browser sweep will

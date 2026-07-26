@@ -200,17 +200,24 @@ The approved public homepage lives at `/` and is owned by
 `apps/marketing/app/_home/`. It opens with the completed Warkworth Outdoor Room
 and asks one bounded design-conversation question: `What are you trying to
 create?` Three closed answers map deterministically to exactly two governed
-project records each. Visitors may open either case study, carry its canonical
-slug and validated audience into `/contact`, browse all projects or leave for a
-general enquiry. No second or third question, scoring, free-text URL state or
-automated recommendation is present.
+project records each: home cover uses Dairy Flat and Mt Maunganui; complete
+outdoor room uses Warkworth and Riverhead; commercial or architect-led uses The
+Good Home and KiwiRail. Missing governed records fail closed rather than
+silently inheriting another project's editorial rationale. Visitors may open
+either case study, carry its canonical slug and validated audience into
+`/contact`, browse all projects or leave without choosing a reference. No
+second or third question, scoring, free-text URL state or automated
+recommendation is present.
 
 The root reuses the Foundation page/actions, shared project catalogue, live
 Google rating, header/footer, consent owner and enquiry-context builder. A
 narrow client island owns radio state, optional session restoration and
 consent-aware interaction measurement; the route shell, metadata, structured
 data, proof, capability pathways, process and enquiry close remain server
-rendered. With JavaScript disabled, the interactive controls are replaced by
+rendered. The hero fragment lands on the single visible question introduction
+with the first choice substantially in view at 320px and at the 360px by 400px
+CSS viewport used for 200 percent zoom checks. With JavaScript disabled, that
+same introduction remains visible and the interactive controls are replaced by
 all three pathways, their six governed project references and direct enquiry
 links while the Auckland capability and three-stage process content stays
 visible.
@@ -226,10 +233,15 @@ and mobile.
 
 Homepage controls expose stable `data-design-conversation-event` attributes.
 `HomepageDesignConversationTracker.tsx` records only the event name,
-`design_conversation_home_v1` variant, viewport category, destination, closed
+`design_conversation_home_v2` variant, viewport category, destination, closed
 intent, canonical project slugs, matched pair, step and validated audience
-after analytics consent. It captures no visitor-entered content and does not
-backfill pre-consent interactions.
+after analytics consent. Pointer activation and radio Arrow, Home and End
+selection use the same tracked activation path. The shared header publishes its
+validated route audience to the homepage tracker. Tracking captures no
+visitor-entered content and does not backfill pre-consent interactions.
+The refined copy and commercial/architect-led match are reported as `v2`;
+stable event names and the unchanged closed-intent storage key preserve the
+interaction contract while keeping pre-refinement results distinguishable.
 
 The former production implementation under `apps/marketing/app/home-v2/` is
 retired except for its redirect entrypoint. `/home-v2` and
@@ -245,6 +257,17 @@ dependencies. A local production-build check at 390px and DPR 2 measured
 transfer and a 3.8KiB gzip feature chunk. These figures verify the bounded
 release budget; deployed real-user monitoring remains the source for
 production performance.
+
+The focused homepage browser lane always enforces a `0.1` CLS ceiling and a
+500ms first-answer response ceiling after the answer control is in view. The
+response measurement starts in the browser at the click event, so Playwright
+scroll and command latency are excluded. Set
+`MARKETING_HOMEPAGE_PRODUCTION_PERF=1` only while targeting a local production
+build to add the repeatable 2.5 second LCP ceiling; development compilation is
+not valid LCP evidence. The lane also checks high fetch priority on the single
+eager image, selected-option hover/focus contrast and inverse-surface focus
+colour. These local regression budgets supplement rather than replace deployed
+real-user monitoring.
 
 Root height and overflow normalisation must preserve the shared mobile-menu and consent locks. The homepage browser suite opens the mobile menu from a non-zero scroll position and verifies that the document stays fixed, Escape restores focus, and the prior reading position returns when the menu closes.
 

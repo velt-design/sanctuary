@@ -21,14 +21,14 @@ const intentScenarios = [
     projects: ['Dairy Flat Estate', 'Mt Maunganui Box'],
   },
   {
-    name: /Create a more complete outdoor room/,
+    name: /Create a complete outdoor room/,
     value: 'outdoor-room',
     projects: ['Warkworth Outdoor Room', 'Riverhead Gable Pavilion'],
   },
   {
-    name: /Resolve a commercial or professional project/,
+    name: /Plan a commercial or architect-led project/,
     value: 'commercial-professional',
-    projects: ['The Good Home Takanini', 'Atelier Shu Cafe'],
+    projects: ['The Good Home Takanini', 'KiwiRail Head Office'],
   },
 ] as const;
 
@@ -46,7 +46,7 @@ async function preparePage(page: Page, analytics = false) {
 
 async function getHomepageMain(page: Page) {
   const main = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v1"]:visible',
+    'main[data-homepage-variant="design_conversation_home_v2"]:visible',
   );
   await expect(main).toHaveCount(1);
   return main;
@@ -65,6 +65,19 @@ async function expectImageLoaded(image: Locator) {
     const candidate = element as HTMLImageElement;
     return candidate.complete ? candidate.naturalWidth : 0;
   })).toBeGreaterThan(0);
+}
+
+async function getDesignEvents(page: Page) {
+  return page.evaluate(() => (
+    (window as typeof window & {
+      dataLayer?: Array<Record<string, unknown> | unknown[]>;
+    }).dataLayer
+      ?.filter((event): event is Record<string, unknown> => (
+        !Array.isArray(event)
+        && typeof event.event === 'string'
+        && event.event.startsWith('design_conversation_')
+      )) ?? []
+  ));
 }
 
 for (const [index, viewport] of viewports.entries()) {
@@ -99,6 +112,12 @@ for (const [index, viewport] of viewports.entries()) {
 
     const radios = main.getByRole('radio');
     await expect(radios).toHaveCount(3);
+    if (viewport.width <= 430) {
+      await main.getByRole('link', {
+        name: 'Start with your project',
+      }).click();
+      await expect(radios.first()).toBeInViewport({ ratio: 0.8 });
+    }
     const selectedRadio = main.getByRole('radio', { name: scenario.name });
     await selectedRadio.click();
     await expect(selectedRadio).toHaveAttribute('aria-checked', 'true');
@@ -113,10 +132,13 @@ for (const [index, viewport] of viewports.entries()) {
         level: 3,
         name: projectTitle,
       })).toBeVisible();
+      await expect(projectResponse.getByRole('link', {
+        name: `View ${projectTitle} project`,
+      })).toBeVisible();
+      await expect(projectResponse.getByRole('link', {
+        name: `Use ${projectTitle} as an enquiry reference`,
+      })).toBeVisible();
     }
-    await expect(projectResponse.getByRole('link', {
-      name: 'Use as enquiry reference',
-    })).toHaveCount(2);
 
     const controls = main.locator(
       'button:visible, a[data-design-conversation-event]:visible',
@@ -138,7 +160,7 @@ test('keyboard radio behavior changes the project response without moving focus 
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await preparePage(page);
+  await preparePage(page, true);
   await page.goto(route);
   const main = await getHomepageMain(page);
   const radios = main.getByRole('radio');
@@ -150,6 +172,11 @@ test('keyboard radio behavior changes the project response without moving focus 
   await expect(radios.nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect(main.locator('[data-intent-response="outdoor-room"]'))
     .toBeVisible();
+  await expect.poll(async () => (
+    (await getDesignEvents(page)).filter((event) => (
+      event.event === 'design_conversation_intent_select'
+    )).length
+  )).toBe(1);
 
   await page.keyboard.press('End');
   await expect(radios.nth(2)).toBeFocused();
@@ -157,8 +184,21 @@ test('keyboard radio behavior changes the project response without moving focus 
   await expect(main.locator(
     '[data-intent-response="commercial-professional"]',
   )).toBeVisible();
+  await expect.poll(async () => (
+    (await getDesignEvents(page)).filter((event) => (
+      event.event === 'design_conversation_intent_select'
+    )).length
+  )).toBe(2);
+  await expect.poll(async () => (
+    (await getDesignEvents(page)).filter((event) => (
+      event.event === 'design_conversation_match_view'
+    )).length
+  )).toBe(2);
 
-  await main.getByRole('button', { name: 'Change' }).click();
+  await main.getByRole('button', {
+    name: 'Change starting point',
+    exact: true,
+  }).click();
   await expect(radios.first()).toBeFocused();
   await expect(main.locator('[data-intent-response]')).toHaveCount(0);
 });
@@ -177,7 +217,7 @@ test('the journey remains operable in the 360x400 CSS viewport produced by 200 p
   const firstIntent = main.getByRole('radio', {
     name: /Cover an outdoor area at home/,
   });
-  await firstIntent.scrollIntoViewIfNeeded();
+  await expect(firstIntent).toBeInViewport({ ratio: 0.8 });
   await firstIntent.click();
 
   await expect(main.locator('[data-intent-response="home-cover"]'))
@@ -193,7 +233,7 @@ test('the selected completed project arrives at contact as validated enquiry con
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Create a more complete outdoor room/,
+    name: /Create a complete outdoor room/,
   }).click();
   const warkworthCard = main.locator('article').filter({
     hasText: 'Warkworth Outdoor Room',
@@ -205,7 +245,7 @@ test('the selected completed project arrives at contact as validated enquiry con
     sourceProject: 'warkworth-outdoor-room',
   });
   const reference = warkworthCard.getByRole('link', {
-    name: 'Use as enquiry reference',
+    name: 'Use Warkworth Outdoor Room as an enquiry reference',
   });
 
   await expect(reference).toHaveAttribute('href', referenceHref);
@@ -229,19 +269,8 @@ test('consented analytics records the bounded interaction once without personal 
   await page.goto(route);
   const main = await getHomepageMain(page);
 
-  const designEvents = () => page.evaluate(() => (
-    (window as typeof window & {
-      dataLayer?: Array<Record<string, unknown> | unknown[]>;
-    }).dataLayer
-      ?.filter((event): event is Record<string, unknown> => (
-        !Array.isArray(event)
-        && typeof event.event === 'string'
-        && event.event.startsWith('design_conversation_')
-      )) ?? []
-  ));
-
   await expect.poll(async () => (
-    (await designEvents()).filter((event) => (
+    (await getDesignEvents(page)).filter((event) => (
       event.event === 'design_conversation_view'
     )).length
   )).toBe(1);
@@ -250,12 +279,12 @@ test('consented analytics records the bounded interaction once without personal 
     name: /Cover an outdoor area at home/,
   }).click();
   await expect.poll(async () => (
-    (await designEvents()).filter((event) => (
+    (await getDesignEvents(page)).filter((event) => (
       event.event === 'design_conversation_intent_select'
     )).length
   )).toBe(1);
   await expect.poll(async () => (
-    (await designEvents()).filter((event) => (
+    (await getDesignEvents(page)).filter((event) => (
       event.event === 'design_conversation_match_view'
     )).length
   )).toBe(1);
@@ -273,20 +302,20 @@ test('consented analytics records the bounded interaction once without personal 
     }, true);
   });
   await main.getByRole('link', {
-    name: 'Use as enquiry reference',
+    name: 'Use Dairy Flat Estate as an enquiry reference',
   }).first().click();
 
   await expect.poll(async () => (
-    (await designEvents()).filter((event) => (
+    (await getDesignEvents(page)).filter((event) => (
       event.event === 'design_conversation_reference_select'
     )).length
   )).toBe(1);
 
-  const events = await designEvents();
+  const events = await getDesignEvents(page);
   expect(events.find((event) => (
     event.event === 'design_conversation_intent_select'
   ))).toMatchObject({
-    homepage_variant: 'design_conversation_home_v1',
+    homepage_variant: 'design_conversation_home_v2',
     viewport_category: 'desktop',
     source_path: route,
     project_intent: 'home-cover',
@@ -329,6 +358,74 @@ test('denied analytics consent records no design-conversation events', async ({
   expect(eventCount).toBe(0);
 });
 
+test('selected options and inverse actions keep visible hover and focus contrast', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await preparePage(page);
+  await page.goto(route);
+  const main = await getHomepageMain(page);
+
+  const selectedIntent = main.getByRole('radio', {
+    name: 'Cover an outdoor area at home',
+    exact: true,
+  });
+  await selectedIntent.click();
+  await selectedIntent.hover();
+  await expect(selectedIntent).toHaveCSS('background-color', 'rgb(79, 87, 72)');
+  await expect(selectedIntent).toHaveCSS('color', 'rgb(244, 244, 240)');
+  await selectedIntent.focus();
+  await expect(selectedIntent).toHaveCSS('outline-color', 'rgb(244, 244, 240)');
+
+  const heroAction = main.getByRole('link', {
+    name: 'Start with your project',
+  });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await heroAction.focus();
+  await expect(heroAction).toHaveCSS('outline-color', 'rgb(244, 244, 240)');
+
+  const headerAction = page.locator('header.site .nav-cta');
+  await headerAction.focus();
+  await expect(headerAction).toHaveCSS('outline-color', 'rgb(255, 255, 255)');
+
+  const closingAction = main.locator(
+    '[data-design-conversation-event="design_conversation_general_enquiry_click"]',
+  ).last();
+  await closingAction.scrollIntoViewIfNeeded();
+  await closingAction.focus();
+  await expect(closingAction).toHaveCSS(
+    'outline-color',
+    'rgb(244, 244, 240)',
+  );
+});
+
+test('the tracked header enquiry retains the homepage residential audience', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await preparePage(page, true);
+  await page.goto(route);
+  await getHomepageMain(page);
+  await page.evaluate(() => {
+    document.addEventListener('click', (event) => {
+      if (
+        event.target instanceof Element
+        && event.target.closest('[data-homepage-event="header_estimate_click"]')
+      ) {
+        event.preventDefault();
+      }
+    }, true);
+  });
+
+  await page.locator('header.site .nav-cta').click();
+  await expect.poll(async () => (
+    (await getDesignEvents(page)).filter((event) => (
+      event.event === 'design_conversation_general_enquiry_click'
+      && event.enquiry_type === 'residential'
+    )).length
+  )).toBe(1);
+});
+
 test('hydration and every first-answer transition remain free of browser errors', async ({
   page,
 }) => {
@@ -359,7 +456,7 @@ test('reduced motion removes the project-response transition', async ({
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Create a more complete outdoor room/,
+    name: /Create a complete outdoor room/,
   }).click();
   const motion = await main.locator('[data-intent-response]').evaluate(
     (response) => ({
@@ -371,6 +468,108 @@ test('reduced motion removes the project-response transition', async ({
     animationName: 'none',
     transitionDuration: '0s',
   });
+});
+
+test('the bounded homepage stays within its repeatable performance budget', async ({
+  page,
+}) => {
+  const enforceProductionLcp = (
+    process.env.MARKETING_HOMEPAGE_PRODUCTION_PERF === '1'
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const metrics = { cls: 0, lcp: 0, firstAnswerResponseMs: null as number | null };
+    (window as typeof window & {
+      __homepagePerformance?: typeof metrics;
+    }).__homepagePerformance = metrics;
+
+    try {
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const shift = entry as PerformanceEntry & {
+            hadRecentInput?: boolean;
+            value?: number;
+          };
+          if (!shift.hadRecentInput) metrics.cls += shift.value ?? 0;
+        }
+      }).observe({ type: 'layout-shift', buffered: true });
+      new PerformanceObserver((list) => {
+        const latest = list.getEntries().at(-1);
+        if (latest) metrics.lcp = latest.startTime;
+      }).observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch {
+      // The assertions below expose a browser without the required observers.
+    }
+  });
+  await preparePage(page);
+  await page.goto(route);
+  const main = await getHomepageMain(page);
+  const heroImage = main.locator('[data-homepage-hero] img');
+  await expectImageLoaded(heroImage);
+  await expect(heroImage).toHaveAttribute('fetchpriority', 'high');
+  await page.waitForTimeout(500);
+
+  const firstAnswer = main.getByRole('radio', {
+    name: 'Cover an outdoor area at home',
+    exact: true,
+  });
+  await firstAnswer.scrollIntoViewIfNeeded();
+  await expect(firstAnswer).toBeVisible();
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+  await page.evaluate(() => {
+    const metrics = (
+      window as typeof window & {
+        __homepagePerformance?: {
+          cls: number;
+          lcp: number;
+          firstAnswerResponseMs: number | null;
+        };
+      }
+    ).__homepagePerformance;
+    const control = document.querySelector<HTMLButtonElement>(
+      '[role="radio"][data-project-intent="home-cover"]',
+    );
+    const conversation = document.querySelector(
+      '[data-design-conversation-interactive]',
+    );
+    if (!metrics || !control || !conversation) return;
+
+    const observer = new MutationObserver(() => {
+      if (!conversation.querySelector('[data-intent-response="home-cover"]')) {
+        return;
+      }
+      metrics.firstAnswerResponseMs = performance.now() - startedAt;
+      observer.disconnect();
+    });
+    let startedAt = 0;
+    observer.observe(conversation, { childList: true, subtree: true });
+    control.addEventListener('click', () => {
+      startedAt = performance.now();
+    }, { capture: true, once: true });
+  });
+  await firstAnswer.click();
+  await expect(main.locator('[data-intent-response="home-cover"]'))
+    .toBeVisible();
+  const metrics = await page.evaluate(() => (
+    (window as typeof window & {
+      __homepagePerformance?: {
+        cls: number;
+        lcp: number;
+        firstAnswerResponseMs: number | null;
+      };
+    }).__homepagePerformance
+  ));
+
+  expect(metrics?.lcp ?? 0).toBeGreaterThan(0);
+  if (enforceProductionLcp) {
+    expect(metrics?.lcp ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(2_500);
+  }
+  expect(metrics?.cls ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(0.1);
+  expect(
+    metrics?.firstAnswerResponseMs ?? Number.POSITIVE_INFINITY,
+  ).toBeLessThanOrEqual(500);
 });
 
 test('the conversation remains usable when session storage is unavailable', async ({
@@ -414,12 +613,12 @@ test('the conversation remains usable when session storage is unavailable', asyn
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Resolve a commercial or professional project/,
+    name: /Plan a commercial or architect-led project/,
   }).click();
   await expect(main.locator(
     '[data-intent-response="commercial-professional"]',
   )).toBeVisible();
-  await expect(main.getByText('Atelier Shu Cafe', { exact: true }))
+  await expect(main.getByText('KiwiRail Head Office', { exact: true }))
     .toBeVisible();
 });
 
@@ -467,7 +666,7 @@ test('project text and enquiry actions remain useful when a response image fails
     'A bright acrylic gable extends the existing roofline',
   );
   await expect(dairyFlatCard.getByRole('link', {
-    name: 'Use as enquiry reference',
+    name: 'Use Dairy Flat Estate as an enquiry reference',
   })).toBeVisible();
 });
 
@@ -557,6 +756,10 @@ test('the homepage keeps one coherent landmark and screen-reader question struct
   await expect(main.getByRole('radiogroup', {
     name: 'What are you trying to create?',
   })).toHaveCount(1);
+  await expect(main.getByRole('radio', {
+    name: 'Cover an outdoor area at home',
+    exact: true,
+  })).toHaveCount(1);
   await expect(main.getByRole('status')).toHaveAttribute('aria-live', 'polite');
 
   const structure = await main.evaluate((element) => {
@@ -595,11 +798,11 @@ test.describe('without JavaScript', () => {
       name: 'Begin with built work.',
     })).toBeVisible();
 
-    const fallback = main.locator('noscript');
-    await expect(fallback.getByRole('heading', {
+    await expect(main.getByRole('heading', {
       level: 2,
       name: 'What are you trying to create?',
     })).toBeVisible();
+    const fallback = main.locator('noscript');
     for (const scenario of intentScenarios) {
       await expect(fallback.getByRole('heading', {
         level: 3,
@@ -609,9 +812,13 @@ test.describe('without JavaScript', () => {
         await expect(fallback.getByText(project, { exact: true })).toBeVisible();
       }
     }
-    await expect(fallback.getByRole('link', {
-      name: 'Use as an enquiry reference',
-    })).toHaveCount(6);
+    for (const scenario of intentScenarios) {
+      for (const project of scenario.projects) {
+        await expect(fallback.getByRole('link', {
+          name: `Use ${project} as an enquiry reference`,
+        })).toBeVisible();
+      }
+    }
     await expect(main.getByLabel('Sanctuary project proof')).toBeVisible();
     await expect(main.getByRole('heading', {
       level: 2,
@@ -622,7 +829,7 @@ test.describe('without JavaScript', () => {
       name: 'From a useful brief to an installed structure.',
     })).toBeVisible();
     await expect(main.getByRole('link', {
-      name: /Start a general enquiry/,
+      name: 'Share your project details',
     }).last()).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
