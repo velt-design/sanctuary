@@ -7,6 +7,17 @@ const evidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase
 const capture = process.env.MARKETING_FOUNDATION_CAPTURE?.trim();
 const interactionEvidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-ux-phase-3-pr-7');
 const interactionCapture = process.env.MARKETING_FOUNDATION_INTERACTIONS_CAPTURE?.trim();
+const touchMotionEvidenceDirectory = path.join(process.cwd(), 'artifacts', 'mobile-touch-motion', 'tm-01');
+const touchMotionCapture = process.env.MARKETING_TOUCH_MOTION_CAPTURE?.trim();
+
+const foundationMotionSelectors = {
+  primary: '[data-foundation-primitives] [data-action-variant="primary"]',
+  secondary: '[data-foundation-primitives] [data-action-variant="secondary"]',
+  textLink: '[data-foundation-primitives] [data-action-variant="text"]',
+  card: '[data-foundation-primitives] [data-editorial-card]',
+  disclosure: '[data-foundation-interactions] details[data-disclosure="manual"] > summary',
+  galleryButton: '[data-foundation-interactions] [data-responsive-gallery] button',
+} as const;
 
 const viewports = [
   { name: 'desktop', width: 1440, height: 1000 },
@@ -34,6 +45,66 @@ async function getVisibleFoundation(page: Page) {
   const foundation = page.locator('main[data-marketing-foundation-page]:visible');
   await expect(foundation).toHaveCount(1);
   return foundation;
+}
+
+async function forcePseudoState(page: Page, selectors: string[], pseudoClasses: string[]) {
+  const session = await page.context().newCDPSession(page);
+  await session.send('DOM.enable');
+  await session.send('CSS.enable');
+  const { root } = await session.send('DOM.getDocument', { depth: -1 });
+  const nodeIds: number[] = [];
+
+  for (const selector of selectors) {
+    const { nodeId } = await session.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector,
+    });
+    expect(nodeId, `expected ${selector} to resolve for pseudo-state testing`).not.toBe(0);
+    nodeIds.push(nodeId);
+    await session.send('CSS.forcePseudoState', {
+      nodeId,
+      forcedPseudoClasses: pseudoClasses,
+    });
+  }
+
+  return async () => {
+    for (const nodeId of nodeIds) {
+      await session.send('CSS.forcePseudoState', {
+        nodeId,
+        forcedPseudoClasses: [],
+      });
+    }
+    await session.detach();
+  };
+}
+
+async function readFoundationMotionStates(
+  page: Page,
+  selectors = foundationMotionSelectors,
+) {
+  return page.evaluate((selectorMap) => Object.fromEntries(
+    Object.entries(selectorMap).map(([name, selector]) => {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (!element) {
+        throw new Error(`Missing Foundation motion target: ${selector}`);
+      }
+      const style = getComputedStyle(element);
+      const matrix = style.transform === 'none'
+        ? new DOMMatrixReadOnly()
+        : new DOMMatrixReadOnly(style.transform);
+      return [name, {
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderColor,
+        height: element.offsetHeight,
+        left: element.offsetLeft,
+        opacity: Number.parseFloat(style.opacity),
+        scale: matrix.a,
+        top: element.offsetTop,
+        transitionDuration: style.transitionDuration,
+        width: element.offsetWidth,
+      }];
+    }),
+  ), selectors);
 }
 
 test('direct Foundation consumers remain stable in isolated mobile and desktop contexts', async ({ browser }) => {
@@ -244,20 +315,142 @@ test('shared action and card motion is removed when reduced motion is requested'
 
   const foundation = await getVisibleFoundation(page);
   const specimen = foundation.locator('[data-foundation-primitives]');
+  const clearPressedState = await forcePseudoState(page, [
+    foundationMotionSelectors.primary,
+    foundationMotionSelectors.textLink,
+    foundationMotionSelectors.card,
+  ], ['active']);
   const motionState = await specimen.evaluate((element) => {
     const primary = element.querySelector<HTMLElement>('[data-action-variant="primary"]');
     const textLink = element.querySelector<HTMLElement>('[data-action-variant="text"]');
     const card = element.querySelector<HTMLElement>('[data-editorial-card]');
     return {
       primary: primary ? getComputedStyle(primary).transitionDuration : null,
+      primaryTransform: primary ? getComputedStyle(primary).transform : null,
+      textLinkOpacity: textLink ? getComputedStyle(textLink).opacity : null,
       textLinkArrow: textLink ? getComputedStyle(textLink, '::after').transitionDuration : null,
       card: card ? getComputedStyle(card).transitionDuration : null,
+      cardOpacity: card ? getComputedStyle(card).opacity : null,
     };
   });
 
-  for (const duration of Object.values(motionState)) {
+  for (const duration of [
+    motionState.primary,
+    motionState.textLinkArrow,
+    motionState.card,
+  ]) {
     expect(duration?.split(', ').every((value) => value === '0s')).toBe(true);
   }
+  expect(motionState.primaryTransform).toMatch(/none|matrix\(1,/);
+  expect(motionState.textLinkOpacity).toBe('0.86');
+  expect(motionState.cardOpacity).toBe('0.86');
+  await clearPressedState();
+});
+
+test('shared Foundation controls acknowledge active state without changing layout geometry', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/__foundation/marketing');
+  await getVisibleFoundation(page);
+
+  const before = await readFoundationMotionStates(page);
+  const clearPressedState = await forcePseudoState(
+    page,
+    Object.values(foundationMotionSelectors),
+    ['active'],
+  );
+  await page.waitForTimeout(180);
+  const active = await readFoundationMotionStates(page);
+
+  for (const name of Object.keys(foundationMotionSelectors)) {
+    expect({
+      height: active[name].height,
+      left: active[name].left,
+      top: active[name].top,
+      width: active[name].width,
+    }).toEqual({
+      height: before[name].height,
+      left: before[name].left,
+      top: before[name].top,
+      width: before[name].width,
+    });
+  }
+
+  expect(active.primary.scale).toBeCloseTo(.992, 3);
+  expect(active.secondary.scale).toBeCloseTo(.992, 3);
+  expect(active.galleryButton.scale).toBeCloseTo(.992, 3);
+  expect(active.primary.backgroundColor).not.toBe(before.primary.backgroundColor);
+  expect(active.secondary.backgroundColor).not.toBe(before.secondary.backgroundColor);
+  expect(active.textLink.opacity).toBeCloseTo(.82, 2);
+  expect(active.card.opacity).toBeCloseTo(.82, 2);
+  expect(active.disclosure.opacity).toBeCloseTo(.82, 2);
+  expect(active.galleryButton.backgroundColor).not.toBe(before.galleryButton.backgroundColor);
+  expect(active.primary.transitionDuration).toContain('0.08s');
+  expect(active.textLink.transitionDuration).toBe('0.08s');
+  expect(active.disclosure.transitionDuration).toBe('0.08s, 0.08s');
+
+  const foundation = await getVisibleFoundation(page);
+  await expect(foundation.locator('[data-foundation-interactions] details').first()).not.toHaveAttribute('open', '');
+  await expect(foundation.locator('[data-responsive-gallery] img')).toHaveCount(1);
+  await expect(foundation.locator('[data-responsive-gallery] [role="status"]')).toHaveText('Image 1 of 3');
+  await clearPressedState();
+});
+
+test('Foundation hover remains fine-pointer-only and touch release does not stick', async ({ browser, page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/__foundation/marketing');
+  await getVisibleFoundation(page);
+  expect(await page.evaluate(() => (
+    matchMedia('(hover: hover) and (pointer: fine)').matches
+  ))).toBe(true);
+
+  const primary = page.locator(foundationMotionSelectors.primary).first();
+  const textLink = page.locator(foundationMotionSelectors.textLink).first();
+  const card = page.locator(foundationMotionSelectors.card).first();
+  const galleryButton = page.locator(foundationMotionSelectors.galleryButton).first();
+  await primary.hover();
+  await expect(primary).toHaveCSS('background-color', 'rgb(65, 72, 60)');
+  await textLink.hover();
+  expect(await textLink.evaluate((element) => (
+    getComputedStyle(element, '::after').transform
+  ))).not.toBe('none');
+  await card.hover();
+  await expect(card).toHaveCSS('background-color', 'rgb(248, 248, 245)');
+  await galleryButton.hover();
+  await expect(galleryButton).toHaveCSS('background-color', 'rgb(248, 248, 245)');
+
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+  const touchPage = await touchContext.newPage();
+  await touchPage.goto('/__foundation/marketing');
+  await getVisibleFoundation(touchPage);
+  expect(await touchPage.evaluate(() => (
+    matchMedia('(hover: hover) and (pointer: fine)').matches
+  ))).toBe(false);
+  await touchPage.evaluate(() => {
+    document.addEventListener('click', (event) => {
+      if ((event.target as Element | null)?.closest('a')) {
+        event.preventDefault();
+      }
+    }, true);
+  });
+
+  for (const selector of Object.values(foundationMotionSelectors)) {
+    await touchPage.locator(selector).first().tap();
+  }
+
+  await expect(touchPage.locator(foundationMotionSelectors.primary).first())
+    .toHaveCSS('transform', 'none');
+  await expect(touchPage.locator(foundationMotionSelectors.textLink).first())
+    .toHaveCSS('opacity', '1');
+  await expect(touchPage.locator(foundationMotionSelectors.card).first())
+    .toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(touchPage.locator(foundationMotionSelectors.disclosure).first())
+    .toHaveCSS('opacity', '1');
+  await expect(touchPage.locator(foundationMotionSelectors.galleryButton).first())
+    .toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await touchContext.close();
 });
 
 test('foundation mobile navigation and FAQ preserve keyboard behavior and focus', async ({ page }) => {
@@ -437,8 +630,13 @@ test('shared disclosure and gallery motion is removed when reduced motion is req
   await page.goto('/__foundation/marketing');
 
   const specimen = (await getVisibleFoundation(page)).locator('[data-foundation-interactions]');
+  const clearPressedState = await forcePseudoState(page, [
+    foundationMotionSelectors.disclosure,
+    foundationMotionSelectors.galleryButton,
+  ], ['active']);
   const motionState = await specimen.evaluate((element) => {
     const disclosureIcon = element.querySelector<HTMLElement>('[data-disclosure] summary > span:last-child');
+    const disclosureSummary = element.querySelector<HTMLElement>('[data-disclosure] summary');
     const galleryButton = element.querySelector<HTMLElement>('[data-responsive-gallery] button');
     return {
       disclosureIconBefore: disclosureIcon
@@ -447,13 +645,22 @@ test('shared disclosure and gallery motion is removed when reduced motion is req
       disclosureIconAfter: disclosureIcon
         ? getComputedStyle(disclosureIcon, '::after').transitionDuration
         : null,
+      disclosureOpacity: disclosureSummary ? getComputedStyle(disclosureSummary).opacity : null,
       galleryButton: galleryButton ? getComputedStyle(galleryButton).transitionDuration : null,
+      galleryTransform: galleryButton ? getComputedStyle(galleryButton).transform : null,
     };
   });
 
-  for (const duration of Object.values(motionState)) {
+  for (const duration of [
+    motionState.disclosureIconBefore,
+    motionState.disclosureIconAfter,
+    motionState.galleryButton,
+  ]) {
     expect(duration?.split(', ').every((value) => value === '0s')).toBe(true);
   }
+  expect(motionState.disclosureOpacity).toBe('0.86');
+  expect(motionState.galleryTransform).toMatch(/none|matrix\(1,/);
+  await clearPressedState();
 });
 
 test('capture shared interaction evidence', async ({ page }) => {
@@ -485,4 +692,32 @@ test('capture shared interaction evidence', async ({ page }) => {
       ),
     });
   }
+});
+
+test('capture TM-01 pressed-state evidence', async ({ page }) => {
+  test.skip(!touchMotionCapture, 'Set MARKETING_TOUCH_MOTION_CAPTURE=1 to capture TM-01 evidence.');
+  await mkdir(touchMotionEvidenceDirectory, { recursive: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/__foundation/marketing');
+  await page.evaluate(() => {
+    document.querySelectorAll('nextjs-portal').forEach((portal) => portal.remove());
+  });
+  await getVisibleFoundation(page);
+
+  const clearPressedState = await forcePseudoState(
+    page,
+    Object.values(foundationMotionSelectors),
+    ['active'],
+  );
+  await page.waitForTimeout(180);
+  await page.locator('[data-foundation-primitives] [data-action-group]').screenshot({
+    path: path.join(touchMotionEvidenceDirectory, 'after-foundation-actions-390x844.png'),
+  });
+  await page.locator(foundationMotionSelectors.card).first().screenshot({
+    path: path.join(touchMotionEvidenceDirectory, 'after-editorial-card-390x844.png'),
+  });
+  await page.locator('[data-foundation-interactions]').screenshot({
+    path: path.join(touchMotionEvidenceDirectory, 'after-foundation-interactions-390x844.png'),
+  });
+  await clearPressedState();
 });

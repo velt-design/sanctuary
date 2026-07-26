@@ -384,7 +384,6 @@ body.header-flip .site-header {
 
 /* === Page transitions (content only; headers fixed) === */
 .page-viewport{ position: relative; }
-.page-layer{ will-change: transform, opacity; }
 .route-content-enter{
   animation:route-content-enter .28s cubic-bezier(.22, 1, .36, 1) both;
 }

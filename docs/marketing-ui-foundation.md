@@ -7,6 +7,7 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 ## Source Of Truth
 
 - Shared semantic colour, type, layout, and responsive tokens: `MarketingPage` and `foundation.module.css` in `apps/marketing/components/marketing-foundation/`.
+- Shared marketing motion durations, easing curves and pressed-state values: `apps/marketing/styles/tokens.css`.
 - Catalogue-only presentation and token overrides: `apps/marketing/app/%5F%5Ffoundation/marketing/catalogue.module.css`.
 - Reusable primitives, controls, and editorial patterns: `apps/marketing/components/marketing-foundation/`.
 - Live catalogue: `/__foundation/marketing`, implemented by the escaped Next.js route folder `apps/marketing/app/%5F%5Ffoundation/marketing/`.
@@ -42,6 +43,15 @@ Phase 3 PR 7 adds the following interaction contract:
 - `ResponsiveGallery` renders only the active `Figure`, with a labelled carousel region, visible Previous and Next buttons, a polite `Image n of total` status and Arrow Left, Arrow Right, Home and End support. Navigation wraps, focus stays on the control used, and no swipe gesture is required.
 - Shared disclosure summaries and gallery controls have visible focus treatment and targets at least 44px high. Gallery controls remain visible at 360px. Directly relevant transitions are removed when reduced motion is requested.
 - The internal catalogue owns the complete disclosure/gallery fixture. Approved public adapters now cover homepage, project, product, residential-service, guide and config-driven SEO-landing content. Each adapter delegates viewport state to the shared owner while retaining route-owned labels, classes and stable data attributes. Responsive detail is visually closed before and after mobile hydration, expanded on desktop and complete without JavaScript.
+
+TM-01 establishes the shared motion and pressed-state contract:
+
+- `apps/marketing/styles/tokens.css` owns the canonical instant, short, panel-enter and panel-exit durations, the standard, enter and exit easing curves, and restrained press scale and opacity values. Reduced motion resolves every shared duration to zero and press scale to one while retaining immediate non-motion feedback.
+- Foundation `Button`, `TextLink`, `EditorialCard`, `Disclosure` summary and controlled-gallery controls own their pressed feedback in CSS. Small controls may use the shared `.992` scale; architectural cards never scale.
+- Hover-only Foundation treatments for those owners run only on hover-capable fine pointers. Existing focus-visible, selected, disabled and semantic state ownership remains unchanged.
+- The route entry treatment remains a documented exception, but its inactive `.page-layer` wrapper no longer carries a persistent compositing hint. The actively transformed route-progress bar retains its narrow `will-change`.
+- `test/marketing-motion-contract.test.ts` guards only the shared token and Foundation owners in TM-01. Route adapters and shared chrome join that contract in the separately scoped TM-02.
+- `ResponsiveGallery` retains its current one-active-image and pointer-up threshold architecture. Finger-follow movement and adjacent-frame readiness remain deferred to TM-03.
 
 The public route template is a server-rendered, non-landmark wrapper. Its restrained entry treatment is CSS-only and disabled for reduced motion. Do not add a top-level loading boundary or client visibility gate that can leave streamed public content hidden when JavaScript is unavailable; every route continues to own its one meaningful `main` landmark.
 
@@ -188,6 +198,17 @@ The forms keep the existing `/api/enquiry` payload, browser-generated submission
 
 The approved public homepage lives at `/` and is implemented by `apps/marketing/app/home-v2/`; the former `/home-v2` comparison URL permanently redirects to `/`. The root page reuses the production foundation primitives, project data, curated review content, live Google rating source, shared header and footer, analytics, consent and existing `/contact` enquiry destination. Its hero is included in the shared header's desktop overlay allowlist, while tablet and mobile keep the solid 64px header.
 
+The bounded `/home-experimental` route is a separate noindex experiment and
+does not replace or re-export the root homepage. It reuses the same foundation,
+header/footer, project catalogue, Google proof, enquiry-context builder and
+consent owner, while a route-local client island owns only the first
+`What are you trying to create?` answer. Each closed answer maps
+deterministically to two existing project records and may carry one canonical
+project slug into `/contact`; no second or third question, free-text URL state
+or recommendation scoring is present. Server output retains a complete
+JavaScript-disabled set of all three pathways, project links and direct enquiry
+actions.
+
 The homepage presents Sanctuary as an Auckland designer, builder and installer of bespoke fixed-roof architectural pergolas. It keeps the Warkworth project as the first strong evidence after the hero and proof rail, then follows one seven-section semantic order at every width: hero, featured project, audience pathways, selected projects, planning options, process and qualified enquiry. Home is the primary pathway; custom conditions are explained within it, while commercial and professional capability routes remain discoverable. Selected work, process and review content do not use duplicated mobile and desktop render trees. Forms/pergola forms share one planning disclosure and roof/material/comfort decisions share a second, with three further purposeful disclosures elsewhere for five total. The process exposes three concise stages and incorporates the former project-assurance content. Review proof is integrated into the qualified-enquiry close. The final enquiry keeps one primary residential action, quieter commercial/professional routes, two featured guide links and the all-guides link. Desktop uses the same content tree and retains the established grid-led composition.
 
 Homepage interaction links and controls expose stable event attributes. The route-local tracker records only the event name, V2 variant, viewport category, destination and optional editorial label, and only after analytics consent. Hero, pathway, pergola-form, roof, project, disclosure, guide and final-enquiry interactions therefore remain distinguishable without collecting project or customer details.
@@ -198,6 +219,7 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 
 ## Verification
 
+- `npx vitest run test/marketing-motion-contract.test.ts`
 - `npx vitest run apps/marketing/app/%5F%5Ffoundation/marketing/foundationAccess.test.ts`
 - `npx vitest run apps/marketing/components/marketing-foundation/Primitives.test.tsx`
 - `npx vitest run apps/marketing/components/marketing-foundation/Interactions.test.tsx`
@@ -216,6 +238,12 @@ Root height and overflow normalisation must preserve the shared mobile-menu and 
 - Shared-header Playwright coverage at desktop and mobile widths, including geometry, green accent, keyboard focus, and representative public-route screenshots.
 
 The Foundation browser suite exercises the shared responsive specimens at 430px, 390px, 360px, tablet, compact desktop, and desktop widths. It asserts single-tree card and fact-list presentation, semantic CTA hierarchy, minimum touch targets, focus visibility, reduced-motion behavior, mobile and desktop media ratios and focal points, stable desktop card geometry, and no horizontal overflow. Its interaction lane additionally verifies native disclosure state, keyboard and focus behavior, touch gallery controls, one active accessible image, live position text, reduced motion, homepage adapter compatibility and stable desktop composition. An isolated-context matrix also smoke-tests every distinct direct Foundation consumer type at 390px and 1440px so the existing animated route transition cannot leave an exiting page in a strict locator. Set `MARKETING_FOUNDATION_CAPTURE=1` when running the focused spec to write PR 6 screenshots to `artifacts/mobile-ux-phase-3-pr-6/`. Set `MARKETING_FOUNDATION_INTERACTIONS_CAPTURE=1` to write the three PR 7 interaction screenshots to `artifacts/mobile-ux-phase-3-pr-7/`.
+
+The TM-01 browser lane additionally checks active-state feedback without layout
+geometry changes, fine-pointer hover gating, touch release without sticky hover,
+and retained reduced-motion feedback. Set `MARKETING_TOUCH_MOTION_CAPTURE=1`
+when running the focused Foundation spec to write the 390px pressed-state
+evidence to `artifacts/mobile-touch-motion/tm-01/`.
 
 The Playwright lane checks the standalone catalogue, shared header, homepage, every SEO programme route, the product hub and details, the project collection and case studies, the contact route, and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, project and FAQ rendering, internal destinations, overflow, navigation, form attribution, sitemap inclusion and visible schema parity.
 
