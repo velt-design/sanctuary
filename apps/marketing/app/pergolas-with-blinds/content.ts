@@ -45,7 +45,7 @@ export const pergolasWithBlindsConfig = {
       { title: 'Power and access', text: 'For a motorised option, coordinate supply, controls, trade responsibility and future access before fabrication.' },
     ] },
     { kind: 'projects', id: 'blind-projects', eyebrow: 'Completed edges, different reasons', title: 'Blinds respond to the brief, not a standard elevation', intro: 'These Sanctuary projects show screened edges serving residential, coastal and hospitality settings.', items: [
-      { slug: 'tindalls-bay-pavilion', label: 'Wind and neighbouring outlook', summary: 'Mesh blinds were used along one side of a 108 square metre patio and carport project to address wind and privacy while retaining the coastal view.', facts: ['Targeted treatment on one edge', 'Mixed roof and blind scope'] },
+      { slug: 'tindalls-bay-pavilion', label: 'Wind and neighbouring outlook', summary: 'Mesh blinds were integrated along one side identified in the project brief for wind and privacy, with the covered area open towards the coastal view.', facts: ['Targeted treatment on one edge', 'Mixed roof and blind scope'] },
       { slug: 'waiheke-holiday-home', label: 'Screens within a clean perimeter', summary: 'Screen integration forms part of this 5.0 by 4.0 metre deck cover, where the perimeter beam conceals the recorded roof fall and gutters.', facts: ['20 m² coastal deck cover', 'Screens included in the published project record'] },
       { slug: 'goodhome-commercial-terrace', label: 'A changing hospitality edge', summary: 'Screens form part of a 67.7 square metre restaurant courtyard with its acrylic roof and lighting.', facts: ['10.09 x 6.7 m courtyard', 'Screens and lighting included in the published project record'] },
     ] },

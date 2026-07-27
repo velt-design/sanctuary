@@ -106,7 +106,7 @@ const baseProjects: Project[] = [
     materials: ['Aluminium', 'Steel', 'COLORSTEEL', 'Clear acrylic', 'Cedar lining'],
     description: [
       'The brief for this Warkworth home was to create a proper outdoor room beside the house: sheltered enough to use often, open enough to stay connected to the garden, and detailed so it felt like a permanent part of the property.',
-      'We built a freestanding gable structure beside the home rather than relying on the existing house for support. The matte black frame and COLORSTEEL FlaxPod Matte roof give the room a crisp architectural profile, while clear acrylic glazing through the roof and gable ends keeps daylight moving through the space.',
+      'We built a freestanding gable structure beside the home rather than relying on the existing house for support. The matte black frame and COLORSTEEL FlaxPod Matte roof give the room a crisp architectural profile, with clear acrylic glazing placed through the roof and gable ends in response to the daylight brief.',
       'Completed in November 2025, the project also included a new deck and fireplace, turning the covered area into a complete outdoor living space. Warm cedar tongue-and-groove lining, pendant lighting and recessed lights finish the room for dining and lounging.',
     ],
     stats: {
@@ -145,7 +145,7 @@ const baseProjects: Project[] = [
       {
         title: 'Roof, glazing & ceiling',
         paragraphs: [
-          'The gable roof uses corrugated Colorsteel with clear acrylic glazing to bring natural light into the outdoor room. A cedar tongue-and-groove ceiling lining softens the underside and gives the space a warm interior feel.',
+          'The gable roof combines corrugated Colorsteel with clear acrylic zones through the roof and gable ends. A cedar tongue-and-groove ceiling lining finishes the solid-roof section with a warm interior character.',
         ],
         bullets: [
           'Clear acrylic roof and gable glazing',
@@ -198,14 +198,14 @@ const baseProjects: Project[] = [
       },
     ],
     blurb:
-      'First-floor box-perimeter pergola with opal acrylic roofing, built to extend a dark contemporary home with soft filtered light and a clean roofline.',
+      'First-floor box-perimeter pergola with opal acrylic roofing, set against a dark contemporary home with a clean horizontal roofline.',
     constraint:
       'Cover a first-floor deck while preserving the glass balustrade, outlook and natural light.',
     roofApproach: '6 mm opal acrylic at a 5 degree fall with a hip-style end junction',
     materials: ['Powder-coated aluminium', 'Opal acrylic'],
     description: [
-      'This Mt Maunganui project covers a first-floor deck on a contemporary dark-clad home, creating a sheltered outdoor space without making the interior or deck feel heavy. The box-perimeter frame gives the structure a strong architectural edge, while the opal acrylic roof softens glare and keeps daylight moving through the deck and adjacent rooms.',
-      'The roof was set out with a 5 degree fall and a hip-style junction at the outside end, allowing the cover to follow the deck geometry while keeping the perimeter line crisp from below and from the garden. Dark aluminium framing ties back into the house cladding and joinery, so the pergola reads as part of the original architecture rather than an add-on.',
+      'This Mt Maunganui project adds overhead cover to a first-floor deck on a contemporary dark-clad home. The box-perimeter frame gives the structure a strong architectural edge, while opal acrylic was selected in response to the brief for daylight and glare.',
+      'The roof was set out with a 5 degree fall and a hip-style junction at the outside end, allowing the cover to follow the deck geometry while keeping the perimeter line crisp from below and from the garden. Dark aluminium framing references the house cladding and joinery.',
     ],
     stats: {
       width: '8.67 m',
@@ -218,11 +218,11 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Create a covered first-floor deck that matched the home\'s dark contemporary exterior and preserved the open feeling of the balcony. The structure needed to provide usable weather cover while keeping the glass balustrade, outlook and natural light intact.',
+          'Create a covered first-floor deck that matched the home\'s dark contemporary exterior and preserved the open feeling of the balcony. The brief kept the glass balustrade, outlook, daylight and glare as design priorities.',
         ],
         bullets: [
           'Cover the first-floor deck without closing in the view',
-          'Use opal acrylic to diffuse light and reduce glare',
+          'Select the roof material against the daylight and glare brief',
           'Keep the frame aligned with the home\'s dark architectural language',
         ],
       },
@@ -240,7 +240,7 @@ const baseProjects: Project[] = [
       {
         title: 'Roof & glazing',
         paragraphs: [
-          'Opal acrylic roofing gives the space a soft, even light quality. The 5 degree fall manages drainage while the hip-style end detail resolves the angled deck geometry inside the perimeter frame.',
+          'Opal acrylic roofing spans the deck inside the box perimeter. The 5 degree fall establishes the drainage direction, while the hip-style end detail resolves the angled deck geometry.',
         ],
         bullets: [
           '6 mm opal acrylic glazing',
@@ -316,7 +316,7 @@ const baseProjects: Project[] = [
       {
         title: 'Roof & infill',
         paragraphs: [
-          'Acrylic roof panels keep rain off walkways and seating while letting plenty of daylight through to the course. The shallow 8° pitch keeps the profile low against the clubhouse roofline while still shedding water cleanly.',
+          'Acrylic roof panels cover the nominated walkways and seating. The shallow 8° pitch keeps the profile low against the clubhouse roofline and establishes the recorded roof fall.',
         ],
         bullets: [
           'Acrylic roofing over the covered circulation and seating',
@@ -416,7 +416,7 @@ const baseProjects: Project[] = [
     materials: ['Steel', 'Aluminium', 'Acrylic roofing'],
     description: [
       'The client wanted to cover the front courtyard of their restaurant while keeping the architecture reading as a single, coherent villa-style facade. The existing building features 25° roofs and a rhythm of gables that we needed to respect.',
-      'We matched the 25° roof pitch and extended from the existing roofline to carry that geometry out over the courtyard, creating a generous outdoor room that blends seamlessly into the building and feels like part of the original structure.',
+      'We matched the 25° roof pitch and extended from the existing roofline to carry that geometry out over the courtyard. The two new gable zones align with the established rhythm of the villa-style facade.',
     ],
     stats: {
       width: '10.09 m',
@@ -466,14 +466,14 @@ const baseProjects: Project[] = [
       { src: '/images/project-kiwi-rail-02.jpg', alt: 'Night lighting along rail canopy', objectPosition: '50% 50%' },
       { src: '/images/project-kiwi-rail-03.jpg', alt: 'Detail of structural connection', objectPosition: '50% 50%' },
     ],
-    blurb: 'Aluminium and acrylic canopy creating a dry, well-lit link between key circulation routes at the head office.',
+    blurb: 'Aluminium and acrylic canopy with integrated strip lighting along a key circulation route at the head office.',
     constraint:
-      'Create a dry connection between circulation routes while keeping the long workplace canopy visually light.',
+      'Cover a connection between circulation routes while keeping the long workplace canopy visually light.',
     roofApproach: 'Acrylic canopy at a recorded 5 degree pitch',
     materials: ['Aluminium', 'Acrylic roofing'],
     description: [
-      'We were approached by JCY Architects to bring their canopy design to life for the KiwiRail head office. The brief was to create a covered pathway so staff can stay dry while moving between key circulation routes around the building.',
-      'They opted for an aluminium and acrylic structure with integrated strip lighting, giving the walkway a light, refined profile that feels safe and inviting day and night.',
+      'We were approached by JCY Architects to bring their canopy design to life for the KiwiRail head office. The brief was to cover a pathway between key circulation routes around the building.',
+      'The completed canopy combines aluminium, acrylic roofing and integrated strip lighting along the long workplace route.',
     ],
     stats: {
       width: '30.0 m',
@@ -491,14 +491,14 @@ const baseProjects: Project[] = [
         ],
         bullets: [
           'Architect-led canopy design',
-          'Dry connection between circulation routes',
+          'Covered connection between circulation routes',
           'Integrated strip lighting',
         ],
       },
       {
         title: 'Structure and roof',
         paragraphs: [
-          'The completed canopy uses aluminium and acrylic to keep the long walkway visually light, with strip lighting incorporated for the day-and-night setting.',
+          'The completed canopy uses aluminium and acrylic along the long walkway, with strip lighting incorporated into the structure.',
         ],
         bullets: [
           '30.0 m recorded length',
@@ -534,15 +534,15 @@ const baseProjects: Project[] = [
         objectPosition: '50% 45%',
       },
     ],
-    blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens to keep spaces bright but protected.',
+    blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens across dining, entry and circulation zones.',
     constraint:
       'Resolve a combined patio and carport around the house geometry while retaining daylight through the entry and circulation zones.',
     roofApproach: 'Insulated panels with opal and light grey acrylic roof zones',
     materials: ['Insulated roof panels', 'Opal acrylic', 'Light grey acrylic', 'Timber sarking and battens'],
     description: [
       'The client wanted to cover their patio to extend everyday living space and add a carport alongside. The patio portion was particularly challenging, weaving around the existing nooks and crannies of the house while keeping the interior feeling light.',
-      'Over the outdoor dining area we used insulated roof panels with timber sarking underneath for a warm, ceiling-like finish. Around the circulation and front door zones we switched to opal acrylic roofing with timber battens so daylight can flood in while the battens soften and diffuse the light.',
-      'On one portion we introduced light grey acrylic to bring in more light again, and along one side we added mesh blinds for wind protection and privacy from neighbours. Together the mix of roof types and screening frames a beautiful view without closing the house off from the outdoors.',
+      'Over the outdoor dining area we used insulated roof panels with timber sarking underneath for a warm, ceiling-like finish. Around the circulation and front door zones we switched to opal acrylic roofing with timber battens in response to the daylight brief.',
+      'Another roof zone uses light grey acrylic, and mesh blinds were added along one side identified in the brief for wind and privacy. The covered area remains open towards the view beyond that edge.',
     ],
     stats: {
       width: '',
@@ -566,7 +566,7 @@ const baseProjects: Project[] = [
       {
         title: 'Roof composition',
         paragraphs: [
-          'Insulated roof panels with timber sarking create a ceiling-like finish above the dining area. Opal acrylic and timber battens retain softer daylight around circulation and the front door, with light grey acrylic used in another part of the cover.',
+          'Insulated roof panels with timber sarking create a ceiling-like finish above the dining area. Opal acrylic and timber battens cover the circulation and front door zones, with light grey acrylic used in another part of the roof.',
         ],
         bullets: [
           'Insulated roof panels over the dining zone',
@@ -577,7 +577,7 @@ const baseProjects: Project[] = [
       {
         title: 'Screening and outlook',
         paragraphs: [
-          'Mesh blinds were added along one side for wind protection and privacy, while the mixed roof composition keeps the view and connection to the outdoors open.',
+          'Mesh blinds were added along one side identified in the project brief for wind and privacy. The covered area remains open towards the coastal outlook.',
         ],
         bullets: [
           'Mesh blind integration',
@@ -624,8 +624,8 @@ const baseProjects: Project[] = [
     roofApproach: 'Dark-tint acrylic roofing on a 30 degree gable',
     materials: ['Aluminium', 'Dark-tint acrylic'],
     description: [
-      'The client reached out to add a sheltered space to their beautiful specialty dessert cafe (highly recommended). We were able to do this while matching the existing architectural style and colours so the new structure feels like it has always been there.',
-      'The canopy uses an all-aluminium frame with dark-tint acrylic roofing. The darker roof changes the shade and light character beneath the canopy while still allowing daylight through and keeping the cafe frontage visually open.',
+      'The client asked us to add a sheltered space to the specialty dessert cafe while matching the existing architectural style and colours. We aligned the gable frame and colour with the established frontage.',
+      'The canopy uses an all-aluminium frame with dark-tint acrylic roofing across the covered outdoor seating area.',
     ],
     stats: {
       width: '9.0 m',
@@ -681,7 +681,7 @@ const baseProjects: Project[] = [
     materials: ['Opal acrylic'],
     description: [
       'This hipped pergola replaces an older structure of the same footprint. The clients were happy with the existing layout but wanted a fresh look that would marry a contemporary frame with their Tuscan-style home.',
-      'We set out a new 8 m by 5 m cover at 3 m height, using opal acrylic roofing over the courtyard to diffuse the light. The result is a bright, sheltered outdoor room that retains the established footprint.',
+      'We set out a new 8 m by 5 m cover at 3 m height, using opal acrylic roofing over the courtyard. The 5 degree hip roof retains the established footprint.',
     ],
     stats: {
       width: '8.0 m',
@@ -706,7 +706,7 @@ const baseProjects: Project[] = [
       {
         title: 'Hip roof and light',
         paragraphs: [
-          'A 5 degree hip roof uses opal acrylic over the courtyard, diffusing daylight while providing overhead shelter within the familiar layout.',
+          'A 5 degree hip roof uses opal acrylic to cover the courtyard within the familiar layout.',
         ],
         bullets: [
           'Opal acrylic roofing',
@@ -742,7 +742,7 @@ const baseProjects: Project[] = [
     roofApproach: 'Shallow 7 degree pitched roof',
     description: [
       'Velskov is a 10-acre natural forest farm just outside Auckland, growing food regeneratively within a biodiverse native bush setting and focusing on agroforestry and ecosystem restoration rather than harvesting trees for timber.',
-      'Our brief here was to create a simple, robust structure that could sit quietly in the middle of the native forest, giving Velskov a dry, usable space for farm activity while keeping the focus on the surrounding ecosystem.',
+      'Our brief here was to create a simple, robust structure that could sit quietly in the middle of the native forest, covering a space for farm activity while keeping the focus on the surrounding ecosystem.',
       'We set out a 7 m by 6 m pergola at 3.5 m height with a shallow 7° pitched roof so the cover feels generous underneath but keeps a low profile beneath the forest canopy.',
     ],
     stats: {
@@ -805,7 +805,7 @@ const baseProjects: Project[] = [
     materials: ['Steel PFC beams', 'Aluminium rafters', 'Acrylic roofing'],
     description: [
       'This Ardmore project turns a wide driveway area beside the home into a covered carport with a strong architectural profile. The black box perimeter gives the structure a clean outer line, while the red steel frame and gable roof form inside create a practical, open span for vehicle access and everyday use.',
-      'The roof combines aluminium rafters with steel PFC beams and 6 mm acrylic glazing, keeping the space bright while providing weather cover across the driveway. The main roof falls at 5 degrees, with the internal gable section resolving the roof geometry neatly inside the perimeter frame. Integrated LED lighting completes the carport for evening arrivals and day-to-day use.',
+      'The roof combines aluminium rafters with steel PFC beams and 6 mm acrylic glazing across the driveway. The main roof falls at 5 degrees, with the internal gable section resolving the roof geometry inside the perimeter frame. Integrated LED lighting completes the carport.',
     ],
     stats: {
       width: '8.77 m',
@@ -818,7 +818,7 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Create a large covered carport that felt deliberate beside the existing home, not like a lightweight add-on. The structure needed clear vehicle access, strong weather protection and enough daylight to keep the driveway from feeling enclosed.',
+          'Create a large covered carport that felt deliberate beside the existing home, not like a lightweight add-on. The brief called for clear vehicle access, overhead cover and a roof material selected with daylight in mind.',
         ],
         bullets: [
           'Cover a wide driveway and carport zone',
@@ -841,7 +841,7 @@ const baseProjects: Project[] = [
       {
         title: 'Roof & glazing',
         paragraphs: [
-          'The roof uses 6 mm acrylic glazing over the main carport span. A 5 degree fall manages drainage across the larger roof areas, while the gable section sits inside the perimeter frame to bring height and structure through the centre.',
+          'The roof uses 6 mm acrylic glazing over the main carport span. A 5 degree fall establishes the drainage direction across the larger roof areas, while the gable section sits inside the perimeter frame to bring height and structure through the centre.',
         ],
         bullets: [
           '6 mm acrylic roofing',
@@ -900,8 +900,8 @@ const baseProjects: Project[] = [
     roofApproach: 'Insulated gable roof with timber sarking',
     materials: ['Aluminium', 'Steel', 'Timber sarking'],
     description: [
-      'This Riverhead project creates a sheltered outdoor lounge beside the pool, turning the deck edge into a more usable all-season space. The gable form gives the pavilion height and symmetry, while the black frame keeps the structure sharp against the surrounding landscape and modern home.',
-      'The build combines aluminium framing with steel beams for the main structure, then softens the underside with timber sarking. Skillion insulation helps improve comfort under the roof, while downlights and warm LED strip lighting around the ceiling edges make the space work just as well in the evening as it does during the day.',
+      'This Riverhead project places a covered outdoor lounge beside the pool. The gable form gives the pavilion height and symmetry, while the black frame keeps the structure sharp against the surrounding landscape and modern home.',
+      'The build combines aluminium framing with steel beams for the main structure, then finishes the underside with timber sarking. Skillion insulation sits above the lining, with downlights and warm LED strip lighting integrated around the ceiling edges.',
     ],
     stats: {
       width: '5.55 m',
@@ -913,7 +913,7 @@ const baseProjects: Project[] = [
       {
         title: 'Design brief',
         paragraphs: [
-          'Create a sheltered poolside lounge that felt open to the garden and view, while giving the seating area proper weather protection. The structure needed to sit confidently beside the pool without blocking the outlook or feeling too heavy on the deck.',
+          'Create a covered poolside lounge that felt open to the garden and view. The structure needed to sit confidently beside the pool without blocking the outlook or feeling too heavy on the deck.',
         ],
         bullets: [
           'Provide shelter beside the pool',
@@ -936,7 +936,7 @@ const baseProjects: Project[] = [
       {
         title: 'Roof, insulation & lighting',
         paragraphs: [
-          'The roof is designed as a comfortable covered lounge, not just a basic shelter. Skillion insulation improves comfort, downlights provide functional lighting, and LED strip lighting traces the ceiling edges for a softer evening effect.',
+          'Skillion insulation sits above the timber sarking, with downlights set into the ceiling and LED strip lighting following the ceiling edges.',
         ],
         bullets: [
           'Skillion insulation above timber sarking',
@@ -968,7 +968,7 @@ const baseProjects: Project[] = [
     materials: ['Aluminium', 'Opal acrylic'],
     description: [
       'The clients wanted to extend their roofline with a gable shape and add a custom aluminium framing pattern to the gable end so the pergola would look intentional from the street.',
-      'We set out a 6 m by 3 m cover at 2.7 m height using opal acrylic roofing to keep the patio bright while cutting glare. The open gable end, framed with the bespoke aluminium pattern, has become a small landmark on this corner in St Heliers.',
+      'We set out a 6 m by 3 m cover at 2.7 m height, selecting opal acrylic roofing in response to the brief for daylight and glare. The bespoke aluminium pattern gives the open, street-facing gable end a clear identity.',
     ],
     stats: {
       width: '6.0 m',
@@ -994,14 +994,14 @@ const baseProjects: Project[] = [
       { src: '/images/project-dairy-flat-03.jpg', alt: 'Side view of the Dairy Flat pergola', objectPosition: '50% 44%' },
       { src: '/images/project-dairy-flat-02.jpg', alt: 'Detail of the pergola framing at Dairy Flat', objectPosition: '50% 42%' },
     ],
-    blurb: 'Gable extension following the house roofline in aluminium and acrylic to keep the outdoor room bright and sheltered.',
+    blurb: 'Gable extension following the house roofline in aluminium and acrylic, with an infilled gable end on one side of the covered area.',
     constraint:
       'Extend the existing roofline without darkening the adjoining outdoor space.',
     roofApproach: 'Acrylic gable roof following the existing house roofline',
     materials: ['Aluminium', 'Acrylic roofing'],
     description: [
-      'The clients wanted to extend their existing roofline to capture more usable outdoor space. We followed the house form out with aluminium framing and acrylic roofing so the new structure reads as part of the original home.',
-      'The acrylic roof allows maximum light into the space, and by infilling the gable end we created shelter from wind and rain while still keeping the area open to the garden.',
+      'The clients wanted to extend their existing roofline to capture more usable outdoor space. We followed the house form with aluminium framing and acrylic roofing, continuing the existing roof geometry over the outdoor area.',
+      'Acrylic roofing was selected in response to the daylight brief. The infilled gable end adds a covered side to one edge, while the garden side remains open.',
     ],
     stats: {
       width: '8.6 m',

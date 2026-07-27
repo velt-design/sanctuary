@@ -57,7 +57,7 @@ export const acrylicVsLouvreConfig = {
     ] },
     { kind: 'projects', id: 'acrylic-comparison-projects', eyebrow: 'Evidence for what Sanctuary builds', title: 'Acrylic roofs can belong to very different architectures', intro: 'These completed projects demonstrate fixed acrylic used in different forms and contexts. They are not evidence about a louvre product.', items: [
       { slug: 'mt-maunganui-box', label: 'Box-perimeter courtyard', summary: 'A 26.9 square metre first-floor deck cover uses opal acrylic glazing within a low horizontal frame related to the house.', facts: ['8.67 x 3.1 m footprint', '5 degree fixed roof fall'] },
-      { slug: 'dairy-flat-estate', label: 'Gable aligned to the home', summary: 'An 8.6 by 3.3 metre aluminium and acrylic gable follows the existing house language while keeping the outdoor area bright.', facts: ['28.4 m² covered area', '3.0 m overall height'] },
+      { slug: 'dairy-flat-estate', label: 'Gable aligned to the home', summary: 'An 8.6 by 3.3 metre aluminium and acrylic gable follows the existing house geometry, with an infilled gable end and open garden side.', facts: ['28.4 m² covered area', '3.0 m overall height'] },
       { slug: 'muriwai-courtyard', label: 'Hipped courtyard roof', summary: 'A 40 square metre opal acrylic roof sits within a hipped form designed as a replacement on the existing footprint.', facts: ['8.0 x 5.0 m footprint', '5 degree fixed roof pitch'] },
       { slug: 'atelier-shu-cafe', label: 'Commercial gable canopy', summary: 'A 36 square metre acrylic roof and aluminium frame form a sheltered zone aligned with the cafe frontage.', facts: ['9.0 x 4.0 m footprint', '30 degree gable form'] },
     ] },

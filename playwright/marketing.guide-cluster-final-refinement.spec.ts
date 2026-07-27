@@ -19,34 +19,74 @@ const internalPlanningLanguage = /\b(?:this|the)\s+(?:page|guide)\s+owns\b|\bpag
 
 const projectEvidence = [
   {
+    route: '/projects/warkworth-outdoor-room',
+    expected: /clear acrylic glazing placed through the roof and gable ends in response to the daylight brief/i,
+    retired: /keeps daylight moving through the space|bring natural light into the outdoor room/i,
+  },
+  {
+    route: '/projects/mt-maunganui-box',
+    expected: /opal acrylic was selected in response to the brief for daylight and glare/i,
+    retired: /soft filtered light|softens glare|soft, even light quality|reduce glare/i,
+  },
+  {
+    route: '/projects/lilliput-mini-golf',
+    expected: /establishes the recorded roof fall/i,
+    retired: /keep rain off|plenty of daylight|shedding water cleanly/i,
+  },
+  {
     route: '/projects/goodhome-commercial-terrace',
-    expected: /matched the 25° roof pitch/i,
-    retired: /50 mm insulated|DMX|Heatstrip/i,
+    expected: /two new gable zones align with the established rhythm/i,
+    retired: /50 mm insulated|DMX|Heatstrip|blends seamlessly|part of the original structure/i,
   },
   {
     route: '/projects/kiwi-rail-platform',
-    expected: /covered pathway so staff can stay dry/i,
-    retired: /pantograph|ColorCote|EN 12464|service platform/i,
+    expected: /cover a pathway between key circulation routes/i,
+    retired: /pantograph|ColorCote|EN 12464|service platform|stay dry|dry, well-lit|safe and inviting/i,
   },
   {
     route: '/projects/tindalls-bay-pavilion',
-    expected: /opal acrylic roofing with timber battens/i,
-    retired: /twinwall polycarbonate|Somfy RTS|wind\/rain sensors/i,
+    expected: /identified in the brief for wind and privacy/i,
+    retired: /twinwall polycarbonate|Somfy RTS|wind\/rain sensors|daylight can flood|wind protection|bright but protected/i,
   },
   {
     route: '/projects/atelier-shu-cafe',
-    expected: /dark-tint acrylic roofing/i,
-    retired: /laminated glass|acoustic interlayer|frameless sliding/i,
+    expected: /aligned the gable frame and colour with the established frontage/i,
+    retired: /laminated glass|acoustic interlayer|frameless sliding|feels like it has always been there|changes the shade and light character/i,
   },
   {
     route: '/projects/muriwai-courtyard',
-    expected: /using opal acrylic roofing/i,
-    retired: /cedar soffit|fireplace fan|projector cabling/i,
+    expected: /5 degree hip roof retains the established footprint/i,
+    retired: /cedar soffit|fireplace fan|projector cabling|bright, sheltered outdoor room|diffusing daylight/i,
   },
   {
     route: '/projects/waiheke-holiday-home',
     expected: /hiding the 4° fall/i,
     retired: /Somfy RTS|infrared heaters|insulated aluminium roof/i,
+  },
+  {
+    route: '/projects/velskov-forest',
+    expected: /covering a space for farm activity/i,
+    retired: /dry, usable space for farm activity/i,
+  },
+  {
+    route: '/projects/ardmore-box-carport',
+    expected: /6 mm acrylic glazing across the driveway/i,
+    retired: /strong weather protection|providing weather cover|keeping the space bright/i,
+  },
+  {
+    route: '/projects/riverhead-gable-pavilion',
+    expected: /skillion insulation sits above the lining/i,
+    retired: /all-season|proper weather protection|improves comfort|comfortable covered lounge/i,
+  },
+  {
+    route: '/projects/st-heliers-townhouse',
+    expected: /selecting opal acrylic roofing in response to the brief for daylight and glare/i,
+    retired: /keep the patio bright while cutting glare/i,
+  },
+  {
+    route: '/projects/dairy-flat-estate',
+    expected: /acrylic roofing was selected in response to the daylight brief/i,
+    retired: /maximum light|shelter from wind and rain|bright and sheltered/i,
   },
 ] as const;
 
@@ -146,6 +186,32 @@ test('linked project pages use the current evidence record rather than contradic
   }
 });
 
+test('dependent guide snippets keep project outcomes tied to the recorded design response', async ({ page }) => {
+  await preparePage(page);
+  for (const snippet of [
+    {
+      route: '/acrylic-pergolas-vs-louvre-roofs',
+      expected: /infilled gable end and open garden side/i,
+      retired: /keeping the outdoor area bright/i,
+    },
+    {
+      route: '/gable-pergolas-auckland',
+      expected: /infilled gable end and open garden side/i,
+      retired: /adding shelter while retaining the garden connection/i,
+    },
+    {
+      route: '/pergolas-with-blinds',
+      expected: /identified in the project brief for wind and privacy/i,
+      retired: /to address wind and privacy while retaining the coastal view/i,
+    },
+  ] as const) {
+    await page.goto(snippet.route);
+    const copy = await page.locator('main[data-marketing-foundation-page]').innerText();
+    expect(copy, `${snippet.route} should use the qualified project snippet`).toMatch(snippet.expected);
+    expect(copy, `${snippet.route} should not repeat the retired outcome`).not.toMatch(snippet.retired);
+  }
+});
+
 test('homepage design conversation uses written project context instead of unsupported scores', async ({ page }) => {
   await preparePage(page);
   await page.goto('/');
@@ -162,7 +228,14 @@ test('homepage design conversation uses written project context instead of unsup
   await expect(conversation.getByText(
     'Start with how the cover should relate to the home, preserve light and make the existing outdoor area more usable.',
   )).toBeVisible();
+  await expect(conversation.getByText(
+    'An acrylic gable follows the existing roofline, with an infilled gable end and an open garden side.',
+  )).toBeVisible();
+  await expect(conversation.getByText(
+    'A first-floor box-perimeter cover follows the deck geometry around the glass balustrade and outlook.',
+  )).toBeVisible();
   await expect(conversation.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
   const copy = await page.locator('body').innerText();
   expect(copy).not.toMatch(/Strong heat and glare reduction, noticeably softer rain noise/i);
+  expect(copy).not.toMatch(/bright acrylic gable|soft daylight/i);
 });

@@ -40,6 +40,74 @@ const evidenceCases = [
   },
 ] as const;
 
+const narrativeClaimCases = [
+  {
+    slug: 'warkworth-outdoor-room',
+    current: /clear acrylic glazing placed through the roof and gable ends in response to the daylight brief/i,
+    retired: /keeps daylight moving through the space|bring natural light into the outdoor room/i,
+  },
+  {
+    slug: 'mt-maunganui-box',
+    current: /opal acrylic was selected in response to the brief for daylight and glare/i,
+    retired: /soft filtered light|softens glare|soft, even light quality|reduce glare/i,
+  },
+  {
+    slug: 'lilliput-mini-golf',
+    current: /establishes the recorded roof fall/i,
+    retired: /keep rain off|plenty of daylight|shedding water cleanly/i,
+  },
+  {
+    slug: 'goodhome-commercial-terrace',
+    current: /two new gable zones align with the established rhythm/i,
+    retired: /blends seamlessly|part of the original structure/i,
+  },
+  {
+    slug: 'kiwi-rail-platform',
+    current: /cover a pathway between key circulation routes/i,
+    retired: /stay dry|dry, well-lit|safe and inviting/i,
+  },
+  {
+    slug: 'tindalls-bay-pavilion',
+    current: /identified in the brief for wind and privacy/i,
+    retired: /daylight can flood|wind protection|bright but protected/i,
+  },
+  {
+    slug: 'atelier-shu-cafe',
+    current: /aligned the gable frame and colour with the established frontage/i,
+    retired: /feels like it has always been there|changes the shade and light character/i,
+  },
+  {
+    slug: 'muriwai-courtyard',
+    current: /5 degree hip roof retains the established footprint/i,
+    retired: /bright, sheltered outdoor room|diffusing daylight/i,
+  },
+  {
+    slug: 'velskov-forest',
+    current: /covering a space for farm activity/i,
+    retired: /dry, usable space for farm activity/i,
+  },
+  {
+    slug: 'ardmore-box-carport',
+    current: /6 mm acrylic glazing across the driveway/i,
+    retired: /strong weather protection|providing weather cover|keeping the space bright/i,
+  },
+  {
+    slug: 'riverhead-gable-pavilion',
+    current: /skillion insulation sits above the (?:lining|timber sarking)/i,
+    retired: /all-season|proper weather protection|improves comfort|comfortable covered lounge/i,
+  },
+  {
+    slug: 'st-heliers-townhouse',
+    current: /selecting opal acrylic roofing in response to the brief for daylight and glare/i,
+    retired: /keep the patio bright while cutting glare/i,
+  },
+  {
+    slug: 'dairy-flat-estate',
+    current: /acrylic roofing was selected in response to the daylight brief/i,
+    retired: /maximum light|shelter from wind and rain|bright and sheltered/i,
+  },
+] as const;
+
 describe('published project evidence', () => {
   it('keeps the Warkworth exterior framing consistent in project data', () => {
     const project = projects.find((candidate) => candidate.slug === 'warkworth-outdoor-room');
@@ -84,6 +152,21 @@ describe('published project evidence', () => {
       });
       expect(detail).toMatch(evidence.current);
       expect(detail).not.toMatch(evidence.retired);
+    });
+  }
+
+  for (const narrative of narrativeClaimCases) {
+    it(`${narrative.slug} distinguishes the built response from an unsupported outcome`, () => {
+      const project = projects.find((candidate) => candidate.slug === narrative.slug);
+      expect(project).toBeDefined();
+      const publicNarrative = JSON.stringify({
+        blurb: project?.blurb,
+        constraint: project?.constraint,
+        description: project?.description,
+        sections: project?.sections,
+      });
+      expect(publicNarrative).toMatch(narrative.current);
+      expect(publicNarrative).not.toMatch(narrative.retired);
     });
   }
 });

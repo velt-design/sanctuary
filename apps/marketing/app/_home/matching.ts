@@ -66,12 +66,12 @@ const intentConfigs: readonly IntentConfig[] = [
       {
         slug: 'dairy-flat-estate',
         rationale:
-          'A bright acrylic gable extends the existing roofline while keeping the adjoining outdoor area open and naturally lit.',
+          'An acrylic gable follows the existing roofline, with an infilled gable end and an open garden side.',
       },
       {
         slug: 'mt-maunganui-box',
         rationale:
-          'A first-floor cover follows the deck geometry while preserving its outlook, glass edge and soft daylight.',
+          'A first-floor box-perimeter cover follows the deck geometry around the glass balustrade and outlook.',
       },
     ],
   },
