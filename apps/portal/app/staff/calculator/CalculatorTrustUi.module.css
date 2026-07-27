@@ -383,7 +383,7 @@
 @container (max-width: 1119px) {
   .commandBar {
     position: sticky;
-    top: 0;
+    top: var(--calculator-sticky-top, 0px);
     flex-wrap: wrap;
   }
 

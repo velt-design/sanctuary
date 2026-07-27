@@ -24,6 +24,7 @@ type FieldTileProps = {
   options?: FieldOption[];
   disabled?: boolean;
   helperText?: string;
+  helperPart?: 'helper' | 'resolved';
   error?: string;
   onAction?: () => void;
   actionLabel?: string;
@@ -46,6 +47,7 @@ export default function FieldTile({
   options,
   disabled,
   helperText,
+  helperPart = 'helper',
   error,
   onAction,
   actionLabel,
@@ -55,7 +57,7 @@ export default function FieldTile({
   step,
   appearance = 'default',
 }: FieldTileProps) {
-  const helperId = helperText ? `${id}-help` : undefined;
+  const helperId = helperText && !error ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
   const isChecked = value === true;
@@ -153,7 +155,7 @@ export default function FieldTile({
           {error}
         </div>
       ) : helperText ? (
-        <div id={helperId} className={styles.helper} data-field-part="helper">
+        <div id={helperId} className={styles.helper} data-field-part={helperPart}>
           {helperText}
         </div>
       ) : null}

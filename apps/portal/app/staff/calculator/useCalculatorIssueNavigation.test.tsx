@@ -14,10 +14,15 @@ function navigation(): IssueNavigation {
   return latest;
 }
 
-function Probe() {
+function Probe({ revealAdvanced = false }: { revealAdvanced?: boolean }) {
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
-  latest = useCalculatorIssueNavigation({ activeModuleIndex, setActiveModuleIndex });
-  return <div data-active-module={activeModuleIndex} />;
+  const [advancedVisible, setAdvancedVisible] = useState(false);
+  latest = useCalculatorIssueNavigation({
+    activeModuleIndex,
+    setActiveModuleIndex,
+    onRevealAdvancedSection: revealAdvanced ? () => setAdvancedVisible(true) : undefined,
+  });
+  return <div data-active-module={activeModuleIndex} data-advanced-visible={advancedVisible} />;
 }
 
 afterEach(() => {
@@ -39,10 +44,19 @@ describe('useCalculatorIssueNavigation', () => {
   });
 
   it('changes module, closes the dialog, then scrolls and focuses the issue field', () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      nextFrame += 1;
+      callbacks.set(nextFrame, callback);
+      return nextFrame;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frame) => {
+      callbacks.delete(frame);
+    });
     const rendered = renderIntoDocument(<Probe />);
     const input = document.createElement('input');
     input.id = 'projectionM';
-    input.scrollIntoView = vi.fn();
     const focus = vi.spyOn(input, 'focus');
     document.body.appendChild(input);
     const issue: CalculatorIssue = {
@@ -59,9 +73,63 @@ describe('useCalculatorIssueNavigation', () => {
 
     expect(rendered.container.querySelector('[data-active-module]')?.getAttribute('data-active-module')).toBe('1');
     expect(navigation().issuesOpen).toBe(false);
-    expect(input.scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+    expect(focus).not.toHaveBeenCalled();
+
+    act(() => callbacks.get(1)?.(0));
+    expect(focus).not.toHaveBeenCalled();
+    act(() => callbacks.get(2)?.(0));
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 
     rendered.unmount();
+  });
+
+  it('reveals Advanced mode before navigating to an Advanced-only issue target', () => {
+    const rendered = renderIntoDocument(<Probe revealAdvanced />);
+
+    act(() => navigation().selectIssue({
+      moduleIndex: 0,
+      moduleLabel: 'Module 1',
+      fieldId: 'flashings',
+      sectionId: 'flashings',
+      label: 'Flashings',
+      message: 'Enter a flashing length of 0 or more.',
+    }));
+
+    expect(
+      rendered.container.querySelector('[data-active-module]')?.getAttribute('data-advanced-visible'),
+    ).toBe('true');
+
+    rendered.unmount();
+  });
+
+  it('cancels queued focus when the hook unmounts', () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      nextFrame += 1;
+      callbacks.set(nextFrame, callback);
+      return nextFrame;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((frame) => {
+      callbacks.delete(frame);
+    });
+    const rendered = renderIntoDocument(<Probe />);
+    const input = document.createElement('input');
+    input.id = 'lengthM';
+    const focus = vi.spyOn(input, 'focus');
+    document.body.appendChild(input);
+
+    act(() => navigation().selectIssue({
+      moduleIndex: 0,
+      moduleLabel: 'Module 1',
+      fieldId: input.id,
+      sectionId: 'structure',
+      label: 'Roof Length (m)',
+      message: 'Required',
+    }));
+    rendered.unmount();
+    callbacks.forEach((callback) => callback(0));
+
+    expect(focus).not.toHaveBeenCalled();
   });
 });

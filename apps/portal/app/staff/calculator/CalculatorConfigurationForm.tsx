@@ -9,6 +9,7 @@ import styles from './CalculatorConfigurationForm.module.css';
 type CalculatorConfigurationFormProps = {
   fields: readonly CalculatorConfigurationField[];
   isAdvancedUi: boolean;
+  isEmbedded?: boolean;
 };
 
 const layoutClassNames: Record<CalculatorConfigurationFieldLayout, string> = {
@@ -20,6 +21,7 @@ const layoutClassNames: Record<CalculatorConfigurationFieldLayout, string> = {
 export default function CalculatorConfigurationForm({
   fields,
   isAdvancedUi,
+  isEmbedded = false,
 }: CalculatorConfigurationFormProps) {
   const sections = buildCalculatorConfigurationSections(fields, isAdvancedUi);
   const surfaces = sections.reduce<
@@ -72,6 +74,8 @@ export default function CalculatorConfigurationForm({
               disabled={field.disabled}
               min={field.min}
               max={field.max}
+              helperText={field.error ? undefined : field.resolvedDefaultText}
+              helperPart="resolved"
               error={field.error}
               onAction={field.onAction}
               actionLabel={field.actionLabel}
@@ -83,7 +87,11 @@ export default function CalculatorConfigurationForm({
   );
 
   return (
-    <div className={styles.form} data-calculator-configuration-form>
+    <div
+      className={styles.form}
+      data-calculator-configuration-form
+      data-calculator-presentation={isEmbedded ? 'embedded' : 'standalone'}
+    >
       {surfaces.map((surface) =>
         surface.type === 'card' ? (
           renderSection(surface.section, 'card')

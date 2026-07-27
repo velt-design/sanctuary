@@ -18,6 +18,7 @@ describe('CalculatorJobTemplatePicker', () => {
     const onApply = vi.fn();
     renderIntoDocument(<CalculatorJobTemplatePicker onApply={onApply} />);
 
+    expect(document.querySelector('[data-calculator-job-template-picker]')).not.toBeNull();
     const select = document.querySelector('select[aria-label="Common job template"]') as HTMLSelectElement;
     act(() => {
       select.value = 'attached_gable_acrylic';

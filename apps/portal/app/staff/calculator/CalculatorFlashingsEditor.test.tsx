@@ -81,4 +81,22 @@ describe('CalculatorFlashingsEditor', () => {
 
     expect(document.activeElement?.id).toBe('flashing-row-length-extra-2');
   });
+
+  it('exposes an invalid row to Issue Jump and its field-level error', () => {
+    const invalidPrimary = { ...primaryRow, lengthM: '-1' };
+    renderIntoDocument(
+      <CalculatorFlashingsEditor
+        state={{ rows: [invalidPrimary] }}
+        primaryRow={invalidPrimary}
+        onAddRow={() => 'extra-2'}
+        onUpdateRow={() => undefined}
+        onRemoveRow={() => undefined}
+      />,
+    );
+
+    const length = document.querySelector('#flashing-row-length-primary');
+    expect(length?.getAttribute('aria-invalid')).toBe('true');
+    expect(length?.getAttribute('aria-describedby')).toBe('flashings-error');
+    expect(document.body.textContent).toContain('Enter a length of 0 or more.');
+  });
 });

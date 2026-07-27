@@ -376,7 +376,11 @@ export default function CalculatorGridClient({
     openIssues,
     closeIssues,
     selectIssue,
-  } = useCalculatorIssueNavigation({ activeModuleIndex, setActiveModuleIndex });
+  } = useCalculatorIssueNavigation({
+    activeModuleIndex,
+    setActiveModuleIndex,
+    onRevealAdvancedSection: () => setUiMode('advanced'),
+  });
 
   const {
     infillsOpen,
@@ -410,7 +414,7 @@ export default function CalculatorGridClient({
     moduleViewsStatus, moduleViewsStatusDetail, impactDiff, resetImpactBaseline,
     derivedArea, derivedRoofArea, derivedPitchUsed, derivedAcrylicArea, derivedTimberArea,
     derivedAcrylicBaysTotal, derivedSlopeLength, derivedBoxPitch, derivedBoxRiseMm, derivedBoxMaxFallMm,
-    hasOurGutterUi,
+    hasOurGutterUi, resolvedDefaults,
     bracketCount, rafterProfile, crewHours, materialsEx, installEx, overheadEx, totalEx, totalInc,
     blindsUi, pricingPreview, pricingComparison, engineWarningsRaw, roofingProcurementSummary,
     rafterCountTotal, rafterHelperText, materialsBreakdown, labourBreakdown, saveDialogSummary,
@@ -778,6 +782,7 @@ export default function CalculatorGridClient({
       activeModuleIndex,
       activePergolaId,
       errors,
+      resolvedDefaults,
       flashingTileContent,
       setValues,
       setModuleField,
@@ -788,6 +793,7 @@ export default function CalculatorGridClient({
       activeDrawingRotationQuarterTurns,
       values,
       errors,
+      resolvedDefaults,
       derivedBoxPitch,
       derivedBoxRiseMm,
       derivedBoxMaxFallMm,

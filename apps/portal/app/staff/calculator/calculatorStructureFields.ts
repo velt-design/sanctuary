@@ -2,6 +2,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
+import type { CalculatorResolvedDefaultTexts } from './calculatorResolvedDefaults';
 import {
   BOX_BEAM_PROFILE_OPTIONS,
   FRONT_BEAM_PROFILE_OPTIONS,
@@ -43,6 +44,7 @@ export type CalculatorStructureFieldBuilderInput = {
   activeModuleIndex: number;
   activePergolaId: string;
   errors: Partial<Record<keyof CalculatorModuleInputs, string>>;
+  resolvedDefaults: CalculatorResolvedDefaultTexts;
   flashingTileContent: ReactNode;
   setValues: Dispatch<SetStateAction<CalculatorInputs>>;
   setModuleField: CalculatorModuleFieldSetter;
@@ -59,6 +61,7 @@ export function buildCalculatorStructureFields({
   activeModuleIndex,
   activePergolaId,
   errors,
+  resolvedDefaults,
   flashingTileContent,
   setValues,
   setModuleField,
@@ -416,6 +419,7 @@ export function buildCalculatorStructureFields({
       value: activeModule.roofPitchDeg,
       onChange: (v) => setModuleField('roofPitchDeg', String(v)),
       error: errors.roofPitchDeg,
+      resolvedDefaultText: resolvedDefaults.roofPitchDeg,
       helperText: activeModule.boxPerimeterEnabled
         ? 'Auto-computed for box perimeter'
         : activeModule.roofPitchDeg.trim()

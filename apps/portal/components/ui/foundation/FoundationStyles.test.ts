@@ -33,8 +33,12 @@ describe('foundation style guardrails', () => {
   });
 
   it('keeps shell dimensions, safe areas, touch targets, and motion rules aligned', () => {
+    const globals = read('apps/portal/app/globals.css');
     const tokens = read('apps/portal/components/ui/foundation/foundation.tokens.css');
     const shell = read('apps/portal/components/layout/PortalShell.module.css');
+    const projectPage = read('apps/portal/components/projects/ProjectPage/ProjectPage.module.css');
+    const calculatorGrid = read('apps/portal/app/staff/calculator/CalculatorGrid.module.css');
+    const calculatorTrust = read('apps/portal/app/staff/calculator/CalculatorTrustUi.module.css');
     const rail = read('apps/portal/components/navigation/SidebarRail.module.css');
     const panel = read('apps/portal/components/navigation/PortalSidebarPanel.module.css');
     const drawer = read('apps/portal/components/ui/drawer/Drawer.module.css');
@@ -43,6 +47,18 @@ describe('foundation style guardrails', () => {
     expect(tokens).toContain(`--ui-sidebar-collapsed: ${SIDEBAR_RAIL_WIDTH_PX}px`);
     expect(shell).toMatch(/height:\s*calc\(var\(--ui-mobile-bar,[^)]+\) \+ env\(safe-area-inset-top\)\)/);
     expect(shell).toMatch(/padding-top:\s*calc\(var\(--ui-mobile-bar,[^)]+\) \+ env\(safe-area-inset-top\)\)/);
+    expect(globals).toMatch(/max-width:\s*960px[\s\S]*?overflow-x:\s*clip\s*!important/);
+    expect(globals).not.toMatch(/max-width:\s*960px[\s\S]*?overflow-x:\s*hidden\s*!important/);
+    expect(shell).toContain('--portal-sticky-content-top: 0px');
+    expect(shell).toMatch(/--portal-sticky-content-top:\s*calc\(var\(--ui-mobile-bar,[^)]+\) \+ env\(safe-area-inset-top\)\)/);
+    expect(projectPage).toContain('--project-page-sticky-masthead-height: var(--project-page-masthead-height, 0px)');
+    expect(projectPage).toMatch(/\.pageFrameMastheadSlotSticky\s*\{[\s\S]*?top:\s*var\(--portal-sticky-content-top,\s*0px\)/);
+    expect(projectPage).toMatch(/max-width:\s*767px[\s\S]*?--project-page-sticky-masthead-height:\s*0px/);
+    expect(calculatorGrid).toContain('--calculator-sticky-top: 0px');
+    expect(calculatorGrid).toMatch(
+      /max-width:\s*1119px[\s\S]*?\.embeddedPage\s*\{[\s\S]*?var\(--project-page-sticky-masthead-height,\s*0px\)/,
+    );
+    expect(calculatorTrust).toMatch(/position:\s*sticky;\s*top:\s*var\(--calculator-sticky-top,\s*0px\)/);
     expect(drawer).toContain('padding-top: env(safe-area-inset-top)');
     expect(panel).toMatch(/drawer[\s\S]*?\.childRow\s*\{\s*min-height:\s*44px/);
     expect(rail).toMatch(/max-width:\s*899px[\s\S]*?\.rail\s*\{\s*display:\s*none/);

@@ -149,7 +149,7 @@
   min-width: 0;
 }
 
-@container calculator-page (max-width: 1119px) {
+@container calculator-page (max-width: 1079px) {
   .stickyHeader {
     position: static;
   }
@@ -157,7 +157,7 @@
 
 @container calculator-preview-rail (min-width: 760px) {
   .trustedWorking {
-    grid-template-columns: minmax(320px, 0.9fr) minmax(380px, 1.1fr);
+    grid-template-columns: minmax(380px, 1.1fr) minmax(320px, 0.9fr);
     align-items: start;
   }
 }
@@ -176,6 +176,7 @@
     display: flex;
     max-width: 100%;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
     scrollbar-width: thin;
   }
 

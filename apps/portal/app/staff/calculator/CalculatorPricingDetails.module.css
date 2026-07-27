@@ -1,0 +1,147 @@
+.details {
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-primary);
+}
+
+.customerContext {
+  padding: 13px 14px;
+}
+
+.customerContext h2,
+.customerContext p,
+.beforeDiscount,
+.internalGrid {
+  margin: 0;
+}
+
+.customerContext h2 {
+  color: var(--ui-text-strong);
+  font-size: 13px;
+}
+
+.customerContext p {
+  margin-top: 5px;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.beforeDiscount {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.beforeDiscount dt {
+  min-width: 0;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.beforeDiscount dd {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.customerContext .unpriced {
+  margin-top: 10px;
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  border-radius: var(--ui-radius-control);
+  padding: 8px 10px;
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text);
+}
+
+.internalSection {
+  padding: 13px 14px;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.internalSection:first-child {
+  border-top: 0;
+}
+
+.internalSection summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.internalSection summary::-webkit-details-marker {
+  display: none;
+}
+
+.internalSection summary::after {
+  content: '\203A';
+  flex: 0 0 auto;
+  color: var(--ui-text-muted);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+}
+
+.internalSection[open] summary::after {
+  transform: rotate(90deg);
+}
+
+.internalSection summary:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.internalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 18px;
+  margin-top: 10px;
+}
+
+.metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 0;
+  border-bottom: var(--ui-border-width) solid var(--ui-border);
+}
+
+.metric dt {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.metric dd {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@container calculator-preview-rail (max-width: 420px) {
+  .internalGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

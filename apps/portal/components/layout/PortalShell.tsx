@@ -157,7 +157,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
             {isSidebarCollapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
           </button>
         ) : null}
-        <header className={styles.mobileTopBar}>
+        <header className={styles.mobileTopBar} data-portal-mobile-top-bar>
           <strong>Sanctuary</strong>
           <button type="button" aria-label="Open portal navigation" aria-expanded={isMobileNavOpen} onClick={() => setIsMobileNavOpen(true)}>
             <Menu aria-hidden="true" />

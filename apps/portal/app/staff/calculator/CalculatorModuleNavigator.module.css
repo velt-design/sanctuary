@@ -365,7 +365,7 @@
   outline-offset: 2px;
 }
 
-@container (max-width: 1119px) {
+@container (max-width: 1079px) {
   .desktopRail {
     display: none;
   }

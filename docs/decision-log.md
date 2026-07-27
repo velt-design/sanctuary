@@ -26,6 +26,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-27 | Calculator Rafter Explainability | Promoted | A trusted drawing label and written working must consume the same package-owned result facts. Remove app-local formula lookalikes when their deductions, sides, allowances, or rounding differ from the engine. |
 | 2026-07-27 | Calculator Trusted Breakdowns     | Promoted | Build everyday material/labour explanations from the exact package-owned BOM lines and install actions. Preserve source IDs for traceability but use separate instance IDs because valid BOM rows can repeat a source ID. |
 | 2026-07-27 | Calculator Quote Reconciliation   | Promoted | Validate Live pricing, repriced persistence, and saved-estimate quote mapping as one exact-cent chain. Compare commercial inclusions without requiring unrelated UI row ordering, and fail closed on a repriced mismatch. |
+| 2026-07-27 | Calculator Responsive Ownership   | Promoted | Reflow composite controls from their own container, place sticky chrome against the actual scroll owner, and reveal hidden Advanced sections plus the invalid descendant before completing Issue Jump. |
+| 2026-07-27 | Calculator Automatic Defaults     | Promoted | Explain automatic pitch and downpipes from the selected authoritative result without rewriting raw inputs or duplicating costing rules; keep retained-result and validation states explicit. |
+| 2026-07-27 | Calculator Result Hierarchy       | Promoted | Let the Workspace own result-task state and explicit cross-layout navigation. Show one rounded lead price per layout, reset only the independent result rail on task changes, preserve exact-cent detail, and put the written result before its diagram. |
 | 2026-07-27 | Calculator Add Actions           | Active   | Wrap zero-argument UI actions before binding functions that accept optional data; otherwise React can pass a DOM event into serializable calculator state. Assert that the callback receives no arguments. |
 | 2026-07-26 | Marketing Homepage Interaction   | Promoted | Keep one visible first-question introduction, make its hero fragment reveal an actionable choice at narrow and zoomed viewports, route semantic keyboard selection through the same consent-aware activation path, and test selected/inverse focus plus selected hover colours rather than CSS-property presence alone. |
 | 2026-07-26 | Marketing Homepage Promotion     | Promoted | Promote an approved experiment by moving it into one production owner, transferring canonical SEO, proof, service, process, enquiry and analytics responsibilities, and retiring the parallel implementation. Redirect comparison URLs to `/`; do not retain hidden duplicate homepages. |
@@ -3682,3 +3685,36 @@ Why it mattered: Staff need evidence that the displayed total survives Save and 
 Current guardrail: Run representative inputs through actual costing, Live preview, repriced estimate persistence, and saved-estimate quote mapping. Compare the complete priced inclusion multiset and exact-cent total, not presentation order. Show an exact match after Reprice and disable Create quote on an unexpected mismatch; Preserve remains explicitly tied to its stored costing basis.
 Promoted to: `docs/calculator-trust-and-explainability-goal.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/quotes-invoices-job-packs.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/app/staff/calculator/calculatorTrustValidation.test.ts`; `apps/portal/app/staff/calculator/calculatorSaveOutcome.test.ts`; `playwright/portal.calculator.spec.ts`
+
+### 2026-07-27 - Calculator Responsive Ownership - Measure The Container And Scroll Owner
+
+Date: 2026-07-27
+Area: Calculator configuration containment, sticky chrome, and issue routing
+Status: Promoted
+Decision or mistake: Template and Flashings controls reflowed from viewport breakpoints even when the split configuration pane was much narrower, while sticky offsets assumed viewport scrolling. Mobile `overflow-x: hidden` on `html/body` also computed into an unintended vertical scroll container and disabled the expected sticky chain.
+Why it mattered: Controls could be clipped while the document itself reported no overflow; Save could scroll under fixed chrome; and Issue Jump could focus a field outside the usable viewport.
+Current guardrail: Reflow composite controls from their own container width. Discover the nearest real vertical scroll owner at runtime. Apply external portal/project offsets only when the embedded Calculator participates in document scrolling; use local `top: 0` inside Calculator-owned scrollports. Use document `overflow-x: clip` for horizontal containment. Issue Jump must reveal an Advanced-only section before locating its target and prefer the invalid descendant inside composite fields. Verify full rects plus centre hit ownership after deep scrolling.
+Promoted to: `docs/projects-contacts-estimates-calculator.md`; `docs/calculator-ui-ux-refinement-plan.md`
+Related docs/tests: `apps/portal/app/staff/calculator/CalculatorJobTemplates.module.css`; `apps/portal/app/staff/calculator/CalculatorGrid.module.css`; `apps/portal/app/staff/calculator/calculatorViewportNavigation.ts`; `playwright/portal.calculator-foundation-ui.spec.ts`; `playwright/portal.calculator.spec.ts`
+
+### 2026-07-27 - Calculator Automatic Defaults - Present The Authoritative Resolution
+
+Date: 2026-07-27
+Area: Calculator automatic pitch and downpipe inputs
+Status: Promoted
+Decision or mistake: The form displayed raw blank pitch and downpipe `0`, while costing legitimately resolved those automatic values to concrete normalized output and the routine helper copy was suppressed.
+Why it mattered: Staff could read the entered and costed values as contradictory, and recreating the default rule in the portal would introduce a second costing source of truth.
+Current guardrail: Keep raw automatic inputs unchanged. Add presentation-only cues from the selected `CostOutputV1` result, label current versus retained freshness explicitly, make no numeric claim before a valid result, suppress cues for explicit inputs/no-gutter downpipes, and let validation errors replace the cue in `aria-describedby`.
+Promoted to: `docs/projects-contacts-estimates-calculator.md`; `docs/calculator-trust-and-explainability-goal.md`
+Related docs/tests: `apps/portal/app/staff/calculator/calculatorResolvedDefaults.ts`; `apps/portal/app/staff/calculator/useCalculatorResultPresentation.ts`; `apps/portal/app/staff/calculator/CalculatorConfigurationForm.tsx`; `playwright/portal.calculator.spec.ts`
+
+### 2026-07-27 - Calculator Result Hierarchy - One Lead Answer, Owned Navigation
+
+Date: 2026-07-27
+Area: Calculator stacked task order, Result Inspector navigation, pricing precision, and Workings order
+Status: Promoted
+Decision or mistake: The stacked Calculator made staff pass the whole form before finding results, repeated a rounded price hero inside Pricing, kept tab state inside the Inspector, and presented the diagram before the written answer.
+Why it mattered: Result discovery depended on layout knowledge; switching desktop tasks could reopen at an arbitrary deep scroll position; repeated rounded totals competed with exact-cent commercial detail; and Workings led with evidence before its conclusion.
+Current guardrail: `CalculatorWorkspaceView` owns the active result task, result rail, and explicit stacked result/back focus routes. Show exactly one rounded customer summary per layout and preserve exact cents in Pricing detail, Save review, and quote handoff. A genuine tab change resets only an independent result rail; ordinary stacked tab changes do not move the page. Present the authoritative result and written working before its diagram.
+Promoted to: `docs/calculator-ui-ux-refinement-plan.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/calculator-trust-and-explainability-goal.md`; `docs/testing-and-qa.md`
+Related docs/tests: `apps/portal/app/staff/calculator/CalculatorWorkspaceView.tsx`; `apps/portal/app/staff/calculator/CalculatorResultInspector.tsx`; `apps/portal/app/staff/calculator/CalculatorPricingSummary.tsx`; `apps/portal/app/staff/calculator/CalculatorPricingDetails.tsx`; `playwright/portal.calculator.spec.ts`

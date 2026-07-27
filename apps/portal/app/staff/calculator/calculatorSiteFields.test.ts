@@ -23,6 +23,7 @@ function buildFields(moduleOverrides: Partial<CalculatorModuleInputs> = {}, hasO
     activeDrawingRotationQuarterTurns: 0,
     values,
     errors: {},
+    resolvedDefaults: { downpipeCount: 'Auto - current result uses 1 downpipe' },
     derivedBoxPitch: 3.25,
     derivedBoxRiseMm: 124.4,
     derivedBoxMaxFallMm: 200,
@@ -44,6 +45,10 @@ describe('calculator site fields', () => {
     expect(ids.indexOf('postConnectionType')).toBeLessThan(ids.indexOf('access'));
     expect(ids.indexOf('jobType')).toBeLessThan(ids.indexOf('downpipeCount'));
     expect(fieldById(fields, 'attachmentSide').value).toBe('rear');
+    expect(fieldById(fields, 'downpipeCount')).toMatchObject({
+      value: '0',
+      resolvedDefaultText: 'Auto - current result uses 1 downpipe',
+    });
   });
 
   it('omits footprint controls when the module is freestanding', () => {

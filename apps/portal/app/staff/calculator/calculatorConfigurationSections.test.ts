@@ -4,6 +4,7 @@ import {
   CALCULATOR_CONFIGURATION_SECTIONS,
   buildCalculatorConfigurationSections,
   calculatorConfigurationFieldLayout,
+  calculatorConfigurationSectionRequiresAdvancedUi,
   type CalculatorConfigurationField,
 } from './calculatorConfigurationSections';
 
@@ -72,5 +73,12 @@ describe('calculator configuration sections', () => {
     expect(calculatorConfigurationFieldLayout('flashings')).toBe('full');
     expect(calculatorConfigurationFieldLayout('blindsList')).toBe('full');
     expect(calculatorConfigurationFieldLayout('infillsEditor')).toBe('full');
+  });
+
+  it('identifies sections that Issue Jump must reveal in Advanced mode', () => {
+    expect(calculatorConfigurationSectionRequiresAdvancedUi('structure')).toBe(false);
+    expect(calculatorConfigurationSectionRequiresAdvancedUi('flashings')).toBe(true);
+    expect(calculatorConfigurationSectionRequiresAdvancedUi('overrides')).toBe(true);
+    expect(calculatorConfigurationSectionRequiresAdvancedUi(null)).toBe(false);
   });
 });

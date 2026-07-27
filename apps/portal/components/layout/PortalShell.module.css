@@ -11,6 +11,8 @@
 
 .content,
 .contentStandalone {
+  --portal-sticky-content-top: 0px;
+
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -120,6 +122,8 @@
   }
 
   .content {
+    --portal-sticky-content-top: calc(var(--ui-mobile-bar, 56px) + env(safe-area-inset-top));
+
     padding-top: calc(var(--ui-mobile-bar, 56px) + env(safe-area-inset-top));
     padding-left: 0;
   }

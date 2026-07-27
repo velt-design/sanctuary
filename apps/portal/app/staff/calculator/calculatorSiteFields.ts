@@ -12,6 +12,7 @@ import {
 } from '@/lib/types/calculator';
 import type { CalculatorConfigurationField as FieldSchemaItem } from './calculatorConfigurationSections';
 import { DP_ELBOW_OPTIONS, DP_JOIN_OPTIONS } from './calculatorConfigurationFieldOptions';
+import type { CalculatorResolvedDefaultTexts } from './calculatorResolvedDefaults';
 
 type CalculatorModuleFieldSetter = <K extends keyof CalculatorModuleInputs>(
   key: K,
@@ -33,6 +34,7 @@ export type CalculatorSiteFieldBuilderInput = {
   activeDrawingRotationQuarterTurns: number;
   values: CalculatorInputs;
   errors: Partial<Record<keyof CalculatorModuleInputs, string>>;
+  resolvedDefaults: CalculatorResolvedDefaultTexts;
   derivedBoxPitch: number | undefined;
   derivedBoxRiseMm: number | undefined;
   derivedBoxMaxFallMm: number | undefined;
@@ -47,6 +49,7 @@ export function buildCalculatorSiteFields({
   activeDrawingRotationQuarterTurns,
   values,
   errors,
+  resolvedDefaults,
   derivedBoxPitch,
   derivedBoxRiseMm,
   derivedBoxMaxFallMm,
@@ -332,6 +335,7 @@ export function buildCalculatorSiteFields({
       value: activeModule.downpipeCount,
       onChange: (v: string | boolean) => setModuleField('downpipeCount', String(v)),
       error: errors.downpipeCount,
+      resolvedDefaultText: resolvedDefaults.downpipeCount,
       helperText: activeModule.boxPerimeterEnabled
         ? 'Default 1 when any "our" gutter edge is set'
         : 'Default 1 when any "our" gutter is used',

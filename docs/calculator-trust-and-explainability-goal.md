@@ -116,11 +116,12 @@ The first phase is implemented:
 
 - the right column is a keyboard-accessible Result Inspector with Pricing, Materials, Labour, Workings, and Issues tabs;
 - existing price, BOM, labour, structure, warning, quote-status, drawing, impact, and actual-cost surfaces are routed into their appropriate tab without changing their source data;
-- the inspector keeps a compact customer price, result freshness, input-issue count, and quote readiness above the tabs;
+- the workspace keeps exactly one compact rounded customer summary: in the Inspector header for split layouts and before configuration for stacked layouts;
 - inactive panels remain mounted so tab changes do not discard local disclosure, drawing, debug, or actual-cost state;
 - Materials and Labour are explicitly labelled as whole-job output, while Workings follows the selected module;
 - existing admin and Advanced-mode disclosure boundaries remain unchanged;
-- the tab strip scrolls at narrow preview widths, while stacked calculator layouts retain their existing page-owned scrolling.
+- the Workspace controls the active tab, resets only the independent desktop result rail on a genuine task change, and leaves ordinary stacked tab changes to the existing page-owned scrolling;
+- explicit stacked result shortcuts reveal and focus Pricing or Issues, and `Back to configuration` restores the last focused editable control.
 
 ### 2. Build One Trusted Working End To End - Complete
 
@@ -129,7 +130,7 @@ The rafter cut-length reference implementation is complete:
 - `@sp/costing` publishes a versioned explanation contract beside the existing takeoff result, containing the normalized span, engine-selected pitch, profile, plane-specific deductions, effective projected run, sloped length, angle-cut allowance, final cut, formula, assumptions, source, and display-rounding rule;
 - pitched, gable, low-gable, and hip common rafters are supported, including separate house/outer gable results and box-perimeter pitch selection;
 - invalid effective runs and hip-corner modules fail closed rather than presenting inferred workings; hip corners remain deferred until a two-wing Section explanation exists;
-- the Workings tab presents the selected module's authoritative input-to-result chain and labels retained last-valid inputs explicitly;
+- the Workings tab presents the selected module's authoritative input-to-result chain before its Plan/Section views and labels retained last-valid inputs explicitly;
 - the Section diagram and written workings consume the same contract values, while input-fallback and old results are labelled as schematic or unavailable;
 - the former portal-only rafter-length estimate, whose deductions and angle allowance differed from the engine takeoff, has been removed;
 - package, integration, component, and authenticated browser tests prove plane-value parity, module switching, current/retained state, keyboard-accessible regions, and responsive layouts.
@@ -155,6 +156,9 @@ Further Workings calculations remain deferred until prioritised from staff feedb
 - A focused integration matrix runs representative simple and complex inputs through the real costing engine, Live Calculator pricing, repriced estimate payload, optimistic saved snapshot, and proposed quote mapping. It proves the same priced inclusions and exact-cent total without requiring Calculator and quote rows to share presentation order.
 - Repriced save outcomes now compare the Live Calculator total with the saved estimate's proposed quote total. An exact match is explicit; an unexpected mismatch blocks the Create quote action. Preserve remains explicit that the saved stored-cost basis may intentionally differ from Live.
 - Authenticated Playwright covers the exact-cent save/handoff match, selected-module workings, retained/current transitions, validation issue routing, keyboard tab behavior, and responsive layouts. Focused component tests retain the staff/admin monetary gates.
+- Automatic pitch and downpipe inputs now explain the authoritative value used by the current or retained result without rewriting the raw input or duplicating a costing rule.
+- Issue Jump now completes module and Basic/Advanced disclosure changes before revealing and focusing the invalid control within the active scroll owner.
+- Result-hierarchy refinement now provides one rounded lead price per layout, explicit stacked result/back routing, predictable desktop Inspector starts, exact-cent Pricing detail, and a result-first Workings order. Authenticated acceptance passed across both registered scenarios at 1600px, 1366px, 1024px, 768px, and 390px without changing costing, freshness, Save, permissions, or exact-cent quote handoff.
 - The two staff-review scenarios and checklist below are ready for a real session. No staff feedback has been recorded or inferred yet.
 - A user being unable to explain a result remains a product defect even when the arithmetic is correct.
 
@@ -214,6 +218,8 @@ For Design Workbench Gate 0 purposes, the expected legacy audit mapping is `N/A`
 Related current-state references:
 
 - `docs/projects-contacts-estimates-calculator.md`
+- `docs/calculator-ui-ux-review.md`
+- `docs/calculator-ui-ux-refinement-plan.md`
 - `docs/costing-and-geometry.md`
 - `docs/design-workbench-architecture.md`
 - `docs/quotes-invoices-job-packs.md`

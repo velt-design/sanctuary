@@ -2,6 +2,7 @@
   --page-pad: 8px;
   --tile-min-width: 240px;
   --tile-min-height: 100px;
+  --calculator-sticky-top: 0px;
 
   padding: var(--page-pad);
   min-height: 100vh;
@@ -35,6 +36,11 @@
 
 @media (max-width: 1119px) {
   .embeddedPage {
+    --calculator-sticky-top: calc(
+      var(--portal-sticky-content-top, 0px)
+      + var(--project-page-sticky-masthead-height, 0px)
+    );
+
     height: auto;
     min-height: 0;
     overflow: visible;
@@ -43,7 +49,7 @@
 
 @media (max-width: 1119px) {
   .previewPage {
-    scroll-padding-top: 180px;
+    scroll-padding-top: calc(var(--calculator-sticky-top, 0px) + 180px);
   }
 
   .previewPage :is(
@@ -52,7 +58,7 @@
       [data-pricing-summary-variant],
       [data-calculator-module-launcher]
     ) {
-    scroll-margin-top: 180px;
+    scroll-margin-top: calc(var(--calculator-sticky-top, 0px) + 180px);
   }
 }
 
@@ -2205,6 +2211,8 @@
   display: grid;
   gap: 10px;
   align-content: start;
+  min-width: 0;
+  container: calculator-flashings / inline-size;
 }
 
 .flashingsHeader {
@@ -2214,6 +2222,7 @@
 }
 
 .flashingsTable {
+  min-width: 0;
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-control);
   background: var(--ui-surface-primary);
@@ -2484,10 +2493,13 @@
     grid-template-columns: minmax(140px, 1fr) 52px minmax(100px, 0.9fr) minmax(120px, 1fr);
   }
 
+}
+
+@container calculator-flashings (max-width: 700px) {
   .flashingsGridHeader,
   .flashingsRow,
   .flashingsRowPrimary {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 6px;
   }
 
@@ -4852,7 +4864,7 @@
   margin-bottom: 10px;
 }
 
-@container (max-width: 1119px) {
+@container (max-width: 1079px) {
   .previewFrame {
     height: auto;
     overflow: visible;

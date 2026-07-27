@@ -12,6 +12,7 @@ import type {
 } from '@/lib/types/calculator';
 import { buildCalculatorBlindsUi } from './calculatorBlindUi';
 import { buildCalculatorPricingComparison } from './calculatorPricingComparison';
+import { buildCalculatorResolvedDefaults } from './calculatorResolvedDefaults';
 import { useCalculatorPricingPreview } from './calculatorPricingPreview';
 import type { CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
 import type { CalculatorResultFreshness } from './calculatorResultFreshness';
@@ -187,6 +188,16 @@ export function useCalculatorResultPresentation({
   const hasOurGutterUi = typeof derivedHasOurGutter === 'boolean'
     ? derivedHasOurGutter
     : computeHasOurGutter(activeModule);
+  const resolvedDefaults = useMemo(
+    () =>
+      buildCalculatorResolvedDefaults({
+        activeModule,
+        moduleResult,
+        hasOurGutter: hasOurGutterUi,
+        resultFreshness,
+      }),
+    [activeModule, hasOurGutterUi, moduleResult, resultFreshness],
+  );
   const crewDays = typeof siteDays === 'number' ? siteDays : undefined;
 
   const materialsEx = result?.materials.totals.materials_ex_gst;
@@ -347,6 +358,7 @@ export function useCalculatorResultPresentation({
     derivedBoxRiseMm,
     derivedBoxMaxFallMm,
     hasOurGutterUi,
+    resolvedDefaults,
     roofType,
     rafterCount,
     hipRafterCount,

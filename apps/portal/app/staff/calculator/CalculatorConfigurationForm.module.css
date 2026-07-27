@@ -107,6 +107,7 @@
 }
 
 .form :global([data-field-tile-appearance='configuration'] [data-field-part='helper']),
+.form :global([data-field-tile-appearance='configuration'] [data-field-part='resolved']),
 .form :global([data-field-tile-appearance='configuration'] [data-field-part='error']) {
   overflow: visible;
   text-overflow: clip;
@@ -131,6 +132,19 @@
 
   .fieldSlotFull {
     grid-column: 1 / -1;
+  }
+}
+
+@container calculator-page (max-width: 1079px) {
+  .form[data-calculator-presentation='embedded']
+    .section[data-calculator-configuration-section='context'] {
+    display: none;
+  }
+
+  .form[data-calculator-presentation='embedded']
+    .section[data-calculator-configuration-section='context']
+    + .sectionQuiet {
+    border-top: 0;
   }
 }
 

@@ -54,6 +54,8 @@ These docs are current-state references and active guardrails for coding agents.
 | `ui-foundation.md` | Current | You are changing shared portal tokens, reusable UI primitives, page-header variants, status components, or `/staff/ui-foundation`. |
 | `projects-contacts-estimates-calculator.md` | Current | You are touching contacts, projects, project snapshots/tasks, calculator estimates, estimate locks, or local-first estimate mutations. |
 | `calculator-trust-and-explainability-goal.md` | Active product goal | You are planning or implementing the Calculator Result Inspector, breakdowns, workings, trust cues, or explainability improvements. |
+| `calculator-ui-ux-review.md` | Current evidence review | You need the observed Calculator usability, accessibility, hierarchy, density, language, or responsive findings. |
+| `calculator-ui-ux-refinement-plan.md` | Approval-gated implementation plan | You are planning or implementing the approved Calculator UI/UX refinement slices and regression matrix. |
 | `quotes-invoices-job-packs.md` | Current | You are touching quote, invoice, public-token, PDF/email, file-artifact, or job-pack side effects. |
 | `parallel-work-guardrails.md` | Active guardrail | You are working in parallel across apps, packages, shared flows, docs, or design workbench migration lanes. |
 | `costing-and-geometry.md` | Current | You are touching costing inputs/outputs, geometry semantics, or pricing/shape assumptions. |

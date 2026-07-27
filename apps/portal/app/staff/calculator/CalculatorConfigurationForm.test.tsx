@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -33,7 +35,15 @@ describe('CalculatorConfigurationForm', () => {
         value: 'invalid',
         min: 0,
         max: 80,
+        resolvedDefaultText: 'This must not be described while the error is active.',
         error: 'Enter a valid roof length between the supported limits.',
+      },
+      {
+        id: 'roofPitchDeg',
+        label: 'Roof pitch (deg)',
+        type: 'number',
+        value: '',
+        resolvedDefaultText: 'Auto - current result uses 5 deg',
       },
       { id: 'blindsList', label: 'Blinds', type: 'custom', content: <button type="button">Configure</button> },
       { id: 'infillsEditor', label: 'Infills', type: 'custom', content: <button type="button">Edit infills</button> },
@@ -42,6 +52,11 @@ describe('CalculatorConfigurationForm', () => {
 
     renderIntoDocument(<CalculatorConfigurationForm fields={fields} isAdvancedUi={false} />);
 
+    expect(
+      document
+        .querySelector('[data-calculator-configuration-form]')
+        ?.getAttribute('data-calculator-presentation'),
+    ).toBe('standalone');
     expect(document.querySelector('[data-calculator-configuration-section="context"]')?.getAttribute('data-section-density')).toBe('compact');
     expect(document.querySelector('#project-context')?.textContent).toBe('Agent Project');
     expect(document.querySelector('[data-calculator-configuration-section="connections-site"]')).not.toBeNull();
@@ -72,6 +87,15 @@ describe('CalculatorConfigurationForm', () => {
       'Enter a valid roof length between the supported limits.',
     );
     expect(document.querySelector('[data-field-part="helper"]')).toBeNull();
+    expect(document.querySelector('[data-field-part="resolved"]')?.textContent).toBe(
+      'Auto - current result uses 5 deg',
+    );
+    expect(document.querySelector('#roofPitchDeg')?.getAttribute('aria-describedby')).toBe(
+      'roofPitchDeg-help',
+    );
+    expect(document.body.textContent).not.toContain(
+      'This must not be described while the error is active.',
+    );
     expect(document.body.textContent).not.toContain('Choose how the pergola connects to the house.');
 
     const select = document.querySelector('#houseConnectionType') as HTMLSelectElement;
@@ -116,5 +140,44 @@ describe('CalculatorConfigurationForm', () => {
     expect(toggle).not.toBeNull();
     expect(toggle?.textContent).toBe('Off');
     expect(toggle?.closest('[data-calculator-configuration-sheet]')).not.toBeNull();
+  });
+
+  it('marks embedded presentation without removing the Context section from the form contract', () => {
+    renderIntoDocument(
+      <CalculatorConfigurationForm
+        fields={[
+          {
+            id: 'project-context',
+            label: 'Project',
+            type: 'readOnly',
+            value: 'Embedded Project',
+          },
+        ]}
+        isAdvancedUi={false}
+        isEmbedded
+      />,
+    );
+
+    expect(
+      document
+        .querySelector('[data-calculator-configuration-form]')
+        ?.getAttribute('data-calculator-presentation'),
+    ).toBe('embedded');
+    expect(document.querySelector('[data-calculator-configuration-section="context"]')).not.toBeNull();
+    expect(document.querySelector('#project-context')?.textContent).toBe('Embedded Project');
+  });
+
+  it('limits embedded Context suppression to the calculator-page stacked breakpoint', () => {
+    const css = readFileSync(
+      'apps/portal/app/staff/calculator/CalculatorConfigurationForm.module.css',
+      'utf8',
+    );
+
+    expect(css).toMatch(
+      /@container calculator-page \(max-width: 1079px\)\s*{\s*\.form\[data-calculator-presentation='embedded'\]\s*\.section\[data-calculator-configuration-section='context'\]\s*{\s*display: none;/,
+    );
+    expect(css).not.toMatch(
+      /@container calculator-page \(min-width:[^)]+\)[\s\S]*?data-calculator-configuration-section='context'/,
+    );
   });
 });

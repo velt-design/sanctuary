@@ -81,6 +81,10 @@ describe('useCalculatorResultPresentation', () => {
       canViewInternalCosts: true,
     });
     expect(presentation().pricingSummaryProps.onOpenIssues).toBe(openIssues);
+    expect(presentation().resolvedDefaults).toEqual({
+      roofPitchDeg: `Auto - current result uses ${result.pergolas[0].modules[0].derived.roof_pitch_deg_used} deg`,
+      downpipeCount: `Auto - current result uses ${result.pergolas[0].modules[0].inputs_normalized.downpipe_count} downpipe`,
+    });
     expect(presentation().structureOutputRows.find((row) => row.label === 'Area (m²)')?.value).not.toBe('—');
     expect(presentation().materialsBreakdown?.row_count).toBeGreaterThan(0);
     expect(presentation().labourBreakdown?.action_count).toBeGreaterThan(0);

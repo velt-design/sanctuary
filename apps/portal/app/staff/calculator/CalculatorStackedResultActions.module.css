@@ -1,0 +1,63 @@
+.summaryActions,
+.backAction {
+  display: none;
+}
+
+@container calculator-page (max-width: 1079px) {
+  .summaryActions {
+    display: grid;
+    gap: 10px;
+  }
+
+  .actionRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .backAction {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    min-height: 44px;
+    border: var(--ui-border-width) solid var(--ui-action);
+    border-radius: var(--ui-radius-control);
+    padding: 9px 14px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.2;
+    cursor: pointer;
+  }
+
+  .primaryAction {
+    background: var(--ui-action);
+    color: var(--ui-text-inverse);
+  }
+
+  .secondaryAction {
+    background: var(--ui-surface-primary);
+    color: var(--ui-action);
+  }
+
+  .primaryAction:hover,
+  .secondaryAction:hover {
+    filter: brightness(0.97);
+  }
+
+  .primaryAction:focus-visible,
+  .secondaryAction:focus-visible {
+    outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+    outline-offset: var(--ui-focus-ring-offset);
+  }
+}
+
+@container calculator-page (max-width: 419px) {
+  .actionRow > button {
+    flex: 1 1 140px;
+  }
+}

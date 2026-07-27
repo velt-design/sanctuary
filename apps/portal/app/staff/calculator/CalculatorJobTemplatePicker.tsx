@@ -17,7 +17,11 @@ export default function CalculatorJobTemplatePicker({
     ?? CALCULATOR_JOB_TEMPLATES[0];
 
   return (
-    <section className={styles.card} aria-label="Common job templates">
+    <section
+      className={styles.card}
+      aria-label="Common job templates"
+      data-calculator-job-template-picker
+    >
       <div className={styles.copy}>
         <strong>Common starting template</strong>
         <span>{selected.description}</span>

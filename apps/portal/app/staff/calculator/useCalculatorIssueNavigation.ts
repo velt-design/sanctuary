@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { calculatorConfigurationSectionRequiresAdvancedUi } from './calculatorConfigurationSections';
 import type { CalculatorIssue } from './calculatorIssueNavigation';
+import {
+  revealAndFocusCalculatorTarget,
+  scheduleCalculatorLayoutTask,
+} from './calculatorViewportNavigation';
 
 export function useCalculatorIssueNavigation({
   activeModuleIndex,
   setActiveModuleIndex,
+  onRevealAdvancedSection,
 }: {
   activeModuleIndex: number;
   setActiveModuleIndex: (moduleIndex: number) => void;
+  onRevealAdvancedSection?: () => void;
 }) {
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
@@ -21,16 +28,11 @@ export function useCalculatorIssueNavigation({
     if (pending.moduleIndex !== activeModuleIndex) return;
     pendingIssueFocusRef.current = null;
 
-    const element = document.getElementById(pending.fieldId);
-    if (!element) return;
-    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    if (typeof element.focus === 'function') {
-      try {
-        element.focus({ preventScroll: true });
-      } catch {
-        element.focus();
-      }
-    }
+    return scheduleCalculatorLayoutTask(() => {
+      const element = document.getElementById(pending.fieldId);
+      if (!element) return;
+      revealAndFocusCalculatorTarget(element);
+    });
   }, [activeModuleIndex, issuesOpen]);
 
   const openIssues = useCallback(() => setIssuesOpen(true), []);
@@ -38,10 +40,13 @@ export function useCalculatorIssueNavigation({
   const selectIssue = useCallback(
     (issue: CalculatorIssue) => {
       pendingIssueFocusRef.current = { moduleIndex: issue.moduleIndex, fieldId: issue.fieldId };
+      if (calculatorConfigurationSectionRequiresAdvancedUi(issue.sectionId)) {
+        onRevealAdvancedSection?.();
+      }
       setActiveModuleIndex(issue.moduleIndex);
       setIssuesOpen(false);
     },
-    [setActiveModuleIndex],
+    [onRevealAdvancedSection, setActiveModuleIndex],
   );
 
   return {

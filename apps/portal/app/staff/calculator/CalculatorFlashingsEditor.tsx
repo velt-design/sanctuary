@@ -93,11 +93,15 @@ export default function CalculatorFlashingsEditor({
           const duplicatePrimary = isDuplicatePrimaryFlashingRow(row, primaryRow);
 
           return (
-            <div key={row.id} className={isPrimary ? styles.flashingsRowPrimary : styles.flashingsRow}>
+            <div
+              key={row.id}
+              className={isPrimary ? styles.flashingsRowPrimary : styles.flashingsRow}
+              data-calculator-focus-region
+            >
               <div className={styles.flashingsCellItem}>
                 <div className={styles.flashingsItemBadge}>{isPrimary ? 'Primary' : `Extra ${extraIndex}`}</div>
                 {isPrimary ? <div className={styles.flashingsItemMeta}>Default from roof type; editable.</div> : null}
-                {invalidLength ? <div className={styles.flashingsWarning}>Enter a length &gt; 0.</div> : null}
+                {invalidLength ? <div className={styles.flashingsWarning}>Enter a length of 0 or more.</div> : null}
                 {!invalidLength && zeroLength ? <div className={styles.flashingsWarning}>0 length will be ignored.</div> : null}
                 {duplicatePrimary ? <div className={styles.flashingsWarning}>May double-count primary flashing.</div> : null}
               </div>
@@ -123,6 +127,8 @@ export default function CalculatorFlashingsEditor({
                   min={0}
                   step="0.1"
                   value={row.lengthM}
+                  aria-invalid={invalidLength || undefined}
+                  aria-describedby={invalidLength ? 'flashings-error' : undefined}
                   ref={(node) => {
                     if (node) lengthInputRefs.current[row.id] = node;
                     else delete lengthInputRefs.current[row.id];

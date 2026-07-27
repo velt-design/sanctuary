@@ -2,10 +2,13 @@
 
 import {
   type ComponentProps,
+  forwardRef,
   type KeyboardEvent,
+  useCallback,
+  useEffect,
   useId,
+  useImperativeHandle,
   useRef,
-  useState,
 } from 'react';
 
 import CalculatorActualCostReview from './CalculatorActualCostReview';
@@ -13,6 +16,7 @@ import CalculatorItemPricingBreakdown from './CalculatorItemPricingBreakdown';
 import CalculatorPreviewDetails, {
   type CalculatorPreviewDetailsProps,
 } from './CalculatorPreviewDetails';
+import CalculatorPricingDetails from './CalculatorPricingDetails';
 import CalculatorPricingSummary, {
   type CalculatorPricingSummaryProps,
 } from './CalculatorPricingSummary';
@@ -22,14 +26,26 @@ import ModuleViewsCard from './ModuleViewsCard';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard from './QuoteStatusCard';
 
-type CalculatorResultInspectorTab =
+export type CalculatorResultInspectorTab =
   | 'pricing'
   | 'materials'
   | 'labour'
   | 'workings'
   | 'issues';
 
+export type CalculatorResultInspectorHandle = {
+  focusTab: (
+    tab: CalculatorResultInspectorTab,
+    options?: {
+      /** Keep the focused tab visible inside the horizontal tab strip. Defaults to true. */
+      reveal?: boolean;
+    },
+  ) => void;
+};
+
 export type CalculatorResultInspectorProps = {
+  activeTab: CalculatorResultInspectorTab;
+  onActiveTabChange: (tab: CalculatorResultInspectorTab) => void;
   pricingSummary: CalculatorPricingSummaryProps;
   pricingPreview: ComponentProps<typeof CalculatorItemPricingBreakdown>['preview'];
   actualCostEstimateId: string | null;
@@ -67,27 +83,95 @@ function readinessState(items: CalculatorResultInspectorProps['quoteStatus']['it
   return { className: styles.readiness, label: 'Quote ready' };
 }
 
-export default function CalculatorResultInspector({
-  pricingSummary,
-  pricingPreview,
-  actualCostEstimateId,
-  moduleViews,
-  priceImpact,
-  quoteStatus,
-  previewDetails,
-  rafterExplanation,
-}: CalculatorResultInspectorProps) {
-  const [activeTab, setActiveTab] = useState<CalculatorResultInspectorTab>('pricing');
+function revealTabHorizontally(tabList: HTMLDivElement, tab: HTMLButtonElement) {
+  const tabListRect = tabList.getBoundingClientRect();
+  const tabRect = tab.getBoundingClientRect();
+  const hiddenBefore = tabRect.left - tabListRect.left;
+  const hiddenAfter = tabRect.right - tabListRect.right;
+
+  if (hiddenBefore < 0) {
+    tabList.scrollLeft += hiddenBefore;
+  } else if (hiddenAfter > 0) {
+    tabList.scrollLeft += hiddenAfter;
+  }
+}
+
+const CalculatorResultInspector = forwardRef<
+  CalculatorResultInspectorHandle,
+  CalculatorResultInspectorProps
+>(function CalculatorResultInspector(
+  {
+    activeTab,
+    onActiveTabChange,
+    pricingSummary,
+    pricingPreview,
+    actualCostEstimateId,
+    moduleViews,
+    priceImpact,
+    quoteStatus,
+    previewDetails,
+    rafterExplanation,
+  },
+  ref,
+) {
   const tabSetId = useId();
+  const tabListRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<CalculatorResultInspectorTab, HTMLButtonElement>());
+  const focusFrameRef = useRef<number | null>(null);
   const readiness = readinessState(quoteStatus.items);
 
-  const selectTab = (tab: CalculatorResultInspectorTab, focus = false) => {
-    setActiveTab(tab);
-    if (focus) {
-      requestAnimationFrame(() => tabRefs.current.get(tab)?.focus());
-    }
-  };
+  const focusTabButton = useCallback(
+    (tab: CalculatorResultInspectorTab, reveal = true) => {
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current);
+      }
+      focusFrameRef.current = requestAnimationFrame(() => {
+        focusFrameRef.current = null;
+        const button = tabRefs.current.get(tab);
+        if (!button) return;
+
+        button.focus({ preventScroll: true });
+        if (reveal && tabListRef.current) {
+          revealTabHorizontally(tabListRef.current, button);
+        }
+      });
+    },
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      if (focusFrameRef.current !== null) {
+        cancelAnimationFrame(focusFrameRef.current);
+      }
+    },
+    [],
+  );
+
+  const selectTab = useCallback(
+    (tab: CalculatorResultInspectorTab, focus = false) => {
+      if (tab !== activeTab) {
+        onActiveTabChange(tab);
+      }
+      if (focus) {
+        focusTabButton(tab);
+      }
+    },
+    [activeTab, focusTabButton, onActiveTabChange],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusTab(tab, options) {
+        if (tab !== activeTab) {
+          onActiveTabChange(tab);
+        }
+        focusTabButton(tab, options?.reveal ?? true);
+      },
+    }),
+    [activeTab, focusTabButton, onActiveTabChange],
+  );
 
   const handleTabKeyDown = (
     event: KeyboardEvent<HTMLButtonElement>,
@@ -133,7 +217,12 @@ export default function CalculatorResultInspector({
 
         <CalculatorPricingSummary {...pricingSummary} variant="inspector" />
 
-        <div className={styles.tabs} role="tablist" aria-label="Result inspector sections">
+        <div
+          ref={tabListRef}
+          className={styles.tabs}
+          role="tablist"
+          aria-label="Result inspector sections"
+        >
           {TABS.map((tab) => {
             const active = tab.id === activeTab;
             const tabId = `${tabSetId}-${tab.id}-tab`;
@@ -169,7 +258,7 @@ export default function CalculatorResultInspector({
         aria-labelledby={`${tabSetId}-pricing-tab`}
         hidden={activeTab !== 'pricing'}
       >
-        <CalculatorPricingSummary {...pricingSummary} />
+        <CalculatorPricingDetails {...pricingSummary} />
         <CalculatorItemPricingBreakdown preview={pricingPreview} />
         {actualCostEstimateId ? <CalculatorActualCostReview estimateId={actualCostEstimateId} /> : null}
         {priceImpact ? <PriceImpactPanel {...priceImpact} /> : null}
@@ -203,8 +292,8 @@ export default function CalculatorResultInspector({
         hidden={activeTab !== 'workings'}
       >
         <div className={styles.trustedWorking}>
-          <ModuleViewsCard {...moduleViews} />
           <CalculatorRafterExplanation {...rafterExplanation} />
+          <ModuleViewsCard {...moduleViews} />
         </div>
         <CalculatorPreviewDetails {...previewDetails} view="workings" />
       </div>
@@ -221,4 +310,6 @@ export default function CalculatorResultInspector({
       </div>
     </section>
   );
-}
+});
+
+export default CalculatorResultInspector;

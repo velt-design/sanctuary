@@ -6,8 +6,12 @@ import {
 } from './calculatorResultFreshness';
 import styles from './CalculatorPricingSummary.module.css';
 
+/**
+ * The aggregate pricing presentation contract assembled by GridClient.
+ * Customer-summary and pricing-detail views intentionally consume different
+ * subsets so only one rounded lead total is composed for each layout.
+ */
 export type CalculatorPricingSummaryProps = {
-  variant?: 'full' | 'compact' | 'inspector';
   resultFreshness: CalculatorResultFreshness;
   issuesCount: number;
   onOpenIssues: () => void;
@@ -27,154 +31,85 @@ export type CalculatorPricingSummaryProps = {
   installDays?: number;
 };
 
-function formatMoney(value: number | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return `$${value.toFixed(2)}`;
-}
+type CalculatorPricingSummaryViewProps = CalculatorPricingSummaryProps & {
+  variant: 'compact' | 'inspector';
+};
 
 const customerPriceNumberFormatter = new Intl.NumberFormat('en-NZ', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
 
-function formatCustomerPriceFromCents(value: number | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+function formatRoundedCustomerPriceFromCents(value: number | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '\u2014';
   return `$${customerPriceNumberFormatter.format(Math.round(value / 100))}`;
 }
 
-function formatNumber(value: number | undefined, digits = 2): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return value.toFixed(digits);
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.metric} data-pricing-metric>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
+function customerPriceLabel({
+  isLastValid,
+  unpricedItemCount,
+}: {
+  isLastValid: boolean;
+  unpricedItemCount: number;
+}): string {
+  if (isLastValid && unpricedItemCount > 0) {
+    return 'Last valid customer price for priced items (rounded, inc GST)';
+  }
+  if (isLastValid) return 'Last valid customer price (rounded, inc GST)';
+  if (unpricedItemCount > 0) {
+    return 'Customer price for priced items (rounded, inc GST)';
+  }
+  return 'Customer price (rounded, inc GST)';
 }
 
 export default function CalculatorPricingSummary({
-  variant = 'full',
+  variant,
   resultFreshness,
-  issuesCount,
-  onOpenIssues,
   customerTotalIncGstCents,
   customerTotalExGstCents,
-  undiscountedTotalIncGstCents,
   quoteDiscountPct,
   unpricedItemCount,
   hasCustomerPricing,
-  canViewInternalCosts,
-  internalTrueCostExGst,
-  internalTrueCostIncGst,
-  materialsExGst,
-  installExGst,
-  overheadExGst,
-  crewHours,
-  installDays,
-}: CalculatorPricingSummaryProps) {
+}: CalculatorPricingSummaryViewProps) {
   const isLastValid = resultFreshness !== 'current' && hasCustomerPricing;
-  const customerPriceLabel = isLastValid
-    ? 'Last valid customer price (inc GST)'
-    : unpricedItemCount > 0
-      ? 'Customer price (priced items only, inc GST)'
-      : 'Customer price (inc GST)';
-
-  if (variant === 'inspector') {
-    return (
-      <section
-        className={isLastValid ? `${styles.inspectorSummary} ${styles.inspectorSummaryStale}` : styles.inspectorSummary}
-        aria-label="Result overview"
-        data-pricing-summary-variant="inspector"
-        data-result-freshness={resultFreshness}
-      >
-        <div className={styles.inspectorPrimary}>
-          <span className={styles.inspectorLabel}>{customerPriceLabel}</span>
-          <strong className={styles.inspectorValue}>
-            {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalIncGstCents) : '\u2014'}
-          </strong>
-        </div>
-        <div className={styles.inspectorMeta}>
-          <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
-          <span>Ex GST {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalExGstCents) : '\u2014'}</span>
-          {quoteDiscountPct > 0 ? <span>{quoteDiscountPct}% discount</span> : null}
-        </div>
-      </section>
-    );
-  }
-
-  if (variant === 'compact') {
-    return (
-      <section
-        className={isLastValid ? `${styles.compactSummary} ${styles.compactSummaryStale}` : styles.compactSummary}
-        aria-label="Current customer price"
-        data-pricing-summary-variant="compact"
-        data-result-freshness={resultFreshness}
-      >
-        <div className={styles.compactPrice}>
-          <span className={styles.compactLabel}>{customerPriceLabel}</span>
-          <strong className={styles.compactValue}>{hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalIncGstCents) : '—'}</strong>
-        </div>
-        <div className={styles.compactMeta}>
-          <span>Ex GST {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalExGstCents) : '—'}</span>
-          <span>{quoteDiscountPct > 0 ? `${quoteDiscountPct}% discount` : calculatorResultFreshnessLabel(resultFreshness)}</span>
-        </div>
-      </section>
-    );
-  }
+  const label = customerPriceLabel({ isLastValid, unpricedItemCount });
+  const summaryClassName = variant === 'inspector' ? styles.inspectorSummary : styles.compactSummary;
+  const staleClassName = variant === 'inspector'
+    ? styles.inspectorSummaryStale
+    : styles.compactSummaryStale;
 
   return (
     <section
-      className={isLastValid ? `${styles.summary} ${styles.summaryStale}` : styles.summary}
-      aria-label="Pricing preview"
-      data-pricing-summary-variant="full"
+      className={isLastValid ? `${summaryClassName} ${staleClassName}` : summaryClassName}
+      aria-label={isLastValid ? 'Last valid customer price' : 'Customer price summary'}
+      data-pricing-summary-variant={variant}
       data-result-freshness={resultFreshness}
+      data-rounded-customer-summary
     >
-      <header className={styles.header}>
-        <div>
-          <h2>Pricing preview</h2>
-          <p>{calculatorResultFreshnessLabel(resultFreshness)}</p>
-        </div>
-        {issuesCount > 0 ? (
-          <button type="button" className={styles.issueButton} onClick={onOpenIssues}>
-            Errors ({issuesCount})
-          </button>
-        ) : null}
-      </header>
-
-      <div className={styles.hero}>
-        <span className={styles.heroLabel}>{customerPriceLabel}</span>
-        <strong className={styles.heroValue}>{hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalIncGstCents) : '—'}</strong>
-        <span className={styles.heroEx}>Customer price (ex GST) {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalExGstCents) : '—'}</span>
-        {quoteDiscountPct > 0 ? (
-          <span className={styles.heroExplanation}>
-            {quoteDiscountPct}% quote discount applied to pergola and site prices only
-          </span>
-        ) : null}
-        {typeof undiscountedTotalIncGstCents === 'number' ? (
-          <span className={styles.heroExplanation}>
-            Before discount {formatCustomerPriceFromCents(undiscountedTotalIncGstCents)} inc GST
-          </span>
-        ) : null}
+      <div className={styles.primary}>
+        <span className={styles.label}>{label}</span>
+        <strong className={styles.value}>
+          {hasCustomerPricing
+            ? formatRoundedCustomerPriceFromCents(customerTotalIncGstCents)
+            : '\u2014'}
+        </strong>
       </div>
 
-      {canViewInternalCosts ? (
-        <details className={styles.internalSection}>
-          <summary>Internal costing</summary>
-          <dl className={styles.internalGrid} data-pricing-metric-layout="inline">
-            <Metric label="True cost (ex GST)" value={formatMoney(internalTrueCostExGst)} />
-            <Metric label="True cost (inc GST)" value={formatMoney(internalTrueCostIncGst)} />
-            <Metric label="Materials" value={formatMoney(materialsExGst)} />
-            <Metric label="Install payout" value={formatMoney(installExGst)} />
-            <Metric label="Overhead" value={formatMoney(overheadExGst)} />
-            <Metric label="Crew hours" value={formatNumber(crewHours)} />
-            <Metric label="Install days" value={formatNumber(installDays, 0)} />
-          </dl>
-        </details>
-      ) : null}
+      <div className={styles.secondary}>
+        <span>
+          Customer price (rounded, ex GST){' '}
+          {hasCustomerPricing
+            ? formatRoundedCustomerPriceFromCents(customerTotalExGstCents)
+            : '\u2014'}
+        </span>
+        <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
+        {unpricedItemCount > 0 ? (
+          <span>
+            {unpricedItemCount} unpriced item{unpricedItemCount === 1 ? '' : 's'}
+          </span>
+        ) : null}
+        {quoteDiscountPct > 0 ? <span>{quoteDiscountPct}% discount applied</span> : null}
+      </div>
     </section>
   );
 }

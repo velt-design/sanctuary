@@ -33,6 +33,7 @@ function buildFields(moduleOverrides: Partial<CalculatorModuleInputs> = {}) {
     activeModuleIndex: 0,
     activePergolaId: 'pergola-1',
     errors: {},
+    resolvedDefaults: { roofPitchDeg: 'Auto - current result uses 5 deg' },
     flashingTileContent: null,
     setValues,
     setModuleField,
@@ -69,6 +70,10 @@ describe('calculator structure fields', () => {
     ]));
     expect(ids).not.toContain('hipCornerLengthBM');
     expect(ids).not.toContain('timberRoofAboveType');
+    expect(fieldById(fields, 'roofPitchDeg')).toMatchObject({
+      value: '',
+      resolvedDefaultText: 'Auto - current result uses 5 deg',
+    });
   });
 
   it('builds gable-only controls and calculated hint fields without changing field order', () => {

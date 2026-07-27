@@ -14,6 +14,7 @@ export type CalculatorConfigurationField = {
   min?: number | string;
   max?: number | string;
   helperText?: string;
+  resolvedDefaultText?: string;
   error?: string;
   onAction?: () => void;
   actionLabel?: string;
@@ -169,6 +170,14 @@ export function calculatorConfigurationFieldLayout(fieldId: string): CalculatorC
   if (FULL_FIELD_IDS.has(fieldId)) return 'full';
   if (WIDE_FIELD_IDS.has(fieldId)) return 'wide';
   return 'standard';
+}
+
+export function calculatorConfigurationSectionRequiresAdvancedUi(
+  sectionId: string | null,
+): boolean {
+  if (!sectionId) return false;
+  const section = CALCULATOR_CONFIGURATION_SECTIONS.find(({ id }) => id === sectionId);
+  return Boolean(section && 'advancedOnly' in section && section.advancedOnly);
 }
 
 export function buildCalculatorConfigurationSections(

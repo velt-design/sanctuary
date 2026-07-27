@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import {
+  CALCULATOR_PREVIEW_SPLIT_STACK_BREAKPOINT_PX,
   CALCULATOR_PREVIEW_SPLIT_STORAGE_KEY,
   calculatorPreviewDefaultRightWidth,
   calculatorPreviewMaxRightWidth,
@@ -33,6 +34,7 @@ afterEach(() => {
 
 describe('calculator preview split', () => {
   it('uses responsive untouched defaults and clamps preferences to the available frame', () => {
+    expect(CALCULATOR_PREVIEW_SPLIT_STACK_BREAKPOINT_PX).toBe(1080);
     expect(calculatorPreviewDefaultRightWidth(1280)).toBe(480);
     expect(calculatorPreviewDefaultRightWidth(1279)).toBe(440);
     expect(calculatorPreviewMaxRightWidth(1120)).toBe(462);
