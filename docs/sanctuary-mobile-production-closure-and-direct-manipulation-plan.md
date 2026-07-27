@@ -5,6 +5,7 @@
 > **Recommended repository path:** `docs/sanctuary-mobile-production-closure-and-direct-manipulation-plan.md`  
 > **Original repository snapshot inspected:** `main` at `cec83a4279b05cd6267f937954e0c90a2888b3cf`
 > **Refinement reconciliation:** `main` at `99eb62c359c70e875301ef4f24655627d4248683` and production release `cec83a4279b05cd6267f937954e0c90a2888b3cf`, checked 27 July 2026
+> **PDR-01 closure:** PR #29 merged and production release `a9011d88e0d7f673dfa214b36211116f3c2826a8` passed the exact-release and three-width route matrices on 27 July 2026
 > **Live production inspected:** 27 July 2026  
 > **Target mobile widths:** approximately 430 px, 390 px and 360 px, plus short-height and zoomed mobile conditions  
 > **Programme model:** four required pull requests and one conditional remediation pull request  
@@ -49,7 +50,7 @@ A pull request that needs to change the programme sequence, protected architectu
 
 ## Start here
 
-The 27 July refinement pass confirmed that the programme should begin with PDR-01. No redesign or new planning phase is needed.
+The 27 July refinement pass confirmed that the programme should begin with PDR-01. PDR-01 is now complete. The next permitted step is PDR-02 development; its merge remains blocked by the deferred iPhone and Android preview smoke.
 
 ### Confirmed starting state
 
@@ -59,18 +60,24 @@ The 27 July refinement pass confirmed that the programme should begin with PDR-0
 - The professional route is live, returns the sampled production release, exposes the approved capability journey and has no guide framing.
 - The professional global-header enquiry link is neutral in production. Current `getEnquiryRouteContext()` still omits `/architects-designers-builders`, confirming the focused PDR-01 source fix.
 - `ResponsiveGallery` still captures on pointer-down, renders one item and changes only on pointer-up after the 48 px threshold. PDR-02 remains valid.
-- The metadata-only attachment expectation remains in `playwright/marketing.contact.spec.ts` and `docs/testing-and-qa.md`, while current attachment code requires stored uploads or a visible failure. The PDR-04 test-alignment task remains valid and may be prepared early.
+- The retired metadata-only attachment expectation was removed from `playwright/marketing.contact.spec.ts` and `docs/testing-and-qa.md` during PDR-01. Current attachment code and tests require stored uploads or a visible failure.
 
 ### Phase readiness
 
 | Phase | State now | Start condition |
 |---|---|---|
-| PDR-01 | Ready | Freeze the implementation SHA; preview and production deployment access is confirmed |
-| PDR-02 | Ready to develop, not ready to merge | PDR-01 must first establish the production baseline; the required iPhone and Android preview smoke is deferred |
+| PDR-01 | Complete | PR #29 merged; preview `947c701d514fc4c9c84ca3980d9dd4fdeeb754df` and production `a9011d88e0d7f673dfa214b36211116f3c2826a8` passed |
+| PDR-02 | Ready to develop, not ready to merge | PDR-01 established the production baseline; the required iPhone and Android preview smoke is deferred |
 | PDR-03 | Blocked and deferred | PDR-01 and PDR-02 deployed; physical devices, VoiceOver and TalkBack available |
-| PDR-04 test repair | Ready | No production write required |
+| PDR-04 test repair | Complete | Retired metadata-only fallback assertions and QA wording were aligned during PDR-01 |
 | PDR-04 live reconciliation | Blocked | Named approval, operator, analytics debug, received-record access and Storage readiness |
 | PDR-05 | Not open | A qualifying PDR-03 failure must be reproduced |
+
+PDR-01 required no manual cache purge or production form write. Merging `main`
+triggered the production deployment, and all 24 normal/cache-busted primary
+route responses identified the exact merge release. The production browser
+matrix passed 36 of 36 route/viewport cases at 430, 390 and 360 px. Evidence is
+stored under `artifacts/mobile-production-closure/pdr-01/`.
 
 ### Access and ownership record
 
