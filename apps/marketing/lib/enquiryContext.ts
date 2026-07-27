@@ -63,19 +63,21 @@ const contextPropertyKeys = [
   'source_product',
 ] as const satisfies ReadonlyArray<keyof EnquiryContextProperties>;
 
-const residentialAudiencePaths = new Set([
-  '/',
-  '/pergolas-auckland',
-  '/custom-pergolas-auckland',
-  '/aluminium-pergolas-auckland',
-  '/pergola-cost-auckland',
-  '/gable-pergolas-auckland',
-  '/pitched-pergolas-auckland',
-  '/outdoor-rooms-auckland',
-  '/pergolas-with-blinds',
-  '/acrylic-pergolas-vs-louvre-roofs',
-  '/acrylic-roof-pergolas-auckland',
-  '/acrylic-roof-pergolas-auckland-v2',
+const serviceAudienceByPath = new Map<string, EnquiryAudience>([
+  ['/', 'residential'],
+  ['/pergolas-auckland', 'residential'],
+  ['/custom-pergolas-auckland', 'residential'],
+  ['/aluminium-pergolas-auckland', 'residential'],
+  ['/pergola-cost-auckland', 'residential'],
+  ['/gable-pergolas-auckland', 'residential'],
+  ['/pitched-pergolas-auckland', 'residential'],
+  ['/outdoor-rooms-auckland', 'residential'],
+  ['/pergolas-with-blinds', 'residential'],
+  ['/acrylic-pergolas-vs-louvre-roofs', 'residential'],
+  ['/acrylic-roof-pergolas-auckland', 'residential'],
+  ['/acrylic-roof-pergolas-auckland-v2', 'residential'],
+  ['/commercial-pergolas-auckland', 'commercial'],
+  ['/architects-designers-builders', 'professional'],
 ]);
 
 // This compact route index keeps the global client header independent from the
@@ -250,9 +252,8 @@ export function getEnquiryRouteContext(pathname: string): EnquiryContext {
   const normalizedPath = normalizeSourcePath(pathname);
   if (!normalizedPath || normalizedPath === '/contact') return {};
 
-  if (normalizedPath === '/commercial-pergolas-auckland') {
-    return { enquiryType: 'commercial' };
-  }
+  const serviceAudience = serviceAudienceByPath.get(normalizedPath);
+  if (serviceAudience) return { enquiryType: serviceAudience };
 
   const projectMatch = normalizedPath.match(/^\/projects\/([a-z0-9-]+)$/);
   if (projectMatch) {
@@ -263,10 +264,6 @@ export function getEnquiryRouteContext(pathname: string): EnquiryContext {
 
   const sourceProduct = productSlugByPath.get(normalizedPath);
   if (sourceProduct) return { sourceProduct };
-
-  if (residentialAudiencePaths.has(normalizedPath)) {
-    return { enquiryType: 'residential' };
-  }
 
   return {};
 }

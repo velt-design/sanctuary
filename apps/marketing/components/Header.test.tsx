@@ -124,11 +124,21 @@ describe('shared mobile header interaction', () => {
     expect(desktopCta?.getAttribute('data-enquiry-type')).toBe('residential');
   });
 
-  it('uses governed project and product route context for the global enquiry action', async () => {
-    currentPathname = '/projects/goodhome-commercial-terrace';
+  it('uses governed audience, project and product context for the global enquiry action', async () => {
+    currentPathname = '/architects-designers-builders';
     await renderHeader();
 
     const desktopCta = document.querySelector<HTMLAnchorElement>('header.site .nav-cta');
+    expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: currentPathname,
+      sourceComponent: 'header',
+    }));
+    expect(desktopCta?.getAttribute('data-enquiry-type')).toBe('professional');
+
+    currentPathname = '/projects/goodhome-commercial-terrace';
+    await act(async () => root?.render(<Header />));
+
     expect(desktopCta?.getAttribute('href')).toBe(buildEnquiryHref({
       ...getEnquiryRouteContext(currentPathname),
       sourcePath: currentPathname,

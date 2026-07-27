@@ -65,9 +65,9 @@ The 27 July refinement pass confirmed that the programme should begin with PDR-0
 
 | Phase | State now | Start condition |
 |---|---|---|
-| PDR-01 | Ready | Freeze the implementation SHA and obtain preview/deployment access |
-| PDR-02 | Ready to develop, not ready to merge | PDR-01 must first establish the production baseline; preview sign-off needs one iPhone and one Android |
-| PDR-03 | Blocked | PDR-01 and PDR-02 deployed; physical devices, VoiceOver and TalkBack available |
+| PDR-01 | Ready | Freeze the implementation SHA; preview and production deployment access is confirmed |
+| PDR-02 | Ready to develop, not ready to merge | PDR-01 must first establish the production baseline; the required iPhone and Android preview smoke is deferred |
+| PDR-03 | Blocked and deferred | PDR-01 and PDR-02 deployed; physical devices, VoiceOver and TalkBack available |
 | PDR-04 test repair | Ready | No production write required |
 | PDR-04 live reconciliation | Blocked | Named approval, operator, analytics debug, received-record access and Storage readiness |
 | PDR-05 | Not open | A qualifying PDR-03 failure must be reproduced |
@@ -78,9 +78,9 @@ Complete this table before the relevant gate. Unassigned fields are blockers onl
 
 | Capability | Required by | Named owner or operator | Current status |
 |---|---|---|---|
-| Protected preview and production deployment/cache access | PDR-01 completion | Unassigned | Not confirmed |
-| Physical iPhone and Android testing | PDR-02 preview and PDR-03 | Unassigned | Not confirmed |
-| VoiceOver and TalkBack testing | PDR-03 | Unassigned | Not confirmed |
+| Protected preview and production deployment/cache access | PDR-01 completion | Jordan, Vercel account `jordanbvelt-2954` | Confirmed for `jordans-projects-43df95bd/sanctuary`; `main` auto-deploys and preview/production deployment is authorised after checks |
+| Physical iPhone and Android testing | PDR-02 preview and PDR-03 | Unassigned | Deferred 27 July 2026; PDR-02 may be developed but not merged under the current gate |
+| VoiceOver and TalkBack testing | PDR-03 | Unassigned | Deferred 27 July 2026; PDR-03 remains blocked |
 | Production enquiry approval and operator | PDR-04 live run | Unassigned | Not authorised |
 | GTM/GA debug access | PDR-04 live run | Unassigned | Not confirmed |
 | Accepted enquiry and notification/workbench inspection | PDR-04 live run | Unassigned | Not confirmed |

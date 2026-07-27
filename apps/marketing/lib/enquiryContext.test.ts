@@ -104,6 +104,9 @@ describe('enquiry context', () => {
 
   it('infers only known audience routes and keeps mixed or unknown routes neutral', () => {
     expect(inferEnquiryAudience('/commercial-pergolas-auckland')).toBe('commercial');
+    expect(inferEnquiryAudience('/architects-designers-builders')).toBe(
+      'professional',
+    );
     expect(inferEnquiryAudience('/pergolas-auckland')).toBe('residential');
     expect(inferEnquiryAudience('/projects')).toBeUndefined();
     expect(inferEnquiryAudience('/products')).toBeUndefined();
@@ -124,6 +127,9 @@ describe('enquiry context', () => {
     });
     expect(getEnquiryRouteContext('/products/pergolas/gable')).toEqual({
       sourceProduct: 'gable',
+    });
+    expect(getEnquiryRouteContext('/architects-designers-builders')).toEqual({
+      enquiryType: 'professional',
     });
     expect(getEnquiryRouteContext('/projects/not-published')).toEqual({});
     expect(getEnquiryRouteContext('/products/pergolas/not-published')).toEqual({});

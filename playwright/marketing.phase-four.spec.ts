@@ -643,6 +643,19 @@ test('professional capability route is discoverable, governed and source aware',
   await expect(page.locator('body')).toContainText(
     `${publicOrigin}/architects-designers-builders`,
   );
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/architects-designers-builders');
+  await expect(
+    page.locator('header.site').getByRole('link', { name: 'Get an estimate' }),
+  ).toHaveAttribute(
+    'href',
+    buildEnquiryHref({
+      enquiryType: 'professional',
+      sourcePath: '/architects-designers-builders',
+      sourceComponent: 'header',
+    }),
+  );
 });
 
 test('professional form submits canonical context without personal analytics properties', async ({
@@ -861,9 +874,18 @@ test('guide first layers remain complete without JavaScript', async ({
     viewport: { width: 390, height: 844 },
   });
   const page = await context.newPage();
+  await page.route('**/*', async (route) => {
+    if (['font', 'image', 'media'].includes(route.request().resourceType())) {
+      await route.abort();
+      return;
+    }
+    await route.continue();
+  });
   try {
     for (const guide of guideDetailRoutes) {
-      const response = await page.goto(guide.path, { waitUntil: 'load' });
+      const response = await page.goto(guide.path, {
+        waitUntil: 'domcontentloaded',
+      });
       expect(response?.ok(), guide.path).toBe(true);
       const main = page.locator('main[data-seo-landing]');
       await expect(main.locator('[data-guide-first-layer-project]')).toBeVisible();

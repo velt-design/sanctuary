@@ -663,7 +663,7 @@ test('project text and enquiry actions remain useful when a response image fails
   });
   await expect(dairyFlatCard).toBeVisible();
   await expect(dairyFlatCard).toContainText(
-    'A bright acrylic gable extends the existing roofline',
+    'An acrylic gable follows the existing roofline',
   );
   await expect(dairyFlatCard.getByRole('link', {
     name: 'Use Dairy Flat Estate as an enquiry reference',
