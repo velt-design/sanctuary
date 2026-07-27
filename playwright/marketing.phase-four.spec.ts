@@ -519,11 +519,18 @@ test('commercial journey leads with three cases and three delivery stages', asyn
     await expect(main.locator('#commercial-process li')).toHaveCount(3);
     await expect(
       main.locator(
-        ':scope > details[data-seo-landing-disclosure="commercial-value-detail"], ' +
-          ':scope > details[data-seo-landing-disclosure="commercial-coordination-detail"], ' +
-          ':scope > details[data-seo-landing-disclosure="commercial-planning-support"]',
+        ':scope > details[data-seo-landing-disclosure="commercial-planning-support"]',
       ),
+    ).toHaveCount(1);
+    await expect(
+      main.locator('#commercial-projects .seo-landing__project-role'),
     ).toHaveCount(3);
+    await expect(
+      main.locator('#commercial-pathways a[href="/architects-designers-builders"]'),
+    ).toBeVisible();
+    await expect(
+      main.locator('#commercial-pathways a[href="/pergola-cost-auckland"]'),
+    ).toBeVisible();
     await expect(
       main.getByRole('navigation', { name: 'Pergola guide progression' }),
     ).toHaveCount(0);

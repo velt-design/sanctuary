@@ -28,6 +28,13 @@ type AcrylicPergolaEnquiryFormProps = {
   messageLabel?: string;
   messagePlaceholder?: string;
   briefFields?: readonly EnquiryBriefField[];
+  directContact?: {
+    intro: string;
+    phoneLabel: string;
+    phoneHref: `tel:${string}`;
+    emailLabel: string;
+    emailHref: `mailto:${string}`;
+  };
   initialEnquiryType?: EnquiryAudience;
   sourceContext?: EnquiryContext;
   roofPreference?: {
@@ -143,6 +150,7 @@ export default function AcrylicPergolaEnquiryForm({
   messageLabel = 'Brief project description',
   messagePlaceholder = 'Tell us how you use the space, which rooms sit beside it and what you would like the roof to improve.',
   briefFields = [],
+  directContact,
   initialEnquiryType,
   sourceContext = {},
   roofPreference = acrylicRoofPreference,
@@ -315,6 +323,13 @@ export default function AcrylicPergolaEnquiryForm({
         <Eyebrow className="acrylic-eyebrow">{eyebrow}</Eyebrow>
         <Heading id="estimate-form-title">{heading}</Heading>
         <p>{intro}</p>
+        {directContact ? (
+          <div className="acrylic-form__direct-contact">
+            <span>{directContact.intro}</span>
+            <a href={directContact.phoneHref}>{directContact.phoneLabel}</a>
+            <a href={directContact.emailHref}>{directContact.emailLabel}</a>
+          </div>
+        ) : null}
         <p className="acrylic-form__required-note">{ENQUIRY_FORM_REQUIRED_NOTE}</p>
         {contextDisplay.isVisible ? (
           <div className="acrylic-form__context" aria-label="Enquiry context">

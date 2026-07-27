@@ -140,13 +140,13 @@ const pages: ProgrammePage[] = [
     title: 'Commercial Pergolas Auckland | Design & Build',
     description: 'Sanctuary designs and builds commercial pergolas in Auckland, coordinating engineering, consent and trades where required from venue brief to installation.',
     h1: 'You run the venue. We manage the pergola project.',
-    submitLabel: 'Discuss your venue',
-    faqCount: 8,
+    submitLabel: 'Discuss your commercial project',
+    faqCount: 4,
     role: 'service',
     briefFieldName: 'operatingConstraints',
     projectCount: 3,
     captureId: 'commercial-projects',
-    comparisonId: 'commercial-decisions-title',
+    comparisonId: 'commercial-capability-title',
     comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-pergolas-vs-louvre-roofs', '/acrylic-roof-pergolas-auckland-v2'],
     showGuideNavigation: false,
   },
@@ -227,9 +227,9 @@ for (const programmePage of pages) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
       if (programmePage.marker === 'commercial-pergolas-auckland') {
-        await expect(main.getByText('Designed in-house', { exact: true })).toBeVisible();
-        await expect(main.getByText('Engineering, consent and trades coordinated', { exact: true })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'Three stages from venue brief to installed project' })).toBeVisible();
+        await expect(main.getByText('Commercial design and delivery', { exact: true })).toBeVisible();
+        await expect(main.getByText('Approvals and interfaces coordinated where required', { exact: true })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Three stages from brief to completed installation' })).toBeVisible();
         await expect(main.getByRole('heading', { level: 3, name: 'Coordinate approvals and interfaces' })).toBeVisible();
         await expect(main.getByRole('heading', { level: 3, name: 'Build, install and hand over' })).toBeVisible();
         const planningSupport = main.locator(
@@ -242,8 +242,10 @@ for (const programmePage of pages) {
           hasText: 'Can Sanctuary coordinate engineering and building consent?',
         });
         await consentFaq.locator(':scope > summary').click();
-        await expect(consentFaq.getByText('The relevant authority remains responsible for its decision.')).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'Show us the venue and what the space needs to do' })).toBeVisible();
+        await expect(consentFaq.getByText(/the relevant authority remains responsible/)).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Show us the site and what the space needs to do' })).toBeVisible();
+        await expect(main.getByRole('link', { name: 'Call 022 854 5633' })).toHaveAttribute('href', 'tel:+64228545633');
+        await expect(main.getByRole('link', { name: 'Email Sanctuary' })).toHaveAttribute('href', 'mailto:info@sanctuarypergolas.co.nz');
         await expect(main.locator('#commercial-projects .acrylic-project-card h3')).toHaveText([
           'The Good Home Takanini',
           'Lilliput Mini Golf',
