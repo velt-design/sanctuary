@@ -17,6 +17,9 @@ export function validateEnquiryAttachments(files: File[]): string | null {
   return validateEnquiryAttachmentDescriptors(files);
 }
 
+export const ENQUIRY_ATTACHMENT_UPLOAD_ERROR =
+  'We could not upload your attachments. Please try again or remove them before submitting.';
+
 export function createEnquirySubmissionId(): string {
   if (typeof globalThis.crypto?.randomUUID !== 'function') {
     throw new Error('A secure browser is required to submit this enquiry.');
@@ -24,9 +27,9 @@ export function createEnquirySubmissionId(): string {
   return globalThis.crypto.randomUUID();
 }
 
-// Uploads directly to the existing private enquiry bucket with short-lived
-// signed URLs. Metadata-only fallback keeps the enquiry submittable when local
-// storage configuration is unavailable or an upload fails.
+// Uploads directly to the private enquiry bucket with short-lived signed URLs.
+// A requested attachment must either reach Storage or fail visibly; submitting
+// metadata-only would make the confirmation claim files that cannot be sent.
 export async function uploadEnquiryAttachments(
   files: File[],
   submissionId: string,
@@ -42,7 +45,9 @@ export async function uploadEnquiryAttachments(
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) return { files: metaOnly, uploadSessionToken: null };
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(ENQUIRY_ATTACHMENT_UPLOAD_ERROR);
+  }
 
   try {
     const signResponse = await fetch('/api/enquiry/attachments/sign', {
@@ -50,14 +55,14 @@ export async function uploadEnquiryAttachments(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ submissionId, files: metaOnly }),
     });
-    if (!signResponse.ok) return { files: metaOnly, uploadSessionToken: null };
+    if (!signResponse.ok) throw new Error('Attachment signing failed.');
 
     const signPayload = await signResponse.json().catch(() => null);
     const uploads = Array.isArray(signPayload?.uploads) ? signPayload.uploads : [];
     const uploadSessionToken =
       typeof signPayload?.uploadSessionToken === 'string' ? signPayload.uploadSessionToken : null;
     if (uploads.length !== files.length || !uploadSessionToken) {
-      return { files: metaOnly, uploadSessionToken: null };
+      throw new Error('Attachment signing response was incomplete.');
     }
 
     const { createClient } = await import('@supabase/supabase-js');
@@ -72,15 +77,15 @@ export async function uploadEnquiryAttachments(
             .uploadToSignedUrl(upload.path, upload.token, file, {
               contentType: file.type || undefined,
             });
-          if (error) return metaOnly[index];
+          if (error) throw error;
           return { ...metaOnly[index], path: upload.path };
         } catch {
-          return metaOnly[index];
+          throw new Error('Attachment upload failed.');
         }
       }),
     );
     return { files: uploadedFiles, uploadSessionToken };
   } catch {
-    return { files: metaOnly, uploadSessionToken: null };
+    throw new Error(ENQUIRY_ATTACHMENT_UPLOAD_ERROR);
   }
 }

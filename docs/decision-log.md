@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| 2026-07-27 | Enquiry Attachment Readiness     | Promoted | Verify the private Storage bucket in the exact production project before enabling attachment claims. A selected file must reach Storage or fail visibly; never convert an upload failure into metadata-only while allowing the enquiry/email to claim files were received. |
 | 2026-07-27 | Enquiry Email Optional Pricing   | Promoted | Treat indicative pricing as optional customer-email content. A valid short residential or commercial enquiry must still render, send and log its confirmation when dimensions or costing are unavailable; omit the investment panel and pricing copy instead of aborting the side effect. |
 | 2026-07-27 | Calculator Add Actions           | Active   | Wrap zero-argument UI actions before binding functions that accept optional data; otherwise React can pass a DOM event into serializable calculator state. Assert that the callback receives no arguments. |
 | 2026-07-26 | Marketing Homepage Interaction   | Promoted | Keep one visible first-question introduction, make its hero fragment reveal an actionable choice at narrow and zoomed viewports, route semantic keyboard selection through the same consent-aware activation path, and test selected/inverse focus plus selected hover colours rather than CSS-property presence alone. |
@@ -3601,6 +3602,17 @@ Why it mattered: Valid customer enquiries, including enquiries with uploaded fil
 Current guardrail: Keep indicative pricing optional in the autoresponder contract. When a valid brief has no costing snapshot, render and send the stable residential or commercial template without the investment panel or estimate wording, and retain the normal idempotent outbox and audit path.
 Promoted to: `docs/automation-email-audit.md`
 Related docs/tests: `apps/marketing/app/api/enquiry/route.test.ts`; `apps/marketing/lib/websiteAutoresponderAlternatives.test.ts`
+
+### 2026-07-27 - Enquiry Attachment Readiness - Never Lose Selected Files Silently
+
+Date: 2026-07-27
+Area: Marketing enquiry attachments
+Status: Promoted
+Decision or mistake: The application and migration expected a private `enquiry-attachments` bucket, but the exact production Supabase project had never provisioned it. Signed-upload preparation failed and the browser deliberately downgraded selected files to metadata, so the enquiry and autoresponder continued without deliverable attachments.
+Why it mattered: Customers and staff saw successful enquiries and file counts even though no Storage object existed and Resend had nothing to attach.
+Current guardrail: Verify the bucket in the target environment before release. Once a customer selects files, signing and every direct upload must succeed before submission; otherwise show a retry/remove-files error and do not claim the files were received.
+Promoted to: `docs/automation-email-audit.md`
+Related docs/tests: `supabase/migrations/20260701_000001_enquiry_attachments_bucket.sql`; `apps/marketing/lib/enquiryAttachments.test.ts`
 
 ### 2026-07-26 - Marketing Homepage Promotion - Replace The Owner, Not The Responsibilities
 

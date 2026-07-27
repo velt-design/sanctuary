@@ -1394,9 +1394,9 @@ export default function StartPage() {
       });
       clearStartFlowDraft();
       jumpToSection('submit');
-    } catch {
+    } catch (error) {
       setSubmitState('error');
-      setSubmitError('A network error occurred while submitting. Please try again.');
+      setSubmitError(error instanceof Error && error.message ? error.message : 'A network error occurred while submitting. Please try again.');
     }
   };
 

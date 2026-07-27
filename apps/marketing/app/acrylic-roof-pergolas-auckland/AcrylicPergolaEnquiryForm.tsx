@@ -152,6 +152,7 @@ export default function AcrylicPergolaEnquiryForm({
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<EnquiryFormFieldErrors>({});
   const [submitState, setSubmitState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const submissionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
@@ -218,6 +219,7 @@ export default function AcrylicPergolaEnquiryForm({
 
     const formData = new FormData(form);
     submittingRef.current = true;
+    setSubmitError(null);
     setSubmitState('sending');
 
     try {
@@ -282,7 +284,11 @@ export default function AcrylicPergolaEnquiryForm({
       });
 
       const responsePayload = await response.json().catch(() => null);
-      if (!response.ok || !responsePayload?.ok) throw new Error('SUBMIT_FAILED');
+      if (!response.ok || !responsePayload?.ok) {
+        throw new Error(
+          'Your entered details remain on the page. Please try again, call Sanctuary or email the project information directly.',
+        );
+      }
 
       submissionIdRef.current = null;
       setSubmitState('success');
@@ -291,7 +297,12 @@ export default function AcrylicPergolaEnquiryForm({
         marketing: consent.marketing,
         hasStoredChoice,
       });
-    } catch {
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Your entered details remain on the page. Please try again, call Sanctuary or email the project information directly.',
+      );
       setSubmitState('error');
     } finally {
       submittingRef.current = false;
@@ -632,7 +643,7 @@ export default function AcrylicPergolaEnquiryForm({
         {submitState === 'error' ? (
           <div className="acrylic-form__status-message acrylic-form__status-message--error" role="alert">
             <h3>We could not send your enquiry.</h3>
-            <p>Your entered details remain on the page. Please try again, call Sanctuary or email the project information directly.</p>
+            <p>{submitError}</p>
           </div>
         ) : null}
       </div>
