@@ -339,6 +339,9 @@ body:has(.acrylic-landing) footer { font-family: "Inter Variable", Arial, sans-s
 .acrylic-form__intro p,
 .acrylic-form__submit p,
 .acrylic-form__help { color: var(--color-text-secondary); }
+.acrylic-form__direct-contact { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin: 1.25rem 0; font-size: var(--text-small); }
+.acrylic-form__direct-contact span { flex-basis: 100%; color: var(--color-text-secondary); }
+.acrylic-form__direct-contact a { min-height: 44px; display: inline-flex; align-items: center; color: var(--color-text-primary); border-bottom: 1px solid currentColor; }
 .acrylic-form__required-note { font-size: var(--text-small); }
 .acrylic-form__context {
   display: grid;

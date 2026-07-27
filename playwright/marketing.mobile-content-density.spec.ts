@@ -241,28 +241,24 @@ const routeCases: readonly RouteCase[] = [
     maximumVisibleHeadingRegions: 8,
     mobileSignals: [
       'You run the venue. We manage the pergola project.',
-      'See how completed venues made outdoor space part of the business',
-      'How coordination protects the operation',
-      'Discuss your venue',
+      'Three projects, three different delivery roles',
+      'Scope and operating-site coordination',
+      'Discuss your commercial project',
     ],
     primaryAction: {
-      name: 'Discuss your venue',
+      name: 'Discuss your commercial project',
       href: '#project-details',
     },
     disclosures: {
       selector: 'details[data-seo-landing-disclosure]',
-      count: 3,
+      count: 1,
       idAttribute: 'data-seo-landing-disclosure',
-      ids: [
-        'commercial-value-detail',
-        'commercial-coordination-detail',
-        'commercial-planning-support',
-      ],
+      ids: ['commercial-planning-support'],
     },
     supporting: {
       selector:
-        'details[data-seo-landing-disclosure="commercial-coordination-detail"]',
-      phrase: 'Plan the installation around the operation, not just the footprint',
+        'details[data-seo-landing-disclosure="commercial-planning-support"]',
+      phrase: 'Project structure, approvals and operating sites',
     },
     stableSections: [
       '#commercial-projects',
@@ -271,7 +267,7 @@ const routeCases: readonly RouteCase[] = [
     ],
     meaningfulLinks: [
       '/projects',
-      '/custom-pergolas-auckland',
+      '/architects-designers-builders',
       '/pergola-cost-auckland',
     ],
     schemaTypes: ['WebPage', 'Service', 'BreadcrumbList'],

@@ -140,8 +140,11 @@ The custom `/custom-pergolas-auckland` route adopts the same six-region budget w
 The commercial `/commercial-pergolas-auckland` route uses the same configured
 renderer without forking it. An explicit complete block order puts three
 governed commercial cases immediately after the hero and a three-stage process
-next. Three responsive groups then own commercial value, coordination and
-planning support so no more than six major regions precede the enquiry.
+next. One visible capability section consolidates Sanctuary-led and
+consultant-led scope, project interfaces and operating-site controls. The
+professional-collaboration and cost-driver pathways remain visible before one
+responsive FAQ group, so the mobile journey does not hide its useful next
+steps behind supporting detail.
 Header, early and embedded-form actions retain the commercial audience and
 canonical route source.
 

@@ -8,6 +8,7 @@ type FaqItem = {
 type ProjectProofItem = {
   slug: string;
   label: string;
+  role?: string;
   summary: string;
   facts?: readonly string[];
   image?: { src: string; alt: string; objectPosition?: string };
@@ -152,6 +153,13 @@ export type SeoLandingPageConfig = {
     messageLabel?: string;
     messagePlaceholder?: string;
     briefFields?: readonly EnquiryBriefField[];
+    directContact?: {
+      intro: string;
+      phoneLabel: string;
+      phoneHref: `tel:${string}`;
+      emailLabel: string;
+      emailHref: `mailto:${string}`;
+    };
     roofPreference?: {
       detailKey: 'acrylicOption' | 'roofPreference';
       options: ReadonlyArray<{ label: string; value: string; roofMaterials: ReadonlyArray<string> }>;

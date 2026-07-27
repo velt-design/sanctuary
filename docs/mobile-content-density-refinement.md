@@ -263,7 +263,7 @@ is hidden from interaction.
 | Custom | One compact `custom-planning-support` group for site-reading depth, technical boundaries and useful guide links. |
 | Product hub | The compact four-form comparison and one planning-guide group. Integrated options are direct secondary gateways, not disclosures. |
 | Product details | Three groups per route: `fit-and-definition`; `specification-and-tradeoffs`; and `related-support`. |
-| Commercial | Three groups: detailed operational outcomes; decisions, circulation and coordination risks; planning links and FAQs. |
+| Commercial | One `commercial-planning-support` group for four common questions. Project proof, the three-stage process, consolidated capability and operating-site guidance, plus professional and cost pathways remain visible. |
 | Outdoor rooms | Everyday-use detail; coordinated room decisions; planning links and FAQs. |
 | Aluminium | Frame outcomes; specification detail; planning links and FAQs. |
 | Gable and pitched roofs | Coordinated roof-form decisions; planning links and FAQs. |
@@ -423,6 +423,21 @@ Phase 4 follow-up, 26 July 2026:
 - The deployed 36-record Phase 4 matrix recorded HTTP 200, zero horizontal
   overflow and zero measured layout shift throughout. Form requests were
   intercepted. Evidence is under `artifacts/mobile-ux-phase-4/`.
+
+Commercial structure and copy follow-up, 27 July 2026:
+
+- The commercial route retains three governed projects and three delivery
+  stages, with explicit role labels distinguishing Sanctuary-led hospitality
+  design and build, consultant-led supply and installation, and architect-led
+  workplace delivery.
+- Five repeated middle and support sections are consolidated into one visible
+  capability and operating-site section. Professional collaboration and cost
+  pathways remain visible before the enquiry; only four common questions use
+  the route's single responsive disclosure.
+- The final first-brief checklist contains five grouped inputs. The existing
+  commercial enquiry audience, source path, embedded-form component, required
+  fields, payload and analytics contracts remain unchanged, with direct phone
+  and email links added as an optional route-configured presentation detail.
 
 ## Remaining risks and deliberate deferrals
 
