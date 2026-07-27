@@ -6,7 +6,10 @@ const publicOrigin = 'https://www.sanctuarypergolas.co.nz';
 const releaseHeader = 'x-sanctuary-release';
 const releaseShaPattern = /^[a-f0-9]{7,40}$/;
 const capture = process.env.MARKETING_PHASE_FIVE_CAPTURE === '1';
-const evidenceDirectory = resolve('artifacts/mobile-ux-phase-5/automated');
+const evidenceDirectory = resolve(
+  process.env.MARKETING_PHASE_FIVE_EVIDENCE_DIR?.trim()
+    || 'artifacts/mobile-ux-phase-5/automated',
+);
 const targetViewports = [
   { width: 430, height: 932 },
   { width: 390, height: 844 },
@@ -46,12 +49,20 @@ const semanticParityRoutes = [
     path: '/',
     requiredMarkers: [
       'data-homepage-variant="design_conversation_home_v2"',
+      'Begin with built work.',
+      'role="radiogroup"',
+      'application/ld+json',
       'id="footer-contact-heading"',
+    ],
+    exactMarkerCounts: [
+      ['data-project-intent=', 3],
+      ['data-matched-projects=', 3],
     ],
   },
   {
     path: '/projects',
     requiredMarkers: ['data-projects-experience'],
+    hasFooter: false,
   },
   {
     path: '/projects/warkworth-outdoor-room',
@@ -68,11 +79,27 @@ const semanticParityRoutes = [
       'data-seo-landing="pergolas-auckland"',
       'data-service-major-section="support"',
     ],
+    exactMarkerCounts: [
+      ['data-service-major-section=', 6],
+      ['class="acrylic-project-card"', 3],
+    ],
   },
   {
     path: '/custom-pergolas-auckland',
-    requiredMarkers: ['data-seo-landing="custom-pergolas-auckland"'],
-    forbiddenMarkers: ['Pergola guide progression'],
+    requiredMarkers: [
+      'data-seo-landing="custom-pergolas-auckland"',
+      'data-seo-landing-disclosure="custom-planning-support"',
+    ],
+    forbiddenMarkers: [
+      'Pergola guide progression',
+      'Service guide',
+      'Previous guide',
+      'Next guide',
+    ],
+    exactMarkerCounts: [
+      ['class="acrylic-project-card"', 3],
+      ['data-seo-landing-disclosure=', 1],
+    ],
   },
   {
     path: '/products',
@@ -89,14 +116,33 @@ const semanticParityRoutes = [
       'id="commercial-projects"',
       'id="commercial-process"',
     ],
-    forbiddenMarkers: ['Pergola guide progression'],
+    forbiddenMarkers: [
+      'Pergola guide progression',
+      'Service guide',
+      'Previous guide',
+      'Next guide',
+    ],
+    exactMarkerCounts: [
+      ['class="acrylic-project-card"', 3],
+      ['data-seo-landing-disclosure=', 3],
+    ],
   },
   {
     path: '/architects-designers-builders',
     requiredMarkers: [
       'data-seo-landing="architects-designers-builders"',
+      'Professional enquiry',
     ],
-    forbiddenMarkers: ['Pergola guide progression'],
+    forbiddenMarkers: [
+      'Pergola guide progression',
+      'Service guide',
+      'Previous guide',
+      'Next guide',
+    ],
+    exactMarkerCounts: [
+      ['class="acrylic-project-card"', 3],
+      ['data-seo-landing-disclosure=', 2],
+    ],
   },
   {
     path: '/pergola-guides',
@@ -520,6 +566,9 @@ test('release identity and semantic route state survive cache-busted requests', 
       const response = await request.get(path);
       const releaseId = response.headers()[releaseHeader];
       const html = await response.text();
+      const canonicalPath = new URL(route.path, publicOrigin).pathname;
+      const canonicalHref =
+        canonicalPath === '/' ? publicOrigin : `${publicOrigin}${canonicalPath}`;
 
       expect(response.status(), path).toBe(200);
       expect(releaseId, `${path} release identity`).toBeTruthy();
@@ -538,6 +587,22 @@ test('release identity and semantic route state survive cache-busted requests', 
         );
       }
       releaseIds.add(releaseId);
+      expect(
+        (html.match(/<main\b/g) ?? []).length,
+        `${path} main count`,
+      ).toBe(1);
+      expect(
+        (html.match(/<h1\b/g) ?? []).length,
+        `${path} H1 count`,
+      ).toBe(1);
+      expect(html, `${path} canonical`).toContain(
+        `<link rel="canonical" href="${canonicalHref}"/>`,
+      );
+      if (!('hasFooter' in route) || route.hasFooter) {
+        expect(html, `${path} current footer`).toContain(
+          'id="footer-contact-heading"',
+        );
+      }
 
       for (const marker of route.requiredMarkers) {
         expect(html, `${path} should include ${marker}`).toContain(marker);
@@ -547,8 +612,41 @@ test('release identity and semantic route state survive cache-busted requests', 
         : []) {
         expect(html, `${path} should exclude ${marker}`).not.toContain(marker);
       }
+      for (const [marker, count] of 'exactMarkerCounts' in route
+        ? route.exactMarkerCounts
+        : []) {
+        expect(
+          html.split(marker).length - 1,
+          `${path} should include ${count} instances of ${marker}`,
+        ).toBe(count);
+      }
     }
   }
+
+  for (const retiredPath of ['/home-v2', '/home-experimental']) {
+    const response = await request.get(retiredPath, { maxRedirects: 0 });
+    expect(response.status(), `${retiredPath} redirect status`).toBe(308);
+    expect(
+      new URL(response.headers().location, String(baseURL)).pathname,
+      `${retiredPath} redirect destination`,
+    ).toBe('/');
+  }
+
+  const sitemapResponse = await request.get('/sitemap.xml');
+  const sitemap = await sitemapResponse.text();
+  expect(sitemapResponse.status()).toBe(200);
+  expect(sitemap).toContain(
+    `${publicOrigin}/architects-designers-builders`,
+  );
+  expect(sitemap).not.toContain(`${publicOrigin}/home-v2`);
+  expect(sitemap).not.toContain(`${publicOrigin}/home-experimental`);
+  releaseIds.add(sitemapResponse.headers()[releaseHeader]);
+
+  const robotsResponse = await request.get('/robots.txt');
+  const robots = await robotsResponse.text();
+  expect(robotsResponse.status()).toBe(200);
+  expect(robots).toContain(`Sitemap: ${publicOrigin}/sitemap.xml`);
+  releaseIds.add(robotsResponse.headers()[releaseHeader]);
 
   expect(
     [...releaseIds],

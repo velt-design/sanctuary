@@ -290,6 +290,19 @@ test('neutral, audience, project and product entry routes use one canonical cont
         .getByRole('link', { name: 'Get an estimate' }),
     },
     {
+      name: 'professional service header',
+      route: '/architects-designers-builders',
+      context: {
+        enquiryType: 'professional',
+        sourcePath: '/architects-designers-builders',
+        sourceComponent: 'header',
+      },
+      audience: 'professional',
+      contextLabel: 'Professional enquiry',
+      link: (currentPage) => currentPage.locator('header.site')
+        .getByRole('link', { name: 'Get an estimate' }),
+    },
+    {
       name: 'residential project CTA',
       route: '/projects/warkworth-outdoor-room',
       context: {
@@ -577,7 +590,7 @@ test('the submit lock prevents duplicate requests and consent controls lead even
     .toHaveAttribute('href', '/products');
 });
 
-test('residential attachments keep exact policy errors and metadata fallback', async ({
+test('residential attachments keep exact policy errors and fail visibly when upload signing is unavailable', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -653,14 +666,14 @@ test('residential attachments keep exact policy errors and metadata fallback', a
     'plan.pdf',
   );
   await page.getByRole('button', { name: 'Send us your project details' }).click();
-  await expect(page.getByRole('status')).toContainText('Project details received');
-  expect(requestCount).toBe(1);
-  expect(submittedBody).toMatchObject({
-    enquiryType: 'residential',
-    company: null,
-    uploadSessionToken: null,
-    files: [{ name: 'plan.pdf', size: 9, type: 'application/pdf' }],
-  });
+  await expect(page.locator('.contact-form__submit-error')).toContainText(
+    'We could not upload your attachments. Please try again or remove them before submitting.',
+  );
+  expect(requestCount).toBe(0);
+  expect(submittedBody).toBeUndefined();
+  await expect(page.getByRole('list', { name: 'Selected files' })).toContainText(
+    'plan.pdf',
+  );
 });
 
 test('project context survives refresh and browser history', async ({ page }) => {

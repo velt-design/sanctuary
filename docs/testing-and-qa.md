@@ -205,7 +205,8 @@ zero textual or generated em dashes; no horizontal overflow or nested content
 scroll; a neutral/residential/commercial/professional/project/product entry
 matrix; focused client validation; retained values and UUID reuse after API
 failure; duplicate-submit exclusion; consent-controlled events; attribution;
-attachment policy errors; metadata-only upload fallback; and lower-case
+attachment policy errors; visible failure when attachment signing or upload is
+unavailable; and lower-case
 non-personal canonical context in payloads and analytics. The embedded-route
 matrix additionally asserts the shared required/optional contract, field order,
 `Roof approach`, governed upload accept list and limits, commercial audience,
