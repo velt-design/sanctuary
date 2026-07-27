@@ -438,6 +438,10 @@ Commercial structure and copy follow-up, 27 July 2026:
   commercial enquiry audience, source path, embedded-form component, required
   fields, payload and analytics contracts remain unchanged, with direct phone
   and email links added as an optional route-configured presentation detail.
+- Verified Good Home and KiwiRail assets now give the hero, project proof and
+  operating-site story distinct image roles. Project proof uses three columns
+  on wide desktop, an intentional full-width third card after two intermediate
+  columns, and the existing single-column mobile sequence.
 
 ## Remaining risks and deliberate deferrals
 
