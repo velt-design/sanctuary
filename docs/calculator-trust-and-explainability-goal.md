@@ -213,6 +213,7 @@ For Design Workbench Gate 0 purposes, the expected legacy audit mapping is `N/A`
 
 Related current-state references:
 
+- `docs/calculator-ui-ux-review.md`
 - `docs/projects-contacts-estimates-calculator.md`
 - `docs/costing-and-geometry.md`
 - `docs/design-workbench-architecture.md`
