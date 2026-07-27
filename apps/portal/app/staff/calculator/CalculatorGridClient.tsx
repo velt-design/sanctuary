@@ -1055,7 +1055,11 @@ export default function CalculatorGridClient({
         onRepriceLatest: () => void repriceLatest(),
       },
     },
-    saveOutcome: { outcome: saveOutcome, onDismiss: dismissSaveOutcome },
+    saveOutcome: {
+      outcome: saveOutcome,
+      liveCalculatorTotalIncGstCents: pricingPreview.totalIncGstCents,
+      onDismiss: dismissSaveOutcome,
+    },
     projectPicker: workspace ? null : {
       open: projectPickerOpen,
       hostKey,

@@ -248,6 +248,38 @@ test('rafter workings use one authoritative fact across module switching and ret
   });
 });
 
+test('result inspector keyboard navigation reaches every trust surface', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openCalculator(page);
+
+    const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
+    const pricingTab = inspector.getByRole('tab', { name: 'Pricing', exact: true });
+    const materialsTab = inspector.getByRole('tab', { name: 'Materials', exact: true });
+    const issuesTab = inspector.getByRole('tab', { name: 'Issues', exact: true });
+
+    await pricingTab.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(materialsTab).toBeFocused();
+    await expect(materialsTab).toHaveAttribute('aria-selected', 'true');
+    await expect(inspector.getByRole('region', { name: 'Materials breakdown' })).toBeVisible();
+
+    await page.keyboard.press('End');
+    await expect(issuesTab).toBeFocused();
+    await expect(issuesTab).toHaveAttribute('aria-selected', 'true');
+    await expect(inspector.getByRole('region', { name: 'Quote status' })).toBeVisible();
+    await expect(inspector.getByRole('region', { name: 'Warnings' })).toBeVisible();
+
+    await page.keyboard.press('Home');
+    await expect(pricingTab).toBeFocused();
+    await expect(pricingTab).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(issuesTab).toBeFocused();
+    await expect(issuesTab).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
 test('materials and labour explain whole-job quantities without losing trust state', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
@@ -728,5 +760,55 @@ test('scratch calculator can search and open a project workflow', async ({ page 
     await expect(page).toHaveURL(new RegExp(`/staff/calculator\\?projectId=${encodeURIComponent(projectId)}`));
     await expect(page).toHaveURL(new RegExp(`editEstimateId=${encodeURIComponent(estimateId)}`), { timeout: 60_000 });
     await expect(page.getByText('not compatible', { exact: false })).toHaveCount(0);
+  });
+});
+
+test('repriced save reconciles the Live customer total with the saved quote handoff', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openCalculator(page);
+
+    const itemPricing = page.getByRole('region', { name: 'Price by item' });
+
+    await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+    const confirmation = page.getByRole('dialog', { name: 'Save design confirmation' });
+    await expect(confirmation).toBeVisible();
+    const warningAcknowledgement = confirmation.getByLabel('I acknowledge the review warnings');
+    if (await warningAcknowledgement.count()) await warningAcknowledgement.check();
+    await confirmation.getByRole('button', { name: 'Reprice and save', exact: true }).click();
+
+    const outcome = page.getByRole('dialog', { name: 'Design saved' });
+    await expect(outcome).toBeVisible({ timeout: 60_000 });
+    const reconciliation = outcome.getByRole('region', { name: 'Pricing reconciliation' });
+    await expect(reconciliation).toHaveAttribute('data-pricing-reconciliation', 'matched');
+    await expect(reconciliation.getByText('Exact match', { exact: true })).toBeVisible();
+
+    const exactCalculatorTotalCents = await itemPricing.getAttribute(
+      'data-customer-total-inc-gst-cents',
+    );
+    expect(exactCalculatorTotalCents).toMatch(/^\d+$/);
+    const liveTotal = reconciliation.locator('[data-live-calculator-total-inc-gst-cents]');
+    const handoffTotal = reconciliation.locator('[data-quote-handoff-total-inc-gst-cents]');
+    await expect(liveTotal).toHaveAttribute(
+      'data-live-calculator-total-inc-gst-cents',
+      exactCalculatorTotalCents!,
+    );
+    await expect(handoffTotal).toHaveAttribute(
+      'data-quote-handoff-total-inc-gst-cents',
+      exactCalculatorTotalCents!,
+    );
+    await expect(outcome.getByRole('button', { name: 'Create quote from this design' })).toBeEnabled({
+      timeout: 60_000,
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await reconciliation.scrollIntoViewIfNeeded();
+    await expect(reconciliation).toBeInViewport();
+    const dimensions = await outcome.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
   });
 });

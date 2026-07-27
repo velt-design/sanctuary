@@ -20,9 +20,11 @@ function formatMoney(cents: number): string {
 
 export default function CalculatorSaveOutcomeDialog({
   outcome,
+  liveCalculatorTotalIncGstCents,
   onDismiss,
 }: {
   outcome: CalculatorEstimateSaveOutcome | null;
+  liveCalculatorTotalIncGstCents?: number | null;
   onDismiss: () => void;
 }) {
   const router = useRouter();
@@ -33,7 +35,7 @@ export default function CalculatorSaveOutcomeDialog({
   );
   if (!outcome) return null;
 
-  const ui = buildCalculatorSaveOutcomeUi(outcome, syncState);
+  const ui = buildCalculatorSaveOutcomeUi(outcome, syncState, liveCalculatorTotalIncGstCents);
   const quotePreviewBlocked = outcome.quotePreview.blockingIssues.length > 0;
   const routes = buildCalculatorEstimateHandoffRoutes(outcome.projectId, outcome.estimateId);
   const navigate = (href: string) => {
@@ -100,6 +102,31 @@ export default function CalculatorSaveOutcomeDialog({
               </table>
             </div>
           ) : null}
+        </section>
+        <section
+          className={sharedStyles.modalSection}
+          aria-label="Pricing reconciliation"
+          data-pricing-reconciliation={ui.reconciliationStatus}
+        >
+          <h3 className={sharedStyles.modalSectionTitle}>Pricing reconciliation</h3>
+          <p className={styles.reconciliationLabel}>{ui.reconciliationLabel}</p>
+          <p className={styles.detail}>{ui.reconciliationDetail}</p>
+          <dl className={styles.reconciliationValues}>
+            <div>
+              <dt>Live Calculator total</dt>
+              <dd data-live-calculator-total-inc-gst-cents={liveCalculatorTotalIncGstCents ?? ''}>
+                {typeof liveCalculatorTotalIncGstCents === 'number'
+                  ? formatMoney(liveCalculatorTotalIncGstCents)
+                  : 'Unavailable'}
+              </dd>
+            </div>
+            <div>
+              <dt>Saved quote handoff total</dt>
+              <dd data-quote-handoff-total-inc-gst-cents={outcome.quotePreview.totalIncGstCents}>
+                {formatMoney(outcome.quotePreview.totalIncGstCents)}
+              </dd>
+            </div>
+          </dl>
         </section>
       </div>
 

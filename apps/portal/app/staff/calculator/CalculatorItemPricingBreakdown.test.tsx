@@ -57,6 +57,11 @@ describe('CalculatorItemPricingBreakdown', () => {
     expect(container.textContent).toContain('Unfinished blindZiptrak · Dimensions requiredBlindNot priced');
     expect(container.textContent).toContain('Priced items total$14,138.17');
     expect(container.textContent).not.toContain('True cost');
+    expect(
+      container
+        .querySelector('[aria-label="Price by item"]')
+        ?.getAttribute('data-customer-total-inc-gst-cents'),
+    ).toBe('1413817');
     unmount();
   });
 });

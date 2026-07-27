@@ -81,11 +81,85 @@
   font-weight: 650;
 }
 
+.reconciliationLabel {
+  margin: 0 0 4px;
+  color: var(--ui-text-strong);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.reconciliationValues {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.reconciliationValues div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-secondary);
+}
+
+.reconciliationValues dt {
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.reconciliationValues dd {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-size: 14px;
+  font-weight: 750;
+}
+
 .actions {
   flex-wrap: wrap;
 }
 
 @media (max-width: 640px) {
+  .preview {
+    overflow-x: hidden;
+  }
+
+  .preview table {
+    table-layout: fixed;
+    font-size: 10px;
+  }
+
+  .preview th,
+  .preview td {
+    padding: 7px 6px;
+  }
+
+  .preview th:first-child,
+  .preview td:first-child {
+    width: 56%;
+  }
+
+  .preview th:nth-child(2),
+  .preview td:nth-child(2) {
+    width: 12%;
+  }
+
+  .preview th:nth-child(3),
+  .preview td:nth-child(3) {
+    width: 32%;
+  }
+
+  .preview pre {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .reconciliationValues {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .actions {
     align-items: stretch;
     flex-direction: column-reverse;

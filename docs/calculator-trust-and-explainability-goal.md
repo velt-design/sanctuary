@@ -150,12 +150,38 @@ The first trusted material and labour breakdowns are implemented:
 
 Further Workings calculations remain deferred until prioritised from staff feedback.
 
-### 4. Validate Trust And Usability
+### 4. Validate Trust And Usability - Technical Validation Complete; Staff Review Ready
 
-- Test reconciliation between Pricing and quote handoff.
-- Test selected-module scoping, stale/current transitions, warnings, permissions, keyboard use, and responsive layouts.
-- Review the language and diagrams with real staff using representative simple and complex estimates.
-- Treat a user being unable to explain a result as a product defect, even when the arithmetic is correct.
+- A focused integration matrix runs representative simple and complex inputs through the real costing engine, Live Calculator pricing, repriced estimate payload, optimistic saved snapshot, and proposed quote mapping. It proves the same priced inclusions and exact-cent total without requiring Calculator and quote rows to share presentation order.
+- Repriced save outcomes now compare the Live Calculator total with the saved estimate's proposed quote total. An exact match is explicit; an unexpected mismatch blocks the Create quote action. Preserve remains explicit that the saved stored-cost basis may intentionally differ from Live.
+- Authenticated Playwright covers the exact-cent save/handoff match, selected-module workings, retained/current transitions, validation issue routing, keyboard tab behavior, and responsive layouts. Focused component tests retain the staff/admin monetary gates.
+- The two staff-review scenarios and checklist below are ready for a real session. No staff feedback has been recorded or inferred yet.
+- A user being unable to explain a result remains a product defect even when the arithmetic is correct.
+
+#### Staff Review Protocol
+
+Use local or approved staging data only. Provision the registered portal scenarios before the session.
+
+**Simple scenario - `project-with-estimate`**
+
+- One attached pitched acrylic module with no optional add-ons or discount.
+- Ask the reviewer to identify the customer total and inclusions, inspect material and labour assumptions, explain the rafter cut length from the written working and Section diagram, and state whether the result is safe to save.
+
+**Complex scenario - `calculator-multi-module`**
+
+- Three modules across two pergolas covering pitched, gable, and hip roofs.
+- In the browser draft, add one valid blind and a temporary quote discount, switch between all modules, temporarily clear and restore one required dimension, then review the proposed quote handoff after Reprice and save.
+- Ask the reviewer to distinguish whole-job Materials/Labour from selected-module Workings, identify the retained result while invalid, follow the issue back to its input, explain important rounding or waste, and reconcile the exact Price by item total with the saved quote handoff.
+
+For each scenario, record:
+
+1. Reviewer role, viewport/device, date, and scenario.
+2. Whether they could answer each question without help.
+3. Their exact words for anything unclear; do not paraphrase a pass into existence.
+4. Any trust defect, its screen/state, severity, and follow-up owner.
+5. `Pass` only when the reviewer can explain the result and proposed handoff; otherwise record `Needs change`.
+
+Staff feedback status: **Not yet collected.**
 
 ## Done Criteria
 

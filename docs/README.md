@@ -12,13 +12,14 @@ These docs are current-state references and active guardrails for coding agents.
 6. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
 7. `agent-centric-portal-plan.md`: active roadmap for making the portal easier for agents to inspect, reproduce, test, and improve.
 8. `portal-ux-roadmap.md`: active roadmap for the highest-leverage staff usability work.
-9. `mobile-ux-roadmap-v2.md`: authoritative roadmap for the remaining public-site mobile conversion and UX work.
-10. `architecture.md`: workspace structure and app/package ownership.
-11. `target-architecture.md`: target workspace shape and migration direction.
-12. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
-13. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
-14. `platform-workflow.md`: business workflow from lead to install completion.
-15. The feature doc for the area you are changing.
+9. `sanctuary-mobile-production-closure-and-direct-manipulation-plan.md`: authoritative next-phase brief for marketing release parity, product-gallery direct manipulation, physical validation, and production enquiry reconciliation.
+10. `mobile-ux-roadmap-v2.md`: authoritative broad roadmap for the remaining public-site mobile conversion and UX work.
+11. `architecture.md`: workspace structure and app/package ownership.
+12. `target-architecture.md`: target workspace shape and migration direction.
+13. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
+14. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
+15. `platform-workflow.md`: business workflow from lead to install completion.
+16. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
@@ -29,6 +30,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `agent-centric-portal-plan.md` | Active roadmap | You are improving agent access, portal fixture coverage, debug exports, browser evidence, route smoke coverage, or quality ratchets. |
 | `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
+| `sanctuary-mobile-production-closure-and-direct-manipulation-plan.md` | Authoritative next-phase brief | You are closing marketing production parity, adding controlled product-gallery direct manipulation, running physical mobile validation, or reconciling a production enquiry and analytics event. |
 | `mobile-ux-roadmap-v2.md` | Authoritative roadmap | You are planning or implementing the remaining public-site mobile conversion, enquiry continuity, or later mobile UX phases. |
 | `mobile-ux-phase-5-validation.md` | Active evidence record | You are running the final real-device, assistive-technology, analytics or performance validation phase. |
 | `mobile-ux-roadmap.md` | Historical roadmap | You need the original mobile audit, principles, or completed-work record superseded by version 2. |

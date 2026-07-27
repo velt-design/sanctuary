@@ -22,7 +22,11 @@ export default function CalculatorItemPricingBreakdown({ preview }: { preview: C
   if (!preview.rows.length) return null;
 
   return (
-    <section className={styles.card} aria-label="Price by item">
+    <section
+      className={styles.card}
+      aria-label="Price by item"
+      data-customer-total-inc-gst-cents={preview.totalIncGstCents}
+    >
       <header className={styles.header}>
         <div>
           <h2>Price by item</h2>
