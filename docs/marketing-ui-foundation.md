@@ -144,7 +144,11 @@ next. One visible capability section consolidates Sanctuary-led and
 consultant-led scope, project interfaces and operating-site controls. The
 professional-collaboration and cost-driver pathways remain visible before one
 responsive FAQ group, so the mobile journey does not hide its useful next
-steps behind supporting detail.
+steps behind supporting detail. Project proof uses three columns at wide
+desktop, two columns plus one intentional wide card at intermediate widths, and
+one column on mobile. Route-owned verified image overrides give the hero,
+project proof and operating-site story distinct roles without changing the
+governed project records.
 Header, early and embedded-form actions retain the commercial audience and
 canonical route source.
 

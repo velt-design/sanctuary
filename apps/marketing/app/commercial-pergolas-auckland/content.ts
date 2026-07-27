@@ -42,9 +42,9 @@ export const commercialPergolasConfig = {
   serviceName: 'Commercial pergola design and build in Auckland',
   serviceType: 'Commercial pergola design and build',
   hero: {
-    image: '/images/project-goodhome-04.jpg',
-    imageAlt: 'Occupied Auckland hospitality courtyard beneath a lit acrylic gable pergola',
-    objectPosition: '50% 42%',
+    image: '/images/project-goodhome-03.jpg',
+    imageAlt: 'Completed Good Home Takanini courtyard beneath a transparent gable pergola',
+    objectPosition: '50% 46%',
     eyebrow: 'Commercial pergolas in Auckland',
     title: 'You run the venue. We manage the pergola project.',
     intro:
@@ -74,6 +74,11 @@ export const commercialPergolasConfig = {
           summary:
             'A two-zone gable turns the front courtyard into covered hospitality space while preserving the villa-style facade.',
           facts: ['67.7 m² covered area', '25 degree gable relationship'],
+          image: {
+            src: '/images/project-goodhome-02.jpg',
+            alt: 'Completed two-zone gable pergola extending The Good Home Takanini courtyard',
+            objectPosition: '50% 52%',
+          },
         },
         {
           slug: 'lilliput-mini-golf',
@@ -90,6 +95,11 @@ export const commercialPergolasConfig = {
           summary:
             'A 30 metre canopy creates a covered link between key workplace routes without making the long structure feel heavy.',
           facts: ['115 m² circulation canopy', 'Integrated strip lighting'],
+          image: {
+            src: '/images/project-kiwi-rail-01.jpg',
+            alt: 'Long KiwiRail workplace canopy connecting circulation routes between office buildings',
+            objectPosition: '50% 48%',
+          },
         },
       ],
     },
@@ -121,9 +131,9 @@ export const commercialPergolasConfig = {
       eyebrow: 'Scope and operating-site coordination',
       title: 'The space should earn its place in the operation',
       image: {
-        src: '/images/project-kiwi-rail-01.jpg',
-        alt: 'Long commercial canopy framing a pedestrian route between Auckland office buildings',
-        objectPosition: '50% 50%',
+        src: '/images/project-kiwi-rail-03.jpg',
+        alt: 'Architectural detail of the KiwiRail canopy structure and covered pedestrian route',
+        objectPosition: '50% 42%',
       },
       lead:
         'Sanctuary can lead a complete design-and-build scope or work within an architect, designer or builder-led package. The agreed role, site controls and interfaces are set for the actual project; Sanctuary cannot remove every project variable.',

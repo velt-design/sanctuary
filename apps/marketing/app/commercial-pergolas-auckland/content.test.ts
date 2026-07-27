@@ -82,4 +82,27 @@ describe('commercial service journey content', () => {
       emailHref: 'mailto:info@sanctuarypergolas.co.nz',
     });
   });
+
+  it('assigns distinct verified assets to hero, proof and operating-site roles', () => {
+    const projects = commercialPergolasConfig.blocks.find(
+      (block) => block.id === 'commercial-projects',
+    );
+    const capability = commercialPergolasConfig.blocks.find(
+      (block) => block.id === 'commercial-capability',
+    );
+
+    expect(commercialPergolasConfig.hero.image).toBe('/images/project-goodhome-03.jpg');
+    expect(
+      projects?.kind === 'projects'
+        ? projects.items.map(({ image }) => image?.src ?? null)
+        : [],
+    ).toEqual([
+      '/images/project-goodhome-02.jpg',
+      null,
+      '/images/project-kiwi-rail-01.jpg',
+    ]);
+    expect(
+      capability?.kind === 'editorial-image' ? capability.image.src : null,
+    ).toBe('/images/project-kiwi-rail-03.jpg');
+  });
 });

@@ -570,6 +570,25 @@ test('commercial journey leads with three cases and three delivery stages', asyn
   await page.goto('/commercial-pergolas-auckland', {
     waitUntil: 'networkidle',
   });
+  const commercialMain = page.locator(
+    'main[data-seo-landing="commercial-pergolas-auckland"]',
+  );
+  await expect(
+    commercialMain.locator('#commercial-projects .acrylic-project-grid'),
+  ).toHaveCSS('grid-template-columns', /.+ .+ .+/);
+  await expect(commercialMain.locator('.acrylic-hero img')).toHaveAttribute(
+    'src',
+    /project-goodhome-03/,
+  );
+  await expect(
+    commercialMain.locator('#commercial-projects .acrylic-project-card img').nth(0),
+  ).toHaveAttribute('src', /project-goodhome-02/);
+  await expect(
+    commercialMain.locator('#commercial-projects .acrylic-project-card img').nth(2),
+  ).toHaveAttribute('src', /project-kiwi-rail-01/);
+  await expect(
+    commercialMain.locator('#commercial-capability .acrylic-editorial-media img'),
+  ).toHaveAttribute('src', /project-kiwi-rail-03/);
   await expect(
     page.locator('header.site').getByRole('link', { name: 'Get an estimate' }),
   ).toHaveAttribute(
@@ -580,6 +599,31 @@ test('commercial journey leads with three cases and three delivery stages', asyn
       sourceComponent: 'header',
     }),
   );
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/commercial-pergolas-auckland', {
+    waitUntil: 'networkidle',
+  });
+  const projectCards = page.locator(
+    '#commercial-projects .acrylic-project-card',
+  );
+  const [firstCardBox, thirdCardBox] = await Promise.all([
+    projectCards.nth(0).boundingBox(),
+    projectCards.nth(2).boundingBox(),
+  ]);
+  expect(firstCardBox).not.toBeNull();
+  expect(thirdCardBox).not.toBeNull();
+  expect(thirdCardBox!.width).toBeGreaterThan(firstCardBox!.width * 1.8);
+  await expect(
+    projectCards.nth(2).locator('.acrylic-project-card__media'),
+  ).toHaveCSS('aspect-ratio', '21 / 9');
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth + 1,
+    ),
+  ).toBe(false);
 });
 
 test('professional capability route is discoverable, governed and source aware', async ({
