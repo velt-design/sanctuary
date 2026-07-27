@@ -7,6 +7,7 @@ This doc is the current-state reference for the core staff portal workflow befor
 - Use `## Ownership` to route pages, APIs, helpers, tables, and local-first keys.
 - Use `## Contact And Project Flow` and `## Project Snapshot, Pipeline, And Tasks` for project workflow behavior.
 - Use `## Calculator And Estimate Versions` for estimate creation, versioning, summaries, and warnings.
+- Use `docs/calculator-trust-and-explainability-goal.md` when planning or implementing the Calculator Result Inspector, breakdowns, workings, or trust improvements.
 - Use `## Estimate Editability And Locks` and `## Local-First Mutations` for locks, queues, aliases, and conflicts.
 - Finish with `## Handoffs` and `## Verification` for downstream docs and focused tests.
 
