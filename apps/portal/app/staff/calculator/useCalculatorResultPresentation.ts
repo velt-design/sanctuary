@@ -271,20 +271,8 @@ export function useCalculatorResultPresentation({
         ? `Per side: ${rafterCount}${typeof hipRafterCount === 'number' && hipRafterCount > 0 ? ` (+${hipRafterCount} hip)` : ''}`
         : undefined;
 
-  const bomPreview = useMemo(() => {
-    const lines = result?.materials?.lines ?? [];
-    if (!Array.isArray(lines) || lines.length === 0) return [];
-    return lines
-      .slice()
-      .sort((a, b) => (b.line_cost_ex_gst ?? 0) - (a.line_cost_ex_gst ?? 0))
-      .slice(0, 10);
-  }, [result]);
-
-  const labourPreview = useMemo(() => {
-    const actions = result?.install?.actions ?? [];
-    if (!Array.isArray(actions) || actions.length === 0) return [];
-    return actions.slice().sort((a, b) => (b.minutes ?? 0) - (a.minutes ?? 0));
-  }, [result]);
+  const materialsBreakdown = result?.materials?.trusted_breakdown ?? null;
+  const labourBreakdown = result?.install?.trusted_breakdown ?? null;
 
   const saveDialogSummary: SaveDialogSummary = {
     modules: String(values.modules.length),
@@ -378,8 +366,8 @@ export function useCalculatorResultPresentation({
     roofingProcurementSummary,
     rafterCountTotal,
     rafterHelperText,
-    bomPreview,
-    labourPreview,
+    materialsBreakdown,
+    labourBreakdown,
     saveDialogSummary,
     pricingSummaryProps,
     structureOutputRows,

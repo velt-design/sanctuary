@@ -1,4 +1,8 @@
 import { act } from 'react';
+import type {
+  TrustedLabourBreakdownV1,
+  TrustedMaterialsBreakdownV1,
+} from '@sp/costing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderIntoDocument } from '../../../../../test/reactHarness';
@@ -44,29 +48,71 @@ const warnings: UiWarning[] = [
   },
 ];
 
-const bomLines = [
-  {
-    id: 'beam-1',
-    label: 'Beam',
-    unit: 'ea',
-    qty: 2,
-    unit_cost_ex_gst: 100,
-    line_cost_ex_gst: 200,
-  },
-];
+const materialsBreakdown: TrustedMaterialsBreakdownV1 = {
+  version: 1,
+  status: 'ready',
+  source: '@sp/costing/materials-v1',
+  scope: 'whole_job',
+  row_count: 1,
+  assumptions: [],
+  groups: [{
+    id: 'structure',
+    label: 'Structure & framing',
+    rows: [{
+      instance_id: 'beam-1#1',
+      id: 'beam-1',
+      label: 'Beam',
+      owner: { scope: 'module', label: 'Pergola 1 / Module 1' },
+      quantity: 2,
+      unit: 'bar',
+      internal_cost_ex_gst: 200,
+      explanation: {
+        version: 1,
+        source: '@sp/costing/materials-v1',
+        summary: 'Two stock bars cover the calculated beam cuts.',
+        facts: [{ label: 'Bars purchased', value: 2, unit: 'bar' }],
+        assumptions: [],
+        rounding: 'Purchased in whole bars.',
+      },
+    }],
+  }],
+};
 
-const labourActions = [
-  {
-    id: 'install-1',
-    category: 'Install',
-    label: 'Fit beam',
-    unit: 'ea',
-    qty: 2,
-    minutes: 30,
-    applied_multipliers: {},
-    cost_ex_gst: 100,
-  },
-];
+const labourBreakdown: TrustedLabourBreakdownV1 = {
+  version: 1,
+  status: 'ready',
+  source: '@sp/costing/install-actions-v1',
+  scope: 'whole_job',
+  action_count: 1,
+  total_crew_minutes: 30,
+  total_crew_hours: 0.5,
+  assumptions: [],
+  groups: [{
+    id: 'structure',
+    label: 'Structure installation',
+    crew_minutes: 30,
+    crew_hours: 0.5,
+    rows: [{
+      instance_id: 'install-1#1',
+      id: 'install-1',
+      label: 'Fit beam',
+      owner: { scope: 'module', label: 'Pergola 1 / Module 1' },
+      quantity: 2,
+      unit: 'beam',
+      minutes: 30,
+      crew_hours: 0.5,
+      internal_cost_ex_gst: 100,
+      relevant_multipliers: [],
+      explanation: {
+        version: 1,
+        source: '@sp/costing/install-actions-v1',
+        summary: 'The calculated beam count drives this activity.',
+        facts: [{ label: 'Activity quantity', value: 2, unit: 'beam' }],
+        assumptions: [],
+      },
+    }],
+  }],
+};
 
 function buildProps(
   view: CalculatorPreviewDetailsProps['view'],
@@ -76,12 +122,13 @@ function buildProps(
     view,
     warnings,
     onJumpToWarning: vi.fn(),
-    bomLines,
+    materialsBreakdown,
     canViewInternalCosts: false,
     materialsEx: 200,
     isAdvancedUi: false,
     materialsDebug,
-    labourActions,
+    labourBreakdown,
+    resultFreshness: 'current',
     structureRows: [{ label: 'Area (m2)', value: '12.00' }],
     ...overrides,
   };
@@ -150,6 +197,7 @@ describe('CalculatorPreviewDetails', () => {
     ));
     expect(document.body.textContent).toContain('Fit beam');
     expect(document.body.textContent).toContain('30 min');
+    expect(document.body.textContent).toContain('$100.00');
   });
 
   it('shows selected-module structure outputs only in Advanced mode', () => {

@@ -134,12 +134,21 @@ The rafter cut-length reference implementation is complete:
 - the former portal-only rafter-length estimate, whose deductions and angle allowance differed from the engine takeoff, has been removed;
 - package, integration, component, and authenticated browser tests prove plane-value parity, module switching, current/retained state, keyboard-accessible regions, and responsive layouts.
 
-### 3. Turn Breakdowns Into Explanations
+### 3. Turn Breakdowns Into Explanations - Complete
 
-- Replace debug-oriented ordering and labels with user-facing material and labour groups.
-- Add `Why this quantity?` disclosure to supported material and labour rows.
-- Expand Workings only after the rafter pattern is proven, prioritising the calculations users most often question.
-- Retain technical trace export for diagnosis without making it the everyday interface.
+The first trusted material and labour breakdowns are implemented:
+
+- `@sp/costing` publishes compact whole-job material and labour breakdown contracts from the actual BOM lines, install actions, totals, notes, scopes, and applied multipliers;
+- every result row is placed in a stable user-facing purpose or work-stage group, with source IDs retained for traceability and separate unique instance IDs for repeated BOM lines;
+- material rows show purchase quantity, unit, pergola/module ownership where available, profile, and permission-gated internal cost;
+- stock-bar explanations show required cut length, stock length, bars purchased, allocated waste, and whole-stock rounding; roofing sheets show the package-owned area or strip-yield note and whole-sheet rounding;
+- labour rows show activity quantity, unit, estimated minutes, crew hours, relevant non-neutral loadings, ownership, and permission-gated internal cost;
+- `Why this quantity?` keeps package facts, assumptions, rounding, and source behind progressive disclosure rather than exposing the debug trace by default;
+- Materials remains available to staff without internal costs, while Labour retains the existing admin plus Advanced-mode gate;
+- current and retained last-valid states are explicit, and old results without the contracts fail closed with a recalculate message;
+- the existing Advanced/admin material trace remains available for diagnosis and is not used as the everyday breakdown.
+
+Further Workings calculations remain deferred until prioritised from staff feedback.
 
 ### 4. Validate Trust And Usability
 

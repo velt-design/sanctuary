@@ -24,6 +24,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-27 | Enquiry Attachment Readiness     | Promoted | Verify the private Storage bucket in the exact production project before enabling attachment claims. A selected file must reach Storage or fail visibly; never convert an upload failure into metadata-only while allowing the enquiry/email to claim files were received. |
 | 2026-07-27 | Enquiry Email Optional Pricing   | Promoted | Treat indicative pricing as optional customer-email content. A valid short residential or commercial enquiry must still render, send and log its confirmation when dimensions or costing are unavailable; omit the investment panel and pricing copy instead of aborting the side effect. |
 | 2026-07-27 | Calculator Rafter Explainability | Promoted | A trusted drawing label and written working must consume the same package-owned result facts. Remove app-local formula lookalikes when their deductions, sides, allowances, or rounding differ from the engine. |
+| 2026-07-27 | Calculator Trusted Breakdowns     | Promoted | Build everyday material/labour explanations from the exact package-owned BOM lines and install actions. Preserve source IDs for traceability but use separate instance IDs because valid BOM rows can repeat a source ID. |
 | 2026-07-27 | Calculator Add Actions           | Active   | Wrap zero-argument UI actions before binding functions that accept optional data; otherwise React can pass a DOM event into serializable calculator state. Assert that the callback receives no arguments. |
 | 2026-07-26 | Marketing Homepage Interaction   | Promoted | Keep one visible first-question introduction, make its hero fragment reveal an actionable choice at narrow and zoomed viewports, route semantic keyboard selection through the same consent-aware activation path, and test selected/inverse focus plus selected hover colours rather than CSS-property presence alone. |
 | 2026-07-26 | Marketing Homepage Promotion     | Promoted | Promote an approved experiment by moving it into one production owner, transferring canonical SEO, proof, service, process, enquiry and analytics responsibilities, and retiring the parallel implementation. Redirect comparison URLs to `/`; do not retain hidden duplicate homepages. |
@@ -3658,3 +3659,14 @@ Why it mattered: Both values looked plausible but were not equivalent, so an exp
 Current guardrail: Package-owned derivation publishes one versioned explanation contract. Written workings and Section cut annotations consume its exact plane facts. Input-fallback or unsupported geometry fails closed instead of recreating a formula in the portal.
 Promoted to: `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`
 Related docs/tests: `packages/costing/src/engine/rafterExplanation.ts`; `packages/costing/src/engine/derive.test.ts`; `apps/portal/app/staff/calculator/ModuleRafterTrustIntegration.test.tsx`; `playwright/portal.calculator.spec.ts`
+
+### 2026-07-27 - Calculator Trusted Breakdowns - Explain The Actual Rows
+
+Date: 2026-07-27
+Area: Calculator whole-job material and labour explanations
+Status: Promoted
+Decision or mistake: The Result Inspector ordered raw BOM lines by internal cost and raw labour actions by minutes, truncated materials to ten rows, and exposed engine-oriented labels without one compact explanation contract. Valid BOM output can also repeat a source line ID when separate cut groups choose the same stock item.
+Why it mattered: Staff could not see the complete procurement or work-stage picture, and a UI keyed only by source ID could duplicate or omit valid rows while appearing to be a trustworthy explanation.
+Current guardrail: Build everyday groups, labels, ownership, quantities, waste/rounding facts, time, and multipliers from the exact package-owned BOM lines and install actions. Preserve each original ID for traceability, add a separate unique instance ID for presentation, and keep raw trace export diagnostic-only. Portal components disclose this contract but never reconstruct the quantity rules.
+Promoted to: `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`
+Related docs/tests: `packages/costing/src/engine/breakdownExplanation.ts`; `packages/costing/src/engine/breakdownExplanation.test.ts`; `apps/portal/app/staff/calculator/CalculatorTrustedBreakdowns.test.tsx`; `playwright/portal.calculator.spec.ts`

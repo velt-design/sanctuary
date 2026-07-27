@@ -248,6 +248,72 @@ test('rafter workings use one authoritative fact across module switching and ret
   });
 });
 
+test('materials and labour explain whole-job quantities without losing trust state', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openCalculator(page);
+
+    const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
+    await inspector.getByRole('tab', { name: 'Materials', exact: true }).click();
+    const materials = inspector.getByRole('region', { name: 'Materials breakdown' });
+    await expect(materials).toHaveAttribute('data-trusted-materials-status', 'ready');
+    await expect(materials).toHaveAttribute('data-result-freshness', 'current');
+    await expect(materials.getByRole('heading', { name: 'Structure & framing' })).toBeVisible();
+    await expect(materials.locator('[data-material-breakdown-row]')).not.toHaveCount(0);
+    expect(await materials.locator('[data-material-breakdown-row]').count()).toBeGreaterThan(10);
+    await expect(materials.getByText(/Pergola .* Module/).first()).toBeVisible();
+    const materialWhy = materials.locator('details', { hasText: 'Why this quantity?' }).first();
+    await materialWhy.locator('summary').click();
+    await expect(materialWhy).toHaveAttribute('open', '');
+    await expect(materialWhy).toContainText('@sp/costing/materials-v1');
+    await expect(materials.locator('[data-internal-material-cost]').first()).toBeVisible();
+
+    const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
+    const originalLength = await roofLength.inputValue();
+    await roofLength.fill('');
+    await expect(materials).toHaveAttribute('data-result-freshness', 'invalid');
+    await expect(materials).toContainText('may not match unsaved edits');
+    await roofLength.fill(originalLength);
+    await expect(materials).toHaveAttribute('data-result-freshness', 'current', {
+      timeout: 60_000,
+    });
+
+    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+    await inspector.getByRole('tab', { name: 'Labour', exact: true }).click();
+    const labour = inspector.getByRole('region', { name: 'Labour breakdown' });
+    await expect(labour).toHaveAttribute('data-trusted-labour-status', 'ready');
+    await expect(labour).toHaveAttribute('data-result-freshness', 'current');
+    await expect(labour.getByRole('heading', { name: 'Roof installation' })).toBeVisible();
+    await expect(labour.locator('[data-labour-breakdown-row]').first()).toBeVisible();
+    await expect(labour.getByText(/crew hr/).first()).toBeVisible();
+    await expect(labour.locator('[data-internal-labour-cost]').first()).toBeVisible();
+    const labourWhy = labour.locator('details', { hasText: 'Why this quantity?' }).first();
+    await labourWhy.locator('summary').click();
+    await expect(labourWhy).toHaveAttribute('open', '');
+    await expect(labourWhy).toContainText('@sp/costing/install-actions-v1');
+
+    for (const width of [1024, 768, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await labour.scrollIntoViewIfNeeded();
+      await expect(labour).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(1);
+      const dimensions = await labour.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    }
+
+    await inspector.getByRole('tab', { name: 'Materials', exact: true }).click();
+    await materialWhy.scrollIntoViewIfNeeded();
+    await expect(materialWhy).toBeInViewport();
+  });
+});
+
 test('real project route embeds the seeded Calculator without a project picker', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });

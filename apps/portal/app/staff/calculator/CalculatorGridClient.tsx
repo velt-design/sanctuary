@@ -413,7 +413,7 @@ export default function CalculatorGridClient({
     hasOurGutterUi,
     bracketCount, rafterProfile, crewHours, materialsEx, installEx, overheadEx, totalEx, totalInc,
     blindsUi, pricingPreview, pricingComparison, engineWarningsRaw, roofingProcurementSummary,
-    rafterCountTotal, rafterHelperText, bomPreview, labourPreview, saveDialogSummary,
+    rafterCountTotal, rafterHelperText, materialsBreakdown, labourBreakdown, saveDialogSummary,
     pricingSummaryProps, structureOutputRows,
   } = useCalculatorResultPresentation({
     result,
@@ -1011,12 +1011,13 @@ export default function CalculatorGridClient({
     previewDetails: {
       warnings: uiWarnings,
       onJumpToWarning: (warning) => jumpToInfillWarningGlobal(warning.infillId, warning.warning),
-      bomLines: bomPreview,
+      materialsBreakdown,
       canViewInternalCosts,
       materialsEx,
       isAdvancedUi,
       materialsDebug,
-      labourActions: labourPreview,
+      labourBreakdown,
+      resultFreshness,
       structureRows: structureOutputRows,
     },
     rafterExplanation: {

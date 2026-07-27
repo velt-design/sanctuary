@@ -638,6 +638,54 @@ export type MaterialsLineV1 = {
   notes?: string | null;
 };
 
+export type TrustedBreakdownOwnerV1 = {
+  scope: 'job' | 'pergola' | 'module' | 'unknown';
+  label: string;
+};
+
+export type TrustedBreakdownFactV1 = {
+  label: string;
+  value: string | number;
+  unit?: string;
+};
+
+export type TrustedQuantityExplanationV1 = {
+  version: 1;
+  source: '@sp/costing/materials-v1' | '@sp/costing/install-actions-v1';
+  summary: string;
+  facts: TrustedBreakdownFactV1[];
+  assumptions: string[];
+  rounding?: string;
+};
+
+export type TrustedMaterialBreakdownRowV1 = {
+  instance_id: string;
+  id: string;
+  label: string;
+  owner: TrustedBreakdownOwnerV1;
+  quantity: number;
+  unit: string;
+  profile?: string | null;
+  internal_cost_ex_gst: number;
+  explanation?: TrustedQuantityExplanationV1;
+};
+
+export type TrustedMaterialBreakdownGroupV1 = {
+  id: string;
+  label: string;
+  rows: TrustedMaterialBreakdownRowV1[];
+};
+
+export type TrustedMaterialsBreakdownV1 = {
+  version: 1;
+  status: 'ready' | 'empty';
+  source: '@sp/costing/materials-v1';
+  scope: 'whole_job';
+  row_count: number;
+  groups: TrustedMaterialBreakdownGroupV1[];
+  assumptions: string[];
+};
+
 export type MaterialsTotalsV1 = {
   materials_ex_gst: number;
   waste_m_by_profile: Record<string, number>;
@@ -649,6 +697,7 @@ export type MaterialsTotalsV1 = {
 export type MaterialsV1 = {
   lines: MaterialsLineV1[];
   totals: MaterialsTotalsV1;
+  trusted_breakdown?: TrustedMaterialsBreakdownV1;
 };
 
 export type InstallActionV1 = {
@@ -663,6 +712,44 @@ export type InstallActionV1 = {
   cost_ex_gst: number;
 };
 
+export type TrustedLabourBreakdownRowV1 = {
+  instance_id: string;
+  id: string;
+  label: string;
+  owner: TrustedBreakdownOwnerV1;
+  quantity: number;
+  unit: string;
+  minutes: number;
+  crew_hours: number;
+  internal_cost_ex_gst: number;
+  relevant_multipliers: Array<{
+    id: string;
+    label: string;
+    factor: number;
+  }>;
+  explanation: TrustedQuantityExplanationV1;
+};
+
+export type TrustedLabourBreakdownGroupV1 = {
+  id: string;
+  label: string;
+  crew_minutes: number;
+  crew_hours: number;
+  rows: TrustedLabourBreakdownRowV1[];
+};
+
+export type TrustedLabourBreakdownV1 = {
+  version: 1;
+  status: 'ready' | 'empty';
+  source: '@sp/costing/install-actions-v1';
+  scope: 'whole_job';
+  action_count: number;
+  total_crew_minutes: number;
+  total_crew_hours: number;
+  groups: TrustedLabourBreakdownGroupV1[];
+  assumptions: string[];
+};
+
 export type InstallTotalsV1 = {
   crew_minutes: number;
   crew_hours: number;
@@ -672,6 +759,7 @@ export type InstallTotalsV1 = {
 export type InstallV1 = {
   actions: InstallActionV1[];
   totals: InstallTotalsV1;
+  trusted_breakdown?: TrustedLabourBreakdownV1;
 };
 
 export type OverheadV1 = {

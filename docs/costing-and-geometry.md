@@ -233,6 +233,12 @@ Acrylic and joiner downslope length use the same physical driver:
 
 `DerivedV1.rafter_cut_length_explanation` is the Calculator V1 trust contract for common-rafter cut length. It is emitted by the same `@sp/costing` derivation that owns `rafter_run_m_takeoff`, `rafter_cut_length_m`, and the separate gable-side fields. It contains the normalized entered span, engine-selected pitch, resolved rafter profile/count, plane-specific deductions, effective projected run, sloped length before allowance, angle-cut allowance, final cut, formula label, assumptions, source, and nearest-millimetre display rule. Numeric engine facts remain unrounded metres.
 
+## Trusted Material And Labour Breakdown Contracts
+
+The top-level `SiteOutputV1.materials.trusted_breakdown` and `SiteOutputV1.install.trusted_breakdown` contracts are compact, user-facing projections of the exact whole-job BOM lines and install actions already produced by `@sp/costing`. They do not recalculate quantities, time, cost, or multipliers. They add stable grouping, cleaned display labels, scope ownership, source references, assumptions, and progressive quantity explanations.
+
+Material stock-cut explanations use the BOM allocator's published cut, stock-length, whole-bar, and waste facts. Sheet explanations use the BOM's area or strip-yield note and whole-sheet purchasing rule. Labour explanations use the resolved activity quantity, minutes, crew-hour conversion, scope, and non-neutral applied multipliers. Repeated BOM source IDs remain valid; each trusted row therefore also has a unique `instance_id` for presentation identity while preserving the original `id` for traceability. Internal cost fields remain subject to the Calculator's existing presentation permission boundary.
+
 Pitched roofs expose one plane. Gable and low-gable roofs expose separate house and outer planes. Hip roofs expose the common-rafter result for both planes and explicitly exclude the separately derived diagonal hip rafters. Hip-corner modules fail closed because one Section cannot accurately explain both wings.
 
 Calculator written workings and trusted Section annotations consume this contract directly. Portal drawing code may position and format those facts, but it must not recompute rafter cut length. Input-fallback drawings may show a clearly labelled schematic slope only; they must not claim an authoritative cut result.

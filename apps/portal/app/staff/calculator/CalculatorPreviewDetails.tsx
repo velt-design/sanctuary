@@ -1,20 +1,17 @@
 'use client';
 
-import type { InstallActionV1, MaterialsLineV1 } from '@sp/costing';
-
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import styles from './CalculatorGrid.module.css';
 import CalculatorMaterialsDebugPanel from './CalculatorMaterialsDebugPanel';
+import {
+  CalculatorLabourBreakdown,
+  CalculatorMaterialsBreakdown,
+  type CalculatorLabourBreakdownProps,
+  type CalculatorMaterialsBreakdownProps,
+} from './CalculatorTrustedBreakdowns';
+import type { CalculatorResultFreshness } from './calculatorResultFreshness';
 import type { CalculatorMaterialsDebugController } from './useCalculatorMaterialsDebug';
 import type { UiWarning } from './warnings';
-
-function formatMoney(value: number | undefined): string {
-  return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : '--';
-}
-
-function formatNumber(value: number | undefined, digits = 2): string {
-  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--';
-}
 
 type CalculatorStructureOutputRow = {
   label: string;
@@ -27,12 +24,13 @@ export type CalculatorPreviewDetailsProps = {
   view: CalculatorPreviewDetailsView;
   warnings: UiWarning[];
   onJumpToWarning: (warning: Extract<UiWarning, { source: 'infill' }>) => void;
-  bomLines: MaterialsLineV1[];
+  materialsBreakdown: CalculatorMaterialsBreakdownProps['breakdown'];
   canViewInternalCosts: boolean;
   materialsEx: number | undefined;
   isAdvancedUi: boolean;
   materialsDebug: CalculatorMaterialsDebugController;
-  labourActions: InstallActionV1[];
+  labourBreakdown: CalculatorLabourBreakdownProps['breakdown'];
+  resultFreshness: CalculatorResultFreshness;
   structureRows: CalculatorStructureOutputRow[];
 };
 
@@ -75,46 +73,29 @@ function CalculatorIssuesPanel({
 }
 
 function CalculatorMaterialsPanel({
-  bomLines,
+  materialsBreakdown,
   canViewInternalCosts,
   materialsEx,
   isAdvancedUi,
   materialsDebug,
+  resultFreshness,
 }: Pick<
   CalculatorPreviewDetailsDataProps,
-  'bomLines' | 'canViewInternalCosts' | 'materialsEx' | 'isAdvancedUi' | 'materialsDebug'
+  | 'materialsBreakdown'
+  | 'canViewInternalCosts'
+  | 'materialsEx'
+  | 'isAdvancedUi'
+  | 'materialsDebug'
+  | 'resultFreshness'
 >) {
   return (
     <>
-      <section className={styles.previewCard} aria-label="Materials breakdown">
-        <h2 className={styles.previewCardTitle}>Materials breakdown</h2>
-        <p className={styles.previewContext}>Whole job · showing up to 10 material lines</p>
-        {bomLines.length ? (
-          <div className={styles.previewTable}>
-            {bomLines.map((line, index) => (
-              <div key={`${line.id}-${line.label}-${index}`} className={styles.previewRow}>
-                <div className={styles.previewRowMain}>
-                  <div className={styles.previewRowLabel}>{line.label}</div>
-                  <div className={styles.previewRowMeta}>
-                    {formatNumber(line.qty)} {line.unit}
-                  </div>
-                </div>
-                {canViewInternalCosts ? (
-                  <div className={styles.previewRowValue}>{formatMoney(line.line_cost_ex_gst)}</div>
-                ) : null}
-              </div>
-            ))}
-            {canViewInternalCosts ? (
-              <div className={styles.previewRowTotal}>
-                <span>Total materials (ex-GST)</span>
-                <span>{formatMoney(materialsEx)}</span>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <p className={styles.previewMuted}>No materials yet.</p>
-        )}
-      </section>
+      <CalculatorMaterialsBreakdown
+        breakdown={materialsBreakdown}
+        canViewInternalCosts={canViewInternalCosts}
+        materialsExGst={materialsEx}
+        resultFreshness={resultFreshness}
+      />
 
       {isAdvancedUi && canViewInternalCosts ? (
         <CalculatorMaterialsDebugPanel controller={materialsDebug} />
@@ -126,8 +107,12 @@ function CalculatorMaterialsPanel({
 function CalculatorLabourPanel({
   canViewInternalCosts,
   isAdvancedUi,
-  labourActions,
-}: Pick<CalculatorPreviewDetailsDataProps, 'canViewInternalCosts' | 'isAdvancedUi' | 'labourActions'>) {
+  labourBreakdown,
+  resultFreshness,
+}: Pick<
+  CalculatorPreviewDetailsDataProps,
+  'canViewInternalCosts' | 'isAdvancedUi' | 'labourBreakdown' | 'resultFreshness'
+>) {
   if (!canViewInternalCosts) {
     return (
       <section className={styles.previewCard} aria-label="Labour breakdown">
@@ -147,27 +132,11 @@ function CalculatorLabourPanel({
   }
 
   return (
-    <section className={styles.previewCard} aria-label="Labour breakdown">
-      <h2 className={styles.previewCardTitle}>Labour breakdown</h2>
-      <p className={styles.previewContext}>Whole job · ordered by estimated time</p>
-      {labourActions.length ? (
-        <div className={styles.previewTable}>
-          {labourActions.map((action) => (
-            <div key={action.id} className={styles.previewRow}>
-              <div className={styles.previewRowMain}>
-                <div className={styles.previewRowLabel}>{action.label}</div>
-                <div className={styles.previewRowMeta}>
-                  {action.category} · {formatNumber(action.qty)} {action.unit}
-                </div>
-              </div>
-              <div className={styles.previewRowValue}>{formatNumber(action.minutes, 0)} min</div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className={styles.previewMuted}>No labour actions yet.</p>
-      )}
-    </section>
+    <CalculatorLabourBreakdown
+      breakdown={labourBreakdown}
+      canViewInternalCosts={canViewInternalCosts}
+      resultFreshness={resultFreshness}
+    />
   );
 }
 

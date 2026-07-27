@@ -1,6 +1,10 @@
 import { loadCostingConfigV1, type CostingConfigV1 } from './config';
 import { applyGst, normalizeAndDeriveV1 } from './derive';
 import { buildMaterialsV1, buildMaterialsV1Explain } from './bom';
+import {
+  buildTrustedLabourBreakdownV1,
+  buildTrustedMaterialsBreakdownV1,
+} from './breakdownExplanation';
 import { poolInfillsTakeoffsV1 } from './infillTakeoff';
 import { pooledInfillMaterialLines } from './infillMaterialPooling';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
@@ -1243,6 +1247,16 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
   siteMaterialsLines.sort((a, b) => a.id.localeCompare(b.id));
   siteInstallActions.sort((a, b) => a.id.localeCompare(b.id));
   sharedInstallActions.sort((a, b) => a.id.localeCompare(b.id));
+  const siteMaterialsTotals: SiteOutputV1['materials']['totals'] = {
+    materials_ex_gst: materialsTotal,
+    waste_m_by_profile: mergeWasteMaps(modulesAll.map((m) => m.materials.totals.waste_m_by_profile)),
+    bars_by_profile: mergeBarsMaps(modulesAll.map((m) => m.materials.totals.bars_by_profile)),
+  };
+  const siteInstallTotals: SiteOutputV1['install']['totals'] = {
+    crew_minutes: crewMinutesTotal,
+    crew_hours: crewHoursTotal,
+    install_ex_gst: installTotal,
+  };
 
   return {
     pergola_count: pergolaOutputs.length,
@@ -1267,19 +1281,13 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
     },
     materials: {
       lines: siteMaterialsLines,
-      totals: {
-        materials_ex_gst: materialsTotal,
-        waste_m_by_profile: mergeWasteMaps(modulesAll.map((m) => m.materials.totals.waste_m_by_profile)),
-        bars_by_profile: mergeBarsMaps(modulesAll.map((m) => m.materials.totals.bars_by_profile)),
-      },
+      totals: siteMaterialsTotals,
+      trusted_breakdown: buildTrustedMaterialsBreakdownV1(siteMaterialsLines),
     },
     install: {
       actions: siteInstallActions,
-      totals: {
-        crew_minutes: crewMinutesTotal,
-        crew_hours: crewHoursTotal,
-        install_ex_gst: installTotal,
-      },
+      totals: siteInstallTotals,
+      trusted_breakdown: buildTrustedLabourBreakdownV1(siteInstallActions, siteInstallTotals),
     },
     overhead,
     add_ons: addOns,

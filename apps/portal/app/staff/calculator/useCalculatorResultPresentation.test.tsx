@@ -82,8 +82,8 @@ describe('useCalculatorResultPresentation', () => {
     });
     expect(presentation().pricingSummaryProps.onOpenIssues).toBe(openIssues);
     expect(presentation().structureOutputRows.find((row) => row.label === 'Area (m²)')?.value).not.toBe('—');
-    expect(presentation().bomPreview.length).toBeGreaterThan(0);
-    expect(presentation().labourPreview.length).toBeGreaterThan(0);
+    expect(presentation().materialsBreakdown?.row_count).toBeGreaterThan(0);
+    expect(presentation().labourBreakdown?.action_count).toBeGreaterThan(0);
     rendered.unmount();
   });
 
