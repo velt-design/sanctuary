@@ -102,10 +102,6 @@ const nextConfig: NextConfig = {
         headers: [...securityHeaders, ...mediaCacheHeaders],
       },
       {
-        source: '/runtime-ga.js',
-        headers: [...securityHeaders, ...runtimeScriptCacheHeaders],
-      },
-      {
         source: '/runtime-meta.js',
         headers: [...securityHeaders, ...runtimeScriptCacheHeaders],
       },

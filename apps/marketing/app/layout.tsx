@@ -10,7 +10,6 @@ import ProductSubHeader from '@/components/ProductSubHeader';
 import SiteFooter from '@/components/SiteFooter';
 import FooterVisibilityGate from '@/components/FooterVisibilityGate';
 import FooterHeaderSync from '@/components/FooterHeaderSync';
-import Analytics from '@/components/Analytics';
 import WebVitals from '@/components/WebVitals';
 import ScrollReset from '@/components/ScrollReset';
 import { Suspense, type CSSProperties } from 'react';
@@ -140,7 +139,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
           </FooterVisibilityGate>
           <ConsentBanner />
-          <Analytics />
           <MetaPixel />
           <ArchiproPixel />
         </ConsentProvider>

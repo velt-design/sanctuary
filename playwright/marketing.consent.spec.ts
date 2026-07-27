@@ -48,7 +48,7 @@ test('loads analytics and marketing vendors only after both categories are accep
   await page.getByRole('button', { name: 'Accept all' }).click();
 
   await expect.poll(() => requests.some((url) => url.includes('googletagmanager.com/gtm.js'))).toBe(true);
-  await expect.poll(() => requests.some((url) => url.includes('/runtime-ga.js'))).toBe(true);
+  expect(requests.some((url) => url.includes('/runtime-ga.js'))).toBe(false);
   await expect.poll(() => requests.some((url) => url.includes('/runtime-meta.js'))).toBe(true);
   await expect.poll(() => requests.some((url) => url.includes('/runtime-archipro.js'))).toBe(true);
 });
@@ -60,8 +60,9 @@ test('respects category-specific choices', async ({ page }) => {
   await page.getByRole('checkbox', { name: 'Analytics cookies' }).check();
   await page.getByRole('button', { name: 'Save choices' }).click();
 
-  await expect.poll(() => requests.some((url) => url.includes('/runtime-ga.js'))).toBe(true);
+  await expect.poll(() => requests.some((url) => url.includes('googletagmanager.com/gtm.js'))).toBe(true);
   await page.waitForTimeout(4_000);
+  expect(requests.some((url) => url.includes('/runtime-ga.js'))).toBe(false);
   expect(requests.some((url) => url.includes('/runtime-meta.js'))).toBe(false);
   expect(requests.some((url) => url.includes('/runtime-archipro.js'))).toBe(false);
   expect(requests.some((url) => url.includes('googletagmanager.com/gtm.js'))).toBe(true);

@@ -3,8 +3,6 @@
 import { useEffect } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-
 type GtagFn = (event: 'event', name: string, params: Record<string, unknown>) => void;
 
 type WebVitalsMetric = {
@@ -34,7 +32,7 @@ export default function WebVitals() {
   const { consent } = useConsent();
 
   useEffect(() => {
-    if (!GA_ID || !consent.analytics) return;
+    if (!consent.analytics) return;
 
     let cancelled = false;
     let timerId: number | null = null;

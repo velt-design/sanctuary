@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -29,26 +29,33 @@ describe('optional tracking consent boundaries', () => {
   it('keeps every optional vendor behind the consent provider and has no unconditional noscript request', () => {
     const layout = read('../app/layout.tsx');
     const gtm = read('GoogleTagManager.tsx');
-    const analytics = read('Analytics.tsx');
+    const webVitals = read('WebVitals.tsx');
     const meta = read('MetaPixel.tsx');
     const archipro = read('ArchiproPixel.tsx');
 
     const providerStart = layout.indexOf('<ConsentProvider>');
     expect(providerStart).toBeGreaterThan(-1);
-    for (const component of ['<GoogleTagManager />', '<Analytics />', '<MetaPixel />', '<ArchiproPixel />']) {
+    for (const component of ['<GoogleTagManager />', '<MetaPixel />', '<ArchiproPixel />']) {
       expect(layout.indexOf(component)).toBeGreaterThan(providerStart);
     }
 
+    expect(layout).not.toContain('<Analytics />');
+    expect(existsSync(path.resolve(here, '../app/runtime-ga.js/route.ts'))).toBe(false);
     expect(gtm).not.toContain('<noscript>');
     expect(gtm).not.toContain('beforeInteractive');
-    expect(analytics).toContain('if (!consent.analytics');
+    expect(webVitals).toContain('if (!consent.analytics');
+    expect(webVitals).not.toContain('NEXT_PUBLIC_GA_MEASUREMENT_ID');
     expect(meta).toContain('if (!consent.marketing');
     expect(archipro).toContain('if (!consent.marketing');
   });
 
-  it('does not reset GA consent to denied after the user has granted analytics', () => {
-    const runtimeGa = read('../app/runtime-ga.js/route.ts');
-    expect(runtimeGa).not.toContain("window.gtag('consent', 'default'");
+  it('uses GTM as the only Google runtime loader', () => {
+    const layout = read('../app/layout.tsx');
+    const gtm = read('GoogleTagManager.tsx');
+    expect(layout).toContain('<GoogleTagManager />');
+    expect(layout).not.toContain('Analytics');
+    expect(gtm).toContain('googletagmanager.com/gtm.js');
+    expect(gtm).not.toContain('googletagmanager.com/gtag/js');
   });
 
   it('emits non-PII enquiry conversion events only after an explicit relevant choice', () => {
