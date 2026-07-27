@@ -19,7 +19,11 @@ import {
   websiteAutoresponderSubject,
 } from '@/lib/sharedEmails';
 import { getCallWindowText } from '@/emails/utils/callWindow';
-import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
+import type {
+  EnquiryPayload,
+  Professional,
+  ResidentialOrCommercialEnquiry,
+} from '@/emails/types';
 import { projects } from '../../../data/projects';
 import { products } from '../../../data/products';
 import {
@@ -599,15 +603,12 @@ export async function POST(req: Request) {
           ...attachmentContext,
         } satisfies Professional;
       } else {
-        if (!budgets.baseRange) {
-          throw new Error('Missing base estimate range for autoresponder.');
-        }
         const addons = addOnLabels(addOns);
         const blindsSelected = isTruthy(addOns?.blinds);
         emailPayload = {
           leadId: enquiryRow.id,
           submittedAt,
-          enquiryType: enquiryType as ResidentialOrCommercial['enquiryType'],
+          enquiryType: enquiryType as ResidentialOrCommercialEnquiry['enquiryType'],
           name,
           email,
           phone: phoneRaw,
@@ -625,9 +626,9 @@ export async function POST(req: Request) {
           roof: formatRoofLabel(roofMaterials),
           addons,
           blindsSelected,
-          baseRange: budgets.baseRange,
+          ...(budgets.baseRange ? { baseRange: budgets.baseRange } : {}),
           ...(budgets.blindsRange ? { blindsRange: budgets.blindsRange } : {}),
-        } satisfies ResidentialOrCommercial;
+        } satisfies ResidentialOrCommercialEnquiry;
       }
 
       const callWindowText = getCallWindowText(submittedAt);

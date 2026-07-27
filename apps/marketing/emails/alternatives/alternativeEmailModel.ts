@@ -4,7 +4,10 @@ import {
   EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
   type WebsiteAutoresponderTemplateId,
 } from '../../lib/websiteAutoresponderContract';
-import type { Professional, ResidentialOrCommercial } from '../types';
+import type {
+  Professional,
+  ResidentialOrCommercialEnquiry,
+} from '../types';
 import { formatInvestmentAmount } from '../components/InvestmentPanel';
 import { formatNZD } from '../utils/money';
 
@@ -46,7 +49,7 @@ function firstName(value: unknown): string {
   return name === 'Not supplied' ? 'there' : (name.split(/\s+/)[0] ?? 'there');
 }
 
-function dimensions(props: ResidentialOrCommercial): string {
+function dimensions(props: ResidentialOrCommercialEnquiry): string {
   const values = [props.widthM, props.depthM, props.heightM];
   if (!values.every((value) => Number.isFinite(value) && value > 0)) {
     return 'Not supplied';
@@ -55,11 +58,14 @@ function dimensions(props: ResidentialOrCommercial): string {
 }
 
 function estimateModel(
-  props: ResidentialOrCommercial,
+  props: ResidentialOrCommercialEnquiry,
 ): Pick<
   AlternativeEmailModel,
   'baseInvestment' | 'blindsInvestment' | 'estimateNote'
 > {
+  if (!props.baseRange) {
+    return {};
+  }
   const baseIsSingleAmount =
     props.baseRange.lowIncGst === props.baseRange.highIncGst;
   return {
@@ -120,7 +126,7 @@ function buildEstimateModel(
   templateId: WebsiteAutoresponderTemplateId,
   variables: Record<string, unknown>,
 ): AlternativeEmailModel {
-  const props = variables as unknown as ResidentialOrCommercial;
+  const props = variables as unknown as ResidentialOrCommercialEnquiry;
   const audience =
     templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1
       ? 'professional'
@@ -140,12 +146,15 @@ function buildEstimateModel(
           .join(', ')
       : 'None selected';
   const isCommercial = audience === 'commercial';
+  const receivedDetails = props.baseRange
+    ? 'including the roof form, selected options and early installed estimate'
+    : 'including the project information and files supplied';
 
   return {
     audience,
     eyebrow: `${isCommercial ? 'Commercial' : 'Residential'} pergola enquiry · received`,
     heading: `Thanks, ${firstName(props.name)}. Your pergola brief is with us.`,
-    intro: `We have the details for your ${supplied(props.suburb)} project, including the roof form, selected options and early installed estimate.`,
+    intro: `We have the details for your ${supplied(props.suburb)} project, ${receivedDetails}.`,
     reassurance:
       'You do not need to submit the form again. The information below is the brief our team will review.',
     hero: resolveWebsiteAutoresponderHero(props),

@@ -369,6 +369,65 @@ describe('POST /api/enquiry attribution', () => {
     },
   );
 
+  it('sends the residential confirmation without an estimate when dimensions are omitted', async () => {
+    const { client, db } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const { sendCustomerAutoresponder } = await import('@/lib/email/sendCustomerAutoresponder');
+    (sendCustomerAutoresponder as any).mockClear();
+
+    const response = await POST(
+      new Request('http://localhost/api/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: SUBMISSION_ID,
+          uploadSessionToken: UPLOAD_SESSION_TOKEN,
+          enquiryType: 'residential',
+          name: 'Pat',
+          email: 'pat@example.com',
+          phone: '021000000',
+          suburb: 'Ponsonby',
+          source: 'website',
+          page: '/contact',
+          files: [{
+            path: `pending/${SUBMISSION_ID}/0-plan.pdf`,
+            name: 'plan.pdf',
+            size: 9,
+            type: 'application/pdf',
+          }],
+          honeypot: '',
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(h.calculateCostV1).not.toHaveBeenCalled();
+    expect(sendCustomerAutoresponder).toHaveBeenCalledTimes(1);
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).toMatchObject({
+      enquiryType: 'residential',
+      widthM: 0,
+      depthM: 0,
+      heightM: 0,
+    });
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[0]).not.toHaveProperty(
+      'baseRange',
+    );
+    expect((sendCustomerAutoresponder as any).mock.calls[0]?.[1]).toEqual({
+      attachments: [{
+        filename: 'plan.pdf',
+        content: Buffer.from('%PDF-test').toString('base64'),
+      }],
+      idempotencyKey: 'website:autoresponder:enquiry-1',
+    });
+    expect((db as Record<string, Row[]>).email_outbox).toEqual([
+      expect.objectContaining({
+        status: 'SENT',
+        template_id: 'EMAIL_WEBSITE_AUTORESPONDER_RES_V1',
+      }),
+    ]);
+  });
+
   it('accepts the enquiry and saves unavailable pricing when the single costing attempt fails', async () => {
     const { client, db } = makeDb();
     h.createClient.mockReturnValue(client);

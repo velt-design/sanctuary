@@ -51,7 +51,7 @@ export function websiteAutoresponderSubject(
 function asMoneyRange(value: unknown): {
   lowIncGst: number;
   highIncGst: number;
-} {
+} | undefined {
   if (value && typeof value === 'object') {
     const lowIncGst = Number((value as Record<string, unknown>).lowIncGst);
     const highIncGst = Number((value as Record<string, unknown>).highIncGst);
@@ -59,7 +59,7 @@ function asMoneyRange(value: unknown): {
       return { lowIncGst, highIncGst };
     }
   }
-  return { lowIncGst: 0, highIncGst: 0 };
+  return undefined;
 }
 
 export function websiteAutoresponderPreheader(

@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| 2026-07-27 | Enquiry Email Optional Pricing   | Promoted | Treat indicative pricing as optional customer-email content. A valid short residential or commercial enquiry must still render, send and log its confirmation when dimensions or costing are unavailable; omit the investment panel and pricing copy instead of aborting the side effect. |
 | 2026-07-27 | Calculator Add Actions           | Active   | Wrap zero-argument UI actions before binding functions that accept optional data; otherwise React can pass a DOM event into serializable calculator state. Assert that the callback receives no arguments. |
 | 2026-07-26 | Marketing Homepage Interaction   | Promoted | Keep one visible first-question introduction, make its hero fragment reveal an actionable choice at narrow and zoomed viewports, route semantic keyboard selection through the same consent-aware activation path, and test selected/inverse focus plus selected hover colours rather than CSS-property presence alone. |
 | 2026-07-26 | Marketing Homepage Promotion     | Promoted | Promote an approved experiment by moving it into one production owner, transferring canonical SEO, proof, service, process, enquiry and analytics responsibilities, and retiring the parallel implementation. Redirect comparison URLs to `/`; do not retain hidden duplicate homepages. |
@@ -3589,6 +3590,17 @@ Why it mattered: Switching only the public send adapter or only the workbench wo
 Current guardrail: Promote an approved layout through `renderWebsiteAutoresponder`, retain the stable template IDs, customer subjects and delivery contract, and make the active workbench layout render the same adaptive HTML and plain text. Keep Image-led and Compact preview-only until separately approved.
 Promoted to: `docs/automation-email-audit.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/lib/websiteAutoresponder.ts`; `apps/marketing/lib/websiteAutoresponderAlternatives.test.ts`; `apps/marketing/lib/websiteAutoresponderPreviewFixtures.test.ts`
+
+### 2026-07-27 - Enquiry Email Optional Pricing - Confirm Every Valid Brief
+
+Date: 2026-07-27
+Area: Marketing website autoresponder
+Status: Promoted
+Decision or mistake: The public intake correctly accepted short residential and commercial enquiries without dimensions, but the autoresponder path treated a missing indicative range as fatal and exited before rendering or calling the provider.
+Why it mattered: Valid customer enquiries, including enquiries with uploaded files, were saved successfully while neither the customer nor the staff BCC received a confirmation.
+Current guardrail: Keep indicative pricing optional in the autoresponder contract. When a valid brief has no costing snapshot, render and send the stable residential or commercial template without the investment panel or estimate wording, and retain the normal idempotent outbox and audit path.
+Promoted to: `docs/automation-email-audit.md`
+Related docs/tests: `apps/marketing/app/api/enquiry/route.test.ts`; `apps/marketing/lib/websiteAutoresponderAlternatives.test.ts`
 
 ### 2026-07-26 - Marketing Homepage Promotion - Replace The Owner, Not The Responsibilities
 

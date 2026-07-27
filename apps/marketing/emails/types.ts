@@ -47,9 +47,16 @@ export interface ResidentialOrCommercial extends EnquiryBase {
   blindsRange?: MoneyRange;
 }
 
+export type ResidentialOrCommercialEnquiry = Omit<
+  ResidentialOrCommercial,
+  'baseRange'
+> & {
+  baseRange?: MoneyRange;
+};
+
 export interface Professional extends EnquiryBase {
   enquiryType: 'professional';
   company?: string;
 }
 
-export type EnquiryPayload = ResidentialOrCommercial | Professional;
+export type EnquiryPayload = ResidentialOrCommercialEnquiry | Professional;

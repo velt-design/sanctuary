@@ -26,8 +26,13 @@ export function professionalEnquirySubject(name: unknown): string {
 
 export function customerEstimatePreheader(
   enquiryType: 'residential' | 'commercial',
-  baseRange: { lowIncGst: number; highIncGst: number },
+  baseRange?: { lowIncGst: number; highIncGst: number },
 ): string {
+  if (!baseRange) {
+    return enquiryType === 'commercial'
+      ? 'Your commercial project details and the next steps from Sanctuary.'
+      : 'Your project details and the next steps from Sanctuary.';
+  }
   const amountLabel =
     baseRange.lowIncGst === baseRange.highIncGst
       ? 'indicative installed estimate'

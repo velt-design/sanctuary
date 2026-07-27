@@ -182,4 +182,35 @@ describe('website autoresponder layout alternatives', () => {
     );
     expect(production.html).not.toBe(imageLed.html);
   });
+
+  it('renders a confirmation without investment copy when pricing is unavailable', async () => {
+    const fixture = getWebsiteAutoresponderPreviewFixture(
+      'residential-pitched-without-blinds',
+    );
+    const variables = {
+      ...fixture.variables,
+      widthM: 0,
+      depthM: 0,
+      heightM: 0,
+      style: '',
+      roof: 'Not selected',
+      baseRange: undefined,
+    };
+
+    const rendered = await renderWebsiteAutoresponder(
+      fixture.templateId,
+      variables as unknown as Record<string, unknown>,
+    );
+
+    expect(rendered.preheader).toBe(
+      'Your project details and the next steps from Sanctuary.',
+    );
+    expect(rendered.text).toContain(
+      'including the project information and files supplied',
+    );
+    expect(rendered.text).toContain('Approximate dimensions');
+    expect(rendered.text).toContain('Not supplied');
+    expect(rendered.text).not.toContain('Early installed estimate');
+    expect(rendered.text).not.toContain('$0');
+  });
 });
