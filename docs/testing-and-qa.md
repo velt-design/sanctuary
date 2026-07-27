@@ -168,9 +168,11 @@ visible images, 44 pixel controls, FCP, LCP, TTFB, transfer size, image/script
 payload and long tasks. A raw-response contract also requires one sanitized
 `X-Sanctuary-Release` value across normal and cache-busted requests and checks
 the intended semantic markers and service-route guide framing. Set
-`MARKETING_EXPECTED_RELEASE_SHA` for an exact deployment assertion. This
-supplements but never replaces the physical-device, VoiceOver and TalkBack
-matrix in `docs/mobile-ux-phase-5-validation.md`.
+`MARKETING_EXPECTED_RELEASE_SHA` for an exact deployment assertion. For the
+active PDR programme this automated matrix is the mobile interaction gate. The
+device and assistive-technology matrix in
+`docs/mobile-ux-phase-5-validation.md` is optional historical research, not a
+merge requirement.
 
 Mobile first-layer copy, responsive disclosure, shared public route-template,
 service, SEO-landing or guide-directory changes should also run
