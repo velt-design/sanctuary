@@ -41,6 +41,8 @@ submission authority was not available. It is not a pass or a fail.
 | Repository release identity fix | All marketing responses now receive `X-Sanctuary-Release` from an explicitly supplied or provider commit SHA; non-SHA values are rejected and local development reports `local` | Passed locally and in production |
 | Protected preview release identity | PR #25 identified `59e6f25e106f8e34ad20074f2452db1b38f6c531`; stacked PR #26 identified `f2a2e2e22eb23b0fe96e592a0a86c3f06f128f75` | Passed with authenticated, read-only Vercel CLI requests |
 | Phase 6 production identity | Merge release `f207a1e975421a42b3b6734be5a84bae1134b7da` | Passed on normal and cache-busted primary-route responses |
+| PDR-01 protected preview identity | PR #29 head `947c701d514fc4c9c84ca3980d9dd4fdeeb754df` | Passed 24/24 normal and cache-busted primary-route responses |
+| PDR-01 production identity | Merge release `a9011d88e0d7f673dfa214b36211116f3c2826a8` | Passed exact-release semantics and 36/36 route/viewport browser cases on 27 July 2026 |
 
 The public deployment serves the approved Phase 3 through Phase 6 route
 structure, intercepted enquiry/review-name fixes, corrected commercial framing
@@ -49,6 +51,11 @@ stacked PR #26 previews each passed 24 normal/cache-busted response checks
 across the 12-route matrix and identified their exact head commit. After both
 PRs merged, the same production contract passed against merge release
 `f207a1e975421a42b3b6734be5a84bae1134b7da`.
+
+PDR-01 later closed the remaining professional-header context defect and
+reconfirmed the full release contract. PR #29 previewed as `947c701d5`, then
+merged and automatically deployed as `a9011d88e`. No manual cache action or
+real enquiry was required.
 
 ## Primary task scripts
 
@@ -299,6 +306,10 @@ progression from the custom, commercial and professional service routes. On 26
 July 2026 this lane passed against production release
 `f207a1e975421a42b3b6734be5a84bae1134b7da`. Focused production checks for the
 commercial journey and mobile gallery controls also passed in the same run.
+On 27 July 2026 the expanded PDR-01 lane passed against production release
+`a9011d88e0d7f673dfa214b36211116f3c2826a8`, including canonicals, retired
+homepage redirects, sitemap/robots membership, route structure and professional
+header enquiry context.
 
 ## Performance evidence
 
@@ -335,6 +346,7 @@ cannot prove field improvement.
 |---|---|---|
 | Existing pre-Phase 5 lab evidence | Available | Repository artifacts contain earlier homepage and Phase 2-4 measurements |
 | Current production Chromium route matrix | Pass | 36 records across 12 routes and 430/390/360 px: HTTP 200, zero overflow and CLS, no failed requests/responses, broken viewport images, duplicate IDs or primary target failures |
+| PDR-01 production Chromium route matrix | Pass | Release `a9011d88e`: 36 records, zero failed requests/responses, overflow, broken images, duplicate IDs or undersized primary targets; maximum CLS 0 and maximum LCP 1,204 ms on the warm rerun |
 | Phase 6 local Chromium route matrix | Pass | 36 records across 12 routes and 430/390/360 px: HTTP 200, zero overflow and CLS, no failed responses, broken viewport images, duplicate IDs or primary target failures; every response identified the local build |
 | Current Lighthouse lab run | Pass with runner cleanup warning | Valid reports were written before a Windows temporary-profile cleanup error; mobile scores 0.98/1.00/0.96/1.00 and desktop 1.00/1.00/0.96/1.00 |
 | Production field Core Web Vitals | Pass with data limitations | Public PageSpeed/CrUX URL-level homepage data passes on mobile and desktop; INP and TTFB are unavailable, and checked non-home routes fall back to origin-level data because URL-level samples are insufficient |

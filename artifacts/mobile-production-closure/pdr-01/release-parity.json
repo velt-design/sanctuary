@@ -1,0 +1,21 @@
+{
+  "checkedOn": "2026-07-27",
+  "pullRequest": 29,
+  "preview": {
+    "deployment": "https://sanctuary-fclkwzxig-jordans-projects-43df95bd.vercel.app",
+    "release": "947c701d514fc4c9c84ca3980d9dd4fdeeb754df",
+    "normalAndCacheBustedPrimaryRouteResponses": 24,
+    "failures": 0
+  },
+  "production": {
+    "origin": "https://www.sanctuarypergolas.co.nz",
+    "release": "a9011d88e0d7f673dfa214b36211116f3c2826a8",
+    "normalAndCacheBustedPrimaryRouteResponses": 24,
+    "browserRouteViewportRecords": 36,
+    "failures": 0
+  },
+  "deploymentAction": "Merged PR #29; the main-branch integration deployed production automatically.",
+  "manualCacheAction": "none",
+  "realEnquirySent": false,
+  "physicalDeviceTesting": "deferred"
+}
