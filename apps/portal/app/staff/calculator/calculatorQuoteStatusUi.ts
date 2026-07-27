@@ -6,6 +6,11 @@ import {
   type UiWarning,
 } from './warnings';
 import type { CalculatorResultFreshness } from './calculatorResultFreshness';
+import {
+  buildCalculatorReadinessSummary,
+  type CalculatorReadinessBlockedBy,
+  type CalculatorReadinessSummary,
+} from './calculatorReadinessSummary';
 
 type EngineWarningInput = {
   level: string;
@@ -31,6 +36,8 @@ type CalculatorQuoteStatusItem = {
   detail?: string;
   actionLabel?: string;
   actionKey?: CalculatorQuoteStatusActionKey;
+  blockedBy?: CalculatorReadinessBlockedBy;
+  causeCount?: number;
 };
 
 type CalculatorQuoteStatusUi = {
@@ -38,6 +45,7 @@ type CalculatorQuoteStatusUi = {
   hasStatusBlockers: boolean;
   blockerCount: number;
   anyInfillDraft: boolean;
+  readinessSummary: CalculatorReadinessSummary;
 };
 
 type GenerateDesignPreflight =
@@ -102,7 +110,7 @@ export function buildCalculatorQuoteStatusUi({
   projectId,
   hasProject,
   projectHasContact,
-  hasModuleErrors,
+  inputIssueCount,
   invalidBlindCount,
   engineError,
   resultFreshness,
@@ -112,14 +120,29 @@ export function buildCalculatorQuoteStatusUi({
   projectId: string;
   hasProject: boolean;
   projectHasContact: boolean;
-  hasModuleErrors: boolean;
+  inputIssueCount: number;
   invalidBlindCount: number;
   engineError: string | null | undefined;
   resultFreshness: CalculatorResultFreshness;
   infillItems: InfillLineItem[];
   infillUiById: ReadonlyMap<string, InfillUiWarningState | undefined>;
 }): CalculatorQuoteStatusUi {
-  const anyInfillDraft = infillItems.some((item) => infillUiById.get(item.id)?.status === 'draft');
+  const normalizedInputIssueCount = Math.max(0, Math.round(inputIssueCount));
+  const draftInfillCount = infillItems.filter(
+    (item) => infillUiById.get(item.id)?.status === 'draft',
+  ).length;
+  const anyInfillDraft = draftInfillCount > 0;
+  const engineBlockedByInputs =
+    normalizedInputIssueCount > 0
+    && (resultFreshness === 'invalid' || resultFreshness === 'waiting');
+  const engineCauseCount =
+    resultFreshness === 'current'
+      ? undefined
+      : engineBlockedByInputs
+        ? 0
+        : resultFreshness === 'error' || resultFreshness === 'invalid'
+          ? 1
+          : 0;
   const items: CalculatorQuoteStatusItem[] = [
     {
       id: 'project',
@@ -128,6 +151,7 @@ export function buildCalculatorQuoteStatusUi({
       detail: projectId ? (hasProject ? 'Attached' : 'Not found') : 'Select a project',
       actionLabel: !projectId ? 'Select' : undefined,
       actionKey: !projectId ? 'selectProject' : undefined,
+      causeCount: projectId && hasProject ? undefined : 1,
     },
     {
       id: 'contact',
@@ -136,24 +160,29 @@ export function buildCalculatorQuoteStatusUi({
       detail: hasProject ? (projectHasContact ? 'OK' : 'Missing contact on project') : '—',
       actionLabel: hasProject && !projectHasContact ? 'Open project' : undefined,
       actionKey: hasProject && !projectHasContact && projectId ? 'openProject' : undefined,
+      causeCount: hasProject && !projectHasContact ? 1 : undefined,
     },
     {
       id: 'inputs',
       label: 'Inputs valid',
-      level: hasModuleErrors ? 'block' : 'ok',
-      detail: hasModuleErrors ? 'Fix validation errors' : 'OK',
-      actionLabel: hasModuleErrors ? 'View errors' : undefined,
-      actionKey: hasModuleErrors ? 'openIssues' : undefined,
+      level: normalizedInputIssueCount > 0 ? 'block' : 'ok',
+      detail: normalizedInputIssueCount > 0
+        ? `${normalizedInputIssueCount} input issue${normalizedInputIssueCount === 1 ? '' : 's'} to fix`
+        : 'OK',
+      actionLabel: normalizedInputIssueCount > 0 ? 'View errors' : undefined,
+      actionKey: normalizedInputIssueCount > 0 ? 'openIssues' : undefined,
+      causeCount: normalizedInputIssueCount || undefined,
     },
     {
       id: 'blinds',
       label: 'Blinds priced',
       level: invalidBlindCount > 0 ? 'block' : 'ok',
       detail: invalidBlindCount > 0
-        ? `${invalidBlindCount} blind${invalidBlindCount === 1 ? '' : 's'} need valid dimensions and selections`
+        ? `${invalidBlindCount} blind${invalidBlindCount === 1 ? ' needs' : 's need'} valid dimensions and selections`
         : 'OK',
       actionLabel: invalidBlindCount > 0 ? 'Review blinds' : undefined,
       actionKey: invalidBlindCount > 0 ? 'openBlinds' : undefined,
+      causeCount: invalidBlindCount > 0 ? invalidBlindCount : undefined,
     },
     {
       id: 'engine',
@@ -171,6 +200,8 @@ export function buildCalculatorQuoteStatusUi({
                 : resultFreshness === 'error'
                   ? engineError ?? 'Update failed'
                   : 'Waiting for valid inputs',
+      blockedBy: engineBlockedByInputs ? 'inputs' : undefined,
+      causeCount: engineCauseCount,
     },
     {
       id: 'infills',
@@ -179,15 +210,18 @@ export function buildCalculatorQuoteStatusUi({
       detail: anyInfillDraft ? 'Finish required infill shape fields' : 'OK',
       actionLabel: anyInfillDraft ? 'Open infills' : undefined,
       actionKey: anyInfillDraft ? 'openInfills' : undefined,
+      causeCount: draftInfillCount || undefined,
     },
   ];
 
   const blockerCount = items.filter((item) => item.level === 'block').length;
+  const readinessSummary = buildCalculatorReadinessSummary({ items, resultFreshness });
   return {
     items,
     hasStatusBlockers: blockerCount > 0,
     blockerCount,
     anyInfillDraft,
+    readinessSummary,
   };
 }
 

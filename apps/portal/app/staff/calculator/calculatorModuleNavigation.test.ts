@@ -6,6 +6,8 @@ import {
   addCalculatorModule,
   addCalculatorPergola,
   buildCalculatorModuleNavigatorModel,
+  calculatorIssueCountLabel,
+  calculatorModuleCountLabel,
   duplicateCalculatorModule,
   moveCalculatorModule,
   removeCalculatorModule,
@@ -29,6 +31,18 @@ function makeInputs(): CalculatorInputs {
 }
 
 describe('calculatorModuleNavigation', () => {
+  it('uses correct issue-count grammar', () => {
+    expect(calculatorIssueCountLabel(0)).toBe('0 issues');
+    expect(calculatorIssueCountLabel(1)).toBe('1 issue');
+    expect(calculatorIssueCountLabel(2)).toBe('2 issues');
+  });
+
+  it('uses correct module-count grammar', () => {
+    expect(calculatorModuleCountLabel(0)).toBe('0 modules');
+    expect(calculatorModuleCountLabel(1)).toBe('1 module');
+    expect(calculatorModuleCountLabel(2)).toBe('2 modules');
+  });
+
   it('groups modules by pergola with canonical local labels, summaries, active state, and issue counts', () => {
     const values = makeInputs();
     values.modules[0] = { ...values.modules[0], boxPerimeterEnabled: true };

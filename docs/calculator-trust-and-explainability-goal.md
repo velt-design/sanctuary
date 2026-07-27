@@ -142,9 +142,10 @@ The first trusted material and labour breakdowns are implemented:
 - `@sp/costing` publishes compact whole-job material and labour breakdown contracts from the actual BOM lines, install actions, totals, notes, scopes, and applied multipliers;
 - every result row is placed in a stable user-facing purpose or work-stage group, with source IDs retained for traceability and separate unique instance IDs for repeated BOM lines;
 - material rows show purchase quantity, unit, pergola/module ownership where available, profile, and permission-gated internal cost;
-- stock-bar explanations show required cut length, stock length, bars purchased, allocated waste, and whole-stock rounding; roofing sheets show the package-owned area or strip-yield note and whole-sheet rounding;
+- stock-bar explanations show required cut length, stock length, bars purchased, allocated waste, and whole-stock rounding in plain purchasing language; roofing sheets retain the calculated area or strip-yield note and whole-sheet rounding;
 - labour rows show activity quantity, unit, estimated minutes, crew hours, relevant non-neutral loadings, ownership, and permission-gated internal cost;
-- `Why this quantity?` keeps package facts, assumptions, rounding, and source behind progressive disclosure rather than exposing the debug trace by default;
+- each material/labour group is a native disclosure keyed by its stable group ID; the first starts open, the rest start closed, summaries show line/activity counts and labour hours, and user open state survives mounted result rerenders;
+- `Why this quantity?` keeps facts, assumptions, and rounding behind progressive disclosure, with unchanged package IDs nested separately under collapsed `Technical source`;
 - Materials remains available to staff without internal costs, while Labour retains the existing admin plus Advanced-mode gate;
 - current and retained last-valid states are explicit, and old results without the contracts fail closed with a recalculate message;
 - the existing Advanced/admin material trace remains available for diagnosis and is not used as the everyday breakdown.
@@ -159,6 +160,8 @@ Further Workings calculations remain deferred until prioritised from staff feedb
 - Automatic pitch and downpipe inputs now explain the authoritative value used by the current or retained result without rewriting the raw input or duplicating a costing rule.
 - Issue Jump now completes module and Basic/Advanced disclosure changes before revealing and focusing the invalid control within the active scroll owner.
 - Result-hierarchy refinement now provides one rounded lead price per layout, explicit stacked result/back routing, predictable desktop Inspector starts, exact-cent Pricing detail, and a result-first Workings order. Authenticated acceptance passed across both registered scenarios at 1600px, 1366px, 1024px, 768px, and 390px without changing costing, freshness, Save, permissions, or exact-cent quote handoff.
+- The command bar now uses one identity -> readiness -> Basic -> Advanced -> Save source/focus order. A shared readiness presenter distinguishes causal issues from blocked checks while retaining every Quote Status row and the existing Save gate.
+- Focused hardening covers disclosure state/completeness, copy-only costing parity, readiness cause/check grammar, Quote Status dependencies, and idle/queued/syncing/synced/offline/error/conflict save outcomes. Authenticated acceptance passed the 30-test in-scope Calculator run, including disclosure and command geometry, keyboard/focus and computed contrast, causal readiness, deep-scroll Save reachability, and queued/syncing/synced exact-cent save reconciliation without selecting Create quote.
 - The two staff-review scenarios and checklist below are ready for a real session. No staff feedback has been recorded or inferred yet.
 - A user being unable to explain a result remains a product defect even when the arithmetic is correct.
 

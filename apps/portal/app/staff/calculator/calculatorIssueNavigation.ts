@@ -41,9 +41,9 @@ export function labelForCalculatorIssueField(id: string): string {
     case 'downpipeCount':
       return 'Downpipes (count)';
     case 'downpipeJoinCount':
-      return 'DP joins';
+      return 'Downpipe joins';
     case 'downpipeElbowCount':
-      return 'DP elbows';
+      return 'Downpipe elbows';
     case 'overhangEnabled':
       return 'Overhang';
     case 'overhangAmountM':

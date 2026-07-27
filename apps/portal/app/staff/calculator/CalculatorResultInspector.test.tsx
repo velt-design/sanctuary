@@ -64,8 +64,16 @@ function buildProps(
     quoteStatus: {
       items: [
         { id: 'project', label: 'Project selected', level: 'ok' },
-        { id: 'inputs', label: 'Inputs valid', level: 'block' },
+        { id: 'inputs', label: 'Inputs valid', level: 'block', causeCount: 2 },
       ],
+      readinessSummary: {
+        tone: 'blocked',
+        label: '2 input issues block Save',
+        accessibleLabel: '2 input issues block Save. 1 readiness check blocked.',
+        rootCauseCount: 2,
+        blockedCheckCount: 1,
+        reviewCount: 0,
+      },
     },
     previewDetails: {} as CalculatorResultInspectorProps['previewDetails'],
     rafterExplanation: {
@@ -123,7 +131,7 @@ describe('CalculatorResultInspector', () => {
     expect(document.querySelector('[data-testid="pricing-summary-inspector"]')).not.toBeNull();
     expect(document.querySelector('[data-testid="pricing-details"]')).not.toBeNull();
     expect(document.querySelector('[data-testid="pricing-summary-full"]')).toBeNull();
-    expect(document.body.textContent).toContain('1 blocker');
+    expect(document.body.textContent).toContain('2 input issues block Save');
     expect(document.body.textContent).toContain('2 input issues');
   });
 
@@ -253,20 +261,40 @@ describe('CalculatorResultInspector', () => {
       <CalculatorResultInspector
         {...buildProps({
           pricingSummary: { ...buildProps().pricingSummary, issuesCount: 0 },
-          quoteStatus: { items: [{ id: 'review', label: 'Review', level: 'review' }] },
+          quoteStatus: {
+            items: [{ id: 'review', label: 'Review', level: 'review' }],
+            readinessSummary: {
+              tone: 'review',
+              label: '1 item to review',
+              accessibleLabel: '1 item to review',
+              rootCauseCount: 0,
+              blockedCheckCount: 0,
+              reviewCount: 1,
+            },
+          },
         })}
       />,
     );
-    expect(document.body.textContent).toContain('1 to review');
+    expect(document.body.textContent).toContain('1 item to review');
 
     act(() => rendered.rerender(
       <CalculatorResultInspector
         {...buildProps({
           pricingSummary: { ...buildProps().pricingSummary, issuesCount: 0 },
-          quoteStatus: { items: [{ id: 'ready', label: 'Ready', level: 'ok' }] },
+          quoteStatus: {
+            items: [{ id: 'ready', label: 'Ready', level: 'ok' }],
+            readinessSummary: {
+              tone: 'ready',
+              label: 'Ready to save',
+              accessibleLabel: 'Ready to save',
+              rootCauseCount: 0,
+              blockedCheckCount: 0,
+              reviewCount: 0,
+            },
+          },
         })}
       />,
     ));
-    expect(document.body.textContent).toContain('Quote ready');
+    expect(document.body.textContent).toContain('Ready to save');
   });
 });

@@ -1,8 +1,5 @@
 import styles from './CalculatorTrustUi.module.css';
-import {
-  calculatorResultFreshnessLabel,
-  type CalculatorResultFreshness,
-} from './calculatorResultFreshness';
+import type { CalculatorReadinessSummary } from './calculatorReadinessSummary';
 import CalculatorDraftStatus from './CalculatorDraftStatus';
 import CalculatorDesignNavigationSelect from './CalculatorDesignNavigationSelect';
 import type { CalculatorDesignNavigation } from './calculatorWorkspace';
@@ -16,9 +13,8 @@ type CalculatorCommandBarProps = {
   activeModuleLabel: string;
   uiMode: CalculatorUiMode;
   onUiModeChange: (mode: CalculatorUiMode) => void;
-  resultFreshness: CalculatorResultFreshness;
+  readinessSummary: CalculatorReadinessSummary;
   localDraftStatus: CalculatorLocalDraftStatus;
-  blockerCount: number;
   onSelectProject?: () => void;
   saveLabel: string;
   saveDisabled: boolean;
@@ -34,9 +30,8 @@ export default function CalculatorCommandBar({
   activeModuleLabel,
   uiMode,
   onUiModeChange,
-  resultFreshness,
+  readinessSummary,
   localDraftStatus,
-  blockerCount,
   onSelectProject,
   saveLabel,
   saveDisabled,
@@ -45,12 +40,19 @@ export default function CalculatorCommandBar({
   variant = 'standalone',
   designNavigation,
 }: CalculatorCommandBarProps) {
-  const freshnessLabel = calculatorResultFreshnessLabel(resultFreshness);
   const embedded = variant === 'embedded';
+  const readinessClassName =
+    readinessSummary.tone === 'ready'
+      ? styles.commandBarStatusReady
+      : readinessSummary.tone === 'review'
+        ? styles.commandBarStatusReview
+        : readinessSummary.tone === 'waiting'
+          ? styles.commandBarStatusWaiting
+          : styles.commandBarStatusBlocked;
 
   return (
     <header className={`${styles.commandBar}${embedded ? ` ${styles.commandBarEmbedded}` : ''}`} data-calculator-command-bar>
-      <div className={styles.commandBarIdentity}>
+      <div className={styles.commandBarIdentity} data-calculator-command-identity>
         <div>
           {embedded && designNavigation ? (
             <CalculatorDesignNavigationSelect navigation={designNavigation} className={styles.commandBarDesignSelector} />
@@ -79,20 +81,25 @@ export default function CalculatorCommandBar({
         </div>
       </div>
 
-      <div className={styles.commandBarActions} data-calculator-command-actions>
+      <div
+        className={styles.commandBarControls}
+        data-calculator-command-actions
+        data-calculator-command-controls
+      >
         <span
-          className={
-            blockerCount > 0 || resultFreshness !== 'current'
-              ? styles.commandBarStatusBlocked
-              : styles.commandBarStatusReady
-          }
-          title={freshnessLabel}
-          aria-label={`${freshnessLabel}. ${blockerCount ? `${blockerCount} blockers` : 'Ready to save'}`}
+          className={readinessClassName}
+          title={readinessSummary.accessibleLabel}
+          aria-label={readinessSummary.accessibleLabel}
+          data-calculator-command-readiness
         >
-          {blockerCount ? `${blockerCount} blocker${blockerCount === 1 ? '' : 's'}` : freshnessLabel}
+          {readinessSummary.label}
         </span>
 
-        <div className={styles.commandBarMode} aria-label="Calculator detail level">
+        <div
+          className={styles.commandBarMode}
+          aria-label="Calculator detail level"
+          data-calculator-command-mode
+        >
           {(['basic', 'advanced'] as const).map((mode) => (
             <button
               key={mode}
@@ -106,11 +113,16 @@ export default function CalculatorCommandBar({
           ))}
         </div>
 
+        <button
+          type="button"
+          className={styles.commandBarSave}
+          onClick={onSave}
+          disabled={saveDisabled}
+          data-calculator-command-save
+        >
+          {saveLabel}
+        </button>
       </div>
-
-      <button type="button" className={styles.commandBarSave} onClick={onSave} disabled={saveDisabled}>
-        {saveLabel}
-      </button>
       {saveError ? <p className={styles.commandBarError}>{saveError}</p> : null}
     </header>
   );

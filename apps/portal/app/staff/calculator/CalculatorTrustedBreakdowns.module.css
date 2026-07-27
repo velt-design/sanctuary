@@ -11,7 +11,6 @@
 
 .header,
 .rowHeading,
-.groupHeading,
 .internalCost,
 .total {
   display: flex;
@@ -29,7 +28,6 @@
 .rowHeading p,
 .neutralLoading,
 .noExplanation,
-.source,
 .rounding {
   margin: 0;
   color: var(--ui-text-muted);
@@ -45,7 +43,6 @@
 }
 
 .title,
-.groupHeading h3,
 .rowHeading h4 {
   margin: 0;
   color: var(--ui-text-strong);
@@ -99,25 +96,59 @@
 }
 
 .group {
-  display: grid;
-  gap: 7px;
   min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
 }
 
-.groupHeading {
-  align-items: baseline;
+.groupSummary {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 9px 10px;
+  color: var(--ui-text-strong);
+  cursor: pointer;
+}
+
+.group[open] > .groupSummary {
   border-bottom: var(--ui-border-width) solid var(--ui-border);
-  padding: 0 2px 6px;
+  background: var(--ui-surface-secondary);
 }
 
-.groupHeading h3 {
+.groupSummary:focus-visible,
+.explanation > summary:focus-visible,
+.contract > summary:focus-visible,
+.technicalSource > summary:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.groupSummaryContent {
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  width: calc(100% - 18px);
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.groupLabel {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 12px;
+  font-weight: 750;
 }
 
-.groupHeading span {
+.groupMeta {
+  flex: 0 0 auto;
   color: var(--ui-text-muted);
   font-size: 10px;
   font-weight: 700;
+}
+
+.group > .rows {
+  padding: 10px;
 }
 
 .row {
@@ -210,7 +241,8 @@
 }
 
 .explanation,
-.contract {
+.contract,
+.technicalSource {
   border-top: var(--ui-border-width) solid var(--ui-border);
   padding-top: 8px;
   color: var(--ui-text-muted);
@@ -218,7 +250,8 @@
 }
 
 .explanation summary,
-.contract summary {
+.contract summary,
+.technicalSource summary {
   color: var(--ui-text-strong);
   font-weight: 750;
   cursor: pointer;
@@ -282,7 +315,11 @@
   margin: 0;
 }
 
-.source code {
+.technicalSource p {
+  margin: 8px 0 0;
+}
+
+.technicalSource code {
   overflow-wrap: anywhere;
   color: var(--ui-text-strong);
 }
@@ -293,6 +330,10 @@
 }
 
 @container calculator-preview-rail (max-width: 460px) {
+  .groupSummary {
+    min-height: 44px;
+  }
+
   .header,
   .rowHeading {
     flex-direction: column;
@@ -307,5 +348,14 @@
 
   .facts {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .groupSummaryContent {
+    align-items: center;
+  }
+
+  .groupMeta {
+    white-space: normal;
+    text-align: right;
   }
 }

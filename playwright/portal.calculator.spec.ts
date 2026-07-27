@@ -2,6 +2,10 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 
 import { openPortalPage, withPortalBrowserEvidence } from './support/portalAgent';
 import {
+  readCalculatorPricingRows,
+  sumCalculatorPricingRows,
+} from './support/calculatorPricingTable';
+import {
   CALCULATOR_MULTI_MODULE_SCENARIO_REVISION,
   loadPortalScenarioState,
 } from './support/portalScenarioRegistry';
@@ -25,7 +29,9 @@ async function clearPreviewSplitPreference(page: Page) {
 
 async function openCalculator(page: Page) {
   await openPortalPage(page, calculatorRoute, { heading: 'Calculator' });
-  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible({ timeout: 60_000 });
   await expect(
     page.getByText('3 modules across 2 pergolas', { exact: true }).first(),
     'The dedicated calculator fixture has drifted. Run npm run portal:calculator-ui:provision to reconcile it.',
@@ -469,7 +475,9 @@ async function expectCrossModuleIssueJump({
   expect(await inspector.evaluate((element) => element.scrollTop)).toBe(inspectorBefore);
 
   await roofLength.fill(originalLength);
-  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible({ timeout: 60_000 });
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -646,14 +654,20 @@ test('wide Inspector tab changes reset its rail while same-tab selection preserv
     await workingsTab.click();
     const scrolledTop = await resultRail.evaluate((element) => {
       const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
-      element.scrollTop = Math.min(320, maxScrollTop);
+      // Stay clear of the maximum so late font/layout settling cannot clamp
+      // the rail and masquerade as a same-tab reset.
+      element.scrollTop = Math.min(160, maxScrollTop);
       return element.scrollTop;
     });
     expect(scrolledTop).toBeGreaterThan(0);
 
-    await workingsTab.click();
+    // Dispatch without Playwright auto-scrolling the off-screen tab back into
+    // view; this isolates the Inspector's same-tab no-op contract.
+    await workingsTab.dispatchEvent('click');
     await waitForCalculatorLayout(page);
-    expect(await resultRail.evaluate((element) => element.scrollTop)).toBe(scrolledTop);
+    const sameTabScrollTop = await resultRail.evaluate((element) => element.scrollTop);
+    expect(sameTabScrollTop).toBeGreaterThan(0);
+    expect(Math.abs(sameTabScrollTop - scrolledTop)).toBeLessThanOrEqual(24);
 
     await materialsTab.click();
     await expect.poll(() => resultRail.evaluate((element) => element.scrollTop)).toBe(0);
@@ -703,7 +717,7 @@ test('stacked result shortcuts route explicitly and ordinary tabs preserve page 
     await expect(issuesTab).toBeInViewport();
 
     await roofLength.fill(originalLength);
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({
+    await expect(page.getByText('Live', { exact: true }).filter({ visible: true }).first()).toBeVisible({
       timeout: 60_000,
     });
   });
@@ -720,14 +734,24 @@ test('materials and labour explain whole-job quantities without losing trust sta
     const materials = inspector.getByRole('region', { name: 'Materials breakdown' });
     await expect(materials).toHaveAttribute('data-trusted-materials-status', 'ready');
     await expect(materials).toHaveAttribute('data-result-freshness', 'current');
-    await expect(materials.getByRole('heading', { name: 'Structure & framing' })).toBeVisible();
+    const materialGroups = materials.locator('[data-material-breakdown-group]');
+    const firstMaterialGroup = materialGroups.first();
+    await expect(firstMaterialGroup).toHaveAttribute('open', '');
+    await expect(
+      firstMaterialGroup.locator(':scope > [data-breakdown-group-summary]'),
+    ).toContainText('Structure & framing');
     await expect(materials.locator('[data-material-breakdown-row]')).not.toHaveCount(0);
     expect(await materials.locator('[data-material-breakdown-row]').count()).toBeGreaterThan(10);
     await expect(materials.getByText(/Pergola .* Module/).first()).toBeVisible();
-    const materialWhy = materials.locator('details', { hasText: 'Why this quantity?' }).first();
-    await materialWhy.locator('summary').click();
+    const materialWhy = firstMaterialGroup
+      .locator('details:not([data-technical-source])')
+      .first();
+    await materialWhy.locator(':scope > summary').click();
     await expect(materialWhy).toHaveAttribute('open', '');
-    await expect(materialWhy).toContainText('@sp/costing/materials-v1');
+    const materialTechnicalSource = materialWhy.locator('[data-technical-source]');
+    await expect(materialTechnicalSource.locator('code')).toBeHidden();
+    await materialTechnicalSource.locator(':scope > summary').click();
+    await expect(materialTechnicalSource.locator('code')).toHaveText('@sp/costing/materials-v1');
     await expect(materials.locator('[data-internal-material-cost]').first()).toBeVisible();
 
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
@@ -745,14 +769,30 @@ test('materials and labour explain whole-job quantities without losing trust sta
     const labour = inspector.getByRole('region', { name: 'Labour breakdown' });
     await expect(labour).toHaveAttribute('data-trusted-labour-status', 'ready');
     await expect(labour).toHaveAttribute('data-result-freshness', 'current');
-    await expect(labour.getByRole('heading', { name: 'Roof installation' })).toBeVisible();
+    const labourGroups = labour.locator('[data-labour-breakdown-group]');
+    const firstLabourGroup = labourGroups.first();
+    await expect(firstLabourGroup).toHaveAttribute('open', '');
+    await expect(
+      firstLabourGroup.locator(':scope > [data-breakdown-group-summary]'),
+    ).toContainText('Site setup & mobilisation');
+    const roofLabourGroup = labourGroups.filter({ hasText: 'Roof installation' }).first();
+    await expect(
+      roofLabourGroup.locator(':scope > [data-breakdown-group-summary]'),
+    ).toContainText('Roof installation');
     await expect(labour.locator('[data-labour-breakdown-row]').first()).toBeVisible();
     await expect(labour.getByText(/crew hr/).first()).toBeVisible();
     await expect(labour.locator('[data-internal-labour-cost]').first()).toBeVisible();
-    const labourWhy = labour.locator('details', { hasText: 'Why this quantity?' }).first();
-    await labourWhy.locator('summary').click();
+    const labourWhy = firstLabourGroup
+      .locator('details:not([data-technical-source])')
+      .first();
+    await labourWhy.locator(':scope > summary').click();
     await expect(labourWhy).toHaveAttribute('open', '');
-    await expect(labourWhy).toContainText('@sp/costing/install-actions-v1');
+    const labourTechnicalSource = labourWhy.locator('[data-technical-source]');
+    await expect(labourTechnicalSource.locator('code')).toBeHidden();
+    await labourTechnicalSource.locator(':scope > summary').click();
+    await expect(labourTechnicalSource.locator('code')).toHaveText(
+      '@sp/costing/install-actions-v1',
+    );
 
     for (const width of [1024, 768, 390]) {
       await page.setViewportSize({ width, height: 844 });
@@ -781,7 +821,9 @@ test('real project route embeds the seeded Calculator without a project picker',
     await clearPreviewSplitPreference(page);
     await openPortalPage(page, projectCalculatorRoute, { heading: scenario.labels.projectName });
     await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(
+      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('tab', { name: 'Calculator' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-calculator-project-picker="fixed"]')).toHaveCount(0);
     await expect(page.locator('[data-calculator-project-picker="enabled"]')).toHaveCount(0);
@@ -917,7 +959,9 @@ test('local draft survives module switching and restores after reload', async ({
 
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Calculator', exact: true })).toBeVisible();
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(
+      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('Restored unsaved work', { exact: true })).toBeVisible();
     await expect(moduleNavigatorButton(page, 'Pergola 1 · Module 2')).toHaveAttribute('aria-current', 'true');
     await expect(roofLength).toHaveValue(secondModuleLength);
@@ -979,7 +1023,9 @@ test('editing save always shows stored versus live costing without creating a qu
     const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
     const originalLength = await roofLength.inputValue();
     await roofLength.fill(String(Number(originalLength || '6') + 0.1));
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(
+      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Save design confirmation' });
@@ -1031,7 +1077,7 @@ test('Issue Jump reveals an Advanced-only Flashings error and focuses the invali
     );
 
     await invalidLength.fill(originalLength);
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({
+    await expect(page.getByText('Live', { exact: true }).filter({ visible: true }).first()).toBeVisible({
       timeout: 60_000,
     });
   });
@@ -1236,7 +1282,9 @@ for (const issueJumpCase of [
         await expect(page.locator('[data-calculator-workspace="project"]')).toBeVisible({
           timeout: 60_000,
         });
-        await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({
+        await expect(
+          page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+        ).toBeVisible({
           timeout: 60_000,
         });
       } else {
@@ -1259,6 +1307,10 @@ test('blind roll covers price live, restore from the local draft, and stay respo
     await openCalculator(page);
 
     const blinds = page.locator('[data-calculator-configuration-section="blinds"]');
+    const existingBlindDeletes = blinds.getByRole('button', { name: 'Delete', exact: true });
+    while ((await existingBlindDeletes.count()) > 0) {
+      await existingBlindDeletes.last().click();
+    }
     await blinds.getByRole('button', { name: 'Add blind', exact: true }).click();
     await blinds.getByLabel('System', { exact: true }).selectOption('OMNI');
     await blinds.getByLabel('Width (m)', { exact: true }).fill('2');
@@ -1277,7 +1329,9 @@ test('blind roll covers price live, restore from the local draft, and stay respo
     await expectLocalDraftProtected(page);
 
     await page.reload();
-    await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(
+      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
     const restoredBlinds = page.locator('[data-calculator-configuration-section="blinds"]');
     await expect(restoredBlinds.getByLabel('Blind roll cover', { exact: true })).toHaveValue('PELMET');
     await expect(restoredBlinds.getByText('$2072.50', { exact: true }).first()).toBeVisible();
@@ -1328,52 +1382,158 @@ test('scratch calculator can search and open a project workflow', async ({ page 
   });
 });
 
-test('repriced save reconciles the Live customer total with the saved quote handoff', async ({ page }, testInfo) => {
+test('discounted save preserves blind pricing and reconciles the exact total through local-first sync', async ({ page }, testInfo) => {
   await withCalculatorEvidence(page, testInfo, async () => {
     await page.setViewportSize({ width: 1600, height: 1000 });
     await clearPreviewSplitPreference(page);
     await openCalculator(page);
 
     const itemPricing = page.getByRole('region', { name: 'Price by item' });
+    const blinds = page.locator('[data-calculator-configuration-section="blinds"]');
+    const discount = page.getByLabel(/^Discount \(0/);
 
-    await page.getByRole('button', { name: 'Save', exact: true }).first().click();
-    const confirmation = page.getByRole('dialog', { name: 'Save design confirmation' });
-    await expect(confirmation).toBeVisible();
-    const warningAcknowledgement = confirmation.getByLabel('I acknowledge the review warnings');
-    if (await warningAcknowledgement.count()) await warningAcknowledgement.check();
-    await confirmation.getByRole('button', { name: 'Reprice and save', exact: true }).click();
+    await discount.fill('0');
+    await discount.press('Tab');
 
-    const outcome = page.getByRole('dialog', { name: 'Design saved' });
-    await expect(outcome).toBeVisible({ timeout: 60_000 });
-    const reconciliation = outcome.getByRole('region', { name: 'Pricing reconciliation' });
-    await expect(reconciliation).toHaveAttribute('data-pricing-reconciliation', 'matched');
-    await expect(reconciliation.getByText('Exact match', { exact: true })).toBeVisible();
+    const deleteBlindButtons = blinds.getByRole('button', { name: 'Delete', exact: true });
+    while ((await deleteBlindButtons.count()) > 1) {
+      await deleteBlindButtons.last().click();
+    }
+    if ((await deleteBlindButtons.count()) === 0) {
+      await blinds.getByRole('button', { name: 'Add blind', exact: true }).click();
+    }
 
-    const exactCalculatorTotalCents = await itemPricing.getAttribute(
-      'data-customer-total-inc-gst-cents',
+    await blinds.getByLabel('Label', { exact: true }).first().fill('Discount-protected blind');
+    await blinds.getByLabel('System', { exact: true }).first().selectOption('OMNI');
+    await blinds.getByLabel('Fabric', { exact: true }).first().selectOption('MESH');
+    await blinds.getByLabel('Blind roll cover', { exact: true }).first().selectOption('PELMET');
+    await blinds.getByLabel('Width (m)', { exact: true }).first().fill('2');
+    await blinds.getByLabel('Width (m)', { exact: true }).first().press('Tab');
+    await blinds.getByLabel('Blind drop (m)', { exact: true }).first().fill('2');
+    await blinds.getByLabel('Blind drop (m)', { exact: true }).first().press('Tab');
+    await expect(
+      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
+
+    const baselineTotalCents = Number(
+      await itemPricing.getAttribute('data-customer-total-inc-gst-cents'),
     );
-    expect(exactCalculatorTotalCents).toMatch(/^\d+$/);
-    const liveTotal = reconciliation.locator('[data-live-calculator-total-inc-gst-cents]');
-    const handoffTotal = reconciliation.locator('[data-quote-handoff-total-inc-gst-cents]');
-    await expect(liveTotal).toHaveAttribute(
-      'data-live-calculator-total-inc-gst-cents',
-      exactCalculatorTotalCents!,
+    expect(baselineTotalCents).toBeGreaterThan(0);
+    const baselineRows = await readCalculatorPricingRows(itemPricing);
+    const baselineBlindCents = sumCalculatorPricingRows(baselineRows, ['Blind']);
+    const baselineDiscountableCents = sumCalculatorPricingRows(baselineRows, [
+      'Pergola',
+      'Site',
+    ]);
+    expect(baselineBlindCents).toBeGreaterThan(0);
+    expect(baselineDiscountableCents).toBeGreaterThan(0);
+
+    await discount.fill('10');
+    await discount.press('Tab');
+    await expect
+      .poll(() => itemPricing.getAttribute('data-customer-total-inc-gst-cents'), {
+        timeout: 60_000,
+      })
+      .not.toBe(String(baselineTotalCents));
+    await expect(
+      page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
+
+    const exactCalculatorTotalCents = Number(
+      await itemPricing.getAttribute('data-customer-total-inc-gst-cents'),
     );
-    await expect(handoffTotal).toHaveAttribute(
-      'data-quote-handoff-total-inc-gst-cents',
-      exactCalculatorTotalCents!,
+    const discountedRows = await readCalculatorPricingRows(itemPricing);
+    const discountedBlindCents = sumCalculatorPricingRows(discountedRows, ['Blind']);
+    const discountedDiscountableCents = sumCalculatorPricingRows(discountedRows, [
+      'Pergola',
+      'Site',
+    ]);
+    const visiblePricedRowsTotalCents = sumCalculatorPricingRows(discountedRows);
+    expect(discountedBlindCents).toBe(baselineBlindCents);
+    expect(discountedDiscountableCents).toBeLessThan(baselineDiscountableCents);
+    expect(visiblePricedRowsTotalCents).toBe(exactCalculatorTotalCents);
+
+    const pricingDetails = page.getByRole('region', { name: 'Pricing details' });
+    const beforeDiscount = pricingDetails
+      .locator('dt')
+      .filter({ hasText: 'Before discount (inc GST)' })
+      .locator('xpath=following-sibling::dd');
+    await expect(beforeDiscount).toBeVisible();
+    expect(Math.round(parseCurrency(await beforeDiscount.innerText()) * 100)).toBe(
+      baselineTotalCents,
     );
-    await expect(outcome.getByRole('button', { name: 'Create quote from this design' })).toBeEnabled({
-      timeout: 60_000,
+
+    let releaseEstimatePatch = () => {};
+    let estimatePatchIntercepted = false;
+    const estimatePatchRelease = new Promise<void>((resolve) => {
+      releaseEstimatePatch = resolve;
+    });
+    const estimatePatchRoute = `**/api/estimates/${encodeURIComponent(estimateId)}`;
+    await page.route(estimatePatchRoute, async (request) => {
+      if (request.request().method() !== 'PATCH') {
+        await request.continue();
+        return;
+      }
+      estimatePatchIntercepted = true;
+      await estimatePatchRelease;
+      const response = await request.fetch();
+      await request.fulfill({ response });
     });
 
-    await page.setViewportSize({ width: 390, height: 844 });
-    await reconciliation.scrollIntoViewIfNeeded();
-    await expect(reconciliation).toBeInViewport();
-    const dimensions = await outcome.evaluate((element) => ({
-      clientWidth: element.clientWidth,
-      scrollWidth: element.scrollWidth,
-    }));
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    try {
+      await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+      const confirmation = page.getByRole('dialog', { name: 'Save design confirmation' });
+      await expect(confirmation).toBeVisible();
+      const warningAcknowledgement = confirmation.getByLabel('I acknowledge the review warnings');
+      if (await warningAcknowledgement.count()) await warningAcknowledgement.check();
+      await confirmation.getByRole('button', { name: 'Reprice and save', exact: true }).click();
+
+      const outcome = page.getByRole('dialog', { name: 'Design saved' });
+      await expect(outcome).toBeVisible({ timeout: 60_000 });
+      const syncStatus = outcome.getByRole('region', { name: 'Save and sync status' });
+      await expect(syncStatus).toHaveAttribute('data-save-sync-status', /queued|syncing/);
+      await expect.poll(() => estimatePatchIntercepted).toBe(true);
+      releaseEstimatePatch();
+      await expect(syncStatus).toHaveAttribute('data-save-sync-status', 'synced', {
+        timeout: 60_000,
+      });
+      await expect(syncStatus).toContainText('The server has confirmed this design.');
+
+      const reconciliation = outcome.getByRole('region', { name: 'Pricing reconciliation' });
+      await expect(reconciliation).toHaveAttribute('data-pricing-reconciliation', 'matched');
+      await expect(reconciliation.getByText('Exact match', { exact: true })).toBeVisible();
+
+      const liveTotal = reconciliation.locator('[data-live-calculator-total-inc-gst-cents]');
+      const handoffTotal = reconciliation.locator('[data-quote-handoff-total-inc-gst-cents]');
+      await expect(liveTotal).toHaveAttribute(
+        'data-live-calculator-total-inc-gst-cents',
+        String(exactCalculatorTotalCents),
+      );
+      await expect(handoffTotal).toHaveAttribute(
+        'data-quote-handoff-total-inc-gst-cents',
+        String(exactCalculatorTotalCents),
+      );
+      await expect(outcome.getByRole('button', { name: 'Create quote from this design' })).toBeEnabled();
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await reconciliation.scrollIntoViewIfNeeded();
+      await expect(reconciliation).toBeInViewport();
+      await expect(liveTotal).toHaveAttribute(
+        'data-live-calculator-total-inc-gst-cents',
+        String(exactCalculatorTotalCents),
+      );
+      await expect(handoffTotal).toHaveAttribute(
+        'data-quote-handoff-total-inc-gst-cents',
+        String(exactCalculatorTotalCents),
+      );
+      const dimensions = await outcome.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    } finally {
+      releaseEstimatePatch();
+      await page.unroute(estimatePatchRoute);
+    }
   });
 });

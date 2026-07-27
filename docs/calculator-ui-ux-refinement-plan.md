@@ -1,6 +1,6 @@
 # Calculator UI/UX Refinement Plan
 
-Status: Approved. Mandatory Slices 1-5 implemented and verified (2026-07-27); Slices 6-7 remain plan-only.
+Status: Approved. Slices 1-7 implemented and verified (2026-07-27).
 
 Source evidence: `docs/calculator-ui-ux-review.md`
 
@@ -18,7 +18,7 @@ The following contracts do not change:
 - Customer totals and quote lines continue to reconcile in exact cents; no UI calculation becomes authoritative.
 - Materials, labour, and workings remain complete. Disclosure changes presentation, not quantities or availability.
 
-CUX-12 is the only planned `packages/costing` edit: plain-language explanation strings and their tests in `packages/costing/src/engine/breakdownExplanation.ts`. Formulas, quantities, types, groupings, source IDs, and contracts remain byte-for-byte equivalent in meaning.
+CUX-12 is the only `packages/costing` edit in these slices: plain-language explanation strings and their tests in `packages/costing/src/engine/breakdownExplanation.ts`. Formulas, quantities, types, groupings, source IDs, and contracts remain byte-for-byte equivalent in meaning.
 
 ### Design Workbench Gate 0
 
@@ -64,6 +64,15 @@ Slice 5 is implemented in the current worktree without changing costing, persist
 - CUX-11: the selected module's rafter result and written working now precede the Plan/Section views in DOM order and stacks above them at narrow widths.
 
 Focused component coverage covers the new composition, routing, controlled-tab, pricing-detail, Context, and Workings-order contracts. Authenticated acceptance passed across both registered scenarios at 1600px, 1366px, 1024px, 768px, and 390px, including stacked result/issue/back routing, one visible rounded summary, Inspector scroll ownership, Workings order, embedded Context ownership, deep-scroll Save reachability, and exact-cent saved quote handoff.
+
+Slices 6 and 7 are implemented in the current worktree without changing costing quantities/formulas, input or persistence contracts, module identity, freshness meanings, status rows, Save eligibility, permissions, or quote handoff:
+
+- CUX-05: each existing Materials/Labour group is a native disclosure keyed by its stable group ID. The first group starts open, user open/closed choices survive mounted result rerenders, summaries retain group order and show line/activity counts plus labour hours, and every authoritative row remains recoverable.
+- CUX-12: routine stock and crew explanations use staff-facing purchasing/activity language. Unchanged package source IDs sit behind nested `Technical source` disclosure; Downpipe joins/elbows use their full labels while retaining the existing field IDs.
+- CUX-08: the command bar has one source, reading, and focus order: identity, readiness, Basic, Advanced, then one Save. Responsive CSS wraps that sequence without `order` or grid-placement overrides.
+- CUX-10: one readiness presenter distinguishes causal issues from downstream blocked checks. Input-caused Engine rows remain present and gated but declare their dependency; Updating/recalculation states read as waits, independent Engine errors remain causes, and singular/plural grammar is explicit.
+
+Focused coverage passes for disclosure state and completeness, copy-only costing parity, downpipe IDs/labels, command order, readiness states, Quote Status dependencies, and the complete Save-outcome status matrix. The shared computed-contrast helper is reused by the Calculator browser lane. Authenticated acceptance passed 30 in-scope tests across the registered simple and complex scenarios: five-width containment and layout, 1600/390 disclosure completeness and retained state, 768/390 command/focus order and contrast, causal readiness, deep-scroll Save reachability, and queued/syncing/synced exact-cent save reconciliation at 1600/390. The save case did not select Create quote. Manual visual review also covered both scenarios at 1600, 1366, 1024, 768, and 390px with no console errors.
 
 ## Slice 1 - CUX-01 configuration containment
 

@@ -53,6 +53,15 @@ describe('trusted materials and labour breakdowns', () => {
     expect(rows.map((row) => row.id).sort()).toEqual(
       result.materials.lines.map((line) => line.id).sort(),
     );
+    expect(
+      rows
+        .map((row) => `${row.id}|${row.quantity}|${row.unit}`)
+        .sort(),
+    ).toEqual(
+      result.materials.lines
+        .map((line) => `${line.id}|${line.qty}|${line.unit}`)
+        .sort(),
+    );
     expect(new Set(rows.map((row) => row.instance_id)).size).toBe(rows.length);
     expect(
       rows.reduce((total, row) => total + row.internal_cost_ex_gst, 0),
@@ -72,7 +81,8 @@ describe('trusted materials and labour breakdowns', () => {
       unit: 'bar',
       explanation: {
         source: '@sp/costing/materials-v1',
-        rounding: expect.stringContaining('whole bars'),
+        rounding:
+          'Bars are purchased whole; allocated waste is stock left after arranging required cuts.',
       },
     });
     expect(rafterStock?.label).not.toContain('[Main pergola M1]');
@@ -84,12 +94,28 @@ describe('trusted materials and labour breakdowns', () => {
         expect.objectContaining({ label: 'Allocated waste', unit: 'm' }),
       ]),
     );
+    const stockFacts = new Map(
+      rafterStock?.explanation?.facts.map((fact) => [fact.label, fact.value]),
+    );
+    const barsPurchased = Number(stockFacts.get('Bars purchased'));
+    expect(rafterStock?.explanation?.summary).toBe(
+      `Required cuts total ${stockFacts.get('Required cuts')} m. Purchasing uses ${barsPurchased} whole ${stockFacts.get('Stock length')} m bar${barsPurchased === 1 ? '' : 's'}.`,
+    );
 
     const roofSheet = rows.find((row) => row.unit === 'sheet');
     expect(roofSheet?.explanation).toMatchObject({
       summary: expect.stringContaining('sheet mode'),
       rounding: expect.stringContaining('whole units'),
     });
+
+    const routineCopy = rows.flatMap((row) => [
+      row.explanation?.summary ?? '',
+      row.explanation?.rounding ?? '',
+      ...(row.explanation?.assumptions ?? []),
+    ]).join(' ');
+    expect(routineCopy).not.toMatch(
+      /stock allocator|package-owned|engine driver|costing engine|\b\w+s cuts\b/i,
+    );
   });
 
   it('keeps module and pergola ownership distinct across a multi-pergola site', () => {
@@ -132,6 +158,15 @@ describe('trusted materials and labour breakdowns', () => {
 
     const rows = breakdown!.groups.flatMap((group) => group.rows);
     expect(rows).toHaveLength(result.install.actions.length);
+    expect(
+      rows
+        .map((row) => `${row.id}|${row.quantity}|${row.unit}|${row.minutes}`)
+        .sort(),
+    ).toEqual(
+      result.install.actions
+        .map((action) => `${action.id}|${action.qty}|${action.unit}|${action.minutes}`)
+        .sort(),
+    );
     expect(rows.reduce((total, row) => total + row.minutes, 0)).toBeCloseTo(
       result.install.totals.crew_minutes,
       2,
@@ -153,6 +188,13 @@ describe('trusted materials and labour breakdowns', () => {
         expect.objectContaining({ label: 'Rafter length' }),
       ]),
     );
+    expect(
+      rows.flatMap((row) => [
+        row.explanation.summary,
+        row.explanation.rounding ?? '',
+        ...row.explanation.assumptions,
+      ]).join(' '),
+    ).not.toMatch(/package-owned|engine driver|costing engine|drives this/i);
   });
 
   it('publishes explicit empty contracts rather than inventing rows', () => {

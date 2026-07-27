@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
-import type {
-  CalculatorModuleNavigatorItem,
-  CalculatorModuleNavigatorModel,
+import {
+  calculatorIssueCountLabel,
+  calculatorModuleCountLabel,
+  type CalculatorModuleNavigatorItem,
+  type CalculatorModuleNavigatorModel,
 } from './calculatorModuleNavigation';
 import type { CalculatorPergola } from '@/lib/types/calculator';
 import styles from './CalculatorModuleNavigator.module.css';
@@ -152,7 +154,7 @@ export default function CalculatorModuleNavigator({
                             <strong>{item.label}</strong>
                             {item.issueCount ? (
                               <span className={styles.issueBadge}>
-                                {`${item.issueCount} issue${item.issueCount === 1 ? '' : 's'}`}
+                                {calculatorIssueCountLabel(item.issueCount)}
                               </span>
                             ) : (
                               <span className={styles.readyBadge}>Complete</span>
@@ -237,7 +239,9 @@ export default function CalculatorModuleNavigator({
           <span>{activeItem ? `${activeItem.styleLabel} · ${activeItem.dimensionsLabel}` : 'Choose a module'}</span>
         </span>
         <span className={styles.mobileLauncherCount}>
-          {model.totalIssueCount ? `${model.totalIssueCount} issues` : `${moduleCount} modules`}
+          {model.totalIssueCount
+            ? calculatorIssueCountLabel(model.totalIssueCount)
+            : calculatorModuleCountLabel(moduleCount)}
         </span>
       </button>
 

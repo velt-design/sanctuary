@@ -342,7 +342,7 @@ export function buildCalculatorSiteFields({
     } satisfies FieldSchemaItem,
     {
       id: 'downpipeJoinCount',
-      label: 'DP joins',
+      label: 'Downpipe joins',
       type: 'select',
       value: activeModule.downpipeJoinCount,
       onChange: (v: string | boolean) => setModuleField('downpipeJoinCount', String(v)),
@@ -354,7 +354,7 @@ export function buildCalculatorSiteFields({
       ? [
           {
             id: 'downpipeElbowCount',
-            label: 'DP elbows',
+            label: 'Downpipe elbows',
             type: 'select',
             value: activeModule.downpipeElbowCount,
             onChange: (v: string | boolean) => setModuleField('downpipeElbowCount', String(v)),

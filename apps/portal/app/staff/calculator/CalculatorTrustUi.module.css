@@ -82,15 +82,18 @@
   outline-offset: 2px;
 }
 
-.commandBarActions {
+.commandBarControls {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   flex: 0 0 auto;
+  min-width: 0;
 }
 
 .commandBarStatusReady,
+.commandBarStatusReview,
+.commandBarStatusWaiting,
 .commandBarStatusBlocked {
   border-radius: var(--ui-radius-control);
   padding: 6px 9px;
@@ -101,15 +104,27 @@
 }
 
 .commandBarStatusReady {
-  border: 1px solid color-mix(in srgb, var(--ui-status-info-border) 24%, transparent);
-  background: color-mix(in srgb, var(--ui-status-info-border) 8%, transparent);
+  border: var(--ui-border-width) solid var(--ui-status-success-border);
+  background: var(--ui-status-success-bg);
   color: var(--ui-status-success-border);
 }
 
-.commandBarStatusBlocked {
-  border: 1px solid color-mix(in srgb, var(--ui-status-warning-border) 28%, transparent);
-  background: color-mix(in srgb, var(--ui-status-warning-border) 10%, transparent);
+.commandBarStatusReview {
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
   color: var(--ui-status-warning-border);
+}
+
+.commandBarStatusWaiting {
+  border: var(--ui-border-width) solid var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-status-info-border);
+}
+
+.commandBarStatusBlocked {
+  border: var(--ui-border-width) solid var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+  color: var(--ui-status-error-border);
 }
 
 .commandBarMode {
@@ -391,13 +406,16 @@
     flex: 1 1 320px;
   }
 
-  .commandBarActions {
+  .commandBarControls {
     flex: 0 1 auto;
     flex-wrap: wrap;
   }
 
-  .commandBarEmbedded {
-    flex-wrap: nowrap;
+  .commandBarStatusReady,
+  .commandBarStatusReview,
+  .commandBarStatusWaiting,
+  .commandBarStatusBlocked {
+    white-space: normal;
   }
 }
 
@@ -416,48 +434,36 @@
   }
 
   .commandBar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: flex-start;
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
   }
 
-  .commandBarIdentity,
-  .commandBarIdentity > div {
-    display: contents;
-  }
-
-  .commandBarTitle {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: center;
+  .commandBarIdentity {
+    flex: 0 1 auto;
   }
 
   .commandBarMeta {
-    grid-column: 1 / -1;
-    grid-row: 2;
     overflow: hidden;
     white-space: nowrap;
   }
 
-  .commandBarActions {
-    grid-column: 1 / -1;
-    grid-row: 4;
+  .commandBarControls {
     width: 100%;
-    justify-content: space-between;
-    flex-wrap: nowrap;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
-  .commandBarSave {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-    min-width: 92px;
+  .commandBarStatusReady,
+  .commandBarStatusReview,
+  .commandBarStatusWaiting,
+  .commandBarStatusBlocked {
+    flex: 1 1 180px;
+    min-width: 0;
   }
 
   .commandBarDraftStatus,
   .commandBarDraftStatusError {
-    grid-column: 1 / -1;
-    grid-row: 3;
     align-items: baseline;
     flex-direction: row;
     flex-wrap: wrap;
@@ -478,8 +484,6 @@
 
   .commandBarEmbedded .commandBarIdentity {
     display: block;
-    grid-column: 1;
-    grid-row: 1;
   }
 
   .commandBarEmbedded .commandBarIdentity > div {
@@ -491,8 +495,6 @@
 
   .commandBarEmbedded .commandBarMeta {
     display: flex;
-    grid-column: auto;
-    grid-row: auto;
     width: 100%;
     margin: 0;
   }
@@ -500,20 +502,12 @@
   .commandBarEmbedded .commandBarDraftStatus,
   .commandBarEmbedded .commandBarDraftStatusError {
     display: flex;
-    grid-column: auto;
-    grid-row: auto;
     width: auto;
     margin: 0;
   }
 
-  .commandBarEmbedded .commandBarActions {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .commandBarEmbedded .commandBarSave {
-    grid-column: 2;
-    grid-row: 1;
+  .commandBarEmbedded .commandBarControls {
+    width: 100%;
   }
 
   .commandBarDesignSelector {
@@ -562,6 +556,8 @@
 }
 
 .commandBarStatusReady,
+.commandBarStatusReview,
+.commandBarStatusWaiting,
 .commandBarStatusBlocked,
 .commandBarMode,
 .commandBarModeButton,
@@ -585,10 +581,22 @@
   color: var(--ui-status-success-border);
 }
 
-.commandBarStatusBlocked {
+.commandBarStatusReview {
   border-color: var(--ui-status-warning-border);
   background: var(--ui-status-warning-bg);
   color: var(--ui-status-warning-border);
+}
+
+.commandBarStatusWaiting {
+  border-color: var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-status-info-border);
+}
+
+.commandBarStatusBlocked {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+  color: var(--ui-status-error-border);
 }
 
 .commandBarMode {

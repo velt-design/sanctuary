@@ -1,5 +1,6 @@
 'use client';
 
+import { type ReactNode, useRef } from 'react';
 import type {
   TrustedLabourBreakdownV1,
   TrustedMaterialsBreakdownV1,
@@ -116,10 +117,52 @@ function QuantityExplanation({
             <strong>Rounding:</strong> {explanation.rounding}
           </p>
         ) : null}
-        <p className={styles.source}>
-          Source: <code>{explanation.source}</code>
-        </p>
+        <details className={styles.technicalSource} data-technical-source>
+          <summary>Technical source</summary>
+          <p>
+            <code>{explanation.source}</code>
+          </p>
+        </details>
       </div>
+    </details>
+  );
+}
+
+function BreakdownGroupDisclosure({
+  children,
+  groupId,
+  groupLabel,
+  initiallyOpen,
+  kind,
+  summary,
+}: {
+  children: ReactNode;
+  groupId: string;
+  groupLabel: string;
+  initiallyOpen: boolean;
+  kind: 'material' | 'labour';
+  summary: string;
+}) {
+  const rememberedOpen = useRef<boolean | null>(null);
+
+  return (
+    <details
+      className={styles.group}
+      open={rememberedOpen.current ?? initiallyOpen}
+      onToggle={(event) => {
+        // Keep native disclosure behaviour while retaining the user's choice through data rerenders.
+        rememberedOpen.current = event.currentTarget.open;
+      }}
+      data-material-breakdown-group={kind === 'material' ? groupId : undefined}
+      data-labour-breakdown-group={kind === 'labour' ? groupId : undefined}
+    >
+      <summary className={styles.groupSummary} data-breakdown-group-summary>
+        <span className={styles.groupSummaryContent}>
+          <span className={styles.groupLabel}>{groupLabel}</span>
+          <span className={styles.groupMeta}>{summary}</span>
+        </span>
+      </summary>
+      <div className={styles.rows}>{children}</div>
     </details>
   );
 }
@@ -170,53 +213,50 @@ export function CalculatorMaterialsBreakdown({
         <p className={styles.unavailable}>No material lines were produced for this job.</p>
       ) : (
         <div className={styles.groups}>
-          {breakdown.groups.map((group) => (
-            <section
+          {breakdown.groups.map((group, index) => (
+            <BreakdownGroupDisclosure
               key={group.id}
-              className={styles.group}
-              aria-labelledby={`material-group-${group.id}`}
+              groupId={group.id}
+              groupLabel={group.label}
+              initiallyOpen={index === 0}
+              kind="material"
+              summary={`${group.rows.length} line${group.rows.length === 1 ? '' : 's'}`}
             >
-              <div className={styles.groupHeading}>
-                <h3 id={`material-group-${group.id}`}>{group.label}</h3>
-                <span>{group.rows.length}</span>
-              </div>
-              <div className={styles.rows}>
-                {group.rows.map((row) => (
-                  <article
-                    key={row.instance_id}
-                    className={styles.row}
-                    data-material-breakdown-row={row.id}
-                  >
-                    <div className={styles.rowHeading}>
-                      <div>
-                        <h4>{row.label}</h4>
-                        <p>
-                          {row.owner.label}
-                          {row.profile ? ` · ${row.profile}` : ''}
-                        </p>
-                      </div>
-                      <div className={styles.quantity}>
-                        <strong>{formatQuantity(row.quantity)}</strong>
-                        <span>{row.unit}</span>
-                      </div>
-                    </div>
-                    {canViewInternalCosts ? (
-                      <div className={styles.internalCost} data-internal-material-cost>
-                        <span>Internal cost, ex GST</span>
-                        <strong>{formatMoney(row.internal_cost_ex_gst)}</strong>
-                      </div>
-                    ) : null}
-                    {row.explanation ? (
-                      <QuantityExplanation explanation={row.explanation} />
-                    ) : (
-                      <p className={styles.noExplanation}>
-                        A compact quantity explanation is not yet available for this line.
+              {group.rows.map((row) => (
+                <article
+                  key={row.instance_id}
+                  className={styles.row}
+                  data-material-breakdown-row={row.id}
+                >
+                  <div className={styles.rowHeading}>
+                    <div>
+                      <h4>{row.label}</h4>
+                      <p>
+                        {row.owner.label}
+                        {row.profile ? ` · ${row.profile}` : ''}
                       </p>
-                    )}
-                  </article>
-                ))}
-              </div>
-            </section>
+                    </div>
+                    <div className={styles.quantity}>
+                      <strong>{formatQuantity(row.quantity)}</strong>
+                      <span>{row.unit}</span>
+                    </div>
+                  </div>
+                  {canViewInternalCosts ? (
+                    <div className={styles.internalCost} data-internal-material-cost>
+                      <span>Internal cost, ex GST</span>
+                      <strong>{formatMoney(row.internal_cost_ex_gst)}</strong>
+                    </div>
+                  ) : null}
+                  {row.explanation ? (
+                    <QuantityExplanation explanation={row.explanation} />
+                  ) : (
+                    <p className={styles.noExplanation}>
+                      A compact quantity explanation is not yet available for this line.
+                    </p>
+                  )}
+                </article>
+              ))}
+            </BreakdownGroupDisclosure>
           ))}
         </div>
       )}
@@ -278,58 +318,55 @@ export function CalculatorLabourBreakdown({
         <p className={styles.unavailable}>No labour activities were produced for this job.</p>
       ) : (
         <div className={styles.groups}>
-          {breakdown.groups.map((group) => (
-            <section
+          {breakdown.groups.map((group, index) => (
+            <BreakdownGroupDisclosure
               key={group.id}
-              className={styles.group}
-              aria-labelledby={`labour-group-${group.id}`}
+              groupId={group.id}
+              groupLabel={group.label}
+              initiallyOpen={index === 0}
+              kind="labour"
+              summary={`${group.rows.length} activit${group.rows.length === 1 ? 'y' : 'ies'} · ${formatHours(group.crew_hours)}`}
             >
-              <div className={styles.groupHeading}>
-                <h3 id={`labour-group-${group.id}`}>{group.label}</h3>
-                <span>{formatHours(group.crew_hours)}</span>
-              </div>
-              <div className={styles.rows}>
-                {group.rows.map((row) => (
-                  <article
-                    key={row.instance_id}
-                    className={styles.row}
-                    data-labour-breakdown-row={row.id}
-                  >
-                    <div className={styles.rowHeading}>
-                      <div>
-                        <h4>{row.label}</h4>
-                        <p>{row.owner.label}</p>
-                      </div>
-                      <div className={styles.quantity}>
-                        <strong>{formatQuantity(row.quantity)}</strong>
-                        <span>{row.unit}</span>
-                      </div>
+              {group.rows.map((row) => (
+                <article
+                  key={row.instance_id}
+                  className={styles.row}
+                  data-labour-breakdown-row={row.id}
+                >
+                  <div className={styles.rowHeading}>
+                    <div>
+                      <h4>{row.label}</h4>
+                      <p>{row.owner.label}</p>
                     </div>
-                    <div className={styles.time}>
-                      <span>{formatMinutes(row.minutes)}</span>
-                      <span>{formatHours(row.crew_hours)}</span>
-                      {canViewInternalCosts ? (
-                        <strong data-internal-labour-cost>
-                          {formatMoney(row.internal_cost_ex_gst)} ex GST
-                        </strong>
-                      ) : null}
+                    <div className={styles.quantity}>
+                      <strong>{formatQuantity(row.quantity)}</strong>
+                      <span>{row.unit}</span>
                     </div>
-                    {row.relevant_multipliers.length ? (
-                      <div className={styles.multipliers} aria-label="Applied labour loadings">
-                        {row.relevant_multipliers.map((multiplier) => (
-                          <span key={multiplier.id}>
-                            {multiplier.label} {formatQuantity(multiplier.factor)}x
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className={styles.neutralLoading}>No additional labour loading</p>
-                    )}
-                    <QuantityExplanation explanation={row.explanation} />
-                  </article>
-                ))}
-              </div>
-            </section>
+                  </div>
+                  <div className={styles.time}>
+                    <span>{formatMinutes(row.minutes)}</span>
+                    <span>{formatHours(row.crew_hours)}</span>
+                    {canViewInternalCosts ? (
+                      <strong data-internal-labour-cost>
+                        {formatMoney(row.internal_cost_ex_gst)} ex GST
+                      </strong>
+                    ) : null}
+                  </div>
+                  {row.relevant_multipliers.length ? (
+                    <div className={styles.multipliers} aria-label="Applied labour loadings">
+                      {row.relevant_multipliers.map((multiplier) => (
+                        <span key={multiplier.id}>
+                          {multiplier.label} {formatQuantity(multiplier.factor)}x
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={styles.neutralLoading}>No additional labour loading</p>
+                  )}
+                  <QuantityExplanation explanation={row.explanation} />
+                </article>
+              ))}
+            </BreakdownGroupDisclosure>
           ))}
         </div>
       )}

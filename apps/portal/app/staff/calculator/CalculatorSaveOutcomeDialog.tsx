@@ -62,7 +62,11 @@ export default function CalculatorSaveOutcomeDialog({
       </div>
 
       <div className={sharedStyles.modalBody}>
-        <section className={`${styles.statusCard} ${styles[ui.syncTone]}`} aria-label="Save and sync status">
+        <section
+          className={`${styles.statusCard} ${styles[ui.syncTone]}`}
+          aria-label="Save and sync status"
+          data-save-sync-status={syncState.status}
+        >
           <strong>{ui.syncLabel}</strong>
           <span>{ui.syncDetail}</span>
         </section>

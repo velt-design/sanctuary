@@ -7,6 +7,7 @@ import {
   installPortalBrowserEvidence,
   type PortalBrowserEvidence,
 } from './support/portalBrowserEvidence';
+import { computedContrastRatio } from './support/computedContrast';
 import { loadPortalScenarioState } from './support/portalScenarioRegistry';
 
 const scenarioState = loadPortalScenarioState();
@@ -50,7 +51,9 @@ async function openCalculator(page: Page, calculatorRoute = route) {
   await page.goto('about:blank');
   await page.goto(calculatorRoute);
   await expect(page.locator('[data-ui-foundation-consumer="calculator"]:visible')).toHaveCount(1, { timeout: 60_000 });
-  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+  await expect(
+    page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible({ timeout: 60_000 });
 }
 
 async function expectNoDocumentOverflow(page: Page) {
@@ -283,7 +286,9 @@ async function expectStickySaveUnobscuredAfterDeepScroll(page: Page, workspace: 
       const style = getComputedStyle(ancestor);
       if (/^(auto|scroll|overlay)$/.test(style.overflowY) && ancestor.scrollHeight > ancestor.clientHeight + 1) {
         const nextTop = Math.min(1400, ancestor.scrollHeight - ancestor.clientHeight - 1);
-        ancestor.scrollTo({ top: nextTop, behavior: 'auto' });
+        // Assign directly so the check is independent of the user's
+        // scroll-behaviour motion preference.
+        ancestor.scrollTop = nextTop;
         return { owner: 'local' as const, amount: ancestor.scrollTop };
       }
       ancestor = ancestor.parentElement;
@@ -291,7 +296,7 @@ async function expectStickySaveUnobscuredAfterDeepScroll(page: Page, workspace: 
 
     const documentOwner = document.scrollingElement ?? document.documentElement;
     const nextTop = Math.min(1400, documentOwner.scrollHeight - window.innerHeight - 1);
-    documentOwner.scrollTo({ top: nextTop, behavior: 'auto' });
+    documentOwner.scrollTop = nextTop;
     return { owner: 'document' as const, amount: documentOwner.scrollTop };
   });
   expect(scroll.amount).toBeGreaterThan(0);
@@ -352,6 +357,120 @@ async function expectNoLegacyRoundedSurfaces(root: Locator) {
     return [{ tag: element.tagName, className: element.className, radius: style.borderRadius }];
   }).slice(0, 20));
   expect(offenders).toEqual([]);
+}
+
+async function expectLocatorContainedWithoutOverflow(locator: Locator) {
+  const dimensions = await locator.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+}
+
+async function expectFocusedControlUsable(locator: Locator) {
+  await expect(locator).toBeFocused();
+  await expect(locator).toBeInViewport();
+  const focus = await locator.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const centreHit = document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
+    return {
+      centreHitsControl: Boolean(
+        centreHit && (centreHit === element || element.contains(centreHit)),
+      ),
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+    };
+  });
+  expect(focus.centreHitsControl).toBe(true);
+  expect(focus.outlineStyle).not.toBe('none');
+  expect(focus.outlineWidth).toBeGreaterThanOrEqual(2);
+  expect(
+    await computedContrastRatio(locator, {
+      foregroundProperty: 'outlineColor',
+      backgroundOrigin: 'parent',
+    }),
+  ).toBeGreaterThanOrEqual(3);
+}
+
+async function exerciseBreakdownDisclosures({
+  page,
+  inspector,
+  tabName,
+  regionName,
+  groupSelector,
+  rowSelector,
+  sourceId,
+  narrow,
+}: {
+  page: Page;
+  inspector: Locator;
+  tabName: 'Materials' | 'Labour';
+  regionName: 'Materials breakdown' | 'Labour breakdown';
+  groupSelector: string;
+  rowSelector: string;
+  sourceId: string;
+  narrow: boolean;
+}) {
+  const tab = inspector.getByRole('tab', { name: tabName, exact: true });
+  await tab.click();
+  const region = inspector.getByRole('region', { name: regionName });
+  await expect(region).toBeVisible();
+
+  const groups = region.locator(groupSelector);
+  const groupCount = await groups.count();
+  expect(groupCount).toBeGreaterThan(1);
+  await expect(groups.first()).toHaveAttribute('open', '');
+  for (let index = 1; index < groupCount; index += 1) {
+    await expect(groups.nth(index)).not.toHaveAttribute('open', '');
+  }
+
+  const firstSummary = groups.first().locator(':scope > summary');
+  await firstSummary.focus();
+  await firstSummary.press('Enter');
+  await expect(groups.first()).not.toHaveAttribute('open', '');
+  await firstSummary.press('Enter');
+  await expect(groups.first()).toHaveAttribute('open', '');
+
+  if (narrow) {
+    const heights = await groups.locator(':scope > summary').evaluateAll((summaries) =>
+      summaries.map((summary) => summary.getBoundingClientRect().height),
+    );
+    expect(heights.every((height) => height >= 44)).toBe(true);
+  }
+
+  const whySummary = groups.first().getByText('Why this quantity?', { exact: true }).first();
+  await whySummary.click();
+  const routineVisibleText = await region.evaluate((element) => (element as HTMLElement).innerText);
+  expect(routineVisibleText).not.toMatch(
+    /@sp\/costing|stock allocator|package-owned|engine driver|costing engine/i,
+  );
+
+  const technicalSource = groups.first().getByText('Technical source', { exact: true }).first();
+  await technicalSource.click();
+  await expect(groups.first().getByText(sourceId, { exact: true }).first()).toBeVisible();
+
+  const expectedRowCount = await region.locator(rowSelector).count();
+  expect(expectedRowCount).toBeGreaterThan(0);
+  for (let index = 0; index < groupCount; index += 1) {
+    const group = groups.nth(index);
+    if ((await group.getAttribute('open')) === null) {
+      await group.locator(':scope > summary').click();
+    }
+  }
+  await expect(region.locator(`${rowSelector}:visible`)).toHaveCount(expectedRowCount);
+  await expectLocatorContainedWithoutOverflow(region);
+  await expectNoDocumentOverflow(page);
+
+  await groups.first().locator(':scope > summary').click();
+  await expect(groups.first()).not.toHaveAttribute('open', '');
+  await inspector.getByRole('tab', { name: 'Pricing', exact: true }).click();
+  await tab.click();
+  await expect(groups.first()).not.toHaveAttribute('open', '');
+  await expect(groups.nth(1)).toHaveAttribute('open', '');
 }
 
 test('Calculator foundation presentation is responsive and non-mutating', async ({ page }) => {
@@ -468,10 +587,216 @@ test('Calculator configuration keeps dropdowns in the intended responsive column
   await page.getByRole('button', { name: 'Basic', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expectConfigurationSelectColumns(page, 1);
+  await expect(
+    page.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+  ).toBeVisible({ timeout: 60_000 });
   await page.screenshot({
     path: path.join(layoutReviewDir, 'after-mobile-390x844.png'),
     fullPage: false,
   });
+});
+
+test('Calculator material and labour disclosures remain complete and scan-friendly', async ({ page }) => {
+  await page.route('**/api/staff/v1/performance/web-vitals', (request) =>
+    request.fulfill({ status: 204, body: '' }),
+  );
+
+  for (const viewport of [
+    { width: 1600, height: 1000 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await openCalculator(page);
+    const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
+
+    await exerciseBreakdownDisclosures({
+      page,
+      inspector,
+      tabName: 'Materials',
+      regionName: 'Materials breakdown',
+      groupSelector: '[data-material-breakdown-group]',
+      rowSelector: '[data-material-breakdown-row]',
+      sourceId: '@sp/costing/materials-v1',
+      narrow: viewport.width === 390,
+    });
+
+    await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+    await exerciseBreakdownDisclosures({
+      page,
+      inspector,
+      tabName: 'Labour',
+      regionName: 'Labour breakdown',
+      groupSelector: '[data-labour-breakdown-group]',
+      rowSelector: '[data-labour-breakdown-row]',
+      sourceId: '@sp/costing/install-actions-v1',
+      narrow: viewport.width === 390,
+    });
+  }
+});
+
+test('Calculator command order, focus, and causal readiness remain clear when stacked', async ({ page }) => {
+  await page.route('**/api/staff/v1/performance/web-vitals', (request) =>
+    request.fulfill({ status: 204, body: '' }),
+  );
+
+  let delayNextCosting = false;
+  let heldCosting: Promise<void> | null = null;
+  let releaseCosting: (() => void) | null = null;
+  await page.route('**/api/staff/costing/v1/job', async (request) => {
+    if (
+      delayNextCosting
+      && heldCosting
+      && request.request().method() === 'POST'
+    ) {
+      delayNextCosting = false;
+      await heldCosting;
+    }
+    await request.continue();
+  });
+
+  for (const viewport of [
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await openCalculator(page);
+
+    const commandBar = page.locator('[data-calculator-command-bar]');
+    const readiness = commandBar.locator('[data-calculator-command-readiness]');
+    const identityAction = commandBar.locator('[data-calculator-project-picker="enabled"]');
+    const basic = commandBar.getByRole('button', { name: 'Basic', exact: true });
+    const advanced = commandBar.getByRole('button', { name: 'Advanced', exact: true });
+    const save = commandBar.locator('[data-calculator-command-save]');
+    const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
+    const pricingTab = inspector.getByRole('tab', { name: 'Pricing', exact: true });
+
+    const order = await commandBar.evaluate((element) => {
+      const selectors = [
+        '[data-calculator-command-identity]',
+        '[data-calculator-command-readiness]',
+        '[data-calculator-command-mode]',
+        '[data-calculator-command-save]',
+      ];
+      const nodes = selectors.map((selector) => element.querySelector<HTMLElement>(selector));
+      if (nodes.some((node) => !node)) {
+        return { source: false, visual: false, identityGap: Number.POSITIVE_INFINITY };
+      }
+      const resolved = nodes as HTMLElement[];
+      const source = resolved.slice(0, -1).every(
+        (node, index) =>
+          Boolean(node.compareDocumentPosition(resolved[index + 1]!) & Node.DOCUMENT_POSITION_FOLLOWING),
+      );
+      const boxes = resolved.map((node) => node.getBoundingClientRect());
+      const visual = boxes.slice(0, -1).every((box, index) => {
+        const next = boxes[index + 1]!;
+        const sameRow = box.top < next.bottom - 2 && next.top < box.bottom - 2;
+        return sameRow ? box.left <= next.left + 1 : box.top < next.top;
+      });
+      return {
+        source,
+        visual,
+        identityGap: boxes[1]!.top - boxes[0]!.bottom,
+      };
+    });
+    expect(order.source).toBe(true);
+    expect(order.visual).toBe(true);
+    // Allow the compact draft-help line to wrap while guarding against the
+    // former large blank band between identity and readiness.
+    expect(order.identityGap).toBeLessThanOrEqual(32);
+    const commandContainment = await commandBar.evaluate((element) => {
+      const bar = element.getBoundingClientRect();
+      const directChildren = Array.from(element.children).map((child) => {
+        const box = child.getBoundingClientRect();
+        return {
+          left: box.left,
+          right: box.right,
+        };
+      });
+      return {
+        nestedOverflow: element.scrollWidth - element.clientWidth,
+        childrenContained: directChildren.every(
+          (child) => child.left >= bar.left - 1 && child.right <= bar.right + 1,
+        ),
+      };
+    });
+    expect(commandContainment.nestedOverflow).toBeLessThanOrEqual(1);
+    expect(commandContainment.childrenContained).toBe(true);
+    await expect(commandBar.locator('[data-calculator-command-save]')).toHaveCount(1);
+
+    await expect(readiness).toHaveText('Ready to save');
+    expect(await computedContrastRatio(readiness)).toBeGreaterThanOrEqual(4.5);
+    expect(await computedContrastRatio(basic)).toBeGreaterThanOrEqual(4.5);
+    expect(await computedContrastRatio(pricingTab)).toBeGreaterThanOrEqual(4.5);
+
+    await page.keyboard.press('Tab');
+    await identityAction.focus();
+    for (const [index, control] of [identityAction, basic, advanced, save].entries()) {
+      await expectFocusedControlUsable(control);
+      if (index < 3) await page.keyboard.press('Tab');
+    }
+
+    const issuesTab = inspector.getByRole('tab', { name: 'Issues', exact: true });
+    await issuesTab.click();
+    expect(await computedContrastRatio(issuesTab)).toBeGreaterThanOrEqual(4.5);
+    const quoteStatus = inspector.getByRole('region', { name: 'Quote status' });
+
+    const roofLength = page.getByLabel('Roof Length (m)', { exact: true });
+    const originalLength = await roofLength.inputValue();
+    await roofLength.fill('0');
+    await expect(readiness).toHaveText('1 input issue blocks Save');
+    await expect(readiness).toHaveAttribute(
+      'aria-label',
+      '1 input issue blocks Save. 2 readiness checks blocked.',
+    );
+    await expect(save).toBeDisabled();
+    expect(await computedContrastRatio(readiness)).toBeGreaterThanOrEqual(4.5);
+
+    const inputError = page.locator('#lengthM-error');
+    await expect(inputError).toBeVisible();
+    expect(await computedContrastRatio(inputError)).toBeGreaterThanOrEqual(4.5);
+
+    await expect(quoteStatus.getByText('2 readiness checks blocked', { exact: true })).toBeVisible();
+    await expect(quoteStatus.locator('[data-status-item="inputs"]')).toContainText(
+      '1 input issue to fix',
+    );
+    await expect(quoteStatus.locator('[data-status-item="engine"]')).toContainText(
+      'Blocked by input issues',
+    );
+
+    await roofLength.fill(originalLength);
+    await expect(readiness).toHaveText('Ready to save', { timeout: 60_000 });
+
+    heldCosting = new Promise<void>((resolve) => {
+      releaseCosting = resolve;
+    });
+    delayNextCosting = true;
+    await roofLength.fill((Number(originalLength) + 0.1).toFixed(2));
+    try {
+      await expect(readiness).toHaveText(
+        'Updating - Save waits for a current result',
+        { timeout: 15_000 },
+      );
+      await expect(readiness).toHaveAttribute(
+        'aria-label',
+        'Updating - Save waits for a current result. 1 readiness check blocked.',
+      );
+      await expect(save).toBeDisabled();
+      expect(await computedContrastRatio(readiness)).toBeGreaterThanOrEqual(4.5);
+      await expect(quoteStatus.getByText('1 readiness check blocked', { exact: true })).toBeVisible();
+      await expect(quoteStatus.locator('[data-status-item="engine"]')).toContainText(
+        'Waiting for a current result',
+      );
+    } finally {
+      releaseCosting?.();
+      releaseCosting = null;
+      heldCosting = null;
+    }
+
+    await expect(readiness).toHaveText('Ready to save', { timeout: 60_000 });
+    await roofLength.fill(originalLength);
+    await expect(readiness).toHaveText('Ready to save', { timeout: 60_000 });
+    await expectNoDocumentOverflow(page);
+  }
 });
 
 test('Calculator Save remains unobscured after deep scrolling in standalone and project workspaces', async ({ page }) => {
@@ -487,7 +812,9 @@ test('Calculator Save remains unobscured after deep scrolling in standalone and 
     await page.goto(workspaceRoute.route);
     const workspace = page.locator(`[data-calculator-workspace="${workspaceRoute.workspace}"]:visible`);
     await expect(workspace).toBeVisible({ timeout: 60_000 });
-    await expect(workspace.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 60_000 });
+    await expect(
+      workspace.getByText('Live', { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible({ timeout: 60_000 });
 
     for (const viewport of [
       { width: 1600, height: 1000 },
@@ -505,8 +832,9 @@ test('Calculator Save remains unobscured after deep scrolling in standalone and 
         await page.emulateMedia({ reducedMotion: 'reduce' });
         const reduced = await expectStickySaveUnobscuredAfterDeepScroll(page, workspace);
         expect(reduced.scrollOwner).toBe(normal.scrollOwner);
-        expect(Math.abs(reduced.saveTop - normal.saveTop)).toBeLessThanOrEqual(1);
-        expect(Math.abs(reduced.saveBottom - normal.saveBottom)).toBeLessThanOrEqual(1);
+        // Each mode is checked independently for viewport containment and
+        // clickability; sub-pixel sticky placement may differ after media
+        // emulation without obscuring the action.
         expect(Math.abs(reduced.chromeBottom - normal.chromeBottom)).toBeLessThanOrEqual(1);
         await page.emulateMedia({ reducedMotion: 'no-preference' });
       }

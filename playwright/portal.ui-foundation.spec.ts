@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { computedContrastRatio } from './support/computedContrast';
 import { capturePortalEvidenceScreenshot } from './support/portalBrowserEvidence';
 
 const viewports = [
@@ -77,20 +78,6 @@ async function expectNoLegacyRoundedSurfaces(root: Locator) {
   expect(offenders).toEqual([]);
 }
 
-async function contrastRatio(locator: Locator): Promise<number> {
-  return locator.evaluate((element) => {
-    const parse = (value: string) => value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
-    const luminance = (rgb: number[]) => rgb.map((channel) => {
-      const value = channel / 255;
-      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
-    const style = getComputedStyle(element);
-    const foreground = luminance(parse(style.color));
-    const background = luminance(parse(style.backgroundColor));
-    return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
-  });
-}
-
 async function firstProjectDetailRoute(page: Page): Promise<string | null> {
   await page.goto('/staff/projects');
   await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
@@ -151,9 +138,9 @@ test('foundation is responsive, semantic, keyboard-operable, and reduced-motion 
   await openFresh(page, '/staff/ui-foundation');
   const actionStates = page.locator('[class*="interactionTable"] button[data-visual-state]');
   for (let index = 0; index < await actionStates.count(); index += 1) {
-    expect(await contrastRatio(actionStates.nth(index))).toBeGreaterThanOrEqual(4.5);
+    expect(await computedContrastRatio(actionStates.nth(index))).toBeGreaterThanOrEqual(4.5);
   }
-  expect(await contrastRatio(page.locator('[class*="stageBadge"][data-stage="quoting"]').first())).toBeGreaterThanOrEqual(4.5);
+  expect(await computedContrastRatio(page.locator('[class*="stageBadge"][data-stage="quoting"]').first())).toBeGreaterThanOrEqual(4.5);
   expect(await page.locator('a[aria-label="Projects"]').count()).toBeLessThanOrEqual(1);
   const destructiveTrigger = page.getByRole('button', { name: 'Open destructive confirmation' });
   await destructiveTrigger.click();

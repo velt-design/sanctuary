@@ -540,14 +540,14 @@ export default function CalculatorGridClient({
         projectId,
         hasProject: Boolean(project),
         projectHasContact,
-        hasModuleErrors,
+        inputIssueCount: issuesCount,
         invalidBlindCount: blindsUi.rows.filter((row) => row.hasErrors).length,
         engineError,
         resultFreshness,
         infillItems: infillsState.items,
         infillUiById,
       }),
-    [blindsUi.rows, engineError, hasModuleErrors, infillUiById, infillsState.items, project, projectHasContact, projectId, resultFreshness],
+    [blindsUi.rows, engineError, infillUiById, infillsState.items, issuesCount, project, projectHasContact, projectId, resultFreshness],
   );
   const statusActionHandlers: Record<CalculatorQuoteStatusActionKey, () => void> = {
     selectProject: () => setProjectPickerOpen(true),
@@ -571,6 +571,8 @@ export default function CalculatorGridClient({
     detail: item.detail,
     actionLabel: item.actionLabel,
     onAction: item.actionKey ? statusActionHandlers[item.actionKey] : undefined,
+    blockedBy: item.blockedBy,
+    causeCount: item.causeCount,
   }));
   const hasStatusBlockers = quoteStatusUi.hasStatusBlockers;
 
@@ -970,9 +972,8 @@ export default function CalculatorGridClient({
       activeModuleLabel,
       uiMode,
       onUiModeChange: setUiMode,
-      resultFreshness,
+      readinessSummary: quoteStatusUi.readinessSummary,
       localDraftStatus,
-      blockerCount: quoteStatusUi.blockerCount,
       onSelectProject: workspace ? undefined : () => setProjectPickerOpen(true),
       saveLabel: generateField?.actionLabel ?? 'Save',
       saveDisabled: !generateField || Boolean(generateField.disabled),
@@ -1013,7 +1014,10 @@ export default function CalculatorGridClient({
       isAdvancedUi,
       onResetBaseline: resetImpactBaseline,
     } : null,
-    quoteStatus: { items: statusItems },
+    quoteStatus: {
+      items: statusItems,
+      readinessSummary: quoteStatusUi.readinessSummary,
+    },
     previewDetails: {
       warnings: uiWarnings,
       onJumpToWarning: (warning) => jumpToInfillWarningGlobal(warning.infillId, warning.warning),

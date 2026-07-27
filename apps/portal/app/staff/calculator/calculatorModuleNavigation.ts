@@ -55,6 +55,16 @@ const STYLE_LABELS: Record<CalculatorModuleInputs['pergolaStyle'], string> = {
   box_perimeter: 'Box perimeter',
 };
 
+export function calculatorIssueCountLabel(issueCount: number): string {
+  const normalizedCount = Math.max(0, Math.round(issueCount));
+  return `${normalizedCount} issue${normalizedCount === 1 ? '' : 's'}`;
+}
+
+export function calculatorModuleCountLabel(moduleCount: number): string {
+  const normalizedCount = Math.max(0, Math.round(moduleCount));
+  return `${normalizedCount} module${normalizedCount === 1 ? '' : 's'}`;
+}
+
 function safeActiveModuleIndex(values: CalculatorInputs, activeModuleIndex: number): number {
   return Math.min(Math.max(0, activeModuleIndex), Math.max(0, values.modules.length - 1));
 }

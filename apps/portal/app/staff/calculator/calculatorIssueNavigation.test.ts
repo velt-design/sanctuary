@@ -18,6 +18,8 @@ describe('calculator issue navigation', () => {
   it('preserves the established issue labels and unknown-field fallback', () => {
     expect(labelForCalculatorIssueField('projectionM')).toBe('Roof Span (Eave‑to‑Eave) (m)');
     expect(labelForCalculatorIssueField('powdercoatCustomColour')).toBe('Custom powdercoat colour');
+    expect(labelForCalculatorIssueField('downpipeJoinCount')).toBe('Downpipe joins');
+    expect(labelForCalculatorIssueField('downpipeElbowCount')).toBe('Downpipe elbows');
     expect(labelForCalculatorIssueField('futureField')).toBe('futureField');
   });
 

@@ -49,6 +49,10 @@ describe('calculator site fields', () => {
       value: '0',
       resolvedDefaultText: 'Auto - current result uses 1 downpipe',
     });
+    expect(fieldById(fields, 'downpipeJoinCount')).toMatchObject({
+      id: 'downpipeJoinCount',
+      label: 'Downpipe joins',
+    });
   });
 
   it('omits footprint controls when the module is freestanding', () => {
@@ -69,6 +73,10 @@ describe('calculator site fields', () => {
     expect(fieldById(fields, 'ground').value).toBe('easy');
     expect(fieldById(fields, 'boxPitchDeg').value).toBe('3.3');
     expect(fieldById(fields, 'boxRiseMm').value).toBe('124');
+    expect(fieldById(fields, 'downpipeElbowCount')).toMatchObject({
+      id: 'downpipeElbowCount',
+      label: 'Downpipe elbows',
+    });
     expect(fieldById(fields, 'downpipeElbowCount').options).toHaveLength(21);
   });
 

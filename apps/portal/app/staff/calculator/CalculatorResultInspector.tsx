@@ -22,6 +22,7 @@ import CalculatorPricingSummary, {
 } from './CalculatorPricingSummary';
 import CalculatorRafterExplanation from './CalculatorRafterExplanation';
 import styles from './CalculatorResultInspector.module.css';
+import type { CalculatorReadinessSummary } from './calculatorReadinessSummary';
 import ModuleViewsCard from './ModuleViewsCard';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard from './QuoteStatusCard';
@@ -64,23 +65,10 @@ const TABS: Array<{ id: CalculatorResultInspectorTab; label: string }> = [
   { id: 'issues', label: 'Issues' },
 ];
 
-function readinessState(items: CalculatorResultInspectorProps['quoteStatus']['items']) {
-  const blockers = items.filter((item) => item.level === 'block').length;
-  const reviews = items.filter((item) => item.level === 'review').length;
-
-  if (blockers) {
-    return {
-      className: styles.readinessBlocked,
-      label: `${blockers} blocker${blockers === 1 ? '' : 's'}`,
-    };
-  }
-  if (reviews) {
-    return {
-      className: styles.readinessReview,
-      label: `${reviews} to review`,
-    };
-  }
-  return { className: styles.readiness, label: 'Quote ready' };
+function readinessClassName(tone: CalculatorReadinessSummary['tone']): string {
+  if (tone === 'blocked') return styles.readinessBlocked;
+  if (tone === 'review' || tone === 'waiting') return styles.readinessReview;
+  return styles.readiness;
 }
 
 function revealTabHorizontally(tabList: HTMLDivElement, tab: HTMLButtonElement) {
@@ -118,7 +106,7 @@ const CalculatorResultInspector = forwardRef<
   const tabListRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<CalculatorResultInspectorTab, HTMLButtonElement>());
   const focusFrameRef = useRef<number | null>(null);
-  const readiness = readinessState(quoteStatus.items);
+  const readiness = quoteStatus.readinessSummary;
 
   const focusTabButton = useCallback(
     (tab: CalculatorResultInspectorTab, reveal = true) => {
@@ -201,7 +189,12 @@ const CalculatorResultInspector = forwardRef<
         <div className={styles.heading}>
           <h2 className={styles.title}>Result inspector</h2>
           <div className={styles.trustState} aria-label="Result readiness">
-            <span className={readiness.className}>{readiness.label}</span>
+            <span
+              className={readinessClassName(readiness.tone)}
+              title={readiness.accessibleLabel}
+            >
+              {readiness.label}
+            </span>
             {pricingSummary.issuesCount > 0 ? (
               <button
                 type="button"

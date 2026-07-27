@@ -125,10 +125,10 @@ describe('calculator quote status UI helpers', () => {
       projectId: 'project-1',
       hasProject: true,
       projectHasContact: false,
-      hasModuleErrors: true,
+      inputIssueCount: 2,
       invalidBlindCount: 2,
       engineError: null,
-      resultFreshness: 'calculating',
+      resultFreshness: 'invalid',
       infillItems: [draftInfill],
       infillUiById: new Map([[draftInfill.id, makeInfillUiState({ status: 'draft' })]]),
     });
@@ -136,12 +136,17 @@ describe('calculator quote status UI helpers', () => {
     expect(ui.hasStatusBlockers).toBe(true);
     expect(ui.blockerCount).toBe(5);
     expect(ui.anyInfillDraft).toBe(true);
+    expect(ui.readinessSummary).toMatchObject({
+      label: '6 issues block Save',
+      rootCauseCount: 6,
+      blockedCheckCount: 5,
+    });
     expect(ui.items).toMatchObject([
       { id: 'project', level: 'ok', detail: 'Attached' },
       { id: 'contact', level: 'block', detail: 'Missing contact on project', actionKey: 'openProject' },
-      { id: 'inputs', level: 'block', detail: 'Fix validation errors', actionKey: 'openIssues' },
+      { id: 'inputs', level: 'block', detail: '2 input issues to fix', actionKey: 'openIssues', causeCount: 2 },
       { id: 'blinds', level: 'block', detail: '2 blinds need valid dimensions and selections', actionKey: 'openBlinds' },
-      { id: 'engine', level: 'block', detail: 'Updating...' },
+      { id: 'engine', level: 'block', detail: 'Fix inputs to refresh result', blockedBy: 'inputs', causeCount: 0 },
       { id: 'infills', level: 'block', detail: 'Finish required infill shape fields', actionKey: 'openInfills' },
     ]);
   });
@@ -151,7 +156,7 @@ describe('calculator quote status UI helpers', () => {
       projectId: '',
       hasProject: false,
       projectHasContact: false,
-      hasModuleErrors: false,
+      inputIssueCount: 0,
       invalidBlindCount: 0,
       engineError: 'Costing failed',
       resultFreshness: 'error',
@@ -167,6 +172,97 @@ describe('calculator quote status UI helpers', () => {
       { id: 'engine', level: 'block', detail: 'Costing failed' },
       { id: 'infills', level: 'ok', detail: 'OK' },
     ]);
+    expect(ui.blockerCount).toBe(2);
+    expect(ui.readinessSummary).toMatchObject({
+      label: '2 issues block Save',
+      rootCauseCount: 2,
+      blockedCheckCount: 2,
+    });
+  });
+
+  it('counts an input failure once when it also blocks the engine check', () => {
+    const ui = buildCalculatorQuoteStatusUi({
+      projectId: 'project-1',
+      hasProject: true,
+      projectHasContact: true,
+      inputIssueCount: 1,
+      invalidBlindCount: 0,
+      engineError: null,
+      resultFreshness: 'invalid',
+      infillItems: [],
+      infillUiById: new Map(),
+    });
+
+    expect(ui.blockerCount).toBe(2);
+    expect(ui.hasStatusBlockers).toBe(true);
+    expect(ui.items.find((item) => item.id === 'engine')).toMatchObject({
+      level: 'block',
+      blockedBy: 'inputs',
+      causeCount: 0,
+    });
+    expect(ui.readinessSummary).toMatchObject({
+      tone: 'blocked',
+      label: '1 input issue blocks Save',
+      rootCauseCount: 1,
+      blockedCheckCount: 2,
+    });
+  });
+
+  it('models an update as a wait state rather than an independent defect', () => {
+    const ui = buildCalculatorQuoteStatusUi({
+      projectId: 'project-1',
+      hasProject: true,
+      projectHasContact: true,
+      inputIssueCount: 0,
+      invalidBlindCount: 0,
+      engineError: null,
+      resultFreshness: 'calculating',
+      infillItems: [],
+      infillUiById: new Map(),
+    });
+
+    expect(ui.blockerCount).toBe(1);
+    expect(ui.readinessSummary).toMatchObject({
+      tone: 'waiting',
+      label: 'Updating - Save waits for a current result',
+      rootCauseCount: 0,
+      blockedCheckCount: 1,
+    });
+  });
+
+  it('keeps an engine error as an independent cause and uses singular blind grammar', () => {
+    const engineUi = buildCalculatorQuoteStatusUi({
+      projectId: 'project-1',
+      hasProject: true,
+      projectHasContact: true,
+      inputIssueCount: 0,
+      invalidBlindCount: 0,
+      engineError: 'Costing failed',
+      resultFreshness: 'error',
+      infillItems: [],
+      infillUiById: new Map(),
+    });
+    expect(engineUi.readinessSummary).toMatchObject({
+      tone: 'blocked',
+      label: 'Engine error blocks Save',
+      rootCauseCount: 1,
+      blockedCheckCount: 1,
+    });
+
+    const blindUi = buildCalculatorQuoteStatusUi({
+      projectId: 'project-1',
+      hasProject: true,
+      projectHasContact: true,
+      inputIssueCount: 0,
+      invalidBlindCount: 1,
+      engineError: null,
+      resultFreshness: 'current',
+      infillItems: [],
+      infillUiById: new Map(),
+    });
+    expect(blindUi.items.find((item) => item.id === 'blinds')?.detail).toBe(
+      '1 blind needs valid dimensions and selections',
+    );
   });
 
   it('keeps save preflight error priority stable', () => {

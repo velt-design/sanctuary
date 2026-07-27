@@ -155,7 +155,7 @@ function materialExplanation(
 ): TrustedQuantityExplanationV1 | undefined {
   const notes = String(line.notes ?? '').trim();
   const safeNotes = notes.includes('$')
-    ? 'The costing engine applied the configured finish and purchasing allowance for this line.'
+    ? 'The configured finish and purchasing allowance are included in this line.'
     : notes;
   const stockMatch = notes.match(STOCK_CUT_NOTE);
   if (stockMatch) {
@@ -163,13 +163,12 @@ function materialExplanation(
     const bars = Number(stockMatch[2]);
     const stockLengthM = Number(stockMatch[3]);
     const wasteM = Number(stockMatch[4]);
-    const components = stockMatch[5]!.trim();
     const hasFinishOverlay = notes.includes('|');
 
     return {
       version: 1,
       source: '@sp/costing/materials-v1',
-      summary: `The stock allocator packed ${round(requiredLengthM)} m of ${components} cuts into ${bars} whole ${round(stockLengthM)} m bar${bars === 1 ? '' : 's'}.`,
+      summary: `Required cuts total ${round(requiredLengthM)} m. Purchasing uses ${bars} whole ${round(stockLengthM)} m bar${bars === 1 ? '' : 's'}.`,
       facts: [
         { label: 'Required cuts', value: round(requiredLengthM), unit: 'm' },
         { label: 'Stock length', value: round(stockLengthM), unit: 'm' },
@@ -180,7 +179,7 @@ function materialExplanation(
         ? ['The configured finish is included without exposing its internal cost components.']
         : [],
       rounding:
-        'Stock is purchased in whole bars. Waste is the unused length after the package-owned cut allocation.',
+        'Bars are purchased whole; allocated waste is stock left after arranging required cuts.',
     };
   }
 
@@ -206,12 +205,12 @@ function materialExplanation(
     summary: safeNotes,
     facts: [{ label: 'Calculated purchase quantity', value: line.qty, unit: line.unit }],
     assumptions: [
-      'This is the package-owned BOM rule note published with the calculated material line.',
+      'This purchasing note is supplied with the calculated material line.',
     ],
     rounding:
       line.unit === 'each' || line.unit === 'bar' || line.unit === 'job' || line.unit === 'day'
         ? 'Purchased in the whole units shown.'
-        : 'The displayed quantity uses the rounding already applied by the costing engine.',
+        : 'The displayed quantity uses the rounding already applied to the calculated result.',
   };
 }
 
@@ -262,35 +261,35 @@ function multiplierLabel(value: string): string {
 
 function labourQuantityBasis(action: InstallActionV1): string {
   const id = baseResultId(action.id).toLowerCase();
-  if (id.includes('day_cycle')) return 'The calculated site duration drives this daily activity.';
-  if (id.includes('install_rafter')) return 'The module’s calculated rafter count drives this activity.';
+  if (id.includes('day_cycle')) return 'The calculated site duration sets this daily activity.';
+  if (id.includes('install_rafter')) return 'The calculated rafter count sets this activity.';
   if (id.includes('rafter_length_loading')) {
-    return 'The total calculated installed rafter length drives this activity.';
+    return 'The total calculated installed rafter length sets this activity.';
   }
   if (id.includes('post') || action.unit === 'post') {
-    return 'The configured post or footing count drives this activity.';
+    return 'The configured post or footing count sets this activity.';
   }
   if (id.includes('acrylic') && action.unit === 'm2') {
-    return 'The calculated acrylic roof area drives this activity.';
+    return 'The calculated acrylic roof area sets this activity.';
   }
   if (id.includes('timber') && action.unit === 'm2') {
-    return 'The calculated timber roof area drives this activity.';
+    return 'The calculated timber roof area sets this activity.';
   }
   if (id.includes('joiner') || id.includes('fix_joiner')) {
     return action.unit === 'each'
-      ? 'The calculated joiner fixing count drives this activity.'
-      : 'The calculated joiner length drives this activity.';
+      ? 'The calculated joiner fixing count sets this activity.'
+      : 'The calculated joiner length sets this activity.';
   }
-  if (id.includes('flashing')) return 'The calculated flashing length drives this activity.';
+  if (id.includes('flashing')) return 'The calculated flashing length sets this activity.';
   if (action.scope === 'job' && action.unit === 'job') {
-    return 'This package-owned allowance applies once to the whole job.';
+    return 'This allowance is included once for the whole job.';
   }
   if (action.unit === 'job' || action.unit === 'module') {
-    return 'This package-owned allowance applies once to the stated scope.';
+    return 'This allowance is included once for the stated job or module.';
   }
-  if (action.unit === 'm2') return 'A calculated installation area drives this activity.';
-  if (action.unit === 'metre') return 'A calculated installed length drives this activity.';
-  return 'The costing engine’s resolved activity driver supplies this quantity.';
+  if (action.unit === 'm2') return 'A calculated installation area sets this activity.';
+  if (action.unit === 'metre') return 'A calculated installed length sets this activity.';
+  return 'The calculated result supplies this activity quantity.';
 }
 
 function labourExplanation(action: InstallActionV1): TrustedQuantityExplanationV1 {
@@ -308,10 +307,10 @@ function labourExplanation(action: InstallActionV1): TrustedQuantityExplanationV
       { label: 'Estimated crew hours', value: round(action.minutes / 60), unit: 'hours' },
     ],
     assumptions: nonNeutralMultipliers.length
-      ? [`Time includes these package-owned loadings: ${nonNeutralMultipliers.join(', ')}.`]
+      ? [`Time includes these applied loadings: ${nonNeutralMultipliers.join(', ')}.`]
       : ['No non-neutral access, height, roof, structure or handling loading changed this activity.'],
     rounding:
-      'Activity minutes are the engine result rounded to 0.01 minute; displayed crew hours are minutes divided by 60.',
+      'Activity minutes are rounded to 0.01 minute; displayed crew hours are minutes divided by 60.',
   };
 }
 
@@ -375,8 +374,8 @@ export function buildTrustedMaterialsBreakdownV1(
     groups: grouped,
     assumptions: [
       'Quantities are whole-job procurement outputs, not selected-module estimates.',
-      'Stock lengths, whole-unit purchasing, cut allocation and waste remain owned by the costing engine.',
-      'Internal costs are included for existing permission-gated presentation only.',
+      'Stock lengths, whole-unit purchasing, cut allocation and waste come directly from the calculated procurement result.',
+      'Internal costs are included only for people with the existing permission.',
     ],
   };
 }
@@ -438,9 +437,9 @@ export function buildTrustedLabourBreakdownV1(
     total_crew_hours: totals.crew_hours,
     groups: grouped,
     assumptions: [
-      'Activities and time are whole-job crew estimates from the costing engine.',
+      'Activities and time are whole-job crew estimates from the calculated result.',
       'Displayed loadings include only non-neutral multipliers; neutral 1x factors are omitted.',
-      'Internal labour costs remain subject to the existing calculator permission boundary.',
+      'Internal labour costs remain available only to people with the existing permission.',
     ],
   };
 }

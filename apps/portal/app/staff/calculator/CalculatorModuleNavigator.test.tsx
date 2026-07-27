@@ -96,6 +96,45 @@ describe('CalculatorModuleNavigator', () => {
     expect(actions?.textContent).toContain('Remove');
   });
 
+  it('uses singular issue grammar in the rail and mobile launcher', () => {
+    const singularModel: CalculatorModuleNavigatorModel = {
+      ...model,
+      groups: model.groups.map((group) => ({
+        ...group,
+        items: group.items.map((item, index) => ({
+          ...item,
+          issueCount: index === 0 && group.pergolaId === 'pergola-2' ? 1 : 0,
+        })),
+      })),
+      items: [],
+      totalIssueCount: 1,
+    };
+    singularModel.items = singularModel.groups.flatMap((group) => group.items);
+
+    renderNavigator({ model: singularModel });
+
+    expect(document.body.textContent).toContain('1 issue');
+    expect(document.body.textContent).not.toContain('1 issues');
+  });
+
+  it('uses singular module grammar in the mobile launcher', () => {
+    const singleModuleModel: CalculatorModuleNavigatorModel = {
+      ...model,
+      groups: [model.groups[0]],
+      items: model.groups[0].items,
+      totalIssueCount: 0,
+    };
+    renderNavigator({
+      model: singleModuleModel,
+      moduleCount: 1,
+      pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+    });
+
+    const launcher = document.querySelector('[data-calculator-module-launcher]');
+    expect(launcher?.textContent).toContain('1 module');
+    expect(launcher?.textContent).not.toContain('1 modules');
+  });
+
   it('keeps an empty pergola visible with its add-module action', () => {
     const emptyPergolaModel: CalculatorModuleNavigatorModel = {
       ...model,

@@ -4476,112 +4476,6 @@
   transition: opacity 160ms ease;
 }
 
-.statusHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.statusMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.statusBlock,
-.statusReview,
-.statusOk {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.statusBlock {
-  color: var(--error);
-}
-
-.statusReview {
-  color: color-mix(in srgb, var(--ui-status-warning-border) 95%, transparent);
-}
-
-.statusOk {
-  color: color-mix(in srgb, var(--ui-status-info-border) 95%, transparent);
-}
-
-.statusList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-
-.statusRow {
-  border: var(--ui-border-width) solid var(--ui-border);
-  border-radius: var(--ui-radius-control);
-  background: var(--ui-surface-primary);
-  padding: 8px 10px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-}
-
-.statusDotOk,
-.statusDotReview,
-.statusDotBlock {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--ui-radius-control);
-}
-
-.statusDotOk {
-  background: color-mix(in srgb, var(--ui-status-info-border) 95%, transparent);
-}
-
-.statusDotReview {
-  background: color-mix(in srgb, var(--ui-status-warning-border) 95%, transparent);
-}
-
-.statusDotBlock {
-  background: var(--error);
-}
-
-.statusMain {
-  min-width: 0;
-}
-
-.statusLabel {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.statusDetail {
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--ui-text-muted);
-}
-
-.statusAction {
-  border: var(--ui-border-width) solid var(--ui-border-strong);
-  border-radius: var(--ui-radius-control);
-  background: var(--ui-surface-secondary);
-  color: inherit;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.statusAction:focus {
-  outline: none;
-}
-
 .previewActions {
   margin-top: 12px;
   display: grid;
@@ -5010,14 +4904,12 @@
 .moduleViewsLegendChip,
 .modulePlanStat,
 .modulePlanSourceFallback,
-.modulePlanConsistencyOk,
-.statusRow {
+.modulePlanConsistencyOk {
   border-radius: var(--ui-radius-control);
 }
 
 .moduleViewsLegendChip,
-.modulePlanStat,
-.statusRow {
+.modulePlanStat {
   border-color: var(--ui-border);
   background: var(--ui-surface-secondary);
   color: var(--ui-text);

@@ -47,7 +47,7 @@ export type CalculatorWorkspaceViewProps = {
   pricingSummary: CalculatorPricingSummaryProps;
   jobTemplatePicker: ComponentProps<typeof CalculatorJobTemplatePicker>;
   configurationForm: ComponentProps<typeof CalculatorConfigurationForm>;
-  resultFreshness: ComponentProps<typeof CalculatorCommandBar>['resultFreshness'];
+  resultFreshness: CalculatorPricingSummaryProps['resultFreshness'];
   pricingPreview: CalculatorResultInspectorProps['pricingPreview'];
   actualCostEstimateId: CalculatorResultInspectorProps['actualCostEstimateId'];
   moduleViews: CalculatorResultInspectorProps['moduleViews'];
