@@ -9,6 +9,7 @@
 > **Mobile scope:** Approximately 430 px, 390 px and 360 px
 > **Implementation model:** One responsive Next.js website, one shared content source, shared React components, Tailwind styling, preserved semantic content and existing analytics
 > **Primary outcome:** More qualified enquiries through a calm, project-led, reliable and easier-to-scan mobile customer journey
+> **Programme-gate amendment:** physical-device and assistive-technology testing remain useful optional research but are not merge or completion gates for the active PDR programme as of 27 July 2026; `docs/sanctuary-mobile-production-closure-and-direct-manipulation-plan.md` owns the current sequence
 
 ## 1. Status and purpose
 

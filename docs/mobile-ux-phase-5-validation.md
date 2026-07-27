@@ -1,31 +1,20 @@
 # Mobile UX Phase 5 Validation
 
-Status: In progress.
+Status: Historical evidence record; active programme gates moved to
+`docs/sanctuary-mobile-production-closure-and-direct-manipulation-plan.md`.
 
 Authoritative brief: `docs/mobile-ux-roadmap-v2.md`, Phase 5 and PR 14.
 
-This document is the dated evidence record and operator runbook for the final
-mobile UX phase. Browser emulation and automated Chromium checks are supporting
-evidence only. They do not replace a physical iOS Safari run, a physical Android
-Chrome run, VoiceOver, or TalkBack.
+This document preserves the dated Phase 5 evidence and its original device
+matrix. Physical-device and assistive-technology rows below are retained as
+historical or optional research; they are not current merge or programme
+completion gates.
 
 ## Completion rule
 
-Phase 5 is complete only when all of the following have dated evidence:
-
-- the primary task scripts pass on physical iOS Safari and Android Chrome at
-  representative small and large mobile sizes;
-- the same primary tasks pass with VoiceOver and TalkBack, and the desktop
-  keyboard path passes;
-- production analytics events reconcile with successful enquiries without
-  personal information in analytics;
-- field and lab performance evidence covers the primary deployed routes;
-- any bounded fix is retested on every affected device, assistive technology,
-  route and automated lane; and
-- every unresolved result is recorded as an explicit prioritised backlog item.
-
-`Blocked` means the required device, assistive technology, account access or
-submission authority was not available. It is not a pass or a fail.
+Current programme completion requires PDR-01, PDR-02 and PDR-04 to meet the
+automated, deployment and operational gates in the active PDR plan. Historical
+`Blocked` device rows below no longer block that programme.
 
 ## Release under test
 
@@ -356,7 +345,7 @@ cannot prove field improvement.
 | ID | Priority | Evidence | Finding | Resolution / owner | Status |
 |---|---:|---|---|---|---|
 | P5-01 | P1 | Source audit and deployed intercepted tests | Direct and professional forms previously emitted different opaque UUIDs for `lead_event_id` and the durable `submissionId` | The validated submission UUID is now reused; local and production intercepted contracts pass without sending an enquiry | Automated production contract resolved; authorised analytics reconciliation remains P5-03 |
-| P5-02 | Gate | Environment | Physical iOS/Android, VoiceOver and TalkBack evidence is unavailable in this environment | Product owner supplies dated matrix results using T1-T8 | Blocked |
+| P5-02 | Retired gate | Environment | Physical iOS/Android, VoiceOver and TalkBack evidence is unavailable in this environment | Optional future research only | Removed from active programme gates |
 | P5-03 | Gate | Access | Production analytics debug and successful-submission reconciliation require account access and submission authority | Product owner or authorised operator completes the production run | Blocked |
 | P5-04 | P2 | Release metadata | The public response exposed no source commit at audit start, so exact release-to-commit identity was not independently verifiable | Repository responses now use a sanitized `X-Sanctuary-Release` commit SHA with normal/cache-busted parity coverage | Resolved in production |
 | P5-05 | P1 | Lighthouse 13.4.1 and deployed browser tests | Homepage and footer review links previously overrode their visible labels with a different accessible name | The shared badge now lets the visible rating and review count provide the name | Resolved locally and on current production browser contract |

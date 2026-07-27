@@ -8,8 +8,9 @@
 > **PDR-01 closure:** PR #29 merged and production release `a9011d88e0d7f673dfa214b36211116f3c2826a8` passed the exact-release and three-width route matrices on 27 July 2026
 > **Live production inspected:** 27 July 2026  
 > **Target mobile widths:** approximately 430 px, 390 px and 360 px, plus short-height and zoomed mobile conditions  
-> **Programme model:** four required pull requests and one conditional remediation pull request  
-> **Primary outcome:** one verified production release, one more physically direct product-gallery interaction, and dated evidence that the cumulative mobile journey works on real devices and assistive technology
+> **Programme model:** three required pull requests
+> **Primary outcome:** one verified production release, one directly manipulated product-gallery interaction, and one authorised production enquiry reconciliation
+> **Owner amendment:** physical-device and assistive-technology testing were removed from this programme on 27 July 2026; they are not merge or completion gates
 
 ## Document purpose and authority
 
@@ -19,9 +20,7 @@ It is authoritative for the work described here:
 
 1. production release and semantic parity;
 2. controlled product-gallery direct manipulation;
-3. physical-device, assistive-technology and end-to-end journey validation;
-4. one authorised production enquiry and analytics reconciliation; and
-5. one conditional continuity remediation lane, opened only when physical evidence reproduces a material failure.
+3. one authorised production enquiry and analytics reconciliation.
 
 It is additive to the following current repository authorities:
 
@@ -37,28 +36,24 @@ It is additive to the following current repository authorities:
 `docs/mobile-ux-phase-5-validation.md` remains the existing evidence record until this programme updates or closes its outstanding gates.  
 `docs/marketing-ui-foundation.md` remains the durable owner of Foundation UI, responsive semantics, shared motion values and protected interaction architecture.
 
-The previously referenced file `docs/sanctuary-mobile-touch-motion-implementation-plan.md` is not present on current `main`. It was removed after the shared tactile-motion work was implemented and absorbed into durable Foundation contracts. This plan does not restore that removed document. It carries forward only the still-relevant unfinished outcomes: controlled product-gallery direct manipulation and real-device continuity validation.
+The previously referenced file `docs/sanctuary-mobile-touch-motion-implementation-plan.md` is not present on current `main`. It was removed after the shared tactile-motion work was implemented and absorbed into durable Foundation contracts. This plan does not restore that removed document. It carries forward only the still-relevant controlled product-gallery outcome.
 
 Production is the source of truth for what customers receive. Current `main` is the source of truth for the intended implementation. Neither is sufficient alone:
 
 - repository presence does not prove deployment;
 - a visually plausible production page does not prove its source revision;
-- automated Chromium does not prove physical iOS, Android, VoiceOver or TalkBack behaviour;
 - an accepted API response does not by itself prove the received enquiry, stored attachment and analytics event reconcile.
 
 A pull request that needs to change the programme sequence, protected architecture, evidence gates or conditional remediation boundaries must amend this document first or include a narrowly reasoned amendment in the same pull request.
 
 ## Start here
 
-The 27 July refinement pass confirmed that the programme should begin with PDR-01. PDR-01 is now complete. The next permitted step is PDR-02 development; its merge remains blocked by the deferred iPhone and Android preview smoke.
+PDR-01 is complete. The next permitted step is PDR-02 development and merge after its automated, protected-preview and exact-release gates pass. Physical-device testing is not required.
 
 ### Confirmed starting state
 
-- Sampled normal and cache-busted responses for `/`, `/custom-pergolas-auckland`, `/commercial-pergolas-auckland` and `/architects-designers-builders` all returned production release `cec83a4279b05cd6267f937954e0c90a2888b3cf`.
-- Current `main` is `99eb62c359c70e875301ef4f24655627d4248683`. No marketing implementation file changed between the sampled production revision and this refinement revision.
-- Production custom and commercial routes still expose numbered guide framing even though their current source configs set `showGuideNavigation: false`.
-- The professional route is live, returns the sampled production release, exposes the approved capability journey and has no guide framing.
-- The professional global-header enquiry link is neutral in production. Current `getEnquiryRouteContext()` still omits `/architects-designers-builders`, confirming the focused PDR-01 source fix.
+- PDR-01 is merged and deployed. Its exact-release, route-semantic and three-width production matrices passed.
+- Custom, commercial and professional routes expose the approved structure and enquiry context without guide framing.
 - `ResponsiveGallery` still captures on pointer-down, renders one item and changes only on pointer-up after the 48 px threshold. PDR-02 remains valid.
 - The retired metadata-only attachment expectation was removed from `playwright/marketing.contact.spec.ts` and `docs/testing-and-qa.md` during PDR-01. Current attachment code and tests require stored uploads or a visible failure.
 
@@ -67,11 +62,9 @@ The 27 July refinement pass confirmed that the programme should begin with PDR-0
 | Phase | State now | Start condition |
 |---|---|---|
 | PDR-01 | Complete | PR #29 merged; preview `947c701d514fc4c9c84ca3980d9dd4fdeeb754df` and production `a9011d88e0d7f673dfa214b36211116f3c2826a8` passed |
-| PDR-02 | Ready to develop, not ready to merge | PDR-01 established the production baseline; the required iPhone and Android preview smoke is deferred |
-| PDR-03 | Blocked and deferred | PDR-01 and PDR-02 deployed; physical devices, VoiceOver and TalkBack available |
+| PDR-02 | Ready to develop and merge | PDR-01 established the production baseline; automated and protected-preview gates apply |
 | PDR-04 test repair | Complete | Retired metadata-only fallback assertions and QA wording were aligned during PDR-01 |
 | PDR-04 live reconciliation | Blocked | Named approval, operator, analytics debug, received-record access and Storage readiness |
-| PDR-05 | Not open | A qualifying PDR-03 failure must be reproduced |
 
 PDR-01 required no manual cache purge or production form write. Merging `main`
 triggered the production deployment, and all 24 normal/cache-busted primary
@@ -86,8 +79,6 @@ Complete this table before the relevant gate. Unassigned fields are blockers onl
 | Capability | Required by | Named owner or operator | Current status |
 |---|---|---|---|
 | Protected preview and production deployment/cache access | PDR-01 completion | Jordan, Vercel account `jordanbvelt-2954` | Confirmed for `jordans-projects-43df95bd/sanctuary`; `main` auto-deploys and preview/production deployment is authorised after checks |
-| Physical iPhone and Android testing | PDR-02 preview and PDR-03 | Unassigned | Deferred 27 July 2026; PDR-02 may be developed but not merged under the current gate |
-| VoiceOver and TalkBack testing | PDR-03 | Unassigned | Deferred 27 July 2026; PDR-03 remains blocked |
 | Production enquiry approval and operator | PDR-04 live run | Unassigned | Not authorised |
 | GTM/GA debug access | PDR-04 live run | Unassigned | Not confirmed |
 | Accepted enquiry and notification/workbench inspection | PDR-04 live run | Unassigned | Not confirmed |
@@ -111,15 +102,9 @@ This does not imply that the behaviour is deployed.
 
 ### Inferred
 
-A likely customer effect or technical risk derived from implementation and supporting evidence, without direct production or physical-device proof.
+A likely customer effect or technical risk derived from implementation and supporting evidence, without direct production proof.
 
 An inferred issue must not be treated as a confirmed defect.
-
-### Physical-device validation required
-
-Requires a real iPhone, Android device, mobile browser, browser edge gesture, mobile keyboard, native file picker, frame trace, VoiceOver or TalkBack.
-
-Chromium mobile emulation, a desktop touch simulator and forced CSS pseudo-states remain supporting evidence only.
 
 ### Operational validation required
 
@@ -136,7 +121,7 @@ A blocked operational result is not a pass or a fail. The owner, missing access 
 
 ## Current-state reconciliation
 
-### Snapshot summary
+### PDR-01 starting snapshot
 
 The next stage is narrower than the earlier review suggested.
 
@@ -144,7 +129,7 @@ The approved homepage has now reached the public root and the shared tactile-mot
 
 The direct-manipulation work remains genuinely open. `ResponsiveGallery` still renders one active item and makes a swipe decision only at pointer-up. It does not move the image with deliberate horizontal finger movement. Product details continue to use this shared owner, so the improvement can remain focused.
 
-Real-device, assistive-technology and authorised production outcome validation also remain open. The existing Phase 5 evidence is useful as a regression baseline, but it was recorded against an earlier release and cannot close the current programme.
+Authorised production outcome validation remains open. The existing Phase 5 evidence is useful as a regression baseline, but it was recorded against an earlier release and cannot close the current programme.
 
 ### Reconciliation table
 
@@ -158,20 +143,19 @@ Real-device, assistive-technology and authorised production outcome validation a
 | Professional header enquiry | Intended route-aware professional context | The professional page config owns `enquiryType: 'professional'`, but `getEnquiryRouteContext()` does not enumerate `/architects-designers-builders`; the shared header derives its context from that helper | Public header link preserves source path and component but omits `enquiry_type=professional` | Verified repository and verified production inconsistency | PDR-01 must add the focused assertion and correct the shared route helper |
 | Release identity | Earlier evidence recorded a release header | `releaseIdentity.ts` and `next.config.ts` emit `X-Sanctuary-Release`; `marketing.phase-five.spec.ts` already checks one value across normal and cache-busted responses | Sampled normal and cache-busted homepage, custom, commercial and professional responses all identify `cec83a4`; the complete route matrix has not yet run | Verified repository and partial verified production | PDR-01 remains a full release gate, not a visual QA pass |
 | Retired homepages | Duplicate homepage implementations were a risk | `/home-v2` and `/home-experimental` permanently redirect to `/`; the canonical owner is `_home/Homepage.tsx` | Public root is the promoted homepage | Verified repository and verified production | Preserve redirects, sitemap exclusion and one homepage owner |
-| Shared tactile motion | Touch feedback was previously inconsistent | Shared tokens and TM-01/TM-02 consumer adoption are present; motion contract and touch-motion browser tests exist | Exact current-release deployment and physical finger-down quality are not fully proven | Verified repository; physical-device validation required | Do not reimplement pressed states. Validate them in PDR-03 |
-| Native project gallery | Earlier versions lacked a visible non-swipe path | Current project gallery remains a native variable-height horizontal strip with Previous/Next controls, live position, keyboard support and reduced-motion handling | Representative public project route is available; physical swipe quality is not proven | Verified repository; physical-device validation required | Preserve architecture. Trace only during PDR-03 and remediate only if Lane B criteria are reproduced |
-| Controlled product gallery | Functional but less directly connected to touch | `ResponsiveGallery` renders one active Figure, records pointer origin, captures immediately and changes only on pointer-up after a 48 px horizontal threshold; product details use it with `swipe` | Representative public product route is available | Verified repository; physical-device validation required | PDR-02 owns the bounded direct-manipulation change |
+| Shared tactile motion | Touch feedback was previously inconsistent | Shared tokens and TM-01/TM-02 consumer adoption are present; motion contract and touch-motion browser tests exist | Exact current-release deployment is proven by PDR-01 | Verified repository and production | Do not reimplement pressed states |
+| Native project gallery | Earlier versions lacked a visible non-swipe path | Current project gallery remains a native variable-height horizontal strip with Previous/Next controls, live position, keyboard support and reduced-motion handling | Representative public project route is available | Verified repository and production | Preserve architecture and do not include it in PDR-02 |
+| Controlled product gallery | Functional but less directly connected to touch | `ResponsiveGallery` renders one active Figure, records pointer origin, captures immediately and changes only on pointer-up after a 48 px horizontal threshold; product details use it with `swipe` | Representative public product route is available | Verified repository and production | PDR-02 owns the bounded direct-manipulation change |
 | Product-gallery tests | Existing controls and swipe threshold are covered | Unit tests assert one active image, buttons, keyboard and pointer-down/pointer-up swipe; product browser tests assert one gallery and keyboard navigation | No current evidence for finger-follow, deferred capture, adjacent readiness or cold-image continuity | Verified repository gap | PDR-02 must add component, request-timing, gesture-arbitration and performance evidence |
-| Header and menu | Strong automated contract | Portalled menu, inert closed state, focus cycle, Escape return, body-fixed scroll lock, popstate close and breakpoint cleanup exist | Physical Safari/Android continuity remains unverified | Verified repository; physical-device validation required | Preserve owner. Do not refactor locks before PDR-03 reproduces a failure |
-| Project navigator | Separate modal sheet contract | Detail sheet uses root/body classes, focus containment, Escape and focus restoration; its lock model differs from the header | Physical open/close and rotation continuity unverified | Verified repository; physical-device validation required | Compare on devices before sharing or consolidating lock logic |
-| Scroll reset and history | Browser Back/Forward was a remaining risk | `ScrollReset` prefers valid fragments, otherwise resets route scroll immediately and on the next frame; it does not explicitly distinguish push navigation from history restoration | Physical edge-Back and useful reading-position restoration are unverified | Verified repository; physical-device validation required | Test first. Open conditional Lane A only after a repeatable failure |
-| Project filter state | Query-state continuity was implemented | Collection filters write validated query params with `router.push(..., { scroll: false })`; canonical project links exclude filter params | Physical browser-history and scroll restoration unverified | Verified repository; physical-device validation required | Include filter, detail, Back and Forward in PDR-03 |
+| Header and menu | Strong automated contract | Portalled menu, inert closed state, focus cycle, Escape return, body-fixed scroll lock, popstate close and breakpoint cleanup exist | Current automated contracts are green | Verified repository | Preserve owner; no speculative lock refactor |
+| Project navigator | Separate modal sheet contract | Detail sheet uses root/body classes, focus containment, Escape and focus restoration; its lock model differs from the header | Current automated contracts are green | Verified repository | Preserve its separate owner |
+| Scroll reset and history | Browser Back/Forward was a remaining risk | `ScrollReset` prefers valid fragments, otherwise resets route scroll immediately and on the next frame | Current automated contracts are green | Verified repository | Do not include speculative history work |
+| Project filter state | Query-state continuity was implemented | Collection filters write validated query params with `router.push(..., { scroll: false })`; canonical project links exclude filter params | Current automated contracts are green | Verified repository | Preserve current behaviour |
 | Form contract | Required effort was reduced | Shared contract requires only project type, name and phone; email, suburb, brief and technical detail are optional | Public custom output still presents an older required-field contract | Verified repository and verified production mismatch | PDR-01 must verify direct and embedded required/optional semantics against the exact release |
 | Enquiry context | Canonical non-personal source context exists | Route, component, project and product values are validated and lower-case; products remain neutral unless an audience is explicitly known | Current public service parity is incomplete | Verified repository; production verification required | PDR-01 verifies all entry paths; PDR-04 reconciles the accepted production result |
 | Submission reconciliation | Automated ID contract existed, authorised reconciliation was blocked | `lead_event_id` is expected to reuse the accepted `submissionId`; contact browser tests assert one event and duplicate-submit exclusion | No authorised current-release event-to-record proof | Verified repository; operational validation required | PDR-04 is mandatory |
 | Google analytics loading | Earlier docs referenced a coded GA loader | GTM is now the only Google browser runtime loader; `/runtime-ga.js` has been retired; consent mode is set before GTM loads | Production debug behaviour requires access | Verified repository; operational validation required | PDR-04 must use GTM/GA debug evidence and must not restore or test the retired coded loader |
 | Attachment integrity | Earlier tests allowed metadata-only fallback | Current attachment code requires signed private-Storage upload or a visible failure; current head includes a production-readiness guard | `playwright/marketing.contact.spec.ts` and `docs/testing-and-qa.md` still describe and expect the retired metadata-only fallback | Verified repository inconsistency | Repair stale tests and docs before treating production attachment validation as trustworthy |
-| Physical devices and assistive technology | Explicitly incomplete | Existing Phase 5 matrix still marks iOS, Android, VoiceOver and TalkBack blocked; manual keyboard remains pending | No new dated physical evidence was found | Physical-device validation required | PDR-03 is a completion gate, not optional polish |
 | Performance | Strong earlier Chromium and homepage field baseline | Existing route matrix and Lighthouse artifacts remain available; current main includes later homepage, motion, analytics, claim and attachment changes | Current-release route matrix and current field outcome are not established | Verified repository historical baseline; current production verification required | Re-run after PDR-01 and compare again after PDR-02 |
 
 ### Findings that are resolved or superseded
@@ -185,7 +169,7 @@ The following findings from earlier reviews must not be reopened as active imple
    Superseded. Current `ProjectGallery` provides Previous/Next, `Image n of total`, edge state and keyboard navigation while preserving the native strip.
 
 3. **Shared pressed-state and motion vocabulary still needs to be designed.**  
-   Superseded. The canonical tokens and route adoption are implemented. PDR-03 validates physical quality rather than creating another motion system.
+   Superseded. The canonical tokens and route adoption are implemented and protected by automated contracts.
 
 4. **Selected enquiry attachments may fall back to metadata-only submission.**  
    Retired by current code. A requested file must store successfully or fail visibly. The remaining work is to align stale tests/docs and prove the production bucket.
@@ -212,7 +196,7 @@ The mobile architecture is already coherent:
 - shared navigation, focus, pressed states and reduced motion have defined owners;
 - the repository has broad responsive and production-supporting automated coverage.
 
-The remaining work is to make the deployed system match the approved system, improve one controlled interaction, and prove the cumulative journey on real devices and production systems.
+The remaining work is to improve one controlled interaction and reconcile one authorised production outcome.
 
 A separate mobile site, another broad redesign, a new animation framework or a global history abstraction would expand risk without addressing the verified gates.
 
@@ -227,19 +211,14 @@ After completion:
 - product images move with deliberate horizontal touch before release;
 - vertical page scrolling remains reliable through product galleries;
 - project galleries retain native movement and accessible non-swipe controls;
-- menu, project sheet, filters, disclosures, forms, Back and Forward behave predictably on physical Safari and Chrome;
-- VoiceOver and TalkBack communicate useful names, roles, states, errors and success;
 - one authorised production enquiry reconciles to one accepted record, one non-personal success event and, when included, one verified stored attachment;
 - current performance evidence is attached to the exact deployed release.
 
 ### Programme shape
 
-- **Required phases:** 4
-- **Conditional phase:** 1
-- **Required pull requests:** 4
-- **Maximum conditional pull requests under this plan:** 1
-- **Expected required PRs:** PDR-01 through PDR-04
-- **Conditional PR:** PDR-05A or PDR-05B, never both under the same unamended plan
+- **Required phases:** 3
+- **Required pull requests:** 3
+- **Expected required PRs:** PDR-01, PDR-02 and PDR-04
 
 ### Highest implementation risk
 
@@ -247,12 +226,8 @@ Controlled product-gallery direct manipulation is the highest implementation ris
 
 ### Highest validation risk
 
-The highest validation risk is continuity across browser history, overlays and production systems:
+The highest validation risk is production-system reconciliation:
 
-- iOS edge-Back and browser chrome;
-- Android Back and gesture arbitration;
-- body/root lock cleanup;
-- filter and reading-position restoration;
 - private attachment Storage readiness;
 - consent-aware GTM/GA debug evidence; and
 - one authorised accepted enquiry without duplicate events.
@@ -302,13 +277,13 @@ The highest validation risk is continuity across browser history, overlays and p
     Focus-visible, current, selected, checked, disabled, sending, error and success states must remain stronger than pressed or drag states.
 
 15. **Do not refactor history or locks speculatively.**  
-    `ScrollReset`, Header and ProjectNavigator change only after a physical run reproduces a defined Lane A failure.
+    `ScrollReset`, Header and ProjectNavigator remain outside this programme unless separately authorised from a reproduced defect.
 
 16. **Do not optimise project-gallery geometry speculatively.**  
-    The rAF geometry-reading path changes only after a physical trace reproduces a defined Lane B failure.
+    The rAF geometry-reading path remains outside this programme unless separately authorised from a reproduced defect.
 
 17. **One pull request has one user outcome.**  
-    Release parity, direct manipulation, physical validation, operational reconciliation and conditional remediation remain independently reviewable.
+    Release parity, direct manipulation and operational reconciliation remain independently reviewable.
 
 18. **Keep tests aligned with current behaviour.**  
     A stale browser test or QA document is a product risk. Retired metadata-only attachment expectations must be removed before production sign-off.
@@ -329,7 +304,7 @@ The highest validation risk is continuity across browser history, overlays and p
     This programme does not absorb SEO rewrites, general copy changes, portal work, calculator work, dependency upgrades or broad CSS cleanup.
 
 24. **Evidence must identify its source and limits.**  
-    Every artifact records date, branch or release, origin, browser/device, viewport, consent state and whether the result is emulated, physical, read-only or write-authorised.
+    Every artifact records date, branch or release, origin, browser, viewport, consent state and whether the result is automated, read-only or write-authorised.
 ## Phase roadmap
 
 ### Phase 1: Production release and semantic parity
@@ -564,9 +539,9 @@ npx playwright test \
 
 Use the platform-appropriate environment syntax when running on Windows.
 
-#### Manual or physical-device tests
+#### Manual browser smoke
 
-No full physical-device matrix is required to merge PDR-01, but production smoke must confirm on at least one phone-sized browser:
+Production smoke must confirm on at least one phone-sized browser viewport:
 
 - homepage H1 and first question;
 - custom page with no guide sequence;
@@ -574,8 +549,6 @@ No full physical-device matrix is required to merge PDR-01, but production smoke
 - professional route and header enquiry context;
 - project gallery controls;
 - direct contact required/optional labels.
-
-This smoke does not replace Phase 3.
 
 #### Accessibility validation
 
@@ -732,7 +705,7 @@ On pointer-up:
 - clear transient refs;
 - settle using `--motion-duration-short` and `--motion-ease-enter` or the closest existing governed values.
 
-A width-relative threshold may be introduced only if automated and physical comparison shows that the fixed 48 px threshold is materially inconsistent between the target widths. Do not add it speculatively.
+    A width-relative threshold may be introduced only if focused automated comparison shows that the fixed 48 px threshold is materially inconsistent between the target widths. Do not add it speculatively.
 
 On any of the following, return safely to the current item with no stale transform:
 
@@ -817,9 +790,8 @@ With `prefers-reduced-motion: reduce`:
 12. Add component and browser tests for all gesture states.
 13. Add request-timing evidence before and after near-viewport activation.
 14. Add before/after route script and image transfer evidence.
-15. Add physical iOS and Android gesture sign-off before production completion.
-16. Update `docs/marketing-ui-foundation.md` with the final direct-manipulation contract.
-17. Update this plan only if implementation needs to depart from the bounded three-frame or active-only semantic model.
+15. Update `docs/marketing-ui-foundation.md` with the final direct-manipulation contract.
+16. Update this plan only if implementation needs to depart from the bounded three-frame or active-only semantic model.
 
 #### Affected owners
 
@@ -949,36 +921,11 @@ At 430, 390 and 360 px, include:
 - representative gable, drop-down blind and heater variants;
 - desktop regression.
 
-Use touch-enabled Chromium as supporting automation. It does not close physical gesture quality.
-
-#### Manual or physical-device tests
-
-Before production deployment, test:
-
-- physical iPhone Safari near the small mobile class;
-- physical iPhone Safari near the large mobile class;
-- physical Android Chrome near the small mobile class;
-- physical Android Chrome near the large mobile class.
-
-On each:
-
-- slow drag;
-- fast drag;
-- short drag;
-- diagonal drag;
-- vertical swipe through the gallery;
-- direction reversal;
-- repeated operation after fast page scrolling;
-- operation near browser edge-gesture zones;
-- cold network or cache-disabled adjacent load;
-- reduced motion where supported;
-- rotation or viewport-height change.
-
-PDR-02 may merge after protected-preview device sign-off. Its final production sign-off is recorded in PDR-03 against the deployed release.
+Touch-enabled Chromium at the governed mobile widths is the interaction gate for this programme.
 
 #### Accessibility validation
 
-- VoiceOver and TalkBack announce one gallery region and one active item.
+- Automated accessibility inspection exposes one gallery region and one active item.
 - Inactive visual frames are skipped.
 - Buttons retain contextual names.
 - Status is polite and not repeated excessively.
@@ -987,8 +934,6 @@ PDR-02 may merge after protected-preview device sign-off. Its final production s
 - Focus-visible remains visible.
 - Reduced motion behaves as specified.
 - 200 percent zoom does not clip controls or status.
-
-Full AT sign-off is completed in PDR-03.
 
 #### Performance validation
 
@@ -1026,7 +971,6 @@ After deployment:
 - run representative product routes at 430, 390 and 360 px;
 - verify initial request timing on a fresh context;
 - verify no product audience is invented in enquiry links;
-- perform one physical iOS and Android product-gallery smoke;
 - record before/after evidence under the same release identity.
 
 #### Effort
@@ -1055,510 +999,8 @@ Because PDR-02 changes no data or API contract, rollback is code-only.
 
 #### Completion gate
 
-Phase 2 is complete when PDR-02 is merged, deployed to an exact release, the automated gesture and request-timing contracts pass, and at least one physical iPhone and one physical Android preview smoke pass.
-
-Full four-device and assistive-technology closure occurs in Phase 3.
-### Phase 3: Physical-device, accessibility and customer-journey validation
-
-#### Objective
-
-Validate the cumulative mobile experience on physical Safari and Chrome, with VoiceOver, TalkBack and keyboard-only use, and create a dated evidence record that distinguishes pass, fail and blocked results.
-
-#### Customer outcome
-
-Customers can move from first visit to qualified enquiry without page jumps, stale locks, lost context, gesture conflicts, inaccessible state changes or device-specific surprises.
-
-#### Justification
-
-The repository has unusually broad automated coverage, but its authoritative validation record still marks the physical iOS, Android, VoiceOver and TalkBack rows as blocked and the manual keyboard row as pending.
-
-This phase tests the complete deployed system after release parity and controlled product-gallery refinement. It does not assume that component tests or Chromium emulation prove mobile browser behaviour.
-
-#### Exact scope
-
-1. Record the exact production release under test.
-2. Record all device, OS, browser and assistive-technology versions.
-3. Run every applicable journey first with ordinary touch, then with the relevant assistive technology.
-4. Use one small and one large iPhone class.
-5. Use one small and one large Android class.
-6. Include at least one short-height viewport.
-7. Include 200 percent zoom where supported.
-8. Include reduced motion where supported.
-9. Include portrait and one orientation or viewport-height change.
-10. Test menu opening and closing from a non-zero reading position.
-11. Test project navigator opening and closing from a non-zero reading position.
-12. Test project filter, detail, Back and Forward.
-13. Test native project-gallery swipe, controls, status and decoding.
-14. Test controlled product-gallery horizontal, vertical, diagonal and cancelled gestures.
-15. Test responsive disclosures near viewport edges.
-16. Test direct and embedded forms with the mobile keyboard and autofill.
-17. Test native file selection with an approved synthetic file in an intercepted or designated environment.
-18. Test validation, correction, failure, retry and success announcement.
-19. Test no stale body or root lock after Escape, route navigation, Back, Forward, rotation and breakpoint change.
-20. Test focus return and complete keyboard order.
-21. Record screenshots or short video only for failures or evidence-critical states.
-22. Record a trace for any repeated frame, decode or interaction-latency issue.
-23. Do not change customer behaviour in the PDR-03 evidence PR.
-24. Route any reproduced issue to:
-    - PDR-02 follow-up before sign-off when it is a defect in the new controlled product gallery;
-    - PDR-04 when it is a production form, Storage or analytics operational issue;
-    - conditional PDR-05A for history/overlay continuity;
-    - conditional PDR-05B for native project-gallery continuity;
-    - deferred backlog when it is low severity and outside the defined lanes.
-
-#### Required journey scripts
-
-##### T1: Release, header, menu and pathway orientation
-
-1. Open the homepage in a fresh private session.
-2. Record the `X-Sanctuary-Release` value from the operator evidence.
-3. Confirm the H1 and first design conversation.
-4. Scroll to a non-zero reading position.
-5. Open the mobile menu.
-6. Confirm Home, Projects, Pergola options, Commercial, Architects/designers/builders and Contact are understandable.
-7. Confirm the page behind the menu does not move or receive focus.
-8. Close with the visible control.
-9. Repeat and close with Escape or the supported screen-reader action.
-10. Reopen on a short-height viewport and reach every destination.
-11. Navigate to Commercial, then use browser Back.
-12. Navigate to Architects/designers/builders, then use browser Back.
-13. Rotate or change viewport height while the menu is open.
-14. Confirm no stale lock remains.
-
-Pass conditions:
-
-- focus enters and leaves predictably;
-- background content is inert while open;
-- all destinations remain reachable;
-- no document jump occurs;
-- the original reading position returns after dismissing the menu;
-- route navigation does not restore a stale locked position;
-- Back returns to the expected page;
-- no horizontal overflow appears.
-
-##### T2: Homepage to project to enquiry
-
-1. Open `/`.
-2. Activate each of the three first-question starting points at least once.
-3. Confirm exactly two relevant completed projects appear for the selected path.
-4. Confirm selection is announced without duplicate live output.
-5. Open Warkworth or another governed project.
-6. Use the project enquiry action.
-7. Confirm project name, slug and audience are visible above the form.
-8. Refresh.
-9. Use Back and Forward.
-10. Confirm context remains useful and no unrelated audience appears.
-
-Pass conditions:
-
-- radio semantics and selected state are clear;
-- project cards remain tappable and readable;
-- the project reference reaches contact;
-- context survives refresh and history;
-- focus is not lost after selection;
-- no content jump makes the selected result difficult to find.
-
-##### T3: Residential service to enquiry
-
-1. Open `/pergolas-auckland`.
-2. Identify the proposition, fit, three projects, main constraint and next action without opening optional support.
-3. Confirm no guide-series navigation appears.
-4. Open and close one support disclosure.
-5. Follow the primary enquiry action.
-6. Confirm Residential is selected and the source is visible.
-7. Confirm only project type, name and phone are required.
-8. Exercise Back, Forward and refresh.
-
-Pass conditions:
-
-- the approved consolidated structure is present;
-- disclosure state and focus are understandable;
-- context remains;
-- required effort matches the shared contract;
-- no stale or surprising state occurs.
-
-##### T4: Project filtering, detail and browser history
-
-1. Open `/projects`.
-2. Apply Commercial.
-3. Apply one available roof form.
-4. Record the visible result count and reading position.
-5. Open a project.
-6. Return with the browser Back button or edge gesture.
-7. Confirm query filters remain.
-8. Confirm the collection returns to a useful reading position.
-9. Change a filter.
-10. Use Back and Forward through filter changes.
-11. Refresh.
-12. Reset filters.
-
-Pass conditions:
-
-- query state is correct;
-- canonical project URLs remain clean;
-- no stale detail sheet remains;
-- Back and Forward restore expected filter state;
-- useful reading context is retained within reasonable browser behaviour;
-- no horizontal document movement occurs.
-
-##### T5: Native project gallery and project navigator
-
-1. Open `/projects/warkworth-outdoor-room`.
-2. Open and close the project navigator from a non-zero scroll position.
-3. Confirm focus and scroll return.
-4. Swipe through at least three gallery images.
-5. Use Previous and Next.
-6. Confirm position status changes.
-7. Confirm edge state is conveyed.
-8. Confirm varied image proportions remain top aligned.
-9. Confirm captions move with their images.
-10. Operate Arrow Left, Arrow Right, Home and End with keyboard.
-11. Repeat on a cold or cleared image cache.
-12. Test near the browser edge-Back zone.
-13. Enable reduced motion and operate controls.
-
-Pass conditions:
-
-- native momentum remains;
-- page does not move sideways;
-- control focus stays stable;
-- status does not oscillate or lag visibly;
-- no repeated active blank frame appears;
-- no stale navigator lock remains;
-- no repeatable frame failure is observed.
-
-##### T6: Products index, controlled product gallery and enquiry
-
-1. Open `/products`.
-2. Identify the four primary pergola forms and secondary option gateways.
-3. Open `/products/pergolas/gable`.
-4. Identify outcome, primary fit, primary constraint and built evidence.
-5. Reach the controlled gallery.
-6. Perform slow, fast, short, diagonal, vertical and reversing gestures.
-7. Operate Previous and Next.
-8. Operate keyboard controls.
-9. Enable reduced motion.
-10. Repeat on a cold cache.
-11. Follow the enquiry action.
-12. Confirm product context is visible and audience remains neutral until chosen.
-
-Pass conditions:
-
-- deliberate horizontal movement follows the finger;
-- vertical page scrolling remains reliable;
-- short and diagonal gestures cancel predictably;
-- one active item is announced;
-- adjacent frames are not duplicated by assistive technology;
-- no blank active frame or layout jump occurs;
-- context reaches contact without forced audience.
-
-##### T7: Commercial and professional pathways
-
-1. Open `/commercial-pergolas-auckland`.
-2. Confirm no guide sequence.
-3. Confirm three cases precede three stages.
-4. Follow the commercial enquiry action.
-5. Confirm Commercial and source context.
-6. Open `/architects-designers-builders`.
-7. Confirm capability, role boundaries and project models precede enquiry.
-8. Operate the global header estimate action.
-9. Confirm Professional and canonical source context.
-10. Operate the embedded professional form without sending unless the environment is designated.
-
-Pass conditions:
-
-- route roles are clear;
-- service pages do not appear as guide articles;
-- audiences do not cross over;
-- professional header and embedded form agree;
-- file guidance and optional fields are announced.
-
-##### T8: Guide to service or enquiry
-
-1. Open `/pergola-guides`.
-2. Choose the cost guide.
-3. Confirm the answer, governed project and return action precede optional depth.
-4. Open supporting depth.
-5. Follow the return to residential service.
-6. Use browser Back.
-7. Follow an enquiry path where available.
-
-Pass conditions:
-
-- reading order is logical;
-- support state is announced;
-- Back returns usefully;
-- the guide does not trap the visitor away from a decision;
-- service pages do not inherit guide progression.
-
-##### T9: Direct contact, validation, keyboard, autofill and retry
-
-1. Open `/contact` directly in a fresh private session.
-2. Confirm no audience is preselected and no context banner appears.
-3. Attempt submission with required fields empty.
-4. Confirm error summary is focused or announced.
-5. Follow each error link.
-6. Confirm entered optional content remains.
-7. Complete project type, name and phone using the mobile keyboard and available autofill.
-8. Enter and correct an invalid optional email.
-9. Select and remove an approved synthetic attachment.
-10. In an intercepted or designated environment, reproduce signing or upload failure.
-11. Confirm the enquiry is not submitted when a selected file has not stored.
-12. Remove the file or retry the upload.
-13. Reproduce an API failure through the approved reversible method.
-14. Confirm values and submission UUID remain for retry.
-15. Complete a non-production or explicitly authorised success.
-16. Confirm success is focused or announced and duplicate submission is prevented.
-
-Pass conditions:
-
-- labels remain visible;
-- mobile keyboard does not obscure the active field or primary recovery action;
-- autofill does not corrupt context;
-- file status is clear;
-- failed selected files never degrade silently to metadata;
-- values survive correction and retry;
-- exactly one request occurs after a double activation;
-- success is announced.
-
-##### T10: Footer, zoom, orientation and outdoor readability
-
-1. Reach the footer from the homepage, a long guide and Contact.
-2. Confirm phone, email, project pathways, privacy and social utility remain distinct.
-3. Test at 200 percent zoom where supported.
-4. Test a short-height viewport.
-5. Rotate once or change display size.
-6. Spot-check hero crops, captions, muted metadata and text-over-image in bright conditions.
-7. Confirm fixed or blurred surfaces do not obscure active controls.
-
-Pass conditions:
-
-- no overlap or horizontal scroll;
-- all primary actions remain reachable;
-- focus remains visible;
-- important crops remain intelligible;
-- footer and header state do not conflict.
-
-#### Result record
-
-Every run must include:
-
-```text
-Run ID:
-Date:
-Tester:
-Release SHA:
-Origin:
-Device model:
-Operating system:
-Browser:
-Assistive technology and version, if applicable:
-Viewport or display-size class:
-Orientation:
-Reduced motion:
-Consent state:
-Journey scripts completed:
-Result: Pass / Fail / Blocked
-Failure route and step:
-Expected:
-Observed:
-Severity:
-Screenshot or video:
-Trace:
-Issue or PR:
-Retest date and result:
-```
-
-Do not include real customer details, form values, filenames or attachment content in the shared record.
-
-#### Affected owners
-
-PDR-03 should normally change only:
-
-- `docs/mobile-ux-phase-5-validation.md`
-- a new `docs/mobile-production-closure-validation.md` if a separate concise current record is clearer;
-- this plan for status updates only;
-- evidence under `artifacts/mobile-production-closure/pdr-03/`;
-- Playwright helpers or assertions that improve reproducibility without changing customer behaviour;
-- `docs/testing-and-qa.md` where command or evidence conventions change.
-
-Customer interaction code is out of scope for the evidence PR.
-
-#### Dependencies
-
-- PDR-01 deployed and exact-release verified.
-- PDR-02 deployed to the release under test.
-- Physical devices and assistive technologies are available.
-- An approved test environment or reversible network interception exists for form failure/retry.
-- Production submission remains deferred to PDR-04 unless explicit authority is already granted.
-
-#### Non-goals
-
-- no speculative bug fixing;
-- no broad visual polish;
-- no history abstraction;
-- no shared lock utility;
-- no native gallery rewrite;
-- no fixed-blur removal without a trace;
-- no production analytics write without PDR-04 authority;
-- no copy or SEO work.
-
-#### Acceptance criteria
-
-- D1 through D4 have dated results.
-- A1 and A2 have dated VoiceOver and TalkBack results.
-- A3 has a dated manual keyboard result.
-- Every T1 through T10 journey has at least one applicable physical result.
-- No Chromium result is labelled physical.
-- Menu and project navigator leave no stale lock.
-- Back and Forward preserve expected route and filter state.
-- Useful reading context returns or a clearly documented failure is raised.
-- Native project gallery remains native and usable.
-- Controlled product gallery passes horizontal/vertical arbitration.
-- Direct and embedded forms pass keyboard, validation, retry and success semantics.
-- Selected-file failure remains visible and blocks false submission.
-- No unexplained high-severity failure remains.
-- Every failure has an owner and disposition.
-- A conditional remediation PR is opened only when its defined lane is met.
-- PDR-02 is reopened or amended rather than hiding a direct-manipulation defect inside PDR-03.
-- Evidence identifies the exact release under test.
-
-#### Automated tests
-
-Re-run before and after the physical matrix:
-
-```bash
-npx playwright test \
-  playwright/marketing.phase-five.spec.ts \
-  playwright/marketing.shared-header.spec.ts \
-  playwright/marketing.homepage.spec.ts \
-  playwright/marketing.projects.spec.ts \
-  playwright/marketing.products.spec.ts \
-  playwright/marketing.contact.spec.ts \
-  --config=playwright.marketing.config.ts \
-  --workers=1
-```
-
-Also run:
-
-```bash
-npm run test:marketing
-npx tsc -p apps/marketing/tsconfig.json --noEmit --incremental false
-npm run lint
-npm run build:marketing
-```
-
-#### Manual or physical-device tests
-
-##### Physical device matrix
-
-- D1: physical iPhone near the small mobile class, Safari
-- D2: physical iPhone near the large mobile class, Safari
-- D3: physical Android near the small mobile class, Chrome
-- D4: physical Android near the large mobile class, Chrome
-
-A device may use 360, 375, 390, 412, 414 or 430 CSS px where that represents the real hardware. Record the actual value. Do not force a device to impersonate a class it does not represent.
-
-##### Assistive-technology matrix
-
-- A1: representative physical iPhone with VoiceOver and Safari
-- A2: representative physical Android with TalkBack and Chrome
-- A3: desktop keyboard-only pass in an evergreen browser
-
-At minimum, record spoken name, role, state and focus behaviour for:
-
-- menu trigger and current route;
-- first-question radio group;
-- one responsive disclosure;
-- project filter;
-- native project gallery region, controls and position;
-- controlled product gallery region, controls and position;
-- form project type;
-- file control and selected-file state;
-- error summary and linked field;
-- sending state;
-- success message.
-
-#### Accessibility validation
-
-This phase is the accessibility completion gate for the cumulative mobile programme.
-
-A route does not pass because axe or Lighthouse is green alone. The tester must confirm that the order, names, roles, states and recovery are understandable.
-
-Record:
-
-- first unexpected focus jump;
-- invisible focus;
-- repeated or noisy live announcement;
-- inaccessible inactive gallery frame;
-- disclosure state ambiguity;
-- lost focus after closing an overlay;
-- keyboard trap;
-- touch-exploration obstacle;
-- error link that does not reach its field;
-- success state that is not announced.
-
-#### Performance validation
-
-Use physical traces for any reported gesture or scroll issue.
-
-Record:
-
-- input timing;
-- main-thread tasks;
-- repeated layout work;
-- frame duration;
-- image decode timing;
-- network state;
-- refresh rate where known;
-- whether fixed blur is active;
-- whether the trace covers native project gallery, controlled product gallery, menu or document scroll.
-
-A performance failure is material when it is repeatable and customer-visible, such as:
-
-- three or more consecutive frames above 32 ms at 60 Hz during the same interaction;
-- a task over 50 ms attributable to new gallery interaction code;
-- repeated active blank frames;
-- status visibly lagging or oscillating;
-- document jump when an overlay opens or closes;
-- touch response delayed enough to break finger connection.
-
-#### Production verification
-
-The physical matrix runs against the exact deployed release from PDR-01 plus PDR-02.
-
-Before each device session:
-
-- confirm production origin;
-- record release SHA;
-- clear or describe cache state;
-- record consent state;
-- avoid live form submission unless PDR-04 authority applies.
-
-#### Effort
-
-Medium for evidence collection. It may span several test sessions, but it remains one documentation/evidence PR.
-
-#### Risk
-
-Low for the PR because customer behaviour should not change. The main risk is incorrectly converting a blocked or emulated result into a pass.
-
-#### Rollback strategy
-
-PDR-03 contains evidence and test support only. Revert any test helper that destabilises CI, but preserve the dated evidence record. Do not delete a failed result after a fix; append the retest.
-
-#### Completion gate
-
-Phase 3 is complete when the physical and assistive-technology matrix is dated and every material failure is either:
-
-- fixed in the appropriate preceding owner and retested;
-- routed into one allowed conditional lane;
-- recorded as blocked with a named access/device owner; or
-- recorded as low-priority deferred work with a reason.
-
-A blocked D1-D4, A1 or A2 result prevents programme completion.
-
-### Phase 4: Production enquiry and analytics reconciliation
+Phase 2 is complete when PDR-02 is merged, deployed to an exact release, and the automated gesture, accessibility, request-timing and performance contracts pass against preview and production.
+### PDR-04: Production enquiry and analytics reconciliation
 
 #### Objective
 
@@ -1724,7 +1166,6 @@ Relevant current owners:
 
 - PDR-01 exact release is deployed.
 - PDR-02 is deployed if it is part of the release under final programme test.
-- PDR-03 has established physical form and AT behaviour.
 - Production submission authority is explicit.
 - Analytics debug and received-record access are available.
 - Private Storage readiness is confirmed.
@@ -1785,17 +1226,16 @@ npx playwright test \
 
 Production read-only/intercepted checks must continue to intercept `/api/enquiry` until the single authorised step.
 
-#### Manual or physical-device tests
+#### Authorised browser run
 
-The authorised success should use one of the physical devices already validated in PDR-03 when practical, so the production record also covers:
+The single authorised success run must cover:
 
-- mobile keyboard;
 - file selection;
 - upload progress or status;
 - submit lock;
 - announced success.
 
-Do not send separate iOS and Android production leads merely to expand evidence. One authorised lead is sufficient; other devices use intercepted or designated environments.
+One authorised lead is sufficient; all other browser cases use intercepted or designated environments.
 
 #### Accessibility validation
 
@@ -1848,150 +1288,10 @@ Do not attempt to erase the audit trail by directly deleting database or analyti
 
 #### Completion gate
 
-Phase 4 is complete when PDR-04 is merged and the authorised reconciliation passes all required layers.
+PDR-04 is complete when it is merged and the authorised reconciliation passes all required layers.
 
 Without submission authority, analytics debug access or Storage readiness, the phase remains blocked and the overall programme is not complete.
 
-### Conditional Phase 5: Bounded continuity remediation
-
-#### Objective
-
-Apply one narrow interaction continuity fix only when PDR-03 reproduces a material physical-device failure in one predefined lane.
-
-#### Customer outcome
-
-A verified high-severity history, overlay or native project-gallery continuity failure is corrected without reopening stable mobile architecture.
-
-#### Opening rule
-
-PDR-05 is not part of the required sequence.
-
-Open exactly one of:
-
-- PDR-05A: History and overlay continuity; or
-- PDR-05B: Native project-gallery continuity.
-
-Do not open both under this unamended plan.
-
-If both lanes reproduce material failures:
-
-1. stop;
-2. amend this plan;
-3. define two separate PRs;
-4. sequence the higher customer-impact failure first;
-5. preserve separate acceptance and rollback boundaries.
-
-If neither lane reproduces a material failure, do not create PDR-05.
-
-#### Lane A: History and overlay continuity
-
-##### Qualifying failures
-
-- browser Back or Forward loses expected filter or route state;
-- Back returns to a materially unusable reading position because application code overrides valid browser restoration;
-- menu or project navigator open/close visibly moves the document;
-- stale `no-scroll`, `mobile-menu-open` or `projects-navigator-open` state remains;
-- Escape, route navigation, popstate, rotation or desktop breakpoint change leaves the document locked;
-- focus fails to return to the correct trigger;
-- hash navigation and responsive disclosure reveal conflict repeatably.
-
-##### Expected owners
-
-- `apps/marketing/components/ScrollReset.tsx`
-- `apps/marketing/components/Header.tsx`
-- `apps/marketing/app/projects/ProjectNavigator.tsx`
-- `apps/marketing/styles/header.css`
-- `apps/marketing/app/projects/projects.css`
-- a minimum shared lock helper only if both overlay owners demonstrably need the same verified fix
-
-##### Constraints
-
-- no global history manager;
-- no router replacement;
-- no global smooth scrolling;
-- no scroll restoration change for ordinary push navigation unless required by the reproduced failure;
-- no shared lock abstraction for aesthetic consistency alone;
-- no combining unrelated header and project changes without one common root cause.
-
-##### Completion evidence
-
-- exact reproduction before;
-- one owner/root cause;
-- automated Back/Forward and non-zero-scroll tests;
-- affected physical-device retest;
-- no regression to hash targets or ordinary route-top reset;
-- no stale lock on all affected cleanup paths.
-
-#### Lane B: Native project-gallery continuity
-
-##### Qualifying failures
-
-- repeated layout-driven frame misses during native swipe;
-- current-position status visibly lags or oscillates;
-- the rAF path repeatedly rereads all figure geometry and is demonstrated as the cause;
-- a cold adjacent image repeatedly produces an active blank frame;
-- native gallery movement repeatedly drags the document sideways;
-- control-driven centring fails materially on a physical browser.
-
-##### Expected owners
-
-- `apps/marketing/app/projects/ProjectGallery.tsx`
-- `apps/marketing/app/projects/ProjectGallery.module.css`
-- `apps/marketing/app/projects/projects.css`, only if required
-- focused project tests and trace evidence
-
-##### Allowed remediation examples
-
-Only when evidence supports them:
-
-- cache figure centres or offsets on resize rather than reading every figure during each scroll frame;
-- use scroll offsets already available from layout;
-- adjust bounded adjacent readiness without eager-loading the complete gallery;
-- correct a touch-action or snap issue while retaining native authority.
-
-##### Constraints
-
-- preserve native scrolling;
-- preserve mixed 4:3 and 3:4 frames;
-- preserve top alignment and captions;
-- preserve desktop mosaic;
-- preserve accessible controls and live position;
-- do not convert to `ResponsiveGallery`;
-- do not introduce a carousel library.
-
-##### Completion evidence
-
-- before trace with reproduced failure;
-- after trace showing the failure resolved;
-- physical iOS and Android retest;
-- no initial gallery payload regression;
-- no status, focus or reduced-motion regression.
-
-#### Direct-manipulation failures are not PDR-05
-
-A defect in the newly implemented controlled product gallery returns to the PDR-02 owner and blocks Phase 3 sign-off. It must not be hidden inside Lane A or Lane B.
-
-#### Operational form failures are not PDR-05
-
-A Storage, intake, received-record or analytics reconciliation failure remains in the PDR-04 owner or a separately amended operational fix. It must not be combined with history or native gallery continuity.
-
-#### Effort
-
-Small to medium if one verified owner is affected.
-
-#### Risk
-
-Medium. History, lock and native-scroll changes can regress otherwise stable behaviour.
-
-#### Rollback strategy
-
-Revert the complete lane PR. Do not leave a partially shared lock helper or partially changed project-gallery measurement model.
-
-#### Completion gate
-
-Conditional Phase 5 is complete when the selected lane passes its automated and physical retest against an exact production release.
-
-When no lane qualifies, record `Not opened: no qualifying failure reproduced`.
 ## Pull-request handoff cards
 
 The Phase roadmap above is the sole authority for scope, tests, acceptance, rollback and completion. These cards are short entry points only; they must not duplicate or override the phase contracts.
@@ -1999,12 +1299,10 @@ The Phase roadmap above is the sole authority for scope, tests, acceptance, roll
 | PR | Title | One outcome | Start evidence | Merge or completion gate |
 |---|---|---|---|---|
 | PDR-01 | `chore(marketing): close production release and semantic parity` | Every primary route serves the approved experience from one identifiable release | Current source-versus-production raw responses, including normal and cache-busted samples | Exact production SHA and semantic matrix pass; no real enquiry sent |
-| PDR-02 | `feat(marketing): add direct manipulation to controlled product galleries` | Deliberate horizontal touch moves product media while vertical scrolling stays native | PDR-01 baseline plus current `ResponsiveGallery` gesture and request evidence | Automated contract, bounded media, exact release, and one iPhone plus one Android preview smoke pass |
-| PDR-03 | `test(marketing): close physical mobile and assistive-technology validation` | The cumulative journey is proven on physical Safari, Chrome, VoiceOver, TalkBack and keyboard | Deployed PDR-01/PDR-02 release and named devices/testers | D1-D4, A1-A3 and T1-T10 are dated; every material failure is fixed, routed or truthfully blocked |
+| PDR-02 | `feat(marketing): add direct manipulation to controlled product galleries` | Deliberate horizontal touch moves product media while vertical scrolling stays native | PDR-01 baseline plus current `ResponsiveGallery` gesture and request evidence | Automated gesture, accessibility, bounded-media, performance, preview and exact-release contracts pass |
 | PDR-04 | `test(marketing): reconcile one production enquiry and conversion event` | One authorised synthetic lead reconciles across browser, attachment, API, durable record and analytics | Repaired attachment tests plus named approval, operator and production access | All five layers reconcile once, consent-negative control passes, and shared evidence contains no personal data |
-| PDR-05A or PDR-05B | Lane-specific conditional fix | One reproduced continuity failure is removed without reopening stable architecture | Qualifying PDR-03 reproduction and before evidence | One lane only, focused automated proof, physical retest and exact-release deployment |
 
-Review PDR-01 by source/build/deployment/cache ownership before visual wording. Review PDR-02 by gesture ownership, vertical-scroll safety and request evidence before animation polish. Review PDR-03 and PDR-04 by evidence completeness rather than code volume.
+Review PDR-01 by source/build/deployment/cache ownership before visual wording. Review PDR-02 by gesture ownership, vertical-scroll safety and request evidence before animation polish. Review PDR-04 by evidence completeness rather than code volume.
 
 ## Validation matrix
 
@@ -2039,50 +1337,21 @@ Review PDR-01 by source/build/deployment/cache ownership before visual wording. 
 
 | ID | Width/height or mode | Purpose | Required phases |
 |---|---|---|---|
-| V1 | 430 x 932 | large mobile baseline | PDR-01, PDR-02, PDR-03 |
-| V2 | 390 x 844 | primary mobile baseline | PDR-01, PDR-02, PDR-03 |
-| V3 | 360 x 800 | small mobile baseline | PDR-01, PDR-02, PDR-03 |
-| V4 | approximately 360 x 480 | short-height menu, overlay and keyboard reach | PDR-01 smoke, PDR-03 |
+| V1 | 430 x 932 | large mobile baseline | PDR-01, PDR-02 |
+| V2 | 390 x 844 | primary mobile baseline | PDR-01, PDR-02 |
+| V3 | 360 x 800 | small mobile baseline | PDR-01, PDR-02 |
+| V4 | approximately 360 x 480 | short-height menu, overlay and keyboard reach | focused automated suites |
 | V5 | 320 x 568 | narrow compatibility | focused homepage/contact/product suites |
-| V6 | 360 x 400 or supported 200 percent zoom equivalent | zoomed actionable-content reach | PDR-03 |
+| V6 | 360 x 400 or supported 200 percent zoom equivalent | zoomed actionable-content reach | focused automated suites |
 | V7 | 768 x 1024 | tablet shared-behaviour regression | PDR-02 |
-| V8 | 1024 x 768 | compact desktop/header transition | PDR-01, PDR-03 keyboard |
-| V9 | 1440 x 900 or 1440 x 1000 | desktop regression | PDR-01, PDR-02, PDR-03 |
-| C1 | reduced motion | zero autonomous travel and retained feedback | PDR-01, PDR-02, PDR-03 |
+| V8 | 1024 x 768 | compact desktop/header transition | PDR-01 and focused keyboard suites |
+| V9 | 1440 x 900 or 1440 x 1000 | desktop regression | PDR-01, PDR-02 |
+| C1 | reduced motion | zero autonomous travel and retained feedback | PDR-01, PDR-02 |
 | C2 | JavaScript disabled | server content and direct paths | PDR-01 |
 | C3 | script blocked before hydration | pending disclosure stability | PDR-01 regression |
-| C4 | cold/cleared image cache | gallery readiness and blank-frame risk | PDR-02, PDR-03 |
+| C4 | cold/cleared image cache | gallery readiness and blank-frame risk | PDR-02 |
 | C5 | denied analytics/marketing consent | no optional transmission | PDR-04 |
 | C6 | analytics granted, marketing denied | minimal authorised conversion evidence | PDR-04 |
-
-### Physical-device matrix
-
-| Run | Device class | Browser | Core scripts | Status required |
-|---|---|---|---|---|
-| D1 | physical iPhone near small mobile class | Safari | T1-T10 as applicable | Pass or explicit blocking issue |
-| D2 | physical iPhone near large mobile class | Safari | T1-T10 as applicable | Pass or explicit blocking issue |
-| D3 | physical Android near small mobile class | Chrome | T1-T10 as applicable | Pass or explicit blocking issue |
-| D4 | physical Android near large mobile class | Chrome | T1-T10 as applicable | Pass or explicit blocking issue |
-
-Device choice rules:
-
-- record actual CSS viewport or display-size setting;
-- record refresh rate where a frame trace is used;
-- use production browser chrome;
-- do not treat a simulator or remote responsive mode as a physical device;
-- use at least two distinct physical devices in total;
-- use both operating-system families;
-- do not require one device for every nominal width when its real viewport falls within the target class.
-
-##### Assistive-technology matrix
-
-| Run | Platform | Input | Required coverage | Completion |
-|---|---|---|---|---|
-| A1 | physical iPhone Safari | VoiceOver and touch exploration | menu, homepage radios, disclosure, both galleries, form errors, file state, success | dated spoken-state notes |
-| A2 | physical Android Chrome | TalkBack and touch exploration | same logical coverage as A1 | dated spoken-state notes |
-| A3 | desktop evergreen browser | keyboard only | full route order, menu, filters, overlays, disclosures, galleries, form recovery | dated focus-order notes |
-| A4 | supported physical device | reduced motion | menu, disclosure, controlled gallery, native gallery controls, route feedback | may be combined with D1-D4 |
-| A5 | supported browser/device | 200 percent zoom or display scaling | homepage start, navigation, gallery controls, form errors, footer | may be combined with D1-D4/A3 |
 
 ### Release-parity matrix
 
@@ -2161,16 +1430,6 @@ A release-parity pass requires the entire matrix to agree. Do not report individ
 - horizontal document overflow;
 - status update count per commit.
 
-#### Physical continuity measures
-
-- visible document jump in CSS px;
-- pre/post overlay `scrollY`;
-- stale root/body classes or inline styles;
-- Back/Forward route, query and reading-position result;
-- gallery status lag or oscillation;
-- repeated forced-layout evidence;
-- browser/device/refresh-rate context.
-
 #### Form and operational measures
 
 - upload duration;
@@ -2199,37 +1458,25 @@ artifacts/mobile-production-closure/
     after/
     request-evidence/
     performance/
-  pdr-03/
-    README.md
-    device-matrix.md
-    assistive-technology-matrix.md
-    failures/
-    traces/
   pdr-04/
     README.md
     reconciliation-redacted.json
     consent-negative/
-  pdr-05a/ or pdr-05b/
-    README.md
-    before/
-    after/
-    traces/
 ```
 
 Evidence rules:
 
 1. Every README identifies date, branch, commit, origin and operator.
-2. Physical evidence identifies device, OS and browser.
-3. Screenshots use descriptive route/device/state names.
-4. Do not commit raw personal form values.
-5. Do not commit signed URLs, upload tokens, cookies or analytics client identifiers.
-6. Redact browser chrome only when needed for privacy; do not crop away evidence of the state being tested.
-7. Keep failed evidence and append the retest.
-8. Separate preview, production, emulated and physical evidence.
-9. Record commands that reproduce automated evidence.
-10. Use JSON for machine-comparable route and performance records.
-11. Use Markdown for operator observations and spoken AT notes.
-12. Keep evidence bounded. Do not add repeated screenshots when a structured result is sufficient.
+2. Screenshots use descriptive route/viewport/state names.
+3. Do not commit raw personal form values.
+4. Do not commit signed URLs, upload tokens, cookies or analytics client identifiers.
+5. Redact browser chrome only when needed for privacy; do not crop away evidence of the state being tested.
+6. Keep failed evidence and append the retest.
+7. Separate preview, production, automated and write-authorised evidence.
+8. Record commands that reproduce automated evidence.
+9. Use JSON for machine-comparable route and performance records.
+10. Use Markdown for operator observations.
+11. Keep evidence bounded. Do not add repeated screenshots when a structured result is sufficient.
 
 ## Sequencing and dependencies
 
@@ -2237,36 +1484,28 @@ Evidence rules:
 
 1. **PDR-01: Production release and semantic parity**
 2. **PDR-02: Controlled product-gallery direct manipulation**
-3. **PDR-03: Physical-device and assistive-technology validation**
-4. **PDR-04: Production enquiry and analytics reconciliation**
-5. **PDR-05A or PDR-05B: Conditional only**
+3. **PDR-04: Production enquiry and analytics reconciliation**
 
 ### Merge and deployment rules
 
-| PR | May be developed in parallel? | May merge independently? | Must deploy before next phase? | Physical evidence required before merge? |
+| PR | May be developed in parallel? | May merge independently? | Must deploy before next phase? | Merge evidence |
 |---|---|---|---|---|
-| PDR-01 | Yes, first | Yes | Yes, establishes baseline | limited smoke only |
-| PDR-02 | May branch while PDR-01 reviews | No final merge before PDR-01 baseline | Yes | one iOS and one Android preview smoke |
-| PDR-03 | No meaningful start before PDR-02 preview/deploy | Evidence PR may merge after complete matrix | It records deployed state | owns full physical matrix |
-| PDR-04 | Test repair may start earlier; authorised run waits | No programme closure before PDR-03 | It verifies current deployed state | one validated device preferred |
-| PDR-05 | No | Conditional only | Yes when opened | all reproducing devices retest |
+| PDR-01 | Yes, first | Yes | Yes, establishes baseline | exact release and semantic matrix |
+| PDR-02 | May branch after PDR-01 | Yes, after all scoped automated and protected-preview gates pass | Yes | gesture, accessibility, request, performance and exact-release evidence |
+| PDR-04 | Test repair may start earlier; authorised run waits | Yes, after PDR-02 deploy and operational access are ready | It verifies current deployed state | authorised reconciliation and consent-negative control |
 
 ### Dependency details
 
 - PDR-01 is the release source for every later comparison.
 - PDR-02 uses the current Foundation tokens and product data; it does not depend on service-page source changes except for a stable baseline.
-- PDR-03 requires the final PDR-02 behaviour to be deployed. Testing an intermediate preview does not close the production matrix.
-- PDR-04 may repair stale tests before PDR-03 completes, but the authorised production write occurs after the physical form contract is validated.
-- PDR-05 requires PDR-03 reproduction evidence.
-- A PDR-02 defect discovered during PDR-03 returns to PDR-02 and must be retested before PDR-03 can close.
-- A production Storage or analytics defect discovered during PDR-04 stays in the operational owner and does not become PDR-05.
+- PDR-04 may repair stale tests earlier, but its authorised production write occurs only after PDR-02 is deployed and operational access is ready.
+- A production Storage or analytics defect discovered during PDR-04 stays in the operational owner.
 - A release mismatch discovered after PDR-01 reopens PDR-01 closure before later evidence is trusted.
 
 ### Failures that require a plan amendment
 
 Amend this plan rather than expanding a PR when:
 
-- both conditional continuity lanes qualify;
 - direct manipulation requires more than three mounted visual frames;
 - a third-party carousel or motion dependency appears necessary;
 - native project gallery architecture must change;
@@ -2351,7 +1590,7 @@ Success means:
 - active index does not change;
 - the same gesture is not captured after vertical intent wins;
 - no visible sticky transform remains;
-- physical iOS and Android both pass.
+- the governed automated mobile-width matrix passes.
 
 ### Image request and transfer changes
 
@@ -2377,7 +1616,7 @@ Success means:
 - no new handler task over 50 ms;
 - no sustained three-frame sequence above 32 ms at 60 Hz attributable to the interaction;
 - no repeatable layout-driven project-gallery frame failure;
-- device traces identify any remaining limitation.
+- browser traces identify any remaining limitation.
 
 ### Form starts and accepted submissions
 
@@ -2437,17 +1676,11 @@ These are not required to close the implementation programme and must not create
 
 Success means:
 
-- D1-D4 complete;
-- A1-A3 complete;
 - meaningful names, roles, states and order;
 - no trap or invisible focus;
 - error summary and success announced;
 - one active controlled-gallery item;
-- reduced motion and zoom pass.
-
-### Physical-device completion
-
-Success requires all mandatory matrix rows to be passed or a qualifying issue fixed and retested. `Blocked` is not completion.
+- automated keyboard, reduced-motion and zoom checks pass.
 
 ### Technical maturity
 
@@ -2457,7 +1690,7 @@ The technical programme is production-mature when:
 - current route semantics are deployed;
 - current tests describe current behaviour;
 - direct manipulation meets payload and frame budgets;
-- physical and AT evidence exists;
+- automated accessibility contracts pass;
 - one operational submission is reconciled;
 - no unexplained P0/P1 failure remains.
 
@@ -2479,26 +1712,20 @@ The Sanctuary Pergolas Mobile Production Closure and Direct-Manipulation Refinem
 12. Vertical page scrolling remains native through controlled galleries.
 13. Adjacent media remains bounded and active-only semantics are preserved.
 14. No initial image, script, CLS or long-task regression exceeds the programme budgets.
-15. Native project gallery architecture remains unchanged unless a separately qualified Lane B PR was required.
-16. PDR-03 contains completed D1-D4 and A1-A3 evidence.
-17. T1-T10 have applicable physical results.
-18. No stale menu or project-navigator lock remains.
-19. Back and Forward continuity is passed or a qualified Lane A fix has been retested.
-20. PDR-04 is merged.
-21. Stale metadata-only attachment expectations are removed from tests and docs.
-22. Production private Storage readiness is confirmed.
-23. One authorised synthetic enquiry is accepted exactly once.
-24. One corresponding received/durable record exists.
-25. One corresponding non-personal `lead_submitted` event exists.
-26. `lead_event_id` reconciles with the accepted submission identifier.
-27. Any selected synthetic attachment is verified as stored and available.
-28. Denied consent prevents optional analytics transmission.
-29. Current performance evidence is attached to the exact final release.
-30. PDR-05 is either:
-    - not opened because no qualifying failure was reproduced; or
-    - completed in exactly one amended/allowed lane.
-31. Every unresolved lower-priority issue is recorded with evidence, owner and priority.
-32. The broad mobile roadmap and active validation record reflect completion without claiming unsupported causal conversion improvement.
+15. Native project gallery architecture remains unchanged.
+16. Automated accessibility, keyboard, reduced-motion and zoom contracts pass.
+17. PDR-04 is merged.
+18. Stale metadata-only attachment expectations are removed from tests and docs.
+19. Production private Storage readiness is confirmed.
+20. One authorised synthetic enquiry is accepted exactly once.
+21. One corresponding received/durable record exists.
+22. One corresponding non-personal `lead_submitted` event exists.
+23. `lead_event_id` reconciles with the accepted submission identifier.
+24. Any selected synthetic attachment is verified as stored and available.
+25. Denied consent prevents optional analytics transmission.
+26. Current performance evidence is attached to the exact final release.
+27. Every unresolved lower-priority issue is recorded with evidence, owner and priority.
+28. The broad mobile roadmap and active validation record reflect completion without claiming unsupported causal conversion improvement.
 
 ## Deferred backlog
 
@@ -2520,7 +1747,7 @@ The required burden is low, but optional technical fields may appear extensive o
 
 Defer a disclosure or presentation experiment until:
 
-- physical keyboard and screen-reader validation is complete;
+- automated keyboard and accessibility validation is complete;
 - form-start and completion data is available;
 - lead-quality impact can be monitored;
 - the experiment preserves every field and payload.
@@ -2533,19 +1760,15 @@ Continue collecting route-family Web Vitals. Do not block this programme indefin
 
 ### Fixed blur and header/footer synchronisation
 
-Inspect only when a physical trace shows a customer-visible frame or readability problem. Do not remove blur for theoretical performance.
+Inspect only when a browser trace shows a customer-visible frame or readability problem. Do not remove blur for theoretical performance.
 
 ### Native project-gallery geometry caching
 
-The current rAF path reads gallery and figure geometry. Keep it unchanged unless Lane B reproduces repeated layout-driven frame misses or status lag.
+The current rAF path reads gallery and figure geometry. Keep it unchanged unless a separately reproduced customer defect justifies a scoped change.
 
 ### High-refresh-rate optimisation
 
 Record 120 Hz results when hardware is available, but do not turn a 60 Hz passing contract into a 120 Hz guarantee without testing.
-
-### Outdoor readability beyond representative checks
-
-PDR-03 includes bright-condition spot checks. A broader outdoor/readability study is a separate research task, not an implementation gate.
 
 ### Broader conversion optimisation
 
@@ -2563,8 +1786,8 @@ Do not fold experiments into production closure.
 
 Transient development `networkidle`, HMR and Windows Lighthouse cleanup issues remain tooling work unless reproduced in the production build or CI owner. Do not change customer UI to satisfy an isolated development-only failure.
 
-## Recommended first Codex goal
+## Recommended next Codex goal
 
 Use this prompt with the plan attached:
 
-> Implement PDR-01 from this plan. Freeze the implementation SHA at the start. Extend the existing release and semantic matrix; do not create a second checker. Correct the confirmed neutral professional header context in the shared route helper. Preserve the approved route structures and treat the confirmed custom/commercial source-versus-production mismatch as a build, deployment or cache problem unless focused evidence proves a source defect. Require one exact `X-Sanctuary-Release` across normal and cache-busted primary routes, update the active validation record, and do not send a real enquiry or include PDR-02 work.
+> Implement and close PDR-02 from this plan. Preserve `ResponsiveGallery` as the controlled product-gallery owner and keep the native project gallery unchanged. Add deferred pointer capture, horizontal finger-follow, bounded three-frame readiness and active-only accessibility while preserving vertical scrolling, buttons, keyboard, focus, captions, ratios and reduced motion. Add the full focused component, browser, request-timing and performance evidence. Create a branch, commit, push and open a draft PR; verify the protected preview, then mark ready, merge and verify the exact production release when every scoped automated gate passes. Physical-device testing is not required. Do not send a real enquiry or include PDR-04 work.
