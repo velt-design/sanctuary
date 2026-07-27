@@ -21,6 +21,7 @@ import {
   type StructureType,
 } from './types';
 import type { CostingConfigV1 } from './config';
+import { buildRafterCutLengthExplanationV1 } from './rafterExplanation';
 
 const GST_RATE = 0.15;
 const DEFAULT_POST_CUT_HEIGHT_M = 2.4;
@@ -1335,6 +1336,24 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const joinerRunsTotal = roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount;
   const rafterClearLenMm = isAcrylicRoof ? rafterA.clearLenMm : 0;
   const rafterSpacingMm = isAcrylicRoof && rafterCountA > 1 ? rafterA.clearLenMm / (rafterCountA - 1) : 0;
+  const rafterCutLengthExplanation = buildRafterCutLengthExplanationV1({
+    roofType,
+    enteredSpanM: projectionM,
+    pitchDegUsed: roofPitchDegUsed,
+    rafterProfile,
+    rafterCount: rafterCountUsed,
+    boxPerimeterEnabled: isBoxPerimeter,
+    angleCutAllowanceM,
+    representativeRunM: rafterTakeoff.run_m_takeoff,
+    representativeCutLengthM: rafterTakeoff.cut_length_m,
+    houseAllowanceM: rafterTakeoff.house_allowance_m,
+    farAllowanceM: rafterTakeoff.far_allowance_m,
+    ridgeHalfM: rafterTakeoff.ridge_half_m,
+    houseRunM: rafterTakeoff.run_house_side_m,
+    outerRunM: rafterTakeoff.run_outer_side_m,
+    houseCutLengthM: rafterTakeoff.cut_house_side_m,
+    outerCutLengthM: rafterTakeoff.cut_outer_side_m,
+  });
 
   const derived: DerivedResultV1['derived'] = {
     area_m2: areaM2,
@@ -1416,6 +1435,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     rafter_length_m: rafterLengthM,
     rafter_run_m_takeoff: rafterTakeoff.run_m_takeoff,
     rafter_cut_length_m: rafterTakeoff.cut_length_m,
+    rafter_cut_length_explanation: rafterCutLengthExplanation,
     // gable/low_gable per-side rafters
     ...(isGableLike
       ? {

@@ -406,7 +406,7 @@ export default function CalculatorGridClient({
 
   const activeModuleLabel = moduleNavigatorModel.activeModuleLabel;
   const {
-    resultModules, moduleResult, modulePlanModel, moduleSectionModel, canEditActiveHouseFootprint,
+    resultModules, moduleResult, modulePlanModel, moduleSectionModel, rafterCutLengthExplanation, canEditActiveHouseFootprint,
     moduleViewsStatus, moduleViewsStatusDetail, impactDiff, resetImpactBaseline,
     derivedArea, derivedRoofArea, derivedPitchUsed, derivedAcrylicArea, derivedTimberArea,
     derivedAcrylicBaysTotal, derivedSlopeLength, derivedBoxPitch, derivedBoxRiseMm, derivedBoxMaxFallMm,
@@ -1018,6 +1018,11 @@ export default function CalculatorGridClient({
       materialsDebug,
       labourActions: labourPreview,
       structureRows: structureOutputRows,
+    },
+    rafterExplanation: {
+      moduleLabel: activeModuleLabel,
+      explanation: rafterCutLengthExplanation,
+      resultFreshness,
     },
     infillWorkspace: infillWorkspaceProps,
     saveDialogs: {

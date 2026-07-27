@@ -436,6 +436,44 @@ export type InputsNormalizedV1 = {
   quote_discount_pct: number;
 };
 
+export type RafterCutLengthDeductionV1 = {
+  id: 'house_edge' | 'outer_edge' | 'ridge' | 'edge_allowances';
+  label: string;
+  value_m: number;
+};
+
+export type RafterCutLengthPlaneExplanationV1 = {
+  id: 'single' | 'house' | 'outer' | 'common';
+  label: string;
+  diagram_side: 'single' | 'left' | 'right' | 'both';
+  base_projected_run_m: number;
+  deductions: RafterCutLengthDeductionV1[];
+  effective_projected_run_m: number;
+  sloped_length_before_allowance_m: number;
+  angle_cut_allowance_m: number;
+  cut_length_m: number;
+};
+
+export type RafterCutLengthExplanationV1 = {
+  version: 1;
+  status: 'ready' | 'invalid_input' | 'unsupported_roof';
+  source: '@sp/costing/engine/rafter-takeoff-v1';
+  roof_type: RoofType;
+  entered_span_m: number;
+  pitch_deg_used: number;
+  rafter_profile: RafterProfile;
+  rafter_count: number;
+  formula: 'cut length = effective projected run / cos(pitch) + angle-cut allowance';
+  rounding: {
+    display_increment_mm: 1;
+    method: 'nearest';
+    engine_values: 'unrounded';
+  };
+  planes: RafterCutLengthPlaneExplanationV1[];
+  assumptions: string[];
+  unavailable_reason?: string;
+};
+
 export type DerivedV1 = {
   area_m2: number;
   length_m: number;
@@ -514,6 +552,7 @@ export type DerivedV1 = {
   rafter_ridge_half_m?: number;
   rafter_house_allowance_m?: number;
   rafter_far_allowance_m?: number;
+  rafter_cut_length_explanation?: RafterCutLengthExplanationV1;
   hip_rafter_cut_length_m?: number;
   joiner_piece_length_m: number;
   cut_rafter_length_m: number;

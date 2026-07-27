@@ -29,6 +29,11 @@ vi.mock('./QuoteStatusCard', () => ({
 vi.mock('./CalculatorPreviewDetails', () => ({
   default: ({ view }: { view: string }) => <div data-testid={`preview-details-${view}`}>{view}</div>,
 }));
+vi.mock('./CalculatorRafterExplanation', () => ({
+  default: ({ moduleLabel }: { moduleLabel: string }) => (
+    <div data-testid="rafter-explanation">{moduleLabel}</div>
+  ),
+}));
 
 function buildProps(
   overrides: Partial<CalculatorResultInspectorProps> = {},
@@ -56,6 +61,11 @@ function buildProps(
       ],
     },
     previewDetails: {} as CalculatorResultInspectorProps['previewDetails'],
+    rafterExplanation: {
+      moduleLabel: 'Pergola 1 / Module 1',
+      explanation: null,
+      resultFreshness: 'current',
+    },
     ...overrides,
   };
 }
@@ -96,6 +106,7 @@ describe('CalculatorResultInspector', () => {
 
     act(() => tab('Workings').click());
     expect(document.querySelector('[data-testid="module-views"]')?.closest('[role="tabpanel"]')?.hasAttribute('hidden')).toBe(false);
+    expect(document.querySelector('[data-testid="rafter-explanation"]')?.textContent).toBe('Pergola 1 / Module 1');
     expect(document.querySelector('[data-testid="preview-details-workings"]')?.closest('[role="tabpanel"]')?.hasAttribute('hidden')).toBe(false);
 
     act(() => tab('Issues').click());

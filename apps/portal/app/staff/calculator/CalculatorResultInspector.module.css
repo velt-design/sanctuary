@@ -143,9 +143,22 @@
   display: none;
 }
 
+.trustedWorking {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
 @container calculator-page (max-width: 1119px) {
   .stickyHeader {
     position: static;
+  }
+}
+
+@container calculator-preview-rail (min-width: 760px) {
+  .trustedWorking {
+    grid-template-columns: minmax(320px, 0.9fr) minmax(380px, 1.1fr);
+    align-items: start;
   }
 }
 

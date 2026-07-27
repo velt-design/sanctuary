@@ -299,53 +299,57 @@ export function sectionRafterPlumbCutDropM(model: ModuleSectionModel): number {
 }
 
 
-function sectionRafterPreCutAllowanceM(model: ModuleSectionModel): number {
-  const pitchRad = (Math.max(0, Math.min(85, model.pitchDeg)) * Math.PI) / 180;
-  const tanPitch = Math.max(0, Math.tan(pitchRad));
-  const allowancePerEnd = Math.max(0, model.rafterWidthM) * tanPitch;
-  return allowancePerEnd * 2;
-}
-
-
-function sectionMonoRafterCutLengthM(model: ModuleSectionModel): number {
-  const startM = sectionRafterBearingStartM(model);
-  const endM = sectionRafterBearingEndM(model);
-  const runM = Math.max(0.01, endM - startM);
-  const houseTopM = model.leftEdgeHeightM + sectionLedgerBeamDepthM(model);
-  const outerTopM = sectionOuterGutterUndersideM(model) + model.gutterDepthM;
-  const finishedCutLengthM = Math.hypot(runM, outerTopM - houseTopM);
-  return finishedCutLengthM + sectionRafterPreCutAllowanceM(model);
-}
-
-
-function sectionGableRafterCutLengthsM(model: ModuleSectionModel): { leftM: number; rightM: number } | null {
-  if (model.sectionKind !== 'gable' || typeof model.ridgeHeightM !== 'number' || !Number.isFinite(model.ridgeHeightM)) return null;
-
-  const ridgeWidthM = sectionRidgeBeamWidthM(model);
-  const eaveWidthM = memberSizeM(model.gutterWidthM, 0.1);
-  const leftRunM = Math.max(0.01, model.spanA / 2 - eaveWidthM - ridgeWidthM / 2);
-  const rightRunM = Math.max(0.01, model.spanA / 2 - eaveWidthM - ridgeWidthM / 2);
-  const plumbCutDropM = sectionRafterPlumbCutDropM(model);
-  const leftRafterUnderM = model.leftEdgeHeightM + model.gutterDepthM - plumbCutDropM;
-  const rightRafterUnderM = model.rightEdgeHeightM + model.gutterDepthM - plumbCutDropM;
-  const preCutAllowanceM = sectionRafterPreCutAllowanceM(model);
-  const leftM = Math.hypot(leftRunM, model.ridgeHeightM - leftRafterUnderM) + preCutAllowanceM;
-  const rightM = Math.hypot(rightRunM, model.ridgeHeightM - rightRafterUnderM) + preCutAllowanceM;
-  return { leftM, rightM };
-}
-
-
 export function sectionRafterCutLengthLabel(model: ModuleSectionModel): string | null {
-  if (model.sectionKind === 'mono') {
-    return `Rafter length: ${formatMetresPrecise(sectionMonoRafterCutLengthM(model))}`;
+  const explanation = model.rafterCutLengthExplanation;
+  if (!explanation || explanation.status !== 'ready' || explanation.planes.length === 0) {
+    return null;
   }
 
-  const gableCuts = sectionGableRafterCutLengthsM(model);
-  if (!gableCuts) return null;
-  if (Math.abs(gableCuts.leftM - gableCuts.rightM) <= 0.01) {
-    return `Rafter length: ${formatMetresPrecise((gableCuts.leftM + gableCuts.rightM) / 2)} ea`;
+  if (explanation.planes.length === 1) {
+    const item = explanation.planes[0]!;
+    return `Rafter cut: ${formatMetresPrecise(item.cut_length_m)}${item.diagram_side === 'both' ? ' ea' : ''}`;
   }
-  return `Rafter length: L ${formatMetresPrecise(gableCuts.leftM)} / R ${formatMetresPrecise(gableCuts.rightM)}`;
+
+  const house = explanation.planes.find((item) => item.diagram_side === 'left');
+  const outer = explanation.planes.find((item) => item.diagram_side === 'right');
+  if (!house || !outer) return null;
+  if (Math.abs(house.cut_length_m - outer.cut_length_m) <= 0.001) {
+    return `Rafter cut: ${formatMetresPrecise((house.cut_length_m + outer.cut_length_m) / 2)} ea`;
+  }
+  return `Rafter cut: House ${formatMetresPrecise(house.cut_length_m)} / Outer ${formatMetresPrecise(outer.cut_length_m)}`;
+}
+
+
+export function sectionRafterDimensionLabel(
+  model: ModuleSectionModel,
+  diagramIndex: number,
+  schematicLengthM: number,
+): { label: string; cutLengthM: number | null } {
+  const explanation = model.rafterCutLengthExplanation;
+  if (!explanation || explanation.status !== 'ready') {
+    return {
+      label: `Slope ${formatMetres(schematicLengthM)}`,
+      cutLengthM: null,
+    };
+  }
+
+  const side = diagramIndex === 0 ? 'left' : 'right';
+  const plane =
+    explanation.planes.find((item) => item.diagram_side === side) ??
+    explanation.planes.find((item) => item.diagram_side === 'both') ??
+    explanation.planes.find((item) => item.diagram_side === 'single') ??
+    explanation.planes[diagramIndex];
+  if (!plane) {
+    return {
+      label: `Slope ${formatMetres(schematicLengthM)}`,
+      cutLengthM: null,
+    };
+  }
+
+  return {
+    label: `Cut ${formatMetresPrecise(plane.cut_length_m)}`,
+    cutLengthM: plane.cut_length_m,
+  };
 }
 
 
@@ -640,8 +644,9 @@ function measureSectionAnnotatedBounds(input: {
     yRidgeBeamTop !== null ? boundsFromRect(ridgeX - ridgeBeamWidth / 2, yRidgeBeamTop, ridgeBeamWidth, Math.max(0.2, yRidgeUnder! - yRidgeBeamTop)) : null,
     monoSupportSplice ? boundsFromLine(xSupport, monoSupportSplice.yTop, xSupport, monoSupportSplice.yUnder, 0.2) : null,
     model.sectionKind === 'mono' ? boundsFromRect(xRight - gutterWidth, gutterTopY, gutterWidth, Math.max(0.2, yOuterGutterUnder - gutterTopY)) : null,
-    ...roofTopLengthDims.flatMap((roofDim) => {
+    ...roofTopLengthDims.flatMap((roofDim, roofDimIndex) => {
       const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
+      const dimension = sectionRafterDimensionLabel(model, roofDimIndex, roofDim.lengthM);
       return [
         boundsFromLine(roofDim.topStart.x, roofDim.topStart.y, roofDim.dimStart.x, roofDim.dimStart.y, 0.2),
         boundsFromLine(roofDim.topEnd.x, roofDim.topEnd.y, roofDim.dimEnd.x, roofDim.dimEnd.y, 0.2),
@@ -650,7 +655,7 @@ function measureSectionAnnotatedBounds(input: {
           y1: roofDim.dimStart.y,
           x2: roofDim.dimEnd.x,
           y2: roofDim.dimEnd.y,
-          label: formatMetres(roofDim.lengthM),
+          label: dimension.label,
           textX: (roofDim.dimStart.x + roofDim.dimEnd.x) / 2 - roofNormal.nx * (1.4 + roofLengthLabelGap),
           textY: (roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - roofNormal.ny * 1.4,
           presentation,

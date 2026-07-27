@@ -1,0 +1,267 @@
+.card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  padding: 14px;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+}
+
+.header,
+.planeHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow,
+.module,
+.planeScope {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.eyebrow {
+  margin-bottom: 3px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.title,
+.planeTitle {
+  margin: 0;
+  color: var(--ui-text-strong);
+}
+
+.title {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.module {
+  margin-top: 4px;
+}
+
+.freshnessCurrent,
+.freshnessRetained {
+  flex: 0 0 auto;
+  border: var(--ui-border-width) solid var(--ui-status-success-border);
+  border-radius: var(--ui-radius-control);
+  padding: 5px 7px;
+  background: var(--ui-status-success-bg);
+  color: var(--ui-status-success-border);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.freshnessRetained {
+  border-color: var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-status-warning-border);
+}
+
+.staleNotice,
+.unavailable {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  border-radius: var(--ui-radius-control);
+  padding: 10px;
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.context > div {
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: 8px;
+  background: var(--ui-surface-secondary);
+}
+
+.context dt {
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.context dd {
+  margin: 3px 0 0;
+  color: var(--ui-text-strong);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.formula {
+  display: grid;
+  gap: 5px;
+  border-left: 3px solid var(--ui-action);
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--ui-action) 7%, var(--ui-surface-secondary));
+}
+
+.formula span {
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.formula code,
+.assumptions code {
+  overflow-wrap: anywhere;
+  color: var(--ui-text-strong);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.planes {
+  display: grid;
+  gap: 10px;
+}
+
+.plane {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  padding: 10px;
+  background: var(--ui-canvas);
+}
+
+.planeTitle {
+  font-size: 13px;
+}
+
+.planeScope {
+  margin-top: 3px;
+}
+
+.result {
+  display: grid;
+  justify-items: end;
+  flex: 0 0 auto;
+}
+
+.result span,
+.result small {
+  color: var(--ui-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.result strong {
+  margin-top: 2px;
+  color: var(--ui-action);
+  font-size: 17px;
+}
+
+.steps {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: rafter-step;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  counter-increment: rafter-step;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.steps li span::before {
+  content: counter(rafter-step) ". ";
+  font-weight: 750;
+}
+
+.steps li strong {
+  color: var(--ui-text-strong);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.steps .keyStep {
+  color: var(--ui-text-strong);
+  font-weight: 700;
+}
+
+.steps .finalStep {
+  border-top-color: var(--ui-action);
+  color: var(--ui-text-strong);
+  font-weight: 750;
+}
+
+.steps .finalStep strong {
+  color: var(--ui-action);
+}
+
+.assumptions {
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  padding-top: 10px;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+}
+
+.assumptions summary {
+  color: var(--ui-text-strong);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.assumptions ul {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0;
+  padding-left: 18px;
+}
+
+.assumptions p {
+  margin: 0;
+}
+
+@container calculator-preview-rail (max-width: 460px) {
+  .header,
+  .planeHeading {
+    flex-direction: column;
+  }
+
+  .result {
+    justify-items: start;
+  }
+
+  .steps li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .steps li strong {
+    text-align: left;
+    white-space: normal;
+  }
+}

@@ -121,6 +121,8 @@ export function useCalculatorResultPresentation({
     () => buildModuleSectionModel(activeModule, moduleResult),
     [activeModule, moduleResult],
   );
+  const rafterCutLengthExplanation =
+    moduleResult?.derived.rafter_cut_length_explanation ?? null;
   const canEditActiveHouseFootprint = canEditHouseFootprintPlan(modulePlanModel);
   const activeViewHasModel = moduleViewsTab === 'plan'
     ? Boolean(modulePlanModel)
@@ -340,6 +342,7 @@ export function useCalculatorResultPresentation({
     moduleResult,
     modulePlanModel,
     moduleSectionModel,
+    rafterCutLengthExplanation,
     canEditActiveHouseFootprint,
     moduleViewsStatus,
     moduleViewsStatusDetail,

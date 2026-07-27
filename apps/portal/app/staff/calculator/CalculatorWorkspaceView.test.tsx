@@ -58,6 +58,11 @@ function buildProps(overrides: Partial<CalculatorWorkspaceViewProps> = {}): Calc
     priceImpact: {} as CalculatorWorkspaceViewProps['priceImpact'],
     quoteStatus: { items: [] } as CalculatorWorkspaceViewProps['quoteStatus'],
     previewDetails: {} as CalculatorWorkspaceViewProps['previewDetails'],
+    rafterExplanation: {
+      moduleLabel: 'Pergola 1 / Module 1',
+      explanation: null,
+      resultFreshness: 'current',
+    },
     infillWorkspace: {} as CalculatorWorkspaceViewProps['infillWorkspace'],
     saveDialogs: {} as CalculatorWorkspaceViewProps['saveDialogs'],
     saveOutcome: {} as CalculatorWorkspaceViewProps['saveOutcome'],

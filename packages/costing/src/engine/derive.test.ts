@@ -163,3 +163,149 @@ describe('rafter_cut_length_m takeoff (edge allowances + LengthA)', () => {
     expect(result.derived.rafter_cut_length_m).toBeCloseTo(Math.max(expectedHouse, expectedOuter), 6);
   });
 });
+
+describe('rafter cut-length explanation contract', () => {
+  it('publishes pitched inputs, deductions, intermediate values, formula, and final cut from the takeoff facts', () => {
+    const result = normalizeAndDeriveV1(
+      {
+        ...baseInputs,
+        pergola_style: 'pitched',
+        roof_pitch_deg: 30,
+        projection_m: 3,
+        overrides: { rafter_profile: '150x50' },
+      },
+      loadCostingConfigV1(),
+    );
+
+    const explanation = result.derived.rafter_cut_length_explanation;
+    expect(explanation).toMatchObject({
+      version: 1,
+      status: 'ready',
+      source: '@sp/costing/engine/rafter-takeoff-v1',
+      roof_type: 'pitched',
+      entered_span_m: 3,
+      pitch_deg_used: 30,
+      rafter_profile: '150x50',
+      formula: 'cut length = effective projected run / cos(pitch) + angle-cut allowance',
+      rounding: {
+        display_increment_mm: 1,
+        method: 'nearest',
+        engine_values: 'unrounded',
+      },
+    });
+    expect(explanation?.planes).toHaveLength(1);
+    expect(explanation?.planes[0]).toMatchObject({
+      id: 'single',
+      base_projected_run_m: 3,
+      effective_projected_run_m: 2.85,
+      deductions: [
+        { id: 'house_edge', value_m: 0.05 },
+        { id: 'outer_edge', value_m: 0.1 },
+      ],
+    });
+    expect(explanation?.planes[0]?.sloped_length_before_allowance_m).toBeCloseTo(
+      2.85 / Math.cos(Math.PI / 6),
+      8,
+    );
+    expect(explanation?.planes[0]?.cut_length_m).toBeCloseTo(
+      result.derived.rafter_cut_length_m,
+      8,
+    );
+  });
+
+  it('publishes distinct house and outer gable planes without averaging them', () => {
+    const result = normalizeAndDeriveV1(
+      {
+        ...baseInputs,
+        pergola_style: 'gable',
+        roof_pitch_deg: 30,
+        projection_m: 5.55,
+        gable_house_edge_gutter: 'house',
+        gable_outer_edge_gutter: 'our',
+        overrides: {
+          rafter_profile: '150x50',
+          ridge_beam_profile: '100x50',
+          front_beam_profile: 'SP Gutter',
+        },
+      },
+      loadCostingConfigV1(),
+    );
+
+    const explanation = result.derived.rafter_cut_length_explanation;
+    expect(explanation?.status).toBe('ready');
+    expect(explanation?.planes.map((item) => item.id)).toEqual(['house', 'outer']);
+    expect(explanation?.planes[0]?.diagram_side).toBe('left');
+    expect(explanation?.planes[1]?.diagram_side).toBe('right');
+    expect(explanation?.planes[0]?.cut_length_m).toBeCloseTo(
+      result.derived.rafter_cut_length_house_side_m ?? 0,
+      8,
+    );
+    expect(explanation?.planes[1]?.cut_length_m).toBeCloseTo(
+      result.derived.rafter_cut_length_outer_side_m ?? 0,
+      8,
+    );
+    expect(explanation?.planes[0]?.cut_length_m).not.toBe(
+      explanation?.planes[1]?.cut_length_m,
+    );
+  });
+
+  it.each([
+    { style: 'hip' as const, expectedPlane: 'common' },
+    { style: 'pitched' as const, expectedPlane: 'single' },
+    { style: 'gable' as const, expectedPlane: 'house' },
+  ])('supports $style modules with an authoritative plane result', ({ style, expectedPlane }) => {
+    const result = normalizeAndDeriveV1(
+      { ...baseInputs, pergola_style: style, projection_m: 4, roof_pitch_deg: 20 },
+      loadCostingConfigV1(),
+    );
+
+    expect(result.derived.rafter_cut_length_explanation?.status).toBe('ready');
+    expect(result.derived.rafter_cut_length_explanation?.planes[0]?.id).toBe(expectedPlane);
+  });
+
+  it('uses the engine-selected box-perimeter pitch and records that assumption', () => {
+    const result = normalizeAndDeriveV1(
+      {
+        ...baseInputs,
+        pergola_style: 'box_perimeter',
+        box_perimeter_enabled: true,
+        internal_roof_type: 'low_gable',
+        projection_m: 3,
+      },
+      loadCostingConfigV1(),
+    );
+
+    const explanation = result.derived.rafter_cut_length_explanation;
+    expect(explanation?.roof_type).toBe('low_gable');
+    expect(explanation?.pitch_deg_used).toBe(result.derived.roof_pitch_deg_used);
+    expect(explanation?.assumptions.join(' ')).toContain('Box-perimeter pitch');
+    expect(explanation?.planes).toHaveLength(2);
+  });
+
+  it('fails closed for a zero effective run and for the unsupported hip-corner Section', () => {
+    const invalid = normalizeAndDeriveV1(
+      { ...baseInputs, pergola_style: 'pitched', projection_m: 0.1 },
+      loadCostingConfigV1(),
+    );
+    expect(invalid.derived.rafter_cut_length_explanation).toMatchObject({
+      status: 'invalid_input',
+      planes: [{ effective_projected_run_m: 0 }],
+    });
+
+    const hipCorner = normalizeAndDeriveV1(
+      {
+        ...baseInputs,
+        pergola_style: 'hip_corner',
+        projection_m: 3,
+        hip_corner: { length_b_m: 2.5, projection_b_m: 2 },
+      },
+      loadCostingConfigV1(),
+    );
+    expect(hipCorner.derived.rafter_cut_length_explanation).toMatchObject({
+      status: 'unsupported_roof',
+      planes: [],
+      unavailable_reason:
+        'Hip-corner modules require a two-wing explanation and are not represented by one Section cut.',
+    });
+  });
+});

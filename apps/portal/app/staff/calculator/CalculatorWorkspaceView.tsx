@@ -33,6 +33,7 @@ export type CalculatorWorkspaceViewProps = {
   priceImpact: CalculatorResultInspectorProps['priceImpact'];
   quoteStatus: CalculatorResultInspectorProps['quoteStatus'];
   previewDetails: CalculatorResultInspectorProps['previewDetails'];
+  rafterExplanation: CalculatorResultInspectorProps['rafterExplanation'];
   infillWorkspace: CalculatorInfillWorkspaceProps;
   saveDialogs: ComponentProps<typeof CalculatorSaveDialogs>;
   saveOutcome: ComponentProps<typeof CalculatorSaveOutcomeDialog>;
@@ -54,6 +55,7 @@ export default function CalculatorWorkspaceView({
   priceImpact,
   quoteStatus,
   previewDetails,
+  rafterExplanation,
   infillWorkspace,
   saveDialogs,
   saveOutcome,
@@ -118,6 +120,7 @@ export default function CalculatorWorkspaceView({
               priceImpact={priceImpact}
               quoteStatus={quoteStatus}
               previewDetails={previewDetails}
+              rafterExplanation={rafterExplanation}
             />
           </aside>
         </div>

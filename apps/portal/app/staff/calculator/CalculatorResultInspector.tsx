@@ -16,6 +16,7 @@ import CalculatorPreviewDetails, {
 import CalculatorPricingSummary, {
   type CalculatorPricingSummaryProps,
 } from './CalculatorPricingSummary';
+import CalculatorRafterExplanation from './CalculatorRafterExplanation';
 import styles from './CalculatorResultInspector.module.css';
 import ModuleViewsCard from './ModuleViewsCard';
 import PriceImpactPanel from './PriceImpactPanel';
@@ -36,6 +37,7 @@ export type CalculatorResultInspectorProps = {
   priceImpact: ComponentProps<typeof PriceImpactPanel> | null;
   quoteStatus: ComponentProps<typeof QuoteStatusCard>;
   previewDetails: Omit<CalculatorPreviewDetailsProps, 'view'>;
+  rafterExplanation: ComponentProps<typeof CalculatorRafterExplanation>;
 };
 
 const TABS: Array<{ id: CalculatorResultInspectorTab; label: string }> = [
@@ -73,6 +75,7 @@ export default function CalculatorResultInspector({
   priceImpact,
   quoteStatus,
   previewDetails,
+  rafterExplanation,
 }: CalculatorResultInspectorProps) {
   const [activeTab, setActiveTab] = useState<CalculatorResultInspectorTab>('pricing');
   const tabSetId = useId();
@@ -199,7 +202,10 @@ export default function CalculatorResultInspector({
         aria-labelledby={`${tabSetId}-workings-tab`}
         hidden={activeTab !== 'workings'}
       >
-        <ModuleViewsCard {...moduleViews} />
+        <div className={styles.trustedWorking}>
+          <ModuleViewsCard {...moduleViews} />
+          <CalculatorRafterExplanation {...rafterExplanation} />
+        </div>
         <CalculatorPreviewDetails {...previewDetails} view="workings" />
       </div>
 

@@ -28,6 +28,7 @@ import {
   sectionMonoRafterUndersideAtM,
   sectionOuterGutterUndersideM,
   sectionOverhangM,
+  sectionRafterDimensionLabel,
   sectionRafterPlumbCutDropM,
   sectionRidgeBeamDepthM,
   sectionRidgeBeamWidthM,
@@ -509,28 +510,37 @@ export function SectionSvg({
         />
       ) : null}
 
-      {roofTopLengthDims.map((roofDim, idx) => (
-        <g key={`roof-top-len-${idx}`}>
-          <line x1={roofDim.topStart.x} y1={roofDim.topStart.y} x2={roofDim.dimStart.x} y2={roofDim.dimStart.y} className={styles.moduleDimWitness} />
-          <line x1={roofDim.topEnd.x} y1={roofDim.topEnd.y} x2={roofDim.dimEnd.x} y2={roofDim.dimEnd.y} className={styles.moduleDimWitness} />
-          <TickDimension
-            x1={roofDim.dimStart.x}
-            y1={roofDim.dimStart.y}
-            x2={roofDim.dimEnd.x}
-            y2={roofDim.dimEnd.y}
-            label={formatMetres(roofDim.lengthM)}
-            textX={(() => {
-              const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
-              return (roofDim.dimStart.x + roofDim.dimEnd.x) / 2 - roofNormal.nx * (isSheet ? 1.4 : 1.1);
-            })() - (segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y).nx * roofLengthLabelGap)}
-            textY={(() => {
-              const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
-              return (roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - roofNormal.ny * (isSheet ? 1.4 : 1.1);
-            })()}
-            presentation={presentation}
-          />
-        </g>
-      ))}
+      {roofTopLengthDims.map((roofDim, idx) => {
+        const dimension = sectionRafterDimensionLabel(model, idx, roofDim.lengthM);
+        return (
+          <g
+            key={`roof-top-len-${idx}`}
+            data-rafter-dimension-source={dimension.cutLengthM === null ? 'schematic' : 'costing'}
+            data-rafter-cut-length-mm={
+              dimension.cutLengthM === null ? undefined : Math.round(dimension.cutLengthM * 1000)
+            }
+          >
+            <line x1={roofDim.topStart.x} y1={roofDim.topStart.y} x2={roofDim.dimStart.x} y2={roofDim.dimStart.y} className={styles.moduleDimWitness} />
+            <line x1={roofDim.topEnd.x} y1={roofDim.topEnd.y} x2={roofDim.dimEnd.x} y2={roofDim.dimEnd.y} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={roofDim.dimStart.x}
+              y1={roofDim.dimStart.y}
+              x2={roofDim.dimEnd.x}
+              y2={roofDim.dimEnd.y}
+              label={dimension.label}
+              textX={(() => {
+                const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
+                return (roofDim.dimStart.x + roofDim.dimEnd.x) / 2 - roofNormal.nx * (isSheet ? 1.4 : 1.1);
+              })() - (segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y).nx * roofLengthLabelGap)}
+              textY={(() => {
+                const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
+                return (roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - roofNormal.ny * (isSheet ? 1.4 : 1.1);
+              })()}
+              presentation={presentation}
+            />
+          </g>
+        );
+      })}
 
       {model.boxPerimeterEnabled ? (
         <>

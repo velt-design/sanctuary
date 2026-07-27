@@ -1,4 +1,10 @@
-import type { AttachmentSide, CostOutputV1, RoofType, SlopeDirection } from '@sp/costing';
+import type {
+  AttachmentSide,
+  CostOutputV1,
+  RafterCutLengthExplanationV1,
+  RoofType,
+  SlopeDirection,
+} from '@sp/costing';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
@@ -147,6 +153,7 @@ export type ModuleSectionModel = {
   rightEdgeHeightM: number;
   ridgeHeightM: number | null;
   boxRiseM: number | null;
+  rafterCutLengthExplanation?: RafterCutLengthExplanationV1 | null;
   houseContext?: ModuleSectionHouseContext | null;
 };
 
@@ -1159,6 +1166,7 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
     rightEdgeHeightM: heights.rightEdgeHeightM,
     ridgeHeightM: heights.ridgeHeightM,
     boxRiseM: toPositiveNumber(derived?.box_rise_mm) ? Number(derived.box_rise_mm) / 1000 : null,
+    rafterCutLengthExplanation: derived?.rafter_cut_length_explanation ?? null,
   };
 }
 
@@ -1211,6 +1219,7 @@ function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectio
     rightEdgeHeightM: heights.rightEdgeHeightM,
     ridgeHeightM: heights.ridgeHeightM,
     boxRiseM: null,
+    rafterCutLengthExplanation: null,
   };
 }
 

@@ -229,6 +229,14 @@ Acrylic and joiner downslope length use the same physical driver:
 
 `effective_run_m` excludes house and gutter setbacks.
 
+## Rafter Cut-Length Explanation Contract
+
+`DerivedV1.rafter_cut_length_explanation` is the Calculator V1 trust contract for common-rafter cut length. It is emitted by the same `@sp/costing` derivation that owns `rafter_run_m_takeoff`, `rafter_cut_length_m`, and the separate gable-side fields. It contains the normalized entered span, engine-selected pitch, resolved rafter profile/count, plane-specific deductions, effective projected run, sloped length before allowance, angle-cut allowance, final cut, formula label, assumptions, source, and nearest-millimetre display rule. Numeric engine facts remain unrounded metres.
+
+Pitched roofs expose one plane. Gable and low-gable roofs expose separate house and outer planes. Hip roofs expose the common-rafter result for both planes and explicitly exclude the separately derived diagonal hip rafters. Hip-corner modules fail closed because one Section cannot accurately explain both wings.
+
+Calculator written workings and trusted Section annotations consume this contract directly. Portal drawing code may position and format those facts, but it must not recompute rafter cut length. Input-fallback drawings may show a clearly labelled schematic slope only; they must not claim an authoritative cut result.
+
 ## Acrylic Sheet Rounding
 
 Roof-cladding sheet-mode acrylic quantity is computed from total acrylic area, then rounded once:

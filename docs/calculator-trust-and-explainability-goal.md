@@ -122,12 +122,17 @@ The first phase is implemented:
 - existing admin and Advanced-mode disclosure boundaries remain unchanged;
 - the tab strip scrolls at narrow preview widths, while stacked calculator layouts retain their existing page-owned scrolling.
 
-### 2. Build One Trusted Working End To End
+### 2. Build One Trusted Working End To End - Complete
 
-- Use rafter cut length as the reference calculation.
-- Define an authoritative explanation contract containing inputs, intermediate values, result, units, assumptions, and source.
-- Render an accurate annotated Section diagram from those same facts.
-- Prove the visual result and written calculation agree across supported roof styles and edge cases.
+The rafter cut-length reference implementation is complete:
+
+- `@sp/costing` publishes a versioned explanation contract beside the existing takeoff result, containing the normalized span, engine-selected pitch, profile, plane-specific deductions, effective projected run, sloped length, angle-cut allowance, final cut, formula, assumptions, source, and display-rounding rule;
+- pitched, gable, low-gable, and hip common rafters are supported, including separate house/outer gable results and box-perimeter pitch selection;
+- invalid effective runs and hip-corner modules fail closed rather than presenting inferred workings; hip corners remain deferred until a two-wing Section explanation exists;
+- the Workings tab presents the selected module's authoritative input-to-result chain and labels retained last-valid inputs explicitly;
+- the Section diagram and written workings consume the same contract values, while input-fallback and old results are labelled as schematic or unavailable;
+- the former portal-only rafter-length estimate, whose deductions and angle allowance differed from the engine takeoff, has been removed;
+- package, integration, component, and authenticated browser tests prove plane-value parity, module switching, current/retained state, keyboard-accessible regions, and responsive layouts.
 
 ### 3. Turn Breakdowns Into Explanations
 

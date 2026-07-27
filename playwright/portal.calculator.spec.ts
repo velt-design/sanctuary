@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 import { openPortalPage, withPortalBrowserEvidence } from './support/portalAgent';
 import {
@@ -109,6 +109,7 @@ async function expectPreviewHierarchy(page: Page, expectModuleViewInViewport: bo
 
   await inspector.getByRole('tab', { name: 'Workings', exact: true }).click();
   await expect(inspector.getByRole('region', { name: 'Module views' })).toBeVisible();
+  await expect(inspector.getByRole('region', { name: 'Rafter cut length workings' })).toBeVisible();
   if (expectModuleViewInViewport) {
     await expect(inspector.getByRole('region', { name: 'Module views' })).toBeInViewport();
   }
@@ -118,6 +119,37 @@ async function expectPreviewHierarchy(page: Page, expectModuleViewInViewport: bo
   await expect(inspector.getByRole('region', { name: 'Warnings' })).toBeVisible();
 
   await inspector.getByRole('tab', { name: 'Pricing', exact: true }).click();
+}
+
+async function openTrustedRafterWorking(page: Page) {
+  const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
+  await inspector.getByRole('tab', { name: 'Workings', exact: true }).click();
+  const moduleViews = inspector.getByRole('region', { name: 'Module views' });
+  await moduleViews.getByRole('tab', { name: 'Section', exact: true }).click();
+  await expect(moduleViews.getByRole('img', { name: 'Module section view' })).toBeVisible();
+
+  const working = inspector.getByRole('region', { name: 'Rafter cut length workings' });
+  await expect(working).toBeVisible();
+  await expect(working).toHaveAttribute('data-rafter-explanation-status', 'ready');
+  return { inspector, moduleViews, working };
+}
+
+async function expectDiagramAndWorkingParity(
+  moduleViews: Locator,
+  working: Locator,
+) {
+  const workingLengths = await working.locator('[data-rafter-plane]').evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-rafter-cut-length-mm')),
+  );
+  const diagramLengths = await moduleViews
+    .locator('[data-rafter-dimension-source="costing"]')
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-rafter-cut-length-mm')),
+    );
+
+  expect(workingLengths.length).toBeGreaterThan(0);
+  expect(diagramLengths.length).toBeGreaterThan(0);
+  expect(diagramLengths.every((value) => workingLengths.includes(value))).toBe(true);
 }
 
 function escapeRegExp(value: string): string {
@@ -181,6 +213,38 @@ test('calculator command bar loads a current seeded draft at 1600px', async ({ p
     await expect(itemPricing.getByText('Pergola 2', { exact: true })).toBeVisible();
     const exactItemTotal = parseCurrency(await itemPricing.locator('tfoot th').last().innerText());
     expect(customerInc).toBe(Math.round(exactItemTotal));
+  });
+});
+
+test('rafter workings use one authoritative fact across module switching and retained results', async ({ page }, testInfo) => {
+  await withCalculatorEvidence(page, testInfo, async () => {
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await clearPreviewSplitPreference(page);
+    await openCalculator(page);
+
+    const first = await openTrustedRafterWorking(page);
+    await expect(first.working).toHaveAttribute('data-result-freshness', 'current');
+    await expect(first.working).toContainText('@sp/costing/engine/rafter-takeoff-v1');
+    await expectDiagramAndWorkingParity(first.moduleViews, first.working);
+
+    await page.getByRole('button', { name: /Pergola 1 .* Module 2/ }).click();
+    await expect(first.working).toContainText(/Pergola 1 .* Module 2/);
+    await expect(first.working).toHaveAttribute('data-result-freshness', 'current');
+    await expectDiagramAndWorkingParity(first.moduleViews, first.working);
+
+    const roofSpan = page.getByLabel(/^Roof Span/);
+    const originalSpan = await roofSpan.inputValue();
+    await roofSpan.fill('');
+    await expect(first.working).toHaveAttribute('data-result-freshness', 'invalid');
+    await expect(first.working).toContainText('may not match unsaved edits');
+
+    await roofSpan.fill(originalSpan);
+    await expect(first.working).toHaveAttribute('data-result-freshness', 'current', {
+      timeout: 60_000,
+    });
+    await expectDiagramAndWorkingParity(first.moduleViews, first.working);
+    await first.working.scrollIntoViewIfNeeded();
+    await expect(first.working).toBeInViewport();
   });
 });
 
