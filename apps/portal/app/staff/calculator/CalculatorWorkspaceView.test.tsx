@@ -9,14 +9,21 @@ vi.mock('./CalculatorModuleNavigator', () => ({ default: () => <div data-testid=
 vi.mock('./CalculatorPricingSummary', () => ({ default: () => <div data-testid="pricing-summary" /> }));
 vi.mock('./CalculatorJobTemplatePicker', () => ({ default: () => <div data-testid="job-template" /> }));
 vi.mock('./CalculatorConfigurationForm', () => ({ default: () => <div data-testid="configuration-form" /> }));
-vi.mock('./CalculatorItemPricingBreakdown', () => ({ default: () => <div data-testid="pricing-breakdown" /> }));
-vi.mock('./CalculatorActualCostReview', () => ({
-  default: ({ estimateId }: { estimateId: string }) => <div data-testid="actual-cost">{estimateId}</div>,
+vi.mock('./CalculatorResultInspector', () => ({
+  default: ({
+    actualCostEstimateId,
+    priceImpact,
+  }: {
+    actualCostEstimateId: string | null;
+    priceImpact: unknown;
+  }) => (
+    <div
+      data-testid="result-inspector"
+      data-actual-cost-estimate-id={actualCostEstimateId ?? ''}
+      data-has-price-impact={priceImpact ? 'true' : 'false'}
+    />
+  ),
 }));
-vi.mock('./ModuleViewsCard', () => ({ default: () => <div data-testid="module-views" /> }));
-vi.mock('./PriceImpactPanel', () => ({ default: () => <div data-testid="price-impact" /> }));
-vi.mock('./QuoteStatusCard', () => ({ default: () => <div data-testid="quote-status" /> }));
-vi.mock('./CalculatorPreviewDetails', () => ({ default: () => <div data-testid="preview-details" /> }));
 vi.mock('./CalculatorInfillWorkspace', () => ({ default: () => <div data-testid="infill-workspace" /> }));
 vi.mock('./CalculatorSaveDialogs', () => ({ default: () => <div data-testid="save-dialogs" /> }));
 vi.mock('./CalculatorSaveOutcomeDialog', () => ({ default: () => <div data-testid="save-outcome" /> }));
@@ -49,7 +56,7 @@ function buildProps(overrides: Partial<CalculatorWorkspaceViewProps> = {}): Calc
     actualCostEstimateId: 'estimate-1',
     moduleViews: {} as CalculatorWorkspaceViewProps['moduleViews'],
     priceImpact: {} as CalculatorWorkspaceViewProps['priceImpact'],
-    quoteStatus: {} as CalculatorWorkspaceViewProps['quoteStatus'],
+    quoteStatus: { items: [] } as CalculatorWorkspaceViewProps['quoteStatus'],
     previewDetails: {} as CalculatorWorkspaceViewProps['previewDetails'],
     infillWorkspace: {} as CalculatorWorkspaceViewProps['infillWorkspace'],
     saveDialogs: {} as CalculatorWorkspaceViewProps['saveDialogs'],
@@ -72,9 +79,9 @@ describe('CalculatorWorkspaceView', () => {
     expect(root?.tagName).toBe('MAIN');
     expect(root?.getAttribute('data-ui-density')).toBe('compact');
     expect(document.querySelector('[role="separator"]')?.getAttribute('aria-valuenow')).toBe('520');
-    expect(document.querySelectorAll('[data-testid="pricing-summary"]')).toHaveLength(2);
-    expect(document.querySelector('[data-testid="actual-cost"]')?.textContent).toBe('estimate-1');
-    expect(document.querySelector('[data-testid="price-impact"]')).not.toBeNull();
+    expect(document.querySelectorAll('[data-testid="pricing-summary"]')).toHaveLength(1);
+    expect(document.querySelector('[data-testid="result-inspector"]')?.getAttribute('data-actual-cost-estimate-id')).toBe('estimate-1');
+    expect(document.querySelector('[data-testid="result-inspector"]')?.getAttribute('data-has-price-impact')).toBe('true');
     expect(document.querySelector('[data-testid="project-picker"]')).not.toBeNull();
 
     rendered.unmount();
@@ -96,8 +103,8 @@ describe('CalculatorWorkspaceView', () => {
 
     expect(root?.tagName).toBe('SECTION');
     expect(document.querySelector('[aria-label="Preview outputs"]')?.getAttribute('data-result-freshness')).toBe('stale');
-    expect(document.querySelector('[data-testid="actual-cost"]')).toBeNull();
-    expect(document.querySelector('[data-testid="price-impact"]')).toBeNull();
+    expect(document.querySelector('[data-testid="result-inspector"]')?.getAttribute('data-actual-cost-estimate-id')).toBe('');
+    expect(document.querySelector('[data-testid="result-inspector"]')?.getAttribute('data-has-price-impact')).toBe('false');
     expect(document.querySelector('[data-testid="project-picker"]')).toBeNull();
 
     act(() => rendered.unmount());

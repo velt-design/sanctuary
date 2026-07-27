@@ -148,7 +148,7 @@ export default function CalculatorBlindsEditor({
         <button
           type="button"
           className={`${styles.infillSecondaryButton} ${styles.blindAddButton}`}
-          onClick={onAdd}
+          onClick={() => onAdd()}
         >
           Add blind
         </button>

@@ -7,7 +7,7 @@ import {
 import styles from './CalculatorPricingSummary.module.css';
 
 export type CalculatorPricingSummaryProps = {
-  variant?: 'full' | 'compact';
+  variant?: 'full' | 'compact' | 'inspector';
   resultFreshness: CalculatorResultFreshness;
   issuesCount: number;
   onOpenIssues: () => void;
@@ -82,6 +82,29 @@ export default function CalculatorPricingSummary({
     : unpricedItemCount > 0
       ? 'Customer price (priced items only, inc GST)'
       : 'Customer price (inc GST)';
+
+  if (variant === 'inspector') {
+    return (
+      <section
+        className={isLastValid ? `${styles.inspectorSummary} ${styles.inspectorSummaryStale}` : styles.inspectorSummary}
+        aria-label="Result overview"
+        data-pricing-summary-variant="inspector"
+        data-result-freshness={resultFreshness}
+      >
+        <div className={styles.inspectorPrimary}>
+          <span className={styles.inspectorLabel}>{customerPriceLabel}</span>
+          <strong className={styles.inspectorValue}>
+            {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalIncGstCents) : '\u2014'}
+          </strong>
+        </div>
+        <div className={styles.inspectorMeta}>
+          <span>{calculatorResultFreshnessLabel(resultFreshness)}</span>
+          <span>Ex GST {hasCustomerPricing ? formatCustomerPriceFromCents(customerTotalExGstCents) : '\u2014'}</span>
+          {quoteDiscountPct > 0 ? <span>{quoteDiscountPct}% discount</span> : null}
+        </div>
+      </section>
+    );
+  }
 
   if (variant === 'compact') {
     return (

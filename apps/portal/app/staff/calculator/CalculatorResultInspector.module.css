@@ -1,0 +1,174 @@
+.inspector {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 2px;
+  background: var(--ui-canvas);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.trustState {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.readiness,
+.readinessReview,
+.readinessBlocked,
+.issueButton {
+  min-height: 28px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: 5px 9px;
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.readiness {
+  border-color: var(--ui-status-success-border);
+  background: var(--ui-status-success-bg);
+  color: var(--ui-status-success-border);
+}
+
+.readinessReview {
+  border-color: var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-status-warning-border);
+}
+
+.readinessBlocked,
+.issueButton {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+  color: var(--ui-status-error-border);
+}
+
+.issueButton {
+  cursor: pointer;
+}
+
+.issueButton:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  padding: 3px;
+  background: var(--ui-surface-secondary);
+}
+
+.tab,
+.tabActive {
+  min-width: 0;
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--ui-radius-control);
+  padding: 7px 5px;
+  background: transparent;
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+  line-height: 1.1;
+  cursor: pointer;
+  text-align: center;
+}
+
+.tab:hover {
+  background: color-mix(in srgb, var(--ui-action) 8%, transparent);
+  color: var(--ui-text-strong);
+}
+
+.tabActive {
+  background: var(--ui-surface-inverse);
+  color: var(--ui-text-inverse);
+}
+
+.tab:focus-visible,
+.tabActive:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: 1px;
+}
+
+.panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+@container calculator-page (max-width: 1119px) {
+  .stickyHeader {
+    position: static;
+  }
+}
+
+@container calculator-preview-rail (max-width: 460px) {
+  .heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .trustState {
+    justify-content: flex-start;
+  }
+
+  .tabs {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .tab,
+  .tabActive {
+    flex: 1 0 82px;
+    min-height: 44px;
+  }
+}

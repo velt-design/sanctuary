@@ -91,16 +91,33 @@ async function expectVisualRefinementSurfaces(page: Page) {
 }
 
 async function expectPreviewHierarchy(page: Page, expectModuleViewInViewport: boolean) {
-  const order = await page
-    .locator(
-      '[aria-label="Pricing preview"], [aria-label="Module views"], [aria-label="Price impact"], [aria-label="Quote status"]',
-    )
-    .evaluateAll((elements) => elements.map((element) => element.getAttribute('aria-label')));
-  expect(order).toEqual(['Pricing preview', 'Module views', 'Price impact', 'Quote status']);
+  const inspector = page.getByRole('region', { name: 'Calculator result inspector' });
+  await expect(inspector).toBeVisible();
+  await expect(inspector.getByRole('region', { name: 'Result overview' })).toBeVisible();
 
+  const tabs = inspector.getByRole('tab');
+  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveText(['Pricing', 'Materials', 'Labour', 'Workings', 'Issues']);
+  await expect(inspector.getByRole('tab', { name: 'Pricing', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(inspector.getByRole('region', { name: 'Pricing preview' })).toBeVisible();
+
+  await inspector.getByRole('tab', { name: 'Materials', exact: true }).click();
+  await expect(inspector.getByRole('region', { name: 'Materials breakdown' })).toBeVisible();
+
+  await inspector.getByRole('tab', { name: 'Labour', exact: true }).click();
+  await expect(inspector.getByRole('region', { name: 'Labour breakdown' })).toBeVisible();
+
+  await inspector.getByRole('tab', { name: 'Workings', exact: true }).click();
+  await expect(inspector.getByRole('region', { name: 'Module views' })).toBeVisible();
   if (expectModuleViewInViewport) {
-    await expect(page.getByRole('region', { name: 'Module views' })).toBeInViewport();
+    await expect(inspector.getByRole('region', { name: 'Module views' })).toBeInViewport();
   }
+
+  await inspector.getByRole('tab', { name: 'Issues', exact: true }).click();
+  await expect(inspector.getByRole('region', { name: 'Quote status' })).toBeVisible();
+  await expect(inspector.getByRole('region', { name: 'Warnings' })).toBeVisible();
+
+  await inspector.getByRole('tab', { name: 'Pricing', exact: true }).click();
 }
 
 function escapeRegExp(value: string): string {

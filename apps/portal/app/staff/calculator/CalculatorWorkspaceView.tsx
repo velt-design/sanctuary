@@ -1,21 +1,18 @@
 import type { ComponentProps, ElementType } from 'react';
 
 import styles from './CalculatorGrid.module.css';
-import CalculatorActualCostReview from './CalculatorActualCostReview';
 import CalculatorCommandBar from './CalculatorCommandBar';
 import CalculatorConfigurationForm from './CalculatorConfigurationForm';
 import CalculatorInfillWorkspace, { type CalculatorInfillWorkspaceProps } from './CalculatorInfillWorkspace';
-import CalculatorItemPricingBreakdown from './CalculatorItemPricingBreakdown';
 import CalculatorJobTemplatePicker from './CalculatorJobTemplatePicker';
 import CalculatorModuleNavigator from './CalculatorModuleNavigator';
-import CalculatorPreviewDetails from './CalculatorPreviewDetails';
+import CalculatorResultInspector, {
+  type CalculatorResultInspectorProps,
+} from './CalculatorResultInspector';
 import CalculatorPricingSummary, { type CalculatorPricingSummaryProps } from './CalculatorPricingSummary';
 import CalculatorProjectPicker from './CalculatorProjectPicker';
 import CalculatorSaveDialogs from './CalculatorSaveDialogs';
 import CalculatorSaveOutcomeDialog from './CalculatorSaveOutcomeDialog';
-import ModuleViewsCard from './ModuleViewsCard';
-import PriceImpactPanel from './PriceImpactPanel';
-import QuoteStatusCard from './QuoteStatusCard';
 import {
   CALCULATOR_PREVIEW_SPLIT_RIGHT_MIN_PX,
   useCalculatorPreviewSplit,
@@ -30,12 +27,12 @@ export type CalculatorWorkspaceViewProps = {
   jobTemplatePicker: ComponentProps<typeof CalculatorJobTemplatePicker>;
   configurationForm: ComponentProps<typeof CalculatorConfigurationForm>;
   resultFreshness: ComponentProps<typeof CalculatorCommandBar>['resultFreshness'];
-  pricingPreview: ComponentProps<typeof CalculatorItemPricingBreakdown>['preview'];
-  actualCostEstimateId: string | null;
-  moduleViews: ComponentProps<typeof ModuleViewsCard>;
-  priceImpact: ComponentProps<typeof PriceImpactPanel> | null;
-  quoteStatus: ComponentProps<typeof QuoteStatusCard>;
-  previewDetails: ComponentProps<typeof CalculatorPreviewDetails>;
+  pricingPreview: CalculatorResultInspectorProps['pricingPreview'];
+  actualCostEstimateId: CalculatorResultInspectorProps['actualCostEstimateId'];
+  moduleViews: CalculatorResultInspectorProps['moduleViews'];
+  priceImpact: CalculatorResultInspectorProps['priceImpact'];
+  quoteStatus: CalculatorResultInspectorProps['quoteStatus'];
+  previewDetails: CalculatorResultInspectorProps['previewDetails'];
   infillWorkspace: CalculatorInfillWorkspaceProps;
   saveDialogs: ComponentProps<typeof CalculatorSaveDialogs>;
   saveOutcome: ComponentProps<typeof CalculatorSaveOutcomeDialog>;
@@ -113,18 +110,15 @@ export default function CalculatorWorkspaceView({
             aria-label="Preview outputs"
             data-result-freshness={resultFreshness}
           >
-            <div className={styles.previewSummary}>
-              <CalculatorPricingSummary {...pricingSummary} />
-              <CalculatorItemPricingBreakdown preview={pricingPreview} />
-              {actualCostEstimateId ? <CalculatorActualCostReview estimateId={actualCostEstimateId} /> : null}
-              <ModuleViewsCard {...moduleViews} />
-
-              {priceImpact ? <PriceImpactPanel {...priceImpact} /> : null}
-
-              <QuoteStatusCard {...quoteStatus} />
-            </div>
-
-            <CalculatorPreviewDetails {...previewDetails} />
+            <CalculatorResultInspector
+              pricingSummary={pricingSummary}
+              pricingPreview={pricingPreview}
+              actualCostEstimateId={actualCostEstimateId}
+              moduleViews={moduleViews}
+              priceImpact={priceImpact}
+              quoteStatus={quoteStatus}
+              previewDetails={previewDetails}
+            />
           </aside>
         </div>
       </div>

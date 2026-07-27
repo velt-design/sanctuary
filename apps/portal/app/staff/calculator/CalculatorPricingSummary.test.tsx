@@ -91,6 +91,25 @@ describe('CalculatorPricingSummary', () => {
     unmount();
   });
 
+  it('keeps the customer price and freshness concise in the inspector presentation', () => {
+    const { container, unmount } = renderIntoDocument(
+      <CalculatorPricingSummary
+        {...baseProps}
+        variant="inspector"
+        resultFreshness="stale"
+        quoteDiscountPct={5}
+      />,
+    );
+
+    expect(container.querySelector('[data-pricing-summary-variant="inspector"]')).not.toBeNull();
+    expect(container.textContent).toContain('Last valid customer price (inc GST)$18,138');
+    expect(container.textContent).toContain('Last valid result');
+    expect(container.textContent).toContain('Ex GST $15,772');
+    expect(container.textContent).toContain('5% discount');
+    expect(container.textContent).not.toContain('Internal costing');
+    unmount();
+  });
+
   it('opens existing issues from the pricing summary', () => {
     const onOpenIssues = vi.fn();
     const { container, unmount } = renderIntoDocument(

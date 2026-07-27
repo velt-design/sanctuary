@@ -55,7 +55,7 @@ describe('CalculatorBlindsEditor', () => {
 
     expect(onDuplicate).toHaveBeenCalledWith('blind-1');
     expect(onRemove).toHaveBeenCalledWith('blind-1');
-    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(onAdd).toHaveBeenCalledWith();
 
     const system = document.querySelector('#blind-fields-blind-1-system') as HTMLSelectElement;
     act(() => {

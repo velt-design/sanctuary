@@ -110,12 +110,17 @@ Every result presentation should follow these rules:
 
 ## Brief Pathway
 
-### 1. Establish The Result Inspector
+### 1. Establish The Result Inspector - Complete
 
-- Introduce the tabbed right-column structure.
-- Move existing Pricing, BOM, labour, structure, warning, and drawing outputs into their appropriate tabs.
-- Preserve current calculations, permissions, freshness, Save behavior, and responsive stacking.
-- Keep important price, freshness, issue count, and Save readiness visible while changing tabs.
+The first phase is implemented:
+
+- the right column is a keyboard-accessible Result Inspector with Pricing, Materials, Labour, Workings, and Issues tabs;
+- existing price, BOM, labour, structure, warning, quote-status, drawing, impact, and actual-cost surfaces are routed into their appropriate tab without changing their source data;
+- the inspector keeps a compact customer price, result freshness, input-issue count, and quote readiness above the tabs;
+- inactive panels remain mounted so tab changes do not discard local disclosure, drawing, debug, or actual-cost state;
+- Materials and Labour are explicitly labelled as whole-job output, while Workings follows the selected module;
+- existing admin and Advanced-mode disclosure boundaries remain unchanged;
+- the tab strip scrolls at narrow preview widths, while stacked calculator layouts retain their existing page-owned scrolling.
 
 ### 2. Build One Trusted Working End To End
 
