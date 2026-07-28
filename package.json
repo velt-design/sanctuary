@@ -71,6 +71,7 @@
     "test:jobs": "vitest run packages/jobs packages/email-provider test/background-jobs-migration.test.ts test/repo-security.test.ts",
     "test:email-provider": "vitest run packages/email-provider",
     "test:email-integrations": "vitest run apps/portal/lib/emails/sendTransactionalEmail.test.ts apps/portal/lib/backgroundJobs apps/portal/app/api/webhooks/resend apps/portal/app/api/staff/v1/email-previews apps/marketing/lib/email apps/marketing/app/api/contact apps/marketing/app/api/enquiry",
+    "test:commercial:db": "node scripts/test-commercial-workflow-db.mjs",
     "test:jobs:db": "node scripts/test-background-jobs-db.mjs",
     "test:jobs:db-contract": "vitest run test/background-jobs-migration.test.ts",
     "test:worker": "npm --prefix apps/worker run test",
@@ -87,6 +88,8 @@
     "test:portal:shell": "vitest run apps/portal/app/access-status apps/portal/app/dashboard apps/portal/app/error.test.tsx apps/portal/components/auth apps/portal/components/layout apps/portal/components/navigation apps/portal/components/page-state apps/portal/components/ui",
     "test:portal:smoke": "npm run portal:auth-runtime && npx playwright test playwright/portal.auth-routing.spec.ts --project=portal-chromium",
     "test:portal:performance": "npm run portal:auth-runtime && npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
+    "test:portal:commercial:staging": "node scripts/run-commercial-staging-smoke.mjs",
+    "test:portal:commercial:staging:browser": "npm run portal:auth-env && npx playwright test playwright/portal.commercial-workflow-staging.spec.ts --project=portal-chromium --workers=1 --no-deps",
     "portal:search-readiness": "node scripts/check-portal-search-readiness.mjs",
     "test:portal:search-performance": "npm run portal:search-readiness && npm run portal:auth-runtime && npx playwright test playwright/portal.search-performance.spec.ts --project=portal-chromium --no-deps",
     "test:portal:performance:capture": "npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
@@ -128,6 +131,7 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.4",
     "@eslint/js": "^9.13.0",
     "@playwright/test": "^1.58.2",
     "@sp/email-provider": "0.0.0",

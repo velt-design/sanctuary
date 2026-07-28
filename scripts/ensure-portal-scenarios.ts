@@ -355,6 +355,7 @@ async function seedProjectScenario(
   await upsertOrThrow(supabase, 'estimates', {
     id: estimateUuid,
     project_id: projectUuid,
+    client_intent_id: `${config.scenarioPrefix}:${scenarioId}:estimate`,
     status: 'draft',
     version: 1,
     created_by: 'portal-agent-scenario',
@@ -410,8 +411,12 @@ async function seedProjectScenario(
   await upsertOrThrow(supabase, 'quote_versions', {
     id: quoteVersionUuid,
     quote_id: quoteUuid,
+    client_intent_id: `${config.scenarioPrefix}:${scenarioId}:quote-v1`,
     version_number: 1,
     status: 'DRAFT',
+    is_current_draft: true,
+    commercial_revision: 1,
+    delivery_prepared_at: null,
     source_estimate_version_id: estimateUuid,
     created_by: 'portal-agent-scenario',
     reference: quoteRef,

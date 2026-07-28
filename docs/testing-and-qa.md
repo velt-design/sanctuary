@@ -264,10 +264,15 @@ npm run portal:side-effects
 Commercial-trust changes should also run the focused intent/audit/migration and route contracts before the broad gate:
 
 ```bash
+npm run test:commercial:db
 npx vitest run apps/portal/lib/commercial apps/portal/app/api/quotes/_lib apps/portal/app/api/projects/[projectId]/estimates/route.test.ts apps/portal/components/projects/ProjectPage/tabs/QuotesTab.test.tsx
 ```
 
-The commercial migration test is a static SQL contract only. Execute the forward migration against a disposable compatible PostgreSQL/Supabase instance before deployment; never use shared or production data as a test fixture. The focused commercial suite also proves that a missing recovery RPC preserves read-only quote detail, marks commercial actions unavailable, and returns an explicit `503` from delivery/recovery routes. Quote/invoice provider tests inject transport and must not send real email. Browser review may preview but must stop before send, public acceptance, or invoice delivery.
+`npm run test:commercial:db` executes the commercial bootstrap, trust migration, stale-conflict correction, and SQL contract in disposable in-process PGlite PostgreSQL 18. It proves rollback, atomic apply, idempotent replay, exact estimate/quote intents, revision conflicts, frozen delivery identity, acceptance/invoice idempotency, and service-role-only grants without reaching a shared database. The static migration test remains a complementary source-shape guard. Never use shared or production data as the disposable fixture.
+
+`npm run test:portal:commercial:staging` is the opt-in post-migration smoke. It refuses any linked Supabase project that is not positively identified as healthy staging, provisions one deterministic `.invalid` staff/scenario lane, strips provider email variables, starts an isolated portal on port 3002, and checks authenticated quote reads, a revision-safe update, immediate stale-write `409`, prepared-delivery recovery read, final persisted state, PDF artifact refresh without a swallowed server failure, and rendered Review & Send readiness. It must not call send/resend, public acceptance, invoice delivery, or any production target.
+
+The focused commercial suite also proves that a missing recovery RPC preserves read-only quote detail, marks commercial actions unavailable, and returns an explicit `503` from delivery/recovery routes. Quote/invoice provider tests inject transport and must not send real email. Browser review may preview but must stop before send, public acceptance, or invoice delivery.
 
 The data-free commercial recovery fixture is `/qa/commercial-workflow-fixture`. It requires `ENABLE_PORTAL_QA_FIXTURES=1`, renders the production quote detail and prepared-delivery dialog, and has retryable plus staff-attention scenarios without database, provider, email, token, or customer-record access. `playwright/portal.commercial-workflow-fixture.spec.ts` checks both scenarios at 1280x900 and 390x844, including read-only frozen content, retry eligibility, overflow, 44px mobile targets, dialog focus return, browser errors, and attached screenshots. It belongs to the `portal-fixture` project.
 

@@ -100,6 +100,10 @@ Apply ordered migrations in `supabase/migrations/` for current portal behavior. 
 
 Use `docs/supabase-schema-map.md` to confirm table/RPC ownership, write paths, access boundaries, and migration sources before schema-affecting changes.
 
+Commercial workflow trust requires `20260728_000001_commercial_workflow_trust.sql` followed by `20260728000002_commercial_quote_stale_conflict.sql`. Validate both with `npm run test:commercial:db` before a shared-environment apply. The correction keeps stale quote revisions as an application conflict rather than PostgreSQL SQLSTATE `40001`, which infrastructure may retry.
+
+If a linked environment has a sparse or historically divergent migration ledger, do not use a blanket `db push` or repair unrelated versions. Positively classify the target, inspect prerequisites and collision counts, run the exact forward file in a rollback transaction, apply only that reviewed file, record only its version, and verify the resulting schema/function body. Production remains a separate reviewed deployment.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Schedule V2 currently depends on migrations through the Schedule V2 RPC command migrations and later repair migrations. After deploy, confirm:

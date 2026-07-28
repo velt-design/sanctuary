@@ -434,20 +434,20 @@ begin
   from public.projects project
   where project.id = v_quote.project_id;
 
-  update public.deposit_invoices
+  update public.deposit_invoices invoice
   set
     status = 'VOID',
-    voided_at = coalesce(voided_at, now()),
+    voided_at = coalesce(invoice.voided_at, now()),
     voided_by = p_actor,
     void_reason = coalesce(
-      void_reason,
+      invoice.void_reason,
       'Replaced after acceptance of quote version ' || v_version.version_number::text
     ),
     portal_token_hash = null,
     portal_token_expires_at = null
-  where quote_id = v_quote.id
-    and quote_version_id <> v_version.id
-    and status = 'OPEN';
+  where invoice.quote_id = v_quote.id
+    and invoice.quote_version_id <> v_version.id
+    and invoice.status = 'OPEN';
 
   select invoice.*
   into v_invoice

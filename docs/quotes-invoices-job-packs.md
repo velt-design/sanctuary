@@ -40,7 +40,7 @@ Important tables and artifacts:
 - `file_artifacts` for generated PDFs and attached design PDFs.
 - `job_pack_generations` and `job_pack_sheet_overrides`.
 
-Portal PDF generators load owned static assets through module-relative URLs under `apps/portal/assets` and `apps/portal/public`. Do not reintroduce root or app fallback probing for fonts or logos; quote fonts should fail with a clear missing-font error, while header logos remain optional and resilient.
+Portal PDF generators load owned static assets through module-relative URLs under `apps/portal/assets` and `apps/portal/public`. Production bundles expose those assets as native `file:` URLs. When webpack development instead rewrites one to a hashed `/_next/static/media/...` URL, the asset owner resolves that exact hashed filename inside the current isolated server output; it does not probe source roots. Do not reintroduce root or app fallback probing for fonts or logos; quote fonts should fail with a clear missing-font error, while header logos remain optional and resilient.
 
 For table/RPC ownership, write paths, access boundaries, and migration sources, see `docs/supabase-schema-map.md`.
 
@@ -56,6 +56,7 @@ The Commercial Quotes surface uses canonical `QuoteStatusBadge` presentation for
 
 - A quote has at most one authoritative current draft. Draft creation and revision use stable client intents, and a concurrent duplicate request returns the winning version instead of creating another.
 - Editable draft writes use an atomic line-item replacement RPC and a monotonic `commercial_revision`. PATCH, refresh, and delivery preparation require the expected revision; stale clients receive a conflict and reload instead of overwriting newer commercial data.
+- Stale revision is an application conflict (`QUOTE_STALE`), not PostgreSQL serialization failure `40001`; the API must return `409` promptly rather than allowing infrastructure-level transaction retries to turn it into a delayed `500`.
 - A delivery-prepared version may still have database status `DRAFT`, but it is frozen, no longer current, and read-only. Staff may retry that exact message or create a new revision; they cannot edit underneath the prepared delivery.
 - Current draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.
 - Calculator save completion offers an explicit handoff through `?tab=quotes&createFromEstimateId=...`. Following that action creates the draft from the exact saved estimate through the existing local-first quote workflow; merely opening the save review or outcome UI has no quote side effect.

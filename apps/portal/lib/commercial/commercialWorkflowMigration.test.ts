@@ -8,12 +8,20 @@ const migrationPath = resolve(
   process.cwd(),
   'supabase/migrations/20260728_000001_commercial_workflow_trust.sql',
 );
+const staleConflictMigrationPath = resolve(
+  process.cwd(),
+  'supabase/migrations/20260728000002_commercial_quote_stale_conflict.sql',
+);
 
 let sql = '';
+let staleConflictSql = '';
 
 describe('commercial workflow trust migration', () => {
   beforeAll(async () => {
-    sql = await readFile(migrationPath, 'utf8');
+    [sql, staleConflictSql] = await Promise.all([
+      readFile(migrationPath, 'utf8'),
+      readFile(staleConflictMigrationPath, 'utf8'),
+    ]);
   });
 
   it('owns estimate and quote idempotency plus one authoritative draft', () => {
@@ -28,6 +36,10 @@ describe('commercial workflow trust migration', () => {
       'v_current.commercial_revision is distinct from p_expected_commercial_revision',
     );
     expect(sql).toContain('commercial_revision = commercial_revision + 1');
+    expect(sql).toContain('update public.deposit_invoices invoice');
+    expect(sql).toContain(
+      'invoice.quote_version_id <> v_version.id',
+    );
     expect(sql).toContain('delivery_prepared_at = now()');
     expect(sql).toContain('pg_advisory_xact_lock');
     expect(sql.indexOf('function public.commercial_email_prepare(')).toBeLessThan(
@@ -79,5 +91,12 @@ describe('commercial workflow trust migration', () => {
     expect(sql).toMatch(
       /update public\.deposit_invoice_send_logs\s+set next_retry_at = null/,
     );
+  });
+
+  it('keeps stale quote revisions outside the retryable serialization class', () => {
+    expect(staleConflictSql).toContain(
+      "raise exception 'QUOTE_STALE' using errcode = 'P0001'",
+    );
+    expect(staleConflictSql).not.toContain("errcode = '40001'");
   });
 });
