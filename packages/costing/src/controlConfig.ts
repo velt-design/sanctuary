@@ -92,6 +92,9 @@ type UnknownRecord = Record<string, unknown>;
 const MAX_CURRENCY_VALUE = 10_000_000;
 const MAX_MINUTES_VALUE = 10_080;
 const MAX_MULTIPLIER_VALUE = 10;
+const COMPATIBLE_BASE_MANIFEST_UPGRADES: Record<string, readonly string[]> = {
+  'v1.7': ['v1.8'],
+};
 
 function isRecord(value: unknown): value is UnknownRecord {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -239,6 +242,11 @@ function compareExactKeys(
   for (const key of unknown) issues.push({ path: `${path}.${key}`, message: 'Unknown configured key is not supported.' });
 }
 
+function isCompatibleBaseManifestUpgrade(candidate: unknown, active: string): boolean {
+  return typeof candidate === 'string'
+    && (COMPATIBLE_BASE_MANIFEST_UPGRADES[candidate]?.includes(active) ?? false);
+}
+
 export function validateCostingControlConfigV1(
   value: unknown,
   baseConfig: CostingConfigV1,
@@ -249,10 +257,13 @@ export function validateCostingControlConfigV1(
   if (value.schemaVersion !== COSTING_CONTROL_CONFIG_SCHEMA_VERSION) {
     issues.push({ path: 'schemaVersion', message: `Must equal ${COSTING_CONTROL_CONFIG_SCHEMA_VERSION}.` });
   }
-  if (value.baseManifestVersion !== expected.baseManifestVersion) {
+  if (
+    value.baseManifestVersion !== expected.baseManifestVersion
+    && !isCompatibleBaseManifestUpgrade(value.baseManifestVersion, expected.baseManifestVersion)
+  ) {
     issues.push({
       path: 'baseManifestVersion',
-      message: `Must match the active package manifest ${expected.baseManifestVersion}.`,
+      message: `Must match, or be explicitly compatible with, the active package manifest ${expected.baseManifestVersion}.`,
     });
   }
 

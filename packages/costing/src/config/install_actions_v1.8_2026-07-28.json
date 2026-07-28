@@ -1,0 +1,2026 @@
+{
+  "version": "v1.8",
+  "currency": "NZD",
+  "basis": {
+    "crew_hour_rate_ex_gst": 75,
+    "crew_hour_rate_inc_gst": 86.25,
+    "notes": [
+      "Crew-hour model: contractor payout cost is based on total crew time, not crew size.",
+      "All minutes are starting assumptions to be tuned over time.",
+      "Multipliers apply per-action as specified; per-job overhead is handled separately."
+    ]
+  },
+  "multipliers": {
+    "access": {
+      "easy": 0.9,
+      "normal": 1,
+      "hard": 1.25
+    },
+    "height": {
+      "single_storey": 1,
+      "two_storey": 1.25
+    },
+    "ground": {
+      "easy": 1,
+      "hard": 1.2,
+      "notes": "Ground multiplier applies only to concrete pile actions."
+    },
+    "structure_type": {
+      "pitched": 1,
+      "box_perimeter": 1.1
+    },
+    "roof_type": {
+      "pitched": 1,
+      "low_gable": 1.15,
+      "gable": 1.2,
+      "hip": 1.35,
+      "hip_corner": 1.35
+    },
+    "access_logistics": {
+      "easy": 1,
+      "normal": 1,
+      "hard": 2,
+      "note": "+100% (2x) time for logistics when access is hard"
+    }
+  },
+  "driver_rules_reference": {
+    "defaults": {
+      "post_cut_height_m": 2.4,
+      "rafter_spacing_mm_max": 642,
+      "soffit_bracket_spacing_mm_max": 1500,
+      "projection_includes_overhang": false,
+      "stock_length_m_default": 6,
+      "box_internal_rafter_profile_default": "80x50"
+    },
+    "derived_quantity_rules": [
+      {
+        "key": "derived.rafter_count",
+        "formula": "ceil(length_mm / 642) + 1",
+        "notes": "Rafters counted along pergola length using max 642mm centres."
+      },
+      {
+        "key": "derived.bracket_count",
+        "formula": "if house_connection_type == 'soffit' then ceil(attachment_length_mm / 1500) + 1 else 0",
+        "notes": "Soffit bracket connection points along attachment length using max 1.5m spacing."
+      },
+      {
+        "key": "derived.stringer_fixing_count",
+        "formula": "if house_connection_type in ['fascia','facade'] then ceil(attachment_length_mm / 1500) + 1 else 0",
+        "notes": "Direct stringer fixing points along attachment length for fascia/facade using max 1.5m spacing."
+      },
+      {
+        "key": "derived.length_m",
+        "formula": "length_mm / 1000"
+      },
+      {
+        "key": "derived.projection_m",
+        "formula": "projection_mm / 1000"
+      },
+      {
+        "key": "derived.area_m2",
+        "formula": "(length_mm/1000) * (projection_mm/1000)"
+      },
+      {
+        "key": "derived.box_perimeter_m",
+        "formula": "if structure.type == 'box_perimeter' then 2*(length_m + projection_m) else 0"
+      },
+      {
+        "key": "derived.box_corner_count",
+        "formula": "if structure.type == 'box_perimeter' then 4 else 0"
+      },
+      {
+        "key": "derived.joiner_count",
+        "formula": "if roof.material == 'acrylic' then derived.rafter_count else 0",
+        "notes": "Joiners align to rafters; one joiner line per rafter."
+      },
+      {
+        "key": "derived.joiner_total_m",
+        "formula": "derived.joiner_count * derived.projection_m",
+        "notes": "Total linear metres of joiner required (cut lengths), excluding waste."
+      }
+    ],
+    "rafter_length_multiplier": {
+      "key": "derived.rafter_length_multiplier",
+      "recommended_function": "mult = clamp(0.85, 1.30, 1.0 + 0.06 * (rafter_length_m - 3.0)); rafter_length_m should be sloped rafter length (span_m / cos(pitch_deg)).",
+      "reference_length_m": 3,
+      "exponent": 0.25,
+      "notes": "Use rafter_length_m = derived.projection_m (no overhang). Gentle scaling; at 6m gives ~1.19×.",
+      "inputs": [
+        "derived.rafter_length_m"
+      ]
+    },
+    "rafter_length_loading_curve": {
+      "key": "derived.rafter_length_loading_curve",
+      "recommended_function": "minutes_per_m = linear_interpolate(points, rafter_cut_length_m); total extra minutes = total_installed_rafter_length_m * weighted_average(minutes_per_m across rafter groups).",
+      "points": [
+        {
+          "length_m": 2,
+          "minutes_per_m": 0.18
+        },
+        {
+          "length_m": 3,
+          "minutes_per_m": 0.42
+        },
+        {
+          "length_m": 4,
+          "minutes_per_m": 0.96
+        },
+        {
+          "length_m": 5,
+          "minutes_per_m": 2.16
+        },
+        {
+          "length_m": 6,
+          "minutes_per_m": 3.84
+        }
+      ],
+      "notes": "Additional rafter labour loading. Very light on short rafters, steep by 6m. Uses cut lengths where available and weights by total installed rafter metres.",
+      "inputs": [
+        "derived.rafter_cut_length_m",
+        "derived.rafter_cut_length_house_side_m",
+        "derived.rafter_cut_length_outer_side_m",
+        "derived.hip_rafter_cut_length_m",
+        "derived.total_installed_rafter_length_m",
+        "derived.total_rafter_pieces",
+        "derived.hip_rafter_count"
+      ]
+    }
+  },
+  "actions": [
+    {
+      "id": "mob.site_safety",
+      "category": "Mobilisation",
+      "label": "Site safety checklist / toolbox talk",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 18,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "mob.client_briefing",
+      "category": "Mobilisation",
+      "label": "Client briefing / confirm scope on arrival",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 12,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "mob.site_survey",
+      "category": "Mobilisation",
+      "label": "Site survey / set-out verification",
+      "unit": "job",
+      "quantity": {
+        "type": "expr",
+        "expr": "derived.module_count"
+      },
+      "base_minutes": 18,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "mob.tool_setup",
+      "category": "Mobilisation",
+      "label": "Tool setup & staging",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 24,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "day_cycle.setup_tools",
+      "category": "Mobilisation",
+      "label": "Daily setup / tool unload & staging",
+      "unit": "day",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 30,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "day_cycle.pack_down_tools",
+      "category": "Mobilisation",
+      "label": "Daily pack down / tool load-out",
+      "unit": "day",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 30,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "day_cycle.daily_tidy",
+      "category": "Mobilisation",
+      "label": "Daily tidy up",
+      "unit": "day",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 18,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "mob.offload_materials",
+      "category": "Mobilisation",
+      "label": "Materials offloaded & staged",
+      "unit": "job",
+      "quantity": {
+        "type": "expr",
+        "expr": "derived.module_count"
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access_logistics"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "posts.deck_bracket_per_post",
+      "category": "Posts & Footings",
+      "label": "Post to deck bracket connection (install + plumb)",
+      "unit": "post",
+      "quantity": {
+        "type": "driver",
+        "key": "inputs.post_count"
+      },
+      "base_minutes": 42,
+      "applies_to": {
+        "post_connection_types": [
+          "deck_bracket"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "posts.slab_anchor_per_post",
+      "category": "Posts & Footings",
+      "label": "Post to slab anchors (drill + chemical anchors + plumb)",
+      "unit": "post",
+      "quantity": {
+        "type": "driver",
+        "key": "inputs.post_count"
+      },
+      "base_minutes": 48,
+      "applies_to": {
+        "post_connection_types": [
+          "slab_anchors"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "posts.pile_1m_per_post",
+      "category": "Posts & Footings",
+      "label": "Concrete pile 1.0m (excavate + set post + brace)",
+      "unit": "post",
+      "quantity": {
+        "type": "driver",
+        "key": "inputs.post_count"
+      },
+      "base_minutes": 96,
+      "applies_to": {
+        "post_connection_types": [
+          "pile_1m"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "ground"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "posts.pile_1_5m_per_post",
+      "category": "Posts & Footings",
+      "label": "Concrete pile 1.5m (excavate + set post + brace)",
+      "unit": "post",
+      "quantity": {
+        "type": "driver",
+        "key": "inputs.post_count"
+      },
+      "base_minutes": 126,
+      "applies_to": {
+        "post_connection_types": [
+          "pile_1_5m"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "ground"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "house.install_back_stringer_startup",
+      "category": "House Connection",
+      "label": "Install back stringer (startup)",
+      "unit": "module",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 36,
+      "applies_to": {
+        "house_connection_types": [
+          "soffit",
+          "fascia",
+          "facade"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "house.install_soffit_bracket",
+      "category": "House Connection",
+      "label": "Install soffit bracket (each)",
+      "unit": "bracket",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.bracket_count"
+      },
+      "base_minutes": 24,
+      "applies_to": {
+        "house_connection_types": [
+          "soffit"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "house.install_fascia_connection",
+      "category": "House Connection",
+      "label": "Install fascia stringer fixing (each)",
+      "unit": "fixing",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.stringer_fixing_count"
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "house_connection_types": [
+          "fascia"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "house.install_facade_connection",
+      "category": "House Connection",
+      "label": "Install facade stringer fixing (each)",
+      "unit": "fixing",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.stringer_fixing_count"
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "house_connection_types": [
+          "facade"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.house_stringer_install_m",
+      "category": "Frame",
+      "label": "Install house-side stringer (default 100x50) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.length_m"
+      },
+      "base_minutes": 7.2,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "has_ledger": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.front_beam_sp_gutter_install_m",
+      "category": "Frame",
+      "label": "Install SP gutter run - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.our_gutter_length_m"
+      },
+      "base_minutes": 9.6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "gutter_types": [
+          "sp_gutter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Pitched standard: SP gutter is the front beam. Do not also count drain.install_sp_gutter_m for pitched.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_front_beam_m",
+      "category": "Frame",
+      "label": "Install front beam (non-gutter) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.front_beam_length_m"
+      },
+      "base_minutes": 9.6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Used when front beam is not an SP gutter (SP gutter case stays on frame.front_beam_sp_gutter_install_m).",
+      "scope": "module"
+    },
+    {
+      "id": "frame.overhang_support_beam_m",
+      "category": "Frame",
+      "label": "Install overhang support beam - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.overhang_support_beam_length_m"
+      },
+      "base_minutes": 9.6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Overhang framing: mid support beam.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.overhang_stringer_m",
+      "category": "Frame",
+      "label": "Install overhang end stringer - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.overhang_stringer_length_m"
+      },
+      "base_minutes": 7.2,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.fit_mid_support_brackets",
+      "category": "Frame",
+      "label": "Fit mid-support rafter brackets (each)",
+      "unit": "bracket",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.rafter_count"
+      },
+      "base_minutes": 24,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Overhang: third bracket point at mid support beam.",
+      "scope": "module"
+    },
+    {
+      "id": "join.splice_join_each",
+      "category": "Joinery",
+      "label": "Install splice join (bracket + screws)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.splice_join_count",
+        "default": 0
+      },
+      "base_minutes": 12,
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Includes bracket + 6 screws.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_tie_beam_m",
+      "category": "Frame",
+      "label": "Install tie beam - per metre",
+      "unit": "m",
+      "quantity": {
+        "expr": "derived.tie_beam_length_m * derived.gable_end_frame_count",
+        "default": 0
+      },
+      "base_minutes": 7.2,
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_kingpost_strut_each",
+      "category": "Frame",
+      "label": "Install king-post strut (each)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.gable_end_frame_count",
+        "default": 0
+      },
+      "base_minutes": 21.6,
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "fab.overhang_gutter_workshop_m",
+      "category": "Fabrication",
+      "label": "Fabricate overhang gutter from 100x100 - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.length_m"
+      },
+      "base_minutes": 3.6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ],
+        "gutter_modes": [
+          "overhang_gutter_front_edge"
+        ]
+      },
+      "apply_multipliers": [],
+      "notes": "Workshop fabrication allowance for overhang gutter cut-down.",
+      "scope": "module"
+    },
+    {
+      "id": "drain.install_overhang_gutter_m",
+      "category": "Drainage",
+      "label": "Install overhang gutter (100x100 cut) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.length_m"
+      },
+      "base_minutes": 4.8,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ],
+        "gutter_modes": [
+          "overhang_gutter_front_edge"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "fab.separate_gutter_workshop_m",
+      "category": "Fabrication",
+      "label": "Fabricate separate gutter from 100x100 - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.separate_gutter_length_m",
+        "fallback": "derived.length_m"
+      },
+      "base_minutes": 3.6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "gutter_assembly_modes": [
+          "separate"
+        ]
+      },
+      "apply_multipliers": [],
+      "notes": "Workshop fabrication allowance for separate 100x100 cut-down gutter.",
+      "scope": "module"
+    },
+    {
+      "id": "drain.install_separate_gutter_m",
+      "category": "Drainage",
+      "label": "Install separate gutter (100x100 cut) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.separate_gutter_length_m",
+        "fallback": "derived.length_m"
+      },
+      "base_minutes": 4.8,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "gutter_assembly_modes": [
+          "separate"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "finish.fit_end_caps_overhang",
+      "category": "Finishing",
+      "label": "Fit overhang end caps (each)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.overhang_end_cap_count"
+      },
+      "base_minutes": 3.6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Overhang support beam + stringer end caps.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.square_level_frame",
+      "category": "Frame",
+      "label": "Square/level main frame & confirm falls",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.box_perimeter_beam_250_install_m",
+      "category": "Frame",
+      "label": "Install box perimeter beams 250x50 - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.box_perimeter_m"
+      },
+      "base_minutes": 14.4,
+      "applies_to": {
+        "structure_types": [
+          "box_perimeter"
+        ],
+        "box_beam_profiles": [
+          "250x50"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "structure_type"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.box_perimeter_beam_300_install_m",
+      "category": "Frame",
+      "label": "Install box perimeter beams 300x50 - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.box_perimeter_m"
+      },
+      "base_minutes": 16.8,
+      "applies_to": {
+        "structure_types": [
+          "box_perimeter"
+        ],
+        "box_beam_profiles": [
+          "300x50"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "structure_type"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.box_corner_joinery",
+      "category": "Frame",
+      "label": "Box perimeter corner joinery (each corner)",
+      "unit": "corner",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.box_corner_count"
+      },
+      "base_minutes": 21.6,
+      "applies_to": {
+        "structure_types": [
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "structure_type"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_rafter_pitched",
+      "category": "Rafters",
+      "label": "Cut + install rafter (pitched roof) - per rafter",
+      "unit": "rafter",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.rafter_count"
+      },
+      "base_minutes": {
+        "type": "by_profile",
+        "profile_key": "inputs.rafter_profile",
+        "minutes_by_profile": {
+          "80x50": 12,
+          "100x50": 14.4,
+          "150x50": 19.2,
+          "200x50": 24,
+          "250x50": 30,
+          "300x50": 36,
+          "custom": 30
+        }
+      },
+      "applies_to": {
+        "roof_types": [
+          "pitched",
+          "hip_corner"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof",
+        "rafter_length_multiplier"
+      ],
+      "notes": "Apply gentle rafter length multiplier using derived.rafter_length_multiplier. Use rafter_length_m derived from projection (+ any overhang).",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_rafter_low_gable",
+      "category": "Rafters",
+      "label": "Cut + install rafter (low gable roof) - per rafter (both sides)",
+      "unit": "rafter",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.rafter_count",
+        "multiplier": 2
+      },
+      "base_minutes": {
+        "type": "by_profile",
+        "profile_key": "inputs.rafter_profile",
+        "minutes_by_profile": {
+          "80x50": 10.8,
+          "100x50": 13.2,
+          "150x50": 16.8,
+          "200x50": 21.6,
+          "250x50": 26.4,
+          "300x50": 31.2,
+          "custom": 26.4
+        }
+      },
+      "applies_to": {
+        "roof_types": [
+          "low_gable"
+        ],
+        "structure_types": [
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof",
+        "rafter_length_multiplier"
+      ],
+      "notes": "Quantity is 2× rafters because low gable has two planes. Use a reduced rafter_length_m (approx projection/2) when computing length multiplier.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_ridge_beam_m",
+      "category": "Roof",
+      "label": "Install ridge beam - per metre",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.ridge_length_m",
+        "default": 0
+      },
+      "base_minutes": 12,
+      "applies_to": {
+        "roof_types": [
+          "low_gable",
+          "gable",
+          "hip"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof"
+      ],
+      "notes": "ridge_length_m: low_gable/gable=length_m; hip=max(0,length_m-projection_m).",
+      "scope": "module"
+    },
+    {
+      "id": "roof.hip_corner_allowance",
+      "category": "Roof",
+      "label": "Hip corner allowance (join + flashing detail) - per module",
+      "unit": "module",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 108,
+      "applies_to": {
+        "roof_types": [
+          "hip_corner"
+        ],
+        "structure_types": [
+          "pitched"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type"
+      ],
+      "notes": "v1 placeholder: hip corner treated as two pitched wings; includes corner join, extra flashing/foam/detailing.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_flashing_0_200_m",
+      "category": "Roof",
+      "label": "Install flashing 0-200mm - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_0_200_total_m",
+        "fallback": "inputs.flashing_length_m"
+      },
+      "base_minutes": 7.2,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Banded flashing labour rate for 0-200mm girth.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_flashing_201_300_m",
+      "category": "Roof",
+      "label": "Install flashing 201-300mm - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_201_300_total_m"
+      },
+      "base_minutes": 10.8,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Banded flashing labour rate for 201-300mm girth.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_flashing_301_400_m",
+      "category": "Roof",
+      "label": "Install flashing 301-400mm - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_301_400_total_m"
+      },
+      "base_minutes": 14.4,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Banded flashing labour rate for 301-400mm girth.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.flashing_startup",
+      "category": "Roof",
+      "label": "Flashing setup/startup - per module",
+      "unit": "module",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_startup_count"
+      },
+      "base_minutes": 36,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "One-off startup labour when any flashing is installed on the module.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.apply_foam_seal_m",
+      "category": "Roof",
+      "label": "Apply foam/weather seal - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "inputs.foam_length_m",
+        "fallback": "derived.length_m"
+      },
+      "base_minutes": 1.2,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "drain.install_box_gutter_m",
+      "category": "Drainage",
+      "label": "Install box gutter (100x100 cut) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.our_gutter_length_m",
+        "fallback": "inputs.gutter_length_m"
+      },
+      "base_minutes": 4.8,
+      "applies_to": {
+        "gutter_types": [
+          "box_gutter_100x100_cut"
+        ],
+        "structure_types": [
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Box perimeter: install our gutter only (house gutter excluded).",
+      "scope": "module"
+    },
+    {
+      "id": "drain.install_downpipe",
+      "category": "Drainage",
+      "label": "Install downpipe (cut/fit/fasten) - each",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "inputs.downpipe_count"
+      },
+      "base_minutes": 30,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "drain.dp_join_each",
+      "category": "Drainage",
+      "label": "Downpipe join / coupler",
+      "unit": "each",
+      "quantity": {
+        "type": "expr",
+        "expr": "derived.downpipe_join_count_used"
+      },
+      "base_minutes": 12,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Downpipe joins/couplers (10 min each).",
+      "scope": "module"
+    },
+    {
+      "id": "drain.dp_elbow_each",
+      "category": "Drainage",
+      "label": "Downpipe elbow / fitting",
+      "unit": "each",
+      "quantity": {
+        "type": "expr",
+        "expr": "derived.downpipe_elbow_count_used"
+      },
+      "base_minutes": 12,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Downpipe elbows/fittings (10 min each).",
+      "scope": "module"
+    },
+    {
+      "id": "drain.gutter_startup_job",
+      "category": "Drainage",
+      "label": "Gutter startup (end caps + droppers/outlets)",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 36,
+      "applies_to": {
+        "has_our_gutter": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Gutter startup allowance when our gutter is used.",
+      "scope": "job"
+    },
+    {
+      "id": "finish.touchups",
+      "category": "Finishing",
+      "label": "Touch-ups / sealant / final adjustments",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 24,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "finish.final_clean",
+      "category": "Finishing",
+      "label": "Final clean and site tidy",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 24,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "finish.client_handover",
+      "category": "Finishing",
+      "label": "Client walkthrough / handover",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 12,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "demob.pack_down",
+      "category": "Demobilisation",
+      "label": "Pack down tools and load out",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "demob.rubbish",
+      "category": "Demobilisation",
+      "label": "Rubbish removal (basic)",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 18,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "infill.setup_setout_each",
+      "category": "Infill",
+      "label": "Infill measure, handling and set-out (each)",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.infill_instance_count",
+        "default": 0
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Confirm measurements, handle stock to the work area, template where needed, check levels/plumb and mark fixing lines.",
+      "scope": "module"
+    },
+    {
+      "id": "infill.install_joiner_m",
+      "category": "Infill",
+      "label": "Cut, prepare and install infill joiners (per metre)",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.infill_joiner_total_m",
+        "default": 0
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Measure, cut, deburr and fit boundary/top/bottom joiners.",
+      "scope": "module"
+    },
+    {
+      "id": "infill.fix_joiner_each",
+      "category": "Infill",
+      "label": "Drill and fix infill joiners (each fixing)",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.infill_joiner_fixings_each",
+        "default": 0
+      },
+      "base_minutes": 0.75,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Drill and screw/rivet cycle; spacing-driven.",
+      "scope": "module"
+    },
+    {
+      "id": "infill.install_sheet_panels_m2",
+      "category": "Infill",
+      "label": "Cut, prepare and install acrylic sheet panels (per m2)",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.infill_sheet_area_m2",
+        "default": 0
+      },
+      "base_minutes": 25,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Measure, mark, cut, edge-finish, handle and fit sheet-panel infills.",
+      "scope": "module"
+    },
+    {
+      "id": "infill.install_strip_panels_each",
+      "category": "Infill",
+      "label": "Cut, prepare and install acrylic strip panels (each panel)",
+      "unit": "panel",
+      "quantity": {
+        "driver": "derived.infill_strip_panel_count",
+        "default": 0
+      },
+      "base_minutes": 9,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Measure, cut, edge-finish, handle and fit 620 strip infills.",
+      "scope": "module"
+    },
+    {
+      "id": "infill.install_extra_supports_each",
+      "category": "Infill",
+      "label": "Cut, prepare and install extra infill supports/mullions (each)",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.infill_extra_supports_each",
+        "default": 0
+      },
+      "base_minutes": 28,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Measure, cut, deburr, position and fix missing jambs plus unsupported internal boundaries.",
+      "scope": "module"
+    },
+    {
+      "id": "infill.finish_clean_each",
+      "category": "Infill",
+      "label": "Infill final align, seal and clean (each)",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.infill_instance_count",
+        "default": 0
+      },
+      "base_minutes": 15,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Final alignment, complete sealing, protective-film removal, QC and cleanup per infill instance.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_joiner_bottom_m",
+      "category": "Roof",
+      "label": "Install bottom joiner - per metre",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.acrylic_joiner_bottom_total_m",
+        "default": 0
+      },
+      "base_minutes": 2.4,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "pitch_steep_roof"
+      ],
+      "notes": "Bottom joiner install labour, excluding fixing cycle time.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.fix_joiner_bottom_each",
+      "category": "Roof",
+      "label": "Fix bottom joiner to rafters - each fixing",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.acrylic_joiner_bottom_fixings_each",
+        "default": 0
+      },
+      "base_minutes": 0.6,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "pitch_steep_roof"
+      ],
+      "notes": "Fixings at 300mm centres plus one extra end fixing per run.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_joiner_top_m",
+      "category": "Roof",
+      "label": "Install top joiner (no fixings) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.acrylic_joiner_top_total_m",
+        "default": 0
+      },
+      "base_minutes": 1.8,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "pitch_steep_roof"
+      ],
+      "notes": "Top joiner install only; no fixing labour included.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_acrylic_panels_m2",
+      "category": "Roof",
+      "label": "Install acrylic panels - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.acrylic_install_area_m2",
+        "default": 0
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "pitch_steep_roof"
+      ],
+      "notes": "Acrylic panel placement and fit-up only (joiners handled by separate actions).",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_timber_roof_m2",
+      "category": "Roof",
+      "label": "Install timber roof (cedar sarking) - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_area_m2",
+        "default": 0
+      },
+      "base_minutes": 14.4,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type"
+      ],
+      "notes": "Assumed v1 value. Scales with derived.timber_area_m2 (timber portion for mixed roofs, full area for timber roofs). Tune minutes with field data.",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_edge_rafter_timber_each",
+      "category": "Rafters",
+      "label": "Install timber edge rafters (150x50) - each",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.timber_edge_rafter_count_total",
+        "default": 0
+      },
+      "base_minutes": 21.6,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "pitch_steep_roof"
+      ],
+      "notes": "Edge rafters for timber roofs (150x50).",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_purlins_m",
+      "category": "Roof",
+      "label": "Install timber purlins (50x50) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.timber_purlin_total_m",
+        "default": 0
+      },
+      "base_minutes": 2.4,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof purlins at 500mm centres.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_insulated_panels_m2",
+      "category": "Roof",
+      "label": "Install insulated roof panels - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_roof_above_area_m2",
+        "default": 0
+      },
+      "base_minutes": 9.6,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "insulated_panels"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof above: insulated panels.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_steel_corrugated_m2",
+      "category": "Roof",
+      "label": "Install steel corrugated roof - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_roof_above_area_m2",
+        "default": 0
+      },
+      "base_minutes": 12,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_corrugated"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof above: steel corrugated.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_steel_tray_m2",
+      "category": "Roof",
+      "label": "Install steel tray roof - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_roof_above_area_m2",
+        "default": 0
+      },
+      "base_minutes": 13.2,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_tray"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof above: steel tray.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_covertek_m2",
+      "category": "Roof",
+      "label": "Install Covertek 407 underlay - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.covertek_area_m2",
+        "default": 0
+      },
+      "base_minutes": 2.4,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_corrugated",
+          "steel_tray"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Underlay for timber roof steel options.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_polystyrene_m2",
+      "category": "Roof",
+      "label": "Install polystyrene insulation - per m²",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.polystyrene_area_m2",
+        "default": 0
+      },
+      "base_minutes": 4.8,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_corrugated",
+          "steel_tray"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Polystyrene insulation between rafters (steel roofs).",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_rafter_gable",
+      "category": "Rafters",
+      "label": "Cut + install rafter (gable roof) - per rafter",
+      "unit": "rafter",
+      "quantity": {
+        "expr": "derived.rafter_count * 2",
+        "default": 0
+      },
+      "base_minutes": {
+        "type": "by_profile",
+        "profile_key": "inputs.rafter_profile",
+        "minutes_by_profile": {
+          "80x50": 12,
+          "100x50": 14.4,
+          "150x50": 19.2,
+          "200x50": 24,
+          "250x50": 30,
+          "300x50": 36,
+          "custom": 30
+        }
+      },
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof",
+        "rafter_length_multiplier"
+      ],
+      "notes": "Gable: rafters both sides, counted as 2x rafter_count. Effective span is projection/2.",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_rafter_hip",
+      "category": "Rafters",
+      "label": "Cut + install rafter (hip roof) - per rafter",
+      "unit": "rafter",
+      "quantity": {
+        "expr": "derived.rafter_count * 2",
+        "default": 0
+      },
+      "base_minutes": {
+        "type": "by_profile",
+        "profile_key": "inputs.rafter_profile",
+        "minutes_by_profile": {
+          "80x50": 12,
+          "100x50": 14.4,
+          "150x50": 19.2,
+          "200x50": 24,
+          "250x50": 30,
+          "300x50": 36,
+          "custom": 30
+        }
+      },
+      "applies_to": {
+        "roof_types": [
+          "hip"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof",
+        "rafter_length_multiplier"
+      ],
+      "notes": "Hip: common rafters approximated as 2x rafter_count; hip rafters added separately. Jack trimming handled via roof_type multiplier.",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_hip_rafter_each",
+      "category": "Rafters",
+      "label": "Cut + install hip rafter - each",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.hip_rafter_count",
+        "default": 0
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "roof_types": [
+          "hip"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof"
+      ],
+      "notes": "v1 assumption for hip rafter labour; refine later."
+    },
+    {
+      "id": "rafters.rafter_length_loading_m",
+      "category": "Rafters",
+      "label": "Additional rafter labour loading - per installed metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.total_installed_rafter_length_m"
+      },
+      "base_minutes": 1.2,
+      "applies_to": {
+        "roof_types": [
+          "pitched",
+          "low_gable",
+          "gable",
+          "hip",
+          "hip_corner"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof",
+        "rafter_length_loading_curve"
+      ],
+      "notes": "Extra long-rafter labour loading. Quantity is total installed rafter metres; the curve determines the extra minutes per metre based on cut length.",
+      "scope": "module"
+    }
+  ],
+  "changelog": [
+    {
+      "date": "2026-01-08",
+      "changes": [
+        "Added roof_types: gable, hip",
+        "Added action scopes (job/module) for multi-pergola rollups",
+        "Ridge beam driven by derived.ridge_length_m (supports hip ridges)",
+        "Acrylic labour uses derived.acrylic_area_m2 (supports mixed roofs)",
+        "Added gable + hip rafter actions + hip rafter action"
+      ]
+    },
+    {
+      "date": "2026-03-02",
+      "changes": [
+        "Added infill labour action family driven by derived infill metrics",
+        "Introduced infill setup, joiner install/fix, sheet/strip panel install, support install, and finish/clean actions",
+        "Added config-driven additional rafter labour loading with a steep length curve"
+      ]
+    },
+    {
+      "date": "2026-07-28",
+      "changes": [
+        "Retained the $75/h ex-GST single-installer crew rate",
+        "Increased infill labour minutes to include measurement, handling, cutting, deburring, edge finishing, drilling, support preparation, sealing, film removal, quality control, and cleanup",
+        "Kept the existing infill action identities so published v1.7 control snapshots remain structurally compatible"
+      ]
+    }
+  ],
+  "generated_at": "2026-07-28",
+  "notes": [
+    "v1.3: Access multipliers updated (tool setup fixed, logistics 2x on hard access). Rafter-length driver expects sloped length using pitch."
+  ]
+}

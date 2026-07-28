@@ -12,7 +12,7 @@ import {
 } from '@/lib/localFirst/portalEntities';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildBlindInputs } from './calculatorBlindUi';
-import { makeDefaultCalculatorInputs } from './calculatorInputs';
+import { makeDefaultCalculatorInputs, makeDefaultInfillItem } from './calculatorInputs';
 import { buildCalculatorPricingPreview } from './calculatorPricingPreview';
 import { buildCalculatorSaveOutcomeUi } from './calculatorSaveOutcome';
 
@@ -36,6 +36,13 @@ function simpleScenario(): TrustReviewScenario {
   const inputs = makeDefaultCalculatorInputs();
   inputs.projectName = 'Simple trust review';
   inputs.pergolas = [{ id: 'pergola-1', label: 'Front patio' }];
+  inputs.modules[0]!.infills = {
+    items: [makeDefaultInfillItem({
+      id: 'simple-infill',
+      label: 'Front infill',
+      location: 'front',
+    })],
+  };
   return { id: 'simple', inputs };
 }
 
@@ -58,6 +65,13 @@ function complexScenario(): TrustReviewScenario {
       pergolaStyle: 'pitched',
       lengthM: '6',
       projectionM: '3',
+      infills: {
+        items: [makeDefaultInfillItem({
+          id: 'complex-infill',
+          label: 'Courtyard infill',
+          location: 'side',
+        })],
+      },
     }),
     cloneModule(source, {
       pergolaId: 'pergola-1',
@@ -173,6 +187,12 @@ describe('Calculator trust validation scenarios', () => {
       expect(result.saveOutcomeUi.reconciliationStatus).toBe('matched');
       expect(result.saveOutcomeUi.quoteDisabled).toBe(false);
       expect(result.savedEstimate.calculatorSnapshot?.inputs).toEqual(scenario.inputs);
+      const savedOutputs = result.savedEstimate.calculatorSnapshot?.outputs as {
+        pergolas?: Array<{ infill_cost_breakdown?: { status?: string } }>;
+      };
+      expect(savedOutputs.pergolas?.some(
+        (pergola) => pergola.infill_cost_breakdown?.status === 'ready',
+      )).toBe(true);
     },
   );
 
@@ -187,9 +207,43 @@ describe('Calculator trust validation scenarios', () => {
       'lighting',
     ]);
     expect(result.livePreview.discountPct).toBe(7.5);
+    expect(result.livePreview.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'infill',
+        label: 'Courtyard infill',
+        status: 'included',
+        priceIncGstCents: expect.any(Number),
+      }),
+    ]));
     expect(result.quoteHandoff.lineItems[0]?.description).toContain('Quote discount: 7.5% applied');
     expect(result.quoteHandoff.lineItems[2]?.description).toContain('Site costs');
     expect(result.quoteHandoff.lineItems.some((item) => item.description.includes('Pool blind'))).toBe(true);
     expect(result.quoteHandoff.lineItems.some((item) => item.description.includes('Lighting'))).toBe(true);
+  });
+
+  it('keeps the displayed base pergola equal to the same job without infills', () => {
+    const scenario = simpleScenario();
+    const withInfill = validateScenario(scenario);
+    const withoutInputs = structuredClone(scenario.inputs);
+    withoutInputs.modules.forEach((module) => {
+      module.infills = { items: [] };
+    });
+    const withoutResult = calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(withoutInputs));
+    const withoutPreview = buildCalculatorPricingPreview({
+      result: withoutResult,
+      inputs: withoutInputs,
+      blindPricing: priceAllBlinds([]),
+    });
+    const parent = withInfill.livePreview.rows.find((row) => row.kind === 'pergola')!;
+    const base = withInfill.livePreview.rows.find((row) => row.kind === 'pergola_component')!;
+    const infills = withInfill.livePreview.rows.filter((row) => row.kind === 'infill');
+    const parentWithoutInfills = withoutPreview.rows.find((row) => row.kind === 'pergola')!;
+
+    expect(base.priceIncGstCents).toBe(parentWithoutInfills.priceIncGstCents);
+    expect(
+      (base.priceIncGstCents ?? 0)
+      + infills.reduce((sum, row) => sum + (row.priceIncGstCents ?? 0), 0),
+    ).toBe(parent.priceIncGstCents);
+    expect(infills.every((row) => (row.priceIncGstCents ?? 0) > 0)).toBe(true);
   });
 });

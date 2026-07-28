@@ -88,7 +88,59 @@
 
 .includedRow td:last-child {
   color: var(--ui-text-muted);
-  font-style: italic;
+}
+
+.includedContribution {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+}
+
+.includedContribution strong {
+  color: var(--ui-text-strong);
+  font-style: normal;
+}
+
+.includedContribution span {
+  font-size: 9px;
+  font-style: normal;
+}
+
+.internalDetails {
+  margin-top: 5px;
+  color: var(--ui-text-muted);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.internalDetails summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--ui-text);
+  font-weight: 650;
+}
+
+.internalDetails dl {
+  display: grid;
+  gap: 2px;
+  width: min(260px, 100%);
+  margin: 5px 0 0;
+}
+
+.internalDetails dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.internalDetails dt,
+.internalDetails dd {
+  margin: 0;
+}
+
+.internalDetails dd {
+  color: var(--ui-text-strong);
+  font-variant-numeric: tabular-nums;
 }
 
 .unpricedValue {
@@ -106,4 +158,20 @@
 
 .tableWrap tfoot th:first-child {
   text-align: left;
+}
+
+@media (max-width: 599px) {
+  .tableWrap th,
+  .tableWrap td {
+    padding-inline: 8px;
+  }
+
+  .includedRow th {
+    padding-left: 16px;
+  }
+
+  .includedContribution span {
+    max-width: 72px;
+    white-space: normal;
+  }
 }

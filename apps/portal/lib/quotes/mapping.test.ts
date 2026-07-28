@@ -149,6 +149,54 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.coreTotalIncCents).toBe(20125);
   });
 
+  it('ignores explanatory infill attributions and keeps one pergola quote line', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Infill attribution',
+        quoteRef: '',
+        access: 'normal',
+        height: 'single_storey',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [makeModule({
+          infills: {
+            items: [{ id: 'infill-1', label: 'Front infill' }],
+          },
+        })],
+        blinds: { items: [] },
+      },
+      outputs: {
+        cost_snapshot_version: 'v2',
+        pergolas: [{
+          id: 'pergola-1',
+          label: 'Pergola 1',
+          totals: { cost_ex_gst: 100 },
+          infill_cost_breakdown: {
+            schema_version: 'infill_cost_breakdown_v1',
+            status: 'ready',
+            items: [{
+              module_id: 'pergola-1.module-1',
+              infill_id: 'infill-1',
+              total_ex_gst: 20,
+            }],
+            remainder: { total_ex_gst: 80 },
+          },
+        }],
+        siteShared: { totals: { cost_ex_gst: 0 } },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.unitPriceIncGstCents).toBe(14375);
+    expect(result.items[0]?.description).toContain('Pergola 1');
+    expect(result.items[0]?.description).not.toContain('Front infill');
+  });
+
   it('applies a non-zero quote discount to pergola and shared site lines', () => {
     const estimate = makeEstimate({
       inputs: {

@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from 'react';
 import type { BlindPricingResult, SiteOutputV1 } from '@sp/costing';
-import type { CalculatorInputs, CalculatorModuleInputs, InfillLineItem } from '@/lib/types/calculator';
+import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { extractLightingTotalCents } from '@/lib/quotes/estimateAddons';
 import {
   calculateStaffCustomerPriceFromCostEx,
@@ -11,14 +11,20 @@ import {
 } from '@/lib/quotes/pricing';
 import { toCents, totalsFromIncGstCents } from '@/lib/quotes/utils';
 import type { CalculatorResultFreshness } from './calculatorResultFreshness';
+import {
+  buildCalculatorPergolaIncludedPriceRows,
+  type CalculatorInternalTrueCost,
+} from './calculatorInfillPricing';
 
 type CalculatorPricingPreviewRow = {
   id: string;
-  kind: 'pergola' | 'infill' | 'shared' | 'blind' | 'lighting';
+  kind: 'pergola' | 'pergola_component' | 'infill' | 'shared' | 'blind' | 'lighting';
+  parentId?: string;
   label: string;
   detail: string;
   priceIncGstCents: number | null;
   status: 'priced' | 'included' | 'unpriced';
+  internalTrueCost?: CalculatorInternalTrueCost;
 };
 
 export type CalculatorPricingPreview = {
@@ -57,12 +63,6 @@ function modulesForPergola(inputs: CalculatorInputs, pergolaId: string): Calcula
     const assignedId = module.pergolaId && knownPergolaIds.has(module.pergolaId) ? module.pergolaId : fallbackPergolaId;
     return assignedId === pergolaId;
   });
-}
-
-function infillDetail(pergolaLabel: string, moduleIndex: number, infill: InfillLineItem): string {
-  const qty = Number.parseInt(infill.qty, 10);
-  const quantity = Number.isFinite(qty) && qty > 1 ? ` · Qty ${qty}` : '';
-  return `${pergolaLabel} · Module ${moduleIndex + 1} · ${titleCase(infill.location)}${quantity}`;
 }
 
 function blindDetail(item: BlindPricingResult['items'][number]): string {
@@ -105,19 +105,24 @@ export function buildCalculatorPricingPreview({
     pricedAmounts.push(priceIncGstCents);
     undiscountedAmounts.push(customerPriceIncCents(lineCostEx, 0));
 
-    modulesForPergola(inputs, pergola.id).forEach((module, moduleIndex) => {
-      const infills = module.infills?.items ?? [];
-      infills.forEach((infill, infillIndex) => {
-        rows.push({
-          id: `infill:${pergola.id}:${moduleIndex}:${infill.id}`,
-          kind: 'infill',
-          label: infill.label?.trim() || `Infill ${infillIndex + 1}`,
-          detail: infillDetail(pergolaLabel, moduleIndex, infill),
-          priceIncGstCents: null,
-          status: 'included',
-        });
-      });
-    });
+    const infillBreakdown = pergola.infill_cost_breakdown;
+    const baselineLineCostEx = infillBreakdown?.schema_version === 'infill_cost_breakdown_v2'
+      ? roundQuoteMoney(
+          infillBreakdown.baseline.total_ex_gst
+          + (!showSharedLine && hasSharedCost && pergolaIndex === 0
+            ? infillBreakdown.baseline_shared_cost_ex_gst
+            : 0),
+        )
+      : null;
+    rows.push(...buildCalculatorPergolaIncludedPriceRows({
+      pergola,
+      pergolaLabel,
+      modules: modulesForPergola(inputs, pergola.id),
+      parentPriceIncGstCents: priceIncGstCents,
+      baselinePriceIncGstCents: baselineLineCostEx === null
+        ? null
+        : customerPriceIncCents(baselineLineCostEx, discountPct),
+    }));
   });
 
   if (showSharedLine && typeof sharedCostEx === 'number') {

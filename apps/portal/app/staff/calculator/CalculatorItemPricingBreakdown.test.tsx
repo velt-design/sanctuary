@@ -14,12 +14,28 @@ const preview: CalculatorPricingPreview = {
       status: 'priced',
     },
     {
+      id: 'pergola-component:p1',
+      kind: 'pergola_component',
+      parentId: 'pergola:p1',
+      label: 'Base pergola without infills',
+      detail: 'Starting price for Front patio',
+      priceIncGstCents: 10_000_00,
+      status: 'included',
+    },
+    {
       id: 'infill:p1:0:i1',
       kind: 'infill',
+      parentId: 'pergola:p1',
       label: 'Front infill',
       detail: 'Front patio · Module 1 · Front',
-      priceIncGstCents: null,
+      priceIncGstCents: 2_345_67,
       status: 'included',
+      internalTrueCost: {
+        materialsExGstCents: 80_00,
+        labourExGstCents: 45_00,
+        overheadExGstCents: 25_00,
+        totalExGstCents: 150_00,
+      },
     },
     {
       id: 'blind:b1',
@@ -47,12 +63,13 @@ const preview: CalculatorPricingPreview = {
 };
 
 describe('CalculatorItemPricingBreakdown', () => {
-  it('lists customer items with exact prices and included or unpriced states', () => {
+  it('shows exact included contributions to staff without internal costs', () => {
     const { container, unmount } = renderIntoDocument(<CalculatorItemPricingBreakdown preview={preview} />);
 
     expect(container.textContent).toContain('Price by item');
     expect(container.textContent).toContain('Front patio2 modulesPergola$12,345.67');
-    expect(container.textContent).toContain('Front infillFront patio · Module 1 · FrontInfillIncluded in pergola price');
+    expect(container.textContent).toContain('Base pergola without infillsStarting price for Front patioBase$10,000.00base price');
+    expect(container.textContent).toContain('Front infillFront patio · Module 1 · FrontInfill$2,345.67adds to pergola price');
     expect(container.textContent).toContain('West blindOmni · 2m × 2mBlind$1,782.50');
     expect(container.textContent).toContain('Unfinished blindZiptrak · Dimensions requiredBlindNot priced');
     expect(container.textContent).toContain('Priced items total$14,138.17');
@@ -63,5 +80,23 @@ describe('CalculatorItemPricingBreakdown', () => {
         ?.getAttribute('data-customer-total-inc-gst-cents'),
     ).toBe('1413817');
     unmount();
+  });
+
+  it('reveals itemized true costs only for admins', () => {
+    const staff = renderIntoDocument(
+      <CalculatorItemPricingBreakdown preview={preview} canViewInternalCosts={false} />,
+    );
+    expect(staff.container.textContent).not.toContain('Internal incremental cost');
+    staff.unmount();
+
+    const admin = renderIntoDocument(
+      <CalculatorItemPricingBreakdown preview={preview} canViewInternalCosts />,
+    );
+    expect(admin.container.textContent).toContain('Internal incremental cost');
+    expect(admin.container.textContent).toContain('Materials ex GST$80.00');
+    expect(admin.container.textContent).toContain('Labour ex GST$45.00');
+    expect(admin.container.textContent).toContain('Overhead ex GST$25.00');
+    expect(admin.container.textContent).toContain('Total incremental cost ex GST$150.00');
+    admin.unmount();
   });
 });

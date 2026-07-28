@@ -283,6 +283,54 @@ export type InfillTakeoffV1 = {
   };
 };
 
+export type InfillCostComponentsV1 = {
+  materials_ex_gst: number;
+  install_ex_gst: number;
+  overhead_ex_gst: number;
+  total_ex_gst: number;
+};
+
+export type InfillCostBreakdownItemV1 = InfillCostComponentsV1 & {
+  module_id: string;
+  infill_id: string;
+  label?: string;
+  quantity: number;
+};
+
+export type InfillCostBreakdownV1 = {
+  schema_version: 'infill_cost_breakdown_v1';
+  source: '@sp/costing/engine/infill-cost-attribution-v1';
+  status: 'ready' | 'blocked';
+  scope_id: string;
+  allocation: {
+    pooled_materials: 'stock_piece_usage';
+    install: 'infill_labour_drivers';
+    overhead: 'proportional_direct_cost';
+  };
+  items: InfillCostBreakdownItemV1[];
+  remainder: InfillCostComponentsV1;
+  totals: InfillCostComponentsV1;
+  notes_and_warnings: string[];
+};
+
+export type InfillCostBreakdownV2 = {
+  schema_version: 'infill_cost_breakdown_v2';
+  source: '@sp/costing/engine/infill-incremental-baseline-v2';
+  status: 'ready' | 'blocked';
+  scope_id: string;
+  allocation: {
+    baseline: 'site_rerun_without_infills';
+    pooled_materials: 'stock_piece_usage';
+    install: 'infill_labour_drivers';
+    overhead: 'proportional_direct_cost';
+  };
+  items: InfillCostBreakdownItemV1[];
+  baseline: InfillCostComponentsV1;
+  baseline_shared_cost_ex_gst: number;
+  totals: InfillCostComponentsV1;
+  notes_and_warnings: string[];
+};
+
 export type CalculateInfillsTakeoffOptionsV1 = {
   scope_id?: string;
   module_id?: string;
@@ -844,6 +892,7 @@ export type PergolaOutputV1 = {
   overhead: OverheadV1;
   totals: TotalsV1;
   infill_takeoff?: InfillTakeoffV1;
+  infill_cost_breakdown?: InfillCostBreakdownV1 | InfillCostBreakdownV2;
 };
 
 export type SiteSharedOutputV1 = {

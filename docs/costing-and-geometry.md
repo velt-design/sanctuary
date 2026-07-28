@@ -124,6 +124,8 @@ Changing any code-owned item is a normal package semantic change with package re
 - A package manifest change must ship with an explicit compatibility/migration decision for the current published control snapshot. Incompatible published data fails closed.
 - Published estimates store `estimates.costing_config_version_id`; pre-publication estimates store the full hashed legacy control snapshot in `outputs.configVersions.costingControl`. All estimates retain frozen inputs and outputs as the historical commercial record.
 
+The active package manifest is `v1.8`. Its control shape is explicitly compatible with `v1.7`: previously published `v1.7` snapshots retain their stored crew rate and action minutes when applied to the new engine, so historical/published commercial behavior is not silently recalibrated. New package-default/legacy calculations use the `v1.8` infill minutes. A site already pinned to a published `v1.7` configuration must deliberately create and publish a `v1.8` draft before the new minutes become its active pricing configuration.
+
 ## Marketing Estimate Use
 
 Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-only pricing fork.
@@ -157,6 +159,17 @@ Procurement is physical rather than area-based:
 - any piece that cannot fit available stock blocks materials/save/export instead of falling back to total area.
 
 Module, job, pergola, and site costing outputs expose additive `infill_takeoff` data. Job and site material totals are summed from the final pooled material lines, not pre-pooling module totals.
+
+Each valid pergola output also exposes `infill_cost_breakdown_v2`. The engine performs one additional site calculation with all infills removed, preserving every other job input and the same costing configuration. That result is the stable base pergola. The difference between current and no-infill materials, install, overhead, shared cost, and total is the authoritative incremental infill pool:
+
+- pooled material deltas are divided among the traceable pieces placed on purchased stock using blank area or cut length;
+- labour deltas follow the package-owned setup, joiner, fixing, panel, support, and finishing drivers;
+- incremental overhead is divided in proportion to direct material plus install cost;
+- the no-infill baseline plus all infill increments reconcile to the current pergola components and total to the cent.
+
+The `v1.8` labour calibration keeps the `$75/h ex-GST` single-installer crew basis. Infill actions now explicitly include measurement, stock handling, templating where needed, cutting, deburring, acrylic edge finishing, drilling, support preparation, complete sealing, protective-film removal, and cleanup. Active default minutes are: setup/set-out `30 min/instance`; cut/prepare/install joiners `6 min/m`; drilling/fixing `0.75 min/fixing`; cut/prepare/install sheet panels `25 min/m2`; strip panels `9 min/panel`; cut/prepare/install added supports `28 min/support`; final align/seal/clean `15 min/instance`. Access and height multipliers continue to apply.
+
+Blocked or untraceable takeoff returns a blocked attribution and must not be presented as a separately priced customer breakdown. The Calculator may allocate the already-finalized pergola sell cents across a ready structure/infill attribution for explanation, but it must not treat those included contributions as additive quote items.
 
 ## Geometry Source Of Truth
 

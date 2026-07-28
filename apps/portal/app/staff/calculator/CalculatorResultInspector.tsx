@@ -252,7 +252,10 @@ const CalculatorResultInspector = forwardRef<
         hidden={activeTab !== 'pricing'}
       >
         <CalculatorPricingDetails {...pricingSummary} />
-        <CalculatorItemPricingBreakdown preview={pricingPreview} />
+        <CalculatorItemPricingBreakdown
+          preview={pricingPreview}
+          canViewInternalCosts={pricingSummary.canViewInternalCosts}
+        />
         {actualCostEstimateId ? <CalculatorActualCostReview estimateId={actualCostEstimateId} /> : null}
         {priceImpact ? <PriceImpactPanel {...priceImpact} /> : null}
       </div>

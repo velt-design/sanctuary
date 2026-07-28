@@ -15,6 +15,7 @@ import {
   snapshotDerived,
   snapshotInputs,
 } from './materials_explain';
+import { INFILL_JOINER_FIXING_SPACING_M } from './infillConstants';
 
 type PricebookItem = CostingConfigV1['materials']['items'][number];
 
@@ -85,7 +86,6 @@ function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-const ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M = 0.3;
 const FLASHING_BAND_0_200: FlashingBandV1 = '0-200';
 const FLASHING_BAND_201_300: FlashingBandV1 = '201-300';
 const FLASHING_BAND_301_400: FlashingBandV1 = '301-400';
@@ -110,7 +110,7 @@ const FLASHING_MATERIALS_BY_BAND: Record<FlashingBandV1, { id: string; label: st
 
 function joinerBottomFixingsForRun(runLengthM: number): number {
   if (!Number.isFinite(runLengthM) || runLengthM <= 0) return 0;
-  return Math.ceil(runLengthM / ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M) + 1;
+  return Math.ceil(runLengthM / INFILL_JOINER_FIXING_SPACING_M) + 1;
 }
 
 const isContinuousRunComponent = (component?: string) => /gutter|ledger|beam|stringer/i.test(String(component ?? ''));
@@ -2076,7 +2076,7 @@ function buildMaterialsV1Internal(
   infillInstanceCount = infillTakeoff.totals.instance_count;
   infillJoinerTotalM = infillTakeoff.totals.joiner_cut_m;
   infillJoinerFixingsEach = canonicalJoinerCuts.reduce(
-    (total, cut) => total + Math.ceil(cut.length_m / ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M),
+    (total, cut) => total + Math.ceil(cut.length_m / INFILL_JOINER_FIXING_SPACING_M),
     0,
   );
   infillSheetAreaM2 = canonicalPanels

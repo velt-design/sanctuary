@@ -12,13 +12,50 @@ function moneyFromCents(cents: number): string {
 
 const TYPE_LABELS: Record<CalculatorPricingPreview['rows'][number]['kind'], string> = {
   pergola: 'Pergola',
+  pergola_component: 'Base',
   infill: 'Infill',
   shared: 'Site',
   blind: 'Blind',
   lighting: 'Lighting',
 };
 
-export default function CalculatorItemPricingBreakdown({ preview }: { preview: CalculatorPricingPreview }) {
+function InternalTrueCost({
+  costs,
+}: {
+  costs: NonNullable<CalculatorPricingPreview['rows'][number]['internalTrueCost']>;
+}) {
+  return (
+    <details className={styles.internalDetails}>
+      <summary>Internal incremental cost</summary>
+      <dl>
+        <div>
+          <dt>Materials ex GST</dt>
+          <dd>{moneyFromCents(costs.materialsExGstCents)}</dd>
+        </div>
+        <div>
+          <dt>Labour ex GST</dt>
+          <dd>{moneyFromCents(costs.labourExGstCents)}</dd>
+        </div>
+        <div>
+          <dt>Overhead ex GST</dt>
+          <dd>{moneyFromCents(costs.overheadExGstCents)}</dd>
+        </div>
+        <div>
+          <dt>Total incremental cost ex GST</dt>
+          <dd>{moneyFromCents(costs.totalExGstCents)}</dd>
+        </div>
+      </dl>
+    </details>
+  );
+}
+
+export default function CalculatorItemPricingBreakdown({
+  preview,
+  canViewInternalCosts = false,
+}: {
+  preview: CalculatorPricingPreview;
+  canViewInternalCosts?: boolean;
+}) {
   if (!preview.rows.length) return null;
 
   return (
@@ -33,6 +70,7 @@ export default function CalculatorItemPricingBreakdown({ preview }: { preview: C
           <p>
             Customer prices include GST
             {preview.discountPct > 0 ? `; ${preview.discountPct}% discount applies to pergola and site prices only` : ''}.
+            {' '}Indented base and infill additions reconcile to their pergola total and are not added again.
           </p>
         </div>
       </header>
@@ -47,15 +85,35 @@ export default function CalculatorItemPricingBreakdown({ preview }: { preview: C
           </thead>
           <tbody>
             {preview.rows.map((row) => (
-              <tr key={row.id} className={row.kind === 'infill' ? styles.includedRow : row.kind === 'shared' ? styles.sharedRow : undefined}>
+              <tr
+                key={row.id}
+                className={
+                  row.kind === 'infill' || row.kind === 'pergola_component'
+                    ? styles.includedRow
+                    : row.kind === 'shared'
+                      ? styles.sharedRow
+                      : undefined
+                }
+                data-parent-price-row={row.parentId}
+              >
                 <th>
                   <span className={styles.itemLabel}>{row.label}</span>
                   <span className={styles.itemDetail}>{row.detail}</span>
+                  {canViewInternalCosts && row.internalTrueCost
+                    ? <InternalTrueCost costs={row.internalTrueCost} />
+                    : null}
                 </th>
                 <td>{TYPE_LABELS[row.kind]}</td>
                 <td className={row.status === 'unpriced' ? styles.unpricedValue : undefined}>
                   {row.status === 'included'
-                    ? 'Included in pergola price'
+                    ? row.priceIncGstCents === null
+                      ? 'Included in pergola price'
+                      : (
+                          <span className={styles.includedContribution}>
+                            <strong>{moneyFromCents(row.priceIncGstCents)}</strong>
+                            <span>{row.kind === 'pergola_component' ? 'base price' : 'adds to pergola price'}</span>
+                          </span>
+                        )
                     : row.status === 'unpriced'
                       ? 'Not priced'
                       : moneyFromCents(row.priceIncGstCents ?? 0)}

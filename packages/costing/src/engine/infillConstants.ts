@@ -1,0 +1,1 @@
+export const INFILL_JOINER_FIXING_SPACING_M = 0.3;

@@ -7,6 +7,11 @@ import {
 } from './breakdownExplanation';
 import { poolInfillsTakeoffsV1 } from './infillTakeoff';
 import { pooledInfillMaterialLines } from './infillMaterialPooling';
+import { buildPergolaInfillCostBreakdownV1 } from './infillCostAttribution';
+import {
+  applySiteInfillIncrementalBaselineV2,
+  withoutSiteInfillsV1,
+} from './infillIncrementalBaseline';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
 import { buildOverheadV1 } from './overheads';
 import type {
@@ -828,7 +833,11 @@ function normalizePergolaLabel(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfigV1): SiteOutputV1 {
+function calculateSiteCostV1Internal(
+  inputs: SiteInputsV1,
+  config: CostingConfigV1 | undefined,
+  includeInfillBaseline: boolean,
+): SiteOutputV1 {
   const cfg = config ?? loadCostingConfigV1();
   if (!Array.isArray(inputs.pergolas) || inputs.pergolas.length === 0) {
     throw new Error('Site inputs must include at least one pergola.');
@@ -1218,6 +1227,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
     const overheadExGst = cfg.overheads.include_in_total_cost ? overheadResult.overhead.total_ex_gst : 0;
     pergola.totals.cost_ex_gst = roundMoney(pergola.materials.totals.materials_ex_gst + pergola.install.totals.install_ex_gst + overheadExGst);
     pergola.totals.cost_inc_gst = roundMoney(applyGst(pergola.totals.cost_ex_gst));
+    pergola.infill_cost_breakdown = buildPergolaInfillCostBreakdownV1(pergola);
 
     overheadOpsSum += Number(overheadResult.overhead.ops_ex_gst ?? 0);
     overheadSalesSum += Number(overheadResult.overhead.sales_ex_gst ?? 0);
@@ -1258,7 +1268,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
     install_ex_gst: installTotal,
   };
 
-  return {
+  const output: SiteOutputV1 = {
     pergola_count: pergolaOutputs.length,
     pergolas: pergolaOutputs,
     infill_takeoff: siteInfillTakeoff,
@@ -1298,6 +1308,17 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       notes_and_warnings: warnings,
     },
   };
+
+  if (includeInfillBaseline && siteInfillTakeoff.items.length > 0) {
+    const baseline = calculateSiteCostV1Internal(withoutSiteInfillsV1(inputs), cfg, false);
+    applySiteInfillIncrementalBaselineV2(output, baseline);
+  }
+
+  return output;
+}
+
+export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfigV1): SiteOutputV1 {
+  return calculateSiteCostV1Internal(inputs, config, true);
 }
 
 // ============================================================================
