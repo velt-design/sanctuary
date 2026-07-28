@@ -161,12 +161,33 @@
         "apps/portal/components/projects/ProjectPage/tabs/useQuotePdfPreviews.ts",
         "apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts"
       ],
-      "whyLarge": "QuotesTab is below the critical threshold and now composes named selection/query, lifecycle, PDF-preview, modal, list, detail, and pure-model owners. Draft editing, local-first create/persist, and send-form orchestration remain in the composition owner.",
-      "nextSafeExtraction": "If QuotesTab grows, extract draft editing plus local-first create/persist orchestration before adding another inline quote workflow.",
+      "whyLarge": "QuotesTab is just above the critical threshold and composes named selection/query, lifecycle, PDF-preview, modal, list, detail, and pure-model owners. Draft editing, local-first create/persist, send-form orchestration, and prepared-delivery recovery state remain in the composition owner; the actual frozen-intent read/retry and dialog presentation are already extracted.",
+      "nextSafeExtraction": "Extract a useQuoteDeliveryRecovery controller, then draft editing plus local-first create/persist orchestration, before adding another inline quote workflow.",
       "focusedTests": [
         "npm run test:portal:projects",
         "npm run test:portal:quotes",
         "local-first tests"
+      ]
+    },
+    {
+      "id": "commercial-server",
+      "label": "commercial quote and invoice server workflow",
+      "status": "current",
+      "ownerArea": "Server-owned quote delivery, acceptance, and deposit invoice workflow",
+      "pathPatterns": [
+        "apps/portal/lib/quotes/serverCore.ts",
+        "apps/portal/lib/quotes/serverEmail.ts",
+        "apps/portal/lib/invoices/server.ts",
+        "apps/portal/lib/commercial/**",
+        "apps/portal/app/api/quotes/_lib/**"
+      ],
+      "whyLarge": "Quote persistence/detail reads, artifact preparation, public-token delivery, acceptance, deposit invoice creation, provider checkpoints, and replay-safe finalisation cross several historical server modules. Stable commercial intent, audit, acceptance, and route-delivery owners are extracted, but the older quote and invoice modules still assemble multiple collaborators.",
+      "nextSafeExtraction": "Move quote payload and attachment preparation out of serverEmail, split draft command/detail-read coordination out of serverCore, and move deposit-invoice render/token/log finalisation out of invoices/server without changing the commercial RPC or frozen-intent boundary.",
+      "focusedTests": [
+        "npm run test:portal:quotes",
+        "npx vitest run apps/portal/lib/commercial apps/portal/app/api/quotes/_lib",
+        "npm run typecheck",
+        "npm run build:portal"
       ]
     },
     {

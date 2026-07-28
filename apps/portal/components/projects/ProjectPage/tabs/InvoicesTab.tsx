@@ -44,7 +44,7 @@ function invoiceStatusTone(status: DepositInvoiceSummary['status']): BadgeTone {
 function deliveryLabel(status: DepositInvoiceDeliveryStatus): string {
   switch (status) {
     case 'SENT':
-      return 'Sent';
+      return 'Provider confirmed';
     case 'FAILED':
       return 'Failed';
     default:
@@ -77,7 +77,7 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     try {
       const invoice = await sendProjectDepositInvoice(invoiceId);
       await queryClient.invalidateQueries({ queryKey: qk.invoices.byProject(hostKey, projectId) });
-      toast.success(`Invoice ${invoice.invoiceRef} sent.`);
+      toast.success(`Invoice ${invoice.invoiceRef} delivery confirmed by the email provider.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to send invoice';
       toast.error(message);
@@ -131,7 +131,10 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
           </TableHeader>
           <TableBody>
             {invoices.map((invoice) => {
-              const canSend = invoice.status === 'OPEN' && invoice.lastDeliveryStatus !== 'SENT';
+              const canSend =
+                invoice.status === 'OPEN' &&
+                invoice.lastDeliveryStatus !== 'SENT' &&
+                !invoice.finalFailure;
               const isSending = sendingInvoiceId === invoice.id;
               return (
                 <TableRow key={invoice.id}>
@@ -171,8 +174,17 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                       {invoice.lastDeliveryAttemptAt ? (
                         <span className={styles.muted}>Last attempt {formatDateTime(invoice.lastDeliveryAttemptAt)}</span>
                       ) : null}
-                      {invoice.nextRetryAt ? (
-                        <span className={styles.muted}>Retry queued for {formatDateTime(invoice.nextRetryAt)}</span>
+                      {invoice.lastDeliveryStatus === 'FAILED' &&
+                      !invoice.finalFailure ? (
+                        <span className={styles.muted}>
+                          Retry available — the prepared message will be reused
+                          safely.
+                        </span>
+                      ) : null}
+                      {invoice.finalFailure ? (
+                        <span className={styles.error}>
+                          Needs staff attention before another delivery attempt.
+                        </span>
                       ) : null}
                       {invoice.lastDeliveryError ? <span className={styles.error}>{invoice.lastDeliveryError}</span> : null}
                     </div>
@@ -185,7 +197,15 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                         onClick={() => handleSendNow(invoice.id)}
                         disabled={!canSend || isSending}
                       >
-                        {isSending ? 'Sending...' : canSend ? 'Send now' : 'Sent'}
+                        {isSending
+                          ? 'Sending...'
+                          : canSend
+                            ? invoice.lastDeliveryStatus === 'FAILED'
+                              ? 'Retry delivery'
+                              : 'Send now'
+                            : invoice.finalFailure
+                              ? 'Needs attention'
+                              : 'Sent'}
                       </Button>
                     </div>
                   </TableCell>

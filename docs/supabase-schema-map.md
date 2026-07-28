@@ -88,16 +88,23 @@ Tables/RPCs:
 - `quote_send_logs`
 - `deposit_invoices`
 - `deposit_invoice_send_logs`
+- `private.commercial_email_intents`
 - `file_artifacts`
 - `job_pack_generations`
 - `job_pack_sheet_overrides`
 - `next_quote_ref()`
 - `next_deposit_invoice_ref()`
+- `commercial_quote_create_draft(...)`
+- `commercial_quote_update_draft(...)`
+- `commercial_quote_prepare_delivery_email(...)`
+- `commercial_accept_quote_and_ensure_invoice(...)`
+- `commercial_email_intent_prepare(...)` plus the bounded read/checkpoint/finalisation RPCs
 
 Primary write path:
 
 - Staff quote routes under `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Quote domain helpers under `apps/portal/lib/quotes`.
+- Cross-quote/invoice commands, commercial audit, and durable email intent adapters under `apps/portal/lib/commercial`.
 - Quote-version pricing source metadata is nullable, not backfilled, and copied only by quote domain helpers from the saved estimate metadata boundary when quote line items are created, refreshed, or revised.
 - Invoice domain helpers under `apps/portal/lib/invoices`.
 - Email and artifact helpers under `apps/portal/lib/emails`, `apps/portal/lib/outputs`, and quote/invoice/job-pack server helpers.
@@ -115,13 +122,15 @@ Primary read path:
 Access rule:
 
 - Staff writes are server-owned and should not bypass quote/invoice domain helpers.
+- Commercial transaction and intent RPCs are revoked from `anon` and `authenticated`; narrow server-owned service-role adapters call them only after staff auth or public-token validation.
+- `private.commercial_email_intents` freezes request identity and checkpoints. It is not a browser table, public read model, or substitute for quote/invoice send logs.
 - Public quote links use `quote_versions.accept_token_hash`; public invoice links use `deposit_invoices.portal_token_hash`.
 - Token comparisons must stay hash-based. Raw token values and service-role clients must never reach client components, logs, PDFs, or public props.
 - File artifacts and PDFs must stay token-scoped for public downloads.
 
 Migration source:
 
-- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, and quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`.
+- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`, and commercial trust migration `20260728_000001_commercial_workflow_trust.sql`.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
 ## Schedule, Site Visits, And Running Jobs
@@ -216,7 +225,7 @@ Owner docs: this schema map owns the current database boundary; `docs/target-arc
 
 Current scope:
 
-- JOB-01 is the proven durable database foundation. JOB-02 adds an RPC-only worker runtime plus safe runtime-context, aggregate-metrics, and worker-health projections. JOB-03 adds the shared durable email-effect/provider contract, a signed provider-acceptance reconciliation boundary, and lease-fenced local acceptance conflict quarantine. No app producer or commercial workflow handler consumes the durable path yet; deposit-invoice delivery remains request-bound until JOB-04, quote send/resend until JOB-05, and automation/outbox ownership until JOB-07.
+- JOB-01 is the proven durable database foundation. JOB-02 adds an RPC-only worker runtime plus safe runtime-context, aggregate-metrics, and worker-health projections. JOB-03 adds the shared durable email-effect/provider contract, a signed provider-acceptance reconciliation boundary, and lease-fenced local acceptance conflict quarantine. No app producer or commercial workflow handler consumes the worker path yet. Quote/invoice delivery remains request-bound but now uses its own private commercial intent/checkpoint boundary; automation/outbox ownership remains unchanged until its named rollout.
 - The shared `@sp/jobs` registry declares versioned policy for `deposit_invoice_prepare_and_send`, `quote_send`, `quote_resend`, `job_pack_generate`, `automation_event`, and `email_outbox_deliver`, with every default rollout mode still `legacy`.
 - Registry policy keeps `requiredHandlerCheckpoints` for domain-owned freeze/stage/business-finalisation milestones separate from allowed and required external effects. The database snapshots `has_external_side_effect`, `allowed_effect_kinds`, `required_effect_kinds`, and cancellation policy onto each accepted job so a later registry edit cannot change policy beneath durable work. `background_job_complete` rejects success until every recorded worker effect is terminal and every required kind has a durable `finalised` checkpoint; shadow work may retain prepared checkpoints but cannot dispatch.
 - JOB-04 through JOB-08 remain pending. The presence of kinds, tables, RPCs, a provider gateway, or a dark worker artifact is not producer, handler, deployment, or rollout evidence.

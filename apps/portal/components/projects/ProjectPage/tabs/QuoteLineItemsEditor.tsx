@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { QuoteLineItem, QuoteVersionDetail } from "@/lib/quotes/types";
+import type { QuoteLineItem } from "@/lib/quotes/types";
 import {
   buildPergolaStructuredDescription,
   parsePergolaStructuredDescription,
@@ -20,7 +20,7 @@ import {
 type Setter<T> = Dispatch<SetStateAction<T>>;
 
 type QuoteLineItemsEditorProps = {
-  detail: Pick<QuoteVersionDetail, "status">;
+  editable: boolean;
   draftItems: QuoteLineItem[];
   setDraftItems: Setter<QuoteLineItem[]>;
   unitInputDrafts: Record<string, string>;
@@ -52,7 +52,7 @@ type QuoteLineItemsEditorProps = {
 };
 
 export default function QuoteLineItemsEditor({
-  detail,
+  editable,
   draftItems,
   setDraftItems,
   unitInputDrafts,
@@ -75,7 +75,7 @@ export default function QuoteLineItemsEditor({
     <section className={styles.card}>
       <div className={styles.cardHeader}>
         <h4 className={styles.cardTitle}>Line items</h4>
-        {detail.status === "DRAFT" ? (
+        {editable ? (
           <button
             type="button"
             className={styles.secondaryButton}
@@ -94,7 +94,7 @@ export default function QuoteLineItemsEditor({
               <th>Qty</th>
               <th>Unit (inc GST)</th>
               <th>Amount</th>
-              {detail.status === "DRAFT" ? <th>Actions</th> : null}
+              {editable ? <th>Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -108,7 +108,7 @@ export default function QuoteLineItemsEditor({
                       "",
                     ));
               const liveUnitPriceIncGstCents =
-                detail.status === "DRAFT"
+                editable
                   ? getLiveUnitPriceIncGstCents(item)
                   : item.unitPriceIncGstCents;
               const lineTotal = Math.round(
@@ -120,11 +120,11 @@ export default function QuoteLineItemsEditor({
                 draftPergolaOverrideMode[item.id],
               );
               const canUseStructuredPergola =
-                detail.status === "DRAFT" && parsedPergola && !pergolaOverride;
+                editable && parsedPergola && !pergolaOverride;
               return (
                 <tr key={item.id}>
                   <td>
-                    {detail.status === "DRAFT" ? (
+                    {editable ? (
                       <div className={styles.lineEditorCell}>
                         {canUseStructuredPergola ? (
                           <div className={styles.structuredPergolaEditor}>
@@ -457,7 +457,7 @@ export default function QuoteLineItemsEditor({
                     )}
                   </td>
                   <td>
-                    {detail.status === "DRAFT" ? (
+                    {editable ? (
                       <input
                         className={styles.numberInput}
                         value={String(item.qty)}
@@ -479,7 +479,7 @@ export default function QuoteLineItemsEditor({
                     )}
                   </td>
                   <td>
-                    {detail.status === "DRAFT" ? (
+                    {editable ? (
                       <input
                         className={styles.numberInput}
                         value={unitInputValue}
@@ -538,7 +538,7 @@ export default function QuoteLineItemsEditor({
                     )}
                   </td>
                   <td>{formatMoneyFromCents(lineTotal)}</td>
-                  {detail.status === "DRAFT" ? (
+                  {editable ? (
                     <td className={styles.rowActions}>
                       <button
                         type="button"
@@ -569,7 +569,7 @@ export default function QuoteLineItemsEditor({
             {!draftItems.length ? (
               <tr>
                 <td
-                  colSpan={detail.status === "DRAFT" ? 5 : 4}
+                  colSpan={editable ? 5 : 4}
                   className={styles.emptyRow}
                 >
                   No line items.

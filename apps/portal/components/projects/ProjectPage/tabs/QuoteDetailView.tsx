@@ -41,9 +41,9 @@ type QuoteDetailViewProps = {
   selectQuote: (quoteId: string | null) => void;
   savingDraft: boolean;
   reviewAndSend: () => void;
+  retryPreparedDelivery: () => void;
   resend: () => void;
   revise: () => void;
-  openInvoice: () => void;
   moreActionsOpen: boolean;
   setMoreActionsOpen: Setter<boolean>;
   refreshEstimateTarget: EstimateMeta | null;
@@ -107,6 +107,7 @@ type QuoteDetailViewProps = {
   draftTerms: string;
   setDraftTerms: Setter<string>;
   accept: () => void;
+  acceptBusy: boolean;
   decline: () => void;
   dialogs: ReactNode;
 };
@@ -120,9 +121,9 @@ export default function QuoteDetailView({
   selectQuote,
   savingDraft,
   reviewAndSend: handleReviewAndSend,
+  retryPreparedDelivery: handlePreparedDeliveryRetry,
   resend: handleResendClick,
   revise: handleRevise,
-  openInvoice: openInvoiceModal,
   moreActionsOpen,
   setMoreActionsOpen,
   refreshEstimateTarget,
@@ -171,11 +172,25 @@ export default function QuoteDetailView({
   draftTerms,
   setDraftTerms,
   accept: handleAccept,
+  acceptBusy,
   decline: handleDecline,
   dialogs,
 }: QuoteDetailViewProps) {
   const expired = isExpired(detail.expiresAt);
   const hasNewerEstimate = refreshUsesLatestDesign;
+  const commercialWorkflowReady = detail.commercialWorkflowReady !== false;
+  const unfinishedDelivery = Boolean(detail.unfinishedDelivery);
+  const editableDraft =
+    commercialWorkflowReady &&
+    detail.status === "DRAFT" &&
+    detail.isCurrentDraft &&
+    !unfinishedDelivery;
+  const deliveryPreparedVersion =
+    commercialWorkflowReady &&
+    (unfinishedDelivery ||
+      (detail.status === "DRAFT" &&
+        !detail.isCurrentDraft &&
+        Boolean(detail.deliveryPreparedAt)));
 
   return (
     <div
@@ -208,10 +223,30 @@ export default function QuoteDetailView({
           />
         }
         meta={`${detail.quoteRef} · v${detail.versionNumber}`}
-        issues={expired ? `Expired ${detail.expiresAt ?? ""}` : undefined}
+        issues={
+          !commercialWorkflowReady
+            ? "Commercial actions unavailable"
+            : !detail.isCurrentDraft && detail.status === "DRAFT"
+            ? deliveryPreparedVersion
+              ? "Delivery prepared"
+              : "Superseded draft"
+            : unfinishedDelivery
+              ? "Delivery finalisation incomplete"
+              : expired
+                ? `Expired ${detail.expiresAt ?? ""}`
+                : undefined
+        }
       >
         <div className={styles.detailActions}>
-          {detail.status === "DRAFT" ? (
+          {!commercialWorkflowReady && detail.status !== "ACCEPTED" ? (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              disabled
+            >
+              Commercial actions unavailable
+            </button>
+          ) : editableDraft ? (
             <button
               type="button"
               className={styles.primaryButton}
@@ -219,6 +254,14 @@ export default function QuoteDetailView({
               disabled={savingDraft}
             >
               {savingDraft ? "Saving draft..." : "Review & Send"}
+            </button>
+          ) : deliveryPreparedVersion ? (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={handlePreparedDeliveryRetry}
+            >
+              Review prepared delivery
             </button>
           ) : detail.status === "SENT" ? (
             <button
@@ -234,13 +277,12 @@ export default function QuoteDetailView({
                 Open Job Pack
               </Link>
             ) : (
-              <button
-                type="button"
+              <Link
                 className={styles.primaryButton}
-                onClick={openInvoiceModal}
+                href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}
               >
-                Create invoice
-              </button>
+                Open deposit invoice
+              </Link>
             )
           ) : (
             <button
@@ -262,7 +304,7 @@ export default function QuoteDetailView({
             </button>
             {moreActionsOpen ? (
               <div className={styles.moreActionsMenu}>
-                {detail.status === "DRAFT" ? (
+                {editableDraft ? (
                   <>
                     {refreshEstimateTarget ? (
                       <button
@@ -294,9 +336,7 @@ export default function QuoteDetailView({
                       type="button"
                       className={styles.moreActionsItem}
                       onClick={() => void handleSaveDraft()}
-                      disabled={
-                        savingDraft || (draftSyncPending && !draftDirty)
-                      }
+                      disabled={savingDraft || draftSyncPending}
                     >
                       {savingDraft || draftSyncPending
                         ? "Syncing..."
@@ -313,9 +353,20 @@ export default function QuoteDetailView({
                   </>
                 ) : (
                   <>
-                    {detail.status === "SENT" ||
-                    detail.status === "ACCEPTED" ||
-                    detail.status === "DECLINED" ? (
+                    {deliveryPreparedVersion ? (
+                      <button
+                        type="button"
+                        className={styles.moreActionsItem}
+                        onClick={handlePreparedDeliveryRetry}
+                      >
+                        Review prepared delivery
+                      </button>
+                    ) : null}
+                    {!unfinishedDelivery &&
+                    commercialWorkflowReady &&
+                    (detail.status === "SENT" ||
+                      detail.status === "ACCEPTED" ||
+                      detail.status === "DECLINED") ? (
                       <button
                         type="button"
                         className={styles.moreActionsItem}
@@ -324,22 +375,22 @@ export default function QuoteDetailView({
                         Resend
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      className={styles.moreActionsItem}
-                      onClick={handleRevise}
-                    >
-                      Create revision
-                    </button>
-                    {detail.status === "SENT" ||
-                    detail.status === "ACCEPTED" ? (
+                    {commercialWorkflowReady ? (
                       <button
                         type="button"
                         className={styles.moreActionsItem}
-                        onClick={openInvoiceModal}
+                        onClick={handleRevise}
                       >
-                        Create invoice
+                        Create revision
                       </button>
+                    ) : null}
+                    {detail.status === "ACCEPTED" ? (
+                      <Link
+                        className={styles.moreActionsItemLink}
+                        href={`/staff/projects/${encodeURIComponent(projectId)}?tab=invoices`}
+                      >
+                        Open deposit invoice
+                      </Link>
                     ) : null}
                     {openJobPackHref ? (
                       <Link
@@ -378,6 +429,28 @@ export default function QuoteDetailView({
       {expired ? (
         <div className={styles.expiredBanner}>
           Expired on {detail.expiresAt ?? "—"}
+        </div>
+      ) : null}
+
+      {!commercialWorkflowReady ? (
+        <div className={styles.workflowWarning} role="status">
+          <strong>Commercial actions are temporarily unavailable.</strong>{" "}
+          This quote is available read-only, but delivery, revision, and
+          acceptance actions require the pending database upgrade. PDF review
+          and historical records remain available.
+        </div>
+      ) : null}
+
+      {deliveryPreparedVersion ? (
+        <div className={styles.expiredBanner}>
+          Delivery prepared from this exact version. It is read-only while the
+          frozen email is delivered or safely retried. Create a revision for
+          further changes.
+        </div>
+      ) : !detail.isCurrentDraft && detail.status === "DRAFT" ? (
+        <div className={styles.expiredBanner}>
+          Superseded draft — preserved for history and read-only. Create a
+          revision to continue.
         </div>
       ) : null}
 
@@ -431,7 +504,16 @@ export default function QuoteDetailView({
             </div>
             <div className={styles.metaGrid}>
               <div className={styles.metaBlock}>
-                <div className={styles.metaLabel}>Contact</div>
+                <div className={styles.metaLabel}>Prepared for (snapshot)</div>
+                <div className={styles.metaValue}>
+                  {detail.customerName || "Customer"}
+                </div>
+                <div className={styles.metaValueMuted}>
+                  Preserved with this quote version
+                </div>
+              </div>
+              <div className={styles.metaBlock}>
+                <div className={styles.metaLabel}>Current contact</div>
                 <div className={styles.metaValue}>
                   {detail.contact.name || "—"}
                 </div>
@@ -454,12 +536,12 @@ export default function QuoteDetailView({
               <div className={styles.metaBlock}>
                 <div className={styles.metaLabel}>Issue date</div>
                 <div className={styles.metaValue}>
-                  {detail.status === "DRAFT"
+                  {editableDraft
                     ? "Set on send"
                     : formatDateShort(detail.sentAt)}
                 </div>
                 <div className={styles.metaLabel}>Expiry date</div>
-                {detail.status === "DRAFT" ? (
+                {editableDraft ? (
                   <input
                     className={styles.metaInput}
                     type="date"
@@ -475,7 +557,7 @@ export default function QuoteDetailView({
               </div>
               <div className={styles.metaBlock}>
                 <div className={styles.metaLabel}>Reference</div>
-                {detail.status === "DRAFT" ? (
+                {editableDraft ? (
                   <input
                     className={styles.metaInput}
                     value={draftReference}
@@ -490,7 +572,7 @@ export default function QuoteDetailView({
               </div>
               <div className={styles.metaBlock}>
                 <div className={styles.metaLabel}>Deposit %</div>
-                {detail.status === "DRAFT" ? (
+                {editableDraft ? (
                   <input
                     className={styles.metaInput}
                     inputMode="decimal"
@@ -524,14 +606,20 @@ export default function QuoteDetailView({
                   Built from design {detail.sourceEstimateVersionLabel}
                 </Link>
               </div>
-              {detail.status === "DRAFT" ? (
+              <div className={styles.metaValueMuted}>
+                Pricing source:{" "}
+                {detail.pricingSource === "workbench_solved"
+                  ? "Solved design snapshot"
+                  : "Calculator estimate snapshot"}
+              </div>
+              {editableDraft ? (
                 <div className={styles.metaNote}>
                   Draft quotes are independent once created. Design edits do not
                   overwrite quote wording, pricing, deposit, expiry, or
                   reference unless you explicitly refresh from design.
                 </div>
               ) : null}
-              {detail.status === "DRAFT" && hasNewerEstimate ? (
+              {editableDraft && hasNewerEstimate ? (
                 <div className={styles.metaWarning}>
                   A newer design ({refreshEstimateTarget?.versionLabel}) exists.
                   This quote was built from design{" "}
@@ -542,7 +630,7 @@ export default function QuoteDetailView({
           </section>
 
           <QuoteLineItemsEditor
-            detail={detail}
+            editable={editableDraft}
             draftItems={draftItems}
             setDraftItems={setDraftItems}
             unitInputDrafts={unitInputDrafts}
@@ -601,7 +689,7 @@ export default function QuoteDetailView({
             <div className={styles.splitGrid}>
               <div>
                 <div className={styles.metaLabel}>Intro</div>
-                {detail.status === "DRAFT" ? (
+                {editableDraft ? (
                   <textarea
                     className={styles.textarea}
                     value={draftIntro}
@@ -616,7 +704,7 @@ export default function QuoteDetailView({
               </div>
               <div>
                 <div className={styles.metaLabel}>Terms</div>
-                {detail.status === "DRAFT" ? (
+                {editableDraft ? (
                   <textarea
                     className={styles.textarea}
                     value={draftTerms}
@@ -641,21 +729,28 @@ export default function QuoteDetailView({
                     type="button"
                     className={styles.primaryButton}
                     onClick={handleAccept}
+                    disabled={
+                      expired || acceptBusy || !commercialWorkflowReady
+                    }
                   >
-                    Mark accepted
+                    {acceptBusy ? "Accepting..." : "Mark accepted"}
                   </button>
                   <button
                     type="button"
                     className={styles.secondaryButton}
                     onClick={handleDecline}
+                    disabled={!commercialWorkflowReady}
                   >
                     Mark declined
                   </button>
                 </div>
               </div>
               <p className={styles.muted}>
-                These actions lock the quote and trigger the deposit invoice
-                workflow.
+                {!commercialWorkflowReady
+                  ? "The database upgrade must be applied before recording a decision or preparing the deposit invoice."
+                  : expired
+                  ? "This quote has expired. Create and send a current revision before accepting it."
+                  : "Acceptance locks this version, prepares its deposit invoice, and attempts email delivery."}
               </p>
             </section>
           ) : null}

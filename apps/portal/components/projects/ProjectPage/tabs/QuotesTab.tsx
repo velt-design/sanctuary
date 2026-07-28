@@ -13,10 +13,16 @@ import { useQuoteLifecycleActions } from "./useQuoteLifecycleActions";
 import { useQuotePdfPreviews } from "./useQuotePdfPreviews";
 import { useQuotesTabSelection } from "./useQuotesTabSelection";
 import type { EstimateDetail } from "@/lib/estimates/types";
-import type { QuoteLineItem, QuoteVersionDetail } from "@/lib/quotes/types";
+import type {
+  PreparedQuoteDeliverySummary,
+  QuoteLineItem,
+  QuoteVersionDetail,
+} from "@/lib/quotes/types";
 import {
+  getPreparedQuoteDelivery,
   previewQuotePdf,
   resendQuote,
+  retryPreparedQuoteDelivery,
   sendQuote,
 } from "@/lib/quotes/quotesRepo";
 import type {
@@ -47,7 +53,6 @@ import { writeLocalFirstWorkingCopy } from "@/lib/localFirst/store";
 import {
   MAX_ATTACHMENTS_TOTAL_BYTES,
   computeLineTotal,
-  dateInputDaysFromToday,
   defaultPersonalNote,
   defaultSubject,
   downloadPdfBytes,
@@ -59,6 +64,66 @@ import {
   validateAttachment,
   type SendEditorMode,
 } from "./quotesTabModel";
+
+function newDeliveryIntentId(): string {
+  const token =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `quote-delivery:${token}`;
+}
+
+function deliveryIntentStorageKey(
+  quoteVersionId: string,
+  mode: "send" | "resend",
+): string {
+  return `sanctuary:quote-delivery:${quoteVersionId}:${mode}`;
+}
+
+function recoverDeliveryIntentId(
+  quoteVersionId: string,
+  mode: "send" | "resend",
+): string {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage
+        .getItem(deliveryIntentStorageKey(quoteVersionId, mode))
+        ?.trim();
+      if (stored) return stored;
+    } catch {
+      // Delivery still works when browser storage is unavailable.
+    }
+  }
+  return newDeliveryIntentId();
+}
+
+function rememberDeliveryIntentId(
+  quoteVersionId: string,
+  mode: "send" | "resend",
+  intentId: string,
+): void {
+  try {
+    window.localStorage.setItem(
+      deliveryIntentStorageKey(quoteVersionId, mode),
+      intentId,
+    );
+  } catch {
+    // The server-side provider idempotency key remains the final duplicate guard.
+  }
+}
+
+function forgetDeliveryIntentId(
+  quoteVersionId: string,
+  mode: "send" | "resend",
+): void {
+  try {
+    window.localStorage.removeItem(
+      deliveryIntentStorageKey(quoteVersionId, mode),
+    );
+  } catch {
+    // A stale local hint is harmless; a finalised server intent is replay-safe.
+  }
+}
 
 export default function QuotesTab({
   projectId,
@@ -111,15 +176,15 @@ export default function QuotesTab({
     useState<SendEditorMode>("compose");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-
-  const [invoiceOpen, setInvoiceOpen] = useState(false);
-  const [invoiceDepositPercent, setInvoiceDepositPercent] = useState("50");
-  const [invoiceDueDate, setInvoiceDueDate] = useState(
-    dateInputDaysFromToday(7),
+  const [sendIntentId, setSendIntentId] = useState("");
+  const [preparedRetryOpen, setPreparedRetryOpen] = useState(false);
+  const [preparedRetryLoading, setPreparedRetryLoading] = useState(false);
+  const [preparedRetryBusy, setPreparedRetryBusy] = useState(false);
+  const [preparedRetryError, setPreparedRetryError] = useState<string | null>(
+    null,
   );
-  const [invoiceReference, setInvoiceReference] = useState("");
-  const [invoiceBusy, setInvoiceBusy] = useState(false);
-  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [preparedDelivery, setPreparedDelivery] =
+    useState<PreparedQuoteDeliverySummary | null>(null);
 
   const quotePdfPreviewCacheRef = useRef(new Map<string, Uint8Array>());
 
@@ -521,6 +586,14 @@ export default function QuotesTab({
     async (opts?: { silent?: boolean }) => {
       if (!detail || detail.status !== "DRAFT") return detail;
       if (!draftDirty) return detail;
+      if (draftSyncPending) {
+        if (!opts?.silent) {
+          toast.info(
+            "Wait for the current draft save to be confirmed before saving more changes.",
+          );
+        }
+        return detail;
+      }
 
       setSavingDraft(true);
       try {
@@ -546,6 +619,7 @@ export default function QuotesTab({
         const mutationPayload: PortalQuoteUpdateMutationPayload = {
           quoteVersionId: detail.id,
           patch,
+          expectedCommercialRevision: detail.commercialRevision,
         };
         await enqueueAndProcessLocalFirstMutation({
           entityKey: buildQuoteEntityKey(detail.id),
@@ -581,6 +655,7 @@ export default function QuotesTab({
       draftIntro,
       draftReference,
       draftTerms,
+      draftSyncPending,
       effectiveDraftItems,
       hostKey,
       projectId,
@@ -604,6 +679,7 @@ export default function QuotesTab({
       setSendPersonalNote(defaultPersonalNote());
       setSendAttachments([]);
       setSendEditorMode(editorMode);
+      setSendIntentId(recoverDeliveryIntentId(quoteForModal.id, mode));
       resetSendReviewPdf();
       setSendError(null);
       setSendOpen(true);
@@ -617,19 +693,52 @@ export default function QuotesTab({
     setSendEditorMode("compose");
     resetSendReviewPdf();
     setSendError(null);
+    setSendIntentId("");
     setSendOpen(false);
   }, [resetSendReviewPdf]);
 
   const handleReviewAndSend = useCallback(async () => {
     if (!detail) return;
-    const updated =
-      detail.status === "DRAFT" ? await persistDraft({ silent: true }) : detail;
-    if (!updated) return;
-    openSendModal("send", "review", updated);
-  }, [detail, openSendModal, persistDraft]);
+    if (
+      detail.id.startsWith("local-quote:") ||
+      draftSyncPending ||
+      draftDirty
+    ) {
+      if (draftDirty) {
+        await persistDraft({ silent: true });
+      }
+      toast.info(
+        "Saving this draft to the server. Review & Send will be available once sync completes.",
+      );
+      return;
+    }
+    if (!detail.isCurrentDraft) {
+      toast.error("This draft has been superseded and cannot be sent.");
+      return;
+    }
+    openSendModal("send", "review", detail);
+  }, [
+    detail,
+    draftDirty,
+    draftSyncPending,
+    openSendModal,
+    persistDraft,
+    toast,
+  ]);
 
   const handleSend = async () => {
     if (!detail || sendBusy) return;
+    if (!sendIntentId) {
+      toast.error("Delivery review has expired. Close and reopen it.");
+      return;
+    }
+    if (
+      sendMode === "send" &&
+      (draftDirty || draftSyncPending || detail.id.startsWith("local-quote:"))
+    ) {
+      toast.error("Wait for the server-confirmed draft before sending.");
+      return;
+    }
     const to = sendTo
       .split(",")
       .map((v) => v.trim())
@@ -660,16 +769,21 @@ export default function QuotesTab({
     }
     setSendBusy(true);
     setSendError(null);
+    rememberDeliveryIntentId(detail.id, sendMode, sendIntentId);
     try {
       const updated =
         sendMode === "send"
           ? await sendQuote(detail.id, {
+              intentId: sendIntentId,
+              expectedCommercialRevision: detail.commercialRevision,
               to,
               subject: sendSubject,
               personalNote: sendPersonalNote,
               attachments: sendAttachments,
             })
           : await resendQuote(detail.id, {
+              intentId: sendIntentId,
+              expectedCommercialRevision: detail.commercialRevision,
               to,
               subject: sendSubject,
               personalNote: sendPersonalNote,
@@ -679,17 +793,112 @@ export default function QuotesTab({
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
       setActiveUnitInputId(null);
+      forgetDeliveryIntentId(detail.id, sendMode);
       closeSendModal();
       await refreshQuotes();
       toast.success(sendMode === "send" ? "Quote sent." : "Quote resent.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to send quote";
+      if (
+        msg.includes("changed after this delivery review") ||
+        msg.includes("no longer available for delivery") ||
+        msg.includes("already prepared") ||
+        msg.includes("prior delivery") ||
+        msg.includes("superseded")
+      ) {
+        forgetDeliveryIntentId(detail.id, sendMode);
+        setSendIntentId("");
+        setSendOpen(false);
+        await refreshQuotes();
+        toast.error(
+          msg.includes("already prepared") || msg.includes("prior delivery")
+            ? "A prepared delivery already owns this quote. Review that exact delivery before retrying or resending."
+            : "Delivery was cancelled because the server quote changed. Review the current version before sending.",
+        );
+        return;
+      }
       setSendError(msg);
       toast.error(msg);
     } finally {
       setSendBusy(false);
     }
   };
+
+  const openPreparedDeliveryRetry = useCallback(async () => {
+    if (!detail) return;
+    setPreparedRetryOpen(true);
+    setPreparedRetryLoading(true);
+    setPreparedRetryError(null);
+    setPreparedDelivery(null);
+    setMoreActionsOpen(false);
+    try {
+      setPreparedDelivery(
+        await getPreparedQuoteDelivery(
+          detail.id,
+          detail.unfinishedDelivery?.mode ?? "send",
+        ),
+      );
+    } catch (error) {
+      setPreparedRetryError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load the prepared delivery",
+      );
+    } finally {
+      setPreparedRetryLoading(false);
+    }
+  }, [detail]);
+
+  const closePreparedDeliveryRetry = useCallback(() => {
+    if (preparedRetryBusy) return;
+    setPreparedRetryOpen(false);
+    setPreparedRetryError(null);
+    setPreparedDelivery(null);
+  }, [preparedRetryBusy]);
+
+  const handlePreparedDeliveryRetry = useCallback(async () => {
+    if (!detail || !preparedDelivery?.canRetry || preparedRetryBusy) return;
+    setPreparedRetryBusy(true);
+    setPreparedRetryError(null);
+    try {
+      const updated = await retryPreparedQuoteDelivery(
+        detail.id,
+        preparedDelivery.mode,
+        detail.commercialRevision,
+      );
+      queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
+      forgetDeliveryIntentId(detail.id, preparedDelivery.mode);
+      setPreparedRetryOpen(false);
+      setPreparedDelivery(null);
+      await refreshQuotes();
+      toast.success("Prepared quote delivery completed.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to retry the prepared delivery";
+      setPreparedRetryError(message);
+      toast.error(message);
+      try {
+        setPreparedDelivery(
+          await getPreparedQuoteDelivery(detail.id, preparedDelivery.mode),
+        );
+      } catch {
+        await refreshQuotes();
+      }
+    } finally {
+      setPreparedRetryBusy(false);
+    }
+  }, [
+    detail,
+    hostKey,
+    preparedDelivery?.canRetry,
+    preparedDelivery?.mode,
+    preparedRetryBusy,
+    queryClient,
+    refreshQuotes,
+    toast,
+  ]);
 
   const handleSaveDraft = async () => {
     await persistDraft();
@@ -728,10 +937,8 @@ export default function QuotesTab({
     deleteDraft: handleDeleteDraft,
     openRefresh: openRefreshModal,
     refreshFromEstimate: handleRefreshFromEstimate,
-    openInvoice: openInvoiceModal,
-    closeInvoice: closeInvoiceModal,
-    createInvoice: handleCreateInvoice,
     accept: handleAccept,
+    acceptBusy,
     decline: handleDecline,
     generateJobPackForQuote: handleGenerateJobPack,
   } = useQuoteLifecycleActions({
@@ -758,16 +965,6 @@ export default function QuotesTab({
     setRefreshPreviewError,
     refreshBusy,
     setRefreshBusy,
-    setInvoiceOpen,
-    invoiceDepositPercent,
-    setInvoiceDepositPercent,
-    invoiceDueDate,
-    setInvoiceDueDate,
-    invoiceReference,
-    setInvoiceReference,
-    invoiceBusy,
-    setInvoiceBusy,
-    setInvoiceError,
     setDeleteConfirmOpen,
     jobPackBusy,
     setJobPackBusy,
@@ -875,9 +1072,9 @@ export default function QuotesTab({
         selectQuote={(quoteId) => selectQuote(quoteId)}
         savingDraft={savingDraft}
         reviewAndSend={() => void handleReviewAndSend()}
+        retryPreparedDelivery={() => void openPreparedDeliveryRetry()}
         resend={handleResendClick}
         revise={() => void handleRevise()}
-        openInvoice={openInvoiceModal}
         moreActionsOpen={moreActionsOpen}
         setMoreActionsOpen={setMoreActionsOpen}
         refreshEstimateTarget={refreshEstimateTarget}
@@ -929,6 +1126,7 @@ export default function QuotesTab({
         draftTerms={draftTerms}
         setDraftTerms={setDraftTerms}
         accept={() => void handleAccept()}
+        acceptBusy={acceptBusy}
         decline={() => void handleDecline()}
         dialogs={
           <QuoteWorkflowDialogs
@@ -944,17 +1142,13 @@ export default function QuotesTab({
             refreshPreview={refreshPreview}
             closeRefresh={() => setRefreshConfirmOpen(false)}
             confirmRefresh={() => void handleRefreshFromEstimate()}
-            invoiceOpen={invoiceOpen}
-            invoiceBusy={invoiceBusy}
-            invoiceDepositPercent={invoiceDepositPercent}
-            setInvoiceDepositPercent={setInvoiceDepositPercent}
-            invoiceDueDate={invoiceDueDate}
-            setInvoiceDueDate={setInvoiceDueDate}
-            invoiceReference={invoiceReference}
-            setInvoiceReference={setInvoiceReference}
-            invoiceError={invoiceError}
-            closeInvoice={closeInvoiceModal}
-            createInvoice={(sendNow) => void handleCreateInvoice(sendNow)}
+            preparedRetryOpen={preparedRetryOpen}
+            preparedRetryLoading={preparedRetryLoading}
+            preparedRetryBusy={preparedRetryBusy}
+            preparedRetryError={preparedRetryError}
+            preparedDelivery={preparedDelivery}
+            closePreparedRetry={closePreparedDeliveryRetry}
+            retryPreparedDelivery={() => void handlePreparedDeliveryRetry()}
             sendOpen={sendOpen}
             sendMode={sendMode}
             sendEditorMode={sendEditorMode}

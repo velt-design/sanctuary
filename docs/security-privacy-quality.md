@@ -142,6 +142,7 @@ Marketing Lighthouse thresholds:
 Security:
 
 - No unresolved critical/high production vulnerabilities from `npm audit --omit=dev`.
+- The workspace, Portal, and Marketing PostCSS overrides must resolve to the same patched version; verify with `npm ls postcss` after dependency changes.
 - Portal Quality runs `npm run audit:security` as a blocking pull-request gate; Governance Monthly also runs the production dependency audit as part of the broader marketing/governance sweep.
 - Run `npm run test:email-provider` for provider normalization/transport/webhook contracts, `npm run test:jobs` for durable contract, migration, and repository-security checks, and `npm run test:worker` for the Node runtime and hard-crash effect recovery. These are static/unit checks and do not replace live isolated-database or container execution.
 

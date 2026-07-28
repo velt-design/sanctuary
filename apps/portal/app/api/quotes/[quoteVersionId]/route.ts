@@ -11,6 +11,16 @@ function quoteLockedResponse(message = 'Quote is locked') {
 function quoteErrorResponse(err: unknown, fallback: string) {
   const message = err instanceof Error ? err.message : fallback;
   if (message === 'Quote not found') return jsonError(message, 404);
+  if (message === 'QUOTE_STALE') {
+    return NextResponse.json(
+      {
+        error:
+          'This quote changed on the server. Reload it before saving or sending.',
+        code: 'QUOTE_STALE',
+      },
+      { status: 409 },
+    );
+  }
   if (message === 'Quote is locked' || message === 'Only drafts can be deleted') return quoteLockedResponse(message);
   return jsonError(message, 500);
 }
@@ -40,6 +50,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ quoteVersionI
   if (!parsed.ok) return jsonError(parsed.error, 400);
 
   const body = parsed.body ?? {};
+  const expectedCommercialRevision = Number(body.expectedCommercialRevision);
+  if (
+    !Number.isSafeInteger(expectedCommercialRevision) ||
+    expectedCommercialRevision < 1
+  ) {
+    return jsonError('Quote commercial revision is required', 400);
+  }
 
   try {
     const updated = await updateDraftQuoteVersion(id, {
@@ -53,6 +70,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ quoteVersionI
           : undefined,
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : body.expiresAt === null ? null : undefined,
       lineItems: Array.isArray(body.lineItems) ? body.lineItems : undefined,
+      expectedCommercialRevision,
     });
     return jsonOk({ quoteVersion: updated });
   } catch (err) {

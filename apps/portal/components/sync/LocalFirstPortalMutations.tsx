@@ -188,6 +188,7 @@ export default function LocalFirstPortalMutations() {
             {
               method: 'POST',
               body: JSON.stringify({
+                clientIntentId: item.id,
                 calculator_snapshot: {
                   inputs: payload.estimatePayload.inputs,
                   outputs: {
@@ -351,7 +352,10 @@ export default function LocalFirstPortalMutations() {
         try {
           const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/projects/${encodeURIComponent(payload.projectId)}/quotes`, {
             method: 'POST',
-            body: JSON.stringify({ estimateVersionId: resolvedEstimateId }),
+            body: JSON.stringify({
+              estimateVersionId: resolvedEstimateId,
+              clientIntentId: item.id,
+            }),
             skipSaveTracking: true,
           });
 
@@ -396,7 +400,10 @@ export default function LocalFirstPortalMutations() {
         try {
           const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(resolvedQuoteVersionId)}`, {
             method: 'PATCH',
-            body: JSON.stringify(payload.patch),
+            body: JSON.stringify({
+              ...payload.patch,
+              expectedCommercialRevision: payload.expectedCommercialRevision,
+            }),
             skipSaveTracking: true,
           });
 

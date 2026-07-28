@@ -85,6 +85,7 @@ type PortalQuoteDraftPatch = {
 export type PortalQuoteUpdateMutationPayload = {
   quoteVersionId: string;
   patch: PortalQuoteDraftPatch;
+  expectedCommercialRevision: number;
 };
 
 export type PortalEstimateNotesMutationPayload = {
@@ -180,6 +181,10 @@ function quoteVersionFromDetail(detail: QuoteVersionDetail): QuoteVersion {
     sourceEstimateVersionLabel: detail.sourceEstimateVersionLabel,
     revisedFromQuoteVersionId: detail.revisedFromQuoteVersionId ?? null,
     createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+    commercialRevision: detail.commercialRevision,
+    isCurrentDraft: detail.isCurrentDraft,
+    deliveryPreparedAt: detail.deliveryPreparedAt,
     createdBy: detail.createdBy ?? null,
     sentAt: detail.sentAt ?? null,
     sentBy: detail.sentBy ?? null,
@@ -191,6 +196,7 @@ function quoteVersionFromDetail(detail: QuoteVersionDetail): QuoteVersion {
     totals: detail.totals,
     pdfFileId: detail.pdfFileId ?? null,
     renderHash: detail.renderHash ?? null,
+    pricingSource: detail.pricingSource,
   };
 }
 
@@ -418,6 +424,10 @@ export function buildOptimisticQuoteDetail(args: {
     sourceEstimateVersionLabel: args.estimateDetail.versionLabel,
     revisedFromQuoteVersionId: null,
     createdAt,
+    updatedAt: createdAt,
+    commercialRevision: 1,
+    isCurrentDraft: true,
+    deliveryPreparedAt: null,
     createdBy: args.createdBy ?? null,
     sentAt: null,
     sentBy: null,
@@ -429,6 +439,7 @@ export function buildOptimisticQuoteDetail(args: {
     totals,
     pdfFileId: null,
     renderHash: null,
+    pricingSource: 'calculator_live',
     lineItems,
     sendLogs: [],
     contact: quoteContact,

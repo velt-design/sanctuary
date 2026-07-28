@@ -83,8 +83,8 @@ vi.mock('@/lib/localFirst/queue', () => ({
 }));
 
 vi.mock('@/lib/quotes/quotesRepo', () => ({
-  createQuoteInvoice: vi.fn(),
   deleteDraftQuoteVersion: vi.fn(),
+  getPreparedQuoteDelivery: vi.fn(),
   markQuoteAccepted: vi.fn(),
   markQuoteDeclined: vi.fn(),
   previewQuotePdf: vi.fn(),
@@ -92,6 +92,7 @@ vi.mock('@/lib/quotes/quotesRepo', () => ({
   quotePdfUrl: (id: string) => `/api/quotes/${id}/pdf`,
   refreshDraftQuoteFromEstimate: vi.fn(),
   resendQuote: vi.fn(),
+  retryPreparedQuoteDelivery: vi.fn(),
   reviseQuote: vi.fn(),
   sendQuote: vi.fn(),
 }));
@@ -120,6 +121,11 @@ const quoteDetail = {
   quoteRef: 'Q-1001',
   versionNumber: 1,
   status: 'DRAFT',
+  updatedAt: '2026-04-02T00:00:00Z',
+  commercialRevision: 1,
+  isCurrentDraft: true,
+  deliveryPreparedAt: null,
+  pricingSource: 'calculator_live',
   depositPercent: 50,
   sourceEstimateVersionId: 'est_v1',
   sourceEstimateVersionLabel: 'V1',
@@ -163,6 +169,7 @@ const quoteDetail = {
     quoteRef: 'Q-1001',
   },
 } as const;
+let activeQuoteDetail: any = quoteDetail;
 
 describe('QuotesTab draft ownership UI', () => {
   beforeEach(() => {
@@ -177,6 +184,7 @@ describe('QuotesTab draft ownership UI', () => {
     fetchQuery.mockReset();
     removeQueries.mockReset();
     useQueryMock.mockReset();
+    activeQuoteDetail = quoteDetail;
 
     const responses = [
       {
@@ -218,7 +226,11 @@ describe('QuotesTab draft ownership UI', () => {
     ];
     let callIndex = 0;
     useQueryMock.mockImplementation(() => {
-      const response = responses[callIndex % responses.length];
+      const responseIndex = callIndex % responses.length;
+      const response =
+        responseIndex === 3
+          ? { ...responses[responseIndex], data: activeQuoteDetail }
+          : responses[responseIndex];
       callIndex += 1;
       return response;
     });
@@ -237,6 +249,65 @@ describe('QuotesTab draft ownership UI', () => {
     expect(rendered.container.textContent).toContain('Draft');
     expect(rendered.container.textContent).toContain('Internal');
 
+    rendered.unmount();
+  });
+
+  it('makes an unfinished frozen delivery the primary recovery action', () => {
+    activeQuoteDetail = {
+      ...quoteDetail,
+      isCurrentDraft: false,
+      deliveryPreparedAt: '2026-07-28T00:00:00.000Z',
+      unfinishedDelivery: {
+        mode: 'send',
+        status: 'failed',
+        canRetry: true,
+      },
+    };
+
+    const rendered = renderIntoDocument(
+      <QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />,
+    );
+
+    expect(rendered.container.textContent).toContain(
+      'Review prepared delivery',
+    );
+    expect(rendered.container.textContent).toContain(
+      'Delivery prepared from this exact version',
+    );
+    expect(rendered.container.textContent).not.toContain('Review & Send');
+    rendered.unmount();
+  });
+
+  it('keeps quote review available but blocks commercial actions before migration', () => {
+    activeQuoteDetail = {
+      ...quoteDetail,
+      status: 'SENT',
+      isCurrentDraft: false,
+      sentAt: '2026-07-28T00:00:00.000Z',
+      commercialWorkflowReady: false,
+    };
+
+    const rendered = renderIntoDocument(
+      <QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />,
+    );
+
+    expect(rendered.container.textContent).toContain('Quote details');
+    expect(rendered.container.textContent).toContain(
+      'Commercial actions are temporarily unavailable.',
+    );
+    expect(rendered.container.textContent).toContain(
+      'This quote is available read-only',
+    );
+    const unavailableButton = Array.from(
+      rendered.container.querySelectorAll('button'),
+    ).find((button) =>
+      button.textContent?.includes('Commercial actions unavailable'),
+    );
+    expect(unavailableButton?.hasAttribute('disabled')).toBe(true);
+    const acceptButton = Array.from(
+      rendered.container.querySelectorAll('button'),
+    ).find((button) => button.textContent?.includes('Mark accepted'));
+    expect(acceptButton?.hasAttribute('disabled')).toBe(true);
     rendered.unmount();
   });
 });

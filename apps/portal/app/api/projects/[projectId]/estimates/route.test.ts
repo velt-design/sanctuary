@@ -231,6 +231,7 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {
+        clientIntentId: 'estimate-create:test-1',
         calculator_snapshot: {
           inputs: { schemaVersion: 'v2' },
           outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
@@ -291,11 +292,75 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     await expect(res.json()).resolves.toEqual({ estimate: { id: 'est_1', projectId: 'proj_1' } });
   });
 
+  it('returns the original estimate when a create intent is replayed', async () => {
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        clientIntentId: 'estimate-create:replay',
+      },
+    });
+    const existing = {
+      id: 'estimate-existing',
+      project_id: 'project-uuid',
+      client_intent_id: 'estimate-create:replay',
+    };
+    estimateExistingOrder.mockResolvedValue({
+      data: [existing],
+      error: null,
+    });
+    buildVersionLabelMap.mockReturnValue(
+      new Map([['estimate-existing', 'V3']]),
+    );
+    mapEstimateDetail.mockReturnValue({
+      id: 'est_existing',
+      projectId: 'proj_1',
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/projects/proj_1/estimates', {
+        method: 'POST',
+      }),
+      { params: Promise.resolve({ projectId: 'proj_1' }) },
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      estimate: { id: 'est_existing', projectId: 'proj_1' },
+      idempotentReplay: true,
+    });
+    expect(estimateInsert).not.toHaveBeenCalled();
+  });
+
+  it('never substitutes the latest saved estimate when the exact calculator snapshot is missing', async () => {
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: { clientIntentId: 'estimate-create:missing-snapshot' },
+    });
+    estimateExistingOrder.mockResolvedValue({ data: [], error: null });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/projects/proj_1/estimates', {
+        method: 'POST',
+      }),
+      { params: Promise.resolve({ projectId: 'proj_1' }) },
+    );
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({
+      error:
+        'This save has no calculator result attached. Recalculate before saving.',
+    });
+    expect(estimateInsert).not.toHaveBeenCalled();
+  });
+
   it('falls back invalid pricing source config to calculator_live on create', async () => {
     process.env.PORTAL_ESTIMATE_PRICING_SOURCE = 'workbench';
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {
+        clientIntentId: 'estimate-create:test-2',
         calculator_snapshot: {
           inputs: { schemaVersion: 'v2' },
           outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
@@ -351,6 +416,7 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {
+        clientIntentId: 'estimate-create:test-3',
         calculator_snapshot: snapshot,
       },
     });
@@ -419,6 +485,7 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {
+        clientIntentId: 'estimate-create:test-4',
         calculator_snapshot: {
           inputs: { schemaVersion: 'v2' },
           outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
@@ -471,6 +538,7 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {
+        clientIntentId: 'estimate-create:test-5',
         calculator_snapshot: {
           inputs: { schemaVersion: 'v2' },
           outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
@@ -526,6 +594,7 @@ describe('POST /api/projects/[projectId]/estimates', () => {
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {
+        clientIntentId: 'estimate-create:test-6',
         calculator_snapshot: {
           inputs: { schemaVersion: 'v2' },
           outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },

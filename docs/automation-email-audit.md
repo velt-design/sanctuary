@@ -15,6 +15,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 - Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; canonical task/follow-up persistence and business-calendar due dates live in `taskPersistence.ts`.
 - Automation cache keys: `qk.automation` in `apps/portal/lib/queries/keys.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
+- Quote/invoice commercial email intents and audit adapter: `apps/portal/lib/commercial/emailIntent.ts` and `apps/portal/lib/commercial/audit.ts`.
 - Shared provider contract: `packages/email-provider` (`@sp/email-provider`).
 - Durable provider-effect coordinator: `apps/worker/src/effects/durableEmailEffect.ts` (not yet registered by a business handler).
 - Signed provider webhook and narrow persistence owner: `apps/portal/app/api/webhooks/resend/route.ts` and `apps/portal/lib/backgroundJobs/providerWebhookRepository.ts`.
@@ -53,7 +54,7 @@ Canonical task/follow-up tables are select-only to authenticated portal users. A
 
 Marketing enquiry routes can create public lead/enquiry records and send or log autoresponder email behavior. `marketing_enquiry_intake` owns contact, project, and enquiry creation as one database transaction. A browser-generated `submission_id`, unique constraint, and transaction advisory lock make retries and concurrent duplicates return the original IDs. The RPC persists the same nullable indicative-pricing fields used by the autoresponder, so production schema readiness includes `20260724043000_marketing_enquiry_budget_columns.sql`; a root baseline `CREATE TABLE IF NOT EXISTS` is not evidence that an existing table has those columns. Keep public marketing writes narrow and server-owned; public responses expose stable validation/service messages, never raw Supabase errors.
 
-Portal transactional email and marketing contact/enquiry email now use thin server-only adapters over `@sp/email-provider`. The package normalizes the message, enforces a bounded timeout/abort contract, classifies provider outcomes, and keeps raw provider responses out of app errors and logs. Existing stable marketing IDs are forwarded as compatibility idempotency keys where available. Quote/invoice delivery remains request-bound until JOB-04/JOB-05, while automation and `email_outbox` delivery remain under their current owners until JOB-07; the shared gateway does not by itself move either workflow to the worker.
+Portal transactional email and marketing contact/enquiry email use thin server-only adapters over `@sp/email-provider`. The package normalizes the message, enforces a bounded timeout/abort contract, classifies provider outcomes, and keeps raw provider responses out of app errors and logs. Existing stable marketing IDs are forwarded as compatibility idempotency keys where available. Quote/invoice delivery remains request-bound but is now crash/replay safe: `private.commercial_email_intents` freezes the exact request and provider key, checkpoints provider acceptance before business finalisation, and lets a later request resume the same identity. This does not enable a worker producer/handler or move automation/outbox ownership.
 
 The durable JOB-03 email coordinator is a reusable worker primitive, not an enabled handler. It freezes one exact job/effect-derived Resend key, recipients, subject, content, attachments, tags, token bytes, request hash, and 20-hour automatic retry expiry. Its checkpoints are `prepared`, `dispatch_started`, `provider_accepted`, `finalised`, and `uncertain`. A retry after uncertainty may use only that same key and byte-identical request before expiry/attempt exhaustion; it must never manufacture a new key. Provider acceptance is evidence to resume an idempotent business finaliser, not business completion.
 
@@ -126,6 +127,8 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 ## Guardrails
 
 - Side effects must be idempotent. Use stable idempotency keys for automation events, emails, tasks, and follow-ups.
+- Commercial audit inserts must inspect returned database errors, not only thrown exceptions. Duplicate idempotency keys may be treated as already recorded; schema/access failures must remain visible in safe structured server logs.
+- Quote/invoice delivery states must describe evidence: provider-confirmed, retryable with the same frozen request, or staff attention. Do not translate a retryable state into a promise of an automatic retry.
 - For durable provider uncertainty, reuse only the frozen provider key and exact request while the 20-hour retry window and attempt budget remain live. Expired or unresolved work needs staff attention; changing delivery inputs creates a new workflow intent, not a mutation beneath the old key.
 - Do not duplicate quote, invoice, token, PDF, or job-pack side effects here; those belong to `docs/quotes-invoices-job-packs.md`.
 - Record email failures in `email_outbox` where the user needs visibility.

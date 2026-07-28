@@ -10,7 +10,7 @@ import {
   normalizeRequestedEstimatePricingSource,
   resolveEstimatePricingSourceForSave,
 } from '@/lib/estimates/pricingRollout';
-import { buildVersionLabelMap, calculatorSnapshotFromRow, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
+import { buildVersionLabelMap, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -30,6 +30,7 @@ async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record
 
     const missing = missingColumnFromError(res.error);
     if (missing && missing in working) {
+      if (missing === 'client_intent_id') return res;
       if (working.pricing_source === 'workbench_solved' && isEstimatePricingSourceColumn(missing)) return res;
       delete working[missing];
       continue;
@@ -90,34 +91,49 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
   const body = parsed.body ?? {};
-
-  let snapshot: Record<string, unknown> | null = null;
-  if (isRecord(body?.calculator_snapshot)) snapshot = body.calculator_snapshot as Record<string, unknown>;
-
-  if (!snapshot) {
-    const latest = await supabase
-      .from('estimates')
-      .select('inputs, outputs, warnings, costing_manifest, costing_rules')
-      .eq('project_id', projectUuid)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latest.data) snapshot = calculatorSnapshotFromRow(latest.data);
-  }
-
-  if (!snapshot) {
-    return jsonError('No calculator result found. Open calculator and generate one first.', 409);
+  const clientIntentId =
+    typeof body.clientIntentId === 'string' ? body.clientIntentId.trim() : '';
+  if (
+    clientIntentId.length < 8 ||
+    clientIntentId.length > 128 ||
+    !/^[A-Za-z0-9._:-]+$/.test(clientIntentId)
+  ) {
+    return jsonError('clientIntentId is required', 400);
   }
 
   const existing = await supabase
     .from('estimates')
-    .select('id, outputs, created_at')
+    .select('*')
     .eq('project_id', projectUuid)
     .order('created_at', { ascending: false });
 
   if (existing.error) return jsonError(existing.error.message ?? 'Failed to load existing estimates', 500);
   const existingRows = Array.isArray(existing.data) ? existing.data : [];
   const versionLabels = buildVersionLabelMap(existingRows);
+  const existingIntent = existingRows.find(
+    (row) => String((row as any)?.client_intent_id ?? '') === clientIntentId,
+  );
+  if (existingIntent) {
+    const flowMaps = await loadProjectEstimateFlowMaps(projectUuid, existingRows as any[]);
+    const existingId = String(existingIntent?.id ?? '');
+    const estimate = mapEstimateDetail(
+      existingIntent,
+      versionLabels.get(existingId) ?? 'V-',
+      flowMaps.editabilityByEstimateId.get(existingId) ?? null,
+      estimateFlowStateFor(flowMaps.flowByEstimateId, existingId),
+    );
+    return jsonOk({ estimate, idempotentReplay: true });
+  }
+
+  const snapshot = isRecord(body?.calculator_snapshot)
+    ? (body.calculator_snapshot as Record<string, unknown>)
+    : null;
+  if (!snapshot) {
+    return jsonError(
+      'This save has no calculator result attached. Recalculate before saving.',
+      409,
+    );
+  }
 
   const existingVersions = existingRows.map((row) => extractVersionNumber(row)).filter((v): v is number => v !== null);
 
@@ -167,6 +183,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const payload: Record<string, any> = {
     project_id: projectUuid,
+    client_intent_id: clientIntentId,
     ...buildEstimateDbPayload({
       status: 'draft',
       inputs,
@@ -183,6 +200,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const insertRes = await insertEstimateWithRetry(supabase, payload);
   if (insertRes.error || !insertRes.data) {
+    if (String(insertRes.error?.code ?? '') === '23505') {
+      const replay = await supabase
+        .from('estimates')
+        .select('*')
+        .eq('project_id', projectUuid)
+        .eq('client_intent_id', clientIntentId)
+        .maybeSingle();
+      if (replay.data) {
+        const replayRows = [...existingRows, replay.data];
+        const replayLabels = buildVersionLabelMap(replayRows);
+        const replayMaps = await loadProjectEstimateFlowMaps(
+          projectUuid,
+          replayRows as any[],
+        );
+        const replayId = String((replay.data as any).id ?? '');
+        const estimate = mapEstimateDetail(
+          replay.data,
+          replayLabels.get(replayId) ?? `V${nextVersion}`,
+          replayMaps.editabilityByEstimateId.get(replayId) ?? null,
+          estimateFlowStateFor(replayMaps.flowByEstimateId, replayId),
+        );
+        return jsonOk({ estimate, idempotentReplay: true });
+      }
+    }
     return jsonError(insertRes.error?.message ?? 'Failed to create estimate', 500);
   }
 

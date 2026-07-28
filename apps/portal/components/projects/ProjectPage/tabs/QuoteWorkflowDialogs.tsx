@@ -3,7 +3,10 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import type { EstimateMeta } from "@/lib/estimates/types";
-import type { QuoteVersionDetail } from "@/lib/quotes/types";
+import type {
+  PreparedQuoteDeliverySummary,
+  QuoteVersionDetail,
+} from "@/lib/quotes/types";
 import type {
   QuoteRefreshMode,
   QuoteRefreshPreview,
@@ -17,10 +20,8 @@ import {
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENTS_TOTAL_BYTES,
   formatFileSize,
-  formatPercentInput,
+  formatDateTime,
   formatRefreshModeLabel,
-  normalizePercentInput,
-  parsePercentInput,
   renderPersonalNoteSummary,
   validateAttachment,
   type SendEditorMode,
@@ -42,17 +43,13 @@ type QuoteWorkflowDialogsProps = {
   refreshPreview: QuoteRefreshPreview | null;
   closeRefresh: () => void;
   confirmRefresh: () => void;
-  invoiceOpen: boolean;
-  invoiceBusy: boolean;
-  invoiceDepositPercent: string;
-  setInvoiceDepositPercent: Dispatch<SetStateAction<string>>;
-  invoiceDueDate: string;
-  setInvoiceDueDate: Dispatch<SetStateAction<string>>;
-  invoiceReference: string;
-  setInvoiceReference: Dispatch<SetStateAction<string>>;
-  invoiceError: string | null;
-  closeInvoice: () => void;
-  createInvoice: (sendNow: boolean) => void;
+  preparedRetryOpen: boolean;
+  preparedRetryLoading: boolean;
+  preparedRetryBusy: boolean;
+  preparedRetryError: string | null;
+  preparedDelivery: PreparedQuoteDeliverySummary | null;
+  closePreparedRetry: () => void;
+  retryPreparedDelivery: () => void;
   sendOpen: boolean;
   sendMode: SendMode;
   sendEditorMode: SendEditorMode;
@@ -96,17 +93,13 @@ export default function QuoteWorkflowDialogs({
   refreshPreview,
   closeRefresh,
   confirmRefresh,
-  invoiceOpen,
-  invoiceBusy,
-  invoiceDepositPercent,
-  setInvoiceDepositPercent,
-  invoiceDueDate,
-  setInvoiceDueDate,
-  invoiceReference,
-  setInvoiceReference,
-  invoiceError,
-  closeInvoice,
-  createInvoice,
+  preparedRetryOpen,
+  preparedRetryLoading,
+  preparedRetryBusy,
+  preparedRetryError,
+  preparedDelivery,
+  closePreparedRetry,
+  retryPreparedDelivery,
   sendOpen,
   sendMode,
   sendEditorMode,
@@ -236,94 +229,139 @@ export default function QuoteWorkflowDialogs({
         </QuoteModal>
       ) : null}
 
-      {invoiceOpen ? (
+      {preparedRetryOpen ? (
         <QuoteModal
-          label="Create invoice"
-          onClose={() => {
-            if (!invoiceBusy) closeInvoice();
-          }}
+          label="Review prepared delivery"
+          onClose={closePreparedRetry}
         >
           <div className={styles.modalHeader}>
-            <h4 className={styles.cardTitle}>Create invoice</h4>
+            <h4 className={styles.cardTitle}>Review prepared delivery</h4>
             <button
               type="button"
               className={styles.modalClose}
-              onClick={closeInvoice}
+              onClick={closePreparedRetry}
+              disabled={preparedRetryBusy}
             >
               Close
             </button>
           </div>
           <div className={styles.modalBody}>
             <p className={styles.modalBodyText}>
-              Create a deposit invoice from this quote now, or create it first
-              and send it later from the Invoices tab.
+              This retry reuses the exact recipients, content, token, PDF and
+              attachments frozen before the first provider attempt. Nothing
+              below can be edited.
             </p>
-            <label className={styles.metaLabel} htmlFor="invoiceDepositPercent">
-              Deposit %
-            </label>
-            <input
-              id="invoiceDepositPercent"
-              className={styles.metaInput}
-              inputMode="decimal"
-              value={invoiceDepositPercent}
-              onChange={(event) =>
-                setInvoiceDepositPercent(
-                  normalizePercentInput(event.target.value),
-                )
-              }
-              onBlur={(event) =>
-                setInvoiceDepositPercent(
-                  formatPercentInput(parsePercentInput(event.target.value)),
-                )
-              }
-            />
-            <label className={styles.metaLabel} htmlFor="invoiceDueDate">
-              Due date
-            </label>
-            <input
-              id="invoiceDueDate"
-              className={styles.metaInput}
-              type="date"
-              value={invoiceDueDate}
-              onChange={(event) => setInvoiceDueDate(event.target.value)}
-            />
-            <label className={styles.metaLabel} htmlFor="invoiceReference">
-              Reference
-            </label>
-            <input
-              id="invoiceReference"
-              className={styles.metaInput}
-              value={invoiceReference}
-              onChange={(event) => setInvoiceReference(event.target.value)}
-            />
-            {invoiceError ? (
-              <div className={styles.errorText}>{invoiceError}</div>
+            {preparedRetryLoading ? (
+              <p className={styles.note}>Loading prepared delivery...</p>
+            ) : null}
+            {preparedDelivery ? (
+              <>
+                <div className={styles.previewMetaGrid}>
+                  <div className={styles.previewMetaItem}>
+                    <div className={styles.metaLabel}>To</div>
+                    <div className={styles.previewMetaValue}>
+                      {preparedDelivery.to.join(", ") || "—"}
+                    </div>
+                  </div>
+                  <div className={styles.previewMetaItem}>
+                    <div className={styles.metaLabel}>Subject</div>
+                    <div className={styles.previewMetaValue}>
+                      {preparedDelivery.subject}
+                    </div>
+                  </div>
+                  <div className={styles.previewMetaItem}>
+                    <div className={styles.metaLabel}>Prepared</div>
+                    <div className={styles.previewMetaValue}>
+                      {formatDateTime(preparedDelivery.preparedAt)}
+                    </div>
+                  </div>
+                  <div className={styles.previewMetaItem}>
+                    <div className={styles.metaLabel}>Action / state</div>
+                    <div className={styles.previewMetaValue}>
+                      {preparedDelivery.mode === "send"
+                        ? "Initial send"
+                        : "Resend"}{" "}
+                      · {preparedDelivery.status.replaceAll("_", " ")}
+                    </div>
+                  </div>
+                </div>
+                {preparedDelivery.cc.length || preparedDelivery.bcc.length ? (
+                  <div className={styles.previewMetaGrid}>
+                    {preparedDelivery.cc.length ? (
+                      <div className={styles.previewMetaItem}>
+                        <div className={styles.metaLabel}>CC</div>
+                        <div className={styles.previewMetaValue}>
+                          {preparedDelivery.cc.join(", ")}
+                        </div>
+                      </div>
+                    ) : null}
+                    {preparedDelivery.bcc.length ? (
+                      <div className={styles.previewMetaItem}>
+                        <div className={styles.metaLabel}>BCC</div>
+                        <div className={styles.previewMetaValue}>
+                          {preparedDelivery.bcc.join(", ")}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className={styles.previewMetaItem}>
+                  <div className={styles.metaLabel}>Attachments</div>
+                  <div className={styles.previewMetaValue}>
+                    {preparedDelivery.attachmentNames.join(", ") || "—"}
+                  </div>
+                </div>
+                {preparedDelivery.bodyText ? (
+                  <>
+                    <label className={styles.metaLabel} htmlFor="preparedBody">
+                      Frozen plain-text email
+                    </label>
+                    <textarea
+                      id="preparedBody"
+                      className={styles.textarea}
+                      value={preparedDelivery.bodyText}
+                      readOnly
+                      rows={9}
+                    />
+                  </>
+                ) : null}
+                {!preparedDelivery.canRetry ? (
+                  <div className={styles.errorText}>
+                    This delivery needs staff attention and cannot be retried
+                    from the portal.
+                    {preparedDelivery.lastErrorCode
+                      ? ` Reference: ${preparedDelivery.lastErrorCode}.`
+                      : ""}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {preparedRetryError ? (
+              <div className={styles.errorText}>{preparedRetryError}</div>
             ) : null}
           </div>
           <div className={styles.modalFooter}>
             <button
               type="button"
               className={styles.secondaryButton}
-              onClick={closeInvoice}
-              disabled={invoiceBusy}
+              onClick={closePreparedRetry}
+              disabled={preparedRetryBusy}
             >
               Cancel
             </button>
             <button
               type="button"
-              className={styles.secondaryButton}
-              onClick={() => createInvoice(false)}
-              disabled={invoiceBusy}
-            >
-              {invoiceBusy ? "Working..." : "Create only"}
-            </button>
-            <button
-              type="button"
               className={styles.primaryButton}
-              onClick={() => createInvoice(true)}
-              disabled={invoiceBusy}
+              onClick={retryPreparedDelivery}
+              disabled={
+                preparedRetryBusy ||
+                preparedRetryLoading ||
+                !preparedDelivery?.canRetry
+              }
             >
-              {invoiceBusy ? "Working..." : "Create & send"}
+              {preparedRetryBusy
+                ? "Retrying..."
+                : "Retry exact prepared delivery"}
             </button>
           </div>
         </QuoteModal>
@@ -502,6 +540,15 @@ export default function QuoteWorkflowDialogs({
                   <div className={styles.previewMetaValue}>{sendTo || "—"}</div>
                 </div>
                 <div className={styles.previewMetaItem}>
+                  <div className={styles.metaLabel}>Prepared for</div>
+                  <div className={styles.previewMetaValue}>
+                    {detail.customerName || "Customer"}
+                  </div>
+                  <div className={styles.metaValueMuted}>
+                    Snapshot preserved on this quote version
+                  </div>
+                </div>
+                <div className={styles.previewMetaItem}>
                   <div className={styles.metaLabel}>Subject</div>
                   <div className={styles.previewMetaValue}>
                     {sendSubject || "—"}
@@ -527,7 +574,8 @@ export default function QuoteWorkflowDialogs({
               </div>
               {sendMode === "send" && (draftDirty || draftSyncPending) ? (
                 <div className={styles.metaWarning}>
-                  This review is based on your current local draft changes.
+                  Sending is blocked until this draft is confirmed by the
+                  server. Close this review, wait for sync, then review again.
                 </div>
               ) : null}
               <QuoteEmailPreviewPanel
@@ -592,7 +640,11 @@ export default function QuoteWorkflowDialogs({
                   type="button"
                   className={styles.primaryButton}
                   onClick={sendQuote}
-                  disabled={sendBusy}
+                  disabled={
+                    sendBusy ||
+                    (sendMode === "send" &&
+                      (draftDirty || draftSyncPending))
+                  }
                 >
                   {sendBusy
                     ? "Sending..."

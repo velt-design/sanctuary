@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffSession = vi.fn();
+const parseJsonBody = vi.fn();
 const reviseQuoteVersion = vi.fn();
 
 vi.mock('@/lib/api/staffApi', () => ({
   jsonError: (error: string, status: number) => new Response(JSON.stringify({ error }), { status, headers: { 'content-type': 'application/json' } }),
   jsonOk: (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }),
+  parseJsonBody,
   requireStaffSession,
 }));
 
@@ -17,11 +19,16 @@ describe('POST /api/quotes/[quoteVersionId]/revise', () => {
   beforeEach(() => {
     vi.resetModules();
     requireStaffSession.mockReset();
+    parseJsonBody.mockReset();
     reviseQuoteVersion.mockReset();
   });
 
   it('returns the new draft revision without source metadata fields', async () => {
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' } });
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: { clientIntentId: 'quote-revise:test-1' },
+    });
     reviseQuoteVersion.mockResolvedValue({
       id: 'qv_2',
       revisedFromQuoteVersionId: 'qv_1',
@@ -35,7 +42,11 @@ describe('POST /api/quotes/[quoteVersionId]/revise', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(reviseQuoteVersion).toHaveBeenCalledWith('qv_1', 'ops@example.com');
+    expect(reviseQuoteVersion).toHaveBeenCalledWith(
+      'qv_1',
+      'ops@example.com',
+      'quote-revise:test-1',
+    );
     const body = await res.json();
     expect(body.quoteVersion.status).toBe('DRAFT');
     expect(body.quoteVersion.revisedFromQuoteVersionId).toBe('qv_1');

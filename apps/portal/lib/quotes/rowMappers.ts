@@ -41,6 +41,18 @@ export function mapQuoteVersionRow(
       ? appIdFromUuid('qv', String(row.revised_from_quote_version_id))
       : null,
     createdAt: typeof row?.created_at === 'string' ? row.created_at : nowIso(),
+    updatedAt: typeof row?.updated_at === 'string' ? row.updated_at : nowIso(),
+    commercialRevision:
+      Number.isSafeInteger(Number(row?.commercial_revision)) &&
+      Number(row?.commercial_revision) > 0
+        ? Number(row.commercial_revision)
+        : 1,
+    isCurrentDraft:
+      toStatus(row?.status) === 'DRAFT' && row?.is_current_draft === true,
+    deliveryPreparedAt:
+      typeof row?.delivery_prepared_at === 'string'
+        ? row.delivery_prepared_at
+        : null,
     createdBy: typeof row?.created_by === 'string' ? row.created_by : null,
     sentAt: typeof row?.sent_at === 'string' ? row.sent_at : null,
     sentBy: typeof row?.sent_by === 'string' ? row.sent_by : null,
@@ -57,6 +69,10 @@ export function mapQuoteVersionRow(
     },
     pdfFileId: row?.pdf_file_id ? appIdFromUuid('file', String(row.pdf_file_id)) : null,
     renderHash: typeof row?.render_hash === 'string' && row.render_hash.trim() ? row.render_hash.trim() : null,
+    pricingSource:
+      String(row?.pricing_source ?? '').trim() === 'workbench_solved'
+        ? 'workbench_solved'
+        : 'calculator_live',
   };
 }
 

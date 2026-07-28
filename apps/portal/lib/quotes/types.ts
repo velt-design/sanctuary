@@ -27,6 +27,10 @@ export type QuoteVersion = {
   sourceEstimateVersionLabel: string;
   revisedFromQuoteVersionId?: string | null;
   createdAt: string;
+  updatedAt: string;
+  commercialRevision: number;
+  isCurrentDraft: boolean;
+  deliveryPreparedAt: string | null;
   createdBy?: string | null;
   sentAt?: string | null;
   sentBy?: string | null;
@@ -38,6 +42,7 @@ export type QuoteVersion = {
   totals: QuoteTotals;
   pdfFileId?: string | null;
   renderHash?: string | null;
+  pricingSource: 'calculator_live' | 'workbench_solved';
 };
 
 export type QuoteSendLog = {
@@ -66,6 +71,7 @@ export type QuoteSendLog = {
 export type QuoteVersionDetail = QuoteVersion & {
   lineItems: QuoteLineItem[];
   sendLogs: QuoteSendLog[];
+  commercialWorkflowReady?: boolean;
   contact: {
     name: string;
     email: string;
@@ -77,6 +83,16 @@ export type QuoteVersionDetail = QuoteVersion & {
     region?: string | null;
     quoteRef?: string | null;
   };
+  unfinishedDelivery?: {
+    mode: 'send' | 'resend';
+    status:
+      | 'prepared'
+      | 'dispatching'
+      | 'provider_accepted'
+      | 'failed'
+      | 'needs_attention';
+    canRetry: boolean;
+  } | null;
 };
 
 type QuoteAcceptanceInvoice = {
@@ -84,9 +100,38 @@ type QuoteAcceptanceInvoice = {
   invoiceRef: string;
   sent: boolean;
   sendError: string | null;
+  deliveryState:
+    | 'not_started'
+    | 'prepared'
+    | 'sending'
+    | 'sent'
+    | 'retry_available'
+    | 'failed'
+    | 'needs_attention';
 };
 
 export type QuoteAcceptResult = {
   quoteVersion: QuoteVersionDetail;
   invoice: QuoteAcceptanceInvoice | null;
+  alreadyAccepted?: boolean;
+};
+
+export type PreparedQuoteDeliverySummary = {
+  mode: 'send' | 'resend';
+  status:
+    | 'prepared'
+    | 'dispatching'
+    | 'provider_accepted'
+    | 'failed'
+    | 'needs_attention';
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string | null;
+  attachmentNames: string[];
+  preparedAt: string;
+  attemptCount: number;
+  lastErrorCode: string | null;
+  canRetry: boolean;
 };

@@ -35,11 +35,25 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const body = parsed.body ?? {};
   const estimateVersionId = typeof body.estimateVersionId === 'string' ? body.estimateVersionId.trim() : '';
   if (!estimateVersionId) return jsonError('estimateVersionId is required', 400);
+  const clientIntentId =
+    typeof body.clientIntentId === 'string' ? body.clientIntentId.trim() : '';
+  if (
+    clientIntentId.length < 8 ||
+    clientIntentId.length > 128 ||
+    !/^[A-Za-z0-9._:-]+$/.test(clientIntentId)
+  ) {
+    return jsonError('clientIntentId is required', 400);
+  }
 
   const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
 
   try {
-    const quoteVersion = await createQuoteFromEstimate(projectIdRaw, estimateVersionId, actor);
+    const quoteVersion = await createQuoteFromEstimate(
+      projectIdRaw,
+      estimateVersionId,
+      actor,
+      clientIntentId,
+    );
     return jsonOk({ quoteVersion }, 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to create quote';

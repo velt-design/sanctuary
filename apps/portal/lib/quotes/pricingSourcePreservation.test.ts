@@ -17,6 +17,7 @@ type DbState = Record<TableName, Row[]>;
 
 const h = vi.hoisted(() => ({
   recordMarketingConversionEvent: vi.fn(),
+  acceptQuoteAndEnsureDepositInvoice: vi.fn(),
   supabaseServiceRole: {
     from: vi.fn(),
     rpc: vi.fn(),
@@ -29,6 +30,10 @@ vi.mock('@/lib/supabaseClient', () => ({
 
 vi.mock('@/lib/marketingAttribution/server', () => ({
   recordMarketingConversionEvent: h.recordMarketingConversionEvent,
+}));
+
+vi.mock('../commercial/acceptQuote', () => ({
+  acceptQuoteAndEnsureDepositInvoice: h.acceptQuoteAndEnsureDepositInvoice,
 }));
 
 vi.mock('@/lib/estimates/server', () => ({
@@ -98,8 +103,96 @@ function resetDb(seed: Partial<DbState> = {}, queuedIds: Partial<Record<TableNam
   generatedCounter = 1;
   ops.length = 0;
     h.supabaseServiceRole.from.mockImplementation((table: TableName) => new FakeQuery(table));
-    h.supabaseServiceRole.rpc.mockResolvedValue({ data: 'Q-1001', error: null });
+    h.supabaseServiceRole.rpc.mockImplementation(
+      async (name: string, args: Record<string, any> = {}) => {
+        if (name === 'next_quote_ref') {
+          return { data: 'Q-1001', error: null };
+        }
+        if (name === 'commercial_quote_create_draft') {
+          for (const row of db.quote_versions) {
+            if (row.quote_id === args.p_quote_id && row.status === 'DRAFT') {
+              row.is_current_draft = false;
+            }
+          }
+          const id = idForInsert('quote_versions');
+          const versionNumber =
+            Math.max(
+              0,
+              ...db.quote_versions
+                .filter((row) => row.quote_id === args.p_quote_id)
+                .map((row) => Number(row.version_number ?? 0)),
+            ) + 1;
+          const row = {
+            id,
+            quote_id: args.p_quote_id,
+            version_number: versionNumber,
+            status: 'DRAFT',
+            is_current_draft: true,
+            client_intent_id: args.p_client_intent_id,
+            source_estimate_version_id: args.p_source_estimate_version_id,
+            revised_from_quote_version_id:
+              args.p_revised_from_quote_version_id,
+            created_by: args.p_actor,
+            customer_name: args.p_customer_name,
+            reference: args.p_reference,
+            intro_text: args.p_intro_text,
+            terms_text: args.p_terms_text,
+            deposit_percent: args.p_deposit_percent,
+            expires_at: args.p_expires_at,
+            total_inc_gst_cents: args.p_total_inc_gst_cents,
+            total_ex_gst_cents: args.p_total_ex_gst_cents,
+            gst_cents: args.p_gst_cents,
+            pricing_source: args.p_pricing_source,
+            pricing_source_metadata: args.p_pricing_source_metadata,
+            created_at: '2026-05-04T00:00:00.000Z',
+            updated_at: '2026-05-04T00:00:00.000Z',
+          };
+          db.quote_versions.push(row);
+          for (const line of args.p_line_items ?? []) {
+            db.quote_line_items.push({
+              id: idForInsert('quote_line_items'),
+              quote_version_id: id,
+              ...line,
+            });
+          }
+          return { data: [row], error: null };
+        }
+        if (name === 'commercial_quote_update_draft') {
+          const row = db.quote_versions.find(
+            (item) => item.id === args.p_quote_version_id,
+          );
+          if (!row) return { data: null, error: { message: 'Quote not found' } };
+          Object.assign(row, {
+            reference: args.p_reference,
+            intro_text: args.p_intro_text,
+            terms_text: args.p_terms_text,
+            deposit_percent: args.p_deposit_percent,
+            expires_at: args.p_expires_at,
+            source_estimate_version_id: args.p_source_estimate_version_id,
+            total_inc_gst_cents: args.p_total_inc_gst_cents,
+            total_ex_gst_cents: args.p_total_ex_gst_cents,
+            gst_cents: args.p_gst_cents,
+            pricing_source: args.p_pricing_source,
+            pricing_source_metadata: args.p_pricing_source_metadata,
+            updated_at: '2026-05-04T00:00:01.000Z',
+          });
+          db.quote_line_items = db.quote_line_items.filter(
+            (line) => line.quote_version_id !== row.id,
+          );
+          for (const line of args.p_line_items ?? []) {
+            db.quote_line_items.push({
+              id: idForInsert('quote_line_items'),
+              quote_version_id: row.id,
+              ...line,
+            });
+          }
+          return { data: [row], error: null };
+        }
+        return { data: null, error: null };
+      },
+    );
     h.recordMarketingConversionEvent.mockReset();
+    h.acceptQuoteAndEnsureDepositInvoice.mockReset();
 }
 
 function attachRelations(table: TableName, row: Row, selectArg: string | null): Row {
@@ -331,6 +424,8 @@ function makeQuoteVersion(overrides: Row = {}): Row {
     quote_id: ids.quote,
     version_number: 1,
     status: 'SENT',
+    is_current_draft: true,
+    updated_at: '2026-05-04T00:00:00.000Z',
     source_estimate_version_id: ids.estimateWorkbench,
     revised_from_quote_version_id: null,
     created_by: 'ops@example.com',
@@ -556,17 +651,6 @@ describe('quote pricing source preservation in domain helpers', () => {
   });
 
   it('records a marketing conversion event when a sent quote is accepted', async () => {
-    const invoice = {
-      id: ids.invoice,
-      invoice_ref: 'INV-1001',
-    };
-    const invoices = await import('../invoices/server');
-    vi.mocked(invoices.ensureDepositInvoiceForAcceptedQuote).mockResolvedValue({
-      invoice,
-      sent: false,
-      sendError: null,
-    } as any);
-
     resetDb({
       estimates: [
         makeEstimate({
@@ -580,6 +664,18 @@ describe('quote pricing source preservation in domain helpers', () => {
       quotes: [makeQuote()],
       quote_versions: [makeQuoteVersion({ id: ids.quoteVersionSent, status: 'SENT', total_inc_gst_cents: 14375 })],
       quote_line_items: [makeLine(ids.quoteVersionSent, 14375)],
+    });
+    h.acceptQuoteAndEnsureDepositInvoice.mockResolvedValue({
+      quoteVersionUuid: ids.quoteVersionSent,
+      alreadyAccepted: false,
+      invoice: {
+        id: ids.invoice,
+        invoiceRef: 'INV-1001',
+        created: true,
+        sent: false,
+        sendError: null,
+        deliveryState: 'retry_available',
+      },
     });
 
     const { markQuoteAccepted } = await import('./serverCore');

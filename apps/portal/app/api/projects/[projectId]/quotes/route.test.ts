@@ -29,7 +29,13 @@ describe('POST /api/projects/[projectId]/quotes', () => {
 
   it('forwards the actor and estimate ID through the quote domain helper', async () => {
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' } });
-    parseJsonBody.mockResolvedValue({ ok: true, body: { estimateVersionId: 'est_1' } });
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        estimateVersionId: 'est_1',
+        clientIntentId: 'quote-create:test-1',
+      },
+    });
     createQuoteFromEstimate.mockResolvedValue({
       id: 'qv_1',
       status: 'DRAFT',
@@ -42,7 +48,12 @@ describe('POST /api/projects/[projectId]/quotes', () => {
     });
 
     expect(res.status).toBe(201);
-    expect(createQuoteFromEstimate).toHaveBeenCalledWith('proj_1', 'est_1', 'ops@example.com');
+    expect(createQuoteFromEstimate).toHaveBeenCalledWith(
+      'proj_1',
+      'est_1',
+      'ops@example.com',
+      'quote-create:test-1',
+    );
     const body = await res.json();
     expect(body).toEqual({
       quoteVersion: {
@@ -57,7 +68,13 @@ describe('POST /api/projects/[projectId]/quotes', () => {
 
   it('returns commercial validation when quote mapping is blocked', async () => {
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' } });
-    parseJsonBody.mockResolvedValue({ ok: true, body: { estimateVersionId: 'est_1' } });
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        estimateVersionId: 'est_1',
+        clientIntentId: 'quote-create:test-2',
+      },
+    });
     createQuoteFromEstimate.mockRejectedValue(
       new QuoteHandoffBlockedError('Quote handoff blocked: Pool blind needs valid dimensions.'),
     );

@@ -15,6 +15,7 @@ const FIXTURE_WORKBENCH_INTERNAL_PATH = '/qa/design-workbench-fixture';
 const FIXTURE_WORKBENCH_STAFF_PATH = '/staff/projects/fixture-roof/design-workbench';
 const PROJECT_MUTATION_FIXTURE_PATH = '/qa/projects-index-mutation-fixture';
 const PROJECT_COMMAND_CENTRE_FIXTURE_PATH = '/qa/project-command-centre-fixture';
+const COMMERCIAL_WORKFLOW_FIXTURE_PATH = '/qa/commercial-workflow-fixture';
 const PROJECT_PAGE_SHELL_FIXTURE_PATH = '/qa/project-page-shell-fixture';
 const UI_FOUNDATION_FIXTURE_PATH = '/qa/ui-foundation-fixture';
 const EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH =
@@ -54,6 +55,7 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     isFixtureWorkbenchInternalPath(path) ||
     path === PROJECT_MUTATION_FIXTURE_PATH ||
     path === PROJECT_COMMAND_CENTRE_FIXTURE_PATH ||
+    path === COMMERCIAL_WORKFLOW_FIXTURE_PATH ||
     path === PROJECT_PAGE_SHELL_FIXTURE_PATH ||
     path === UI_FOUNDATION_FIXTURE_PATH ||
     path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH

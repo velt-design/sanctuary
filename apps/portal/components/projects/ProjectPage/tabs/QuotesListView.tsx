@@ -163,7 +163,17 @@ export default function QuotesListView({
                       )}
                     </td>
                     <td>
-                      <QuoteStatusBadge status={quote.status} />
+                      <QuoteStatusBadge
+                        status={quote.status}
+                        detail={
+                          quote.status === "DRAFT" &&
+                          !quote.isCurrentDraft
+                            ? quote.deliveryPreparedAt
+                              ? "Delivery prepared"
+                              : "Superseded"
+                            : undefined
+                        }
+                      />
                     </td>
                     <td>
                       {formatMoneyFromCents(quote.totals.totalIncGstCents)}

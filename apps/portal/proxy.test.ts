@@ -163,6 +163,20 @@ describe('portal proxy', () => {
     expect(createServerClientMock).not.toHaveBeenCalled();
   });
 
+  it('allows the commercial workflow fixture to enforce its own server flag without auth', async () => {
+    process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
+
+    const response = await proxy(
+      new NextRequest(
+        'https://example.com/qa/commercial-workflow-fixture?scenario=retryable&modal=1',
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
   it('allows the project page shell fixture to enforce its own server flag without auth', async () => {
     process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
 

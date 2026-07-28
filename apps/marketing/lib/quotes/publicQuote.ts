@@ -1,10 +1,9 @@
 import 'server-only';
 
-import { randomUUID } from 'node:crypto';
 import { hashAcceptToken } from '@/lib/quotes/acceptToken';
 import { getServiceSupabase } from '@/lib/supabaseService';
 import { publicTokenAccessState } from '@/lib/publicTokenAccess';
-import { ensureDepositInvoiceForAcceptedQuote } from '../../../portal/lib/invoices/server';
+import { acceptQuoteAndEnsureDepositInvoice } from '../../../portal/lib/commercial/acceptQuote';
 
 type PublicQuoteLineItem = {
   id: string;
@@ -38,6 +37,12 @@ export type PublicQuote = {
   termsText?: string | null;
   lineItems: PublicQuoteLineItem[];
   attachments: PublicQuoteAttachment[];
+  depositInvoiceDelivery:
+    | 'not_prepared'
+    | 'prepared'
+    | 'sent'
+    | 'retry_available'
+    | 'needs_attention';
 };
 
 type PublicQuoteLookupResult = {
@@ -46,7 +51,11 @@ type PublicQuoteLookupResult = {
 };
 
 type AcceptPublicQuoteResult =
-  | { ok: true; alreadyAccepted: boolean }
+  | {
+      ok: true;
+      alreadyAccepted: boolean;
+      invoiceDelivery: 'sent' | 'retry_available' | 'needs_attention';
+    }
   | { ok: false; code: 'invalid' | 'expired' | 'invalid_status' | 'server'; message: string };
 
 type PublicQuoteAttachmentDownloadResult =
@@ -294,18 +303,30 @@ async function loadTokenScopedAttachments(params: {
     .filter((item): item is PublicQuoteAttachment => Boolean(item));
 }
 
-async function insertAuditEvent(projectId: string, type: string, payload: Record<string, unknown>): Promise<void> {
+async function loadDepositInvoiceDelivery(
+  quoteVersionUuid: string,
+): Promise<PublicQuote['depositInvoiceDelivery']> {
   const supabase = getServiceSupabase();
-  try {
-    await supabase.from('audit_events').insert({
-      project_id: projectId,
-      type,
-      idempotency_key: `${type}:${projectId}:${randomUUID()}`,
-      payload,
-    } as any);
-  } catch {
-    // Best effort audit logging for public acceptance flow.
-  }
+  const invoice = await supabase
+    .from('deposit_invoices')
+    .select('id,sent_at')
+    .eq('quote_version_id', quoteVersionUuid)
+    .eq('status', 'OPEN')
+    .maybeSingle();
+  if (invoice.error || !invoice.data) return 'not_prepared';
+  if ((invoice.data as any).sent_at) return 'sent';
+  const latest = await supabase
+    .from('deposit_invoice_send_logs')
+    .select('status,final_failure')
+    .eq('deposit_invoice_id', String((invoice.data as any).id ?? ''))
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latest.error || !latest.data) return 'prepared';
+  if (String((latest.data as any).status ?? '') === 'SENT') return 'sent';
+  return (latest.data as any).final_failure
+    ? 'needs_attention'
+    : 'retry_available';
 }
 
 export async function loadPublicQuoteByToken(params: { quoteId: string; token: string }): Promise<PublicQuoteLookupResult> {
@@ -313,7 +334,7 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
   if (!access.version) return { quote: null, reason: access.reason };
   const version = access.version;
 
-  const [quoteProject, lineItems, attachments] = await Promise.all([
+  const [quoteProject, lineItems, attachments, depositInvoiceDelivery] = await Promise.all([
     loadQuoteProject(version.quoteId),
     loadLineItems(version.quoteVersionUuid),
     loadTokenScopedAttachments({
@@ -323,6 +344,7 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
       tokenHash: version.tokenHash,
       quotePdfFileId: version.pdfFileId,
     }),
+    loadDepositInvoiceDelivery(version.quoteVersionUuid),
   ]);
   if (!quoteProject) return { quote: null, reason: 'invalid' };
 
@@ -347,6 +369,7 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
     termsText: version.termsText,
     lineItems,
     attachments,
+    depositInvoiceDelivery,
   };
 
   return { quote };
@@ -436,48 +459,23 @@ export async function acceptPublicQuoteByToken(params: {
   if (!access.version) return { ok: false, code: 'invalid', message: 'Invalid token' };
   const version = access.version;
 
-  if (version.status === 'ACCEPTED') {
-    return { ok: true, alreadyAccepted: true };
-  }
-
-  if (version.status !== 'SENT') {
+  if (version.status !== 'SENT' && version.status !== 'ACCEPTED') {
     return { ok: false, code: 'invalid_status', message: 'Quote cannot be accepted in its current status' };
   }
-
-  const supabase = getServiceSupabase();
-  const nowIso = new Date().toISOString();
-
-  const updateRes = await supabase
-    .from('quote_versions')
-    .update({ status: 'ACCEPTED', accepted_at: nowIso } as any)
-    .eq('id', version.quoteVersionUuid);
-
-  if (updateRes.error) {
-    return { ok: false, code: 'server', message: updateRes.error.message ?? 'Failed to accept quote' };
-  }
-
-  const quoteProject = await loadQuoteProject(version.quoteId);
-  const projectId = quoteProject?.projectId ?? null;
-  if (projectId) {
-    await insertAuditEvent(projectId, 'quote.accepted', { quoteVersionId: version.quoteVersionUuid });
-  }
-
   try {
-    await ensureDepositInvoiceForAcceptedQuote({
+    const accepted = await acceptQuoteAndEnsureDepositInvoice({
       quoteVersionUuid: version.quoteVersionUuid,
       actor: null,
     });
+    return {
+      ok: true,
+      alreadyAccepted: accepted.alreadyAccepted,
+      invoiceDelivery: accepted.invoice.sent
+        ? 'sent'
+        : accepted.invoice.deliveryState,
+    };
   } catch (error) {
     const message = errorMessage(error, 'Failed to trigger deposit invoice');
-    if (projectId) {
-      await insertAuditEvent(projectId, 'invoice.send_failed', {
-        quoteVersionId: version.quoteVersionUuid,
-        reason: message,
-      });
-    } else {
-      console.error('[public_quote_accept] invoice trigger failed', { quoteVersionId: version.quoteVersionUuid, error: message });
-    }
+    return { ok: false, code: 'server', message };
   }
-
-  return { ok: true, alreadyAccepted: false };
 }

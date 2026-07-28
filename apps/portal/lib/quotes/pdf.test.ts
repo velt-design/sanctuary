@@ -47,6 +47,11 @@ const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVer
     quoteRef: 'Q-0003',
     versionNumber: 5,
     status: 'SENT',
+    updatedAt: sentAt,
+    commercialRevision: 1,
+    isCurrentDraft: false,
+    deliveryPreparedAt: null,
+    pricingSource: 'calculator_live',
     depositPercent: 50,
     sourceEstimateVersionId: 'estimate-version-1',
     sourceEstimateVersionLabel: 'v1',
@@ -209,7 +214,7 @@ describe('quote pdf layout', () => {
     expect(layout.pages.filter((page) => page.tableBounds).length).toBeGreaterThan(1);
     expect(text).toContain('Custom pergola');
     expect(text).toContain('Detail 95');
-    expect(layout.pages.every((page) => (page.contentBottomY ?? 999) >= 70)).toBe(true);
+    expect(layout.pages.every((page) => (page.contentBottomY ?? 999) >= 92)).toBe(true);
   });
 
   it('paginates long terms after totals without overlapping the footer', async () => {
@@ -231,7 +236,7 @@ describe('quote pdf layout', () => {
     expect(renderedTermLines).toBeGreaterThanOrEqual(55);
     expect(text).toContain('Term 55');
     expect(text).toContain(`Page 1 of ${layout.pages.length}`);
-    expect(layout.pages.every((page) => (page.contentBottomY ?? 999) >= 70)).toBe(true);
+    expect(layout.pages.every((page) => (page.contentBottomY ?? 999) >= 92)).toBe(true);
   });
 
   it('formats negative line amounts using the conventional currency sign order', () => {

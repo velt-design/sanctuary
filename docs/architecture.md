@@ -36,6 +36,8 @@ Marketing owns public lead capture and public document viewing. It may call Supa
 
 Portal owns staff workflow state and staff APIs. Staff routes live under `apps/portal/app/staff`, admin routes under `apps/portal/app/admin`, and staff API routes under `apps/portal/app/api/staff/v1`.
 
+Within Portal, `apps/portal/lib/commercial` owns cross-cutting quote/invoice command, durable email-intent, and audit adapters. Quote composition remains in `lib/quotes`, invoice artifacts remain in `lib/invoices`, and provider wire identity remains in `@sp/email-provider`; callers must not duplicate those responsibilities in routes or components.
+
 The portal's Calculator Brain lives at `/admin/costing` and is exposed to admins beneath the Pricebook navigation item. Browser code uses admin APIs and never writes Supabase tables directly. Portal server modules own draft/version persistence and audit orchestration; `@sp/costing` owns which values are supported, validation, application to the engine, calculations, diffs, and preview calculations. Published configuration rows are immutable, and estimate snapshots retain the exact version/snapshot used.
 
 Worker owns generic durable execution mechanics only. It reaches Supabase through its private service-role RPC adapter, validates every response against `@sp/jobs`, and never imports portal or marketing modules. JOB-03 adds a reusable durable email-effect coordinator, but no registered domain handler or producer; workflow handlers may join later only through their existing shared owners.
@@ -48,6 +50,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 - Geometry solving lives in `packages/geometry`; portal drawing code adapts it for UI and persistence.
 - Durable background-job kinds, worker response contracts, retry policy, and transition policy live in `packages/jobs`; the Supabase ledger, private payload store, logged PGMQ queue, and lease-fenced RPCs own persistence. `apps/worker` owns execution mechanics, while later workflow checkpoints must own their domain preparation/finalisation and command-boundary enqueue decisions.
 - Email-provider request normalization, exact wire-body hashing, stable Resend idempotency identity, typed delivery outcomes, timeout/abort behavior, and raw-body webhook verification live in `packages/email-provider`. Apps may provide server-only compatibility adapters, but they must not fork provider rules or log raw provider/customer content.
+- Quote/invoice business idempotency, commercial revisions, atomic acceptance/invoice creation, and frozen request checkpoints live behind Portal commercial helpers plus service-role-only RPCs. Provider acceptance is evidence for replay-safe finalisation, not proof that the business transition completed.
 - Pipeline stages and task definitions live in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Staff portal roles are `admin` and `staff`, resolved from `portal_users`.
 - Design List and Running Jobs read and write through staff APIs, not direct UI table writes.

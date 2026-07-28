@@ -113,6 +113,30 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('renders the commercial workflow QA fixture without auth redirects or portal chrome', () => {
+    mockPathname = '/qa/commercial-workflow-fixture';
+    mockSearchParams = new URLSearchParams('scenario=retryable&modal=1');
+    mockSession = {
+      status: 'unauthenticated',
+      email: null,
+      role: null,
+    } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Commercial workflow fixture</div>
+      </PortalShell>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toBe(
+      'Commercial workflow fixture',
+    );
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).toBeNull();
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
   it('renders the project page shell QA fixture without auth redirects or portal chrome', () => {
     mockPathname = '/qa/project-page-shell-fixture';
     mockSearchParams = new URLSearchParams('tab=activity');

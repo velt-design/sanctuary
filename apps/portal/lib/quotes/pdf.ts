@@ -38,7 +38,9 @@ const MARGIN_BOTTOM = 38;
 const CONTENT_X0 = MARGIN_LEFT;
 const CONTENT_X1 = PAGE_WIDTH - MARGIN_RIGHT;
 const CONTENT_W = CONTENT_X1 - CONTENT_X0;
-const CONTENT_BOTTOM_Y = 78;
+// Keep a full text line plus visual breathing room above the footer rule.
+// Descenders and debug/layout bounds extend below the text baseline.
+const CONTENT_BOTTOM_Y = 92;
 const RAIL_WIDTH = 8;
 
 const DESCRIPTION_W = 300;

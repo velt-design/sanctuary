@@ -51,6 +51,7 @@ Verified-claims auth was measured as an alternative. In the current fresh-server
 - Service-role keys must never reach client components, browser bundles, public props, logs, or generated documents.
 - Run `npm run service-role:changed` before handoff when touching service-role access. `npm run service-role:report` is the broad advisory inventory; `apps/portal/lib/supabaseClient.boundaries.test.ts` is the narrower portal-only hard allowlist.
 - When adding tables, pair route changes with ordered forward migrations, RLS/grants, and the relevant feature doc.
+- Commercial transaction and email-intent RPCs are revoked from browser roles and executable only through narrow server-owned service-role adapters after staff auth or public-token validation. `private.commercial_email_intents` is never a browser read model.
 
 Use `docs/supabase-schema-map.md` for table/RPC ownership, write paths, access boundaries, and migration sources. Use `docs/environment-auth-supabase.md` for environment setup, role concepts, and migration readiness.
 
@@ -83,6 +84,10 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
 - Estimate actual-cost calibration uses `requireStaffContext()` and the returned auth-bound client. Blank or non-negative actuals may be saved as a draft; completing a review requires materials, install, and overhead. Invalid payloads return `400`, missing estimates return `404`, and table/schema failures remain `500`.
 - Quote create and estimate-refresh routes return `422` when the shared estimate-to-quote mapper reports a commercial blocker such as an invalid blind. This validation failure must not be treated as a transient server error or silently replaced with a zero-dollar line.
+- Estimate create accepts a stable `clientIntentId` and the exact `calculator_snapshot`. A matching committed intent may replay without resending the snapshot; a new intent without it returns `409` and must not substitute the latest saved estimate.
+- Quote draft PATCH requires `expectedCommercialRevision`; stale revisions return `409` and delivery-prepared/locked versions return `423`. Send/resend requires a stable delivery `intentId` plus the same expected revision. Shared parsing, attachment limits, and error mapping live in `apps/portal/app/api/quotes/_lib/quoteDeliveryRoute.ts`.
+- `GET`/`POST /api/quotes/[quoteVersionId]/prepared-delivery` is staff-authenticated recovery only. GET exposes a token-redacted frozen summary; POST can replay only that server-owned intent and expected revision, never browser-supplied replacement content.
+- Staff/public acceptance delegates to the atomic commercial acceptance command. Public routes validate the hash-bound active token before calling it. Invoice delivery failure does not roll back acceptance and the response reports the real invoice delivery state.
 - Costing draft validation returns `422` with path-specific issues. Stale draft hashes or compare-time publication IDs return `409`; clients must refresh rather than overwrite. Immediate legacy material/action/curve PATCH routes also return `409` and direct admins to `/admin/costing`.
 
 ## Route Ownership

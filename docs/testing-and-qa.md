@@ -261,6 +261,18 @@ npm run portal:side-effects
 
 `portal:side-effects` is the focused quote, invoice, public-token, PDF/email, and job-pack readiness gate. It runs `npm run test:portal:quotes` and then `npm run build:portal` because generated PDF and job-pack asset loading is build-sensitive.
 
+Commercial-trust changes should also run the focused intent/audit/migration and route contracts before the broad gate:
+
+```bash
+npx vitest run apps/portal/lib/commercial apps/portal/app/api/quotes/_lib apps/portal/app/api/projects/[projectId]/estimates/route.test.ts apps/portal/components/projects/ProjectPage/tabs/QuotesTab.test.tsx
+```
+
+The commercial migration test is a static SQL contract only. Execute the forward migration against a disposable compatible PostgreSQL/Supabase instance before deployment; never use shared or production data as a test fixture. The focused commercial suite also proves that a missing recovery RPC preserves read-only quote detail, marks commercial actions unavailable, and returns an explicit `503` from delivery/recovery routes. Quote/invoice provider tests inject transport and must not send real email. Browser review may preview but must stop before send, public acceptance, or invoice delivery.
+
+The data-free commercial recovery fixture is `/qa/commercial-workflow-fixture`. It requires `ENABLE_PORTAL_QA_FIXTURES=1`, renders the production quote detail and prepared-delivery dialog, and has retryable plus staff-attention scenarios without database, provider, email, token, or customer-record access. `playwright/portal.commercial-workflow-fixture.spec.ts` checks both scenarios at 1280x900 and 390x844, including read-only frozen content, retry eligibility, overflow, 44px mobile targets, dialog focus return, browser errors, and attached screenshots. It belongs to the `portal-fixture` project.
+
+For deterministic quote-artifact review, set `QUOTE_ARTIFACT_OUTPUT_DIR` to an OS-temp directory and run `apps/portal/lib/quotes/quoteArtifactVisualFixtures.test.ts`. Render the emitted PDFs with Poppler and inspect every page of the simple, multi-page, long-description, and long-terms cases. Generated fixtures are review artifacts only and must not be committed or mistaken for delivery evidence.
+
 Use the `:log` variants when running noisy gates through an AI agent or chat tool. They run the same root npm scripts, write full stdout/stderr to an OS temp log, and print only the command, log path, duration, exit code, and a compact pass/fail summary. On failure they also print the last 120 log lines.
 
 Focused portal commands:
@@ -437,6 +449,8 @@ npm run test:portal:performance:fixture
 `npm run test:portal:browser` includes the gated, customer-data-free Project Command Centre fixture at `/qa/project-command-centre-fixture`. Its matrix preserves the nine commercial/source scenarios and adds primary, empty, conflict, critical, and undated action states at 1600, 1366, 1024, 768, and 390 px with horizontal-overflow assertions. The fixture renders the production design/commercial and primary-action cards and requires `ENABLE_PORTAL_QA_FIXTURES=1`; the standard fixture harness supplies that flag.
 
 The UI foundation has a data-free visual mirror at `/qa/ui-foundation-fixture`, gated by the same `ENABLE_PORTAL_QA_FIXTURES=1` flag. Use it for desktop, tablet, and mobile screenshots when staff credentials are unavailable. `/staff/ui-foundation` remains the authoritative protected route and stays in authenticated agent-access smoke.
+
+The same fixture flag exposes `/qa/commercial-workflow-fixture` for quote-delivery recovery. This route is the canonical customer-data-free visual source for the prepared-version banner, immutable request review, retryable failure, terminal staff-attention state, mobile touch targets, and modal focus behavior. It never dispatches a provider request; live send, acceptance, invoice creation, and invoice delivery remain separate deliberate staging checks after the commercial migration is applied.
 
 `playwright/portal.ui-foundation.spec.ts` is the production-hardening gate for `/staff/ui-foundation`, `/staff/projects`, and one discovered Project Detail route. It runs 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 plus 720x500 with a 200% zoom simulation. It combines semantic and interaction assertions with document-overflow, major-section-overlap, cropped-control, keyboard/focus-return, reduced-motion, and contrast checks; screenshots remain supplementary evidence rather than the only assertion.
 

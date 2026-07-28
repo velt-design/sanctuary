@@ -1,6 +1,10 @@
 import { ApiError, apiJson } from '@/lib/repo/apiClient';
-import type { QuoteInvoiceCreateResult } from '@/lib/invoices/types';
-import type { QuoteAcceptResult, QuoteVersion, QuoteVersionDetail } from './types';
+import type {
+  PreparedQuoteDeliverySummary,
+  QuoteAcceptResult,
+  QuoteVersion,
+  QuoteVersionDetail,
+} from './types';
 import type { QuoteRefreshMode, QuoteRefreshPreview } from './refresh';
 
 type QuoteSendPayload = {
@@ -12,7 +16,17 @@ type QuoteSendPayload = {
   bodyText?: string;
   bodyHtml?: string | null;
   attachments?: File[] | null;
+  intentId: string;
+  expectedCommercialRevision: number;
 };
+
+function makeClientIntentId(prefix: string): string {
+  const token =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}:${token}`;
+}
 
 async function parseJsonSafe(res: Response): Promise<unknown> {
   const text = await res.text();
@@ -44,6 +58,11 @@ async function postQuoteSendMultipart(path: string, payload: QuoteSendPayload): 
   appendOptionalCsv(form, 'cc', payload.cc);
   appendOptionalCsv(form, 'bcc', payload.bcc);
   form.append('subject', payload.subject);
+  form.append('intentId', payload.intentId);
+  form.append(
+    'expectedCommercialRevision',
+    String(payload.expectedCommercialRevision),
+  );
   if (typeof payload.personalNote === 'string') form.append('personalNote', payload.personalNote);
   if (typeof payload.bodyText === 'string') form.append('bodyText', payload.bodyText);
   if (typeof payload.bodyHtml === 'string') form.append('bodyHtml', payload.bodyHtml);
@@ -151,6 +170,33 @@ export async function resendQuote(
   return res.quoteVersion;
 }
 
+export async function getPreparedQuoteDelivery(
+  quoteVersionId: string,
+  mode: 'send' | 'resend',
+): Promise<PreparedQuoteDeliverySummary> {
+  const res = await apiJson<{ delivery: PreparedQuoteDeliverySummary }>(
+    `/api/quotes/${encodeURIComponent(quoteVersionId)}/prepared-delivery?mode=${mode}`,
+  );
+  if (!res.delivery) throw new Error('Prepared delivery was not found');
+  return res.delivery;
+}
+
+export async function retryPreparedQuoteDelivery(
+  quoteVersionId: string,
+  mode: 'send' | 'resend',
+  expectedCommercialRevision: number,
+): Promise<QuoteVersionDetail> {
+  const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
+    `/api/quotes/${encodeURIComponent(quoteVersionId)}/prepared-delivery?mode=${mode}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ expectedCommercialRevision }),
+    },
+  );
+  if (!res.quoteVersion) throw new Error('Prepared delivery was not retried');
+  return res.quoteVersion;
+}
+
 export async function previewQuotePdf(
   quoteVersion: QuoteVersionDetail,
   opts?: { signal?: AbortSignal },
@@ -175,9 +221,13 @@ export async function previewQuotePdf(
   return new Uint8Array(await res.arrayBuffer());
 }
 
-export async function reviseQuote(quoteVersionId: string): Promise<QuoteVersionDetail> {
+export async function reviseQuote(
+  quoteVersionId: string,
+  clientIntentId = makeClientIntentId('quote-revise'),
+): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/revise`, {
     method: 'POST',
+    body: JSON.stringify({ clientIntentId }),
   });
   if (!res.quoteVersion) throw new Error('Failed to revise quote');
   return res.quoteVersion;
@@ -197,23 +247,6 @@ export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVe
   });
   if (!res.quoteVersion) throw new Error('Failed to mark declined');
   return res.quoteVersion;
-}
-
-export async function createQuoteInvoice(
-  quoteVersionId: string,
-  payload: {
-    depositPercent?: number;
-    dueDate?: string | null;
-    reference?: string | null;
-    sendNow?: boolean;
-  },
-): Promise<QuoteInvoiceCreateResult> {
-  const res = await apiJson<QuoteInvoiceCreateResult>(`/api/staff/v1/quotes/${encodeURIComponent(quoteVersionId)}/invoice`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (!res.invoice) throw new Error('Failed to create invoice');
-  return res;
 }
 
 export function quotePdfUrl(quoteVersionId: string, opts?: { inline?: boolean }): string {

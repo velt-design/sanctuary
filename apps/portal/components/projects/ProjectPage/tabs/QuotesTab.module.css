@@ -115,6 +115,15 @@
   font-weight: 600;
 }
 
+.workflowWarning {
+  padding: 10px 12px;
+  border-radius: var(--ui-radius-panel);
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
+  font-size: 12px;
+}
+
 .card {
   border-radius: var(--ui-radius-control);
   border: var(--ui-border-width) solid var(--ui-border);
@@ -1349,6 +1358,9 @@
   .backButton,
   .modalClose,
   .attachmentRemove,
+  .primaryButton,
+  .secondaryButton,
+  .dangerButton,
   .moreActionsItem,
   .moreActionsItemLink,
   .rowButton,

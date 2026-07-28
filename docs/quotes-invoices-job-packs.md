@@ -12,7 +12,7 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 
 - Staff quote composition and draft/local-first send orchestration: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.
 - Quote query/URL selection: `apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts`.
-- Quote lifecycle actions and refresh/invoice/job-pack side effects: `apps/portal/components/projects/ProjectPage/tabs/useQuoteLifecycleActions.ts`.
+- Quote lifecycle actions and refresh/job-pack orchestration: `apps/portal/components/projects/ProjectPage/tabs/useQuoteLifecycleActions.ts`.
 - Quote PDF preview lifecycle: `apps/portal/components/projects/ProjectPage/tabs/useQuotePdfPreviews.ts`.
 - Quote PDF composition, presentation model, and module-relative assets: `apps/portal/lib/quotes/pdf.ts`, `apps/portal/lib/quotes/quotePdfViewModel.ts`, and `apps/portal/lib/quotes/quotePdfAssets.ts`.
 - Shared quote PDF/email artifact preparation and customer-output tokens: `apps/portal/lib/quotes/renderArtifacts.ts` and `apps/portal/lib/customerArtifacts/brand.ts`.
@@ -21,8 +21,10 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 - Pure quote-tab formatting, validation, and presentation model helpers: `apps/portal/components/projects/ProjectPage/tabs/quotesTabModel.ts`.
 - Project Commercial composition and Quotes/Invoices navigation: `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`.
 - Staff quote APIs: `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
+- Shared send/resend route parsing and validation: `apps/portal/app/api/quotes/_lib/quoteDeliveryRoute.ts`.
 - Quote domain helpers: `apps/portal/lib/quotes`.
 - Deposit invoice domain helpers: `apps/portal/lib/invoices`.
+- Commercial command, durable email-intent, and audit owners: `apps/portal/lib/commercial`.
 - Transactional email helpers and templates: `apps/portal/lib/emails`.
 - Shared email-provider transport contract: `packages/email-provider` (`@sp/email-provider`).
 - Job-pack domain helpers: `apps/portal/lib/jobPacks` and output helpers in `apps/portal/lib/outputs`.
@@ -34,6 +36,7 @@ Important tables and artifacts:
 
 - `quotes`, `quote_versions`, `quote_line_items`, and `quote_send_logs`.
 - `deposit_invoices` and `deposit_invoice_send_logs`.
+- `private.commercial_email_intents` for frozen request identity and provider/finalisation checkpoints.
 - `file_artifacts` for generated PDFs and attached design PDFs.
 - `job_pack_generations` and `job_pack_sheet_overrides`.
 
@@ -47,31 +50,39 @@ The project page's Overview surfaces the current design and commercial record th
 
 The project header exposes one Commercial tab. Its accessible inner switch keeps Quotes and Invoices as separate lazy owners and preserves the existing `tab=quotes` and `tab=invoices` URLs. `QuotesTab.tsx` is the quote composition owner: query/selection, lifecycle actions, PDF-preview effects, and presentation now live behind the named owners above, while draft editing plus local-first create/persist and send-form orchestration remain in the tab. `CommercialTab.tsx` owns only composition, Edit/Preview URL state, and navigation. Switching to Invoices clears `quotePreview` but preserves selected quote, create-from-estimate, and unrelated query context. Email audit data and quote/invoice delivery side effects remain available through their domain records and APIs even though the standalone project Emails tab is retired.
 
-The Commercial Quotes surface uses canonical `QuoteStatusBadge` presentation for `DRAFT`, `SENT`, `ACCEPTED`, and `DECLINED`; a sticky action owner reports dirty or syncing draft state without claiming durable success. Version rows are keyboard operable, quote and estimate-version reads expose retry states, and create/refresh/send/invoice/expiry/delete dialogs use the shared focus trap, Escape policy, scroll lock, and focus return. Responsive CSS may hide secondary quote-index columns or contain editor tables, but it must retain quote identity, status, inc-GST amount, the explicit GST breakdown, and every lifecycle action. These are presentation boundaries only and must not move local-first queueing, locks, quote email/PDF behavior, or server-confirmed transitions into shared UI components.
+The Commercial Quotes surface uses canonical `QuoteStatusBadge` presentation for `DRAFT`, `SENT`, `ACCEPTED`, and `DECLINED`; a sticky action owner reports dirty or syncing draft state without claiming durable success. Version rows are keyboard operable, quote and estimate-version reads expose retry states, and create/refresh/send/expiry/delete dialogs use the shared focus trap, Escape policy, scroll lock, and focus return. Responsive CSS may hide secondary quote-index columns or contain editor tables, but it must retain quote identity, status, inc-GST amount, the explicit GST breakdown, pricing-source identity, and every lifecycle action. These are presentation boundaries only and must not move local-first queueing, locks, quote email/PDF behavior, or server-confirmed transitions into shared UI components.
 
 
 
-- Draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.
+- A quote has at most one authoritative current draft. Draft creation and revision use stable client intents, and a concurrent duplicate request returns the winning version instead of creating another.
+- Editable draft writes use an atomic line-item replacement RPC and a monotonic `commercial_revision`. PATCH, refresh, and delivery preparation require the expected revision; stale clients receive a conflict and reload instead of overwriting newer commercial data.
+- A delivery-prepared version may still have database status `DRAFT`, but it is frozen, no longer current, and read-only. Staff may retry that exact message or create a new revision; they cannot edit underneath the prepared delivery.
+- Current draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.
 - Calculator save completion offers an explicit handoff through `?tab=quotes&createFromEstimateId=...`. Following that action creates the draft from the exact saved estimate through the existing local-first quote workflow; merely opening the save review or outcome UI has no quote side effect.
 - The calculator save outcome previews the exact mapped quote lines and total from that saved estimate before staff choose Create quote. A Reprice outcome compares that total with the Live Calculator customer total to the cent and blocks the handoff on an unexpected mismatch. When calculator inputs were saved while preserving stored costing, the handoff explicitly says the quote will use that stored costing basis rather than the Live calculator preview; that intentional basis difference is not treated as a mismatch.
 - Estimate-led Project Overview pricing consumes that same saved-estimate handoff preview. It does not use `summary_json.total` or rerun true costing; any mapping blocker or non-positive total makes the customer price unavailable rather than exposing a partial total.
 - `apps/portal/lib/quotes/pricing.ts` owns the shared `1.25x`, discount, rounded-ex-GST-then-GST customer-pricing sequence used by quote mapping and calculator pergola/site lines. The calculator preview sums those exact line cents with authoritative blind lines and preserved lighting, then derives ex GST using the quote totals helper. `quoteDiscountPct` applies to pergola and shared-site sell lines only; blind and lighting lines remain at list price. Infills stay included in their pergola line rather than becoming additive quote items. The Calculator may explain that line as the exact no-infill base customer price plus reconciled incremental infill additions; this does not alter saved costing, quote mapping, quote line count, or totals.
 - Meaningful blind rows must have a valid automatic price. `apps/portal/lib/quotes/mapping.ts` returns blocking issues and never substitutes a zero-dollar blind line. Calculator readiness, save-outcome handoff, local-first quote creation, and server create/refresh paths all enforce that shared boundary; direct server callers receive actionable `422` commercial validation rather than a retryable `500`.
-- Sending a quote requires a recipient, subject, priced line items, a generated quote PDF, and configured email/public URL env.
+- Send review requires a durable, server-confirmed quote: no local-only ID, unsaved edits, pending draft save, stale commercial revision, or superseded draft.
+- Sending a quote requires a recipient, subject, priced line items, a generated quote PDF, and configured email/public URL env. Immediately before provider dispatch, the server atomically reserves the exact expected revision and freezes it against later edits.
 - Sent quote versions are locked from normal draft editing.
-- Sending or resending creates a fresh public accept token hash, logs the email attempt, stores/redacts tokenized body content, and attaches generated PDFs through `file_artifacts`.
-- Accepting a sent quote marks it accepted, writes audit history, refreshes quote artifacts, and ensures a deposit invoice exists.
+- Send/resend persists one frozen commercial email intent containing the provider idempotency identity, payload hash, recipients, subject/content, token identity, attachment IDs, and exact commercial revision. Provider acceptance is checkpointed before replay-safe database finalisation. A retry reuses that exact intent and never creates a second token, provider key, or attachment set.
+- Delivery logs distinguish retryable, provider-confirmed, final, and staff-attention outcomes. The UI does not promise an automatic retry. A browser intent is only a recovery hint: the server can discover the one unfinished subject-bound intent, and staff review its redacted recipients, subject, body, and attachment names before replaying the exact frozen delivery.
+- Unfinished-delivery recovery is optional enrichment on quote reads, not permission to collapse historical quote review. If the commercial migration RPC is absent, staff can still inspect the exact quote, PDF, totals, provenance, and send history in an explicit read-only state. Delivery, revision, and acceptance controls remain unavailable, and delivery endpoints return `503 COMMERCIAL_WORKFLOW_SCHEMA_NOT_READY`; mutations never fall back to legacy table writes.
+- Staff and public acceptance call one atomic command that locks the sent quote, records acceptance once, and creates or reuses the quote-version-bound open deposit invoice. Duplicate acceptance cannot create a second invoice.
 - Declining a sent quote marks it declined. Declining an accepted quote also voids the open deposit invoice for the quote.
 
 Customer quote artifacts use one output-specific editorial system rather than browser components. The PDF uses owned module-relative Inter assets, warm neutral surfaces, square rules, an olive accent, explicit subtotal/GST/total presentation, flowing line descriptions and terms, continuation context, and page-numbered print-safe footers. The HTML email uses the same hierarchy in a fluid, table-safe 640px shell; the plain-text version preserves the same project, total, expiry, attachment, acceptance, and contact information. Quote artifacts state that a deposit invoice with payment details follows acceptance and never present bank details or imply payment is due with the quote.
 
 `renderArtifacts.ts` owns the quote artifact render-version marker used in the render-input hash. A presentation revision may invalidate and regenerate cached PDF/template bytes, but must not change pricing, quote lines, public tokens, selected attachments, send logs, or lifecycle state. Staff send review exposes the actual HTML at desktop and narrow widths plus the exact plain-text body through the existing preview route before sending.
 
-Do not update quote status or tokens with ad hoc table writes. Use the quote domain helpers and staff/public routes.
+The gated `/qa/commercial-workflow-fixture` renders the production quote detail and prepared-delivery dialog with synthetic `.invalid` recipients. Its retryable and staff-attention scenarios are the deterministic visual-regression boundary for immutable delivery review, retry eligibility, responsive layout, touch targets, and focus return; it has no database or provider side effects.
 
-JOB-03 changes the transport boundary, not quote ownership. `apps/portal/lib/emails/sendTransactionalEmail.ts` remains a backward-compatible, request-bound adapter for current quote and invoice callers, but now delegates message normalization, timeout/abort behavior, and typed Resend outcomes to `@sp/email-provider`. It exposes only safe error codes/status and a provider message ID; raw provider responses and customer content must not be logged. Deposit-invoice delivery remains authoritative here until JOB-04, and quote send/resend remains authoritative here until JOB-05. The dark worker has no quote or invoice handler, producer, or rollout.
+Do not update quote status, draft authority, commercial revision, delivery preparation, tokens, acceptance, or invoice identity with ad hoc table writes. Use the quote/commercial domain helpers and staff/public routes.
 
-When a later checkpoint moves one of these flows, it must freeze the exact public token and complete message/attachment bytes under one stable job/effect provider key before dispatch. An uncertain delivery may repeat only that same key and request inside the frozen provider window; it must never create a fresh key or token. Provider acceptance, including signed-webhook reconciliation, resumes the idempotent quote/invoice finaliser but is not itself a quote/invoice state transition.
+JOB-03 changes the transport boundary, not quote ownership. `apps/portal/lib/emails/sendTransactionalEmail.ts` remains a backward-compatible adapter and delegates message normalization, timeout/abort behavior, and typed Resend outcomes to `@sp/email-provider`. Quote and invoice callers now surround that request-bound transport with a private durable commercial intent and replay-safe business finaliser. Raw provider responses and customer content must not be logged. The dark worker still has no quote or invoice handler, producer, or rollout.
+
+If a later checkpoint moves one of these flows to the worker, it must adopt the existing commercial intent rather than create a second delivery identity. An uncertain delivery may repeat only the same provider key and frozen request inside the provider window. Provider acceptance, including signed-webhook reconciliation, resumes the idempotent quote/invoice finaliser but is not itself a quote/invoice state transition.
 
 ## Pricing Source Boundary
 
@@ -97,10 +108,12 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 
 ## Invoice Lifecycle
 
-- Deposit invoices are created from sent or accepted quote versions.
-- Accepted quotes automatically create an open deposit invoice and attempt to send it.
+- Deposit invoices are acceptance artifacts. The accepted quote-version command creates or reuses the single open invoice for that exact version; the former quote-detail manual-create branch is retired.
+- Acceptance prepares the invoice, attempts delivery, and returns the actual delivery state. Acceptance remains committed when delivery fails.
 - Open deposit invoices have token-hashed public portal links and generated invoice PDFs.
-- Invoice send attempts write `deposit_invoice_send_logs`, track retry/final-failure state, and redact tokenized body content.
+- Invoice delivery uses the same frozen-intent/checkpoint rules as quote delivery. Attempts write `deposit_invoice_send_logs`, retain retry/final/staff-attention state, and redact tokenized body content.
+- Retryable delivery is a staff-triggered replay of the same intent. Configuration, payload-integrity, expired-window, or terminal provider failures require staff attention; no request-local timer or UI copy claims automatic recovery.
+- Staff quote acceptance and the public accepted page distinguish provider-confirmed delivery, prepared/retryable delivery, and staff-attention outcomes. Staff recovery happens from the Invoices tab.
 - Public invoice pages require a valid invoice ID plus token and treat invalid, expired, or void invoices as unavailable.
 - Public invoice PDF and source quote PDF downloads are token-scoped and served with private/no-store cache headers.
 

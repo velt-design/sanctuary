@@ -94,7 +94,7 @@ function isApprovedServerFlow(file) {
   if (file === 'apps/portal/lib/backgroundJobs/providerWebhookRepository.ts') return true;
   if (file.startsWith('apps/portal/lib/dashboard/')) return true;
   if (file.startsWith('apps/portal/lib/scheduling/')) return true;
-  if (/^apps\/portal\/lib\/(?:estimates|invoices|quotes)\//.test(file)) return true;
+  if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) return true;
   if (file.startsWith('apps/marketing/app/api/enquiry/')) return true;
   if (/^apps\/marketing\/lib\/(?:quotes|invoices)\//.test(file)) return true;
   return false;
@@ -121,7 +121,9 @@ function suggestedOwner(file, category) {
   if (file.startsWith('apps/portal/lib/backgroundJobs/')) return 'background-job provider reconciliation owner';
   if (file.startsWith('apps/portal/lib/dashboard/')) return 'dashboard snapshot server owner';
   if (file.startsWith('apps/portal/lib/scheduling/')) return 'schedule server/RPC command owner';
-  if (/^apps\/portal\/lib\/(?:estimates|invoices|quotes)\//.test(file)) return 'quote/invoice/estimate server-side-effect owner';
+  if (/^apps\/portal\/lib\/(?:commercial|estimates|invoices|quotes)\//.test(file)) {
+    return 'commercial quote/invoice/estimate server-side-effect owner';
+  }
   if (file.startsWith('apps/portal/app/api/admin/')) return 'admin API owner';
   if (category === 'new-growth' || category === 'changed') return 'prefer auth-bound server client unless this is an approved server-owned flow';
   return 'review owner doc and either move to approved server flow or document the bypass';

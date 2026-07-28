@@ -323,7 +323,10 @@ function QuotePrimaryAction({
     <div className={styles.acceptSection}>
       <div className={styles.acceptCopy}>
         <p>Ready to proceed?</p>
-        <span>After acceptance, we will email your deposit invoice and payment details.</span>
+        <span>
+          After acceptance, we will prepare your deposit invoice and attempt
+          email delivery. This page will confirm the outcome.
+        </span>
       </div>
       <form action={`/api/quotes/${encodeURIComponent(quoteId)}/accept`} method="post">
         <input type="hidden" name="token" value={token} />
@@ -426,7 +429,21 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
           </QuoteNotice>
         ) : null}
         {displayStatus === 'ACCEPTED' ? (
-          <QuoteNotice tone="info">Quote accepted. Your deposit invoice has been emailed to you.</QuoteNotice>
+          quote.depositInvoiceDelivery === 'sent' ? (
+            <QuoteNotice tone="info">
+              Quote accepted. Your deposit invoice has been emailed to you.
+            </QuoteNotice>
+          ) : quote.depositInvoiceDelivery === 'needs_attention' ? (
+            <QuoteNotice tone="error">
+              Quote accepted. We have your acceptance, but the deposit invoice
+              email needs staff attention. Sanctuary Pergolas will follow up.
+            </QuoteNotice>
+          ) : (
+            <QuoteNotice tone="info">
+              Quote accepted. Your deposit invoice has been prepared, but email
+              delivery is not yet confirmed. Sanctuary Pergolas will follow up.
+            </QuoteNotice>
+          )
         ) : null}
       </QuoteDocumentCard>
     </QuoteViewerShell>

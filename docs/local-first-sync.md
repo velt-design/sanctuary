@@ -57,6 +57,8 @@ Use `useLocalWorkingCopy` for entity draft state. Use aliased sync helpers when 
 - Registered handlers process queued mutations and update server state.
 - Successful mutations clear or alias local state as needed.
 - Failed mutations should remain visible to the affected entity, not block the whole portal.
+- Estimate and quote creates carry stable client intent IDs so a lost response replays the committed server record.
+- Quote draft writes carry the last server-confirmed monotonic commercial revision. Only one draft save may be in flight for a quote; stale `409` or locked `423` responses become visible conflicts and refresh the authoritative quote rather than chaining optimistic overwrites.
 
 ## ID Aliases
 
@@ -75,6 +77,8 @@ Server-authoritative actions include:
 - Schedule V2 mutations and RPC command writes.
 - Admin access and cost configuration writes.
 - Public token flows.
+
+Quote delivery is deliberately outside the mutation queue. Review/send first requires a durable quote ID, no dirty form state, no pending draft mutation, and the expected server revision. The browser retains only a stable delivery-intent hint; the server freezes the complete request, permits only one unfinished intent per action/quote version, exposes a redacted authenticated recovery review, and owns duplicate protection, provider checkpoints, finalisation, and delivery status.
 
 For table/RPC ownership, write paths, access boundaries, and migration sources used by these server actions, see `docs/supabase-schema-map.md`.
 

@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -17,7 +18,6 @@ import {
 import { qk } from "@/lib/queries/keys";
 import { invalidateProjectReadCaches } from "@/lib/queries/projectCache";
 import {
-  createQuoteInvoice,
   deleteDraftQuoteVersion,
   markQuoteAccepted,
   markQuoteDeclined,
@@ -32,11 +32,8 @@ import type {
 import type { QuoteVersionDetail } from "@/lib/quotes/types";
 import { generateJobPack } from "@/lib/repo/jobPacksRepo";
 import {
-  dateInputDaysFromToday,
-  formatPercentInput,
   formatRefreshModeLabel,
   isExpired,
-  parsePercentInput,
   type SendEditorMode,
 } from "./quotesTabModel";
 
@@ -74,16 +71,6 @@ type UseQuoteLifecycleActionsInput = {
   setRefreshPreviewError: Setter<string | null>;
   refreshBusy: boolean;
   setRefreshBusy: Setter<boolean>;
-  setInvoiceOpen: Setter<boolean>;
-  invoiceDepositPercent: string;
-  setInvoiceDepositPercent: Setter<string>;
-  invoiceDueDate: string;
-  setInvoiceDueDate: Setter<string>;
-  invoiceReference: string;
-  setInvoiceReference: Setter<string>;
-  invoiceBusy: boolean;
-  setInvoiceBusy: Setter<boolean>;
-  setInvoiceError: Setter<string | null>;
   setDeleteConfirmOpen: Setter<boolean>;
   jobPackBusy: boolean;
   setJobPackBusy: Setter<boolean>;
@@ -113,16 +100,6 @@ export function useQuoteLifecycleActions({
   setRefreshPreviewError,
   refreshBusy,
   setRefreshBusy,
-  setInvoiceOpen,
-  invoiceDepositPercent,
-  setInvoiceDepositPercent,
-  invoiceDueDate,
-  setInvoiceDueDate,
-  invoiceReference,
-  setInvoiceReference,
-  invoiceBusy,
-  setInvoiceBusy,
-  setInvoiceError,
   setDeleteConfirmOpen,
   jobPackBusy,
   setJobPackBusy,
@@ -130,6 +107,7 @@ export function useQuoteLifecycleActions({
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const [acceptBusy, setAcceptBusy] = useState(false);
 
   const revise = useCallback(async () => {
     if (!detail) return;
@@ -317,95 +295,9 @@ export function useQuoteLifecycleActions({
     toast,
   ]);
 
-  const openInvoice = useCallback(() => {
-    if (!detail) return;
-    setInvoiceDepositPercent(formatPercentInput(detail.depositPercent));
-    setInvoiceDueDate(dateInputDaysFromToday(7));
-    setInvoiceReference(
-      `Deposit for Quote ${detail.quoteRef}${detail.project.name ? ` - ${detail.project.name}` : ""}`,
-    );
-    setInvoiceError(null);
-    setInvoiceOpen(true);
-  }, [
-    detail,
-    setInvoiceDepositPercent,
-    setInvoiceDueDate,
-    setInvoiceError,
-    setInvoiceOpen,
-    setInvoiceReference,
-  ]);
-
-  const closeInvoice = useCallback(() => {
-    if (invoiceBusy) return;
-    setInvoiceOpen(false);
-    setInvoiceError(null);
-  }, [invoiceBusy, setInvoiceError, setInvoiceOpen]);
-
-  const createInvoice = useCallback(
-    async (sendNow: boolean) => {
-      if (!detail) return;
-      setInvoiceBusy(true);
-      setInvoiceError(null);
-      try {
-        const result = await createQuoteInvoice(detail.id, {
-          depositPercent: parsePercentInput(invoiceDepositPercent),
-          dueDate: invoiceDueDate,
-          reference: invoiceReference,
-          sendNow,
-        });
-        await queryClient.invalidateQueries({
-          queryKey: qk.invoices.byProject(hostKey, projectId),
-        });
-        setInvoiceOpen(false);
-        if (result.sendError) {
-          toast.error(
-            `${result.created ? "Invoice created" : "Existing invoice found"}. ${result.invoice.invoiceRef} was not emailed. ${result.sendError}`,
-          );
-          return;
-        }
-        if (sendNow) {
-          if (result.alreadySent) {
-            toast.success(
-              `Invoice ${result.invoice.invoiceRef} already existed and was already sent.`,
-            );
-          } else {
-            toast.success(
-              `${result.created ? "Invoice created" : "Existing invoice reused"} and sent: ${result.invoice.invoiceRef}.`,
-            );
-          }
-          return;
-        }
-        toast.success(
-          result.created
-            ? `Invoice ${result.invoice.invoiceRef} created.`
-            : `Invoice ${result.invoice.invoiceRef} already exists.`,
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to create invoice";
-        setInvoiceError(message);
-        toast.error(message);
-      } finally {
-        setInvoiceBusy(false);
-      }
-    },
-    [
-      detail,
-      hostKey,
-      invoiceDepositPercent,
-      invoiceDueDate,
-      invoiceReference,
-      projectId,
-      queryClient,
-      setInvoiceBusy,
-      setInvoiceError,
-      setInvoiceOpen,
-      toast,
-    ],
-  );
-
   const accept = useCallback(async () => {
-    if (!detail) return;
+    if (!detail || acceptBusy) return;
+    setAcceptBusy(true);
     try {
       const result = await markQuoteAccepted(detail.id);
       const updated = result.quoteVersion;
@@ -418,12 +310,14 @@ export function useQuoteLifecycleActions({
       ]);
       if (result.invoice?.sent) {
         toast.success(
-          `Quote accepted and invoice ${result.invoice.invoiceRef} sent.`,
+          `Quote accepted. Email provider confirmed invoice ${result.invoice.invoiceRef}.`,
         );
       } else if (result.invoice) {
-        toast.error(
-          `Quote accepted. Invoice ${result.invoice.invoiceRef} was created but not emailed. ${result.invoice.sendError ?? "Open the Invoices tab to send it manually."}`,
-        );
+        const action =
+          result.invoice.deliveryState === "needs_attention"
+            ? "Delivery needs staff attention in the Invoices tab."
+            : "Delivery is not confirmed; a safe retry is available in the Invoices tab.";
+        toast.error(`Quote accepted. Invoice ${result.invoice.invoiceRef} was prepared. ${action}`);
       } else {
         toast.success("Quote accepted.");
       }
@@ -431,8 +325,18 @@ export function useQuoteLifecycleActions({
       const message =
         error instanceof Error ? error.message : "Failed to mark accepted";
       toast.error(message);
+    } finally {
+      setAcceptBusy(false);
     }
-  }, [detail, hostKey, projectId, queryClient, refreshQuotes, toast]);
+  }, [
+    acceptBusy,
+    detail,
+    hostKey,
+    projectId,
+    queryClient,
+    refreshQuotes,
+    toast,
+  ]);
 
   const decline = useCallback(async () => {
     if (!detail) return;
@@ -496,10 +400,8 @@ export function useQuoteLifecycleActions({
     deleteDraft,
     openRefresh,
     refreshFromEstimate,
-    openInvoice,
-    closeInvoice,
-    createInvoice,
     accept,
+    acceptBusy,
     decline,
     generateJobPackForQuote,
   };

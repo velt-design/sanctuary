@@ -41,6 +41,7 @@ function isPortalQaFixtureRoutePath(
     isFixtureWorkbenchRoutePath(pathname, searchParams) ||
     pathname === '/qa/projects-index-mutation-fixture' ||
     pathname === '/qa/project-command-centre-fixture' ||
+    pathname === '/qa/commercial-workflow-fixture' ||
     pathname === '/qa/project-page-shell-fixture' ||
     pathname === '/qa/ui-foundation-fixture' ||
     pathname === '/qa/email-preview-workbench-fixture'
