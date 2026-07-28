@@ -61,6 +61,7 @@ type QuoteEmailPayload = {
   personalNote?: string | null;
   bodyText?: string;
   bodyHtml?: string | null;
+  attachmentNames?: string[];
   attachments?: QuoteEmailAttachment[];
 };
 

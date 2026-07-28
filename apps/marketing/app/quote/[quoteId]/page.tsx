@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { loadPublicQuoteByToken, type PublicQuote } from '@/lib/quotes/publicQuote';
 import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
 import { QuoteTopBarActions } from './QuoteTopBarActions';
-import styles from './quoteViewer.module.css';
+import styles from './quoteEditorial.module.css';
 
 type QuotePageProps = {
   params: Promise<{ quoteId: string }>;
@@ -123,15 +123,12 @@ function QuoteViewerShell({ topBar, children }: { topBar?: ReactNode; children: 
   );
 }
 
-function QuoteTopBar({ status, totalIncGstCents }: { status: QuoteDisplayStatus; totalIncGstCents: number }) {
+function QuoteTopBar({ status }: { status: QuoteDisplayStatus }) {
   return (
     <div className={styles.topBar}>
       <div className={styles.topBarLeft}>
+        <span className={styles.topBarContext}>Customer quote</span>
         <span className={`${styles.statusPill} ${statusClassName(status)}`}>{statusLabel(status)}</span>
-        <div className={styles.topBarTotal}>
-          <div className={styles.topBarTotalLabel}>Total</div>
-          <div className={styles.topBarTotalValue}>{formatMoney(totalIncGstCents)}</div>
-        </div>
       </div>
       <QuoteTopBarActions />
     </div>
@@ -142,13 +139,22 @@ function QuoteDocumentCard({ children }: { children: ReactNode }) {
   return <article className={styles.documentCard}>{children}</article>;
 }
 
-function QuoteDocHeader({ quoteRef, versionNumber }: { quoteRef: string; versionNumber: number }) {
+function QuoteDocHeader({
+  quoteRef,
+  versionNumber,
+  projectName,
+}: {
+  quoteRef: string;
+  versionNumber: number;
+  projectName: string;
+}) {
   return (
     <header className={styles.docHeader}>
       <div>
-        <p className={styles.docLabel}>Quote</p>
+        <p className={styles.docLabel}>Sanctuary customer quote</p>
+        <h1 className={styles.docTitle}>{projectName || 'Your Sanctuary project'}</h1>
         <p className={styles.docQuoteRef}>
-          {quoteRef} v{versionNumber}
+          {quoteRef} / V{versionNumber}
         </p>
       </div>
       <p className={styles.docWordmark}>Sanctuary Pergolas</p>
@@ -158,14 +164,12 @@ function QuoteDocHeader({ quoteRef, versionNumber }: { quoteRef: string; version
 
 function QuoteMetaGrid({ quote, status }: { quote: PublicQuote; status: QuoteDisplayStatus }) {
   const fields = [
-    { label: 'To', value: quote.customerName || 'Customer' },
-    { label: 'From', value: 'Sanctuary Pergolas' },
+    { label: 'Prepared for', value: quote.customerName || 'Customer' },
+    { label: 'Site', value: quote.projectAddress || 'Not provided' },
     { label: 'Quote number', value: `${quote.quoteRef} v${quote.versionNumber}` },
-    { label: 'Status', value: statusLabel(status) },
     { label: 'Issued', value: formatDate(quote.createdAt) },
     { label: 'Valid until', value: formatDate(quote.expiresAt) },
-    { label: 'Site', value: quote.projectAddress || 'Not provided' },
-    { label: 'Currency', value: 'NZD' },
+    { label: 'Status', value: statusLabel(status) },
   ];
 
   return (
@@ -217,9 +221,9 @@ function QuoteLineItemsTable({ lineItems }: { lineItems: PublicQuote['lineItems'
                       </ul>
                     ) : null}
                   </td>
-                  <td className={styles.numericCell}>{formatQty(line.qty)}</td>
-                  <td className={styles.numericCell}>{unitCents == null ? '\u2014' : formatMoney(unitCents)}</td>
-                  <td className={styles.numericCell}>{formatMoney(line.lineTotalIncGstCents)}</td>
+                  <td className={styles.numericCell} data-label="Quantity">{formatQty(line.qty)}</td>
+                  <td className={styles.numericCell} data-label="Unit price">{unitCents == null ? '\u2014' : formatMoney(unitCents)}</td>
+                  <td className={styles.numericCell} data-label="Amount">{formatMoney(line.lineTotalIncGstCents)}</td>
                 </tr>
               );
             })
@@ -317,6 +321,10 @@ function QuotePrimaryAction({
 
   return (
     <div className={styles.acceptSection}>
+      <div className={styles.acceptCopy}>
+        <p>Ready to proceed?</p>
+        <span>After acceptance, we will email your deposit invoice and payment details.</span>
+      </div>
       <form action={`/api/quotes/${encodeURIComponent(quoteId)}/accept`} method="post">
         <input type="hidden" name="token" value={token} />
         <button
@@ -396,16 +404,20 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
     : [];
 
   return (
-    <QuoteViewerShell topBar={<QuoteTopBar status={displayStatus} totalIncGstCents={quote.totalIncGstCents} />}>
+    <QuoteViewerShell topBar={<QuoteTopBar status={displayStatus} />}>
       <QuoteDocumentCard>
-        <QuoteDocHeader quoteRef={quote.quoteRef} versionNumber={quote.versionNumber} />
+        <QuoteDocHeader
+          quoteRef={quote.quoteRef}
+          versionNumber={quote.versionNumber}
+          projectName={quote.projectName}
+        />
         <QuoteMetaGrid quote={quote} status={displayStatus} />
         <QuoteIntro introText={quote.introText} />
         <QuoteLineItemsTable lineItems={quote.lineItems} />
         <QuoteTotals quote={quote} />
         <QuoteTerms termsText={quote.termsText} sentAt={quote.sentAt} />
-        <QuotePrimaryAction quoteId={quoteId} token={token} action={acceptAction} />
         <QuoteAttachments attachments={attachments} />
+        <QuotePrimaryAction quoteId={quoteId} token={token} action={acceptAction} />
 
         {acceptErrorCode ? <QuoteNotice tone="error">{errorText(acceptErrorCode)}</QuoteNotice> : null}
         {displayStatus === 'EXPIRED' ? (

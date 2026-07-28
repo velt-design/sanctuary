@@ -13,7 +13,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 ## Ownership
 
 - Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; canonical task/follow-up persistence and business-calendar due dates live in `taskPersistence.ts`.
-- Automation cache keys: `apps/portal/lib/cache/automationCache.ts`.
+- Automation cache keys: `qk.automation` in `apps/portal/lib/queries/keys.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
 - Shared provider contract: `packages/email-provider` (`@sp/email-provider`).
 - Durable provider-effect coordinator: `apps/worker/src/effects/durableEmailEffect.ts` (not yet registered by a business handler).

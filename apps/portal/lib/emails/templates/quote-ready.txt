@@ -1,16 +1,36 @@
-Quote {{quote_number}} ready - view and accept online.
+SANCTUARY PERGOLAS
+
+YOUR QUOTE FOR {{#if project_name}}{{project_name}}{{else}}{{#if project_address}}{{project_address}}{{else}}YOUR PROJECT{{/if}}{{/if}}
 
 Hi {{name}},
 
-Your quote is ready{{#if project_address}} for {{project_address}}{{/if}}.
-Quote number: {{quote_number}}
-Total investment (incl. GST): {{quote_total_inc_gst}}
-{{#if quote_valid_until}}Valid until: {{quote_valid_until}}
-{{/if}}{{#if quote_accept_link}}View & accept quote: {{quote_accept_link}}
-{{/if}}
-{{#if payment_lines}}
-{{#each payment_lines}}{{this}}
-{{/each}}
-{{/if}}
-Sanctuary Pergolas{{#if reference_id}} - Ref {{reference_id}}{{/if}}
+Your Sanctuary quote is ready to review. The complete scope and terms are included in the attached PDF and online quote.
 
+{{#if personal_note_text}}A NOTE FROM THE SANCTUARY TEAM
+{{personal_note_text}}
+
+{{/if}}QUOTE SUMMARY
+Quote number: {{quote_number}}
+{{#if quote_subtotal_ex_gst}}Subtotal excl. GST: {{quote_subtotal_ex_gst}}
+{{/if}}{{#if quote_gst}}GST 15%: {{quote_gst}}
+{{/if}}Total incl. GST: {{quote_total_inc_gst}}
+{{#if quote_valid_until}}Valid until: {{quote_valid_until}}
+{{/if}}{{#if deposit_percent}}Deposit after acceptance: {{deposit_percent}}%
+{{/if}}
+REVIEW AND ACCEPT
+{{quote_accept_link}}
+
+AFTER ACCEPTANCE
+{{next_step_text}}
+
+ATTACHED
+- Quote PDF
+{{#each attachment_names}}- {{this}}
+{{/each}}
+If anything needs clarifying, reply to this email and the Sanctuary team will help.
+
+Sanctuary Pergolas
+sanctuarypergolas.co.nz
+info@sanctuarypergolas.co.nz
+{{#if reference_id}}Reference {{reference_id}}
+{{/if}}

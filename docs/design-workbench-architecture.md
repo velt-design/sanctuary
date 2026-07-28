@@ -7,7 +7,8 @@ Status: Current contract.
 Start here for every change to the design workbench, drawing runtime, geometry package workbench output, or future workbench commercial input.
 
 - Use `## Product North Star (READ FIRST)` as the gate for all proposals.
-- Use [`docs/house-composition-vision.md`](house-composition-vision.md) for the future-direction input model for house forms (rectangle primitives + join operations). House-related PRs must answer how they advance this vision (see Gate 0).
+- Use [`docs/house-composition-vision.md`](house-composition-vision.md) for the current composition-owned input model for house forms and the retained rationale behind it. House-related PRs must answer how they preserve or advance this contract (see Gate 0).
+- Use [`docs/design-workbench-multi-object-goal.md`](design-workbench-multi-object-goal.md) for active product milestones; do not derive a next task from shipped migration plans.
 - Use `docs/design-workbench-legacy-cull.md` only for legacy audit row citations and historical context.
 - Use `docs/workbench-captured-repro-workflow.md` before changing solver, render, Plan, or 3D behavior from a visible bug.
 - Use `docs/costing-and-geometry.md` for package geometry and downstream commercial/takeoff boundaries.
@@ -36,7 +37,7 @@ The calculator and the workbench are separate product paths. The marketing enqui
 
 ### House Input Is Composed, Not Drawn
 
-New house forms are composed from axis-aligned rectangle primitives joined by explicit `Join` operations. See [`docs/house-composition-vision.md`](house-composition-vision.md) for the model and [`docs/pr-comp1-plan.md`](pr-comp1-plan.md) for the Phase 1 implementation. Legacy free-form house forms continue to render via the existing geometry pipeline; that path is read-only and not in scope for new feature work.
+House forms are authored as axis-aligned rectangle compositions joined by explicit `Join` operations. `HouseFormModel.composition` is required. Persisted pre-composition footprint data is accepted only at the normalisation boundary, converted to a composition, and omitted from subsequent writes; a truly free-form legacy polygon becomes an explicitly stamped bounding-box approximation. See [`docs/house-composition-vision.md`](house-composition-vision.md) for the current model and retained rationale. The PR-COMP plan documents are shipped retrospective records, not pending implementation authority.
 
 ### Gate 0 For Workbench PRs
 
@@ -44,7 +45,7 @@ Every implementation proposal touching workbench, drawing runtime, package geome
 
 - Which legacy audit row(s) from `docs/design-workbench-legacy-cull.md` does this touch?
 - Does the change remove legacy or build on legacy? Build-on changes need explicit approval before coding.
-- **For house-form work:** how does this advance the composition vision ([`docs/house-composition-vision.md`](house-composition-vision.md))? Acceptable: "Phase N of the migration", "geometry foundation for a future phase", or "diagnostic/observability shared across composition + legacy paths". Unacceptable: "adds a feature to the legacy free-form pipeline" — the legacy path is read-only.
+- **For house-form work:** how does this preserve or advance the composition contract ([`docs/house-composition-vision.md`](house-composition-vision.md))? Acceptable: removing remaining legacy-read compatibility, extending composition-owned geometry or interaction, or adding diagnostics shared by normalised and newly authored compositions. Unacceptable: adding a new authoring or runtime feature to the retired free-form footprint model.
 - Does the change introduce a Phase 2 commercial/cost-input dependency? If yes, split the geometry/runtime cleanup from commercial rollout.
 - If consolidating functions or types, list all parameter/field differences and how each difference is preserved, parameterized, or intentionally dropped.
 - Which consumers were grepped before changing the boundary?
@@ -60,7 +61,7 @@ The post-breakaway workbench is object-first and intentionally strict:
 - Invalid geometry renders diagnostic/reference geometry only. It must not borrow another object's committed body. The PR-HR3 fail-soft amber-tint surfaces best-effort solver output for QA-invalid roofs so designers see what the solver attempted; this does not change the invalid classification.
 - Workbench repricing is unavailable until a downstream artifact/takeoff-to-commercial adapter exists.
 - Snapshot-only calculator designs are unsupported or empty in the live workbench. They are not synthesized into object-first geometry at runtime.
-- **New house forms are rectangle compositions; legacy free-form forms are read-only.** See [`docs/house-composition-vision.md`](house-composition-vision.md). PR-COMP1 ships the geometry primitives; subsequent phases land the workbench data model and the rectangle-tool UX.
+- **All normalised house forms carry a required rectangle composition.** New forms author it directly; persisted legacy footprint fields are read only by the normaliser and converted to composition, with `legacy_polygon_bounding_box` recorded when a free-form polygon needs approximation. PR-COMP1, Phases 2-4, and PR-WB-COMPOSITION-ONLY are shipped; their plan documents are retained as rationale and history.
 
 The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact. Runtime clients memoize a `DrawingWorkbenchSolvedBase` by draft/project identity and derive selection, visibility, and viewport UI from that base. UI-only changes must reuse the solved-model identity; a persisted draft or geometry-identity change creates the next solve.
 
@@ -86,7 +87,7 @@ The workbench model is based on first-class spatial entities:
 - **Derived relationships:** snap/solve derives hosted relationships from spatial alignment and object ids.
 - **Plan is the editor:** direct manipulation happens in Plan. 3D is read/select only.
 - **Openings are rigid:** openings remain wall-local because they have no useful freestanding state.
-- **Composed-from-primitives over arbitrary outlines:** new house forms are explicit compositions of axis-aligned rectangle primitives joined by `Join` operations. Snap aligns; only Join makes the forms render as one. Legacy free-form polygons remain readable but are not authored. See [composition vision](house-composition-vision.md).
+- **Composed-from-primitives over arbitrary outlines:** house forms are explicit compositions of axis-aligned rectangle primitives joined by `Join` operations. Snap aligns; only Join makes the forms render as one. Legacy footprint shapes are accepted only for defensive normalisation into this model and are not retained as a parallel runtime truth. See [composition vision](house-composition-vision.md).
 
 Do not add select-host-first workflows for pergolas or decks. New authored objects are born freestanding and become related through snap.
 
@@ -113,6 +114,8 @@ WorkbenchSolvedProjectArtifact
   diagnostics/health
   quantityTakeoff
 ```
+
+`DrawingWorkbench` callers pass this bundle as `projectArtifact`; `WorkbenchViewportHost` is the only allowed place to unpack it into existing lower-level viewport props. `WorkbenchSolvedModel` must not regain loose project geometry or status aliases, and the breakaway import guard remains the executable check against direct alias reads.
 
 The remaining cleanup after this boundary is lower-level naming only: existing Plan/3D viewport prop contracts may still use historical project-shape names internally, but new workbench-shell or route code must not introduce independent geometry arrays or view-specific truths.
 

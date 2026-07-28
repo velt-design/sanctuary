@@ -18,7 +18,7 @@ Large files are not automatically wrong, but they are risk markers. Do not keep 
 
 If a safe extraction would make the task too risky, keep the behavior change small and record the decomposition direction in the handoff or the owning doc.
 
-When extracting a helper or module as part of a decomposition pass, copy the body byte-for-byte. Do not rename, retype, or "tidy" while moving -- behaviour-preserving improvements belong in a separate PR with their own tests. Behavioural drift in pure helpers is invisible to typecheck and often invisible to existing call-site tests. See `docs/decision-log.md` (2026-05-06) for the failure mode.
+When extracting a helper or module as part of a decomposition pass, copy the body byte-for-byte. Do not rename, retype, or "tidy" while moving -- behaviour-preserving improvements belong in a separate PR with their own tests. If the extracted helper has no direct test, add one at its new owner before the next functional change. Behavioural drift in pure helpers is invisible to typecheck and often invisible to existing call-site tests. See `docs/decision-log.md` (2026-05-06) for the failure mode.
 
 ## Default Priority For Hotspots
 
@@ -91,7 +91,7 @@ Use `npm run files:report` for a visibility report. It is advisory and should no
 
 Use `npm run files:changed` before handoff when a task touches warning or critical files. It reports only changed code files, shows current lines, HEAD lines, and delta, and prints the handoff cue the final response should cover.
 
-Use `npm run files:changed:strict` only for local experiments and later enforcement. It is not part of lint or CI yet.
+Use `npm run files:changed:strict` locally when a changed-file lane needs the same decomposition enforcement as pull-request CI. Strict mode fails when a touched critical code file has no matching entry in `scripts/file-decomposition-registry.json`. Portal Quality runs this command as a blocking pull-request gate with PR base/head refs. It remains outside `npm run lint`; the normal `files:report` and `files:changed` commands remain advisory.
 
 Default bands:
 

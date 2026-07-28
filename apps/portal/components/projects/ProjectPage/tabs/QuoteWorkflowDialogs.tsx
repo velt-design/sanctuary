@@ -10,6 +10,7 @@ import type {
 } from "@/lib/quotes/refresh";
 import styles from "./QuotesTab.module.css";
 import QuotePdfInlinePreview from "./QuotePdfInlinePreview";
+import QuoteEmailPreviewPanel from "./QuoteEmailPreviewPanel";
 import QuoteModal from "./QuoteWorkflowModal";
 import {
   ATTACHMENT_INPUT_ACCEPT,
@@ -529,6 +530,21 @@ export default function QuoteWorkflowDialogs({
                   This review is based on your current local draft changes.
                 </div>
               ) : null}
+              <QuoteEmailPreviewPanel
+                active={sendOpen && sendEditorMode === "review"}
+                quoteVersionId={detail.id}
+                mode={sendMode}
+                to={sendTo}
+                subject={sendSubject}
+                personalNote={sendPersonalNote}
+                attachmentNames={sendAttachments.map((file) => file.name)}
+              />
+              <div className={styles.quotePdfPreviewHeader}>
+                <div className={styles.metaLabel}>Attached quote PDF</div>
+                <p className={styles.emailPreviewHint}>
+                  The PDF below is attached automatically.
+                </p>
+              </div>
               {sendReviewPdfLoading ? (
                 <p className={styles.note}>Loading quote PDF...</p>
               ) : null}

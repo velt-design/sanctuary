@@ -3,7 +3,7 @@
 **Status:** Active implementation programme  
 **Prepared:** 24 July 2026  
 **Repository:** `velt-design/sanctuary`  
-**Recommended repository path:** `docs/landing-pages/pergola-guide-cluster-roadmap.md`  
+**Current repository path:** `docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
 **Primary implementation surface:** `apps/marketing`, related marketing tests, and guide governance documents
 
 ## Roadmap authority and use
@@ -3085,7 +3085,7 @@ Run docs-only guards and return the unresolved approval checklist.
 
 - `docs/Sanctuary_Pergolas_AI_Copywriting_Context_Pack.md`
 - `docs/marketing-claims-register.md`
-- `docs/landing-pages/pergola-guide-cluster-roadmap.md`
+- `docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
 - Current consent and approval FAQs in service and guide content files
 - `docs/README.md`, `AGENTS.md`, and documentation guard rules
 
@@ -3100,7 +3100,7 @@ Run docs-only guards and return the unresolved approval checklist.
 
 - A new concise document such as `docs/landing-pages/pergola-consent-guide-approval-brief.md`
 - `docs/marketing-claims-register.md` only for governance clarification
-- `docs/landing-pages/pergola-guide-cluster-roadmap.md` or `seo-landing-page-programme.md` for a link and status update
+- `docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md` or `seo-landing-page-programme.md` for a link and status update
 
 **Implementation requirements**
 
@@ -3366,7 +3366,7 @@ This is a documentation and verification goal, not a last-minute redesign.
 
 **Context Codex must inspect**
 
-- `docs/landing-pages/pergola-guide-cluster-roadmap.md`
+- `docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
 - `docs/landing-pages/pergola-guide-cluster-improvement.md`
 - `docs/landing-pages/pergola-guide-cluster-completion-audit.md`
 - `docs/landing-pages/seo-landing-page-programme.md`
@@ -4415,7 +4415,7 @@ Implement roadmap goal G01 only: Correct unsupported project narrative claims.
 Read before editing:
 
 1. `AGENTS.md`
-2. `docs/landing-pages/pergola-guide-cluster-roadmap.md`
+2. `docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
 3. `docs/Sanctuary_Pergolas_AI_Copywriting_Context_Pack.md`
 4. `docs/marketing-claims-register.md`
 5. `docs/testing-and-qa.md`

@@ -27,6 +27,7 @@ import { generateQuotePdfBytes, quotePdfFilename } from './pdf';
 import {
   buildQuotePreviewBasePayload,
   buildQuoteRenderHash,
+  parseQuotePreviewBasePayload,
   previewQuoteAcceptLink,
   quoteLogoUrl,
   renderExpiresLabel,
@@ -956,28 +957,6 @@ async function loadFileContent(fileUuid: string): Promise<{ filename: string; co
   return { filename, content: Buffer.from(base64, 'base64') };
 }
 
-function parsePreviewBasePayload(value: unknown): QuotePreviewBasePayload | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  if (typeof record.quote_number !== 'string' || typeof record.quote_total_inc_gst !== 'string') return null;
-
-  return {
-    name: typeof record.name === 'string' ? record.name : 'there',
-    quote_number: record.quote_number,
-    quote_total_inc_gst: record.quote_total_inc_gst,
-    project_address: typeof record.project_address === 'string' ? record.project_address : undefined,
-    quote_accept_link: typeof record.quote_accept_link === 'string' ? record.quote_accept_link : 'https://preview.invalid',
-    quote_valid_until: typeof record.quote_valid_until === 'string' ? record.quote_valid_until : undefined,
-    next_step_text: typeof record.next_step_text === 'string' ? record.next_step_text : 'Use the button above to accept the quote and proceed.',
-    logo_url: typeof record.logo_url === 'string' ? record.logo_url : undefined,
-    reference_id: typeof record.reference_id === 'string' ? record.reference_id : undefined,
-    default_subject:
-      typeof record.default_subject === 'string' && record.default_subject.trim()
-        ? record.default_subject
-        : `Quote ready - ${record.quote_number}`,
-  };
-}
-
 function buildStoredPreviewBasePayload(detail: QuoteVersionDetail): QuotePreviewBasePayload {
   const expiresAtDate = detail.expiresAt ?? addDays(nowIso(), 30);
   return buildQuotePreviewBasePayload({
@@ -1005,7 +984,7 @@ async function loadQuoteArtifactRow(
   const renderHash = typeof row?.render_hash === 'string' && row.render_hash.trim() ? row.render_hash.trim() : null;
   return {
     renderHash,
-    previewBase: parsePreviewBasePayload(row?.preview_base_payload),
+    previewBase: parseQuotePreviewBasePayload(row?.preview_base_payload),
   };
 }
 

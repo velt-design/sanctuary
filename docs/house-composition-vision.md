@@ -1,16 +1,24 @@
 # House Composition Vision
 
-**Drafted**: 2026-06-18. **Status**: committed direction for new house-form work.
+**Drafted**: 2026-06-18. **Status**: current composition contract and shipped migration record.
 
-The input model for house forms in the design workbench is being shifted from arbitrary free-form polygons to **rectangle primitives composed by explicit join operations**. This doc captures the decision, the model, and the phased plan for getting there.
+The input model for house forms in the design workbench is **rectangle primitives composed by explicit join operations**. This doc captures the current contract, the decision behind it, and the original phased migration rationale.
 
-The Phase 1 implementation plan lives separately at [`docs/pr-comp1-plan.md`](pr-comp1-plan.md).
+The original Phase 1 implementation plan lives separately at [`docs/pr-comp1-plan.md`](pr-comp1-plan.md) as a shipped retrospective record.
+
+## Current implementation status
+
+PR-COMP1, PR-COMP-PHASE2, PR-COMP-PHASE3, PR-COMP-PHASE4a/4b, and PR-WB-COMPOSITION-ONLY shipped on 2026-06-18 through 2026-06-19. `HouseFormModel.composition` is now required; Join and Detach are wired through the package geometry primitives and Plan interaction layer.
+
+Legacy persisted `footprint.mode`, `preset`, `params`, and `polygon` values are not a parallel current model. The draft normaliser accepts them defensively, synthesises a composition, and subsequent writes use the composition-owned shape. A truly free-form legacy polygon is reduced to a bounding-box rectangle with `approximationReasons: ['legacy_polygon_bounding_box']`; this limitation must remain visible rather than being described as unchanged legacy rendering.
+
+The phased material below is retained to explain sequencing and tradeoffs. Where it describes optional composition data, indefinite legacy free-form rendering, or future Join/Detach delivery, this current-status section and `docs/design-workbench-architecture.md` take precedence.
 
 ## The decision
 
 A house form is one or more **axis-aligned rectangle primitives**. Designers place rectangles, snap them adjacent, and explicitly **join** them to produce composite house forms. Free-form polygon drawing (today's `Draw outline` mode) is removed.
 
-Legacy projects whose house forms were created via the old free-form path are not migrated — they continue to render via the existing geometry pipeline as-is. No retire effort for the legacy solver; it lives on as a read-only fallback for any leftover free-form data.
+Legacy projects created through the old free-form path are migrated defensively in memory when read: the normaliser emits a required composition and later saves omit the retired footprint fields. Rectangular/preset legacy data is represented directly; a truly free-form polygon becomes an explicitly marked bounding-box approximation.
 
 ## Why
 

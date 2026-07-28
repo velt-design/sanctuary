@@ -1,6 +1,8 @@
 # PR-WB-COMPOSITION-ONLY — Retire the footprint sub-object
 
-**Drafted**: 2026-06-19. **Revised**: 2026-06-19. **Status**: planning. Architectural cleanup that removes `footprint.mode`, `footprint.preset`, `footprint.polygon`, and the preset-shape params from `HouseFormModel`. `houseForm.composition` becomes the single authoring representation. Sits on top of PR-WB-RETIRE-PRESET-DROPDOWN (which removed the UX surfaces; this PR removes the data model behind them).
+**Drafted**: 2026-06-19. **Revised**: 2026-06-19. **Status**: shipped on 2026-06-19. Architectural cleanup that removed `footprint.mode`, `footprint.preset`, `footprint.polygon`, and the preset-shape params from `HouseFormModel`. `houseForm.composition` is the single authoring representation. Sits on top of PR-WB-RETIRE-PRESET-DROPDOWN (which removed the UX surfaces; this PR removed the data model behind them).
+
+Retrospective note: the body below preserves the approved implementation plan, risk analysis, sequencing, and CTA. The required composition model and defensive legacy-read normaliser it describes are current code, not pending work.
 
 ## 1. Goal
 

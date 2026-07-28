@@ -14,6 +14,9 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 - Quote query/URL selection: `apps/portal/components/projects/ProjectPage/tabs/useQuotesTabSelection.ts`.
 - Quote lifecycle actions and refresh/invoice/job-pack side effects: `apps/portal/components/projects/ProjectPage/tabs/useQuoteLifecycleActions.ts`.
 - Quote PDF preview lifecycle: `apps/portal/components/projects/ProjectPage/tabs/useQuotePdfPreviews.ts`.
+- Quote PDF composition, presentation model, and module-relative assets: `apps/portal/lib/quotes/pdf.ts`, `apps/portal/lib/quotes/quotePdfViewModel.ts`, and `apps/portal/lib/quotes/quotePdfAssets.ts`.
+- Shared quote PDF/email artifact preparation and customer-output tokens: `apps/portal/lib/quotes/renderArtifacts.ts` and `apps/portal/lib/customerArtifacts/brand.ts`.
+- Quote send-review email preview: `apps/portal/components/projects/ProjectPage/tabs/QuoteEmailPreviewPanel.tsx`; it renders through the authenticated quote preview API and does not send.
 - Quote detail, line-item editing, list/create, and modal presentation: `QuoteDetailView.tsx`, `QuoteLineItemsEditor.tsx`, `QuotesListView.tsx`, and `QuoteWorkflowDialogs.tsx` in the same tab directory.
 - Pure quote-tab formatting, validation, and presentation model helpers: `apps/portal/components/projects/ProjectPage/tabs/quotesTabModel.ts`.
 - Project Commercial composition and Quotes/Invoices navigation: `apps/portal/components/projects/ProjectPage/tabs/CommercialTab.tsx`.
@@ -59,6 +62,10 @@ The Commercial Quotes surface uses canonical `QuoteStatusBadge` presentation for
 - Sending or resending creates a fresh public accept token hash, logs the email attempt, stores/redacts tokenized body content, and attaches generated PDFs through `file_artifacts`.
 - Accepting a sent quote marks it accepted, writes audit history, refreshes quote artifacts, and ensures a deposit invoice exists.
 - Declining a sent quote marks it declined. Declining an accepted quote also voids the open deposit invoice for the quote.
+
+Customer quote artifacts use one output-specific editorial system rather than browser components. The PDF uses owned module-relative Inter assets, warm neutral surfaces, square rules, an olive accent, explicit subtotal/GST/total presentation, flowing line descriptions and terms, continuation context, and page-numbered print-safe footers. The HTML email uses the same hierarchy in a fluid, table-safe 640px shell; the plain-text version preserves the same project, total, expiry, attachment, acceptance, and contact information. Quote artifacts state that a deposit invoice with payment details follows acceptance and never present bank details or imply payment is due with the quote.
+
+`renderArtifacts.ts` owns the quote artifact render-version marker used in the render-input hash. A presentation revision may invalidate and regenerate cached PDF/template bytes, but must not change pricing, quote lines, public tokens, selected attachments, send logs, or lifecycle state. Staff send review exposes the actual HTML at desktop and narrow widths plus the exact plain-text body through the existing preview route before sending.
 
 Do not update quote status or tokens with ad hoc table writes. Use the quote domain helpers and staff/public routes.
 
@@ -109,6 +116,8 @@ Do not expose service-role access or raw token values to client components. Toke
 - An expired token may produce an expired/unavailable UI state, but it must not return the protected quote/invoice model. The same rule covers quote acceptance, quote attachments, invoice PDFs, and source-quote PDFs.
 - Public accept/invoice flows should be treated as server-owned side effects, even though the initiating page lives in marketing.
 
+The public quote route has an isolated, presentation-only editorial stylesheet. It may restyle the token-scoped quote model into the approved square, rule-led, warm-neutral composition and stack line-item fields at narrow widths, but it must not alter lookup, expiry, attachment authorization, acceptance form action, hidden token handling, or accepted/declined semantics. The public invoice viewer retains its separate presentation owner.
+
 When changing public routes, verify invalid token, missing token, expired token, already accepted, declined/void, and attachment/PDF unavailable states.
 
 ## Job Packs
@@ -136,6 +145,8 @@ npm run test:portal -- apps/portal/lib/jobPacks
 npm run test:portal -- apps/portal/app/api/quotes
 npm run test:marketing
 ```
+
+`apps/portal/lib/quotes/quoteArtifactVisualFixtures.test.ts` owns deterministic, non-persistent simple, discount, multi-page, long-description, long-terms, HTML-email, and plain-text-email fixtures. Set `QUOTE_ARTIFACT_OUTPUT_DIR` to write review artifacts, render every generated PDF page for inspection, and preview the email at desktop and narrow widths. The marketing public-quote page test can write a static presentation fixture with `QUOTE_PUBLIC_FIXTURE_PATH`. These fixture paths do not send email, write quotes, or require production data.
 
 Run `npm run portal:side-effects` first for the mechanical baseline. It runs the quote/invoice/job-pack focused tests and the portal build, without authenticated browser flows, database seeding, or real email delivery. The build step runs `npm run portal:build-env` first, so an active portal dev server or Next build lock fails early with a non-destructive manual-stop instruction. Use the narrower commands when iterating inside one owner area.
 

@@ -1,15 +1,14 @@
 import 'server-only';
 
-import { readFile } from 'node:fs/promises';
-import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
 import {
-  formatQuoteIntroText,
-  formatQuoteLineDescription,
-  formatQuoteTermsText,
-  type QuoteLineDescriptionEntry,
-} from '@sp/quote-format';
-import { BRAND_ACCENT_PDF_RGB } from '@sp/theme';
-import { paymentDetailsLines } from '@/lib/payments/paymentDetails';
+  PDFDocument,
+  rgb,
+  type Color,
+  type PDFImage,
+  type PDFPage,
+  type PDFFont,
+} from 'pdf-lib';
+import { SANCTUARY_ARTIFACT_BRAND } from '@/lib/customerArtifacts/brand';
 import fontkit from './fontkit';
 import {
   drawDebugOverlay,
@@ -18,346 +17,100 @@ import {
   type TableBounds,
   type TotalsBounds,
 } from './pdfLayout';
+import {
+  QUOTE_PDF_FONT_FILES,
+  QUOTE_PDF_LOGO_FILE,
+  readQuotePdfFont,
+  readQuotePdfImage,
+} from './quotePdfAssets';
+import {
+  buildPdfQuoteViewModel,
+  type PdfQuoteViewModel,
+} from './quotePdfViewModel';
 import type { QuoteVersionDetail } from './types';
-import { fromCents } from './utils';
 
-const PAGE_WIDTH = 595.28; // A4
+const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
-
-const MARGIN_TOP = 54;
-const MARGIN_RIGHT = 56;
-const MARGIN_BOTTOM = 48;
-const MARGIN_LEFT = 48;
-
-const RAIL_WIDTH = 9;
-
+const MARGIN_LEFT = 49;
+const MARGIN_RIGHT = 50;
+const MARGIN_TOP = 48;
+const MARGIN_BOTTOM = 38;
 const CONTENT_X0 = MARGIN_LEFT;
 const CONTENT_X1 = PAGE_WIDTH - MARGIN_RIGHT;
 const CONTENT_W = CONTENT_X1 - CONTENT_X0;
+const CONTENT_BOTTOM_Y = 78;
+const RAIL_WIDTH = 8;
 
-const MONEY_FORMAT = new Intl.NumberFormat('en-NZ', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const DESCRIPTION_W = 300;
+const QTY_W = 48;
+const UNIT_W = 73;
+const AMOUNT_W = CONTENT_W - DESCRIPTION_W - QTY_W - UNIT_W;
+const DESCRIPTION_X = CONTENT_X0;
+const QTY_X = DESCRIPTION_X + DESCRIPTION_W;
+const UNIT_X = QTY_X + QTY_W;
+const AMOUNT_X = UNIT_X + UNIT_W;
+const QTY_RIGHT = QTY_X + QTY_W;
+const UNIT_RIGHT = UNIT_X + UNIT_W;
+const AMOUNT_RIGHT = AMOUNT_X + AMOUNT_W;
 
-type PdfQuoteViewModel = {
-  header: {
-    quoteNumber: string;
-    versionNumber: number;
-  };
-  client: {
-    name?: string;
-    addressLines: string[];
-  };
-  warehouseAddressLines: string[];
-  issueDate?: string;
-  expiryDate?: string;
-  intro?: string;
-  items: Array<{
-    heading: string;
-    entries: QuoteLineDescriptionEntry[];
-    qty: number;
-    qtyText: string;
-    unitPrice: string;
-    amount: string;
-  }>;
-  totals: {
-    inc: string;
-    ex: string;
-    gst: string;
-  };
-  terms: string[];
-  paymentDetails: string[];
-  footer: string[];
+const FONT_SIZES = {
+  wordmark: 10,
+  title: 31,
+  quoteRef: 11,
+  eyebrow: 7.5,
+  metaValue: 10,
+  body: 9.6,
+  section: 8,
+  tableHeader: 8,
+  itemHeading: 10,
+  itemBody: 8.8,
+  numeric: 8.8,
+  totalLabel: 8.5,
+  totalValue: 10,
+  totalStrong: 16,
+  footer: 7.8,
+} as const;
+
+const LINE_HEIGHTS = {
+  metaValue: 13,
+  body: 13.5,
+  itemHeading: 13,
+  itemBody: 11.5,
+  terms: 12.5,
+} as const;
+
+type PdfFonts = {
+  regular: PDFFont;
+  medium: PDFFont;
+  semibold: PDFFont;
 };
 
-const theme = {
-  colors: {
-    pageBackground: rgb(1, 1, 1),
-    textPrimary: rgb(0.1, 0.1, 0.12),
-    textMuted: rgb(0.42, 0.42, 0.42),
-    accent: rgb(BRAND_ACCENT_PDF_RGB.r, BRAND_ACCENT_PDF_RGB.g, BRAND_ACCENT_PDF_RGB.b),
-  },
-  sizes: {
-    brand: 13.5,
-    title: 19.5,
-    ref: 11,
-    status: 9.5,
-    section: 10,
-    tableHeader: 9.5,
-    descHeading: 10,
-    bullet: 9.25,
-    numeric: 10,
-    totalsLabel: 10,
-    totalsValue: 10,
-    totalsTotal: 12,
-    terms: 9.5,
-    payment: 9.5,
-    footer: 9,
-    client: 12,
-    address: 9.5,
-    date: 9.5,
-    miniHeader: 10,
-    intro: 10,
-  },
-  lineHeights: {
-    brand: 16,
-    title: 24,
-    ref: 14,
-    status: 12,
-    section: 13,
-    tableHeader: 12,
-    descHeading: 12,
-    bullet: 11,
-    numeric: 12,
-    totalsLabel: 12,
-    totalsValue: 12,
-    totalsTotal: 14,
-    terms: 12,
-    payment: 12,
-    footer: 11,
-    client: 15,
-    address: 12,
-    date: 12,
-    miniHeader: 12,
-    intro: 13,
-  },
-  spacing: {
-    headerBrandToQuote: 3,
-    headerQuoteToClient: 4,
-    headerClientToAddress: 3,
-    headerClientToRef: 8,
-    headerAddressToRef: 8,
-    headerQuoteToRef: 10,
-    headerRefToStatus: 8,
-    headerLogoToDates: 10,
-    headerWarehouseToDates: 8,
-    headerToIntro: 12,
-    introToItems: 18,
-    sectionToHeader: 6,
-    headerToRows: 6,
-    bulletGap: 2,
-    itemSeparatorOffset: 8,
-    itemSeparatorGap: 10,
-    itemsToTotalsRule: 18,
-    ruleToTotalsLabel: 12,
-    totalsToTerms: 18,
-    termsToPayment: 18,
-    paymentDividerGap: 10,
-    paymentToFooter: 18,
-    termsToFooter: 16,
-    totalsRuleGap: 6,
-    continuationHeaderGap: 12,
-  },
+type RowTextLine = {
+  text: string;
+  kind: 'heading' | 'section' | 'bullet';
+  prefix?: string;
 };
 
-const FONT_FILES = {
-  regular: 'Inter-Regular.ttf',
-  medium: 'Inter-Medium.ttf',
-  semibold: 'Inter-SemiBold.ttf',
+type PreparedRow = {
+  heading: string;
+  lines: RowTextLine[];
+  qtyText: string;
+  unitPrice: string;
+  amount: string;
 };
-const HEADER_LOGO_FILE = 'sp_dark_icon.png';
-const WAREHOUSE_ADDRESS = '71G Montgomerie Road, Mangere, 2022, Auckland';
-
-const fontCache = new Map<string, Uint8Array>();
-const imageCache = new Map<string, Uint8Array | null>();
-
-function fontAssetUrl(filename: string): URL | null {
-  switch (filename) {
-    case FONT_FILES.regular:
-      return new URL('../../assets/fonts/Inter-Regular.ttf', import.meta.url);
-    case FONT_FILES.medium:
-      return new URL('../../assets/fonts/Inter-Medium.ttf', import.meta.url);
-    case FONT_FILES.semibold:
-      return new URL('../../assets/fonts/Inter-SemiBold.ttf', import.meta.url);
-    default:
-      return null;
-  }
-}
-
-function imageAssetUrl(filename: string): URL | null {
-  switch (filename) {
-    case HEADER_LOGO_FILE:
-      return new URL('../../public/images/sp_dark_icon.png', import.meta.url);
-    default:
-      return null;
-  }
-}
-
-async function readFontFile(filename: string): Promise<Uint8Array> {
-  if (fontCache.has(filename)) return fontCache.get(filename)!;
-  const assetUrl = fontAssetUrl(filename);
-  if (!assetUrl) throw new Error(`Missing font asset mapping for ${filename}`);
-
-  try {
-    const data = await readFile(assetUrl);
-    fontCache.set(filename, data);
-    return data;
-  } catch (err) {
-    throw new Error(`Missing font file ${filename}. Last error: ${String(err)}`);
-  }
-}
-
-async function readImageFile(filename: string): Promise<Uint8Array | null> {
-  if (imageCache.has(filename)) return imageCache.get(filename) ?? null;
-  const assetUrl = imageAssetUrl(filename);
-  if (!assetUrl) {
-    imageCache.set(filename, null);
-    return null;
-  }
-
-  try {
-    const data = await readFile(assetUrl);
-    imageCache.set(filename, data);
-    return data;
-  } catch {
-    imageCache.set(filename, null);
-    return null;
-  }
-}
-
-function formatMoneyFromCents(cents: number): string {
-  return `$${MONEY_FORMAT.format(fromCents(cents))}`;
-}
-
-function formatDate(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return null;
-  return date.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function addDays(value: string, days: number): string | null {
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return null;
-  date.setDate(date.getDate() + days);
-  return date.toISOString();
-}
-
-function addressLines(value: string | null | undefined): string[] {
-  if (typeof value !== 'string') return [];
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-
-  const byNewline = trimmed
-    .split('\n')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (byNewline.length > 1) return byNewline;
-
-  const byComma = trimmed
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (byComma.length >= 3) {
-    return [byComma[0], byComma.slice(1).join(', ')];
-  }
-
-  return [trimmed];
-}
-
-function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
-  const issueDate = quote.sentAt ? formatDate(quote.sentAt) : null;
-  let expiryDate: string | null = null;
-  if (issueDate && quote.sentAt) {
-    expiryDate = formatDate(quote.expiresAt ?? null);
-    if (!expiryDate) {
-      const fallback = addDays(quote.sentAt, 30);
-      expiryDate = fallback ? formatDate(fallback) : null;
-    }
-  }
-
-  const items = quote.lineItems.map((item, index) => {
-    const { heading, entries } = formatQuoteLineDescription(item.description, index);
-    const rawQty = Number.isFinite(item.qty) ? item.qty : 0;
-    const displayQty = Math.ceil(rawQty);
-    const amountCents = Number.isFinite(item.lineTotalIncGstCents) ? item.lineTotalIncGstCents : 0;
-    const unitPriceCents = displayQty > 0 ? Math.round(amountCents / displayQty) : 0;
-    return {
-      heading,
-      entries,
-      qty: displayQty,
-      qtyText: String(displayQty),
-      unitPrice: formatMoneyFromCents(unitPriceCents),
-      amount: formatMoneyFromCents(amountCents),
-    };
-  });
-
-  const terms = formatQuoteTermsText(quote.termsText, { sentAt: quote.sentAt });
-  const paymentDetails = paymentDetailsLines('quote');
-
-  const footer: string[] = ['sanctuarypergolas.co.nz', 'info@sanctuarypergolas.co.nz'];
-
-  const client = {
-    name: formatQuoteIntroText(quote.customerName ?? quote.contact.name) ?? undefined,
-    addressLines: addressLines(quote.project.siteAddress ?? null),
-  };
-
-  return {
-    header: {
-      quoteNumber: quote.quoteRef,
-      versionNumber: quote.versionNumber,
-    },
-    client,
-    warehouseAddressLines: addressLines(WAREHOUSE_ADDRESS),
-    issueDate: issueDate ?? undefined,
-    expiryDate: expiryDate ?? undefined,
-    intro: formatQuoteIntroText(quote.introText) ?? undefined,
-    items,
-    totals: {
-      inc: formatMoneyFromCents(quote.totals.totalIncGstCents),
-      ex: formatMoneyFromCents(quote.totals.totalExGstCents),
-      gst: formatMoneyFromCents(quote.totals.gstCents),
-    },
-    terms,
-    paymentDetails,
-    footer,
-  };
-}
-
-function wrapText(font: any, text: string, fontSize: number, maxWidth: number): string[] {
-  if (maxWidth <= 0) return [text];
-  const lines: string[] = [];
-  const safeText = typeof text === 'string' ? text : '';
-  const paragraphs = safeText.split('\n');
-
-  for (const paragraph of paragraphs) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    if (!words.length) {
-      lines.push('');
-      continue;
-    }
-
-    let line = '';
-    for (const word of words) {
-      const candidate = line ? `${line} ${word}` : word;
-      const width = font.widthOfTextAtSize(candidate, fontSize);
-      if (width <= maxWidth) {
-        line = candidate;
-      } else {
-        if (line) lines.push(line);
-        line = word;
-      }
-    }
-    if (line) lines.push(line);
-  }
-
-  return lines;
-}
-
-export function quotePdfFilename(quoteRef: string, versionNumber: number): string {
-  return `${quoteRef}-v${versionNumber}.pdf`;
-}
 
 type QuotePdfLayoutPage = {
   hasPageBackground: boolean;
   hasLeftRail: boolean;
+  pageNumber: number;
+  contentBottomY?: number;
   headerClientName?: { text: string; xRight: number; y: number };
   headerClientAddress?: { lines: string[]; xRight: number; y: number };
   headerWarehouseAddress?: { lines: string[]; xRight: number; y: number };
   tableBounds?: TableBounds | null;
   totalsBounds?: TotalsBounds | null;
   paymentBlock?: { topY: number; bottomY: number; lineCount: number };
+  termLineCount?: number;
   rules: RuleDrawn[];
 };
 
@@ -370,957 +123,948 @@ type GeneratePdfOptions = {
   debugBounds?: boolean;
 };
 
-async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfOptions = {}) {
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
+const brandColors = {
+  canvas: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.canvas),
+  paper: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.paper),
+  paperStrong: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.paperStrong),
+  ink: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.ink),
+  muted: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.inkMuted),
+  rule: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.rule),
+  ruleStrong: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.ruleStrong),
+  accent: rgb(
+    SANCTUARY_ARTIFACT_BRAND.pdf.accent.r,
+    SANCTUARY_ARTIFACT_BRAND.pdf.accent.g,
+    SANCTUARY_ARTIFACT_BRAND.pdf.accent.b,
+  ),
+};
 
-  const [regularData, mediumData, semiboldData] = await Promise.all([
-    readFontFile(FONT_FILES.regular),
-    readFontFile(FONT_FILES.medium),
-    readFontFile(FONT_FILES.semibold),
-  ]);
+function rgbFromHex(hex: string): Color {
+  const value = hex.replace('#', '').trim();
+  if (!/^[\da-f]{6}$/i.test(value)) return rgb(0, 0, 0);
+  return rgb(
+    Number.parseInt(value.slice(0, 2), 16) / 255,
+    Number.parseInt(value.slice(2, 4), 16) / 255,
+    Number.parseInt(value.slice(4, 6), 16) / 255,
+  );
+}
 
-  const fontRegular = await pdfDoc.embedFont(regularData);
-  const fontMedium = await pdfDoc.embedFont(mediumData);
-  const fontSemiBold = await pdfDoc.embedFont(semiboldData);
-  const logoBytes = await readImageFile(HEADER_LOGO_FILE);
-  let headerLogo: PDFImage | null = null;
-  if (logoBytes) {
-    try {
-      headerLogo = await pdfDoc.embedPng(logoBytes);
-    } catch {
-      // Keep PDF generation resilient if the logo asset is invalid.
-      headerLogo = null;
+function drawText(
+  page: PDFPage,
+  text: string,
+  options: {
+    x: number;
+    y: number;
+    size: number;
+    font: PDFFont;
+    color?: Color;
+  },
+) {
+  if (!text) return;
+  page.drawText(text, {
+    x: options.x,
+    y: options.y,
+    size: options.size,
+    font: options.font,
+    color: options.color ?? brandColors.ink,
+  });
+}
+
+function drawRightAligned(
+  page: PDFPage,
+  text: string,
+  xRight: number,
+  y: number,
+  size: number,
+  font: PDFFont,
+  color: Color = brandColors.ink,
+) {
+  if (!text) return;
+  drawText(page, text, {
+    x: xRight - font.widthOfTextAtSize(text, size),
+    y,
+    size,
+    font,
+    color,
+  });
+}
+
+function splitLongToken(font: PDFFont, token: string, size: number, maxWidth: number): string[] {
+  if (font.widthOfTextAtSize(token, size) <= maxWidth) return [token];
+  const fragments: string[] = [];
+  let fragment = '';
+  for (const char of token) {
+    const candidate = `${fragment}${char}`;
+    if (fragment && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+      fragments.push(fragment);
+      fragment = char;
+    } else {
+      fragment = candidate;
     }
   }
+  if (fragment) fragments.push(fragment);
+  return fragments;
+}
 
-  const vm = buildPdfQuoteViewModel(quote);
-  const debugBounds = options.debugBounds ?? process.env.PDF_DEBUG_BOUNDS === '1';
-  const collectLayout = Boolean(options.collectLayout);
-  const layout: QuotePdfLayout | null = collectLayout ? { pages: [] } : null;
-  let pageIndex = 0;
+function wrapText(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
+  if (maxWidth <= 0) return [text];
+  const wrapped: string[] = [];
+  for (const paragraph of String(text ?? '').split(/\r?\n/)) {
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      wrapped.push('');
+      continue;
+    }
 
-  const tableX0 = CONTENT_X0;
-  const tableX1 = CONTENT_X1;
-  const tableWidth = tableX1 - tableX0;
-  const descW = tableWidth * 0.62;
-  const qtyW = tableWidth * 0.12;
-  const unitW = tableWidth * 0.13;
-  const amtW = tableWidth * 0.13;
-  const descX = tableX0;
-  const qtyX = descX + descW;
-  const unitX = qtyX + qtyW;
-  const amtX = unitX + unitW;
-  const qtyRight = qtyX + qtyW;
-  const unitRight = unitX + unitW;
-  const amtRight = amtX + amtW;
-  const bulletIndent = fontRegular.widthOfTextAtSize('- ', theme.sizes.bullet) + 2;
-  const totalsValueRightX = CONTENT_X1;
-  const totalsColGap = 18;
-  const totalsLabels = ['SUBTOTAL NZD', 'INCLUDES GST 15%', 'TOTAL NZD'];
-  const maxLabelW = Math.max(
-    ...totalsLabels.map((label) => fontMedium.widthOfTextAtSize(label, theme.sizes.totalsLabel)),
-  );
-  const maxValueW = Math.max(
-    fontRegular.widthOfTextAtSize(vm.totals.ex, theme.sizes.totalsValue),
-    fontRegular.widthOfTextAtSize(vm.totals.gst, theme.sizes.totalsValue),
-    fontSemiBold.widthOfTextAtSize(vm.totals.inc, theme.sizes.totalsTotal),
-  );
-  const totalsLabelLeftX = totalsValueRightX - maxValueW - totalsColGap - maxLabelW;
-  const totalsX0 = totalsLabelLeftX;
-  const totalsX1 = totalsValueRightX;
+    let line = '';
+    for (const rawWord of words) {
+      const parts = splitLongToken(font, rawWord, size, maxWidth);
+      for (const part of parts) {
+        const candidate = line ? `${line} ${part}` : part;
+        if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+          line = candidate;
+        } else {
+          if (line) wrapped.push(line);
+          line = part;
+        }
+      }
+    }
+    if (line) wrapped.push(line);
+  }
+  return wrapped;
+}
 
-  type RowLayout = {
-    headingLines: string[];
-    entryLines: Array<{ kind: QuoteLineDescriptionEntry['kind']; lines: string[] }>;
-    entryLineCount: number;
-    blockHeight: number;
-    qtyText: string;
-    unitPrice: string;
-    amount: string;
-  };
+function prepareRows(vm: PdfQuoteViewModel, fonts: PdfFonts): PreparedRow[] {
+  const bulletPrefixWidth = fonts.regular.widthOfTextAtSize('- ', FONT_SIZES.itemBody);
+  return vm.items.map((item) => {
+    const lines: RowTextLine[] = wrapText(
+      fonts.medium,
+      item.heading,
+      FONT_SIZES.itemHeading,
+      DESCRIPTION_W - 8,
+    ).map((text) => ({ text, kind: 'heading' as const }));
 
-  const rowLayouts: RowLayout[] = vm.items.map((item) => {
-    const headingLines = wrapText(fontMedium, item.heading, theme.sizes.descHeading, descW);
-    const entryLines = item.entries.map((entry) => ({
-      kind: entry.kind,
-      lines: wrapText(
-        entry.kind === 'section' ? fontMedium : fontRegular,
+    for (const entry of item.entries) {
+      const kind = entry.kind === 'section' ? 'section' : 'bullet';
+      const font = kind === 'section' ? fonts.medium : fonts.regular;
+      const maxWidth =
+        kind === 'section'
+          ? DESCRIPTION_W - 8
+          : DESCRIPTION_W - 8 - bulletPrefixWidth;
+      const entryLines = wrapText(
+        font,
         entry.text,
-        entry.kind === 'section' ? theme.sizes.descHeading : theme.sizes.bullet,
-        entry.kind === 'section' ? descW : descW - bulletIndent,
-      ),
-    }));
-    const entryLineCount = entryLines.reduce((sum, entry) => sum + entry.lines.length, 0);
-    const contentHeight =
-      headingLines.length * theme.lineHeights.descHeading +
-      (entryLineCount
-        ? theme.spacing.bulletGap +
-          entryLines.reduce(
-            (sum, entry) =>
-              sum + entry.lines.length * (entry.kind === 'section' ? theme.lineHeights.descHeading : theme.lineHeights.bullet),
-            0,
-          )
-        : 0);
-    const lastEntry = entryLines[entryLines.length - 1];
-    const lastLineHeight = lastEntry
-      ? lastEntry.kind === 'section'
-        ? theme.lineHeights.descHeading
-        : theme.lineHeights.bullet
-      : theme.lineHeights.descHeading;
-    const blockHeight = contentHeight - lastLineHeight + theme.spacing.itemSeparatorOffset;
+        kind === 'section' ? FONT_SIZES.itemHeading : FONT_SIZES.itemBody,
+        maxWidth,
+      );
+      entryLines.forEach((text, index) => {
+        lines.push({
+          text,
+          kind,
+          prefix: kind === 'bullet' && index === 0 ? '- ' : undefined,
+        });
+      });
+    }
+
     return {
-      headingLines,
-      entryLines,
-      entryLineCount,
-      blockHeight,
+      heading: item.heading,
+      lines,
       qtyText: item.qtyText,
       unitPrice: item.unitPrice,
       amount: item.amount,
     };
   });
+}
 
-  const tableHeaderHeight =
-    theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.tableHeader + theme.spacing.headerToRows;
+function continuationHeader(
+  page: PDFPage,
+  vm: PdfQuoteViewModel,
+  fonts: PdfFonts,
+  logo: PDFImage | null,
+) {
+  const topY = PAGE_HEIGHT - MARGIN_TOP;
+  drawText(page, 'SANCTUARY PERGOLAS', {
+    x: CONTENT_X0,
+    y: topY,
+    size: FONT_SIZES.wordmark,
+    font: fonts.medium,
+    color: brandColors.accent,
+  });
+  drawRightAligned(
+    page,
+    `${vm.header.quoteNumber} / V${vm.header.versionNumber}`,
+    CONTENT_X1,
+    topY,
+    FONT_SIZES.quoteRef,
+    fonts.medium,
+    brandColors.ink,
+  );
 
-  const termsLines: string[] = [];
-  vm.terms.forEach((term) => {
-    const wrapped = wrapText(fontRegular, term, theme.sizes.terms, CONTENT_W);
-    termsLines.push(...wrapped);
+  if (logo) {
+    const scale = Math.min(20 / logo.width, 20 / logo.height, 1);
+    const width = logo.width * scale;
+    const height = logo.height * scale;
+    page.drawImage(logo, {
+      x: CONTENT_X1 - width,
+      y: topY + 14,
+      width,
+      height,
+      opacity: 0.85,
+    });
+  }
+
+  page.drawLine({
+    start: { x: CONTENT_X0, y: topY - 15 },
+    end: { x: CONTENT_X1, y: topY - 15 },
+    thickness: 0.7,
+    color: brandColors.rule,
+  });
+  return topY - 38;
+}
+
+function drawFirstPageHeader(params: {
+  page: PDFPage;
+  vm: PdfQuoteViewModel;
+  fonts: PdfFonts;
+  logo: PDFImage | null;
+  layoutPage: QuotePdfLayoutPage | null;
+}) {
+  const { page, vm, fonts, logo, layoutPage } = params;
+  const topY = PAGE_HEIGHT - MARGIN_TOP;
+
+  drawText(page, 'SANCTUARY PERGOLAS', {
+    x: CONTENT_X0,
+    y: topY,
+    size: FONT_SIZES.wordmark,
+    font: fonts.medium,
+    color: brandColors.accent,
   });
 
-  const paymentLines = vm.paymentDetails;
-  const footerLines = vm.footer;
-  const footerTopY = footerLines.length
-    ? MARGIN_BOTTOM + (footerLines.length - 1) * theme.lineHeights.footer
-    : MARGIN_BOTTOM;
+  if (logo) {
+    const scale = Math.min(31 / logo.width, 31 / logo.height, 1);
+    const width = logo.width * scale;
+    const height = logo.height * scale;
+    page.drawImage(logo, {
+      x: CONTENT_X1 - width,
+      y: topY - 5,
+      width,
+      height,
+      opacity: 0.86,
+    });
+  }
 
-  const paymentBottomY = paymentLines.length
-    ? footerTopY + theme.spacing.paymentToFooter
-    : footerTopY;
-  const paymentTopY = paymentLines.length
-    ? paymentBottomY + theme.lineHeights.payment * Math.max(paymentLines.length - 1, 0)
-    : paymentBottomY;
-  const paymentDividerY = paymentLines.length
-    ? paymentTopY + theme.spacing.paymentDividerGap
-    : paymentTopY;
+  drawText(page, 'Quote', {
+    x: CONTENT_X0,
+    y: topY - 58,
+    size: FONT_SIZES.title,
+    font: fonts.semibold,
+    color: brandColors.ink,
+  });
+  drawRightAligned(
+    page,
+    `${vm.header.quoteNumber} / V${vm.header.versionNumber}`,
+    CONTENT_X1,
+    topY - 49,
+    FONT_SIZES.quoteRef,
+    fonts.medium,
+    brandColors.ink,
+  );
 
-  const termsBottomY = paymentLines.length
-    ? paymentDividerY + theme.spacing.termsToPayment
-    : footerTopY + theme.spacing.termsToFooter;
-  const termsTopY = termsLines.length
-    ? termsBottomY + theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.terms * Math.max(termsLines.length - 1, 0)
-    : termsBottomY;
+  const titleRuleY = topY - 73;
+  page.drawLine({
+    start: { x: CONTENT_X0, y: titleRuleY },
+    end: { x: CONTENT_X1, y: titleRuleY },
+    thickness: 0.8,
+    color: brandColors.ruleStrong,
+  });
 
-  const totalsRuleInset = 2;
-  const totalsRuleBelowRatio = 0.7;
-  const totalsRowGap = theme.lineHeights.totalsLabel;
-  const totalsBlockHeight =
-    theme.lineHeights.section +
-    theme.spacing.sectionToHeader +
-    theme.lineHeights.totalsLabel +
-    theme.lineHeights.totalsLabel +
-    totalsRuleInset +
-    theme.spacing.totalsRuleGap +
-    totalsRowGap * totalsRuleBelowRatio;
+  const colGap = 24;
+  const leftW = 150;
+  const middleW = 185;
+  const rightW = CONTENT_W - leftW - middleW - colGap * 2;
+  const leftX = CONTENT_X0;
+  const middleX = leftX + leftW + colGap;
+  const rightX = middleX + middleW + colGap;
+  const metaTopY = titleRuleY - 28;
 
-  const totalsBlockBottomY = termsTopY + theme.spacing.totalsToTerms;
-  const totalsTopY = totalsBlockBottomY + totalsBlockHeight;
-
-  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  const firstPage = page;
-
-  const toText = (value: unknown): string | null => {
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    return null;
+  const drawMetaLabel = (label: string, x: number, y: number) => {
+    drawText(page, label.toUpperCase(), {
+      x,
+      y,
+      size: FONT_SIZES.eyebrow,
+      font: fonts.medium,
+      color: brandColors.accent,
+    });
   };
 
-  const drawTextSafe = (value: unknown, options: { x: number; y: number; size: number; font: any; color: Color }) => {
-    const text = toText(value);
-    if (!text) return;
-    page.drawText(text, options);
+  drawMetaLabel('Prepared for', leftX, metaTopY);
+  let leftY = metaTopY - 18;
+  const clientName = vm.client.name ?? 'Customer';
+  const clientNameLines = wrapText(fonts.medium, clientName, FONT_SIZES.metaValue, leftW);
+  if (layoutPage) {
+    layoutPage.headerClientName = {
+      text: clientName,
+      xRight: leftX + leftW,
+      y: leftY,
+    };
+  }
+  for (const line of clientNameLines) {
+    drawText(page, line, {
+      x: leftX,
+      y: leftY,
+      size: FONT_SIZES.metaValue,
+      font: fonts.medium,
+    });
+    leftY -= LINE_HEIGHTS.metaValue;
+  }
+  const clientAddressLines = vm.client.addressLines.flatMap((line) =>
+    wrapText(fonts.regular, line, FONT_SIZES.body, leftW),
+  );
+
+  drawMetaLabel('Project', middleX, metaTopY);
+  let middleY = metaTopY - 18;
+  const projectLines = wrapText(
+    fonts.medium,
+    vm.header.projectName,
+    FONT_SIZES.metaValue,
+    middleW,
+  );
+  for (const line of projectLines) {
+    drawText(page, line, {
+      x: middleX,
+      y: middleY,
+      size: FONT_SIZES.metaValue,
+      font: fonts.medium,
+    });
+    middleY -= LINE_HEIGHTS.metaValue;
+  }
+  if (layoutPage && clientAddressLines.length) {
+    layoutPage.headerClientAddress = {
+      lines: clientAddressLines,
+      xRight: middleX + middleW,
+      y: middleY - 2,
+    };
+  }
+  for (const line of clientAddressLines) {
+    drawText(page, line, {
+      x: middleX,
+      y: middleY - 2,
+      size: FONT_SIZES.body,
+      font: fonts.regular,
+      color: brandColors.muted,
+    });
+    middleY -= LINE_HEIGHTS.body;
+  }
+
+  drawMetaLabel('Quote details', rightX, metaTopY);
+  let rightY = metaTopY - 18;
+  const rightRows = [
+    vm.issueDate ? `Issued ${vm.issueDate}` : null,
+    vm.expiryDate ? `Valid until ${vm.expiryDate}` : null,
+    'Currency NZD',
+  ].filter((value): value is string => Boolean(value));
+  for (const line of rightRows) {
+    for (const wrapped of wrapText(fonts.regular, line, FONT_SIZES.body, rightW)) {
+      drawText(page, wrapped, {
+        x: rightX,
+        y: rightY,
+        size: FONT_SIZES.body,
+        font: fonts.regular,
+        color: brandColors.muted,
+      });
+      rightY -= LINE_HEIGHTS.body;
+    }
+  }
+
+  const sanctuaryLines = vm.sanctuaryAddressLines.flatMap((line) =>
+    wrapText(fonts.regular, line, FONT_SIZES.body, rightW),
+  );
+  if (layoutPage) {
+    layoutPage.headerWarehouseAddress = {
+      lines: vm.sanctuaryAddressLines,
+      xRight: rightX + rightW,
+      y: rightY - 6,
+    };
+  }
+
+  const metaBottomY = Math.min(leftY, middleY, rightY);
+  let cursorY = metaBottomY - 25;
+
+  if (vm.intro) {
+    const introLines = wrapText(fonts.regular, vm.intro, FONT_SIZES.body, CONTENT_W);
+    for (const line of introLines) {
+      drawText(page, line, {
+        x: CONTENT_X0,
+        y: cursorY,
+        size: FONT_SIZES.body,
+        font: fonts.regular,
+        color: brandColors.muted,
+      });
+      cursorY -= LINE_HEIGHTS.body;
+    }
+    cursorY -= 10;
+  }
+
+  return cursorY;
+}
+
+function drawPageFooter(params: {
+  page: PDFPage;
+  vm: PdfQuoteViewModel;
+  fonts: PdfFonts;
+  pageNumber: number;
+  pageCount: number;
+}) {
+  const { page, vm, fonts, pageNumber, pageCount } = params;
+  const ruleY = MARGIN_BOTTOM + 20;
+  page.drawLine({
+    start: { x: CONTENT_X0, y: ruleY },
+    end: { x: CONTENT_X1, y: ruleY },
+    thickness: 0.6,
+    color: brandColors.rule,
+  });
+  drawText(page, `${vm.footer.website}  /  ${vm.footer.email}`, {
+    x: CONTENT_X0,
+    y: MARGIN_BOTTOM,
+    size: FONT_SIZES.footer,
+    font: fonts.regular,
+    color: brandColors.muted,
+  });
+  drawRightAligned(
+    page,
+    `Page ${pageNumber} of ${pageCount}`,
+    CONTENT_X1,
+    MARGIN_BOTTOM,
+    FONT_SIZES.footer,
+    fonts.medium,
+    brandColors.muted,
+  );
+}
+
+export function quotePdfFilename(quoteRef: string, versionNumber: number): string {
+  return `${quoteRef}-v${versionNumber}.pdf`;
+}
+
+async function generateQuotePdf(
+  quote: QuoteVersionDetail,
+  options: GeneratePdfOptions = {},
+) {
+  const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
+  pdfDoc.setTitle(`${quote.quoteRef} v${quote.versionNumber} - Sanctuary Pergolas`);
+  pdfDoc.setAuthor('Sanctuary Pergolas');
+  pdfDoc.setSubject('Customer quote');
+  pdfDoc.setCreator('Sanctuary Pergolas');
+
+  const [regularData, mediumData, semiboldData, logoBytes] = await Promise.all([
+    readQuotePdfFont(QUOTE_PDF_FONT_FILES.regular),
+    readQuotePdfFont(QUOTE_PDF_FONT_FILES.medium),
+    readQuotePdfFont(QUOTE_PDF_FONT_FILES.semibold),
+    readQuotePdfImage(QUOTE_PDF_LOGO_FILE),
+  ]);
+
+  const fonts: PdfFonts = {
+    regular: await pdfDoc.embedFont(regularData, { subset: true }),
+    medium: await pdfDoc.embedFont(mediumData, { subset: true }),
+    semibold: await pdfDoc.embedFont(semiboldData, { subset: true }),
   };
 
-  const measureText = (font: any, value: unknown, size: number) => {
-    const text = toText(value) ?? '';
-    return font.widthOfTextAtSize(text, size);
-  };
+  let logo: PDFImage | null = null;
+  if (logoBytes) {
+    try {
+      logo = await pdfDoc.embedPng(logoBytes);
+    } catch {
+      logo = null;
+    }
+  }
 
-  const drawRightAligned = (value: unknown, xRight: number, y: number, size: number, font: any, color: Color) => {
-    const text = toText(value);
-    if (!text) return;
-    const width = font.widthOfTextAtSize(text, size);
-    page.drawText(text, { x: xRight - width, y, size, font, color });
-  };
+  const vm = buildPdfQuoteViewModel(quote);
+  const preparedRows = prepareRows(vm, fonts);
+  const layout: QuotePdfLayout | null = options.collectLayout ? { pages: [] } : null;
+  const debugBounds = options.debugBounds ?? process.env.PDF_DEBUG_BOUNDS === '1';
 
-  const ensureLayoutPage = (index: number) => {
+  let page!: PDFPage;
+  let pageIndex = -1;
+  let cursorY = 0;
+
+  const ensureLayoutPage = (): QuotePdfLayoutPage | null => {
     if (!layout) return null;
-    if (!layout.pages[index]) {
-      layout.pages[index] = { hasPageBackground: false, hasLeftRail: false, rules: [] };
+    if (!layout.pages[pageIndex]) {
+      layout.pages[pageIndex] = {
+        hasPageBackground: false,
+        hasLeftRail: false,
+        pageNumber: pageIndex + 1,
+        rules: [],
+      };
     }
-    return layout.pages[index];
+    return layout.pages[pageIndex];
   };
 
-  const currentLayoutPage = () => ensureLayoutPage(pageIndex);
+  const recordBottom = (y: number) => {
+    const layoutPage = ensureLayoutPage();
+    if (!layoutPage) return;
+    layoutPage.contentBottomY =
+      typeof layoutPage.contentBottomY === 'number'
+        ? Math.min(layoutPage.contentBottomY, y)
+        : y;
+  };
 
-  const recordRule = (kind: Parameters<typeof drawRule>[1], bounds: Parameters<typeof drawRule>[2]) => {
+  const recordRule = (
+    kind: Parameters<typeof drawRule>[1],
+    bounds: Parameters<typeof drawRule>[2],
+  ) => {
     const rule = drawRule(page, kind, bounds);
-    const layoutPage = currentLayoutPage();
-    if (layoutPage) {
-      layoutPage.rules.push(rule);
-    }
+    ensureLayoutPage()?.rules.push(rule);
   };
 
-  const drawPageBackground = () => {
+  const addPage = (first = false) => {
+    page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    pageIndex += 1;
     page.drawRectangle({
       x: 0,
       y: 0,
       width: PAGE_WIDTH,
       height: PAGE_HEIGHT,
-      color: theme.colors.pageBackground,
+      color: brandColors.paper,
     });
-    const layoutPage = currentLayoutPage();
-    if (layoutPage) {
-      layoutPage.hasPageBackground = true;
-    }
-  };
-
-  const drawLeftRail = () => {
     page.drawRectangle({
       x: 0,
       y: 0,
       width: RAIL_WIDTH,
       height: PAGE_HEIGHT,
-      color: theme.colors.accent,
+      color: brandColors.accent,
     });
-    const layoutPage = currentLayoutPage();
+    const layoutPage = ensureLayoutPage();
     if (layoutPage) {
+      layoutPage.hasPageBackground = true;
       layoutPage.hasLeftRail = true;
     }
+
+    cursorY = first
+      ? drawFirstPageHeader({ page, vm, fonts, logo, layoutPage })
+      : continuationHeader(page, vm, fonts, logo);
+    recordBottom(cursorY);
   };
 
-  const itemsHeaderUnderlineOffset = 6;
-
-  const layoutItemsTable = (params: { topY: number; rows: RowLayout[] }): TableBounds => {
-    let y = params.topY;
-
-    y -= theme.lineHeights.section;
-    y -= theme.spacing.sectionToHeader;
-
-    const headerBaselineY = y;
-    const headerRuleY = headerBaselineY - itemsHeaderUnderlineOffset;
-
-    y = headerBaselineY - theme.lineHeights.tableHeader;
-    y -= theme.spacing.headerToRows;
-
-    const rowRuleYs: number[] = [];
-    let bottomBaselineY = y;
-
-    params.rows.forEach((row, idx) => {
-      let rowY = y;
-      let lastBaselineY = rowY;
-      row.headingLines.forEach(() => {
-        lastBaselineY = rowY;
-        rowY -= theme.lineHeights.descHeading;
-      });
-
-      if (row.entryLineCount) {
-        rowY -= theme.spacing.bulletGap;
-        row.entryLines.forEach((entry) => {
-          const lineHeight = entry.kind === 'section' ? theme.lineHeights.descHeading : theme.lineHeights.bullet;
-          entry.lines.forEach(() => {
-            lastBaselineY = rowY;
-            rowY -= lineHeight;
-          });
-        });
-      }
-
-      const itemSeparatorY = lastBaselineY - theme.spacing.itemSeparatorOffset;
-      rowRuleYs.push(itemSeparatorY);
-      bottomBaselineY = itemSeparatorY;
-
-      if (idx < params.rows.length - 1) {
-        rowY = itemSeparatorY - theme.spacing.itemSeparatorGap;
-      } else {
-        rowY = itemSeparatorY;
-      }
-
-      y = rowY;
-    });
-
-    return {
-      x0: tableX0,
-      x1: tableX1,
-      headerBaselineY,
-      headerRuleY,
-      rowRuleYs,
-      topY: params.topY,
-      bottomY: bottomBaselineY,
-    };
+  const ensureSpace = (height: number) => {
+    if (cursorY - height >= CONTENT_BOTTOM_Y) return false;
+    addPage(false);
+    return true;
   };
 
-  const drawItemsTable = (params: { topY: number; rows: RowLayout[]; sectionTitle: string; bounds: TableBounds }) => {
-    let y = params.bounds.topY;
-
-    drawTextSafe(params.sectionTitle, {
+  const drawSectionLabel = (label: string) => {
+    drawText(page, label.toUpperCase(), {
       x: CONTENT_X0,
-      y,
-      size: theme.sizes.section,
-      font: fontMedium,
-      color: theme.colors.accent,
+      y: cursorY,
+      size: FONT_SIZES.section,
+      font: fonts.medium,
+      color: brandColors.accent,
     });
-    y -= theme.lineHeights.section;
-    y -= theme.spacing.sectionToHeader;
+    cursorY -= 16;
+  };
 
-    const headerY = params.bounds.headerBaselineY;
-    drawTextSafe('Description', {
-      x: descX,
+  const drawItemsHeader = (continued: boolean) => {
+    drawSectionLabel(continued ? 'Scope of work - continued' : 'Scope of work');
+    const headerY = cursorY;
+    drawText(page, 'Description', {
+      x: DESCRIPTION_X,
       y: headerY,
-      size: theme.sizes.tableHeader,
-      font: fontMedium,
-      color: theme.colors.textPrimary,
-    });
-    drawRightAligned('Quantity', qtyRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
-    drawRightAligned('Unit Price', unitRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
-    drawRightAligned('Amount NZD', amtRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
-
-    recordRule('itemsHeaderUnderline', { x0: tableX0, x1: tableX1, y: params.bounds.headerRuleY });
-
-    y = headerY - theme.lineHeights.tableHeader;
-    y -= theme.spacing.headerToRows;
-
-    let ruleIndex = 0;
-
-    params.rows.forEach((row, idx) => {
-      let rowY = y;
-      let lastBaselineY = rowY;
-      row.headingLines.forEach((line, lineIndex) => {
-        lastBaselineY = rowY;
-        drawTextSafe(line, {
-          x: descX,
-          y: rowY,
-          size: theme.sizes.descHeading,
-          font: fontMedium,
-          color: theme.colors.textPrimary,
-        });
-
-        if (lineIndex === 0) {
-          drawRightAligned(row.qtyText, qtyRight, rowY, theme.sizes.numeric, fontRegular, theme.colors.textPrimary);
-          drawRightAligned(row.unitPrice, unitRight, rowY, theme.sizes.numeric, fontRegular, theme.colors.textPrimary);
-          drawRightAligned(row.amount, amtRight, rowY, theme.sizes.numeric, fontRegular, theme.colors.textPrimary);
-        }
-
-        rowY -= theme.lineHeights.descHeading;
-      });
-
-      if (row.entryLineCount) {
-        rowY -= theme.spacing.bulletGap;
-        row.entryLines.forEach((entry) => {
-          const lineHeight = entry.kind === 'section' ? theme.lineHeights.descHeading : theme.lineHeights.bullet;
-          entry.lines.forEach((line, lineIndex) => {
-            lastBaselineY = rowY;
-            if (entry.kind === 'bullet' && lineIndex === 0) {
-              drawTextSafe('- ', {
-                x: descX,
-                y: rowY,
-                size: theme.sizes.bullet,
-                font: fontRegular,
-                color: theme.colors.textMuted,
-              });
-            }
-            drawTextSafe(line, {
-              x: entry.kind === 'section' ? descX : descX + bulletIndent,
-              y: rowY,
-              size: entry.kind === 'section' ? theme.sizes.descHeading : theme.sizes.bullet,
-              font: entry.kind === 'section' ? fontMedium : fontRegular,
-              color: entry.kind === 'section' ? theme.colors.textPrimary : theme.colors.textMuted,
-            });
-            rowY -= lineHeight;
-          });
-        });
-      }
-
-      const ruleY = params.bounds.rowRuleYs[ruleIndex] ?? (lastBaselineY - theme.spacing.itemSeparatorOffset);
-      recordRule('itemsRowSeparator', { x0: tableX0, x1: tableX1, y: ruleY });
-      ruleIndex += 1;
-      if (idx < params.rows.length - 1) {
-        rowY = ruleY - theme.spacing.itemSeparatorGap;
-      } else {
-        rowY = ruleY;
-      }
-
-      y = rowY;
-    });
-  };
-
-  const layoutTotalsBlock = (topY: number): TotalsBounds => {
-    const headerBaselineY = topY;
-    const subtotalBaselineY = headerBaselineY - theme.lineHeights.section - theme.spacing.sectionToHeader;
-    const gstBaselineY = subtotalBaselineY - theme.lineHeights.totalsLabel;
-    const totalBaselineY = gstBaselineY - theme.lineHeights.totalsLabel - totalsRuleInset - theme.spacing.totalsRuleGap;
-    const ceilingRuleY = headerBaselineY + theme.spacing.ruleToTotalsLabel;
-    const minClearance = 3;
-    const gstTextY = gstBaselineY;
-    const totalTextY = totalBaselineY;
-    const totalFontSize = Math.max(theme.sizes.totalsLabel, theme.sizes.totalsTotal);
-    const totalTopY = totalTextY + totalFontSize;
-    const gstBottomY = gstTextY;
-    const gap = gstBottomY - totalTopY;
-    const aboveTotalRuleY =
-      gap > 2 * minClearance ? totalTopY + gap / 2 : totalTopY + minClearance;
-    const rowGap = subtotalBaselineY - gstBaselineY;
-    const belowTotalRuleY = totalBaselineY - rowGap * totalsRuleBelowRatio;
-
-    return {
-      x0: totalsX0,
-      x1: totalsX1,
-      headerBaselineY,
-      ceilingRuleY,
-      subtotalBaselineY,
-      gstBaselineY,
-      totalBaselineY,
-      aboveTotalRuleY,
-      belowTotalRuleY,
-    };
-  };
-
-  const drawTotalsBlock = (bounds: TotalsBounds) => {
-    drawTextSafe('TOTALS', {
-      x: totalsX0,
-      y: bounds.headerBaselineY,
-      size: theme.sizes.section,
-      font: fontMedium,
-      color: theme.colors.accent,
-    });
-
-    drawTextSafe('SUBTOTAL NZD', {
-      x: totalsX0,
-      y: bounds.subtotalBaselineY,
-      size: theme.sizes.totalsLabel,
-      font: fontMedium,
-      color: theme.colors.textPrimary,
+      size: FONT_SIZES.tableHeader,
+      font: fonts.medium,
+      color: brandColors.muted,
     });
     drawRightAligned(
-      vm.totals.ex,
-      totalsX1,
-      bounds.subtotalBaselineY,
-      theme.sizes.totalsValue,
-      fontRegular,
-      theme.colors.textPrimary,
+      page,
+      'Qty',
+      QTY_RIGHT,
+      headerY,
+      FONT_SIZES.tableHeader,
+      fonts.medium,
+      brandColors.muted,
     );
-
-    drawTextSafe('INCLUDES GST 15%', {
-      x: totalsX0,
-      y: bounds.gstBaselineY,
-      size: theme.sizes.totalsLabel,
-      font: fontMedium,
-      color: theme.colors.textPrimary,
-    });
     drawRightAligned(
-      vm.totals.gst,
-      totalsX1,
-      bounds.gstBaselineY,
-      theme.sizes.totalsValue,
-      fontRegular,
-      theme.colors.textPrimary,
+      page,
+      'Unit price',
+      UNIT_RIGHT,
+      headerY,
+      FONT_SIZES.tableHeader,
+      fonts.medium,
+      brandColors.muted,
     );
-
-    recordRule('totalsAboveTotal', { x0: totalsX0, x1: totalsX1, y: bounds.aboveTotalRuleY });
-
-    drawTextSafe('TOTAL NZD', {
-      x: totalsX0,
-      y: bounds.totalBaselineY,
-      size: theme.sizes.totalsLabel,
-      font: fontMedium,
-      color: theme.colors.textPrimary,
-    });
     drawRightAligned(
-      vm.totals.inc,
-      totalsX1,
-      bounds.totalBaselineY,
-      theme.sizes.totalsTotal,
-      fontSemiBold,
-      theme.colors.textPrimary,
+      page,
+      'Amount NZD',
+      AMOUNT_RIGHT,
+      headerY,
+      FONT_SIZES.tableHeader,
+      fonts.medium,
+      brandColors.muted,
     );
-
-    recordRule('totalsBelowTotal', { x0: totalsX0, x1: totalsX1, y: bounds.belowTotalRuleY });
-  };
-
-  const drawTermsBlock = (topY: number) => {
-    if (!termsLines.length) return topY;
-    let y = topY;
-    drawTextSafe('TERMS', {
-      x: tableX0,
-      y,
-      size: theme.sizes.section,
-      font: fontMedium,
-      color: theme.colors.accent,
+    const ruleY = headerY - 8;
+    recordRule('itemsHeaderUnderline', {
+      x0: CONTENT_X0,
+      x1: CONTENT_X1,
+      y: ruleY,
     });
-    y -= theme.lineHeights.section;
-    y -= theme.spacing.sectionToHeader;
-    termsLines.forEach((line) => {
-      drawTextSafe(line, {
-        x: tableX0,
-        y,
-        size: theme.sizes.terms,
-        font: fontRegular,
-        color: theme.colors.textPrimary,
-      });
-      y -= theme.lineHeights.terms;
-    });
-    return y + theme.lineHeights.terms;
-  };
+    cursorY = ruleY - 17;
 
-  const drawFooterBlock = (bottomY: number) => {
-    if (!footerLines.length) return bottomY;
-    let y = bottomY;
-    for (let i = footerLines.length - 1; i >= 0; i -= 1) {
-      drawTextSafe(footerLines[i], {
-        x: CONTENT_X0,
-        y,
-        size: theme.sizes.footer,
-        font: fontRegular,
-        color: theme.colors.textMuted,
-      });
-      y += theme.lineHeights.footer;
-    }
-    return y - theme.lineHeights.footer;
-  };
-
-  const drawPaymentBlock = () => {
-    if (!paymentLines.length) return null;
-
-    page.drawLine({
-      start: { x: CONTENT_X0, y: paymentDividerY },
-      end: { x: CONTENT_X1, y: paymentDividerY },
-      thickness: 0.5,
-      color: rgb(0.85, 0.85, 0.85),
-    });
-
-    let y = paymentTopY;
-    for (const line of paymentLines) {
-      drawTextSafe(line, {
-        x: CONTENT_X0,
-        y,
-        size: theme.sizes.payment,
-        font: fontRegular,
-        color: theme.colors.textPrimary,
-      });
-      y -= theme.lineHeights.payment;
-    }
-
-    const layoutPage = currentLayoutPage();
+    const layoutPage = ensureLayoutPage();
     if (layoutPage) {
-      layoutPage.paymentBlock = {
-        topY: paymentDividerY,
-        bottomY: paymentBottomY,
-        lineCount: paymentLines.length,
+      layoutPage.tableBounds = {
+        x0: CONTENT_X0,
+        x1: CONTENT_X1,
+        headerBaselineY: headerY,
+        headerRuleY: ruleY,
+        rowRuleYs: [],
+        topY: headerY + 16,
+        bottomY: cursorY,
       };
     }
-
-    return paymentBottomY;
   };
 
-  const drawContinuationHeader = () => {
-    let y = PAGE_HEIGHT - MARGIN_TOP;
-    drawTextSafe('SANCTUARY PERGOLAS', {
-      x: CONTENT_X0,
-      y,
-      size: theme.sizes.miniHeader,
-      font: fontMedium,
-      color: theme.colors.textMuted,
-    });
-    const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
-    drawRightAligned(refLine, CONTENT_X1, y, theme.sizes.miniHeader, fontMedium, theme.colors.textMuted);
-    y -= theme.lineHeights.miniHeader;
-    y -= theme.spacing.continuationHeaderGap;
-    return y;
-  };
-
-  const fitRowsToHeight = (availableHeight: number, rows: RowLayout[]) => {
-    let used = 0;
-    let count = 0;
-    rows.forEach((row) => {
-      const add = row.blockHeight + (count > 0 ? theme.spacing.itemSeparatorGap : 0);
-      if (used + add <= availableHeight) {
-        used += add;
-        count += 1;
-      }
-    });
-    return count;
-  };
-
-  drawPageBackground();
-  drawLeftRail();
-
-  let cursorY = PAGE_HEIGHT - MARGIN_TOP;
-  const headerClientMaxWidth = CONTENT_W * 0.58;
-  const headerWarehouseMaxWidth = CONTENT_W * 0.34;
-  const headerLogoMaxWidth = 84;
-  const headerLogoMaxHeight = 52;
-
-  // Header left column
-  let leftY = cursorY;
-  let clientNameTopY: number | null = null;
-  let clientAddressTopY: number | null = null;
-  let drewClientName = false;
-  drawTextSafe('SANCTUARY PERGOLAS', {
-    x: CONTENT_X0,
-    y: leftY,
-    size: theme.sizes.brand,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-
-  leftY -= theme.lineHeights.brand;
-  leftY -= theme.spacing.headerBrandToQuote;
-
-  drawTextSafe('Quote', {
-    x: CONTENT_X0,
-    y: leftY,
-    size: theme.sizes.title,
-    font: fontSemiBold,
-    color: theme.colors.textPrimary,
-  });
-
-  leftY -= theme.lineHeights.title;
-  if (vm.client.name) {
-    leftY -= theme.spacing.headerQuoteToClient;
-    const clientLines = wrapText(fontSemiBold, vm.client.name, theme.sizes.client, headerClientMaxWidth);
-    if (clientLines.length) {
-      drewClientName = true;
-      clientNameTopY = leftY;
-      const layoutPage = currentLayoutPage();
-      if (layoutPage) {
-        layoutPage.headerClientName = {
-          text: vm.client.name,
-          xRight: CONTENT_X0 + headerClientMaxWidth,
-          y: leftY,
-        };
-      }
-      clientLines.forEach((line) => {
-        drawTextSafe(line, {
-          x: CONTENT_X0,
-          y: leftY,
-          size: theme.sizes.client,
-          font: fontSemiBold,
-          color: theme.colors.textPrimary,
-        });
-        leftY -= theme.lineHeights.client;
-      });
-    }
-  }
-
-  const clientAddressLines = vm.client.addressLines.flatMap((line) =>
-    wrapText(fontRegular, line, theme.sizes.address, headerClientMaxWidth),
-  );
-  if (clientAddressLines.length) {
-    leftY -= drewClientName ? theme.spacing.headerClientToAddress : theme.spacing.headerQuoteToClient;
-    clientAddressTopY = leftY;
-    const layoutPage = currentLayoutPage();
-    if (layoutPage) {
-      layoutPage.headerClientAddress = {
-        lines: clientAddressLines,
-        xRight: CONTENT_X0 + headerClientMaxWidth,
-        y: leftY,
-      };
-    }
-    clientAddressLines.forEach((line) => {
-      drawTextSafe(line, {
-        x: CONTENT_X0,
-        y: leftY,
-        size: theme.sizes.address,
-        font: fontRegular,
-        color: theme.colors.textMuted,
-      });
-      leftY -= theme.lineHeights.address;
-    });
-    leftY -= theme.spacing.headerAddressToRef;
-  } else {
-    leftY -= drewClientName ? theme.spacing.headerClientToRef : theme.spacing.headerQuoteToRef;
-  }
-
-  const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
-  drawTextSafe(refLine, {
-    x: CONTENT_X0,
-    y: leftY,
-    size: theme.sizes.ref,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-
-  leftY -= theme.lineHeights.ref;
-  // Workflow state is useful internally, but not on the customer-facing PDF.
-  const leftBottomY = leftY;
-
-  // Header right column
-  let rightY = cursorY;
-  let rightBottomY = cursorY;
-
-  if (headerLogo) {
-    const logoScale = Math.min(
-      headerLogoMaxWidth / headerLogo.width,
-      headerLogoMaxHeight / headerLogo.height,
-      1,
-    );
-    const logoWidth = headerLogo.width * logoScale;
-    const logoHeight = headerLogo.height * logoScale;
-    const logoX = CONTENT_X1 - logoWidth;
-    const logoTopY = cursorY + theme.lineHeights.brand + 2;
-    const logoY = logoTopY - logoHeight;
-    page.drawImage(headerLogo, {
-      x: logoX,
-      y: logoY,
-      width: logoWidth,
-      height: logoHeight,
-    });
-    rightY = logoY - theme.spacing.headerLogoToDates;
-    rightBottomY = logoY;
-  }
-
-  const warehouseLines = vm.warehouseAddressLines.flatMap((line) =>
-    wrapText(fontRegular, line, theme.sizes.address, headerWarehouseMaxWidth),
-  );
-  if (warehouseLines.length) {
-    const warehouseTopY = clientAddressTopY ?? clientNameTopY ?? rightY;
-    let warehouseY = warehouseTopY;
-    const layoutPage = currentLayoutPage();
-    if (layoutPage) {
-      layoutPage.headerWarehouseAddress = {
-        lines: warehouseLines,
-        xRight: CONTENT_X1,
-        y: warehouseTopY,
-      };
-    }
-    warehouseLines.forEach((line) => {
-      drawRightAligned(line, CONTENT_X1, warehouseY, theme.sizes.address, fontRegular, theme.colors.textMuted);
-      rightBottomY = Math.min(rightBottomY, warehouseY);
-      warehouseY -= theme.lineHeights.address;
-    });
-    rightY = Math.min(rightY, warehouseY - theme.spacing.headerWarehouseToDates);
-  }
-
-  if (vm.issueDate) {
-    drawRightAligned(`Issue date ${vm.issueDate}`, CONTENT_X1, rightY, theme.sizes.date, fontRegular, theme.colors.textMuted);
-    rightBottomY = Math.min(rightBottomY, rightY);
-    rightY -= theme.lineHeights.date;
-  }
-
-  if (vm.expiryDate) {
-    drawRightAligned(`Expiry ${vm.expiryDate}`, CONTENT_X1, rightY, theme.sizes.date, fontRegular, theme.colors.textMuted);
-    rightBottomY = Math.min(rightBottomY, rightY);
-  }
-
-  cursorY = Math.min(leftBottomY, rightBottomY);
-
-  if (vm.intro) {
-    const introLines = wrapText(fontRegular, vm.intro, theme.sizes.intro, CONTENT_W);
-    if (introLines.length) {
-      cursorY -= theme.spacing.headerToIntro;
-      introLines.forEach((line) => {
-        drawTextSafe(line, {
-          x: CONTENT_X0,
+  const startItemsContinuationPage = (rowHeading?: string) => {
+    addPage(false);
+    drawItemsHeader(true);
+    if (rowHeading) {
+      const label = `${rowHeading} - continued`;
+      for (const line of wrapText(
+        fonts.medium,
+        label,
+        FONT_SIZES.itemHeading,
+        DESCRIPTION_W - 8,
+      )) {
+        drawText(page, line, {
+          x: DESCRIPTION_X,
           y: cursorY,
-          size: theme.sizes.intro,
-          font: fontRegular,
-          color: theme.colors.textMuted,
+          size: FONT_SIZES.itemHeading,
+          font: fonts.medium,
         });
-        cursorY -= theme.lineHeights.intro;
+        cursorY -= LINE_HEIGHTS.itemHeading;
+      }
+      cursorY -= 3;
+    }
+  };
+
+  addPage(true);
+  if (preparedRows.length) {
+    ensureSpace(70);
+    drawItemsHeader(pageIndex > 0);
+  }
+
+  for (const row of preparedRows) {
+    const firstLineHeight =
+      row.lines[0]?.kind === 'heading'
+        ? LINE_HEIGHTS.itemHeading
+        : LINE_HEIGHTS.itemBody;
+    if (cursorY - firstLineHeight - 16 < CONTENT_BOTTOM_Y) {
+      startItemsContinuationPage();
+    }
+
+    let numbersDrawn = false;
+    for (let lineIndex = 0; lineIndex < row.lines.length; lineIndex += 1) {
+      const line = row.lines[lineIndex];
+      const isHeading = line.kind === 'heading' || line.kind === 'section';
+      const lineHeight = isHeading ? LINE_HEIGHTS.itemHeading : LINE_HEIGHTS.itemBody;
+      if (cursorY - lineHeight < CONTENT_BOTTOM_Y) {
+        startItemsContinuationPage(row.heading);
+      }
+
+      const textX = line.kind === 'bullet' ? DESCRIPTION_X + 11 : DESCRIPTION_X;
+      if (line.prefix) {
+        drawText(page, line.prefix, {
+          x: DESCRIPTION_X,
+          y: cursorY,
+          size: FONT_SIZES.itemBody,
+          font: fonts.regular,
+          color: brandColors.muted,
+        });
+      }
+      drawText(page, line.text, {
+        x: textX,
+        y: cursorY,
+        size: isHeading ? FONT_SIZES.itemHeading : FONT_SIZES.itemBody,
+        font: isHeading ? fonts.medium : fonts.regular,
+        color: isHeading ? brandColors.ink : brandColors.muted,
       });
-      cursorY += theme.lineHeights.intro;
-    }
-  }
 
-  const GAP_ITEMS_TO_TOTALS_MIN = 36;
-  const GAP_ITEMS_TO_TOTALS_MAX = 72;
-  const GAP_ITEMS_TO_TOTALS_TARGET = 54;
-  const ITEMS_START_SHIFT_LIMIT = 24;
-  const INTRO_ITEMS_GAP_MIN = 12;
-  const INTRO_ITEMS_GAP_MAX = 30;
-
-  const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-  const introBottomY = cursorY;
-  const itemsTopY = introBottomY - theme.spacing.introToItems;
-  const totalsBounds = layoutTotalsBlock(totalsTopY);
-  const closingItemsBottomLimitY = totalsBounds.ceilingRuleY + GAP_ITEMS_TO_TOTALS_MIN;
-  const continuationItemsTopY =
-    PAGE_HEIGHT - MARGIN_TOP - theme.lineHeights.miniHeader - theme.spacing.continuationHeaderGap;
-  let itemsStartY = itemsTopY;
-
-  type PlannedItemsLayout = {
-    tableBounds: TableBounds | null;
-    pageRows: RowLayout[];
-    remainingRows: RowLayout[];
-  };
-
-  const planItemsLayout = (startY: number, rows: RowLayout[], bottomLimitY: number): PlannedItemsLayout => {
-    const availableHeight = startY - bottomLimitY;
-    const availableRowsHeight = Math.max(0, availableHeight - tableHeaderHeight);
-    let rowsOnPage = fitRowsToHeight(availableRowsHeight, rows);
-
-    if (rowsOnPage === 0 && rows.length && availableRowsHeight > 0) {
-      rowsOnPage = 1;
-    }
-
-    let tableBounds = rowsOnPage ? layoutItemsTable({ topY: startY, rows: rows.slice(0, rowsOnPage) }) : null;
-    while (rowsOnPage > 0 && tableBounds && tableBounds.bottomY < bottomLimitY) {
-      rowsOnPage -= 1;
-      tableBounds = rowsOnPage ? layoutItemsTable({ topY: startY, rows: rows.slice(0, rowsOnPage) }) : null;
-    }
-
-    const pageRows = rows.slice(0, rowsOnPage);
-    const remainingRows = rows.slice(rowsOnPage);
-
-    return { tableBounds, pageRows, remainingRows };
-  };
-
-  const planDeferredClosingLayout = (startY: number, rows: RowLayout[], nextPageTopY: number): PlannedItemsLayout => {
-    const layoutWithoutClosing = planItemsLayout(startY, rows, MARGIN_BOTTOM);
-    if (layoutWithoutClosing.remainingRows.length > 0) {
-      return layoutWithoutClosing;
-    }
-
-    for (let rowCount = layoutWithoutClosing.pageRows.length - 1; rowCount >= 1; rowCount -= 1) {
-      const remainingRows = rows.slice(rowCount);
-      if (!remainingRows.length) continue;
-      const nextClosingLayout = planItemsLayout(nextPageTopY, remainingRows, closingItemsBottomLimitY);
-      if (nextClosingLayout.pageRows.length > 0 && nextClosingLayout.remainingRows.length === 0) {
-        const currentRows = rows.slice(0, rowCount);
-        const currentLayout = planItemsLayout(startY, currentRows, MARGIN_BOTTOM);
-        if (currentLayout.pageRows.length === currentRows.length) {
-          return {
-            tableBounds: currentLayout.tableBounds,
-            pageRows: currentRows,
-            remainingRows,
-          };
-        }
+      if (!numbersDrawn) {
+        drawRightAligned(
+          page,
+          row.qtyText,
+          QTY_RIGHT,
+          cursorY,
+          FONT_SIZES.numeric,
+          fonts.regular,
+        );
+        drawRightAligned(
+          page,
+          row.unitPrice,
+          UNIT_RIGHT,
+          cursorY,
+          FONT_SIZES.numeric,
+          fonts.regular,
+        );
+        drawRightAligned(
+          page,
+          row.amount,
+          AMOUNT_RIGHT,
+          cursorY,
+          FONT_SIZES.numeric,
+          fonts.medium,
+        );
+        numbersDrawn = true;
       }
+
+      cursorY -= lineHeight;
+      recordBottom(cursorY);
+      const tableBounds = ensureLayoutPage()?.tableBounds;
+      if (tableBounds) tableBounds.bottomY = cursorY;
     }
 
-    return layoutWithoutClosing;
-  };
-
-  let singlePageClosingLayout = rowLayouts.length ? planItemsLayout(itemsStartY, rowLayouts, closingItemsBottomLimitY) : null;
-  if (singlePageClosingLayout?.tableBounds && singlePageClosingLayout.remainingRows.length === 0) {
-    const lastItemBottomY = singlePageClosingLayout.tableBounds.bottomY;
-    const totalsCeilingY = totalsBounds.ceilingRuleY;
-    const currentGap = lastItemBottomY - totalsCeilingY;
-
-    let deltaY = 0;
-    if (currentGap > GAP_ITEMS_TO_TOTALS_MAX) {
-      const shiftDown = Math.min(currentGap - GAP_ITEMS_TO_TOTALS_TARGET, currentGap - GAP_ITEMS_TO_TOTALS_MIN);
-      deltaY = -shiftDown;
-    } else if (currentGap < GAP_ITEMS_TO_TOTALS_MIN) {
-      const shiftUp = Math.min(GAP_ITEMS_TO_TOTALS_MIN - currentGap, GAP_ITEMS_TO_TOTALS_TARGET - currentGap);
-      deltaY = shiftUp;
-    }
-
-    if (deltaY !== 0) {
-      deltaY = clampValue(deltaY, -ITEMS_START_SHIFT_LIMIT, ITEMS_START_SHIFT_LIMIT);
-      const minStartY = introBottomY - INTRO_ITEMS_GAP_MAX;
-      const maxStartY = introBottomY - INTRO_ITEMS_GAP_MIN;
-      const adjustedStartY = clampValue(itemsStartY + deltaY, minStartY, maxStartY);
-      if (adjustedStartY !== itemsStartY) {
-        const adjustedLayout = planItemsLayout(adjustedStartY, rowLayouts, closingItemsBottomLimitY);
-        if (adjustedLayout.remainingRows.length === 0) {
-          itemsStartY = adjustedStartY;
-          singlePageClosingLayout = adjustedLayout;
-        }
-      }
-    }
-  }
-  let closingPage = firstPage;
-  let closingPageIndex = 0;
-  let closingTableBounds: TableBounds | null = null;
-
-  if (rowLayouts.length) {
-    const firstPageNeedsClosing = singlePageClosingLayout?.remainingRows.length === 0;
-    const effectiveLayout =
-      firstPageNeedsClosing
-        ? (singlePageClosingLayout ?? planItemsLayout(itemsStartY, rowLayouts, closingItemsBottomLimitY))
-        : planDeferredClosingLayout(itemsStartY, rowLayouts, continuationItemsTopY);
-    const { tableBounds, pageRows, remainingRows } = effectiveLayout;
-
-    if (pageRows.length && tableBounds) {
-      drawItemsTable({ topY: itemsStartY, rows: pageRows, sectionTitle: 'ITEMS', bounds: tableBounds });
-      const layoutPage = currentLayoutPage();
-      if (layoutPage) {
-        layoutPage.tableBounds = tableBounds;
-      }
-      if (firstPageNeedsClosing) {
-        closingTableBounds = tableBounds;
-      }
-    }
-
-    if (remainingRows.length) {
-      let overflowRows = remainingRows;
-      while (overflowRows.length) {
-        page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-        pageIndex += 1;
-        drawPageBackground();
-        drawLeftRail();
-
-        const continuationTopY = drawContinuationHeader();
-        const continuationClosingLayout = planItemsLayout(continuationTopY, overflowRows, closingItemsBottomLimitY);
-        const isFinalContinuationPage = continuationClosingLayout.remainingRows.length === 0;
-        const continuationLayout = isFinalContinuationPage
-          ? continuationClosingLayout
-          : planDeferredClosingLayout(continuationTopY, overflowRows, continuationItemsTopY);
-        const { tableBounds: continuationBounds, pageRows: nextRows, remainingRows: nextOverflowRows } = continuationLayout;
-        overflowRows = nextOverflowRows;
-        if (!continuationBounds || !nextRows.length) {
-          break;
-        }
-
-        drawItemsTable({
-          topY: continuationTopY,
-          rows: nextRows,
-          sectionTitle: 'ITEMS (continued)',
-          bounds: continuationBounds,
-        });
-        const layoutPage = currentLayoutPage();
-        if (layoutPage) {
-          layoutPage.tableBounds = continuationBounds;
-        }
-        if (isFinalContinuationPage) {
-          closingPage = page;
-          closingPageIndex = pageIndex;
-          closingTableBounds = continuationBounds;
-        } else if (debugBounds) {
-          drawDebugOverlay(page, { tableBounds: continuationBounds, totalsBounds: null, font: fontRegular });
-        }
-      }
-    }
-  }
-
-  const closingLayoutPage = ensureLayoutPage(closingPageIndex);
-  if (closingLayoutPage) {
-    closingLayoutPage.totalsBounds = totalsBounds;
-  }
-
-  page = closingPage;
-  pageIndex = closingPageIndex;
-  recordRule('totalsCeiling', { x0: tableX0, x1: tableX1, y: totalsBounds.ceilingRuleY });
-  drawTotalsBlock(totalsBounds);
-  drawTermsBlock(termsTopY);
-  drawPaymentBlock();
-  drawFooterBlock(MARGIN_BOTTOM);
-  if (debugBounds) {
-    drawDebugOverlay(page, {
-      tableBounds: closingTableBounds,
-      totalsBounds,
-      font: fontRegular,
+    const separatorY = cursorY - 5;
+    recordRule('itemsRowSeparator', {
+      x0: CONTENT_X0,
+      x1: CONTENT_X1,
+      y: separatorY,
     });
+    const tableBounds = ensureLayoutPage()?.tableBounds;
+    if (tableBounds) {
+      tableBounds.rowRuleYs.push(separatorY);
+      tableBounds.bottomY = separatorY;
+    }
+    cursorY = separatorY - 13;
+    recordBottom(cursorY);
   }
+
+  ensureSpace(184);
+  cursorY -= 6;
+  const totalsTopY = cursorY;
+  recordRule('totalsCeiling', {
+    x0: CONTENT_X0,
+    x1: CONTENT_X1,
+    y: totalsTopY,
+  });
+  cursorY -= 22;
+  drawText(page, 'COMMERCIAL SUMMARY', {
+    x: CONTENT_X0,
+    y: cursorY,
+    size: FONT_SIZES.section,
+    font: fonts.medium,
+    color: brandColors.accent,
+  });
+
+  const totalsX0 = CONTENT_X1 - 238;
+  const totalsX1 = CONTENT_X1;
+  const totalsHeaderY = cursorY;
+  cursorY -= 22;
+  const subtotalY = cursorY;
+  drawText(page, 'Subtotal excl. GST', {
+    x: totalsX0,
+    y: subtotalY,
+    size: FONT_SIZES.totalLabel,
+    font: fonts.medium,
+    color: brandColors.muted,
+  });
+  drawRightAligned(
+    page,
+    vm.totals.ex,
+    totalsX1,
+    subtotalY,
+    FONT_SIZES.totalValue,
+    fonts.regular,
+  );
+
+  cursorY -= 18;
+  const gstY = cursorY;
+  drawText(page, 'GST 15%', {
+    x: totalsX0,
+    y: gstY,
+    size: FONT_SIZES.totalLabel,
+    font: fonts.medium,
+    color: brandColors.muted,
+  });
+  drawRightAligned(
+    page,
+    vm.totals.gst,
+    totalsX1,
+    gstY,
+    FONT_SIZES.totalValue,
+    fonts.regular,
+  );
+
+  const aboveTotalRuleY = cursorY - 10;
+  recordRule('totalsAboveTotal', {
+    x0: totalsX0,
+    x1: totalsX1,
+    y: aboveTotalRuleY,
+  });
+  cursorY = aboveTotalRuleY - 24;
+  const totalY = cursorY;
+  drawText(page, 'Total incl. GST', {
+    x: totalsX0,
+    y: totalY + 3,
+    size: FONT_SIZES.totalLabel,
+    font: fonts.medium,
+    color: brandColors.ink,
+  });
+  drawRightAligned(
+    page,
+    vm.totals.inc,
+    totalsX1,
+    totalY,
+    FONT_SIZES.totalStrong,
+    fonts.semibold,
+  );
+  const belowTotalRuleY = cursorY - 10;
+  recordRule('totalsBelowTotal', {
+    x0: totalsX0,
+    x1: totalsX1,
+    y: belowTotalRuleY,
+  });
+  cursorY = belowTotalRuleY - 24;
+
+  const totalsBounds: TotalsBounds = {
+    x0: totalsX0,
+    x1: totalsX1,
+    headerBaselineY: totalsHeaderY,
+    ceilingRuleY: totalsTopY,
+    subtotalBaselineY: subtotalY,
+    gstBaselineY: gstY,
+    totalBaselineY: totalY,
+    aboveTotalRuleY,
+    belowTotalRuleY,
+  };
+  const totalsLayoutPage = ensureLayoutPage();
+  if (totalsLayoutPage) totalsLayoutPage.totalsBounds = totalsBounds;
+  recordBottom(cursorY);
+
+  const nextStepLines = wrapText(
+    fonts.regular,
+    vm.deposit.nextStep,
+    FONT_SIZES.body,
+    CONTENT_W - 32,
+  );
+  const nextStepHeight = 29 + nextStepLines.length * LINE_HEIGHTS.body + 13;
+  if (ensureSpace(nextStepHeight)) cursorY -= 3;
+  const nextStepTopY = cursorY;
+  page.drawRectangle({
+    x: CONTENT_X0,
+    y: cursorY - nextStepHeight + 8,
+    width: CONTENT_W,
+    height: nextStepHeight,
+    color: brandColors.paperStrong,
+    borderColor: brandColors.rule,
+    borderWidth: 0.7,
+  });
+  drawText(page, 'AFTER ACCEPTANCE', {
+    x: CONTENT_X0 + 16,
+    y: cursorY - 17,
+    size: FONT_SIZES.section,
+    font: fonts.medium,
+    color: brandColors.accent,
+  });
+  cursorY -= 37;
+  for (const line of nextStepLines) {
+    drawText(page, line, {
+      x: CONTENT_X0 + 16,
+      y: cursorY,
+      size: FONT_SIZES.body,
+      font: fonts.regular,
+      color: brandColors.ink,
+    });
+    cursorY -= LINE_HEIGHTS.body;
+  }
+  const nextStepBottomY = cursorY;
+  const paymentLayoutPage = ensureLayoutPage();
+  if (paymentLayoutPage) {
+    paymentLayoutPage.paymentBlock = {
+      topY: nextStepTopY,
+      bottomY: nextStepBottomY,
+      lineCount: nextStepLines.length,
+    };
+  }
+  cursorY -= 18;
+  recordBottom(cursorY);
+
+  if (vm.terms.length) {
+    const drawTermsHeader = (continued: boolean) => {
+      drawText(page, continued ? 'TERMS - CONTINUED' : 'TERMS', {
+        x: CONTENT_X0,
+        y: cursorY,
+        size: FONT_SIZES.section,
+        font: fonts.medium,
+        color: brandColors.accent,
+      });
+      cursorY -= 19;
+    };
+
+    ensureSpace(50);
+    drawTermsHeader(false);
+
+    for (const term of vm.terms) {
+      const wrapped = wrapText(
+        fonts.regular,
+        term,
+        FONT_SIZES.body,
+        CONTENT_W - 17,
+      );
+      for (let index = 0; index < wrapped.length; index += 1) {
+        if (cursorY - LINE_HEIGHTS.terms < CONTENT_BOTTOM_Y) {
+          addPage(false);
+          drawTermsHeader(true);
+        }
+        if (index === 0) {
+          drawText(page, '- ', {
+            x: CONTENT_X0,
+            y: cursorY,
+            size: FONT_SIZES.body,
+            font: fonts.regular,
+            color: brandColors.accent,
+          });
+        }
+        drawText(page, wrapped[index], {
+          x: CONTENT_X0 + 17,
+          y: cursorY,
+          size: FONT_SIZES.body,
+          font: fonts.regular,
+          color: brandColors.ink,
+        });
+        cursorY -= LINE_HEIGHTS.terms;
+        const termsLayoutPage = ensureLayoutPage();
+        if (termsLayoutPage) {
+          termsLayoutPage.termLineCount = (termsLayoutPage.termLineCount ?? 0) + 1;
+        }
+        recordBottom(cursorY);
+      }
+      cursorY -= 3;
+    }
+  }
+
+  const pageCount = pdfDoc.getPageCount();
+  pdfDoc.getPages().forEach((pdfPage, index) => {
+    drawPageFooter({
+      page: pdfPage,
+      vm,
+      fonts,
+      pageNumber: index + 1,
+      pageCount,
+    });
+    if (debugBounds) {
+      const pageLayout = layout?.pages[index];
+      drawDebugOverlay(pdfPage, {
+        tableBounds: pageLayout?.tableBounds,
+        totalsBounds: pageLayout?.totalsBounds,
+        font: fonts.regular,
+      });
+    }
+  });
 
   const bytes = await pdfDoc.save();
   return { bytes, layout };
 }
 
-export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<Uint8Array> {
+export async function generateQuotePdfBytes(
+  quote: QuoteVersionDetail,
+): Promise<Uint8Array> {
   const result = await generateQuotePdf(quote);
   return result.bytes;
 }
@@ -1329,8 +1073,6 @@ export async function generateQuotePdfBytesWithLayout(
   quote: QuoteVersionDetail,
 ): Promise<{ bytes: Uint8Array; layout: QuotePdfLayout }> {
   const result = await generateQuotePdf(quote, { collectLayout: true });
-  if (!result.layout) {
-    throw new Error('PDF layout collection was not enabled.');
-  }
+  if (!result.layout) throw new Error('PDF layout collection was not enabled.');
   return { bytes: result.bytes, layout: result.layout };
 }

@@ -1,6 +1,8 @@
 # PR-COMP-PHASE2 — Composition Data Model in `HouseFormModel`
 
-**Drafted**: 2026-06-18. **Status**: planning. Phase 2 of the [house composition migration](house-composition-vision.md). Sits on top of [PR-COMP1](pr-comp1-plan.md) (composition geometry primitives, shipped).
+**Drafted**: 2026-06-18. **Status**: shipped on 2026-06-18; the optional/parallel data model described here was subsequently superseded by shipped PR-WB-COMPOSITION-ONLY. Phase 2 of the [house composition migration](house-composition-vision.md). Sits on top of [PR-COMP1](pr-comp1-plan.md) (composition geometry primitives, shipped).
+
+Retrospective note: the body below preserves the approval-time scope, sequencing, and compatibility rationale. It is not the current model contract; `HouseFormModel.composition` is now required and legacy footprint fields exist only as defensive normaliser input.
 
 ## 1. Goal
 

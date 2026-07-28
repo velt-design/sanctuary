@@ -137,6 +137,10 @@ The geometry pipeline reads the selected/host `HouseFormModel.transform` first a
 
 Two related footguns hit the same boundary -- `PlanCanvas.dispatchPlanPointer`.
 
+**Keep touch gestures owned by the Plan canvas.** The interactive SVG must retain `touch-action: none`; otherwise the browser can steal a drag for scrolling or gesture handling and terminate the tool session.
+
+**Capture primary-button pointers.** Every primary-button pointer-down that starts a tool must call `setPointerCapture(pointerId)`. Without capture, crossing an element boundary can produce `pointerleave` or `pointerCancel` before the intended release.
+
 **Inventing coords on null.** Plan pointer resolution returns `null` when the drawing surface can't be measured (pre-mount, SSR, edge cases). An earlier version fell back to `point: { x: 0, y: 0 }` for any pointer event without a shape. The MoveTool stored a real start coord on pointer-down, then received `(0, 0)` on pointer-up, producing `delta = -startCoord`. Rule: if the cursor can't be resolved, drop the event. Tools downstream rely on the contract that `ToolPointerEvent.point` is the true cursor world coord; a sentinel `(0, 0)` is worse than a missing event because the drag session stays alive with poisoned state.
 
 **Treating `pointerCancel` as `pointerUp`.** This was the actual root cause of the deck-drift runaway. `pointerCancel` fires when the OS interrupts a gesture (palm rejection, focus loss, scroll/touch-action capture, browser killing the gesture). The React `PointerEvent` typically has `clientX === 0 && clientY === 0`. With pan/zoom applied, resolving `(0, 0)` as a plan point can produce a real but absurd world coord (e.g. ~900m off-canvas). Wiring `onPointerCancel={handlePointerUp}` then dispatches that as a "release," and MoveTool commits `delta = bogusEnd - realStart` -- a jump roughly proportional to the deck's on-screen distance from the page corner. Compounds because each commit moves the deck further away, making the next bogus delta larger.

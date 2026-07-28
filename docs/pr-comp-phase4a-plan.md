@@ -1,6 +1,8 @@
 # PR-COMP-PHASE4a — Multi-Rectangle Geometry + Detach Action
 
-**Drafted**: 2026-06-18. **Status**: planning. First half of Phase 4 of the [house composition migration](house-composition-vision.md). Sits on top of [PR-COMP-PHASE3](pr-comp-phase3-plan.md) (composition is populated, consumed for single-rectangle, snap is wired).
+**Drafted**: 2026-06-18. **Status**: shipped on 2026-06-18; retained as the original first-half Phase 4 implementation plan. First half of Phase 4 of the [house composition migration](house-composition-vision.md). Sits on top of [PR-COMP-PHASE3](pr-comp-phase3-plan.md) (composition is populated, consumed for single-rectangle, snap is wired).
+
+Retrospective note: the body below preserves the approval-time scope and sequencing. Phase 4b Join/Detach interaction and the later composition-only cleanup also shipped; use the current architecture and implementation for follow-up work.
 
 ## 1. Goal
 

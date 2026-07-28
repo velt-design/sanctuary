@@ -63,12 +63,15 @@ These docs are current-state references and active guardrails for coding agents.
 | `design-workbench-architecture.md` | Current | You are touching drawing workbench, object-first model, geometry preview, or direct manipulation. |
 | `design-workbench-multi-object-goal.md` | Active goal | You are moving the workbench toward robust multiple-house or multiple-pergola editing. |
 | `workbench-captured-repro-workflow.md` | Active protocol | You are turning a live workbench solver/render bug into a captured fixture before changing geometry or render behavior. |
+| `workbench-visual-snapshot-loop.md` | Active protocol | You are making a visual-only workbench layout, density, or token change and need rendered snapshot evidence. |
 | `decision-log.md` | Active guardrail log | You need lessons from past mistakes, durable decisions, or reusable safety rules before risky work. |
 | `design-list.md` | Current | You are touching `/staff/projects/design-packages` or design-package request APIs. |
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
 | `security-privacy-quality.md` | Current | You are touching tracking, consent, CSP, Lighthouse, audits, or quality gates. |
 | `marketing-ui-foundation.md` | Current | You are changing the standalone internal marketing foundation catalogue or its route-local reusable primitives and patterns. |
+| `marketing-claims-register.md` | Current governance | You are writing or reviewing public marketing claims and need the approved, pending, or prohibited evidence boundary. |
+| `landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md` | Active implementation programme | You are changing the pergola-guide ecosystem's information architecture, implementation order, or goal status. |
 
 ## Superseded Redirects
 

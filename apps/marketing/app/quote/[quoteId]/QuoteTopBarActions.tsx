@@ -10,7 +10,7 @@ export function QuoteTopBarActions() {
         Contact Sanctuary
       </Link>
       <button type="button" className={styles.topBarButton} onClick={() => window.print()}>
-        Download
+        Print / save PDF
       </button>
     </div>
   );

@@ -1,6 +1,8 @@
 # PR-COMP1 — Composition Geometry Primitives
 
-**Drafted**: 2026-06-18. **Status**: planning. First implementation phase of the [house composition vision](house-composition-vision.md).
+**Drafted**: 2026-06-18. **Status**: shipped on 2026-06-18; retained as the original Phase 1 implementation plan for the [house composition vision](house-composition-vision.md).
+
+Retrospective note: the body below preserves the approval-time scope, sequencing, test counts, and CTA. It is not a current next-task list. Use `docs/design-workbench-architecture.md` and the current implementation before proposing follow-up work.
 
 Builds the rectangle + valley primitives that the rest of the composition migration relies on. Lives entirely in `@sp/geometry`. No workbench wiring, no UX change. Tests prove the math works on the two captured Graham–Oratia fixtures + a representative set of synthetic compositions.
 

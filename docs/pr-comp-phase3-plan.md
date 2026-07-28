@@ -1,6 +1,8 @@
 # PR-COMP-PHASE3 — Composition-First House Authoring + Geometry Routing
 
-**Drafted**: 2026-06-18. **Status**: planning. Phase 3 of the [house composition migration](house-composition-vision.md). Sits on top of [PR-COMP1](pr-comp1-plan.md) (composition geometry) and [PR-COMP-PHASE2](pr-comp-phase2-plan.md) (composition data model).
+**Drafted**: 2026-06-18. **Status**: shipped on 2026-06-18; retained as the original Phase 3 implementation plan. Phase 3 of the [house composition migration](house-composition-vision.md). Sits on top of [PR-COMP1](pr-comp1-plan.md) (composition geometry) and [PR-COMP-PHASE2](pr-comp-phase2-plan.md) (composition data model).
+
+Retrospective note: the body below preserves the approval-time scope, sequencing, and compatibility rationale. Later PR-WB-COMPOSITION-ONLY replaced its optional composition/parallel legacy-footprint posture with required composition plus defensive normalisation.
 
 ## 1. Goal
 

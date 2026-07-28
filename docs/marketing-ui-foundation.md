@@ -103,6 +103,8 @@ Analytics, consent, pixels, structured data, project content, reviews, and enqui
 
 ## Approved Public Adoption
 
+The token-scoped public quote route is an approved presentation-only adoption. `apps/marketing/app/quote/[quoteId]/quoteEditorial.module.css` translates the Foundation into a no-imagery customer document: Instrument Sans display type, Inter body type, warm neutral surfaces, square controls, fine rules, and the olive action accent. The route keeps one visible commercial summary with explicit GST, stacks line-item labels and values without horizontal overflow at narrow widths, and preserves 44px actions. Public quote lookup, token/expiry handling, attachment authorization, acceptance form action and hidden token, status semantics, and all quote lifecycle behavior remain unchanged. The public invoice route keeps its existing separate presentation owner.
+
 `/acrylic-roof-pergolas-auckland` is the first approved route-scoped adoption. It imports the foundation fonts and reusable `Container`, `Section`, `Heading`, `Eyebrow`, `Text`, `Button`, `TextLink`, and `ProcessSteps` exports, while its specialised tint comparison, project proof, FAQ, and enquiry form remain route-owned.
 
 The route defines the same semantic page tokens locally. Its approved copy, canonical URL, metadata, FAQ schema, project links, attribution, secure attachment upload, enquiry API contract, consent behavior, and form-state logic remain owned by the landing page and existing marketing integrations.

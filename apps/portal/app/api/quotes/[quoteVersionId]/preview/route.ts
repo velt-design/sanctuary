@@ -13,6 +13,7 @@ type QuoteEmailPayload = {
   subject?: string;
   personalNote?: string | null;
   bodyText?: string;
+  attachmentNames?: string[];
 };
 
 function parseRecipients(value: unknown): string[] {
@@ -40,6 +41,7 @@ function parsePayload(body: Record<string, unknown>): QuoteEmailPayload {
           ? body.bodyText
           : null,
     bodyText: typeof body.bodyText === 'string' ? body.bodyText : undefined,
+    attachmentNames: parseRecipients(body.attachmentNames),
   };
 }
 

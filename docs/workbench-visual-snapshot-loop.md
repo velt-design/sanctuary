@@ -19,7 +19,7 @@ When iterating on workbench layout, density, tokens, or any other visual change,
    - `tmp/workbench-mono-pergola.png` — Plan Editor with Pergola 1 selected (right inspector populated)
    - `tmp/workbench-mono-house-form.png` — Plan Editor with House Form 1 selected
    - `tmp/workbench-mono-3d-empty.png` — 3D Review with nothing selected
-4. Compare against `public/images/sanctuary_pergola_workbench.png` (the design target) or other reference image.
+4. Compare against an explicitly owner-approved reference image. The previously named `public/images/sanctuary_pergola_workbench.png` is not present in the repository as of 2026-07-28; owner validation is required before restoring it or naming a replacement. Until then, do not treat an inferred or generated image as the design target.
 5. Iterate.
 
 Each spec auto-spawns a Next dev server on port 3011 with `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`. No manual dev-server management; no auth setup required.

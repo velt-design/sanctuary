@@ -1,6 +1,6 @@
 # Design Workbench — CAD-style UI Plan
 
-**Status**: drafted 2026-05-23. Source mockup: `public/images/sanctuary_pergola_workbench.png`. Originated from a Codex-ready handoff (full text in `docs/decision-log.md` if archived later).
+**Status**: drafted 2026-05-23. Historical source mockup path: `public/images/sanctuary_pergola_workbench.png`. That file is not present in the repository as of 2026-07-28; owner validation is required before restoring it or naming a replacement. Originated from a Codex-ready handoff (full text in `docs/decision-log.md` if archived later).
 
 **Goal**: get the Design Workbench to match the CAD-style mockup. 9 PRs, ordered low-risk → high-risk. Each PR is independently shippable; the workbench is usable after every one (degraded UX is acceptable per Phase 1 acceptance).
 

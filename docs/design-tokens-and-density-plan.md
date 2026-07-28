@@ -16,7 +16,7 @@ Phase 1 establishes a unified design-tokens layer that both Tailwind v4 and CSS 
 
 **Phase 1**: Make a single source of truth for design decisions — CSS custom properties at `:root`, exposed to Tailwind via `@theme inline`, referenced from CSS modules, with no visual change to the rendered app.
 
-**Phase 2**: Tighten the workbench to match `public/images/sanctuary_pergola_workbench.png` density — smaller bubbles, more info per screen — by flipping token values inside a `[data-workbench-density="compact"]` scope. Zero changes to TSX, only token values and a single attribute on the workbench root.
+**Phase 2**: Tighten the workbench through the `[data-workbench-density="compact"]` scope. The historical target `public/images/sanctuary_pergola_workbench.png` is not present in the repository as of 2026-07-28; owner validation is required before restoring it or naming a replacement, and no inferred or generated image should be treated as the target. The original proposal used smaller bubbles and more information per screen, with token-value changes and a single attribute on the workbench root.
 
 ---
 

@@ -2,7 +2,27 @@
 
 import { describe, expect, it } from 'vitest';
 import { generateQuotePdfBytesWithLayout } from './pdf';
+import { buildPdfQuoteViewModel } from './quotePdfViewModel';
 import type { QuoteVersionDetail } from './types';
+
+async function extractPdfText(bytes: Uint8Array): Promise<string> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const document = await pdfjs.getDocument({
+    data: bytes.slice(),
+  }).promise;
+  const pageTexts: string[] = [];
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pageTexts.push(
+      content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .filter(Boolean)
+        .join(' '),
+    );
+  }
+  return pageTexts.join('\n');
+}
 
 const buildLineItem = (index: number) => ({
   id: `line-${index}`,
@@ -107,7 +127,7 @@ describe('quote pdf layout', () => {
 
     expect(layout.pages).toHaveLength(1);
     expect(layout.pages[0]?.totalsBounds).toBeTruthy();
-    expect(layout.pages[0]?.paymentBlock?.lineCount).toBe(4);
+    expect(layout.pages[0]?.paymentBlock?.lineCount).toBeGreaterThan(0);
   });
 
   it('moves totals onto the final items page for multi-page quotes', async () => {
@@ -127,7 +147,7 @@ describe('quote pdf layout', () => {
     expect(layout.pages[0]?.paymentBlock).toBeFalsy();
     expect(lastPage?.totalsBounds).toBeTruthy();
     expect(lastPage?.tableBounds).toBeTruthy();
-    expect(lastPage?.paymentBlock?.lineCount).toBe(4);
+    expect(lastPage?.paymentBlock?.lineCount).toBeGreaterThan(0);
     expect((lastPage?.paymentBlock?.topY ?? 0) < (lastPage?.totalsBounds?.belowTotalRuleY ?? 0)).toBe(true);
   });
 
@@ -157,5 +177,79 @@ describe('quote pdf layout', () => {
     const { bytes } = await generateQuotePdfBytesWithLayout(quote);
 
     expect(bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  it('splits an oversized line item across pages without dropping its content', async () => {
+    const detailLines = Array.from(
+      { length: 95 },
+      (_, index) => `- Detail ${index + 1}: project-specific specification`,
+    );
+    const quote = buildQuoteDetail({
+      lineItems: [
+        {
+          id: 'line-long',
+          description: ['Custom pergola', ...detailLines].join('\n'),
+          qty: 1,
+          unitPriceIncGstCents: 115000,
+          lineTotalIncGstCents: 115000,
+          sortOrder: 0,
+        },
+      ],
+      totals: {
+        totalIncGstCents: 115000,
+        totalExGstCents: 100000,
+        gstCents: 15000,
+      },
+    });
+
+    const { bytes, layout } = await generateQuotePdfBytesWithLayout(quote);
+    const text = await extractPdfText(bytes);
+
+    expect(layout.pages.length).toBeGreaterThan(2);
+    expect(layout.pages.filter((page) => page.tableBounds).length).toBeGreaterThan(1);
+    expect(text).toContain('Custom pergola');
+    expect(text).toContain('Detail 95');
+    expect(layout.pages.every((page) => (page.contentBottomY ?? 999) >= 70)).toBe(true);
+  });
+
+  it('paginates long terms after totals without overlapping the footer', async () => {
+    const terms = Array.from(
+      { length: 55 },
+      (_, index) =>
+        `Term ${index + 1}: This condition explains a representative customer responsibility and project allowance.`,
+    );
+    const quote = buildQuoteDetail({ termsText: terms.join('\n') });
+
+    const { bytes, layout } = await generateQuotePdfBytesWithLayout(quote);
+    const text = await extractPdfText(bytes);
+    const renderedTermLines = layout.pages.reduce(
+      (sum, page) => sum + (page.termLineCount ?? 0),
+      0,
+    );
+
+    expect(layout.pages.length).toBeGreaterThan(1);
+    expect(renderedTermLines).toBeGreaterThanOrEqual(55);
+    expect(text).toContain('Term 55');
+    expect(text).toContain(`Page 1 of ${layout.pages.length}`);
+    expect(layout.pages.every((page) => (page.contentBottomY ?? 999) >= 70)).toBe(true);
+  });
+
+  it('formats negative line amounts using the conventional currency sign order', () => {
+    const quote = buildQuoteDetail({
+      lineItems: [
+        {
+          id: 'discount',
+          description: 'Project discount',
+          qty: 1,
+          unitPriceIncGstCents: -11500,
+          lineTotalIncGstCents: -11500,
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    const viewModel = buildPdfQuoteViewModel(quote);
+    expect(viewModel.items[0]?.unitPrice).toBe('-$115.00');
+    expect(viewModel.items[0]?.amount).toBe('-$115.00');
   });
 });

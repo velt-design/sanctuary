@@ -1,4 +1,5 @@
 import { rgb, type Color, type PDFPage, type PDFFont } from 'pdf-lib';
+import { SANCTUARY_ARTIFACT_BRAND } from '@/lib/customerArtifacts/brand';
 
 type BoundsX = { x0: number; x1: number };
 
@@ -22,10 +23,22 @@ export type TotalsBounds = BoundsX & {
 
 type RuleStyle = { width: number; color: Color };
 
-const RULE_TIER1: RuleStyle = { width: 1.0, color: rgbFromHex('#C9C9C9') };
-const RULE_TIER2: RuleStyle = { width: 0.5, color: rgbFromHex('#D8D8D8') };
-const RULE_TIER3: RuleStyle = { width: 0.5, color: rgbFromHex('#E0E0E0') };
-const RULE_TABLE_HEADER: RuleStyle = { width: 0.85, color: rgbFromHex('#CFCFCF') };
+const RULE_TIER1: RuleStyle = {
+  width: 1,
+  color: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.ruleStrong),
+};
+const RULE_TIER2: RuleStyle = {
+  width: 0.5,
+  color: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.rule),
+};
+const RULE_TIER3: RuleStyle = {
+  width: 0.5,
+  color: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.rule),
+};
+const RULE_TABLE_HEADER: RuleStyle = {
+  width: 0.85,
+  color: rgbFromHex(SANCTUARY_ARTIFACT_BRAND.colors.ruleStrong),
+};
 
 type RuleKind =
   | 'itemsHeaderUnderline'
