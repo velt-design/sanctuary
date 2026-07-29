@@ -3851,3 +3851,35 @@ Related docs/tests: `apps/portal/lib/projects/createProjectCommand.test.ts`;
 `apps/portal/app/staff/projects/ProjectsIndexClient.test.tsx`;
 `apps/portal/app/staff/contacts/ContactsIndexClient.test.tsx`;
 `test/portal-operational-lists-migration.test.ts`
+
+### 2026-07-29 - Portal UI Authority - Current Rendered System Is Canonical
+
+Date: 2026-07-29
+Area: Portal and marketing UI ownership
+Status: Promoted
+Decision or mistake: The portal Foundation document mixed current component
+contracts with replacement-migration language, while readiness and feature docs
+described different rollout boundaries. That contradiction encouraged agents
+to treat the catalogue, compatibility names and the separate marketing
+Foundation as direction to change current portal screens.
+Why it mattered: A documentation label could trigger broad visual churn,
+removal of active specialist or compatibility presentation, or cross-app design
+adoption without a verified product defect or user approval.
+Current guardrail: The checked-in portal implementation and rendered behavior
+are the current portal UI canon. Portal and marketing own separate UI systems.
+Catalogues provide shared-component discovery and regression evidence; they are
+not target mockups. Preserve active specialist, route-owned and compatibility
+presentation. A cross-route restyle, shared-token replacement or UI-system
+migration requires explicit user approval. Inspect current code, tests and
+rendered behavior before correcting a UI claim.
+Promoted to: `AGENTS.md`; `docs/README.md`; `docs/architecture.md`;
+`docs/change-routing.md`; `docs/ui-foundation.md`;
+`docs/marketing-ui-foundation.md`; `docs/portal-production-readiness.md`;
+`docs/portal-ux-roadmap.md`
+Related docs/tests: `apps/portal/app/layout.tsx`;
+`apps/portal/app/globals.css`;
+`apps/portal/components/layout/PageHeader.tsx`;
+`apps/portal/components/ui/foundation`;
+`apps/marketing/components/marketing-foundation`;
+`playwright/portal.ui-foundation.spec.ts`;
+`playwright/marketing.foundation.spec.ts`
