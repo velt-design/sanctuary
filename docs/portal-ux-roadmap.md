@@ -60,8 +60,9 @@ The main UX standard:
 
 6. **Schedule UX Simplification**
    - Goal: reduce visual competition in the most operationally dense surface.
-   - Make today, this week, blockers, unassigned work, and site visits more prominent.
-   - Group actions and reduce competing controls before adding new schedule features.
+   - Current Board pass: larger screens wrap up to four crews per row without horizontal lane scrolling, cards prioritise timing over routine state, and a browser-saved view filter can hide empty or selected crews without changing access or Schedule truth.
+   - Current Gantt pass: Board and Gantt share the saved crew preference; planning controls are grouped apart from view options; the visual scale defaults to eight weeks without changing the 12-week data range; current week/today, row timing, crew counts, and existing attention facts are easier to scan.
+   - Remaining gap: make unassigned work more prominent. Site Visits remains dormant unless its reactivation is separately approved.
 
 7. **Workbench User Confidence**
    - Goal: keep the design workbench powerful without exposing migration complexity.
@@ -101,7 +102,7 @@ The main UX standard:
 5. Activity category expansion and timeline clarity.
 6. Dashboard/project task evolution.
 7. Quote/estimate state summary standardisation.
-8. Schedule priority-view simplification.
+8. Remaining Schedule priority-view simplification for unassigned work.
 9. Workbench state and diagnostics simplification.
 
 ## Update Notes

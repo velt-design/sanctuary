@@ -24,4 +24,19 @@ describe('ScheduleViewTabs', () => {
 
     rendered.unmount();
   });
+
+  it('prefetches a view on pointer or keyboard intent', () => {
+    const onIntent = vi.fn();
+    const rendered = renderIntoDocument(
+      <ScheduleViewTabs view="board" onChange={vi.fn()} onIntent={onIntent} />,
+    );
+    const buttons = Array.from(rendered.container.querySelectorAll('button'));
+
+    act(() => {
+      buttons[1]?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+
+    expect(onIntent).toHaveBeenCalledWith('gantt');
+    rendered.unmount();
+  });
 });

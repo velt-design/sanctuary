@@ -7,6 +7,7 @@ import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { adjustJob, assignJob, fetchScheduleGantt, markJobDone, pinJob, reorderItems, setJobDuration } from '@/lib/repo/scheduleV2Repo';
 import { ApiError } from '@/lib/repo/apiClient';
+import { getScheduleMutationActivityCount } from './scheduleMutationActivity';
 
 const routerReplace = vi.fn();
 const routerPush = vi.fn();
@@ -30,6 +31,11 @@ const dndMocks = vi.hoisted(() => ({
 }));
 const ganttMocks = vi.hoisted(() => ({
   latestProps: null as any,
+  renderedItems: [] as Array<Array<{
+    id: string;
+    forecastStart: string | null;
+    forecastEndExclusive: string | null;
+  }>>,
 }));
 const sendBeaconMock = vi.fn();
 
@@ -125,6 +131,17 @@ vi.mock('next/dynamic', () => ({
     }
     if (!Array.isArray(props?.holidays)) return null;
     ganttMocks.latestProps = props;
+    ganttMocks.renderedItems.push(
+      (props.visibleScheduleItems ?? []).map((item: {
+        id: string;
+        forecastStart?: string | null;
+        forecastEndExclusive?: string | null;
+      }) => ({
+        id: item.id,
+        forecastStart: item.forecastStart ?? null,
+        forecastEndExclusive: item.forecastEndExclusive ?? null,
+      })),
+    );
     const labelFor = (holiday: { date: string; name?: string }) => {
       const [, month, day] = holiday.date.split('-');
       const monthLabel = month === '04' ? 'Apr' : month;
@@ -133,6 +150,18 @@ vi.mock('next/dynamic', () => ({
     return (
       <div>
         <span>Gantt</span>
+        {(props.visibleScheduleItems ?? []).map((item: {
+          id: string;
+          forecastStart?: string | null;
+          forecastEndExclusive?: string | null;
+        }) => (
+          <div
+            key={item.id}
+            data-gantt-test-item-id={item.id}
+            data-forecast-start={item.forecastStart ?? ''}
+            data-forecast-end-exclusive={item.forecastEndExclusive ?? ''}
+          />
+        ))}
         {props.holidays.map((holiday: { date: string; name?: string }) => (
           <div key={holiday.date} aria-label={labelFor(holiday)} />
         ))}
@@ -323,6 +352,61 @@ function emptyCrewMutationResponse() {
   } as any;
 }
 
+function crewJobMutationItem(input: {
+  scheduleItemId: string;
+  scheduledJobId: string;
+  projectId: string;
+  position: number;
+  start: string;
+  endExclusive: string;
+  durationDays: number;
+  mode?: 'floating' | 'pinned';
+}) {
+  return {
+    id: input.scheduleItemId,
+    item_type: 'job',
+    position: input.position,
+    start: input.start,
+    end_exclusive: input.endExclusive,
+    duration_days: input.durationDays,
+    job: {
+      id: input.scheduledJobId,
+      job_id: input.projectId,
+      crew_id: CREW_UUID,
+      mode: input.mode ?? 'floating',
+      planned_commitment_type: null,
+      planned_week_start: null,
+      planned_start: null,
+      planned_duration_days: null,
+      planned_flex_days: null,
+      forecast_start: input.start,
+      forecast_end_exclusive: input.endExclusive,
+      forecast_duration_days: input.durationDays,
+      actual_start: null,
+      actual_finish: null,
+      status: 'not_started',
+      days_remaining: null,
+    },
+    downtime: null,
+  };
+}
+
+function crewMutationResponse(
+  items: ReturnType<typeof crewJobMutationItem>[],
+  nextAvailableDate: string,
+) {
+  return {
+    ok: true,
+    crew_id: CREW_UUID,
+    schedule: {
+      crew_id: CREW_UUID,
+      items,
+      conflicts: [],
+      next_available_date: nextAvailableDate,
+    },
+  } as any;
+}
+
 function boardMutationSnapshot(): ScheduleV2Snapshot {
   return {
     generatedAt: new Date().toISOString(),
@@ -437,6 +521,7 @@ describe('ScheduleClient', () => {
     dndMocks.latestBoardProps = null;
     dndMocks.activeId = null;
     ganttMocks.latestProps = null;
+    ganttMocks.renderedItems = [];
     vi.mocked(adjustJob).mockReset();
     vi.mocked(assignJob).mockReset();
     vi.mocked(fetchScheduleGantt).mockReset();
@@ -640,7 +725,8 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
-  it('starts the portal loading transition before switching schedule views', async () => {
+  it('keeps transition feedback while switching views without an RSC navigation', async () => {
+    const replaceState = vi.spyOn(window.history, 'replaceState');
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -675,9 +761,202 @@ describe('ScheduleClient', () => {
       source: 'schedule-view',
       control: ganttButton,
     });
-    expect(routerReplace).toHaveBeenCalledWith('/staff/schedule?view=gantt');
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/staff/schedule?view=gantt');
+    expect(routerReplace).not.toHaveBeenCalled();
     expect(fetchScheduleGantt).not.toHaveBeenCalled();
 
+    rendered.unmount();
+  });
+
+  it('prefetches Gantt on intent and reuses the fresh snapshot when switching', async () => {
+    const originalReplaceState = window.history.replaceState.bind(window.history);
+    vi.spyOn(window.history, 'replaceState').mockImplementation((state, title, url) => {
+      const nextUrl = String(url ?? '');
+      searchParamsString = nextUrl.includes('?') ? nextUrl.slice(nextUrl.indexOf('?') + 1) : '';
+      originalReplaceState(state, title, url);
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={initialSnapshot} />
+      </QueryClientProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const ganttButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Gantt',
+    ) as HTMLButtonElement;
+    act(() => {
+      ganttButton.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(scheduleGanttSnapshotQueryFn).toHaveBeenCalledTimes(1);
+    expect(
+      queryClient.getQueryData(
+        qk.schedule.gantt(
+          'example.supabase.co',
+          '2026-04-06',
+          '2026-06-28',
+          '2026-04-07',
+        ),
+      ),
+    ).toBeTruthy();
+
+    act(() => {
+      ganttButton.click();
+    });
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(scheduleGanttSnapshotQueryFn).toHaveBeenCalledTimes(1);
+    expect(rendered.container.textContent).toContain('Gantt');
+    rendered.unmount();
+  });
+
+  it('keeps a concurrent Gantt prefetch valid when a newer Board refresh applies', async () => {
+    const originalReplaceState = window.history.replaceState.bind(window.history);
+    vi.spyOn(window.history, 'replaceState').mockImplementation((state, title, url) => {
+      const nextUrl = String(url ?? '');
+      searchParamsString = nextUrl.includes('?') ? nextUrl.slice(nextUrl.indexOf('?') + 1) : '';
+      originalReplaceState(state, title, url);
+    });
+    const refreshedBoardSnapshot: ScheduleV2Snapshot = {
+      ...initialSnapshot,
+      generatedAt: '2026-04-07T12:00:00.000Z',
+    };
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(refreshedBoardSnapshot),
+      staleTime: 30_000,
+    }));
+    let resolveGanttPrefetch!: (value: ScheduleV2Snapshot) => void;
+    const ganttPrefetch = new Promise<ScheduleV2Snapshot>((resolve) => {
+      resolveGanttPrefetch = resolve;
+    });
+    scheduleGanttSnapshotQueryOptions.mockImplementation((
+      host: string,
+      today: string,
+      range: { rangeStart: string; rangeEnd: string },
+    ) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockImplementation(() => ganttPrefetch),
+      staleTime: 30_000,
+    }));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={initialSnapshot} />
+      </QueryClientProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const ganttButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Gantt',
+    ) as HTMLButtonElement;
+    act(() => {
+      ganttButton.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(scheduleGanttSnapshotQueryFn).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: qk.schedule.board('example.supabase.co', '2026-04-07'),
+      });
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+    expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveGanttPrefetch({ ...initialSnapshot, unscheduledJobs: [] });
+      await ganttPrefetch;
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+    act(() => {
+      ganttButton.click();
+    });
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(scheduleGanttSnapshotQueryFn).toHaveBeenCalledTimes(1);
+    expect(ganttMocks.latestProps).toBeTruthy();
+    expect(rendered.container.textContent).not.toContain('Loading Gantt...');
+    rendered.unmount();
+  });
+
+  it('follows canonical URL changes without asking the server to rebuild the page', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    queryClient.setQueryData(
+      qk.schedule.gantt(
+        'example.supabase.co',
+        '2026-04-06',
+        '2026-06-28',
+        '2026-04-07',
+      ),
+      { ...initialSnapshot, unscheduledJobs: [] },
+    );
+    const schedule = () => (
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={initialSnapshot} />
+      </QueryClientProvider>
+    );
+    const rendered = renderIntoDocument(schedule());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    searchParamsString = 'view=gantt';
+    rendered.rerender(schedule());
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    const ganttButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Gantt',
+    );
+    expect(ganttButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(ganttMocks.latestProps).toBeTruthy();
+
+    searchParamsString = '';
+    rendered.rerender(schedule());
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    const boardButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Board',
+    );
+    expect(boardButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(routerReplace).not.toHaveBeenCalled();
     rendered.unmount();
   });
 
@@ -891,6 +1170,137 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
+  it('keeps confirmed Gantt timing visible while the authoritative refresh is delayed', async () => {
+    vi.useFakeTimers();
+    searchParamsString = 'view=gantt';
+    const snapshot = { ...boardMutationSnapshot(), unscheduledJobs: [] };
+    const acceptedStart = '2026-04-13';
+    const acceptedEndExclusive = '2026-04-16';
+    const authoritativeSnapshot: ScheduleV2Snapshot = {
+      ...snapshot,
+      generatedAt: '2026-04-07T12:00:00.000Z',
+      scheduleItems: snapshot.scheduleItems.map((item) => ({
+        ...item,
+        mode: 'pinned',
+        startDateOverride: acceptedStart,
+        forecastStart: acceptedStart,
+        forecastEndExclusive: acceptedEndExclusive,
+        forecastDurationDays: 3,
+        durationHoursOverride: 27,
+      })),
+    };
+    let resolveAuthoritativeSnapshot!: (value: ScheduleV2Snapshot) => void;
+    const authoritativeSnapshotPromise = new Promise<ScheduleV2Snapshot>((resolve) => {
+      resolveAuthoritativeSnapshot = resolve;
+    });
+    scheduleGanttSnapshotQueryOptions.mockImplementation((
+      host: string,
+      today: string,
+      range: { rangeStart: string; rangeEnd: string },
+    ) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockImplementation(() => authoritativeSnapshotPromise),
+      staleTime: 30_000,
+    }));
+
+    let resolveAdjustment!: (value: ReturnType<typeof crewMutationResponse>) => void;
+    const adjustmentPromise = new Promise<ReturnType<typeof crewMutationResponse>>((resolve) => {
+      resolveAdjustment = resolve;
+    });
+    vi.mocked(adjustJob).mockImplementation(() => adjustmentPromise);
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const mutationHistoryStart = ganttMocks.renderedItems.length;
+
+    act(() => {
+      ganttMocks.latestProps.onResizePin(scheduleItemId, acceptedStart, 3);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+
+    const mutationResponse = crewMutationResponse(
+      [
+        crewJobMutationItem({
+          scheduleItemId: SCHEDULE_ITEM_UUID,
+          scheduledJobId: SCHEDULED_JOB_UUID,
+          projectId: ALPHA_PROJECT_UUID,
+          position: 0,
+          start: acceptedStart,
+          endExclusive: acceptedEndExclusive,
+          durationDays: 3,
+          mode: 'pinned',
+        }),
+      ],
+      acceptedEndExclusive,
+    );
+    await act(async () => {
+      resolveAdjustment(mutationResponse);
+      await adjustmentPromise;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    const itemWhileRefreshIsPending = rendered.container.querySelector(
+      `[data-gantt-test-item-id="${scheduleItemId}"]`,
+    );
+    const visibleStartWhileRefreshIsPending = itemWhileRefreshIsPending?.getAttribute('data-forecast-start');
+    const visibleEndWhileRefreshIsPending = itemWhileRefreshIsPending?.getAttribute(
+      'data-forecast-end-exclusive',
+    );
+    const authoritativeFetchCountBeforeResolution = scheduleGanttSnapshotQueryFn.mock.calls.length;
+
+    expect(getScheduleMutationActivityCount('example.supabase.co:2026-04-07')).toBe(1);
+
+    await act(async () => {
+      resolveAuthoritativeSnapshot(authoritativeSnapshot);
+      await authoritativeSnapshotPromise;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    const renderedStartsAfterMutation = ganttMocks.renderedItems
+      .slice(mutationHistoryStart)
+      .map((items) => items.find((item) => item.id === scheduleItemId)?.forecastStart ?? null);
+    const firstAcceptedRender = renderedStartsAfterMutation.indexOf(acceptedStart);
+    const revertedAfterAcceptance = firstAcceptedRender >= 0
+      && renderedStartsAfterMutation.slice(firstAcceptedRender + 1).includes('2026-04-08');
+    const finalItem = ganttMocks.latestProps.visibleScheduleItems.find(
+      (item: { id: string }) => item.id === scheduleItemId,
+    );
+    const finalText = rendered.container.textContent;
+    rendered.unmount();
+
+    expect(adjustJob).toHaveBeenCalledTimes(1);
+    expect(authoritativeFetchCountBeforeResolution).toBe(1);
+    expect(visibleStartWhileRefreshIsPending).toBe(acceptedStart);
+    expect(visibleEndWhileRefreshIsPending).toBe(acceptedEndExclusive);
+    expect(firstAcceptedRender).toBeGreaterThanOrEqual(0);
+    expect(revertedAfterAcceptance).toBe(false);
+    expect(finalItem?.forecastStart).toBe(acceptedStart);
+    expect(finalItem?.forecastEndExclusive).toBe(acceptedEndExclusive);
+    expect(getScheduleMutationActivityCount('example.supabase.co:2026-04-07')).toBe(0);
+    expect(finalText).toContain('Saved');
+  });
+
   it('preserves authoritative Gantt dates when an overlapping job depends on pre-range calendar context', async () => {
     vi.useFakeTimers();
     searchParamsString = 'view=gantt';
@@ -992,7 +1402,7 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
-  it('restores the trusted Gantt snapshot if the post-commit authoritative refresh fails', async () => {
+  it('keeps the committed Gantt preview visible if the post-commit authoritative refresh fails', async () => {
     vi.useFakeTimers();
     searchParamsString = 'view=gantt';
     const snapshot = { ...boardMutationSnapshot(), unscheduledJobs: [] };
@@ -1025,11 +1435,130 @@ describe('ScheduleClient', () => {
     const renderedItem = ganttMocks.latestProps.visibleScheduleItems.find(
       (item: { id: string }) => item.id === scheduleItemId,
     );
-    expect(renderedItem?.forecastStart).toBe('2026-04-08');
-    expect(renderedItem?.forecastEndExclusive).toBe('2026-04-10');
+    expect(renderedItem?.forecastStart).toBe('2026-04-13');
+    expect(renderedItem?.forecastEndExclusive).toBe('2026-04-16');
     expect(rendered.container.textContent).toContain('Schedule may be out of date');
-    expect(rendered.container.textContent).toContain('Last saved copy');
+    expect(rendered.container.textContent).toContain('Refresh needed');
+    expect(rendered.container.textContent).toContain('The saved preview remains visible');
     rendered.unmount();
+  });
+
+  it('does not let a stale Board fetch started before a mutation overwrite the accepted assignment', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    const staleSnapshot: ScheduleV2Snapshot = {
+      ...boardMutationSnapshot(),
+      generatedAt: '2026-04-07T00:00:00.000Z',
+    };
+    let resolveStaleBoardSnapshot!: (value: ScheduleV2Snapshot) => void;
+    const staleBoardSnapshotPromise = new Promise<ScheduleV2Snapshot>((resolve) => {
+      resolveStaleBoardSnapshot = resolve;
+    });
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockImplementation(() => staleBoardSnapshotPromise),
+      staleTime: 30_000,
+    }));
+
+    let resolveAssignment!: (value: ReturnType<typeof crewMutationResponse>) => void;
+    const assignmentPromise = new Promise<ReturnType<typeof crewMutationResponse>>((resolve) => {
+      resolveAssignment = resolve;
+    });
+    vi.mocked(assignJob).mockImplementation(() => assignmentPromise);
+
+    const { queryClient, rendered } = renderSchedule(snapshot);
+    const boardCacheKey = qk.schedule.board('example.supabase.co', '2026-04-07');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let staleFetchTask!: Promise<void>;
+    act(() => {
+      staleFetchTask = queryClient.invalidateQueries({ queryKey: boardCacheKey, exact: true });
+      dndMocks.latestContextProps.onDragStart({
+        active: { id: betaJobId },
+        activatorEvent: new Event('pointerdown'),
+      });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    const acceptedResponse = crewMutationResponse(
+      [
+        crewJobMutationItem({
+          scheduleItemId: SCHEDULE_ITEM_UUID,
+          scheduledJobId: SCHEDULED_JOB_UUID,
+          projectId: ALPHA_PROJECT_UUID,
+          position: 0,
+          start: '2026-04-08',
+          endExclusive: '2026-04-10',
+          durationDays: 2,
+        }),
+        crewJobMutationItem({
+          scheduleItemId: BETA_SCHEDULE_ITEM_UUID,
+          scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+          projectId: BETA_PROJECT_UUID,
+          position: 1,
+          start: '2026-04-10',
+          endExclusive: '2026-04-14',
+          durationDays: 2,
+        }),
+      ],
+      '2026-04-14',
+    );
+    await act(async () => {
+      resolveAssignment(acceptedResponse);
+      await assignmentPromise;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    const acceptedCache = queryClient.getQueryData<ScheduleV2Snapshot>(boardCacheKey);
+    const acceptedResultWasVisible = (
+      acceptedCache?.scheduleItems.some((item) => item.id === `sch_${BETA_SCHEDULE_ITEM_UUID}`) === true
+      && acceptedCache.unscheduledJobs.some((job) => job.projectId === betaProjectId) === false
+    );
+
+    await act(async () => {
+      resolveStaleBoardSnapshot(staleSnapshot);
+      await staleBoardSnapshotPromise;
+      await staleFetchTask;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    const finalCache = queryClient.getQueryData<ScheduleV2Snapshot>(boardCacheKey);
+    const betaStayedScheduled = finalCache?.scheduleItems.some(
+      (item) => item.id === `sch_${BETA_SCHEDULE_ITEM_UUID}`,
+    );
+    const betaReturnedToUnscheduled = finalCache?.unscheduledJobs.some(
+      (job) => job.projectId === betaProjectId,
+    );
+    const betaIsVisibleInLane = rendered.container
+      .querySelector('section[aria-label="Installer lanes"]')
+      ?.textContent?.includes('Beta Deck');
+    const betaIsVisibleAsUnscheduled = rendered.container
+      .querySelector('aside[aria-label="Unscheduled jobs"]')
+      ?.textContent?.includes('Beta Deck');
+    rendered.unmount();
+
+    expect(scheduleSnapshotQueryFn).toHaveBeenCalled();
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(acceptedResultWasVisible).toBe(true);
+    expect(betaStayedScheduled).toBe(true);
+    expect(betaReturnedToUnscheduled).toBe(false);
+    expect(betaIsVisibleInLane).toBe(true);
+    expect(betaIsVisibleAsUnscheduled).toBe(false);
   });
 
   it('calls assignJob with the resolved end-of-lane position for a successful unscheduled drop', async () => {

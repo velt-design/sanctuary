@@ -8,23 +8,27 @@ export type { ScheduleProjectSummary, ScheduleV2Snapshot } from '@/lib/schedulin
 export const SCHEDULE_BOARD_STALE_TIME_MS = 30_000;
 export const SCHEDULE_GANTT_STALE_TIME_MS = 30_000;
 
-async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapshot> {
-  const board = await fetchScheduleBoard({ today });
+async function fetchScheduleV2Snapshot(today: string, signal?: AbortSignal): Promise<ScheduleV2Snapshot> {
+  const board = await fetchScheduleBoard({ today, signal });
   return mapScheduleBoardResponseToV2Snapshot(board);
 }
 
 export const scheduleV2SnapshotQueryOptions = (host: string, today: string) =>
   queryOptions({
     queryKey: qk.schedule.board(host, today),
-    queryFn: () => fetchScheduleV2Snapshot(today),
+    queryFn: ({ signal }) => fetchScheduleV2Snapshot(today, signal),
     staleTime: SCHEDULE_BOARD_STALE_TIME_MS,
   });
 
-async function fetchScheduleGanttV2Snapshot(input: { today: string; rangeStart: string; rangeEnd: string }): Promise<ScheduleV2Snapshot> {
+async function fetchScheduleGanttV2Snapshot(
+  input: { today: string; rangeStart: string; rangeEnd: string },
+  signal?: AbortSignal,
+): Promise<ScheduleV2Snapshot> {
   const gantt = await fetchScheduleGantt({
     today: input.today,
     rangeStart: input.rangeStart,
     rangeEnd: input.rangeEnd,
+    signal,
   });
   return mapScheduleGanttResponseToV2Snapshot(gantt);
 }
@@ -36,6 +40,10 @@ export const scheduleGanttV2SnapshotQueryOptions = (
 ) =>
   queryOptions({
     queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
-    queryFn: () => fetchScheduleGanttV2Snapshot({ today, rangeStart: range.rangeStart, rangeEnd: range.rangeEnd }),
+    queryFn: ({ signal }) =>
+      fetchScheduleGanttV2Snapshot(
+        { today, rangeStart: range.rangeStart, rangeEnd: range.rangeEnd },
+        signal,
+      ),
     staleTime: SCHEDULE_GANTT_STALE_TIME_MS,
   });

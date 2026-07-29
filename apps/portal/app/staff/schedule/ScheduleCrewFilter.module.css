@@ -1,0 +1,201 @@
+.filter {
+  position: relative;
+  z-index: 20;
+  margin-left: auto;
+}
+
+.trigger {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: 7px 10px;
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.trigger::-webkit-details-marker {
+  display: none;
+}
+
+.trigger::after {
+  content: '\25BE';
+  margin-left: 2px;
+  color: var(--ui-text-muted);
+}
+
+.filter[open] .trigger::after {
+  content: '\25B4';
+}
+
+.trigger[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trigger:focus-visible,
+.textButton:focus-visible,
+.secondaryButton:focus-visible,
+.crewOption:has(input:focus-visible) {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: var(--ui-focus-ring-offset);
+  box-shadow: none;
+}
+
+.triggerCount {
+  color: var(--ui-text-muted);
+}
+
+.triggerAlert {
+  border-left: var(--ui-border-width) solid var(--ui-border);
+  padding-left: 7px;
+  color: var(--ui-destructive);
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(540px, calc(100dvh - 180px));
+  overflow: auto;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-overlay);
+  padding: 12px;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-strong);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title,
+.legend {
+  color: var(--ui-text-strong);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.summary {
+  margin-top: 4px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
+.textButton,
+.secondaryButton {
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-secondary);
+  color: var(--ui-text-strong);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.textButton {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+}
+
+.textButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.help {
+  margin: 10px 0 12px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.crewList {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.crewOption {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--ui-radius-control);
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.crewOption:hover {
+  background: var(--ui-surface-secondary);
+}
+
+.crewOption input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ui-action);
+}
+
+.crewDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.crewName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemCount {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
+.secondaryButton {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .trigger,
+  .textButton,
+  .secondaryButton,
+  .crewOption {
+    min-height: 44px;
+  }
+}
