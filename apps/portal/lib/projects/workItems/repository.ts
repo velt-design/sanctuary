@@ -2,6 +2,8 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
+import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
+import { getAuthoritativeProjectWorkQueue } from './teamQueue';
 import {
   resolveProjectWorkPrimaryAction,
   type RecoveryActionCandidate,
@@ -12,14 +14,12 @@ import type {
   ProjectConfirmationType,
   ProjectOperationalState,
   ProjectWorkConfirmationFact,
-  ProjectWorkEffectiveAssignee,
   ProjectWorkItem,
   ProjectWorkItemOrigin,
   ProjectWorkItemPriority,
   ProjectWorkItemSourceType,
   ProjectWorkItemStatus,
   ProjectWorkProjection,
-  ProjectWorkQueueEntry,
   ProjectWorkResponsibilityArea,
 } from './types';
 
@@ -49,15 +49,6 @@ function positiveInteger(value: unknown, fallback = 1): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function effectiveAssignee(
-  assigneeUserId: string | null,
-  projectOwnerKey: string | null,
-): ProjectWorkEffectiveAssignee {
-  if (assigneeUserId) return { kind: 'staff', userId: assigneeUserId };
-  if (projectOwnerKey) return { kind: 'projectOwner', ownerKey: projectOwnerKey };
-  return { kind: 'unassigned' };
-}
-
 function mapWorkItem(row: Row, projectOwnerKey: string | null): ProjectWorkItem | null {
   const id = text(row.id);
   const projectId = text(row.project_id);
@@ -78,7 +69,7 @@ function mapWorkItem(row: Row, projectOwnerKey: string | null): ProjectWorkItem 
     deadlinePolicy: text(row.deadline_policy),
     calendarRevision: text(row.calendar_revision),
     assigneeUserId,
-    effectiveAssignee: effectiveAssignee(assigneeUserId, projectOwnerKey),
+    effectiveAssignee: resolveProjectWorkEffectiveAssignee(assigneeUserId, projectOwnerKey),
     priority: text(row.priority) as ProjectWorkItemPriority,
     priorityReason: text(row.priority_reason),
     blockedReason: text(row.blocked_reason),
@@ -263,36 +254,6 @@ export async function getProjectWorkProjection(params: {
 export async function getProjectWorkQueue(
   supabase: SupabaseClient,
   options: { now?: Date; limit?: number } = {},
-): Promise<{ entries: ProjectWorkQueueEntry[]; generatedAt: string }> {
-  // This RPC intentionally ranks only durable work/state/recovery rows. The
-  // Command Centre's commercial specialist candidates are derived from its
-  // canonical selectors and must not be reimplemented in queue SQL.
-  const result = await supabase.rpc('project_work_queue_v2', {
-    p_now: (options.now ?? new Date()).toISOString(),
-    p_limit: Math.min(500, Math.max(1, options.limit ?? 200)),
-  });
-  if (result.error) throw Object.assign(new Error(result.error.message ?? 'Failed to load project work queue'), result.error);
-  const entries = rows(result.data).flatMap((row): ProjectWorkQueueEntry[] => {
-    const projectId = text(row.project_id);
-    const projectName = text(row.project_name);
-    const group = text(row.queue_group) as ProjectWorkQueueEntry['group'] | null;
-    const title = text(row.title);
-    if (!projectId || !projectName || !group || !title) return [];
-    const projectAppId = appIdFromUuid('proj', projectId);
-    return [{
-      projectId: projectAppId,
-      projectName,
-      group,
-      title,
-      dueAt: iso(row.due_at),
-      priority: text(row.priority) as ProjectWorkItemPriority | null,
-      blockedReason: text(row.blocked_reason),
-      effectiveAssignee: effectiveAssignee(
-        text(row.assignee_user_id),
-        text(row.project_owner_key),
-      ),
-      href: `/staff/projects/${encodeURIComponent(projectAppId)}?tab=activity`,
-    }];
-  });
-  return { entries, generatedAt: (options.now ?? new Date()).toISOString() };
+): ReturnType<typeof getAuthoritativeProjectWorkQueue> {
+  return getAuthoritativeProjectWorkQueue(supabase, options);
 }

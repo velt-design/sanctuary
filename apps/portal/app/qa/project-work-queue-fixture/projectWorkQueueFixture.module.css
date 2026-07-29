@@ -1,0 +1,57 @@
+.page {
+  display: grid;
+  align-content: start;
+  gap: var(--ui-density-section-gap);
+  min-height: 100vh;
+  min-width: 0;
+}
+
+.header {
+  display: grid;
+  gap: var(--ui-space-2);
+  padding-block: var(--ui-space-3);
+  border-top: 3px solid var(--ui-action-primary);
+  border-bottom: var(--ui-border-width) solid var(--ui-border-strong);
+}
+
+.eyebrow,
+.header p,
+.fixtureNote {
+  margin: 0;
+}
+
+.eyebrow {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.header p,
+.fixtureNote {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.45;
+}
+
+.fixtureNote {
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-left: var(--ui-border-width-emphasis) solid var(--ui-border-strong);
+  background: var(--ui-surface-secondary);
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding-inline: var(--ui-space-3);
+  }
+}

@@ -1,0 +1,40 @@
+.disclosure {
+  border-top: var(--ui-border-width) solid var(--ui-border);
+}
+
+.disclosure summary {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  min-height: 44px;
+  color: var(--ui-text-strong);
+  cursor: pointer;
+  font-size: var(--ui-font-size-small);
+  font-weight: 700;
+}
+
+.content {
+  display: grid;
+  gap: var(--ui-space-3);
+  max-width: 640px;
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
+}
+
+.content > p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.45;
+}
+
+.content > button {
+  justify-self: start;
+}
+
+@media (max-width: 767px) {
+  .content > button {
+    width: 100%;
+  }
+}

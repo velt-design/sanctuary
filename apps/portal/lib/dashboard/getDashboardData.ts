@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DashboardAttentionItem, DashboardData, QueueMode, WorkQueueItem } from './types';
 import { projectsHref, scheduleHref, siteVisitsHref } from './links';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
@@ -6,6 +7,7 @@ import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { listRecentProjectNoteActivity } from './activity';
 import { listVisibleDashboardTasks } from './tasks';
 import { listDashboardRecentEstimates } from './operationalLists';
+import { getProjectWorkQueue } from '@/lib/projects/workItems/repository';
 
 type SnapshotKpis = {
   actions_due?: number;
@@ -98,12 +100,19 @@ function toSiteVisitId(value: unknown): string {
   return raw ? appIdFromUuid('sv', raw) : '';
 }
 
-export async function getDashboardData(opts: { queueMode: QueueMode; userId?: string | null }): Promise<DashboardData> {
-  const [snapshot, recentEstimates, recentActivity, personalTasks] = await Promise.all([
+export async function getDashboardData(opts: {
+  queueMode: QueueMode;
+  userId?: string | null;
+  supabase?: SupabaseClient | null;
+}): Promise<DashboardData> {
+  const [snapshot, recentEstimates, recentActivity, personalTasks, projectWorkQueue] = await Promise.all([
     getDashboardSnapshotCached(opts.queueMode) as Promise<SnapshotData>,
     listDashboardRecentEstimates(supabaseServiceRole),
     listRecentProjectNoteActivity(supabaseServiceRole, 8),
     opts.userId ? listVisibleDashboardTasks(supabaseServiceRole, opts.userId) : Promise.resolve([]),
+    opts.supabase
+      ? getProjectWorkQueue(opts.supabase, { limit: 5 }).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const kpis = snapshot?.kpis ?? {};
@@ -204,6 +213,8 @@ export async function getDashboardData(opts: { queueMode: QueueMode; userId?: st
     },
     attention,
     workQueue,
+    projectWorkQueue: projectWorkQueue?.entries ?? [],
+    projectWorkQueueAvailable: projectWorkQueue !== null,
     schedule,
     siteVisits,
     pipelineCounts,

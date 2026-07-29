@@ -11,7 +11,9 @@ import type { RecoveryActionCandidate } from './primaryAction';
 
 type RepairSignalRow = {
   id?: unknown;
+  repair_kind?: unknown;
   quote_version_id?: unknown;
+  confirmation_event_id?: unknown;
   error_message?: unknown;
 };
 
@@ -21,19 +23,40 @@ function requiredText(value: unknown): string | null {
   return trimmed || null;
 }
 
-function quoteRepairRecoveryAction(
+function repairRecoveryAction(
   row: RepairSignalRow | null,
   projectId: string,
 ): RecoveryActionCandidate | null {
   if (!row) return null;
   const id = requiredText(row.id);
-  const quoteVersionUuid = requiredText(row.quote_version_id);
+  const repairKind = requiredText(row.repair_kind);
   const reason = requiredText(row.error_message);
-  if (!id || !quoteVersionUuid || !reason) {
+  if (!id || !repairKind || !reason) {
+    throw new Error('Open project work repair signal is incomplete');
+  }
+  const basePath = `/staff/projects/${encodeURIComponent(projectId)}`;
+
+  if (repairKind === 'CONFIRMATION_RETRACTION_REVIEW') {
+    if (!requiredText(row.confirmation_event_id)) {
+      throw new Error('Open confirmation correction review signal is incomplete');
+    }
+    return {
+      kind: 'recovery',
+      key: `confirmation-retraction-review:${id}`,
+      title: 'Review corrected confirmation',
+      reason,
+      href: `${basePath}?tab=activity`,
+    };
+  }
+
+  if (repairKind !== 'QUOTE_CADENCE_RECONCILIATION') {
+    throw new Error(`Unsupported project work repair signal: ${repairKind}`);
+  }
+  const quoteVersionUuid = requiredText(row.quote_version_id);
+  if (!quoteVersionUuid) {
     throw new Error('Open quote cadence repair signal is incomplete');
   }
   const quoteVersionId = appIdFromUuid('qv', quoteVersionUuid);
-  const basePath = `/staff/projects/${encodeURIComponent(projectId)}`;
   return {
     kind: 'recovery',
     key: `quote-cadence-repair:${id}`,
@@ -57,7 +80,9 @@ export async function getProjectWorkDomainActions(params: {
 }): Promise<ProjectWorkDomainActions> {
   const result = await params.supabase
     .from('project_work_repair_signals')
-    .select('id,quote_version_id,error_message')
+    .select(
+      'id,repair_kind,quote_version_id,confirmation_event_id,error_message',
+    )
     .eq('project_id', params.projectUuid)
     .eq('status', 'OPEN')
     .order('first_detected_at', { ascending: true })
@@ -74,6 +99,6 @@ export async function getProjectWorkDomainActions(params: {
     : null;
   return commercialProjectWorkActions(
     params.currentDesign,
-    quoteRepairRecoveryAction(row, params.projectId),
+    repairRecoveryAction(row, params.projectId),
   );
 }

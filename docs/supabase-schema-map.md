@@ -322,13 +322,16 @@ Migration source:
 
 ## Marketing, Automation, And Supporting Tables
 
-Owner docs: `docs/automation-email-audit.md`, `docs/platform-workflow.md`, `docs/security-privacy-quality.md`, `docs/projects-contacts-estimates-calculator.md`, and `docs/staff-api-auth-contracts.md`.
+Owner docs: `docs/automation-email-audit.md`, `docs/project-work-items-and-follow-up.md`, `docs/project-work-items-technical-plan.md`, `docs/platform-workflow.md`, `docs/security-privacy-quality.md`, `docs/projects-contacts-estimates-calculator.md`, and `docs/staff-api-auth-contracts.md`.
 
 Tables/RPCs:
 
 - Marketing/enquiries: `enquiry_requests` (`submission_id` is the idempotency key), `marketing_public_rate_limits`, `marketing_enquiry_upload_sessions`
 - Email and automation: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `design_package_tickets`, `followup_plans`, `followup_tasks`
 - Project command centre: `project_owner_assignments`, `project_manual_actions`, `project_action_controls`, `project_primary_action_selections`, `project_command_audit`, `project_action_versions` (`project_role_assignments` is retained read-only as legacy rollback evidence)
+- Project Work V2: `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, `project_command_receipts`, `project_work_repair_signals`, and `business_calendar_year_coverage`
+- Project Work V2 RPCs: `project_create_v2()`, `project_work_item_command()`, `project_operational_state_command()`, `project_confirmation_command()`, `project_work_archive_command()`, `project_work_integrity_report_v2()`, `project_work_queue_v3()`, and server reconciliation/fact commands
+- Admin correction/review RPCs: `project_confirmation_retraction_command()`, exact-signal/version `project_confirmation_retraction_review_command()`, `project_work_classify_legacy_contacted_v1()`, and evidence-fingerprint-guarded `project_work_migrate_legacy_contacted_v1()`. `project_work_legacy_contacted_evidence_v1()` is an internal-only normalized evidence helper with no public, anonymous, authenticated, or service-role execute grant.
 - Site-visit automation support: `site_visit_events`
 - Dashboard/supporting RPC: `dashboard_snapshot_v1()`
 - Personal dashboard tasks: `portal_dashboard_tasks`
@@ -342,6 +345,9 @@ Primary write path:
 - Personal dashboard task writes go through staff-only dashboard task APIs under `apps/portal/app/api/dashboard/tasks`.
 - Project owner/action writes go through `project_command_set_owner` and `project_command_action` from staff command routes. `project_command_action` refreshes legacy Schedule columns inside the same transaction through the non-callable `project_command_sync_projection` helper.
 - Design Package source-task writes use the bounded `project_command_sync_design_task` RPC; automation/follow-up persistence remains a server-only service-role flow. Source-table triggers keep the candidate revision and compatibility projection current.
+- V2 work, operational state, bounded confirmation, archive, and Running Jobs fact changes go through their semantic RPC commands. Governed tables and append-only history reject direct writes; accepted commands refresh the one-way `projects.next_action*`/`follow_up_date` compatibility projection.
+- Confirmation correction is admin-only and appends a retraction, command receipt, and open review signal. Review resolution locks and updates only the supplied signal ID when its row version is unchanged. It does not update or delete the original confirmation.
+- Legacy Contacted migration is admin-only, optimistic, idempotent, and limited to one unmarked active Contacted project per command. The classifier supplies an opaque normalized evidence fingerprint; migration recomputes it after the project lock and rejects mismatch before any V2 write. It creates the reviewed V2 state and optional work item but never seeds the new-lead cadence, archives the project, or sends communication.
 
 Primary read path:
 
@@ -349,6 +355,8 @@ Primary read path:
 - Portal project snapshot, dashboard task, and automation helpers under `apps/portal/lib/projects`, `apps/portal/lib/dashboard`, and `apps/portal/lib/automation`.
 - Dashboard cached snapshot helper under `apps/portal/lib/dashboard/getDashboardSnapshotCached.ts`.
 - Dashboard data helpers under `apps/portal/lib/dashboard` read recent project-note activity and user-owned dashboard tasks.
+- The full staff Work Queue and Dashboard preview call `project_work_queue_v3()` through the auth-bound server repository, then compose canonical specialist candidates in `apps/portal/lib/projects/workItems/teamQueue.ts`.
+- The admin legacy-review surface calls the stable Contacted classifier through an auth-bound admin route. The database read model returns project identity, bounded evidence, and the opaque optimistic fingerprint, not linked customer contact fields.
 
 Access rule:
 
@@ -360,6 +368,8 @@ Access rule:
 - Audit/supporting tables should stay append-oriented where possible.
 - Personal dashboard tasks are owned by `owner_id = auth.uid()` and are independent from automation/project workflow `tasks`.
 - Command-centre tables plus canonical `tasks`/`followup_plans`/`followup_tasks` allow portal reads but no direct authenticated writes. The project-owner command is admin-only and accepts only Jordan, JP, Joe, or Bruce; other commands check portal access, active staff where relevant, source/project identity, optimistic versions, permissions, and command idempotency. The append-only command audit retains actor IDs where available.
+- V2 work tables expose only the RLS reads required by portal staff; writes are governed by semantic command functions. Staff queue reads require portal access. Confirmation retraction, Contacted classification, and reviewed Contacted migration also check `is_portal_admin()` inside the function even though execution is granted to `authenticated`.
+- Personal Dashboard reminders remain private user-owned scratch data and never enter `project_work_queue_v3()` or project primary-action precedence.
 
 Migration source:
 
@@ -369,6 +379,9 @@ Migration source:
 - Personal dashboard tasks use ordered migrations under `supabase/migrations`.
 - `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into ordered truth and owns command-centre tables, RLS/grants/indexes/backfills/RPCs, and compatibility projection columns.
 - `20260721_000001_project_command_single_owner.sql` replaces the three-role owner contract with one named project owner, performs the deterministic legacy backfill, and replaces the owner command.
+- `20260729_000002_project_work_items_v2.sql` adds the model marker, state/work/confirmation/receipt/event/repair/calendar truth, semantic commands, initial V2 queue, one-way compatibility, and new-project-only initialization.
+- `20260729_000003_project_work_items_v2_schema_cache.sql` repairs the project relationships and requests the PostgREST schema reload after commit.
+- `20260729_000004_project_work_queue_and_legacy_triage.sql` adds the richer queue, append-only confirmation correction, admin-only no-contact-field Contacted classifier, and guarded one-project reviewed migration. It is forward-only and does not backfill or mutate the Contacted cohort when applied.
 - If a supporting table becomes part of a new first-class workflow, add an ordered migration and update this map plus the owning feature doc.
 
 ## Verification

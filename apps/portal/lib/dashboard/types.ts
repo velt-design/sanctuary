@@ -1,4 +1,5 @@
 import type { ProjectStatus as CoreProjectStatus } from '@/lib/types/project';
+import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 
 export type QueueMode = 'today' | 'next7' | 'alldue';
 
@@ -112,6 +113,8 @@ export interface DashboardData {
   kpis: DashboardKpis;
   attention: DashboardAttentionItem[];
   workQueue: WorkQueueItem[];
+  projectWorkQueue?: ProjectWorkQueueEntry[];
+  projectWorkQueueAvailable?: boolean;
   schedule: ScheduleSnapshot;
   siteVisits: SiteVisitsSnapshot;
   pipelineCounts: PipelineCounts;

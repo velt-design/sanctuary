@@ -636,9 +636,10 @@ Run the executable migration contract:
 
 ```bash
 npx vitest run test/project-work-items-v2-migration.test.ts
+npx vitest run test/project-work-items-v2-work-queue-migration.test.ts
 ```
 
-It applies `20260729_000002_project_work_items_v2.sql` in PGlite, exercises calendar/cadence/state/queue/privilege contracts, and replays the migration. The queue assertion includes multiple open/blocked items and requires at most one row per project; the privilege assertion covers the narrow service-role marker/state reads used by Schedule and reconciliation. A local pass is not evidence that staging or production has been migrated.
+The foundation test applies `20260729_000002_project_work_items_v2.sql` in PGlite, exercises calendar/cadence/state/queue/privilege contracts, and replays the migration. The focused forward test applies `20260729_000004_project_work_queue_and_legacy_triage.sql` after the foundation and covers the richer queue, admin-only append-only confirmation correction, exact-signal/version review resolution, read-only Contacted classification, deterministic related-evidence fingerprints, guarded one-project migration, replay, stale project/evidence rejection before V2 writes, internal-helper grants, and no automatic cadence seed. A local pass is not evidence that staging or production has been migrated.
 
 Run the focused Schedule, Running Jobs, and quote handoffs:
 
@@ -649,7 +650,7 @@ npx vitest run apps/portal/lib/scheduling/scheduleV2Server.test.ts apps/portal/l
 Run the Overview, snapshot, projection, command-route, and queue boundary:
 
 ```bash
-npx vitest run apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkCommandCard.test.tsx apps/portal/lib/projects/getProjectPageSnapshot.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandCentre.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandExceptions.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/work-items/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/state/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/confirmations/commands/route.test.ts apps/portal/app/api/staff/v1/work-items/queue/route.test.ts
+npx vitest run apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkCommandCard.test.tsx apps/portal/lib/projects/getProjectPageSnapshot.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandCentre.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandExceptions.test.ts apps/portal/lib/projects/workItems/teamQueue.test.ts apps/portal/components/projects/workQueue/workQueuePresentation.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/work-items/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/state/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/confirmations/commands/route.test.ts apps/portal/app/api/staff/v1/work-items/queue/route.test.ts apps/portal/app/api/admin/project-work
 ```
 
 For environment QA, deploy the migration and app in one short controlled window on a positively identified non-production environment. Pause or constrain new project/enquiry creation and quote lifecycle mutations during that window: app-first creation fails closed, while migration-first marketing intake can activate V2 before the new adapters are live. Resume only after the integrity smoke passes. Use disposable records and mocked or provider-disabled side effects; never send customer email, accept quotes, record payment, or mutate production/shared records. Verify:
@@ -657,7 +658,13 @@ For environment QA, deploy the migration and app in one short controlled window 
 - a new staff project and a new enquiry-linked project initialize V2; an existing project remains legacy;
 - first email is due at +2 Auckland open hours with SLA +4, missing email blocks/unblocks, and one follow-up plus one manual close review are created only from confirmations;
 - no call, Site Visit booking, automatic email, automatic close, or stage change occurs;
+- Site Visits stays hidden/manual and no queue row links to it;
 - Waiting/Closed/archive queue and compatibility behavior, stale versions, idempotent replay, access denial, and retry are truthful;
+- the full Work Queue and Dashboard preview show the same one-row-per-project ordering and canonical specialist precedence, while My Tasks remains separate;
+- queue commands prevent duplicate submit, preserve stable ambiguous-retry identity, and claim success only after durable confirmation;
+- confirmation correction is admin-only, requires a reason, retains the original event, and opens a visible review signal without reversing later facts; resolution requires the exact signal ID/version and leaves newer signals open;
+- the Contacted classifier is admin-only/read-only, returns no linked customer contact fields, and returns a stable opaque fingerprint for unchanged project and related evidence;
+- reviewed Contacted migration accepts one unchanged project/evidence fingerprint and explicit disposition at a time, rejects stale/already-migrated input before V2 writes, and creates no first-email/follow-up cadence;
 - a deliberately lost manual-create response reuses the same command ID and cannot create a duplicate item;
 - close/outcome review resolves atomically for Close, Waiting, or Keep active with replacement work, and a customer reply remains recordable;
 - unassigned cadence work visibly falls back to the Project Owner, and a recorded Site Visit confirmation remains visibly ticked after refresh;
@@ -667,7 +674,9 @@ For environment QA, deploy the migration and app in one short controlled window 
 - Running Jobs V2 facts use its versioned owner and job completion uses Schedule actual finish; and
 - calendar coverage fails visibly when a deadline crosses an unverified year.
 
-Before enabling existing projects, run a separate read-only classification and reconciliation report. No Contacted backlog row is changed by this gate.
+Before enabling existing projects, run the classifier read-only and review recommendations manually. Test the migration command only with a disposable or explicitly approved non-production project, one project at a time. No production/shared Contacted backlog row is changed by this gate.
+
+The UI gate for this slice covers the full Work Queue, Dashboard preview, and admin legacy review at 1440, 1024, 768, and 390 CSS pixels plus 200% zoom. Assert group/heading semantics, keyboard order, visible focus, 44px coarse-pointer targets, no document overflow, loading/background refresh/error/retry/access-ending states, stale conflict recovery, and that no browser test sends email or commits a legacy migration.
 
 ## Schedule QA Gate
 

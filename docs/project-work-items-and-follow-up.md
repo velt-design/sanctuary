@@ -1,6 +1,6 @@
 # Project Work Items And Lead Follow-Up
 
-Status: Approved product contract with a repository implementation. Foundation migration `20260729_000002` is applied only in staging; its PostgREST cache repair and authenticated smoke are pending. Production is unchanged.
+Status: Approved product contract with a repository implementation. Foundation migration `20260729_000002` is applied only in staging; its PostgREST cache repair and authenticated smoke are pending. The Work Queue and guarded legacy-review forward migration `20260729_000004` are repository-local and unapplied. Production is unchanged.
 
 Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
@@ -15,13 +15,18 @@ The current worktree implements the V2 foundation for newly created projects onl
 - initialization records `Active` state and one first-email obligation, due after two Auckland open hours with a separate four-hour SLA;
 - a missing contact email blocks that first obligation until the email is supplied;
 - lead and quote cadences advance only from durable domain evidence or an explicit staff confirmation;
-- the current Overview and task surfaces consume a V2 adapter without a visual redesign;
+- the current Overview consumes a V2 adapter without a visual redesign;
+- the staff-wide Work Queue and Dashboard preview consume one server-composed current row per V2 project;
+- normal work-item commands are available from the queue, while personal Dashboard reminders remain separate;
+- admins can retract an incorrect confirmation without deleting its history, classify the old Contacted cohort read-only without customer contact fields, and migrate one reviewed project at a time;
 - Site Visits is hidden from normal navigation and its optional completion fact is manual; and
 - Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries.
 
 Migration `20260729_000002_project_work_items_v2.sql` was applied in staging on 2026-07-29. The first rehearsal exposed a hosted PostgREST schema-cache miss for its new marker/state tables, so project-detail reads failed before legacy/V2 classification. The application now reads the marker through the direct server-owned model boundary, and forward repair `20260729_000003_project_work_items_v2_schema_cache.sql` repairs the project relationships and reloads PostgREST after commit. Do not resume staging project/enquiry writers or call the rollout complete until the repair, a direct marker read, and an authenticated legacy-project snapshot pass. Existing projects receive no V2 marker or backfill and continue using the legacy model. No Contacted project was changed, classified, closed, archived, or added to the V2 queue.
 
-The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server queue emits at most one current row per project, preferring a durable recovery signal, then the highest-ranked eligible open item, one blocker, triage, or a due Waiting review; no dedicated staff queue page consumes it yet. Project-specific reads also compose specialist quote/design candidates through the Command Centre's canonical selectors. The SQL queue intentionally does not duplicate those selectors, so draft-quote and estimate specialist candidates remain absent until a deliberate server queue-composition contract is added. Confirmation history supports retained records, but the current staff command surface records confirmations only; correction/retraction remains an admin rollout prerequisite.
+The mixed-model boundary also has an explicit pre-rollout compatibility state: when and only when PostgREST reports the V2 marker table itself as absent, it logs that condition and classifies projects as legacy so the production project reads continue before the migration is promoted. Authentication, network, permission, and unrelated schema failures still propagate, and V2-only RPCs remain unavailable. This bridge does not replace the staging schema-cache proof or authorize production migration.
+
+The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server Work Queue emits at most one current row per project and groups it as Overdue, Today, Next seven business days, Blocked, or Needs triage. Its composition prefers durable recovery and urgent work, then the canonical specialist candidate, future work, and triage; the Dashboard shows only a compact preview and links to the full queue. Confirmation correction is append-only and always opens an explicit review signal rather than reversing later lifecycle or commercial facts.
 
 ## 1. Product Model
 
@@ -292,10 +297,11 @@ Admin-only operations are:
 
 - change Project Owner;
 - archive or restore a project;
-- apply bulk backlog decisions;
 - manage staff and business-calendar data;
 - correct or retract durable confirmations; and
-- run reconciliation or migration overrides.
+- run reconciliation;
+- read the bounded legacy Contacted classification; and
+- migrate one explicitly reviewed Contacted project at a time.
 
 Only server-owned automation may set automation origin, source type, or source key. A task permission never grants permission to send or accept a quote, record payment, change Design, mutate Schedule, or complete a Running Job.
 
@@ -367,7 +373,7 @@ The bounded initial confirmation types are:
 - quote customer response received; and
 - site visit completed.
 
-A correction appends a retraction event. It does not overwrite the original history.
+A correction appends a retraction event with a required reason. It does not overwrite the original history, reverse later lifecycle or commercial facts, or silently restart a cadence. It creates a durable review signal that remains ahead of ordinary work for that project. The queue carries that exact signal ID and row version. After checking current work and lifecycle state, an admin explicitly resolves only that signal with a second reasoned, idempotent command; stale or already-resolved metadata returns a conflict and cannot clear another correction. Resolution retains both confirmation events and adds an audit event.
 
 ## 12. Site Visit Interim Rule
 
@@ -414,24 +420,26 @@ No names, contact details, or project records were captured or changed.
 
 `follow_up_date` is a compatibility projection, not proof of a genuine current human obligation. The current repository also lacks structured historical facts for manually sent email and customer replies. Therefore none of these counts safely proves `Lost - No response`, and the 623 projects cannot be automatically classified or closed.
 
-Before migration, produce a read-only classification:
+The admin-only read model classifies unmarked Contacted projects as:
 
 - active with a current action;
 - waiting with a future date;
 - needs triage;
 - candidate for `Lost - No response`; and
-- duplicate, test, or invalid archive candidate.
+- insufficient evidence requiring manual classification.
 
-Staff then make explicit bulk-review decisions:
+It returns project identity, follow-up timing, bounded reason codes, boolean operational evidence, and an opaque server-generated evidence fingerprint. The fingerprint covers the normalized project eligibility fields and every related quote, invoice, design, schedule, Running Jobs, task, follow-up, and manual-action field used by classification. It does not return customer email, phone, address, attachments, or message content.
+
+Staff then make one explicit project decision at a time:
 
 - keep active and set one work item;
 - move to Waiting with a wake-up date;
 - close lost with a reason; or
-- archive an invalid or duplicate record.
+- keep active but mark it Needs triage.
 
-No existing project is automatically closed or archived by the classification.
+No existing project is automatically closed, archived, or migrated by the classification. Each migration requires a stable command ID, the reviewed project update timestamp and evidence fingerprint, a reason, and disposition-specific evidence. The command recomputes the fingerprint after taking the project command/row lock and rejects changed evidence before any V2 write. It creates no first-email or follow-up cadence automatically.
 
-The first review batch should be the 57 due projects. The remaining 566 stay out of the new work queue until evidence or a staff decision gives each project a real action, Waiting date, Closed outcome, or valid archive reason.
+The first review batch should be the 57 due projects. The remaining 566 stay out of the new work queue until evidence or a staff decision gives each project a real action, Waiting date, Closed outcome, or Needs triage state.
 
 The 36 already archived Contacted records are a separate administrative population. Their existence is not evidence that other old leads should be archived.
 
@@ -477,17 +485,15 @@ Do not introduce a permanent bidirectional dual-write layer.
 1. Run the forward migration in a disposable or positively identified non-production environment and execute the database contract, replay, permission, and rollback checks.
 2. Run authenticated, non-destructive QA for staff creation, V2 commands, Overview adaptation, quote reconciliation, Schedule/Running Jobs boundaries, stale conflicts, and access failures.
 3. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
-4. Add the read-only Contacted backlog classification, then obtain reviewed staff decisions in bounded batches; do not auto-migrate the 623-project population.
-5. Add an approved confirmation-correction command and decide where the one-row-per-project team queue is presented before broad rollout.
-6. Enable V2 only for the approved new-project cohort, monitor reconciliation, and keep old projects isolated on the legacy model.
-7. Migrate reviewed existing obligations and retire legacy readers/tables only in later explicit slices.
-8. Separately decide whether to redesign the Project Overview UI against the trusted V2 contract.
+4. Verify the read-only Contacted classifier, one-project reviewed migration, confirmation correction, full Work Queue, and Dashboard preview without changing shared customer data.
+5. Enable V2 only for the approved new-project cohort, monitor reconciliation, and keep old projects isolated on the legacy model.
+6. Review and migrate existing projects only one at a time; retire legacy readers/tables only in later explicit slices.
+7. Separately decide whether to redesign the Project Overview UI against the trusted V2 contract.
 
 ## 18. Deferred Decisions
 
 The following remain outside this document:
 
 - Project Overview layout and visual direction;
-- the final task-list presentation;
 - future Site Visits reactivation; and
 - advanced task features not supported by observed operating needs.

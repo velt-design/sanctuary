@@ -55,6 +55,30 @@ const data: DashboardData = {
       lastActivityAt: '2026-04-02T10:00:00.000Z',
     },
   ],
+  projectWorkQueue: [
+    {
+      projectId: 'proj_123',
+      projectName: 'Beach House',
+      stage: 'contacted',
+      group: 'today',
+      actionKind: 'workItem',
+      title: 'Send first enquiry email',
+      reason: 'This project work is due today.',
+      dueAt: '2026-04-02T09:00:00.000Z',
+      priority: 'NORMAL',
+      blockedReason: null,
+      effectiveAssignee: { kind: 'unassigned' },
+      workItemId: '11111111-1111-4111-8111-111111111111',
+      workItemRowVersion: 1,
+      stateRowVersion: 1,
+      sourceType: 'LEAD_CADENCE',
+      sourceKey: 'lead:first-email:project:v1',
+      subjectKind: 'PROJECT',
+      subjectId: '22222222-2222-4222-8222-222222222222',
+      href: '/staff/projects/proj_123?tab=activity',
+    },
+  ],
+  projectWorkQueueAvailable: true,
   schedule: {
     startingSoon: [],
     crewAvailability: [],
@@ -106,7 +130,7 @@ const data: DashboardData = {
 
 describe('DashboardView', () => {
   it('renders the concept-led operational dashboard sections', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     expect(markup).toContain('Dashboard');
     expect(markup).toContain('Welcome back');
@@ -114,7 +138,8 @@ describe('DashboardView', () => {
     expect(markup).toContain('Pipeline');
     expect(markup).toContain('Attention Today');
     expect(markup).toContain('Recent Estimates');
-    expect(markup).toContain('Project Action Queue');
+    expect(markup).toContain('Work Queue');
+    expect(markup).toContain('Send first enquiry email');
     expect(markup).toContain('Recent Activity');
     expect(markup).toContain('Beach House');
     expect(markup).toContain('Project note');
@@ -124,7 +149,7 @@ describe('DashboardView', () => {
   });
 
   it('renders recent activity with category, project, note, and author hierarchy', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     const labelIndex = markup.lastIndexOf('Project note');
     const projectIndex = markup.indexOf('Beach House', labelIndex);
@@ -141,12 +166,12 @@ describe('DashboardView', () => {
   });
 
   it('prioritizes the overview before the ordered operations row', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     const pipelineIndex = markup.indexOf('Pipeline');
     const attentionIndex = markup.indexOf('Attention Today');
     const activityIndex = markup.indexOf('Recent Activity');
-    const queueIndex = markup.indexOf('Project Action Queue');
+    const queueIndex = markup.indexOf('Work Queue');
     const estimatesIndex = markup.indexOf('Recent Estimates');
     const tasksIndex = markup.indexOf('My Tasks');
 
@@ -164,7 +189,7 @@ describe('DashboardView', () => {
   });
 
   it('does not render retired exceptions, installs, or misleading quote labels', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     expect(markup).not.toContain('Project Exceptions');
     expect(markup).not.toContain('Installs this week');
@@ -175,7 +200,7 @@ describe('DashboardView', () => {
   });
 
   it('marks cached data as updating without hiding it', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" state="cached" />);
+    const markup = renderToStaticMarkup(<DashboardView data={data} state="cached" />);
 
     expect(markup).toContain('data-dashboard-state="cached"');
     expect(markup).toContain('data-dashboard-background-ready="false"');
@@ -185,7 +210,7 @@ describe('DashboardView', () => {
 
   it('keeps known data and offers Retry after a refresh failure', () => {
     const markup = renderToStaticMarkup(
-      <DashboardView data={data} queueMode="today" state="refresh-failed" onRetry={() => undefined} />,
+      <DashboardView data={data} state="refresh-failed" onRetry={() => undefined} />,
     );
 
     expect(markup).toContain('data-dashboard-state="refresh-failed"');

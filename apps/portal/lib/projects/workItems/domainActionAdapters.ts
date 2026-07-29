@@ -1,4 +1,8 @@
-import type { ProjectCommandCentreCurrentDesign } from '../commandCentre/types';
+import type {
+  CommandCentreDeliveryState,
+  CommandCentreSource,
+  ProjectCommandCentreCurrentDesign,
+} from '../commandCentre/types';
 import type {
   RecoveryActionCandidate,
   SpecialistActionCandidate,
@@ -9,13 +13,24 @@ export type ProjectWorkDomainActions = {
   specialistAction: SpecialistActionCandidate | null;
 };
 
+type ProjectWorkCommercialActionContext = {
+  source: CommandCentreSource;
+  designState: ProjectCommandCentreCurrentDesign['designState'];
+  estimate: { id: string } | null;
+  quote: {
+    id: string;
+    deliveryState: CommandCentreDeliveryState;
+  } | null;
+  links: ProjectCommandCentreCurrentDesign['links'];
+};
+
 /**
  * Adapts the authoritative commercial/design summary into references to
  * specialist-owned actions. It does not copy those actions into work items
  * and never infers quote state from the pipeline stage.
  */
 export function commercialProjectWorkActions(
-  currentDesign: ProjectCommandCentreCurrentDesign,
+  currentDesign: ProjectWorkCommercialActionContext,
   durableRecoveryAction: RecoveryActionCandidate | null = null,
 ): ProjectWorkDomainActions {
   if (durableRecoveryAction) {

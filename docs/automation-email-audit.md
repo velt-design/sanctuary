@@ -12,7 +12,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 
 ## Ownership
 
-- V2 project-work owner: `apps/portal/lib/projects/workItems`; transactional state, work-item, confirmation, calendar, receipt, event, queue, compatibility, and reconciliation commands are defined by `20260729_000002_project_work_items_v2.sql`.
+- V2 project-work owner: `apps/portal/lib/projects/workItems`; transactional state, work-item, confirmation, calendar, receipt, event, compatibility, and reconciliation commands are defined by `20260729_000002_project_work_items_v2.sql`. Authoritative team-queue composition and guarded legacy triage live in `teamQueue.ts`, `legacyTriage/`, and forward migration `20260729_000004_project_work_queue_and_legacy_triage.sql`.
 - Legacy-project automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; legacy task/follow-up persistence lives in `taskPersistence.ts`.
 - Automation cache keys: `qk.automation` in `apps/portal/lib/queries/keys.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
@@ -29,7 +29,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 ## Tables
 
 - `audit_events`: idempotent automation event log.
-- `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, and `project_command_receipts`: V2 project-work truth and append-only evidence.
+- `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, `project_command_receipts`, and `project_work_repair_signals`: V2 project-work truth, append-only evidence, idempotency, and explicit recovery.
 - `business_calendar_year_coverage`, `nz_holidays`, and `company_closures`: verified Auckland deadline inputs.
 - `tasks`, `followup_plans`, and `followup_tasks`: legacy-project task and quote-follow-up records.
 - `email_templates`: DB-backed template metadata and fallback HTML.
@@ -40,13 +40,19 @@ This doc owns current-state guidance for portal automation events, project tasks
 
 ## Current Data Flow
 
-The repository contains a new-project-only V2 path, but its migration is not applied or deployed. Staff project creation uses `project_create_v2`; a newly created `New` project linked by its intake enquiry also initializes V2. The trigger's narrow creation-time check prevents an old project from being activated by a later enquiry insert. Initialization records `Active` plus one manual first-email obligation due after two Auckland open hours with a four-hour SLA. If the contact has no email, that item is blocked and the contact-email trigger reconciles it when an address is supplied. Existing projects receive no marker or backfill and continue on the legacy flow. There is no fallback staff-project creation path when the V2 schema is unavailable.
+The repository contains a new-project-only V2 path. Its foundation migration is applied only in staging and is not production-deployed; the schema-cache repair and Work Queue/legacy-review forward migration remain repository-local. Staff project creation uses `project_create_v2`; a newly created `New` project linked by its intake enquiry also initializes V2. The trigger's narrow creation-time check prevents an old project from being activated by a later enquiry insert. Initialization records `Active` plus one manual first-email obligation due after two Auckland open hours with a four-hour SLA. If the contact has no email, that item is blocked and the contact-email trigger reconciles it when an address is supplied. Existing projects receive no marker or backfill and continue on the legacy flow. There is no fallback staff-project creation path when the V2 schema is unavailable.
 
 For V2, staff still send personal enquiry email in their normal email client and record the bounded confirmation. First-email confirmation creates one follow-up five business days later; follow-up confirmation creates one manual close review five business days later; customer reply cancels the open no-response cadence. No V2 command sends an email, creates a call task, changes project stage, or closes a project automatically.
 
 Durable quote send/resend and quote outcome owners call the server-only V2 reconciliation adapter after their own authoritative commit. A durable send creates or reschedules one manual follow-up, capped by expiry; prepared, failed, or unfinished delivery does not start it. Acceptance, decline, customer reply, or supersession cancels it. Reconciliation uses the exact project and quote-version identity. A failure opens or updates a bounded staff-safe repair signal keyed by the deterministic reconciliation command; successful later reconciliation resolves the relevant quote-family signals. Open repair signals preempt normal project work and enter the SQL queue. Raw provider or service errors are not persisted. Browser and public-token callers cannot invoke the service-role commands.
 
 V2 work is projected one way into `projects.next_action*` and `follow_up_date` for compatibility consumers. Legacy writers are rejected for V2 projects; compatibility fields are never imported back into V2 truth. No Contacted project has been automatically classified, migrated, closed, archived, or given a new cadence.
+
+The staff Work Queue and Dashboard preview read the same server-owned one-row-per-project composition. Durable repair, urgent work, blockers, due Waiting review, and triage come from `project_work_queue_v3()`; the server overlays canonical quote/estimate candidates without copying those facts into project work. Work-item rows can record Email sent, Customer replied, Complete, assignment, reschedule, block, and unblock through existing semantic commands. Personal Dashboard reminders remain private scratch items and are never queue or project truth.
+
+Admins may correct an incorrect manual confirmation only through the append-only retraction command with the original event, stable command ID, and reason. The command retains both events and opens a review signal; it does not reverse later lifecycle/commercial facts, resend an email, or restart a cadence. A second admin-only, reasoned review command requires that exact signal ID and row version, resolves only the unchanged signal after the project has been checked, and adds audit history without performing a domain side effect.
+
+The admin Contacted classifier is read-only and omits linked customer contact fields. Its recommendations are evidence summaries, not decisions, and each row carries an opaque database evidence fingerprint. An admin can migrate only one reviewed, unchanged-project-and-evidence, unmarked Contacted project at a time into Active with real work, Active Needs triage, Waiting, or a bounded Closed outcome. The migration command does not archive, contact the customer, or create the new-project email cadence.
 
 For unmarked legacy projects, staff action routes call `automationRunner.runEvent()` or directly perform a route-owned side effect. `AutomationRunner` writes an idempotent `audit_events` row first; duplicate idempotency keys stop repeated handling.
 
@@ -135,6 +141,9 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 - Marketing enquiry autoresponder budgets and auto-created estimate drafts share one canonical costing snapshot. Saved calculator inputs must describe that snapshot (including the two-post standard assumption); do not recalculate separately for email and persistence.
 - The public Resend webhook is not a browser data surface. It verifies signatures before any database call and the repository may call only `background_job_reconcile_verified_provider_acceptance`; raw bodies, signatures, recipients, subjects, content, and arbitrary provider fields do not cross that repository boundary.
 - Browser task and activity access should use current project/dashboard APIs and query helpers. Do not reintroduce direct browser automation table writes; prefer staff API routes for new write behavior.
+- Work Queue and Dashboard must consume `teamQueue.ts`; do not derive lifecycle, assignee fallback, quote/estimate precedence, or commercial readiness in browser components.
+- The Contacted classifier and migration routes are admin-only and auth-bound. Never add customer contact fields to the review payload or a bulk recommendation-accept command.
+- Site Visits remains hidden/manual and is not a task source or project-work destination. The optional completion confirmation has no stage, Schedule, email, or automation side effect.
 - Manual project-task checkboxes may show optimistic local feedback, but the owning staff API remains authoritative for `project_task_checks`, pipeline transitions, and automation events. Concurrent saves must roll back only the rejected task, expose explicit retry, and never claim an auto-advance side effect before the response confirms it.
 - Service-role keys, raw email provider responses, and private customer data must not reach client props, logs, generated documents, or public routes.
 - Preview-only Resend credentials and the fixed preview recipient stay server-owned. Preview-send requests accept only a repository fixture variant and never a browser-supplied address.
@@ -198,6 +207,7 @@ npx playwright test playwright/portal.email-preview-workbench.spec.ts --project=
 npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/app/api/contacts/route.test.ts "apps/portal/app/api/contacts/[contactId]/route.test.ts"
 npm run test:marketing -- apps/marketing/emails/utils/callWindow.test.ts
+npm run test:portal -- apps/portal/lib/projects/workItems apps/portal/app/api/staff/v1/work-items apps/portal/app/api/admin/project-work
 ```
 
 These tests inject or mock provider transport and webhook signatures. Do not use production/shared database credentials or send a real email as part of repository verification. JOB-03 local provider, integration, worker, contract, typecheck, lint, and production-build gates pass. Background Jobs [run 29723041212](https://github.com/velt-design/sanctuary/actions/runs/29723041212) passes all seven migrations on upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, plus the contracts/integrations and worker artifact/container gates.

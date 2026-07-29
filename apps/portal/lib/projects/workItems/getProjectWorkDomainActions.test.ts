@@ -43,6 +43,7 @@ describe('project-work domain action read', () => {
     const supabase = client({
       data: [{
         id: 'repair-1',
+        repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
         quote_version_id: QUOTE_VERSION_UUID,
         error_message: 'The quote follow-up reminder could not be updated.',
       }],
@@ -72,6 +73,33 @@ describe('project-work domain action read', () => {
       'first_detected_at',
       { ascending: true },
     );
+  });
+
+  it('maps confirmation correction review without claiming a quote repair', async () => {
+    const supabase = client({
+      data: [{
+        id: 'repair-2',
+        repair_kind: 'CONFIRMATION_RETRACTION_REVIEW',
+        quote_version_id: null,
+        confirmation_event_id: '33333333-3333-4333-8333-333333333333',
+        error_message: 'A recorded confirmation was corrected.',
+      }],
+      error: null,
+    });
+
+    await expect(getProjectWorkDomainActions({
+      supabase: supabase as never,
+      projectId: PROJECT_ID,
+      projectUuid: PROJECT_UUID,
+      currentDesign,
+    })).resolves.toMatchObject({
+      recoveryAction: {
+        key: 'confirmation-retraction-review:repair-2',
+        title: 'Review corrected confirmation',
+        reason: 'A recorded confirmation was corrected.',
+        href: `/staff/projects/${PROJECT_ID}?tab=activity`,
+      },
+    });
   });
 
   it('falls through to canonical specialist derivation when no repair is open', async () => {
@@ -116,7 +144,12 @@ describe('project-work domain action read', () => {
 
     await expect(getProjectWorkDomainActions({
       supabase: client({
-        data: [{ id: 'repair-1', quote_version_id: QUOTE_VERSION_UUID }],
+        data: [{
+          id: 'repair-1',
+          repair_kind: 'QUOTE_CADENCE_RECONCILIATION',
+          quote_version_id: null,
+          error_message: 'Repair requires review.',
+        }],
         error: null,
       }) as never,
       projectId: PROJECT_ID,

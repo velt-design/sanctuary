@@ -18,6 +18,14 @@ function createClient(v2Ids: Set<string>) {
   return { client: { from } as any, from, select, inFilter };
 }
 
+function createErrorClient(error: unknown) {
+  const eq = vi.fn(async () => ({ data: null, error }));
+  const inFilter = vi.fn(() => ({ eq }));
+  const select = vi.fn(() => ({ in: inFilter }));
+  const from = vi.fn(() => ({ select }));
+  return { client: { from } as any, from };
+}
+
 describe('project work model boundary', () => {
   it('classifies one project through the direct marker table', async () => {
     const { client, from, select, inFilter } = createClient(new Set(['project-v2']));
@@ -43,5 +51,31 @@ describe('project work model boundary', () => {
     expect(result).toEqual(new Set([ids[0], ids[204]]));
     expect(inFilter).toHaveBeenCalledTimes(3);
     expect(inFilter.mock.calls.every((call) => call[1].length <= 100)).toBe(true);
+  });
+
+  it('keeps pre-rollout legacy projects readable when only the V2 marker table is absent', async () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { client } = createErrorClient({
+      code: 'PGRST205',
+      message: "Could not find the table 'public.project_work_model_versions' in the schema cache",
+    });
+
+    await expect(isProjectWorkModelV2(client, 'project-legacy')).resolves.toBe(false);
+
+    expect(warning).toHaveBeenCalledWith(
+      '[project_work] V2 marker schema is unavailable; using pre-rollout legacy compatibility.',
+      { code: 'PGRST205' },
+    );
+    warning.mockRestore();
+  });
+
+  it('does not hide unrelated model-boundary failures', async () => {
+    const failure = {
+      code: '42501',
+      message: 'permission denied for table project_work_model_versions',
+    };
+    const { client } = createErrorClient(failure);
+
+    await expect(isProjectWorkModelV2(client, 'project-legacy')).rejects.toBe(failure);
   });
 });

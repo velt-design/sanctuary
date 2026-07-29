@@ -148,21 +148,40 @@ export type ProjectWorkProjection = {
   generatedAt: string;
 };
 
-type ProjectWorkQueueGroup =
+export type ProjectWorkQueueGroup =
   | 'overdue'
   | 'today'
   | 'nextSevenBusinessDays'
   | 'blocked'
   | 'needsTriage';
 
+export type ProjectWorkQueueActionKind =
+  | 'recovery'
+  | 'workItem'
+  | 'specialist'
+  | 'stateReview'
+  | 'needsTriage';
+
 export type ProjectWorkQueueEntry = {
   projectId: string;
   projectName: string;
+  stage: string;
   group: ProjectWorkQueueGroup;
+  actionKind: ProjectWorkQueueActionKind;
   title: string;
+  reason: string;
   dueAt: string | null;
   priority: ProjectWorkItemPriority | null;
   blockedReason: string | null;
   effectiveAssignee: ProjectWorkEffectiveAssignee;
+  workItemId: string | null;
+  workItemRowVersion: number | null;
+  stateRowVersion: number | null;
+  sourceType: ProjectWorkItemSourceType | null;
+  sourceKey: string | null;
+  subjectKind: string | null;
+  subjectId: string | null;
+  repairSignalId?: string | null;
+  repairSignalRowVersion?: number | null;
   href: string;
 };

@@ -24,6 +24,7 @@ import {
   projectCommandIntent,
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
+import { parseAucklandDateTimeLocal } from '@/lib/time/aucklandDateTime';
 import { qk } from '@/lib/queries/keys';
 import {
   ActionPanel,
@@ -39,6 +40,7 @@ import {
 } from '@/components/ui/foundation';
 import styles from './ProjectWorkCommandCard.module.css';
 import ProjectOwnerControls from './ProjectOwnerControls';
+import ConfirmationCorrectionControls from '@/components/projects/workQueue/ConfirmationCorrectionControls.client';
 
 const RESPONSIBILITY_AREAS: Array<{
   value: ProjectWorkResponsibilityArea;
@@ -60,11 +62,6 @@ const CLOSED_OUTCOMES: Array<{ value: ProjectClosedOutcome; label: string }> = [
   { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'COMPLETE', label: 'Complete' },
 ];
-
-function instantFromLocal(value: string): string | null {
-  const parsed = new Date(value);
-  return Number.isFinite(parsed.valueOf()) ? parsed.toISOString() : null;
-}
 
 function dueLabel(value: string): string {
   const parsed = new Date(value);
@@ -248,7 +245,7 @@ export default function ProjectWorkCommandCard({
   };
 
   const createManualItem = async () => {
-    const dueAt = instantFromLocal(manualDueAt);
+    const dueAt = parseAucklandDateTimeLocal(manualDueAt);
     if (!manualTitle.trim() || !dueAt) {
       setError('Enter a title and valid due time.');
       return;
@@ -309,7 +306,7 @@ export default function ProjectWorkCommandCard({
       return;
     }
     if (stateChoice === 'WAITING') {
-      const waiting = instantFromLocal(waitingUntil);
+      const waiting = parseAucklandDateTimeLocal(waitingUntil);
       if (!waiting) {
         setError('Choose a valid wake-up time.');
         return;
@@ -502,7 +499,7 @@ export default function ProjectWorkCommandCard({
                     {RESPONSIBILITY_AREAS.map((area) => <option key={area.value} value={area.value}>{area.label}</option>)}
                   </Select>
                   <Input
-                    label="Due"
+                    label="Due in Auckland"
                     type="datetime-local"
                     value={manualDueAt}
                     disabled={pending}
@@ -532,7 +529,7 @@ export default function ProjectWorkCommandCard({
                     </Select>
                     {stateChoice === 'WAITING' ? (
                       <Input
-                        label="Wake-up time"
+                        label="Wake-up time in Auckland"
                         type="datetime-local"
                         value={waitingUntil}
                         disabled={pending}
@@ -571,6 +568,13 @@ export default function ProjectWorkCommandCard({
                   </div>
                 </details>
               ) : null}
+              <ConfirmationCorrectionControls
+                projectId={projectId}
+                host={host}
+                facts={projection.confirmedFacts}
+                disabled={pending || stale}
+                onRefresh={onRefresh}
+              />
               {pipelineStage.toLowerCase() === 'site_visit' ? (
                 <div className={styles.manualFact}>
                   <div>

@@ -21,6 +21,10 @@ vi.mock('@/lib/projects/commandCentre/client', () => ({
   setProjectCommandOwner: (...args: unknown[]) => setProjectCommandOwner(...args),
 }));
 
+vi.mock('@/components/projects/workQueue/ConfirmationCorrectionControls.client', () => ({
+  default: () => null,
+}));
+
 const owner: ProjectCommandOwnerSummary = {
   owner: { key: 'jordan', displayName: 'Jordan' },
   required: true,
