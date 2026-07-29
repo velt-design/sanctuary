@@ -19,16 +19,13 @@ import { paymentDetailsLines, paymentDetailsText } from '../payments/paymentDeta
 import { isProjectWorkModelV2 } from '../projects/workItems/modelBoundary';
 import { supabaseServiceRole } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
-import type { DepositInvoiceSummary } from './types';
+import { resolveDepositInvoicePaymentLines } from './invoiceArtifactViewModel';
+import { buildDepositInvoiceEmailInput } from './emailPresentation';
+import { parseFrozenInvoiceEmail, redactInvoiceToken, type FrozenInvoiceEmail, type InvoiceRecipientLists } from './deliveryIntent';
+import { preparedDepositInvoicePreview, prospectiveDepositInvoicePreview } from './staffPreview';
+import type { DepositInvoiceArtifactPreview, DepositInvoiceSummary } from './types';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
-
-const MONEY = new Intl.NumberFormat('en-NZ', {
-  style: 'currency',
-  currency: 'NZD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 type DepositInvoiceRow = {
   id: string;
@@ -77,7 +74,7 @@ type AcceptedQuoteContext = {
   contactEmail: string | null;
 };
 
-type RecipientLists = { to: string[]; cc: string[]; bcc: string[] };
+type RecipientLists = InvoiceRecipientLists;
 
 type SendAttemptInfo = { attemptNumber: number; firstAttemptAt: string };
 
@@ -153,27 +150,6 @@ function parsePercent(value: unknown): number {
 function roundInt(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value);
-}
-
-function formatMoney(cents: number): string {
-  return MONEY.format((Number.isFinite(cents) ? cents : 0) / 100);
-}
-
-function formatPercent(value: number): string {
-  const clamped = parsePercent(value);
-  const text = clamped.toFixed(2).replace(/\.00$/, '');
-  return `${text}%`;
-}
-
-function formatDateForEmail(value: string): string {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (!Number.isFinite(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('en-NZ', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Pacific/Auckland',
-  }).format(parsed);
 }
 
 function normalizeRecipients(list: string[]): string[] {
@@ -260,9 +236,8 @@ function paymentInstructions(): string {
   return paymentDetailsText('invoice');
 }
 
-function redactToken(value: string | null): string | null {
-  if (typeof value !== 'string') return value;
-  return value.replace(/([?&]token=)[^&\s\"'<>]+/gi, '$1[redacted]');
+function invoicePaymentLines(invoice: DepositInvoiceRow): string[] {
+  return resolveDepositInvoicePaymentLines(invoice.payment_instructions, paymentDetailsLines('invoice'));
 }
 
 async function insertAuditEvent(params: {
@@ -576,13 +551,21 @@ async function loadFileContent(fileUuid: string): Promise<{ filename: string; co
   return { filename, content: Buffer.from(base64, 'base64') };
 }
 
-async function ensureInvoicePdf(invoice: DepositInvoiceRow, actor: string | null): Promise<{ fileUuid: string; filename: string; content: Buffer }> {
-  if (invoice.pdf_file_id) {
-    const existing = await loadFileContent(invoice.pdf_file_id);
-    if (existing) return { fileUuid: invoice.pdf_file_id, filename: existing.filename, content: existing.content };
+async function loadPreviewAttachmentNames(fileIds: readonly string[]): Promise<string[]> {
+  const ids = fileIds.filter(Boolean);
+  if (!ids.length) return [];
+  const res = await supabaseServiceRole.from('file_artifacts').select('id,filename').in('id', ids);
+  if (res.error) {
+    throw new Error(errorMessage(res.error, 'Failed to load invoice attachment names'));
   }
+  const namesById = new Map(
+    (Array.isArray(res.data) ? res.data : []).map((row: any) => [String(row?.id ?? ''), String(row?.filename ?? 'deposit-invoice.pdf')])
+  );
+  return ids.map((id) => namesById.get(id) ?? 'Attachment unavailable');
+}
 
-  const bytes = await generateDepositInvoicePdfBytes({
+function invoiceArtifactInput(invoice: DepositInvoiceRow) {
+  return {
     invoiceRef: invoice.invoice_ref,
     quoteRef: invoice.quote_ref,
     quoteVersionNumber: invoice.quote_version_number,
@@ -596,6 +579,17 @@ async function ensureInvoicePdf(invoice: DepositInvoiceRow, actor: string | null
     totalIncGstCents: invoice.total_inc_gst_cents,
     totalExGstCents: invoice.total_ex_gst_cents,
     gstCents: invoice.gst_cents,
+  };
+}
+
+async function ensureInvoicePdf(invoice: DepositInvoiceRow, actor: string | null): Promise<{ fileUuid: string; filename: string; content: Buffer }> {
+  if (invoice.pdf_file_id) {
+    const existing = await loadFileContent(invoice.pdf_file_id);
+    if (existing) return { fileUuid: invoice.pdf_file_id, filename: existing.filename, content: existing.content };
+  }
+
+  const bytes = await generateDepositInvoicePdfBytes(invoiceArtifactInput(invoice), {
+    paymentLines: invoicePaymentLines(invoice),
   });
 
   const filename = depositInvoicePdfFilename(invoice.invoice_ref);
@@ -743,59 +737,6 @@ async function markInvoiceSent(invoice: DepositInvoiceRow, patch: { actor: strin
   if (res.error) throw new Error(errorMessage(res.error, 'Failed to update invoice send state'));
 }
 
-type FrozenInvoiceEmail = {
-  sentAt: string;
-  tokenHash: string;
-  tokenExpiresAt: string;
-  recipients: RecipientLists;
-  subject: string;
-  html: string;
-  text: string | null;
-  attachmentFileIds: string[];
-  actor: string | null;
-};
-
-function requiredIntentString(
-  payload: Readonly<Record<string, unknown>>,
-  key: string,
-): string {
-  const value = payload[key];
-  if (typeof value !== 'string' || !value) {
-    throw new Error(`Prepared invoice delivery is missing ${key}`);
-  }
-  return value;
-}
-
-function intentStringArray(
-  payload: Readonly<Record<string, unknown>>,
-  key: string,
-): string[] {
-  const value = payload[key];
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
-    throw new Error(`Prepared invoice delivery is missing ${key}`);
-  }
-  return value as string[];
-}
-
-function parseFrozenInvoiceEmail(intent: CommercialEmailIntent): FrozenInvoiceEmail {
-  const payload = intent.protectedPayload;
-  return {
-    sentAt: requiredIntentString(payload, 'sentAt'),
-    tokenHash: requiredIntentString(payload, 'tokenHash'),
-    tokenExpiresAt: requiredIntentString(payload, 'tokenExpiresAt'),
-    recipients: {
-      to: intentStringArray(payload, 'to'),
-      cc: intentStringArray(payload, 'cc'),
-      bcc: intentStringArray(payload, 'bcc'),
-    },
-    subject: requiredIntentString(payload, 'subject'),
-    html: requiredIntentString(payload, 'html'),
-    text: typeof payload.text === 'string' ? payload.text : null,
-    attachmentFileIds: intentStringArray(payload, 'attachmentFileIds'),
-    actor: typeof payload.actor === 'string' ? payload.actor : null,
-  };
-}
-
 async function recordInvoiceDeliveryFailure(params: {
   invoice: DepositInvoiceRow;
   intent: CommercialEmailIntent;
@@ -860,29 +801,36 @@ async function prepareInvoiceEmailIntent(
   const { token, tokenHash } = generateAcceptToken();
   const pdf = await ensureInvoicePdf(invoice, actor);
   const subject = `Deposit invoice - ${invoice.invoice_ref}`;
-  const rendered = await renderDepositInvoiceEmail({
-    to: recipients.to,
-    cc: recipients.cc,
-    bcc: recipients.bcc,
-    subject,
-    name: invoice.customer_name || 'there',
-    invoice_number: invoice.invoice_ref,
-    invoice_total_inc_gst: formatMoney(invoice.total_inc_gst_cents),
-    quote_number: `${invoice.quote_ref} v${invoice.quote_version_number}`,
-    deposit_percent: formatPercent(invoice.deposit_percent),
-    due_date: formatDateForEmail(invoice.due_date),
-    project_address: invoice.project_address ?? undefined,
-    invoice_link: invoiceLink(invoice.id, token),
-    payment_lines: paymentDetailsLines('invoice'),
-    reference_id: invoice.reference ?? undefined,
-    attachments: [
-      {
-        filename: pdf.filename,
-        content: pdf.content,
-        contentType: 'application/pdf',
-      },
-    ],
-  });
+  const rendered = await renderDepositInvoiceEmail(
+    buildDepositInvoiceEmailInput({
+      invoiceRef: invoice.invoice_ref,
+      quoteRef: invoice.quote_ref,
+      quoteVersionNumber: invoice.quote_version_number,
+      customerName: invoice.customer_name,
+      projectName: invoice.project_name,
+      projectAddress: invoice.project_address,
+      issueDate: invoice.issue_date,
+      dueDate: invoice.due_date,
+      depositPercent: invoice.deposit_percent,
+      quoteTotalIncGstCents: invoice.quote_total_inc_gst_cents,
+      totalIncGstCents: invoice.total_inc_gst_cents,
+      totalExGstCents: invoice.total_ex_gst_cents,
+      gstCents: invoice.gst_cents,
+      recipients,
+      subject,
+      invoiceLink: invoiceLink(invoice.id, token),
+      paymentLines: invoicePaymentLines(invoice),
+      referenceId: invoice.reference ?? undefined,
+      attachmentNames: [pdf.filename],
+      attachments: [
+        {
+          filename: pdf.filename,
+          content: pdf.content,
+          contentType: 'application/pdf',
+        },
+      ],
+    })
+  );
   return prepareCommercialEmailIntent({
     intentKey,
     kind: 'deposit_invoice_send',
@@ -1070,8 +1018,8 @@ async function deliverInvoiceEmailDurably(
     invoice,
     recipients: frozen.recipients,
     subject: frozen.subject,
-    bodyHtml: redactToken(frozen.html),
-    bodyText: redactToken(frozen.text),
+    bodyHtml: redactInvoiceToken(frozen.html),
+    bodyText: redactInvoiceToken(frozen.text),
     attachmentFileIds: frozen.attachmentFileIds,
     providerMessageId: providerMessage,
     status: 'SENT',
@@ -1244,6 +1192,57 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
     const invoice = mapInvoiceRow(row);
     return mapInvoiceSummary(invoice, latestByInvoiceId.get(invoice.id) ?? null);
   });
+}
+
+export async function getDepositInvoiceArtifactPreview(invoiceId: string): Promise<DepositInvoiceArtifactPreview | null> {
+  const invoiceUuid = uuidFromAppId(invoiceId, 'inv');
+  const invoice = await loadInvoiceById(invoiceUuid);
+  if (!invoice) return null;
+
+  const intent = await findCommercialEmailIntentByKey(`deposit-invoice-send:${invoice.id}`);
+  if (intent) {
+    const frozen = parseFrozenInvoiceEmail(intent);
+    return preparedDepositInvoicePreview({
+      invoiceId,
+      invoiceRef: invoice.invoice_ref,
+      frozen,
+      attachmentNames: await loadPreviewAttachmentNames(frozen.attachmentFileIds),
+    });
+  }
+
+  const existing = invoice.pdf_file_id ? await loadFileContent(invoice.pdf_file_id) : null;
+  const filename = existing?.filename ?? depositInvoicePdfFilename(invoice.invoice_ref);
+  return prospectiveDepositInvoicePreview({
+    ...invoiceArtifactInput(invoice),
+    invoiceId,
+    recipients: { to: [], cc: [], bcc: [] },
+    subject: `Deposit invoice - ${invoice.invoice_ref}`,
+    invoiceLink: `https://preview.invalid/invoice/${encodeURIComponent(invoice.id)}?token=preview-only`,
+    paymentLines: invoicePaymentLines(invoice),
+    referenceId: invoice.reference ?? undefined,
+    attachmentNames: [filename],
+  });
+}
+
+export async function getDepositInvoicePdfPreview(invoiceId: string): Promise<{ filename: string; bytes: Uint8Array } | null> {
+  const invoiceUuid = uuidFromAppId(invoiceId, 'inv');
+  const invoice = await loadInvoiceById(invoiceUuid);
+  if (!invoice) return null;
+
+  const existing = invoice.pdf_file_id ? await loadFileContent(invoice.pdf_file_id) : null;
+  if (existing) {
+    return {
+      filename: existing.filename,
+      bytes: new Uint8Array(existing.content),
+    };
+  }
+
+  return {
+    filename: depositInvoicePdfFilename(invoice.invoice_ref),
+    bytes: await generateDepositInvoicePdfBytes(invoiceArtifactInput(invoice), {
+      paymentLines: invoicePaymentLines(invoice),
+    }),
+  };
 }
 
 export async function sendDepositInvoiceNow(invoiceId: string, actor: string | null): Promise<DepositInvoiceSummary> {

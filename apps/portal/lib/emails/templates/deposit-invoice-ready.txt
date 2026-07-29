@@ -1,16 +1,44 @@
-Deposit invoice {{invoice_number}} is ready.
+SANCTUARY PERGOLAS
+
+DEPOSIT INVOICE {{invoice_number}}
 
 Hi {{name}},
 
-Your deposit invoice for quote {{quote_number}} is ready.
-Amount due (incl. GST): {{invoice_total_inc_gst}}
-Deposit percentage: {{deposit_percent}}
-{{#if due_date}}Due date: {{due_date}}
-{{/if}}
-View invoice: {{invoice_link}}
+This {{deposit_percent}} deposit invoice relates to quote {{quote_number}}{{#if project_name}} for {{project_name}}{{else}}{{#if project_address}} at {{project_address}}{{/if}}{{/if}}. {{#if attachment_names}}The attached PDF and online invoice contain{{else}}The online invoice contains{{/if}} the complete payment record.
 
-{{#if payment_lines}}
+{{#if personal_note_text}}A NOTE FROM THE SANCTUARY TEAM
+{{personal_note_text}}
+
+{{/if}}PAYMENT SUMMARY
+Amount due: {{invoice_total_inc_gst}}
+{{#if due_date}}Due date: {{due_date}}
+{{/if}}Payment reference: {{payment_reference}}
+
+REVIEW INVOICE
+{{invoice_link}}
+
+INVOICE DETAILS
+Invoice number: {{invoice_number}}
+Related quote: {{quote_number}}
+Deposit: {{deposit_percent}} of the source quote total
+{{#if project_name}}Project: {{project_name}}
+{{/if}}{{#if project_address}}Site: {{project_address}}
+{{/if}}{{#if source_quote_total_inc_gst}}Source quote total incl. GST: {{source_quote_total_inc_gst}}
+{{/if}}{{#if invoice_subtotal_ex_gst}}Subtotal excl. GST: {{invoice_subtotal_ex_gst}}
+{{/if}}{{#if invoice_gst}}GST 15%: {{invoice_gst}}
+{{/if}}Total due incl. GST: {{invoice_total_inc_gst}}
+
+{{#if payment_lines}}PAY BY BANK TRANSFER
 {{#each payment_lines}}{{this}}
+{{/each}}Use {{payment_reference}} as the payment reference.
+
+{{/if}}{{#if attachment_names}}ATTACHED
+{{#each attachment_names}}- {{this}}
 {{/each}}
-{{/if}}
+{{/if}}If anything needs clarifying, reply to this email or contact {{contact_email}}.
+
 Sanctuary Pergolas
+sanctuarypergolas.co.nz
+{{contact_email}}
+{{#if reference_id}}Reference {{reference_id}}
+{{/if}}

@@ -316,6 +316,10 @@ The static migration contract proves bounded pages, stable ordering, scalar acce
 
 For deterministic quote-artifact review, set `QUOTE_ARTIFACT_OUTPUT_DIR` to an OS-temp directory and run `apps/portal/lib/quotes/quoteArtifactVisualFixtures.test.ts`. Render the emitted PDFs with Poppler and inspect every page of the simple, multi-page, long-description, and long-terms cases. Generated fixtures are review artifacts only and must not be committed or mistaken for delivery evidence.
 
+For deterministic invoice-artifact review, set `INVOICE_ARTIFACT_OUTPUT_DIR` and run `apps/portal/lib/invoices/invoiceArtifactVisualFixtures.test.ts`; render and inspect every emitted PDF page with Poppler. Set `INVOICE_EMAIL_ARTIFACT_OUTPUT_DIR` when running `apps/portal/lib/emails/invoice.test.ts` to write standard and long-identity HTML/plain-text fixtures. `INVOICE_PUBLIC_FIXTURE_PATH` makes the marketing invoice page test write the open invoice plus missing-token, invalid, expired, void, loading, and unavailable-document variants beside it. These outputs use synthetic identities and payment lines only.
+
+The gated `/qa/invoice-artifact-preview-fixture` uses the production staff dialog, invoice PDF renderer, HTML renderer, and plain-text renderer with no database, token generation, persistence, or provider transport. Run `npx playwright test playwright/portal.invoice-artifact-preview-fixture.spec.ts --project=portal-fixture` to check desktop and 390px containment, PDF/email/plain-text modes, 44px minimum mobile controls, Escape close, and focus return. It requires `ENABLE_PORTAL_QA_FIXTURES=1`, which the local fixture project supplies.
+
 Use the `:log` variants when running noisy gates through an AI agent or chat tool. They run the same root npm scripts, write full stdout/stderr to an OS temp log, and print only the command, log path, duration, exit code, and a compact pass/fail summary. On failure they also print the last 120 log lines.
 
 Focused portal commands:
@@ -525,24 +529,24 @@ Wave 1 completion run `29687042640` recorded exactly five production repetitions
 
 The 2026-07-22 isolated project-tab pass measured the integrated UI before changing application code, then repeated the same authenticated production journey five times after the fix. The baseline p75 feedback/useful-shell results were Calculator 151/154 ms, Quotes 141/512 ms, Invoices 147/149 ms, Overview 149/152 ms, and Job Packs 923/927 ms. Optimistic frame and Commercial subview ownership reduced those p75 values to 36/40 ms, 38/41 ms, 38/41 ms, 39/44 ms, and 37/41 ms. URL state, lazy specialist modules, and data remain canonical/background owners; the 100/500 ms regression ceilings were not loosened.
 
-| Journey | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target | Locked feedback/useful ceiling |
+| Journey                     | Feedback p50/p75/p95 | Useful p50/p75/p95 | Product target |                            Locked feedback/useful ceiling |
 | --------------------------- | -------------------: | -----------------: | :------------: | --------------------------------------------------------: |
-| Dashboard cold | 806/807/871 ms | 816/817/881 ms | Miss | Existing cold ceiling unchanged |
-| Projects cold | 749/766/779 ms | 758/777/788 ms | Miss | Existing cold ceiling unchanged |
-| Project Detail cold | 781/785/797 ms | 1664/1666/1680 ms | 10% guard met | Existing cold ceiling unchanged; 2699 ms comparison guard |
-| Contacts cold | 687/708/726 ms | 698/714/742 ms | Miss | Existing cold ceiling unchanged |
-| Schedule cold | 737/758/760 ms | 1106/1125/1135 ms | Miss | Existing cold ceiling unchanged |
-| Dashboard to Projects | 37/37/38 ms | 56/58/59 ms | Met | 100/500 ms |
-| Dashboard to Contacts | 38/39/41 ms | 57/59/63 ms | Met | 100/500 ms |
-| Projects to project | 35/38/39 ms | 48/49/51 ms | Met | 100/500 ms |
-| Project back to Projects | 5/6/6 ms | 21/25/25 ms | Met | 100/500 ms |
-| Project Calculator tab | 36/36/38 ms | 39/40/42 ms | Met | 100/500 ms |
-| Project Commercial Quotes | 37/38/38 ms | 41/41/43 ms | Met | 100/500 ms |
-| Project Commercial Invoices | 36/38/40 ms | 37/41/45 ms | Met | 100/500 ms |
-| Project Overview tab | 38/39/46 ms | 44/44/52 ms | Met | 100/500 ms |
-| Project Job Packs tab | 36/37/38 ms | 41/41/42 ms | Met | 100/500 ms |
-| Schedule unscheduled toggle | 137/137/139 ms | 140/141/142 ms | Regression met | Existing 1200/1200 ms ceiling unchanged |
-| Calculator current result | 40/47/58 ms | 924/939/942 ms | Feedback met | 700/2950 ms |
+| Dashboard cold              |       806/807/871 ms |     816/817/881 ms |      Miss      |                           Existing cold ceiling unchanged |
+| Projects cold               |       749/766/779 ms |     758/777/788 ms |      Miss      |                           Existing cold ceiling unchanged |
+| Project Detail cold         |       781/785/797 ms |  1664/1666/1680 ms | 10% guard met  | Existing cold ceiling unchanged; 2699 ms comparison guard |
+| Contacts cold               |       687/708/726 ms |     698/714/742 ms |      Miss      |                           Existing cold ceiling unchanged |
+| Schedule cold               |       737/758/760 ms |  1106/1125/1135 ms |      Miss      |                           Existing cold ceiling unchanged |
+| Dashboard to Projects       |          37/37/38 ms |        56/58/59 ms |      Met       |                                                100/500 ms |
+| Dashboard to Contacts       |          38/39/41 ms |        57/59/63 ms |      Met       |                                                100/500 ms |
+| Projects to project         |          35/38/39 ms |        48/49/51 ms |      Met       |                                                100/500 ms |
+| Project back to Projects    |             5/6/6 ms |        21/25/25 ms |      Met       |                                                100/500 ms |
+| Project Calculator tab      |          36/36/38 ms |        39/40/42 ms |      Met       |                                                100/500 ms |
+| Project Commercial Quotes   |          37/38/38 ms |        41/41/43 ms |      Met       |                                                100/500 ms |
+| Project Commercial Invoices |          36/38/40 ms |        37/41/45 ms |      Met       |                                                100/500 ms |
+| Project Overview tab        |          38/39/46 ms |        44/44/52 ms |      Met       |                                                100/500 ms |
+| Project Job Packs tab       |          36/37/38 ms |        41/41/42 ms |      Met       |                                                100/500 ms |
+| Schedule unscheduled toggle |       137/137/139 ms |     140/141/142 ms | Regression met |                   Existing 1200/1200 ms ceiling unchanged |
+| Calculator current result   |          40/47/58 ms |     924/939/942 ms |  Feedback met  |                                               700/2950 ms |
 
 `npm run test:portal:performance:capture` is the CI repetition primitive after `portal:auth-runtime` has already passed. Use the normal `test:portal:performance` command for a standalone local run so auth/data prerequisites remain fail-fast.
 

@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-29 | Portal Staging Auth Callback     | Promoted | Exchange controlled local/staging one-time links through `/login/callback` with a hashed magic-link token, a fail-closed session-cookie write, safe same-origin callback normalization, `private, no-store`, and `Referrer-Policy: no-referrer`. Never redirect an access/refresh-token fragment straight to a protected route or treat a successful token exchange without a durable cookie as a successful login. |
 | 2026-07-29 | Project Work V2                  | Promoted | Read the V2 marker through its direct server-owned boundary rather than a PostgREST embedded relationship. After new-table DDL, reload PostgREST outside the DDL transaction and prove both the direct marker read and an authenticated legacy-project snapshot before resuming project writers. A repository migration file is not evidence that the hosted API cache observed its tables or relationships. |
 | 2026-07-29 | Marketing Enquiry Reachability   | Promoted | Keep one public conversion system across `/contact` and embedded service-page forms. Require project type, name, phone and email through one client/server validator, reuse one browser-generated submission UUID across enhanced retries, assign each no-JavaScript POST a server UUID, and keep any rejected attachment visibly blocking until replaced or removed. Retire the unused `/start` and `/start/explore` flows rather than maintaining a parallel contract. |
 | 2026-07-29 | Schedule Mutation Trust          | Promoted | Preview Schedule V2 commands without force, confirm only when the server identifies other moved jobs, re-preview immediately after approval, and force only when the reviewed impacts are unchanged. Every optimistic mutation owns an exact rollback checkpoint and one in-flight lifecycle; accepted state updates only the compatible active-view cache and invalidates incompatible snapshots. Gantt start-plus-duration adjustment is one atomic RPC-backed command, while ambiguous failures reconcile visibly. Database-revision protection against near-simultaneous staff edits remains follow-up work. |
@@ -3991,3 +3992,33 @@ Related docs/tests: `apps/marketing/lib/enquiryFormContract.test.ts`;
 `apps/marketing/app/api/enquiry/route.test.ts`;
 `playwright/marketing.contact.spec.ts`;
 `playwright/marketing.seo-landing.spec.ts`
+
+### 2026-07-29 - Portal Staging Auth Callback - Exchange One-Time Links Server-Side
+
+Date: 2026-07-29
+Area: Portal Staging Auth Callback
+Status: Promoted
+Decision or mistake: A controlled staging magic link redirected directly to a
+protected Projects route. Portal middleware ran before the browser could
+establish a fragment session, redirected to Login, and left access and refresh
+tokens in the address bar. The login form then correctly rejected the user's
+unrelated password because localhost was using a separate staging auth
+project.
+Why it mattered: The link appeared to be a password failure, exposed
+short-lived bearer credentials in browser history and a screenshot, and still
+did not create the cookie required by protected server routes.
+Current guardrail: Generate only a hashed `magiclink` token for controlled
+local/staging QA and exchange it at `/login/callback`. Require the session
+cookie write to succeed, redirect only through the shared same-origin callback
+normalizer, strip fragments, reject backslash/control-character redirects, and
+apply `private, no-store` plus `Referrer-Policy: no-referrer`. Prove the
+callback with a clean cookie jar, a subsequent protected GET, one individual
+project, and rejected token replay. Never log, screenshot, or persist token
+values.
+Promoted to: `docs/environment-auth-supabase.md`;
+`docs/staff-api-auth-contracts.md`; `docs/security-privacy-quality.md`
+Related docs/tests:
+`apps/portal/app/login/callback/route.test.ts`;
+`apps/portal/lib/supabase/serverClient.test.ts`;
+`apps/portal/lib/portalAccess.test.ts`;
+`apps/portal/proxy.test.ts`

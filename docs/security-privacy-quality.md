@@ -2,6 +2,18 @@
 
 This doc combines operational controls for tracking, consent, security, and quality gates.
 
+## Portal One-Time Authentication
+
+Controlled local/staging one-time staff sign-in exchanges a hashed Supabase
+`magiclink` token at `/login/callback`. The server must verify the token through
+the anon-key auth client, durably set the resulting session cookie, remove the
+token from the redirect URL, reject external/backslash/control-character
+callbacks, and return `private, no-store` plus
+`Referrer-Policy: no-referrer`. Do not place access or refresh tokens in a
+protected-route fragment: middleware runs before browser session hydration and
+may preserve those credentials on the login URL. Do not log, screenshot,
+persist, or use this controlled QA path as a routine production login flow.
+
 ## Consent Categories
 
 - `essential`: required for core site behavior.

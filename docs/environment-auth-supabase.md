@@ -83,6 +83,18 @@ Provisioning requires `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_
 
 Seeded scenario provisioning uses the same credential and service-role boundary with `PORTAL_TEST_SCENARIO_TARGET=local|staging`. It writes deterministic local/staging `[Agent Scenario]` contact, project, estimate, and quote records, then saves non-secret route IDs to `playwright/.auth/portal-scenarios.json`. Routine scenario browser gates read that file only.
 
+Controlled local/staging one-time sign-in uses
+`/login/callback?token_hash=...&callbackUrl=...`. The callback verifies only a
+Supabase `magiclink` token through the normal anon-key server client, requires
+the session cookie write to succeed, removes the token from the next URL, and
+accepts only a normalized same-origin callback path. Its responses remain
+`private, no-store` with `Referrer-Policy: no-referrer`. Never redirect an
+admin-generated action link straight to a protected page: middleware runs
+before a fragment session exists and can strand access/refresh tokens on the
+login URL. Never log, screenshot, or persist either token form. One-time QA
+links should be opened from a signed-out/private context and must remain a
+controlled local/staging tool rather than a routine production login flow.
+
 ## Creating Portal Users
 
 Use the invite script from the repo root:

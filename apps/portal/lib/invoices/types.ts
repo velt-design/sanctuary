@@ -38,3 +38,18 @@ export type QuoteInvoiceCreateResult = {
   alreadySent: boolean;
   sendError: string | null;
 };
+
+export type DepositInvoiceArtifactPreview = {
+  invoiceId: string;
+  invoiceRef: string;
+  subject: string;
+  html: string;
+  text: string | null;
+  recipients: {
+    to: string[];
+    cc: string[];
+    bcc: string[];
+  };
+  attachmentNames: string[];
+  source: 'prepared' | 'prospective';
+};

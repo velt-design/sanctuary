@@ -18,8 +18,8 @@ const PROJECT_COMMAND_CENTRE_FIXTURE_PATH = '/qa/project-command-centre-fixture'
 const COMMERCIAL_WORKFLOW_FIXTURE_PATH = '/qa/commercial-workflow-fixture';
 const PROJECT_PAGE_SHELL_FIXTURE_PATH = '/qa/project-page-shell-fixture';
 const UI_FOUNDATION_FIXTURE_PATH = '/qa/ui-foundation-fixture';
-const EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH =
-  '/qa/email-preview-workbench-fixture';
+const EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH = '/qa/email-preview-workbench-fixture';
+const INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH = '/qa/invoice-artifact-preview-fixture';
 
 type CookieToSet = {
   name: string;
@@ -58,7 +58,8 @@ function isPortalQaFixtureInternalPath(path: string): boolean {
     path === COMMERCIAL_WORKFLOW_FIXTURE_PATH ||
     path === PROJECT_PAGE_SHELL_FIXTURE_PATH ||
     path === UI_FOUNDATION_FIXTURE_PATH ||
-    path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH
+    path === EMAIL_PREVIEW_WORKBENCH_FIXTURE_PATH ||
+    path === INVOICE_ARTIFACT_PREVIEW_FIXTURE_PATH
   );
 }
 
@@ -87,17 +88,27 @@ function isPricebookPath(path: string): boolean {
 function normalizePortalRoute(path: string): NormalizedRoute {
   if (path === '/staff/login' || path.startsWith('/staff/login/')) {
     const stripped = path.replace(/^\/staff\/login/, '');
-    return { action: 'redirect', pathname: stripped ? `/login${stripped}` : '/login' };
+    return {
+      action: 'redirect',
+      pathname: stripped ? `/login${stripped}` : '/login',
+    };
   }
 
   if (path === '/staff/pricebook' || path.startsWith('/staff/pricebook/')) {
     const stripped = path.replace(/^\/staff\/pricebook/, '');
-    return { action: 'redirect', pathname: stripped ? `/pricebook${stripped}` : '/pricebook', permanent: true };
+    return {
+      action: 'redirect',
+      pathname: stripped ? `/pricebook${stripped}` : '/pricebook',
+      permanent: true,
+    };
   }
 
   if (path === '/imports' || path.startsWith('/imports/')) {
     const stripped = path.replace(/^\/imports/, '');
-    return { action: 'rewrite', pathname: stripped ? `/admin/imports${stripped}` : '/admin/imports' };
+    return {
+      action: 'rewrite',
+      pathname: stripped ? `/admin/imports${stripped}` : '/admin/imports',
+    };
   }
 
   if (path === '/') {
@@ -231,7 +242,9 @@ export async function proxy(req: NextRequest) {
 
   if (isLoginPath) {
     if (accessState.kind === 'authenticated') {
-      return proxySupabase.apply(NextResponse.redirect(withLocalHref(req, getSafeCallbackUrl(req.nextUrl.searchParams.get('callbackUrl')))));
+      return proxySupabase.apply(
+        NextResponse.redirect(withLocalHref(req, getSafeCallbackUrl(req.nextUrl.searchParams.get('callbackUrl'))))
+      );
     }
 
     if (accessState.kind === 'no_access' || accessState.kind === 'lookup_failed') {
@@ -242,9 +255,9 @@ export async function proxy(req: NextRequest) {
             buildAccessStatusHref({
               state: toAccessStatusQueryState(accessState.kind),
               callbackUrl: req.nextUrl.searchParams.get('callbackUrl'),
-            }),
-          ),
-        ),
+            })
+          )
+        )
       );
     }
 
@@ -253,7 +266,9 @@ export async function proxy(req: NextRequest) {
 
   if (isAccessStatusPath) {
     if (accessState.kind === 'authenticated') {
-      return proxySupabase.apply(NextResponse.redirect(withLocalHref(req, getSafeCallbackUrl(req.nextUrl.searchParams.get('callbackUrl')))));
+      return proxySupabase.apply(
+        NextResponse.redirect(withLocalHref(req, getSafeCallbackUrl(req.nextUrl.searchParams.get('callbackUrl'))))
+      );
     }
 
     return proxySupabase.apply(buildNormalizedResponse(req, normalized));
@@ -271,9 +286,9 @@ export async function proxy(req: NextRequest) {
           buildAccessStatusHref({
             state: toAccessStatusQueryState(accessState.kind),
             callbackUrl: originalCallback,
-          }),
-        ),
-      ),
+          })
+        )
+      )
     );
   }
 

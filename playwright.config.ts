@@ -18,10 +18,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  reporter: [
-    ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }],
-  ],
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {
     baseURL,
     trace: 'on-first-retry',
@@ -58,7 +55,8 @@ export default defineConfig({
     },
     {
       name: 'portal-fixture',
-      testMatch: /portal\.(command-centre|commercial-workflow-fixture|drawing-workbench|email-preview-workbench|workbench-snapshot|workbench-fixture|workbench-performance|project-mutation-performance)\.spec\.ts/,
+      testMatch:
+        /portal\.(command-centre|commercial-workflow-fixture|drawing-workbench|email-preview-workbench|invoice-artifact-preview-fixture|workbench-snapshot|workbench-fixture|workbench-performance|project-mutation-performance)\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1600, height: 1000 },

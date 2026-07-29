@@ -120,6 +120,19 @@ describe('portal proxy', () => {
     );
   });
 
+  it('allows a signed-out one-time auth callback to reach its route handler', async () => {
+    setUnauthenticated();
+
+    const response = await proxy(
+      new NextRequest(
+        'https://example.com/login/callback?token_hash=one-time-secret&callbackUrl=%2Fstaff%2Fprojects',
+      ),
+    );
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('location')).toBeNull();
+  });
+
   it('allows authenticated access to protected routes', async () => {
     setAuthenticated('admin');
 

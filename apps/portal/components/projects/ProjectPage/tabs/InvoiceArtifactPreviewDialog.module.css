@@ -1,0 +1,235 @@
+.panel {
+  display: grid;
+  width: 100%;
+  max-height: min(92vh, 980px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+  font-family: var(--ui-font-body);
+}
+
+.header,
+.previewToolbar,
+.modeSwitch {
+  display: flex;
+  align-items: center;
+}
+
+.header {
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+  padding: var(--ui-space-5);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.eyebrow,
+.deliverySummary span {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-section);
+  line-height: var(--ui-line-height-heading);
+}
+
+.summary,
+.previewNotice,
+.status {
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.deliverySummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-4);
+  padding: var(--ui-space-4) var(--ui-space-5);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.deliverySummary div {
+  display: grid;
+  gap: var(--ui-space-1);
+  min-width: 0;
+}
+
+.deliverySummary strong {
+  overflow-wrap: anywhere;
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+}
+
+.recipientList {
+  display: grid;
+  gap: var(--ui-space-1);
+  margin: 0;
+}
+
+.recipientList div {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--ui-space-2);
+}
+
+.recipientList dt {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+}
+
+.recipientList dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ui-text-strong);
+  font-size: var(--ui-font-size-small);
+  font-weight: 700;
+}
+
+.previewNotice,
+.status {
+  padding: 0 var(--ui-space-5);
+}
+
+.previewNotice {
+  margin-top: var(--ui-space-4);
+}
+
+.status {
+  margin-block: var(--ui-space-4);
+}
+
+.modeSwitch {
+  flex-wrap: wrap;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-4) var(--ui-space-5);
+}
+
+.mode,
+.modeActive {
+  min-height: 44px;
+  padding: 0 var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-primary);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: var(--ui-font-size-small);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode:hover,
+.mode:focus-visible,
+.modeActive:focus-visible {
+  border-color: var(--ui-border-strong);
+  outline: none;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.modeActive {
+  border-color: var(--ui-action);
+  background: var(--ui-action);
+  color: var(--ui-action-foreground);
+}
+
+.previewBlock,
+.emailViewport,
+.textPreview {
+  min-height: 0;
+  margin: 0 var(--ui-space-5) var(--ui-space-5);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface-secondary);
+}
+
+.previewBlock {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: min(66vh, 720px);
+}
+
+.previewToolbar {
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-border);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.pdfFrame,
+.emailFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.emailViewport {
+  display: grid;
+  align-self: start;
+  width: calc(100% - (2 * var(--ui-space-5)));
+  height: min(62vh, 700px);
+  overflow: auto;
+}
+
+.emailViewportDesktop {
+  max-width: 760px;
+  justify-self: center;
+}
+
+.emailViewportNarrow {
+  width: min(390px, calc(100% - (2 * var(--ui-space-5))));
+  justify-self: center;
+}
+
+.textPreview {
+  height: min(62vh, 700px);
+  overflow: auto;
+  padding: var(--ui-space-4);
+  color: var(--ui-text);
+  font-family: var(--ui-font-body);
+  font-size: var(--ui-font-size-small);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.state {
+  padding: var(--ui-space-5);
+}
+
+@media (max-width: 760px) {
+  .panel {
+    max-height: 96vh;
+  }
+
+  .header {
+    align-items: flex-start;
+  }
+
+  .deliverySummary {
+    grid-template-columns: 1fr;
+  }
+
+  .emailViewport,
+  .emailViewportNarrow {
+    width: calc(100% - (2 * var(--ui-space-3)));
+    margin-inline: var(--ui-space-3);
+  }
+
+  .previewBlock,
+  .textPreview {
+    margin-inline: var(--ui-space-3);
+  }
+}
