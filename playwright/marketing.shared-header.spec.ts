@@ -226,11 +226,32 @@ test('the skip link moves keyboard focus to the public content boundary', async 
   await page.goto('/contact');
 
   const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+  const initialBounds = await skipLink.boundingBox();
+  expect(initialBounds).not.toBeNull();
+  expect(initialBounds!.y + initialBounds!.height).toBeLessThanOrEqual(0);
   await page.keyboard.press('Tab');
   await expect(skipLink).toBeFocused();
   await expect(skipLink).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.locator('#main-content')).toBeFocused();
+});
+
+test('the skip link stays out of layout if the stylesheet is unavailable', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await preparePage(page);
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() === 'stylesheet') {
+      await route.abort();
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto('/');
+
+  const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+  const bounds = await skipLink.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(0);
 });
 
 for (const viewport of [

@@ -126,10 +126,13 @@ body {
   transform: translateY(calc(-100% - 8px));
 }
 
+.skip-link:focus {
+  transform: translateY(0) !important;
+}
+
 .skip-link:focus-visible {
   outline: 2px solid #f4f4f0;
   outline-offset: -4px;
-  transform: translateY(0);
 }
 
 #main-content:focus {

@@ -119,7 +119,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <ConsentProvider>
-          <a className="skip-link" href="#main-content">
+          <a
+            className="skip-link"
+            href="#main-content"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: '1rem',
+              transform: 'translateY(calc(-100% - 8px))',
+            }}
+          >
             Skip to main content
           </a>
           <ConsentBanner />
