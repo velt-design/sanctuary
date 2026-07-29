@@ -109,7 +109,11 @@ describe('portal access helpers', () => {
   it('rejects unsafe callback URLs', () => {
     expect(getSafeCallbackUrl('https://evil.example/phish')).toBe('/dashboard');
     expect(getSafeCallbackUrl('//evil.example/phish')).toBe('/dashboard');
+    expect(getSafeCallbackUrl('/\\evil.example/phish')).toBe('/dashboard');
+    expect(getSafeCallbackUrl('/%5Cevil.example/phish')).toBe('/dashboard');
+    expect(getSafeCallbackUrl('/staff/projects%0d%0aLocation:%20https://evil.example')).toBe('/dashboard');
     expect(getSafeCallbackUrl('/staff/projects?q=deck')).toBe('/staff/projects?q=deck');
+    expect(getSafeCallbackUrl('/staff/projects#private-fragment')).toBe('/staff/projects');
   });
 
   it('builds login and access-status links with safe callbacks', () => {

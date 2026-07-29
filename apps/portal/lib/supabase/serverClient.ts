@@ -12,8 +12,9 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
   );
 }
 
-// Use this client for auth-bound server reads and writes that should honor user context.
-export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
+async function createSupabaseServerAuth(options: {
+  failOnCookieWrite: boolean;
+}): Promise<SupabaseClient> {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
   const key = requiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   const cookieStore = await cookies();
@@ -24,9 +25,15 @@ export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
+        if (options.failOnCookieWrite) {
+          cookiesToSet.forEach(({ name, value, options: cookieOptions }) => {
+            cookieStore.set({ name, value, ...cookieOptions });
+          });
+          return;
+        }
         try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set({ name, value, ...options });
+          cookiesToSet.forEach(({ name, value, options: cookieOptions }) => {
+            cookieStore.set({ name, value, ...cookieOptions });
           });
         } catch {
           // Ignore cookie set failures in read-only contexts.
@@ -34,4 +41,15 @@ export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
       },
     },
   });
+}
+
+// Use this client for auth-bound server reads and writes that should honor user context.
+export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
+  return createSupabaseServerAuth({ failOnCookieWrite: false });
+}
+
+// Auth exchanges must not report success unless the resulting session cookie
+// was durably attached to the response.
+export async function getSupabaseServerAuthCallback(): Promise<SupabaseClient> {
+  return createSupabaseServerAuth({ failOnCookieWrite: true });
 }

@@ -94,7 +94,16 @@ export function getSafeCallbackUrl(raw: string | null | undefined, fallback = '/
   const trimmed = raw.trim();
   if (!trimmed.startsWith('/')) return fallback;
   if (trimmed.startsWith('//')) return fallback;
-  return trimmed;
+  if (trimmed.includes('\\') || /%(?:5c|0d|0a|00)/i.test(trimmed)) return fallback;
+
+  try {
+    const base = new URL('https://portal.invalid');
+    const resolved = new URL(trimmed, base);
+    if (resolved.origin !== base.origin) return fallback;
+    return `${resolved.pathname}${resolved.search}`;
+  } catch {
+    return fallback;
+  }
 }
 
 export function currentRequestPathWithSearch(url: URL): string {
