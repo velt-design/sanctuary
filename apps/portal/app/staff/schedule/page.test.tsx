@@ -101,9 +101,12 @@ describe('StaffSchedulePage', () => {
   it('keeps Gantt axis code behind the Gantt view boundary', () => {
     const scheduleClient = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleClient.tsx'), 'utf8');
     const ganttView = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttView.tsx'), 'utf8');
+    const ganttModel = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttModel.ts'), 'utf8');
 
     expect(scheduleClient).not.toContain("from './ganttAxis'");
     expect(ganttView).toContain("from './ganttAxis'");
+    expect(ganttView).toContain("from './ScheduleGanttModel'");
+    expect(ganttModel).toContain("from './ganttAxis'");
   });
 
   it('keeps Board drag code behind the Board view boundary', () => {
@@ -147,9 +150,14 @@ describe('StaffSchedulePage', () => {
   it('keeps Board and Gantt views independent from the shared client entrypoint', () => {
     const boardView = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleBoardView.tsx'), 'utf8');
     const ganttView = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttView.tsx'), 'utf8');
+    const ganttModel = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttModel.ts'), 'utf8');
+    const ganttTimeline = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttTimeline.tsx'), 'utf8');
+    const ganttToolbar = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttToolbar.tsx'), 'utf8');
 
     expect(boardView).not.toContain("from './ScheduleClient'");
-    expect(ganttView).not.toContain("from './ScheduleClient'");
+    for (const source of [ganttView, ganttModel, ganttTimeline, ganttToolbar]) {
+      expect(source).not.toContain("from './ScheduleClient'");
+    }
   });
 
   it('keeps V2 and legacy board model dependencies separated', () => {
@@ -171,6 +179,8 @@ describe('StaffSchedulePage', () => {
     const siteVisitsShell = readFileSync(path.join(scheduleDir, 'SiteVisitsScheduleClient.tsx'), 'utf8');
     const boardView = readFileSync(path.join(scheduleDir, 'ScheduleBoardView.tsx'), 'utf8');
     const ganttView = readFileSync(path.join(scheduleDir, 'ScheduleGanttView.tsx'), 'utf8');
+    const ganttTimeline = readFileSync(path.join(scheduleDir, 'ScheduleGanttTimeline.tsx'), 'utf8');
+    const ganttToolbar = readFileSync(path.join(scheduleDir, 'ScheduleGanttToolbar.tsx'), 'utf8');
     const siteVisitsView = readFileSync(path.join(scheduleDir, 'SiteVisitsView.tsx'), 'utf8');
     const siteVisitCard = readFileSync(path.join(scheduleDir, 'UnscheduledSiteVisitCard.tsx'), 'utf8');
 
@@ -185,6 +195,14 @@ describe('StaffSchedulePage', () => {
     expect(ganttView).toContain('scheduleTimeline.module.css');
     expect(ganttView).not.toContain('scheduleBoard.module.css');
     expect(ganttView).not.toContain('scheduleSiteVisits.module.css');
+    expect(ganttTimeline).toContain('scheduleGantt.module.css');
+    expect(ganttTimeline).toContain('scheduleTimeline.module.css');
+    expect(ganttTimeline).not.toContain('scheduleBoard.module.css');
+    expect(ganttTimeline).not.toContain('scheduleSiteVisits.module.css');
+    expect(ganttToolbar).toContain('scheduleGantt.module.css');
+    expect(ganttToolbar).toContain('scheduleTimeline.module.css');
+    expect(ganttToolbar).not.toContain('scheduleBoard.module.css');
+    expect(ganttToolbar).not.toContain('scheduleSiteVisits.module.css');
 
     for (const source of [siteVisitsView, siteVisitCard]) {
       expect(source).toContain('scheduleSiteVisits.module.css');

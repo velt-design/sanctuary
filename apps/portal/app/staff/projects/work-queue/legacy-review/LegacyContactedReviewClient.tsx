@@ -49,6 +49,10 @@ function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
+function isWorkItemsUnavailableError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 503;
+}
+
 export default function LegacyContactedReviewClient() {
   const queryClient = useQueryClient();
   const host = useMemo(
@@ -70,13 +74,18 @@ export default function LegacyContactedReviewClient() {
     queryFn: () => fetchLegacyContactedReview({ scope, cursor, limit: 50 }),
     staleTime: 30_000,
     retry: (failureCount, error) => (
-      !isAccessEndingError(error) && failureCount < 2
+      !isAccessEndingError(error)
+      && !isWorkItemsUnavailableError(error)
+      && failureCount < 2
     ),
   });
   const unavailable = isAccessEndingError(query.error);
-  const reviewData = unavailable ? null : query.data;
+  const notReady = isWorkItemsUnavailableError(query.error);
+  const reviewData = unavailable || notReady ? null : query.data;
   const state = unavailable
     ? 'unavailable'
+    : notReady
+      ? 'not-ready'
     : query.error
       ? reviewData
         ? 'refresh-failed'
@@ -124,27 +133,31 @@ export default function LegacyContactedReviewClient() {
         )}
       />
 
-      <AlertBanner tone="info" title="This is a controlled migration">
-        Recommendations are evidence only. Nothing is contacted, archived, deleted, or changed until an administrator confirms one reviewed project.
-      </AlertBanner>
+      {state !== 'not-ready' ? (
+        <>
+          <AlertBanner tone="info" title="This is a controlled migration">
+            Recommendations are evidence only. Nothing is contacted, archived, deleted, or changed until an administrator confirms one reviewed project.
+          </AlertBanner>
 
-      <section className={styles.toolbar} aria-label="Legacy review controls">
-        <Select
-          label="Projects shown"
-          value={scope}
-          onChange={(event) => changeScope(event.target.value as LegacyContactedScope)}
-        >
-          <option value="due">Due for review</option>
-          <option value="all">All unreviewed Contacted projects</option>
-        </Select>
-        {reviewData ? (
-          <dl className={styles.summary}>
-            <div><dt>Due</dt><dd>{reviewData.summary.due}</dd></div>
-            <div><dt>Unreviewed</dt><dd>{reviewData.summary.total}</dd></div>
-            <div><dt>Already archived</dt><dd>{reviewData.summary.archived}</dd></div>
-          </dl>
-        ) : null}
-      </section>
+          <section className={styles.toolbar} aria-label="Legacy review controls">
+            <Select
+              label="Projects shown"
+              value={scope}
+              onChange={(event) => changeScope(event.target.value as LegacyContactedScope)}
+            >
+              <option value="due">Due for review</option>
+              <option value="all">All unreviewed Contacted projects</option>
+            </Select>
+            {reviewData ? (
+              <dl className={styles.summary}>
+                <div><dt>Due</dt><dd>{reviewData.summary.due}</dd></div>
+                <div><dt>Unreviewed</dt><dd>{reviewData.summary.total}</dd></div>
+                <div><dt>Already archived</dt><dd>{reviewData.summary.archived}</dd></div>
+              </dl>
+            ) : null}
+          </section>
+        </>
+      ) : null}
 
       {message ? (
         <AlertBanner tone="info" title="Project review saved">{message}</AlertBanner>
@@ -166,6 +179,13 @@ export default function LegacyContactedReviewClient() {
 
       {state === 'pending' ? (
         <LoadingSkeleton rows={8} columns={4} label="Loading old Contacted projects" />
+      ) : state === 'not-ready' ? (
+        <DataStatePanel
+          state="unavailable"
+          title="Legacy review not ready"
+          description="Project Work V2 is not available in this environment. No old project has been changed."
+          onRetry={() => void query.refetch()}
+        />
       ) : state === 'error' || state === 'unavailable' ? (
         <DataStatePanel
           state={state === 'unavailable' ? 'unavailable' : 'error'}

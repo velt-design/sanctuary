@@ -139,53 +139,44 @@
 
 .gantt {
   container: gantt / inline-size;
+  box-sizing: border-box;
   padding: 14px;
   flex: 1;
+  width: 100%;
+  max-width: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.ganttControls {
+.ganttToolbar {
+  display: grid;
+  min-width: 0;
+  margin-bottom: 8px;
+  border: var(--ui-border-width) solid var(--ui-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-elevated);
+}
+
+.ganttPlanningRow,
+.ganttDisplayRow {
+  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.ganttControlsLeft,
-.ganttControlsRight {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
+  padding: 8px 10px;
+}
+
+.ganttPlanningRow {
   flex-wrap: wrap;
-  min-width: 0;
 }
 
-.ganttControlsLeft {
-  flex: 1 1 auto;
-}
-
-.ganttControlsRight {
-  flex: 0 0 auto;
-  margin-left: auto;
-  justify-content: flex-end;
-}
-
-.ganttDensityControl {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--ui-text-muted);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.ganttDensityLabel {
-  font-weight: 700;
+.ganttDisplayRow {
+  min-height: 42px;
+  flex-wrap: wrap;
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
 }
 
 .ganttDensitySelect {
@@ -208,9 +199,101 @@
 }
 
 .ganttMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   line-height: 1.2;
   color: var(--ui-text);
+  white-space: nowrap;
+}
+
+.ganttMetaLabel {
+  margin-right: 2px;
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ganttLabeledControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ganttLabeledControl select {
+  margin: 0;
+}
+
+.ganttAttentionToggle {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 0;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-control);
+  overflow: hidden;
+}
+
+.ganttSegmentButton {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-right: var(--ui-border-width) solid var(--ui-border-strong);
+  padding: 6px 9px;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-strong);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ganttSegmentButton:last-child {
+  border-right: 0;
+}
+
+.ganttSegmentButton[aria-pressed='true'] {
+  background: var(--ui-surface-inverse);
+  color: var(--ui-text-inverse);
+}
+
+.ganttSegmentButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ganttSegmentButton:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: calc(-1 * var(--ui-border-width-emphasis));
+  box-shadow: none;
+}
+
+.ganttSegmentCount {
+  min-width: 18px;
+  padding: 2px 5px;
+  border: var(--ui-border-width) solid currentColor;
+  border-radius: var(--ui-radius-control);
+  font-size: 9px;
+  line-height: 1;
+  text-align: center;
+  opacity: 0.78;
 }
 
 .ganttControlSelect {
@@ -237,6 +320,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
   flex-wrap: wrap;
   color: var(--ui-text-muted);
 }
@@ -246,18 +330,14 @@
   letter-spacing: 0.015em;
 }
 
-@media (max-width: 1180px) {
-  .ganttControlsRight {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
-}
-
 .ganttScroll {
+  position: relative;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   overflow: auto;
+  overscroll-behavior: contain;
   padding-bottom: var(--scrollBottomBuffer);
   border: var(--ui-border-width) solid var(--ui-border);
   border-radius: var(--ui-radius-panel);
@@ -268,26 +348,26 @@
   position: relative;
   display: grid;
   --ganttHeaderH: 74px;
-  --ganttRowHGroup: 34px;
-  --ganttRowHItem: 28px;
-  --ganttBarH: 16px;
-  --ganttLeftPadYGroup: 6px;
-  --ganttLeftPadYItem: 4px;
+  --ganttRowHGroup: 38px;
+  --ganttRowHItem: 42px;
+  --ganttBarH: 18px;
+  --ganttLeftPadYGroup: 7px;
+  --ganttLeftPadYItem: 5px;
 }
 
 .ganttTable[data-density='compact'] {
-  --ganttRowHGroup: 34px;
-  --ganttRowHItem: 28px;
-  --ganttBarH: 16px;
-  --ganttLeftPadYGroup: 6px;
-  --ganttLeftPadYItem: 4px;
+  --ganttRowHGroup: 38px;
+  --ganttRowHItem: 42px;
+  --ganttBarH: 18px;
+  --ganttLeftPadYGroup: 7px;
+  --ganttLeftPadYItem: 5px;
 }
 
 .ganttTable[data-density='comfortable'] {
-  --ganttRowHGroup: 40px;
-  --ganttRowHItem: 34px;
-  --ganttBarH: 18px;
-  --ganttLeftPadYGroup: 8px;
+  --ganttRowHGroup: 44px;
+  --ganttRowHItem: 48px;
+  --ganttBarH: 22px;
+  --ganttLeftPadYGroup: 10px;
   --ganttLeftPadYItem: 6px;
 }
 
@@ -295,13 +375,25 @@
   display: contents;
 }
 
+.currentWeekWash {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--ui-action) 5%, transparent);
+  box-shadow:
+    inset 1px 0 color-mix(in srgb, var(--ui-action) 24%, transparent),
+    inset -1px 0 color-mix(in srgb, var(--ui-action) 24%, transparent);
+  pointer-events: none;
+}
+
 .todayColumnWash {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--ui-destructive) 5%, transparent);
+  background: color-mix(in srgb, var(--ui-destructive) 8%, transparent);
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
 }
 
 .weekendShade {
@@ -450,7 +542,7 @@
 .ganttGroupLabel {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -474,6 +566,7 @@
 }
 
 .ganttProjectText {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -505,13 +598,75 @@
 
 .ganttGroupCount {
   flex: 0 0 auto;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: var(--ui-radius-control);
   border: var(--ui-border-width) solid var(--ui-border);
   background: var(--ui-surface-secondary);
-  font-size: 11px;
-  font-weight: 900;
+  font-size: 10px;
+  font-weight: 800;
   color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.ganttGroupAttention,
+.ganttItemAttention {
+  flex: 0 0 auto;
+  border: var(--ui-border-width) solid var(--ui-status-warning-border);
+  border-left-width: var(--ui-status-edge);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-text-strong);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ganttGroupAttention {
+  padding: 3px 6px;
+}
+
+.ganttGroupEmpty {
+  flex: 0 0 auto;
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ganttProjectDetails {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+}
+
+.ganttProjectNameLine {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.15;
+}
+
+.ganttProjectMeta {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.ganttItemAttention {
+  padding: 3px 5px;
 }
 
 .ganttEmptyLabel {
@@ -550,7 +705,7 @@
   border-left-width: var(--ui-status-edge);
   background: var(--ui-surface-elevated);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 900;
   color: var(--ui-text);
   white-space: nowrap;
 }
@@ -604,13 +759,18 @@
   z-index: 2;
 }
 
+.ganttHolidayHoverZone:focus-visible {
+  outline: var(--ui-border-width-emphasis) solid var(--ui-focus-colour);
+  outline-offset: calc(-1 * var(--ui-border-width-emphasis));
+}
+
 .todayLine {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--ui-destructive) 68%, transparent);
-  z-index: 5;
+  width: 2px;
+  background: color-mix(in srgb, var(--ui-destructive) 78%, transparent);
+  z-index: 7;
   pointer-events: none;
 }
 
@@ -743,12 +903,29 @@
 .ganttBar[data-conflict='true'] {
   border-color: var(--ui-status-error-border);
   border-left: var(--ui-status-edge) solid var(--ui-status-error-border);
-  box-shadow: none;
+  box-shadow: inset var(--ui-status-edge) 0 0 var(--ui-status-error-border);
+}
+
+.ganttBar[data-attention='true']:not([data-conflict='true']) {
+  border-left-width: var(--ui-status-edge);
+  box-shadow: inset var(--ui-status-edge) 0 0 var(--ui-status-warning-border);
 }
 
 .ganttRowWrap[data-hovered='true'] .ganttBar {
   box-shadow: 0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
   filter: brightness(0.96);
+}
+
+.ganttRowWrap[data-hovered='true'] .ganttBar[data-conflict='true'] {
+  box-shadow:
+    inset var(--ui-status-edge) 0 0 var(--ui-status-error-border),
+    0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
+}
+
+.ganttRowWrap[data-hovered='true'] .ganttBar[data-attention='true']:not([data-conflict='true']) {
+  box-shadow:
+    inset var(--ui-status-edge) 0 0 var(--ui-status-warning-border),
+    0 0 0 var(--ui-border-width-emphasis) var(--ui-action);
 }
 
 .ganttBar:hover .ganttResizeHandle {
@@ -800,17 +977,116 @@
   gap: 2px;
 }
 
+.ganttEmptyState {
+  position: sticky;
+  left: 16px;
+  z-index: 8;
+  width: min(420px, calc(100% - 32px));
+  display: grid;
+  gap: 7px;
+  margin: 48px 16px;
+  border: var(--ui-border-width) solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-panel);
+  padding: 16px;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-strong);
+}
+
+.ganttEmptyState strong {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ganttEmptyState > span {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ganttEmptyState button {
+  justify-self: start;
+  min-height: 34px;
+  margin-top: 3px;
+}
+
+@container gantt (max-width: 960px) {
+  .ganttPlanningRow .ganttMeta {
+    flex-basis: 100%;
+  }
+
+  .ganttLegendInline {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
 @container gantt (max-width: 640px) {
-  .ganttControlsLeft,
-  .ganttControlsRight {
+  .gantt {
+    padding: 8px;
+  }
+
+  .ganttPlanningRow,
+  .ganttDisplayRow {
+    padding: 8px;
+  }
+
+  .ganttPlanningRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .ganttPlanningRow > .ganttMeta {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    min-height: 24px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ganttPlanningRow > .ganttLabeledControl {
+    grid-row: 2;
+    grid-column: 1;
     width: 100%;
+    justify-content: space-between;
+  }
+
+  .ganttPlanningRow > .ganttJumpButton {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .ganttPlanningRow > .ganttAttentionToggle {
+    grid-row: 3;
+    grid-column: 1;
+    width: 100%;
+  }
+
+  .ganttPlanningRow > .ganttAttentionToggle .ganttSegmentButton {
+    flex: 1 1 auto;
+  }
+
+  .ganttPlanningRow > details {
+    grid-row: 3;
+    grid-column: 2;
+    align-self: stretch;
+    margin-left: 0;
+  }
+
+  .ganttDisplayRow {
+    align-items: center;
   }
 
   .ganttControlSelect,
   .ganttDensitySelect,
   .ganttControlButton,
   .ganttJumpButton,
-  .ganttControlsRight > label {
+  .ganttSegmentButton,
+  .ganttLabeledControl select,
+  .ganttDisplayRow > label {
     min-height: 44px;
   }
 
@@ -823,14 +1099,52 @@
   .ganttTable[data-density='compact'],
   .ganttTable[data-density='comfortable'] {
     --ganttRowHGroup: 48px;
-    --ganttRowHItem: 48px;
+    --ganttRowHItem: 56px;
     --ganttBarH: 40px;
     --ganttLeftPadYGroup: 2px;
     --ganttLeftPadYItem: 4px;
   }
 
+  .ganttGroupCount,
+  .ganttGroupEmpty {
+    display: none;
+  }
+
+  .ganttGroupLabel {
+    gap: 6px;
+  }
+
+  .ganttItemAttention {
+    max-width: 62px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ganttEmptyState {
+    left: 10px;
+    width: min(420px, calc(100% - 20px));
+    margin: 24px 10px;
+    padding: 14px;
+  }
+
+  .ganttEmptyState button {
+    min-height: 44px;
+  }
+
   .ganttPopoverAction {
     min-height: 44px;
+  }
+}
+
+@container gantt (max-width: 360px) {
+  .ganttPlanningRow > .ganttAttentionToggle {
+    grid-column: 1 / -1;
+  }
+
+  .ganttPlanningRow > details {
+    grid-row: 4;
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 

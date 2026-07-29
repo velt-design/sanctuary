@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
 import { dispatchKeyboard, renderIntoDocument } from '../../../../../test/reactHarness';
 import ScheduleGanttView, { type ScheduleGanttViewProps } from './ScheduleGanttView';
+import { SCHEDULE_HIDDEN_CREWS_STORAGE_KEY } from './useScheduleCrewVisibility';
 
 const installer: Installer = {
   id: 'crew-alpha',
@@ -29,6 +30,48 @@ const scheduleItem: ScheduleItem = {
   jobStatus: 'not_started',
   updatedAt: '2026-04-01T00:00:00.000Z',
 };
+
+const secondInstaller: Installer = {
+  id: 'crew-beta',
+  name: 'Crew Beta',
+  color: '#1d4ed8',
+  active: true,
+  sortOrder: 1,
+};
+
+function makeScheduleItem(
+  id: string,
+  installerId: string,
+  overrides: Partial<ScheduleItem> = {},
+): ScheduleItem {
+  return {
+    ...scheduleItem,
+    id,
+    projectId: `project-${id}`,
+    estimateId: `estimate-${id}`,
+    installerId,
+    ...overrides,
+  };
+}
+
+function scheduleBarFor(
+  item: ScheduleItem,
+  projectName: string,
+): ScheduleGanttViewProps['scheduleBars'][number] {
+  const endDate = new Date(`${item.forecastEndExclusive ?? '2026-04-09'}T00:00:00.000Z`);
+  endDate.setUTCDate(endDate.getUTCDate() - 1);
+  return {
+    scheduleItemId: item.id,
+    installerId: item.installerId,
+    projectId: item.projectId,
+    estimateId: item.estimateId,
+    projectName,
+    status: 'DEPOSIT',
+    startDate: item.forecastStart ?? '2026-04-07',
+    endDate: endDate.toISOString().slice(0, 10),
+    durationHours: item.durationHoursOverride ?? 16,
+  };
+}
 
 function ganttProps(): ScheduleGanttViewProps {
   return {
@@ -67,14 +110,227 @@ function ganttProps(): ScheduleGanttViewProps {
   };
 }
 
+async function flushEffects() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 afterEach(() => {
   window.localStorage.removeItem('sp.schedule.ganttDensity');
   window.localStorage.removeItem('sp.schedule.ganttLabelWidth');
+  window.localStorage.removeItem(SCHEDULE_HIDDEN_CREWS_STORAGE_KEY);
   vi.restoreAllMocks();
   document.body.innerHTML = '';
 });
 
 describe('ScheduleGanttView accessibility and responsive behavior', () => {
+  it('defaults to eight-week visual zoom and groups planning controls semantically', () => {
+    const rendered = renderIntoDocument(<ScheduleGanttView {...ganttProps()} />);
+    const zoom = rendered.container.querySelector<HTMLSelectElement>('select[aria-label="Timeline scale"]');
+    const timelineControls = rendered.container.querySelector<HTMLElement>(
+      '[role="group"][aria-label="Timeline controls"]',
+    );
+    const viewOptions = rendered.container.querySelector<HTMLElement>(
+      '[role="group"][aria-label="View options"]',
+    );
+
+    expect(zoom?.value).toBe('8');
+    expect(Array.from(zoom?.options ?? []).map((option) => [option.value, option.textContent])).toEqual([
+      ['4', '4 weeks'],
+      ['8', '8 weeks'],
+      ['12', '12 weeks'],
+    ]);
+    expect(timelineControls?.contains(zoom ?? null)).toBe(true);
+    expect(timelineControls?.textContent).toContain('Today');
+    expect(timelineControls?.textContent).toContain('Needs attention');
+    expect(viewOptions?.querySelector('select[aria-label="Density"]')).not.toBeNull();
+    expect(viewOptions?.textContent).toContain('Show completed jobs');
+    expect(rendered.container.querySelector('[data-gantt-current-week="true"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('exposes the timeline as a named region and holidays as keyboard-reachable notes', () => {
+    const props = ganttProps();
+    props.holidays = [{ date: '2026-04-10', name: 'Regional Day', kind: 'holiday' }];
+
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const timeline = rendered.container.querySelector<HTMLElement>(
+      '[role="region"][aria-label="Gantt timeline"]',
+    );
+    const holiday = timeline?.querySelector<HTMLElement>(
+      '[role="note"][aria-label="Regional Day (10 Apr)"]',
+    );
+
+    expect(timeline).not.toBeNull();
+    expect(holiday).not.toBeNull();
+    expect(holiday?.tabIndex).toBe(0);
+    expect(holiday?.title).toBe('Regional Day (10 Apr)');
+
+    rendered.unmount();
+  });
+
+  it('reads the shared crew preference and restores a hidden crew without scheduling', async () => {
+    const betaItem = makeScheduleItem('schedule-beta', secondInstaller.id);
+    const props = ganttProps();
+    props.installers = [installer, secondInstaller];
+    props.laneItems = new Map([
+      [installer.id, [scheduleItem]],
+      [secondInstaller.id, [betaItem]],
+    ]);
+    props.visibleScheduleItems = [scheduleItem, betaItem];
+    props.scheduleBars = [
+      scheduleBarFor(scheduleItem, 'Alpha Pergola'),
+      scheduleBarFor(betaItem, 'Beta Pergola'),
+    ];
+    window.localStorage.setItem(SCHEDULE_HIDDEN_CREWS_STORAGE_KEY, JSON.stringify([secondInstaller.id]));
+
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    await flushEffects();
+
+    expect(rendered.container.querySelector(`[data-gantt-crew-id="${installer.id}"]`)).not.toBeNull();
+    expect(rendered.container.querySelector(`[data-gantt-crew-id="${secondInstaller.id}"]`)).toBeNull();
+    expect(rendered.container.querySelector(`[data-gantt-schedule-item-id="${betaItem.id}"]`)).toBeNull();
+    expect(
+      rendered.container.querySelector<HTMLInputElement>(`input[data-crew-id="${secondInstaller.id}"]`)?.checked,
+    ).toBe(false);
+    expect(
+      rendered.container.querySelector('summary[aria-label^="Filter crews"]')?.getAttribute('aria-label'),
+    ).toBe('Filter crews, 1 of 2 visible');
+
+    const showAll = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Show all',
+    );
+    act(() => showAll?.click());
+
+    expect(rendered.container.querySelector(`[data-gantt-crew-id="${secondInstaller.id}"]`)).not.toBeNull();
+    expect(rendered.container.querySelector(`[data-gantt-schedule-item-id="${betaItem.id}"]`)).not.toBeNull();
+    expect(window.localStorage.getItem(SCHEDULE_HIDDEN_CREWS_STORAGE_KEY)).toBeNull();
+    expect(props.onMovePin).not.toHaveBeenCalled();
+    expect(props.onResizePin).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('keeps a recovery action available when the shared crew preference hides every crew', async () => {
+    const betaItem = makeScheduleItem('schedule-beta', secondInstaller.id);
+    const props = ganttProps();
+    props.installers = [installer, secondInstaller];
+    props.laneItems = new Map([
+      [installer.id, [scheduleItem]],
+      [secondInstaller.id, [betaItem]],
+    ]);
+    props.visibleScheduleItems = [scheduleItem, betaItem];
+    props.scheduleBars = [
+      scheduleBarFor(scheduleItem, 'Alpha Pergola'),
+      scheduleBarFor(betaItem, 'Beta Pergola'),
+    ];
+    window.localStorage.setItem(
+      SCHEDULE_HIDDEN_CREWS_STORAGE_KEY,
+      JSON.stringify([installer.id, secondInstaller.id]),
+    );
+
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    await flushEffects();
+
+    const emptyState = rendered.container.querySelector<HTMLElement>(
+      '[role="status"][aria-label="Gantt empty state"]',
+    );
+    expect(rendered.container.querySelectorAll('[data-gantt-crew-id]')).toHaveLength(0);
+    expect(emptyState?.textContent).toContain('No crews visible');
+    expect(emptyState?.textContent).toContain('saved crew filter');
+
+    const recovery = Array.from(emptyState?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(
+      (button) => button.textContent?.trim() === 'Show all crews',
+    );
+    act(() => recovery?.click());
+
+    expect(rendered.container.querySelectorAll('[data-gantt-crew-id]')).toHaveLength(2);
+    expect(rendered.container.querySelector('[role="status"][aria-label="Gantt empty state"]')).toBeNull();
+    expect(props.onMovePin).not.toHaveBeenCalled();
+    expect(props.onResizePin).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('filters to deduplicated factual attention and recovers from an empty result', () => {
+    const attentionItem = makeScheduleItem('schedule-attention', installer.id, {
+      clientUpdateStatus: 'needed',
+      plannedCommitmentType: 'fixed_date',
+      plannedStart: '2026-04-07',
+      plannedFlexDays: 1,
+      driftDays: 4,
+    });
+    const cleanItem = makeScheduleItem('schedule-clean', installer.id, {
+      sortIndex: 1,
+      clientUpdateStatus: 'acknowledged',
+      driftDays: 1,
+      plannedCommitmentType: 'fixed_date',
+      plannedStart: '2026-04-07',
+      plannedFlexDays: 2,
+    });
+    const props = ganttProps();
+    props.laneItems = new Map([[installer.id, [attentionItem, cleanItem]]]);
+    props.visibleScheduleItems = [attentionItem, cleanItem];
+    props.scheduleBars = [
+      scheduleBarFor(attentionItem, 'Attention Pergola'),
+      scheduleBarFor(cleanItem, 'Clean Pergola'),
+    ];
+    props.scheduleIssues = [
+      { scheduleItemId: attentionItem.id, level: 'warning', message: 'Schedule warning' },
+      { scheduleItemId: attentionItem.id, level: 'error', message: 'Pinned conflict' },
+    ];
+
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const attentionButton = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Needs attention'),
+    );
+
+    expect(attentionButton?.getAttribute('aria-pressed')).toBe('false');
+    expect(attentionButton?.textContent).toContain('1');
+    expect(rendered.container.querySelector(`[data-gantt-schedule-item-id="${attentionItem.id}"]`)).not.toBeNull();
+    expect(rendered.container.querySelector(`[data-gantt-schedule-item-id="${cleanItem.id}"]`)).not.toBeNull();
+
+    act(() => attentionButton?.click());
+
+    expect(attentionButton?.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      rendered.container.querySelector(`[data-gantt-schedule-item-id="${attentionItem.id}"]`)?.getAttribute(
+        'data-needs-attention',
+      ),
+    ).toBe('true');
+    expect(rendered.container.querySelector(`[data-gantt-schedule-item-id="${cleanItem.id}"]`)).toBeNull();
+    expect(rendered.container.querySelectorAll('[data-gantt-schedule-item-id]')).toHaveLength(1);
+
+    rendered.unmount();
+
+    const cleanProps = ganttProps();
+    cleanProps.visibleScheduleItems = [{ ...scheduleItem, clientUpdateStatus: 'acknowledged' }];
+    cleanProps.laneItems = new Map([[installer.id, cleanProps.visibleScheduleItems]]);
+    const cleanRendered = renderIntoDocument(<ScheduleGanttView {...cleanProps} />);
+    const emptyAttentionButton = Array.from(cleanRendered.container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Needs attention'),
+    );
+    act(() => emptyAttentionButton?.click());
+
+    const emptyState = cleanRendered.container.querySelector<HTMLElement>(
+      '[role="status"][aria-label="Gantt empty state"]',
+    );
+    expect(emptyState?.textContent).toContain('Nothing needs attention');
+    expect(emptyState?.textContent).toContain('drift beyond the allowed flex');
+
+    const showAllJobs = Array.from(emptyState?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(
+      (button) => button.textContent?.trim() === 'Show all jobs',
+    );
+    act(() => showAllJobs?.click());
+
+    expect(cleanRendered.container.querySelector(`[data-gantt-crew-id="${installer.id}"]`)).not.toBeNull();
+    expect(cleanRendered.container.querySelector('[role="status"][aria-label="Gantt empty state"]')).toBeNull();
+    cleanRendered.unmount();
+  });
+
   it('shows planned and forecast timing together by default', () => {
     const rendered = renderIntoDocument(<ScheduleGanttView {...ganttProps()} />);
     const plannedToggle = Array.from(rendered.container.querySelectorAll('button')).find(
@@ -102,11 +358,19 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     const dialog = rendered.container.querySelector<HTMLElement>('[role="dialog"][aria-label="Gantt quick actions"]');
     expect(dialog).not.toBeNull();
     expect(dialog?.textContent).toContain('Open project');
+    expect(dialog?.getAttribute('aria-modal')).toBe('true');
+    expect(dialog?.getAttribute('data-modal-panel')).toBe('true');
 
     await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
     expect(document.activeElement).toBe(dialog);
+
+    const actionButtons = Array.from(dialog?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+    expect(actionButtons.length).toBeGreaterThan(1);
+    actionButtons[actionButtons.length - 1]?.focus();
+    dispatchKeyboard(actionButtons[actionButtons.length - 1], 'Tab');
+    expect(document.activeElement).toBe(actionButtons[0]);
 
     if (dialog) dispatchKeyboard(dialog, 'Escape');
     await act(async () => {
@@ -149,6 +413,10 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       pinButton?.click();
     });
     expect(props.onUnpinScheduleItem).toHaveBeenCalledWith(scheduleItem.id);
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(document.activeElement).toBe(bar);
 
     rendered.unmount();
   });
@@ -228,12 +496,199 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
     const scrollTo = vi.fn();
     Object.defineProperty(scroller, 'scrollTo', { configurable: true, value: scrollTo });
     const jumpButton = Array.from(rendered.container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Jump to today',
+      (button) => button.getAttribute('aria-label') === 'Jump to today',
     );
 
     act(() => jumpButton?.click());
 
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
+    rendered.unmount();
+  });
+
+  it('keeps commitment editing visible but removes pin actions for an in-progress locked job', () => {
+    const props = ganttProps();
+    const lockedItem = { ...scheduleItem, jobStatus: 'in_progress' as const };
+    props.visibleScheduleItems = [lockedItem];
+    props.laneItems = new Map([[installer.id, [lockedItem]]]);
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const bar = rendered.container.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
+
+    if (bar) dispatchKeyboard(bar, 'Enter');
+    const dialog = rendered.container.querySelector<HTMLElement>(
+      '[role="dialog"][aria-label="Gantt quick actions"]',
+    );
+    const labels = Array.from(dialog?.querySelectorAll<HTMLButtonElement>('button') ?? []).map(
+      (button) => button.textContent?.trim(),
+    );
+
+    expect(labels).toContain('Lock schedule...');
+    expect(labels).not.toContain('Pin...P');
+    expect(labels).not.toContain('UnpinP');
+
+    if (dialog) dispatchKeyboard(dialog, 'p');
+    expect(props.onOpenPinEdit).not.toHaveBeenCalled();
+    expect(props.onUnpinScheduleItem).not.toHaveBeenCalled();
+    expect(props.onOpenCommitmentEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it.each([
+    {
+      label: 'done',
+      scheduleMode: 'v2' as const,
+      item: { ...scheduleItem, jobStatus: 'done' as const },
+    },
+    {
+      label: 'legacy',
+      scheduleMode: 'legacy' as const,
+      item: scheduleItem,
+    },
+  ])('hides V2 schedule-edit actions and makes P a no-op for $label jobs', ({ scheduleMode, item }) => {
+    const props = ganttProps();
+    props.scheduleMode = scheduleMode;
+    props.visibleScheduleItems = [item];
+    props.laneItems = new Map([[installer.id, [item]]]);
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const bar = rendered.container.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
+
+    if (bar) dispatchKeyboard(bar, 'Enter');
+    const dialog = rendered.container.querySelector<HTMLElement>(
+      '[role="dialog"][aria-label="Gantt quick actions"]',
+    );
+    const labels = Array.from(dialog?.querySelectorAll<HTMLButtonElement>('button') ?? []).map(
+      (button) => button.textContent?.trim(),
+    );
+
+    expect(labels).toEqual(['Open projectEnter', 'Open project pack']);
+    if (dialog) dispatchKeyboard(dialog, 'p');
+    expect(props.onOpenPinEdit).not.toHaveBeenCalled();
+    expect(props.onUnpinScheduleItem).not.toHaveBeenCalled();
+    expect(props.onOpenCommitmentEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('preserves pointer move and resize callbacks across the extracted timeline boundary', () => {
+    const props = ganttProps();
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const itemRow = rendered.container.querySelector<HTMLElement>(
+      `[data-gantt-schedule-item-id="${scheduleItem.id}"]`,
+    );
+    const bar = itemRow?.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
+
+    act(() => {
+      bar?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100 }));
+    });
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 154, clientY: 100 }));
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
+    });
+
+    expect(props.onMovePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-09', 2);
+    expect(props.onResizePin).not.toHaveBeenCalled();
+
+    const resizeHandle = itemRow?.querySelector<HTMLElement>('[data-gantt-resize-handle="true"]');
+    act(() => {
+      resizeHandle?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100 }));
+    });
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 154, clientY: 100 }));
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
+    });
+
+    expect(props.onResizePin).toHaveBeenCalledWith(scheduleItem.id, '2026-04-07', 4);
+    rendered.unmount();
+  });
+
+  it.each([
+    {
+      label: 'updated timestamp',
+      item: { ...scheduleItem, updatedAt: '2026-04-01T01:00:00.000Z' },
+      bar: null,
+    },
+    {
+      label: 'forecast dates',
+      item: {
+        ...scheduleItem,
+        forecastStart: '2026-04-08',
+        forecastEndExclusive: '2026-04-10',
+      },
+      bar: {
+        ...ganttProps().scheduleBars[0],
+        startDate: '2026-04-08',
+        endDate: '2026-04-09',
+      },
+    },
+    {
+      label: 'job status',
+      item: { ...scheduleItem, jobStatus: 'in_progress' as const },
+      bar: null,
+    },
+  ])('cancels an active drag when authoritative $label changes during rerender', async ({ item, bar }) => {
+    const props = ganttProps();
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const ganttBar = rendered.container.querySelector<HTMLElement>(
+      '[role="button"][aria-haspopup="dialog"]',
+    );
+
+    act(() => {
+      ganttBar?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100 }));
+    });
+    expect(
+      rendered.container.querySelector('[data-gantt-schedule-item-id] [data-dragging="true"]'),
+    ).not.toBeNull();
+
+    rendered.rerender(
+      <ScheduleGanttView
+        {...props}
+        visibleScheduleItems={[item]}
+        laneItems={new Map([[installer.id, [item]]])}
+        scheduleBars={[bar ?? props.scheduleBars[0]]}
+      />,
+    );
+    await flushEffects();
+
+    expect(
+      rendered.container.querySelector('[data-gantt-schedule-item-id] [data-dragging="true"]'),
+    ).toBeNull();
+    expect(
+      rendered.container.querySelector<HTMLSelectElement>('select[aria-label="Timeline scale"]')?.disabled,
+    ).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 154, clientY: 100 }));
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 154, clientY: 100 }));
+    });
+
+    expect(props.onMovePin).not.toHaveBeenCalled();
+    expect(props.onResizePin).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('re-enables view controls when pointer interactions are cancelled', () => {
+    const props = ganttProps();
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const bar = rendered.container.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
+    const separator = rendered.container.querySelector<HTMLElement>('[role="separator"]');
+    const zoom = rendered.container.querySelector<HTMLSelectElement>('select[aria-label="Timeline scale"]');
+
+    act(() => {
+      bar?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100 }));
+    });
+    expect(zoom?.disabled).toBe(true);
+    act(() => window.dispatchEvent(new Event('pointercancel')));
+    expect(zoom?.disabled).toBe(false);
+    expect(props.onMovePin).not.toHaveBeenCalled();
+    expect(props.onResizePin).not.toHaveBeenCalled();
+
+    act(() => {
+      separator?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 260 }));
+    });
+    expect(zoom?.disabled).toBe(true);
+    act(() => window.dispatchEvent(new Event('blur')));
+    expect(zoom?.disabled).toBe(false);
+
     rendered.unmount();
   });
 
@@ -262,6 +717,27 @@ describe('ScheduleGanttView accessibility and responsive behavior', () => {
       rendered.unmount();
     },
   );
+
+  it('keeps the legacy Gantt readable without exposing V2 timing controls', () => {
+    const props = ganttProps();
+    props.scheduleMode = 'legacy';
+    const rendered = renderIntoDocument(<ScheduleGanttView {...props} />);
+    const bar = rendered.container.querySelector<HTMLElement>('[role="button"][aria-haspopup="dialog"]');
+
+    expect(bar).not.toBeNull();
+    expect(bar?.getAttribute('data-timing-adjustable')).toBe('false');
+    expect(rendered.container.querySelector('[data-gantt-resize-handle="true"]')).toBeNull();
+
+    act(() => {
+      bar?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 100 }));
+      window.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 180 }));
+      window.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 180 }));
+    });
+
+    expect(props.onMovePin).not.toHaveBeenCalled();
+    expect(props.onResizePin).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
 
   it('keeps narrow touch targets and reduced-motion transitions in the Gantt stylesheet', () => {
     const css = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/scheduleGantt.module.css'), 'utf8');

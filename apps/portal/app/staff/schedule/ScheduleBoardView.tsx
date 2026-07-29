@@ -1,8 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -13,34 +12,34 @@ import {
   KeyboardSensor,
   PointerSensor,
   pointerWithin,
-  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { ScheduleProjectSummary } from '@/lib/queries/schedule';
-import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
-import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import sharedStyles from './schedule.module.css';
 import boardStyles from './scheduleBoard.module.css';
 import timelineStyles from './scheduleTimeline.module.css';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
+import {
+  DowntimeCard,
+  formatScheduleBoardStatusLabel,
+  ScheduledJobCard,
+  type ScheduleBoardMenuAction,
+  UnscheduledJobCard,
+} from './ScheduleBoardCards';
+import ScheduleCrewFilter from './ScheduleCrewFilter';
 import { resolveBoardDropTarget, type BoardDragLane, type BoardDragPoint, type BoardDragRect, type BoardDropTarget } from './boardDrag';
 import { logScheduleDebug } from './scheduleDebug';
+import { useScheduleCrewVisibility } from './useScheduleCrewVisibility';
 
 const styles = { ...sharedStyles, ...timelineStyles, ...boardStyles };
 
-export type ScheduleBoardMenuAction = {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'danger';
-};
+export type { ScheduleBoardMenuAction } from './ScheduleBoardCards';
 
 export type ScheduleBoardDropDebug = {
   activeId: string;
@@ -142,37 +141,10 @@ function formatDateRange(startYmd: string, endYmd: string): string {
   return `${formatShortDate(startYmd)} → ${formatShortDate(endYmd)}`;
 }
 
-function formatDuration(hours: number): string {
-  if (!Number.isFinite(hours) || hours <= 0) return '—';
-  const days = hours / WORK_HOURS_PER_DAY;
-  const daysLabel = Number.isFinite(days) ? days.toFixed(days % 1 === 0 ? 0 : 1) : '—';
-  return `${daysLabel}d`;
-}
-
-function formatHours(hours: number): string {
-  if (!Number.isFinite(hours)) return '—';
-  const h = hours.toFixed(hours % 1 === 0 ? 0 : 1);
-  return `${h}h`;
-}
-
-function formatStatusLabel(status: string): string {
-  if (!status) return '—';
-  if (status.toUpperCase() === 'DOWNTIME') return 'Downtime';
-  const normalized = normalizeProjectStatus(status);
-  return projectStatusLabel(normalized.status);
-}
-
 function normalizeScheduleStatus(value: unknown): ScheduleItemStatus {
   const s = typeof value === 'string' ? value.trim().toUpperCase() : '';
   if (s === 'CONFIRMED' || s === 'IN_PROGRESS' || s === 'COMPLETED') return s as ScheduleItemStatus;
   return 'TENTATIVE';
-}
-
-function scheduleStatusLabel(status: ScheduleItemStatus): string {
-  if (status === 'CONFIRMED') return 'Confirmed';
-  if (status === 'IN_PROGRESS') return 'In progress';
-  if (status === 'COMPLETED') return 'Completed';
-  return 'Tentative';
 }
 
 function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemStatus {
@@ -183,19 +155,6 @@ function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemSt
   if (started) return 'IN_PROGRESS';
   if (raw === 'CONFIRMED' || item.locked) return 'CONFIRMED';
   return 'TENTATIVE';
-}
-
-function isLockedScheduleStatus(status: ScheduleItemStatus): boolean {
-  return status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
-}
-
-function titleCase(value: string): string {
-  return value
-    .replace(/[_-]+/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
-    .join(' ');
 }
 
 function hasPlannedCommitment(item: ScheduleItem): boolean {
@@ -305,6 +264,7 @@ function LaneDropZone({
         onMount?.(node);
       }}
       className={styles.laneBody}
+      data-board-lane-body={laneId}
       data-over={isOver ? 'true' : 'false'}
     >
       {children}
@@ -331,384 +291,6 @@ function UnscheduledDropZone({
     >
       {children}
     </div>
-  );
-}
-
-function JobActionsMenu({
-  actions,
-  ariaLabel,
-}: {
-  actions: ScheduleBoardMenuAction[];
-  ariaLabel?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-  const items = actions.filter((action) => action && typeof action.onClick === 'function');
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target || !ref.current) return;
-      if (!ref.current.contains(target)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  if (!items.length) return null;
-
-  return (
-    <div
-      ref={ref}
-      className={styles.menuWrap}
-      data-no-dnd="true"
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        type="button"
-        className={styles.kebab}
-        data-no-dnd="true"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={ariaLabel ?? 'Job actions'}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((value) => !value);
-        }}
-        title="Job actions"
-      >
-        ⋯
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className={styles.menu}
-          data-no-dnd="true"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {items.map((action, idx) => (
-            <button
-              key={`${action.label}-${idx}`}
-              type="button"
-              role="menuitem"
-              data-no-dnd="true"
-              className={cx(styles.menuItem, action.tone === 'danger' && styles.menuItemDanger)}
-              disabled={Boolean(action.disabled)}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (action.disabled) return;
-                setOpen(false);
-                window.setTimeout(() => action.onClick(), 0);
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (action.disabled) return;
-                setOpen(false);
-                window.setTimeout(() => action.onClick(), 0);
-              }}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function JobCardShell({
-  dragId,
-  title,
-  descriptor,
-  statusLabel,
-  durationLabel,
-  durationTitle,
-  scheduleStatus,
-  pinned,
-  onOpen,
-  dateLine,
-  extraBadges,
-  warning,
-  issueLevel,
-  dragProps,
-  draggable,
-  dragging,
-  menu,
-  cardRef,
-  dragHandleRef,
-  style,
-  dropTarget,
-}: {
-  dragId?: string;
-  title: string;
-  descriptor: string;
-  statusLabel: string;
-  durationLabel: string;
-  durationTitle: string;
-  scheduleStatus?: ScheduleItemStatus;
-  pinned?: boolean;
-  onOpen?: () => void;
-  dateLine?: string;
-  extraBadges?: ReactNode;
-  warning?: boolean;
-  issueLevel?: 'warning' | 'error';
-  dragProps?: Record<string, unknown>;
-  draggable?: boolean;
-  dragging?: boolean;
-  menu?: ReactNode;
-  cardRef: (node: HTMLElement | null) => void;
-  dragHandleRef?: (node: HTMLElement | null) => void;
-  style?: CSSProperties;
-  dropTarget?: boolean;
-}) {
-  const identity = (
-    <>
-      <span className={styles.jobTitle} title={title}>
-        {title}
-      </span>
-      <span className={styles.jobDescriptor} title={descriptor}>
-        {descriptor}
-      </span>
-    </>
-  );
-
-  return (
-    <div
-      ref={cardRef}
-      className={styles.jobCard}
-      style={style}
-      data-schedule-card-id={dragId}
-      data-drop-target={dropTarget ? 'true' : 'false'}
-      data-draggable={draggable ? 'true' : undefined}
-      data-dragging={dragging ? 'true' : undefined}
-      data-issue-level={issueLevel ?? (warning ? 'warning' : undefined)}
-    >
-      <div className={styles.jobTopRow}>
-        <div className={styles.jobMain}>
-          {onOpen ? (
-            <button
-              type="button"
-              className={styles.projectOpenButton}
-              data-no-dnd="true"
-              aria-label={`Open project ${title}`}
-              onClick={onOpen}
-            >
-              {identity}
-            </button>
-          ) : (
-            <div className={styles.jobIdentity}>{identity}</div>
-          )}
-        </div>
-
-        <div className={styles.jobRight}>
-          {draggable ? (
-            <button
-              ref={dragHandleRef}
-              type="button"
-              className={styles.dragHandle}
-              data-dragging={dragging ? 'true' : undefined}
-              {...(dragProps as any)}
-              aria-label={`Move ${title}`}
-              title={`Move ${title}`}
-            >
-              <span aria-hidden="true">Move</span>
-            </button>
-          ) : null}
-          {menu}
-        </div>
-      </div>
-
-      <div className={styles.badgesRow}>
-        <span className={styles.statusPill}>{statusLabel}</span>
-        <span className={styles.durationPill} title={durationTitle}>
-          {durationLabel}
-        </span>
-        {pinned ? (
-          <span className={styles.pinnedPill}>
-            <span className={styles.pinnedDot} aria-hidden="true" />
-            Pinned
-          </span>
-        ) : null}
-        {scheduleStatus ? <span className={styles.schedulePill}>{scheduleStatusLabel(scheduleStatus)}</span> : null}
-        {extraBadges}
-        {issueLevel === 'error' ? <span className={styles.warnBadge}>Conflict</span> : warning || issueLevel === 'warning' ? <span className={styles.warnBadge}>Warning</span> : null}
-      </div>
-
-      {dateLine ? <div className={styles.dateLine}>{dateLine}</div> : null}
-    </div>
-  );
-}
-
-function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
-  const router = useRouter();
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
-    id: job.id,
-    data: { kind: 'job' },
-  });
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.55 : 1,
-  } as CSSProperties;
-
-  return (
-    <JobCardShell
-      dragId={job.id}
-      title={job.projectName}
-      descriptor={job.descriptor}
-      statusLabel={formatStatusLabel(job.status)}
-      durationLabel={job.durationLabel}
-      durationTitle={job.durationTitle}
-      onOpen={() => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`)}
-      warning={job.warnings.length > 0}
-      dragProps={{ ...attributes, ...listeners }}
-      draggable
-      dragging={isDragging}
-      cardRef={(node) => setNodeRef(node as any)}
-      dragHandleRef={setActivatorNodeRef}
-      style={style}
-    />
-  );
-}
-
-function ScheduledJobCard({
-  id,
-  job,
-  scheduleStatus,
-  dateLine,
-  dropTarget,
-  menuActions,
-  pinned,
-  extraBadges,
-  issueLevel,
-  onMount,
-}: {
-  id: string;
-  job: SchedulableJob | null;
-  scheduleStatus: ScheduleItemStatus;
-  dateLine?: string;
-  dropTarget?: boolean;
-  menuActions: ScheduleBoardMenuAction[];
-  pinned?: boolean;
-  extraBadges?: ReactNode;
-  issueLevel?: 'warning' | 'error';
-  onMount?: (node: HTMLElement | null) => void;
-}) {
-  const router = useRouter();
-  const locked = isLockedScheduleStatus(scheduleStatus);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id,
-    disabled: locked,
-  });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
-  } as CSSProperties;
-
-  return (
-    <JobCardShell
-      dragId={id}
-      title={job?.projectName ?? 'Untitled project'}
-      descriptor={job?.descriptor ?? '—'}
-      statusLabel={formatStatusLabel(job?.status ?? '')}
-      durationLabel={job?.durationLabel ?? '—'}
-      durationTitle={job?.durationTitle ?? '—'}
-      scheduleStatus={scheduleStatus}
-      pinned={pinned}
-      extraBadges={extraBadges}
-      onOpen={job ? () => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`) : undefined}
-      dateLine={dateLine}
-      warning={Boolean(job?.warnings?.length)}
-      issueLevel={issueLevel}
-      dragProps={locked ? {} : { ...attributes, ...listeners }}
-      draggable={!locked}
-      dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} />}
-      cardRef={(node) => {
-        setNodeRef(node as any);
-        onMount?.(node);
-      }}
-      dragHandleRef={setActivatorNodeRef}
-      style={style}
-      dropTarget={dropTarget}
-    />
-  );
-}
-
-function DowntimeCard({
-  id,
-  item,
-  dateLine,
-  dropTarget,
-  menuActions,
-  issueLevel,
-  onMount,
-}: {
-  id: string;
-  item: ScheduleItem;
-  dateLine?: string;
-  dropTarget?: boolean;
-  menuActions: ScheduleBoardMenuAction[];
-  issueLevel?: 'warning' | 'error';
-  onMount?: (node: HTMLElement | null) => void;
-}) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
-  } as CSSProperties;
-
-  const durationHours =
-    typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-      ? item.durationHoursOverride
-      : typeof item.forecastDurationDays === 'number' && Number.isFinite(item.forecastDurationDays) && item.forecastDurationDays > 0
-        ? item.forecastDurationDays * WORK_HOURS_PER_DAY
-        : WORK_HOURS_PER_DAY;
-
-  const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-
-  return (
-    <JobCardShell
-      dragId={id}
-      title={reason}
-      descriptor={item.downtimeNote ?? 'Crew unavailable'}
-      statusLabel="Downtime"
-      durationLabel={formatDuration(durationHours)}
-      durationTitle={formatHours(durationHours)}
-      dateLine={dateLine}
-      issueLevel={issueLevel}
-      dragProps={{ ...attributes, ...listeners }}
-      draggable
-      dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} ariaLabel="Downtime actions" />}
-      cardRef={(node) => {
-        setNodeRef(node as any);
-        onMount?.(node);
-      }}
-      dragHandleRef={setActivatorNodeRef}
-      style={style}
-      dropTarget={dropTarget}
-    />
   );
 }
 
@@ -743,6 +325,35 @@ export default function ScheduleBoardView({
   const [overLaneId, setOverLaneId] = useState<string | null>(null);
   const [boardDropTarget, setBoardDropTarget] = useState<BoardDropTarget | null>(null);
   const lastDropTargetSignatureRef = useRef<string | null>(null);
+  const activeInstallers = useMemo(() => installers.filter((installer) => installer.active), [installers]);
+  const activeInstallerIds = useMemo(() => activeInstallers.map((installer) => installer.id), [activeInstallers]);
+  const { hiddenCrewIds, toggleCrew, hideCrews, showAllCrews } = useScheduleCrewVisibility(activeInstallerIds);
+  const visibleInstallers = useMemo(
+    () => activeInstallers.filter((installer) => !hiddenCrewIds.has(installer.id)),
+    [activeInstallers, hiddenCrewIds],
+  );
+  const emptyCrewIds = useMemo(
+    () => activeInstallers.filter((installer) => (laneItems.get(installer.id) ?? []).length === 0).map((installer) => installer.id),
+    [activeInstallers, laneItems],
+  );
+  const hiddenItemCount = useMemo(
+    () =>
+      activeInstallers.reduce(
+        (count, installer) => count + (hiddenCrewIds.has(installer.id) ? (laneItems.get(installer.id) ?? []).length : 0),
+        0,
+      ),
+    [activeInstallers, hiddenCrewIds, laneItems],
+  );
+  const crewFilterOptions = useMemo(
+    () =>
+      activeInstallers.map((installer) => ({
+        id: installer.id,
+        name: installer.name,
+        color: installer.color,
+        itemCount: (laneItems.get(installer.id) ?? []).length,
+      })),
+    [activeInstallers, laneItems],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -750,21 +361,19 @@ export default function ScheduleBoardView({
   );
 
   function buildBoardDragLanes(): BoardDragLane[] {
-    return installers
-      .filter((installer) => installer.active)
-      .map((installer) => {
-        const items = laneItems.get(installer.id) ?? [];
-        const itemRects: BoardDragLane['itemRects'] = {};
-        for (const item of items) {
-          itemRects[item.id] = rectFromElement(boardCardRefs.current.get(item.id));
-        }
-        return {
-          id: installer.id,
-          itemIds: items.map((item) => item.id),
-          rect: rectFromElement(laneBodyRefs.current.get(installer.id) ?? null),
-          itemRects,
-        };
-      });
+    return visibleInstallers.map((installer) => {
+      const items = laneItems.get(installer.id) ?? [];
+      const itemRects: BoardDragLane['itemRects'] = {};
+      for (const item of items) {
+        itemRects[item.id] = rectFromElement(boardCardRefs.current.get(item.id));
+      }
+      return {
+        id: installer.id,
+        itemIds: items.map((item) => item.id),
+        rect: rectFromElement(laneBodyRefs.current.get(installer.id) ?? null),
+        itemRects,
+      };
+    });
   }
 
   function resolveBoardDrop(event: DragMoveEvent | DragEndEvent): { target: BoardDropTarget; debug: ScheduleBoardDropDebug } {
@@ -847,11 +456,23 @@ export default function ScheduleBoardView({
     const edgePx = 80;
     const stepPx = 32;
 
+    let boardScrolledVertically = false;
     const board = boardScrollRef.current;
     if (board) {
       const br = board.getBoundingClientRect();
-      if (point.x < br.left + edgePx) board.scrollLeft -= stepPx;
-      else if (point.x > br.right - edgePx) board.scrollLeft += stepPx;
+      if (board.scrollWidth > board.clientWidth + 1) {
+        if (point.x < br.left + edgePx) board.scrollLeft -= stepPx;
+        else if (point.x > br.right - edgePx) board.scrollLeft += stepPx;
+      }
+      if (board.scrollHeight > board.clientHeight + 1) {
+        if (point.y < br.top + edgePx && board.scrollTop > 0) {
+          board.scrollTop -= stepPx;
+          boardScrolledVertically = true;
+        } else if (point.y > br.bottom - edgePx && board.scrollTop < board.scrollHeight - board.clientHeight) {
+          board.scrollTop += stepPx;
+          boardScrolledVertically = true;
+        }
+      }
     }
 
     const verticalTarget =
@@ -860,7 +481,7 @@ export default function ScheduleBoardView({
         : target.valid && target.kind === 'lane'
           ? laneBodyRefs.current.get(target.laneId) ?? null
           : null;
-    if (verticalTarget) {
+    if (verticalTarget && !boardScrolledVertically) {
       const vr = verticalTarget.getBoundingClientRect();
       if (point.y < vr.top + edgePx) verticalTarget.scrollTop -= stepPx;
       else if (point.y > vr.bottom - edgePx) verticalTarget.scrollTop += stepPx;
@@ -1009,35 +630,69 @@ export default function ScheduleBoardView({
         </aside>
 
         <section className={styles.mainPanel} aria-label="Installer lanes">
-          <div className={styles.legendRow} aria-label="Schedule controls">
-            {scheduleMode === 'v2' ? (
-              <>
-                <span className={styles.legendItem}>
-                  <span className={styles.legendSwatch} />
-                  Forecast
-                </span>
-                <span className={styles.legendItem}>
-                  <span className={styles.legendDot} aria-hidden="true" />
-                  Pinned
-                </span>
-                <span className={styles.legendItem}>
-                  <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
-                  Conflict
-                </span>
-              </>
-            ) : null}
-            <label className={cx(styles.toggleControl, styles.boardToggleControl)}>
-              <input
-                type="checkbox"
-                className={styles.toggleCheckbox}
-                checked={showCompleted}
-                onChange={(e) => onShowCompletedChange(e.target.checked)}
+          <div className={cx(styles.legendRow, styles.boardControls)} aria-label="Schedule controls">
+            <div className={styles.boardLegend}>
+              {scheduleMode === 'v2' ? (
+                <>
+                  <span className={styles.legendItem}>
+                    <span className={styles.legendSwatch} />
+                    Forecast
+                  </span>
+                  <span className={styles.legendItem}>
+                    <span className={styles.legendDot} aria-hidden="true" />
+                    Pinned
+                  </span>
+                  <span className={styles.legendItem}>
+                    <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
+                    Conflict
+                  </span>
+                </>
+              ) : null}
+              <label className={cx(styles.toggleControl, styles.boardToggleControl)}>
+                <input
+                  type="checkbox"
+                  className={styles.toggleCheckbox}
+                  checked={showCompleted}
+                  onChange={(e) => onShowCompletedChange(e.target.checked)}
+                />
+                Show completed jobs
+              </label>
+            </div>
+            {activeInstallers.length > 0 ? (
+              <ScheduleCrewFilter
+                crews={crewFilterOptions}
+                hiddenCrewIds={hiddenCrewIds}
+                hiddenItemCount={hiddenItemCount}
+                emptyCrewIds={emptyCrewIds}
+                disabled={Boolean(activeDragId)}
+                onToggleCrew={toggleCrew}
+                onHideCrews={hideCrews}
+                onShowAllCrews={showAllCrews}
               />
-              Show completed jobs
-            </label>
+            ) : null}
           </div>
-          <div className={styles.lanes} ref={boardScrollRef}>
-            {installers.filter((installer) => installer.active).map((installer) => {
+          <div
+            className={styles.lanes}
+            ref={boardScrollRef}
+            data-board-lanes="true"
+            data-visible-crew-count={visibleInstallers.length}
+          >
+            {visibleInstallers.length === 0 ? (
+              <div className={styles.allCrewsHidden}>
+                <p className={styles.emptyLaneTitle}>
+                  {activeInstallers.length === 0 ? 'No active crews available' : 'All crews are hidden'}
+                </p>
+                {activeInstallers.length > 0 ? (
+                  <>
+                    <p className={styles.emptyLaneHint}>Choose crews from the filter or show everyone again.</p>
+                    <button type="button" className={styles.showAllCrewsButton} onClick={showAllCrews}>
+                      Show all crews
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {visibleInstallers.map((installer) => {
               const items = laneItems.get(installer.id) ?? [];
               const ids = items.map((item) => item.id);
               const laneIsOver = overLaneId === installer.id && Boolean(activeDragId);
@@ -1053,6 +708,7 @@ export default function ScheduleBoardView({
               const nextAvailableCandidate = maxEnd ? nextWorkdayAfter(maxEnd) : null;
               const computedNextAvailable = nextAvailableCandidate && nextAvailableCandidate < today ? today : nextAvailableCandidate;
               const nextAvailable = scheduleMode === 'v2' ? nextAvailableByInstallerId.get(installer.id) ?? computedNextAvailable : computedNextAvailable;
+              const issueCount = ids.reduce((count, id) => count + (issueLevelByScheduleId.has(id) ? 1 : 0), 0);
 
               const cards: ReactNode[] = [];
               for (const id of ids) {
@@ -1131,6 +787,7 @@ export default function ScheduleBoardView({
                   className={styles.lane}
                   style={{ borderLeftColor: installer.color }}
                   data-over={laneIsOver ? 'true' : 'false'}
+                  data-board-lane-id={installer.id}
                   aria-label={`Lane ${installer.name}`}
                 >
                   <div className={styles.laneHeader}>
@@ -1141,10 +798,21 @@ export default function ScheduleBoardView({
                       </div>
                       {nextAvailable ? <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div> : null}
                     </div>
-                    <span className={styles.muted}>{ids.length}</span>
+                    <div className={styles.laneCounts}>
+                      <span className={styles.muted}>
+                        {ids.length} {ids.length === 1 ? 'item' : 'items'}
+                      </span>
+                      {issueCount > 0 ? <span className={styles.laneIssueCount}>{issueCount} attention</span> : null}
+                    </div>
                   </div>
                   <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                    <LaneDropZone laneId={installer.id} onMount={(node) => laneBodyRefs.current.set(installer.id, node)}>
+                    <LaneDropZone
+                      laneId={installer.id}
+                      onMount={(node) => {
+                        if (node) laneBodyRefs.current.set(installer.id, node);
+                        else laneBodyRefs.current.delete(installer.id);
+                      }}
+                    >
                       {ids.length ? (
                         <div className={styles.cardList}>
                           {cards}
@@ -1173,7 +841,7 @@ export default function ScheduleBoardView({
             <div className={styles.jobTitle}>{overlayJob.projectName}</div>
             <div className={styles.jobDescriptor}>{overlayJob.descriptor}</div>
             <div className={styles.badgesRow}>
-              <span className={styles.statusPill}>{formatStatusLabel(overlayJob.status)}</span>
+              <span className={styles.statusPill}>{formatScheduleBoardStatusLabel(overlayJob.status)}</span>
               <span className={styles.durationPill}>{overlayJob.durationLabel}</span>
             </div>
           </div>

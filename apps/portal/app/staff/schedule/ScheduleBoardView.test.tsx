@@ -2,6 +2,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduleItem } from '@/lib/types/scheduling';
 import ScheduleBoardView, { type ScheduleBoardViewProps } from './ScheduleBoardView';
+import { SCHEDULE_HIDDEN_CREWS_STORAGE_KEY } from './useScheduleCrewVisibility';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
 const routerPush = vi.fn();
@@ -151,6 +152,32 @@ function baseProps(overrides: Partial<ScheduleBoardViewProps> = {}): ScheduleBoa
   };
 }
 
+function crew(index: number): ScheduleBoardViewProps['installers'][number] {
+  return {
+    id: `crew_${index}`,
+    name: `Crew ${index}`,
+    color: index % 2 === 0 ? '#0f766e' : '#1d4ed8',
+    active: true,
+    sortOrder: index,
+    calendarRegion: 'Auckland',
+    baseAvailableDate: '2026-04-08',
+  };
+}
+
+function findCrewCheckbox(container: HTMLElement, crewName: string): HTMLInputElement | null {
+  return (
+    Array.from(container.querySelectorAll<HTMLLabelElement>('label')).find((label) =>
+      label.textContent?.includes(crewName),
+    )?.querySelector<HTMLInputElement>('input[type="checkbox"]') ?? null
+  );
+}
+
+async function flushBoardEffects() {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
 describe('ScheduleBoardView', () => {
   beforeEach(() => {
     routerPush.mockClear();
@@ -158,10 +185,12 @@ describe('ScheduleBoardView', () => {
     dndMocks.dragHandlePointerDown.mockClear();
     dndMocks.setActivatorNodeRef.mockClear();
     window.localStorage.removeItem('sp_schedule_debug');
+    window.localStorage.removeItem(SCHEDULE_HIDDEN_CREWS_STORAGE_KEY);
   });
 
   afterEach(() => {
     window.localStorage.removeItem('sp_schedule_debug');
+    window.localStorage.removeItem(SCHEDULE_HIDDEN_CREWS_STORAGE_KEY);
     vi.restoreAllMocks();
   });
 
@@ -276,6 +305,197 @@ describe('ScheduleBoardView', () => {
     expect(rendered.container.querySelector('section[aria-label="Installer lanes"]')).not.toBeNull();
     expect(rendered.container.querySelector('section[aria-label="Lane Crew Alpha"]')).not.toBeNull();
 
+    rendered.unmount();
+  });
+
+  it('renders nine active crews and can hide and restore an empty crew without scheduling', async () => {
+    const installers = Array.from({ length: 9 }, (_, index) => crew(index + 1));
+    const onDrop = vi.fn();
+    const rendered = renderIntoDocument(
+      <ScheduleBoardView
+        {...baseProps({
+          installers,
+          laneItems: new Map(installers.map((installer) => [installer.id, []])),
+          onDrop,
+        })}
+      />,
+    );
+    await flushBoardEffects();
+
+    expect(rendered.container.querySelectorAll('[data-board-lane-id]')).toHaveLength(9);
+    expect(rendered.container.querySelector('[data-board-lanes]')?.getAttribute('data-visible-crew-count')).toBe('9');
+    expect(rendered.container.querySelector('summary')?.getAttribute('aria-label')).toBe('Filter crews, 9 of 9 visible');
+
+    const crewNineCheckbox = findCrewCheckbox(rendered.container, 'Crew 9');
+    expect(crewNineCheckbox?.checked).toBe(true);
+    act(() => {
+      crewNineCheckbox?.click();
+    });
+
+    expect(rendered.container.querySelector('[data-board-lane-id="crew_9"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-board-lanes]')?.getAttribute('data-visible-crew-count')).toBe('8');
+    expect(onDrop).not.toHaveBeenCalled();
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
+    });
+    act(() => {
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: 'job_alpha', rect: { current: {} } },
+        over: { id: 'lane:crew_9' },
+      });
+    });
+    expect(onDrop).not.toHaveBeenCalled();
+
+    const showAll = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Show all',
+    );
+    act(() => {
+      showAll?.click();
+    });
+
+    expect(rendered.container.querySelector('[data-board-lane-id="crew_9"]')).not.toBeNull();
+    expect(rendered.container.querySelectorAll('[data-board-lane-id]')).toHaveLength(9);
+    expect(onDrop).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('reports schedule items hidden when a crew with scheduled work is filtered out', async () => {
+    const installers = [crew(1), crew(2)];
+    const scheduledJobs: ScheduleItem[] = [
+      {
+        id: 'job_hidden_one',
+        projectId: 'project_hidden_one',
+        estimateId: 'estimate_hidden_one',
+        installerId: 'crew_2',
+        sortIndex: 0,
+        scheduleStatus: 'TENTATIVE',
+        locked: false,
+        itemType: 'job',
+        forecastStart: '2026-04-08',
+        forecastEndExclusive: '2026-04-10',
+        forecastDurationDays: 2,
+        mode: 'floating',
+        updatedAt: '2026-04-07T00:00:00.000Z',
+      },
+      {
+        id: 'job_hidden_two',
+        projectId: 'project_hidden_two',
+        estimateId: 'estimate_hidden_two',
+        installerId: 'crew_2',
+        sortIndex: 1,
+        scheduleStatus: 'TENTATIVE',
+        locked: false,
+        itemType: 'job',
+        forecastStart: '2026-04-10',
+        forecastEndExclusive: '2026-04-11',
+        forecastDurationDays: 1,
+        mode: 'floating',
+        updatedAt: '2026-04-07T00:00:00.000Z',
+      },
+    ];
+    const rendered = renderIntoDocument(
+      <ScheduleBoardView
+        {...baseProps({
+          installers,
+          unscheduledJobs: [],
+          laneItems: new Map([
+            ['crew_1', []],
+            ['crew_2', scheduledJobs],
+          ]),
+          scheduleItemById: new Map(scheduledJobs.map((item) => [item.id, item])),
+        })}
+      />,
+    );
+    await flushBoardEffects();
+
+    act(() => {
+      findCrewCheckbox(rendered.container, 'Crew 2')?.click();
+    });
+
+    expect(rendered.container.querySelector('[data-board-lane-id="crew_2"]')).toBeNull();
+    expect(rendered.container.querySelector('summary')?.textContent).toContain('2 items hidden');
+    expect(rendered.container.textContent).toContain('1 crew hidden');
+    expect(rendered.container.textContent).toContain('2 items hidden');
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).not.toContain('Untitled project');
+    rendered.unmount();
+  });
+
+  it('keeps a recovery action available when every crew is hidden', async () => {
+    const installers = [crew(1), crew(2)];
+    const onDrop = vi.fn();
+    const rendered = renderIntoDocument(
+      <ScheduleBoardView
+        {...baseProps({
+          installers,
+          laneItems: new Map(installers.map((installer) => [installer.id, []])),
+          onDrop,
+        })}
+      />,
+    );
+    await flushBoardEffects();
+
+    act(() => {
+      findCrewCheckbox(rendered.container, 'Crew 1')?.click();
+      findCrewCheckbox(rendered.container, 'Crew 2')?.click();
+    });
+
+    expect(rendered.container.querySelectorAll('[data-board-lane-id]')).toHaveLength(0);
+    expect(rendered.container.textContent).toContain('All crews are hidden');
+    const recovery = Array.from(rendered.container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Show all crews',
+    );
+    expect(recovery).toBeTruthy();
+
+    act(() => {
+      recovery?.click();
+    });
+
+    expect(rendered.container.querySelectorAll('[data-board-lane-id]')).toHaveLength(2);
+    expect(rendered.container.textContent).not.toContain('All crews are hidden');
+    expect(onDrop).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
+  it('auto-scrolls the wrapped lane grid toward an offscreen row during drag', () => {
+    const rendered = renderIntoDocument(<ScheduleBoardView {...baseProps()} />);
+    const lanes = rendered.container.querySelector<HTMLElement>('[data-board-lanes]');
+    expect(lanes).not.toBeNull();
+    if (!lanes) return;
+
+    Object.defineProperties(lanes, {
+      clientHeight: { configurable: true, value: 300 },
+      clientWidth: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 900 },
+      scrollWidth: { configurable: true, value: 600 },
+    });
+    lanes.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: 600,
+        bottom: 300,
+        width: 600,
+        height: 300,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
+    });
+    act(() => {
+      dndMocks.latestContextProps.onDragMove({
+        active: {
+          id: 'job_alpha',
+          rect: { current: { initial: { left: 100, top: 270, width: 40, height: 40 } } },
+        },
+        over: null,
+      });
+    });
+
+    expect(lanes.scrollTop).toBe(32);
     rendered.unmount();
   });
 

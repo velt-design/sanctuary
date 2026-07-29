@@ -125,6 +125,17 @@ When touching fallback:
 
 Board, Gantt, and the legacy fallback render inside the full-width compact foundation canvas and shared searchable staff header without moving read or mutation ownership. Schedule view controls and page actions remain schedule-owned; global Projects/Contacts discovery remains separate from those controls. V2 load failures, scheduling issues, and action failures use shared accessible feedback. The dormant Site Visit surface retains its existing stale/error and dialog behavior for direct compatibility access. Schedule action dialogs use the shared focus trap and return focus to their trigger; active V2 locked-job unscheduling and downtime deletion use the extracted confirmation owner.
 
+On larger screens, Board crew lanes use a responsive wrapping grid instead of a horizontally scrolling strip. Up to four lanes share a row, so eight crews fit as two rows when the available Board width permits; narrower desktop containers reduce the column count and keep vertical scrolling inside the lane grid or lane body. The Unscheduled queue is narrower, and neither its cards nor crew cards create horizontal scroll. Wrapped-row drag movement retains semantic crew targets and auto-scrolls the owning grid toward offscreen rows.
+
+The crew filter is one browser-saved presentation preference shared by Board
+and Gantt. Staff can hide individual crews, hide empty crews, or restore
+everyone. Hidden work is counted as schedule items, and the filter remains
+available when every crew is hidden. This preference never changes installer
+activity, access, project links, Schedule data, or API/RPC commands. New crews
+default visible; malformed or unavailable browser storage fails open. The
+existing `sp.schedule.board.hiddenCrewIds.v1` storage key is retained so Board
+preferences carry into Gantt without resetting staff choices.
+
 This describes the current Schedule presentation. It does not authorize
 restyling another route or replacing Schedule-owned composition with generic
 Foundation layout.
@@ -137,6 +148,29 @@ Enter/Space. Dialog-level Enter/P shortcuts run only when the dialog itself is
 focused, so Enter on a quick-action button activates that button. Its
 crew-label separator is an ARIA-valued keyboard control, and motion respects
 the user's reduced-motion preference.
+
+Board cards group forecast dates and duration first, show routine project,
+Schedule and pin state as quieter metadata, and reserve bordered badges for
+commitment or attention states. `ScheduleBoardCards.tsx` owns this card/action
+presentation; `ScheduleCrewFilter.tsx` and `useScheduleCrewVisibility.ts` own
+the shared view-only crew preference.
+
+Gantt separates planning controls (range, scale, today, All jobs/Needs
+attention, and crews) from secondary view options (planned dates, completed
+jobs, density, and legend). Its default visual scale is eight weeks, while the
+Monday-aligned query, cache, and authoritative refresh range remains twelve
+weeks/84 days. Needs attention is a presentation filter over existing facts
+only: an attached Schedule warning/error, a required client update, or planned
+drift beyond the stored flex allowance. It does not create a new priority or
+Schedule state.
+
+The current week wash and today marker provide the primary timeline anchors.
+Crew groups show scheduled-item and attention counts, while project rows keep
+their forecast dates and duration beside the project name. `ScheduleGanttModel.ts`
+owns pure timeline/row/attention modelling, `ScheduleGanttToolbar.tsx` owns the
+grouped controls, and `ScheduleGanttTimeline.tsx` owns timeline presentation.
+`ScheduleGanttView.tsx` remains the interaction coordinator for drag/resize,
+scroll anchoring, focus return, and client-owned command callbacks.
 
 At narrow widths the Unscheduled queue stacks above one horizontally focused
 crew lane; collapsing it reclaims the queue body so the first crew lane can
@@ -182,12 +216,16 @@ npm run schedule:bundle-budget
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-The focused Schedule gate currently passes 43 files and 329 tests, including
+The focused Schedule gate currently passes 46 files and 361 tests, including
 atomic Gantt adjustment, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
-rollback/reconciliation, cache authority, Board control semantics, and Gantt
+rollback/reconciliation, cache authority, nine-crew Board rendering,
+crew-filter persistence/fail-open recovery, hidden-lane exclusion, wrapped-row
+drop geometry and auto-scroll, Board control semantics, and Gantt
 keyboard/responsive behavior. The authenticated non-mutating browser review
-covers Board at 1440/1280/1024/768/390, Gantt, Site Visits, action/create
+covers deterministic eight-crew desktop wrapping, Board internal overflow and
+filter persistence at
+1440/1280/1024/768/390, Gantt, Site Visits, action/create
 dialogs, project Tasks, 200% zoom, touch targets, focus return, reduced motion,
 document overflow, and browser/runtime errors. Record fresh bundle figures
 from `npm run schedule:bundle-budget`; do not raise the existing ceilings to

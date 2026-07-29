@@ -167,4 +167,24 @@ describe('resolveBoardDropTarget', () => {
       insertionIndex: 1,
     });
   });
+
+  it('uses pointer geometry for a wrapped second-row lane instead of a stale first-row overId', () => {
+    const target = resolveBoardDropTarget({
+      activeId: 'job-a',
+      sourceLaneId: 'crew-a',
+      overId: 'job-b',
+      point: { x: 120, y: 452 },
+      lanes: [
+        lane('crew-a', ['job-a', 'job-b'], 100),
+        lane('crew-c', ['job-c', 'job-d'], 420),
+      ],
+    });
+
+    expect(target).toMatchObject({
+      valid: true,
+      kind: 'lane',
+      laneId: 'crew-c',
+      insertionIndex: 1,
+    });
+  });
 });

@@ -1,5 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectWorkQueueEntry } from "./types";
+
+const modelBoundaryMocks = vi.hoisted(() => ({
+  listProjectWorkModelV2Ids: vi.fn(),
+}));
+
+vi.mock("./modelBoundary", () => ({
+  listProjectWorkModelV2Ids: modelBoundaryMocks.listProjectWorkModelV2Ids,
+}));
+
 import {
   composeProjectWorkQueue,
   getAuthoritativeProjectWorkQueue,
@@ -220,6 +229,11 @@ function emptyProjectsQuery() {
 }
 
 describe("getAuthoritativeProjectWorkQueue", () => {
+  beforeEach(() => {
+    modelBoundaryMocks.listProjectWorkModelV2Ids.mockReset();
+    modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(new Set());
+  });
+
   it("maps the richer V3 RPC contract and effective assignee metadata", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: [
@@ -282,7 +296,53 @@ describe("getAuthoritativeProjectWorkQueue", () => {
       p_now: now.toISOString(),
       p_limit: 500,
     });
-    expect(projects.range).toHaveBeenCalledWith(0, 499);
+  });
+
+  it("loads active V2 commercial candidates through direct model and state owners", async () => {
+    modelBoundaryMocks.listProjectWorkModelV2Ids.mockResolvedValue(
+      new Set([PROJECT_UUID]),
+    );
+    const stateEq = vi.fn().mockResolvedValue({
+      data: [{ project_id: PROJECT_UUID, state: "ACTIVE" }],
+      error: null,
+    });
+    const stateIn = vi.fn(() => ({ eq: stateEq }));
+    const stateSelect = vi.fn((_selection: string) => ({ in: stateIn }));
+    const projectOrder = vi.fn().mockResolvedValue({
+      data: [{
+        id: PROJECT_UUID,
+        name: "Direct boundary fixture",
+        pipeline_stage: "QUOTING",
+        ownerAssignment: [],
+        estimates: [],
+        quotes: [],
+      }],
+      error: null,
+    });
+    const projectIs = vi.fn(() => ({ order: projectOrder }));
+    const projectIn = vi.fn(() => ({ is: projectIs }));
+    const projectSelect = vi.fn((_selection: string) => ({ in: projectIn }));
+    const from = vi.fn((table: string) => {
+      if (table === "project_operational_states") return { select: stateSelect };
+      if (table === "projects") return { select: projectSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+      from,
+    } as any;
+
+    await expect(getAuthoritativeProjectWorkQueue(supabase)).resolves.toMatchObject({
+      entries: [],
+    });
+
+    expect(stateSelect).toHaveBeenCalledWith("project_id,state");
+    expect(stateIn).toHaveBeenCalledWith("project_id", [PROJECT_UUID]);
+    expect(stateEq).toHaveBeenCalledWith("state", "ACTIVE");
+    expect(projectIn).toHaveBeenCalledWith("id", [PROJECT_UUID]);
+    const select = String(projectSelect.mock.calls[0]?.[0] ?? "");
+    expect(select).not.toContain("project_work_model_versions");
+    expect(select).not.toContain("project_operational_states");
   });
 
   it("rejects an actionable row without command concurrency metadata", async () => {
