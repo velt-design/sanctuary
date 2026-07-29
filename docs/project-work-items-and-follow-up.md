@@ -4,7 +4,7 @@ Status: Approved product contract with a staging-verified repository implementat
 
 Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
-This document is intentionally UI-agnostic. It does not authorize the previously proposed Project Overview redesign.
+This document is intentionally UI-agnostic. The Project Overview redesign is now separately approved and governed by `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`.
 
 ## Current Repository State
 
@@ -496,12 +496,12 @@ Do not introduce a permanent bidirectional dual-write layer.
 4. Verify the read-only Contacted classifier, confirmation correction, full Work Queue, and Dashboard preview without changing shared customer data. Test one-project migration only against a separately approved disposable record.
 5. Promote application and migrations only through a separately approved production window, monitor reconciliation, and keep old projects isolated on the legacy model.
 6. Review and migrate existing projects only one at a time; retire legacy readers/tables only in later explicit slices.
-7. Separately decide whether to redesign the Project Overview UI against the trusted V2 contract.
+7. Implement the separately approved Project Overview redesign against the trusted V2 contract and current portal visual system.
 
 ## 18. Deferred Decisions
 
 The following remain outside this document:
 
-- Project Overview layout and visual direction;
+- Project Overview layout and visual direction, now owned by the approved implementation handover in `project-command-centre-architecture.md`;
 - future Site Visits reactivation; and
 - advanced task features not supported by observed operating needs.

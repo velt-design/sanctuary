@@ -1,11 +1,11 @@
 # Project Operational Command Centre Roadmap
 
 Status: Active programme tracker  
-Current stage: Stage 2 environment verification
+Current stage: Approved Overview V2 redesign handover
 Product definition: Complete  
-Implementation: Stages 1 and 2 are present in the current repository; Stage 2 remains Yellow pending environment gates
-Next action: Apply ordered migrations `20260720_000008_project_command_centre_stage2.sql` and `20260721_000001_project_command_single_owner.sql` in a disposable/staging Supabase environment, then run authenticated real-project Playwright with dedicated safe mutation and conflict projects
-Next implementation stage after those gates: Stage 3 - Lead-to-quote workstreams
+Implementation: Historical Stages 1 and 2 plus the staging-verified Project Work V2 foundation are present in the repository. The approved Overview V2 redesign is not implemented.
+Next action: Implement the largest safe first slice in `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`.
+Next implementation stage: Overview V2 composition and one Project Work surface using the current portal visual system.
 
 ## Index
 
@@ -26,23 +26,27 @@ This roadmap tells any future ChatGPT, Codex, or human contributor:
 - What must remain out of scope.
 - What evidence is required before advancing.
 
-Keep this document concise. Product detail belongs in `project-command-centre-v1.md`. Repository-grounded implementation detail belongs in `project-command-centre-architecture.md`.
+Keep this document concise. Current redesign detail belongs in the approved handover in `project-command-centre-architecture.md`; historical V1 detail remains in `project-command-centre-v1.md`.
 
 ## Document hierarchy
 
 1. `project-command-centre-vision.md` controls long-term direction and non-negotiable principles.
-2. `project-command-centre-v1.md` controls V1 product behaviour, scope, exclusions, and acceptance criteria.
-3. `project-command-centre-architecture.md` records verified repository ownership, implementation decisions, migrations, APIs, components, tests, and risks.
-4. This roadmap records programme stage and completion evidence.
-5. Individual Codex goals control one bounded stage or approved pull request.
+2. `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)` controls the current redesign and records its repository ownership, implementation boundaries, tests, and risks.
+3. `project-work-items-and-follow-up.md` and `project-work-items-technical-plan.md` control the current Project Work product and technical boundaries.
+4. `project-command-centre-v1.md` is the historical V1 baseline and retains only non-conflicting design/commercial truth rules.
+5. This roadmap records programme stage and completion evidence.
+6. Individual Codex goals control one bounded stage or approved pull request.
 
 When documents conflict:
 
-- Product behaviour follows the V1 specification.
+- Product behavior for the current redesign follows the approved V2 handover and Project Work contract.
+- Non-conflicting current-design and commercial precedence follows the V1 specification.
 - Repository facts follow the architecture document after Stage 0.
 - An implementation goal may not silently alter either.
 
 ## Stage sequence
+
+Stages 0-6 below record the historical V1 programme. The approved next slice is now **Overview V2 redesign**, which replaces the old instruction to begin Stage 3 by rendering four always-visible lead-to-quote workstream cards. Any future journey/readiness or full-lifecycle summary must use bounded server-owned evidence under the approved handover.
 
 ### Product definition
 
@@ -321,17 +325,18 @@ Not started.
 | Stage 0: Repository assessment | Complete | - | Repository-grounded architecture, ownership, boundary, risk, and Stage 1 sequence recorded against baseline `ea1641c6` |
 | Stage 1: Read-only shell | Complete in `8770198f` | Present in current repository history | Strict read model/API/query, Overview UI, legacy retirement, deterministic fixtures, focused/project/browser/performance tests, typecheck, lint, isolated production build, and unchanged bundle-budget assertions |
 | Stage 2: Ownership and primary action | Repository complete; environment gates pending | Present in current repository history | Canonical ownership/actions/audit migrations, selector, APIs, Overview/header/dashboard UI, automation persistence extraction, and legacy writer retirement implemented. Local evidence: 335/335 project tests, 18/18 fixture Playwright checks, full typecheck/lint, isolated 66-page production build, unchanged six-route bundle budgets, architecture/docs/dead-code guards. Executable smoke for both ordered migrations and authenticated real-project Playwright remain required. |
-| Stage 3: Lead-to-quote workstreams | Not started | - | - |
+| Stage 3: Lead-to-quote workstreams | Historical/deferred | - | Superseded as the next step by the approved Overview V2 handover |
 | Stage 4: Communication and timeline | Not started | - | - |
 | Stage 5: Exceptions and approvals | Not started | - | - |
 | Stage 6: Responsive QA and rollout | Not started | - | - |
+| Overview V2 redesign | Approved; not started | - | Approved implementation handover, current portal visual contract, one Project Work surface, and staging-verified V2 foundation |
 
 ## Operating rules
 
 - One stage per Codex goal unless the architecture document explicitly recommends smaller pull requests within that stage.
 - Use one reviewable pull request per implementation unit where practical.
 - Do not pull later-stage work forward without explicit approval.
-- Product rules may change only through an approved update to `project-command-centre-v1.md`.
+- Product rules may change only through an approved update to the current V2 handover or its named successor.
 - Repository architecture findings belong in `project-command-centre-architecture.md`.
 - Every completed stage updates this roadmap with status, PR, and completion evidence.
 - Every Codex prompt states:
@@ -354,7 +359,7 @@ Not started.
 - No implementation goal may make workstream state manually editable.
 - No implementation goal may duplicate canonical design, quote, price, communication, or issue state.
 - Do not weaken access, loading, local-first, performance, bundle, or historical-record guarantees to make a stage easier.
-- Stage 0 may recommend splitting an implementation stage, but may not broaden V1.
+- Historical Stage 0 could split an implementation stage but could not broaden V1. Current implementation may not broaden the approved V2 handover.
 
 ## Stage 1 handoff
 
@@ -367,7 +372,7 @@ Verification completed: selector/loader/route/component/access tests; 322 projec
 Known limitations: authenticated smoke and production performance could not be rerun locally because PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD were unavailable; the canonical build preflight was correctly blocked by the user's pre-existing port-3001 dev server, so the same production build and budget assertions ran against an isolated Next output directory
 Architecture document updates: Stage 0 repository contract completed and Stage 1 implementation/evidence recorded
 Roadmap updates at the time: Stage 0 and Stage 1 complete; Stage 2 baseline begins at `8770198f`
-Current next implementation stage after Stage 2 environment gates: Stage 3 - Lead-to-quote workstreams.
+Historical next stage at that checkpoint: Stage 3. Current next implementation stage: the approved Overview V2 redesign handover.
 ```
 
 ## Stage handoff template

@@ -1,10 +1,10 @@
 # Project Work Items Technical And Cutover Plan
 
-Status: The approved new-project V2 and Work Queue/legacy-review slices are staging-verified in the repository. Migration `20260729_000002` was applied in staging on 2026-07-29. The exact reviewed `20260729_000003` and `20260729_000004` files were rollback-rehearsed and replay-applied to positively identified staging on 2026-07-30; readiness, schema/body/permission verification, authenticated legacy reads, and a disposable new-V2-project command smoke passed. Existing projects remain legacy; only one explicitly reviewed project can ever cross through the guarded command. Production is unchanged, and the Project Overview visual redesign remains unapproved.
+Status: The approved new-project V2 and Work Queue/legacy-review slices are staging-verified in the repository. Migration `20260729_000002` was applied in staging on 2026-07-29. The exact reviewed `20260729_000003` and `20260729_000004` files were rollback-rehearsed and replay-applied to positively identified staging on 2026-07-30; readiness, schema/body/permission verification, authenticated legacy reads, and a disposable new-V2-project command smoke passed. Existing projects remain legacy; only one explicitly reviewed project can ever cross through the guarded command. Production is unchanged. The Project Overview redesign is separately approved under `project-command-centre-architecture.md`.
 
 Purpose: replace the competing legacy project-task systems with one small, durable work-item foundation without weakening lifecycle, commercial, local-first, authentication, public-token, or side-effect boundaries.
 
-This plan does not authorise the previously proposed Project Overview redesign. It supplies a trusted contract that the current Overview and future approved designs can consume.
+This plan supplies the trusted Project Work contract consumed by the separately approved Project Overview redesign. It does not own layout or visual direction.
 
 ## Current Repository State
 
@@ -14,7 +14,7 @@ The first staging application completed the DDL but PostgREST continued to repor
 
 The final authenticated command smoke created one clearly labelled synthetic V2 project through the staff API and proved the durable transition `OPEN r1 -> BLOCKED r2 -> exact replay r2 -> ARCHIVED/CANCELLED r3`. Work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks agreed; the archived project was omitted from active work and reported zero open/blocked items. The exact replay produced no duplicate work event. The temporary synthetic-QA role elevation required for the supported archive command was restored to `staff`. No confirmation, email/outbox, quote, invoice, legacy task/follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue record was created. The archived synthetic project/contact and append-only events intentionally remain as staging audit evidence; V2 exposes no hard-delete command.
 
-The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, and one-project legacy-review boundaries described below. One Project Work cache owner keeps Overview, snapshot, summary, Work Queue, and Dashboard reads coherent after accepted commands. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The current Overview consumes one V2 projection without a visual redesign. Work Queue owns the staff-wide operational list and Dashboard owns a compact preview; personal reminders remain separate. Rollout still requires a positively identified database rehearsal, authenticated non-destructive QA, full repository gates, and reviewed environment promotion.
+The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, and one-project legacy-review boundaries described below. One Project Work cache owner keeps Overview, snapshot, summary, Work Queue, and Dashboard reads coherent after accepted commands. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The current Overview consumes one V2 projection without a visual redesign. Work Queue owns the staff-wide operational list and Dashboard owns a compact preview; personal reminders remain separate. The positively identified staging rehearsal, authenticated non-destructive QA, and focused repository gates have passed; production promotion and monitoring remain separately controlled.
 
 Known boundaries and limitations before broad rollout:
 
@@ -919,7 +919,7 @@ The Contacted backlog review remains a separate admin-only migration operation. 
 Add the foundation, cut over all readers, process backlog, retire legacy, and design a new task presentation in one release.
 
 - Benefit: fastest visible end state.
-- Risk: combines data migration, behavioural change, and unapproved UI decisions.
+- Risk at the time: combined data migration, behavioural change, and then-unapproved UI decisions.
 - Maintainability: clean destination but unnecessarily risky now.
 
 ## 16. Implemented V2 Slices
@@ -980,6 +980,6 @@ Application implementation is approved. The following still require explicit env
 - every individual reviewed existing-project cutover;
 - calendar coverage beyond 2027;
 - later legacy retirement; and
-- any Project Overview visual redesign.
+- any Project Overview redesign outside the approved implementation handover.
 
-The Project Overview visual redesign remains unapproved and out of scope.
+The approved Project Overview redesign is governed by `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)` and remains outside this data-cutover plan.

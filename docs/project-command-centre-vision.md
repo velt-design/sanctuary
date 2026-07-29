@@ -5,9 +5,9 @@ Owner: Sanctuary Pergolas
 Applies to: Staff portal project experience  
 Related documents:
 
-- `project-command-centre-v1.md`: authoritative V1 product contract
+- `project-command-centre-v1.md`: historical V1 product baseline and retained non-conflicting design/commercial rules
 - `project-command-centre-roadmap.md`: programme stage and implementation sequence
-- `project-command-centre-architecture.md`: repository-grounded technical contract created during Stage 0
+- `project-command-centre-architecture.md`: repository-grounded technical contract and approved Overview V2 implementation handover
 
 ## Product purpose
 
@@ -158,8 +158,8 @@ The product has failed if:
 ## Document governance
 
 - This vision controls long-term product direction.
-- `project-command-centre-v1.md` controls the approved behaviour of V1.
-- `project-command-centre-architecture.md` records how the current repository implements the product contract.
+- `project-command-centre-v1.md` records the historical V1 baseline and retains non-conflicting design/commercial truth rules.
+- `project-command-centre-architecture.md` records how the current repository implements the product contract and its `Approved Overview V2 Implementation Handover (READ FIRST)` section controls the current redesign.
 - `project-command-centre-roadmap.md` records the current programme stage.
-- A Codex goal may implement one approved stage, but may not redefine this vision or the V1 product contract.
-- Product-rule changes require an explicit update to the V1 specification before implementation.
+- A Codex goal may implement one approved stage, but may not redefine this vision or the approved V2 handover.
+- Product-rule changes require an explicit update to the current authoritative handover or its successor before implementation.
