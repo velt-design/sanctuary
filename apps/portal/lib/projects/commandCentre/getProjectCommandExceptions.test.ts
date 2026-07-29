@@ -2,10 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 const dependencies = vi.hoisted(() => ({
   getProjectWorkProjection: vi.fn(),
+  getProjectWorkModelV2Ids: vi.fn(),
 }));
 
 vi.mock('@/lib/projects/workItems/repository', () => ({
   getProjectWorkProjection: dependencies.getProjectWorkProjection,
+}));
+
+vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
+  getProjectWorkModelV2Ids: dependencies.getProjectWorkModelV2Ids,
 }));
 
 import { getProjectCommandExceptions } from './getProjectCommandExceptions';
@@ -25,6 +30,7 @@ function queryResult(data: unknown) {
 describe('getProjectCommandExceptions', () => {
   it('reads the canonical pipeline stage without selecting a legacy project status column', async () => {
     dependencies.getProjectWorkProjection.mockReset();
+    dependencies.getProjectWorkModelV2Ids.mockReset().mockResolvedValue(new Set());
     const projectQuery = queryResult([{
       id: PROJECT_ID,
       name: 'Test project',
@@ -44,7 +50,7 @@ describe('getProjectCommandExceptions', () => {
     );
 
     expect(projectQuery.select).toHaveBeenCalledWith(
-      'id,name,pipeline_stage,created_at,workModel:project_work_model_versions(model_version)',
+      'id,name,pipeline_stage,created_at',
     );
     expect(result.projects).toHaveLength(1);
     expect(result.projects[0]).toMatchObject({
@@ -56,6 +62,7 @@ describe('getProjectCommandExceptions', () => {
 
   it('chunks related-table filters when the active project set is large', async () => {
     dependencies.getProjectWorkProjection.mockReset();
+    dependencies.getProjectWorkModelV2Ids.mockReset().mockResolvedValue(new Set());
     const projectRows = Array.from({ length: 205 }, (_, index) => ({
       id: `11111111-1111-4111-8111-${String(index).padStart(12, '0')}`,
       name: `Project ${index}`,
@@ -101,12 +108,12 @@ describe('getProjectCommandExceptions', () => {
       confirmedFacts: [],
       generatedAt: '2026-07-21T01:00:00.000Z',
     });
+    dependencies.getProjectWorkModelV2Ids.mockReset().mockResolvedValue(new Set([PROJECT_ID]));
     const projectQuery = queryResult([{
       id: PROJECT_ID,
       name: 'V2 project',
       pipeline_stage: 'NEW',
       created_at: '2026-07-21T00:00:00.000Z',
-      workModel: [{ model_version: 2 }],
     }]);
     const emptyQuery = queryResult([]);
     const client = {
@@ -152,13 +159,13 @@ describe('getProjectCommandExceptions', () => {
         reason: 'No current work is recorded.',
       },
     });
+    dependencies.getProjectWorkModelV2Ids.mockReset().mockResolvedValue(new Set([PROJECT_ID]));
     const projectQuery = queryResult([
       {
         id: PROJECT_ID,
         name: 'V2 project',
         pipeline_stage: 'NEW',
         created_at: '2026-07-21T00:00:00.000Z',
-        workModel: [{ model_version: 2 }],
       },
       {
         id: LEGACY_PROJECT_ID,

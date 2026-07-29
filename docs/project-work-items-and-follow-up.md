@@ -1,6 +1,6 @@
 # Project Work Items And Lead Follow-Up
 
-Status: Approved product contract with a repository-local V2 implementation. The forward migration is not applied or deployed.
+Status: Approved product contract with a repository implementation. Foundation migration `20260729_000002` is applied only in staging; its PostgREST cache repair and authenticated smoke are pending. Production is unchanged.
 
 Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
@@ -19,7 +19,7 @@ The current worktree implements the V2 foundation for newly created projects onl
 - Site Visits is hidden from normal navigation and its optional completion fact is manual; and
 - Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries.
 
-The migration `20260729_000002_project_work_items_v2.sql` is repository-local and unapplied. Until it is applied, the new staff project command fails closed rather than falling back to legacy creation. Existing projects receive no V2 marker or backfill and continue using the legacy model. No Contacted project was changed, classified, closed, archived, or added to the V2 queue.
+Migration `20260729_000002_project_work_items_v2.sql` was applied in staging on 2026-07-29. The first rehearsal exposed a hosted PostgREST schema-cache miss for its new marker/state tables, so project-detail reads failed before legacy/V2 classification. The application now reads the marker through the direct server-owned model boundary, and forward repair `20260729_000003_project_work_items_v2_schema_cache.sql` repairs the project relationships and reloads PostgREST after commit. Do not resume staging project/enquiry writers or call the rollout complete until the repair, a direct marker read, and an authenticated legacy-project snapshot pass. Existing projects receive no V2 marker or backfill and continue using the legacy model. No Contacted project was changed, classified, closed, archived, or added to the V2 queue.
 
 The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server queue emits at most one current row per project, preferring a durable recovery signal, then the highest-ranked eligible open item, one blocker, triage, or a due Waiting review; no dedicated staff queue page consumes it yet. Project-specific reads also compose specialist quote/design candidates through the Command Centre's canonical selectors. The SQL queue intentionally does not duplicate those selectors, so draft-quote and estimate specialist candidates remain absent until a deliberate server queue-composition contract is added. Confirmation history supports retained records, but the current staff command surface records confirmations only; correction/retraction remains an admin rollout prerequisite.
 

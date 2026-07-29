@@ -12,6 +12,13 @@ const migration = readFileSync(
   ),
   'utf8',
 );
+const schemaCacheRepair = readFileSync(
+  path.join(
+    process.cwd(),
+    'supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql',
+  ),
+  'utf8',
+);
 
 const bootstrap = String.raw`
 create role anon;
@@ -225,6 +232,8 @@ describe('Project Work Items V2 migration', () => {
     await database.exec(bootstrap);
     await database.exec(migration);
     await database.exec(migration);
+    await database.exec(schemaCacheRepair);
+    await database.exec(schemaCacheRepair);
     await database.exec(`
       insert into auth.users(id,email)
       values
@@ -1347,5 +1356,17 @@ describe('Project Work Items V2 source contract', () => {
       /grant (insert|update|delete|all)[^;]*project_work_items[^;]*authenticated/i,
     );
     expect(migration).toContain('LEGACY_PROJECT_WORK_WRITE_BLOCKED');
+  });
+
+  it('repairs project relationships and reloads PostgREST after commit', () => {
+    expect(schemaCacheRepair).toContain(
+      "conrelid = 'public.project_work_model_versions'::regclass",
+    );
+    expect(schemaCacheRepair).toContain(
+      "conrelid = 'public.project_operational_states'::regclass",
+    );
+    expect(schemaCacheRepair).toMatch(
+      /commit;\s*[\s\S]*notify pgrst, 'reload schema';\s*$/i,
+    );
   });
 });

@@ -5,6 +5,7 @@ import { computeEstimateEditability } from '@/lib/estimates/editability';
 import { buildQuoteHandoffPreviewFromEstimate } from '@/lib/quotes/estimateHandoffPreview';
 import { getProjectWorkProjection } from '@/lib/projects/workItems/repository';
 import { getProjectWorkDomainActions } from '@/lib/projects/workItems/getProjectWorkDomainActions';
+import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
@@ -27,7 +28,6 @@ import type {
 const PROJECT_COMMAND_CENTRE_SELECT = `
   id,
   pipeline_stage,
-  workModel:project_work_model_versions(model_version),
   ownerAssignment:project_owner_assignments(owner_key,updated_at),
   estimates(id,project_id,created_at,status,version),
   quotes(
@@ -52,11 +52,6 @@ type AnyRecord = Record<string, unknown>;
 function relationRows(value: unknown): AnyRecord[] {
   if (Array.isArray(value)) return value.filter(isRecord);
   return isRecord(value) ? [value] : [];
-}
-
-function usesV2ProjectWork(projectRow: AnyRecord): boolean {
-  return relationRows(projectRow.workModel)
-    .some((row) => Number(row.model_version) === 2);
 }
 
 function trimmedString(value: unknown): string | null {
@@ -266,11 +261,14 @@ export async function getProjectCommandCentre(
     return null;
   }
 
-  const projectResult = await supabase
-    .from('projects')
-    .select(PROJECT_COMMAND_CENTRE_SELECT)
-    .eq('id', projectUuid)
-    .maybeSingle();
+  const [projectResult, usesV2ProjectWork] = await Promise.all([
+    supabase
+      .from('projects')
+      .select(PROJECT_COMMAND_CENTRE_SELECT)
+      .eq('id', projectUuid)
+      .maybeSingle(),
+    isProjectWorkModelV2(supabase, projectUuid),
+  ]);
   if (projectResult.error) throw new Error(projectResult.error.message ?? 'Failed to load command centre');
   if (!projectResult.data) return null;
 
@@ -377,7 +375,7 @@ export async function getProjectCommandCentre(
     generatedAt: new Date().toISOString(),
     currentDesign,
   };
-  if (usesV2ProjectWork(projectRow)) {
+  if (usesV2ProjectWork) {
     const domainActions = await getProjectWorkDomainActions({
       supabase,
       projectId,

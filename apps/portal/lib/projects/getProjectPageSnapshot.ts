@@ -15,6 +15,7 @@ import {
 import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
 import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
+import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 
 const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
 
@@ -147,22 +148,6 @@ function relationRows(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
 }
 
-function projectWorkModelVersion(projectRow: unknown): 2 | null {
-  if (!projectRow || typeof projectRow !== 'object') return null;
-  const raw = (projectRow as Record<string, unknown>).workModel;
-  const candidates = Array.isArray(raw)
-    ? raw
-    : raw && typeof raw === 'object'
-      ? [raw]
-      : [];
-  return candidates.some((row) => (
-    row && typeof row === 'object'
-    && Number((row as Record<string, unknown>).model_version) === 2
-  ))
-    ? 2
-    : null;
-}
-
 async function loadProjectHeaderOwner(client: SupabaseClient, projectUuid: string): Promise<ProjectPageSnapshot['project']['owner']> {
   const assignment = await client
     .from('project_owner_assignments')
@@ -234,13 +219,14 @@ export async function getProjectPageSummary(
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
 
-  const [projectRes, owner] = await Promise.all([
+  const [projectRes, owner, usesV2ProjectWork] = await Promise.all([
     client
       .from('projects')
-      .select('*,contact:contacts(*),workModel:project_work_model_versions(model_version)')
+      .select('*,contact:contacts(*)')
       .eq('id', projectUuid)
       .maybeSingle(),
     loadProjectHeaderOwner(client, projectUuid),
+    isProjectWorkModelV2(client, projectUuid),
   ]);
   if (projectRes?.error) {
     logSnapshotError(diagnostics, 'project summary query failed', projectRes.error, 'projects');
@@ -249,7 +235,7 @@ export async function getProjectPageSummary(
   if (!projectRes?.data) return null;
 
   const summary = mapProjectSummary(projectRes.data, projectId);
-  const workModelVersion = projectWorkModelVersion(projectRes.data);
+  const workModelVersion = usesV2ProjectWork ? 2 : null;
   return {
     workModel: workModelVersion === 2 ? 'v2' : 'legacy',
     project: { ...summary.project, ...(owner ? { owner } : null) },
@@ -276,10 +262,10 @@ export async function getProjectPageSnapshot(
   // rows are embedded through their declared foreign keys in one PostgREST
   // request, avoiding a browser-open path with many HTTP round trips while
   // retaining auth-bound RLS on every relation.
-  const [projectRes, relatedRes, owner] = await Promise.all([
+  const [projectRes, relatedRes, owner, usesV2ProjectWork] = await Promise.all([
     client
       .from('projects')
-      .select('*,contact:contacts(*),workModel:project_work_model_versions(model_version)')
+      .select('*,contact:contacts(*)')
       .eq('id', projectUuid)
       .maybeSingle(),
     client
@@ -299,6 +285,7 @@ export async function getProjectPageSnapshot(
       .limit(PROJECT_NOTES_SNAPSHOT_LIMIT, { referencedTable: 'notes' })
       .maybeSingle(),
     loadProjectHeaderOwner(client, projectUuid),
+    isProjectWorkModelV2(client, projectUuid),
   ]);
 
   const projectRow = projectRes?.data ?? null;
@@ -313,7 +300,7 @@ export async function getProjectPageSnapshot(
   }
 
   const summary = mapProjectSummary(projectRow, projectId);
-  const workModelVersion = projectWorkModelVersion(projectRow);
+  const workModelVersion = usesV2ProjectWork ? 2 : null;
   const stage = summary.stage;
   const projectIdOut = summary.project.id;
   const nextActionDate = summary.nextActionDate;

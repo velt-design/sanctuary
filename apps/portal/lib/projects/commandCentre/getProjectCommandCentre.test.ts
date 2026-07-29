@@ -5,6 +5,7 @@ const commandCentreDependencies = vi.hoisted(() => ({
   getProjectCommandOperations: vi.fn(),
   getProjectWorkProjection: vi.fn(),
   getProjectWorkDomainActions: vi.fn(),
+  isProjectWorkModelV2: vi.fn(),
 }));
 
 vi.mock('./getProjectCommandOperations', () => ({
@@ -17,6 +18,10 @@ vi.mock('@/lib/projects/workItems/repository', () => ({
 
 vi.mock('@/lib/projects/workItems/getProjectWorkDomainActions', () => ({
   getProjectWorkDomainActions: commandCentreDependencies.getProjectWorkDomainActions,
+}));
+
+vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
+  isProjectWorkModelV2: commandCentreDependencies.isProjectWorkModelV2,
 }));
 
 import { getProjectCommandCentre } from './getProjectCommandCentre';
@@ -102,12 +107,10 @@ function quoteRow(overrides: Record<string, unknown> = {}) {
 function projectRow(
   estimates: unknown[],
   quoteVersions: unknown[] = [],
-  workModelVersion: 2 | null = null,
 ) {
   return {
     id: UUID.project,
     pipeline_stage: 'NEW',
-    workModel: workModelVersion === 2 ? { model_version: 2 } : null,
     estimates,
     quotes: quoteVersions.length ? [{ id: UUID.quoteParent, quote_ref: 'Q-0100', quoteVersions }] : [],
   };
@@ -151,6 +154,7 @@ describe('getProjectCommandCentre', () => {
         recoveryAction: null,
         specialistAction: null,
       });
+    commandCentreDependencies.isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
   it('returns a truthful new-lead state without loading estimate detail', async () => {
@@ -171,13 +175,15 @@ describe('getProjectCommandCentre', () => {
     expect(client.from).not.toHaveBeenCalledWith('estimates');
     const projectSelect = client.from.mock.results[0].value.select.mock.calls[0][0] as string;
     expect(projectSelect).toContain('pipeline_stage');
-    expect(projectSelect).toContain('workModel:project_work_model_versions(model_version)');
+    expect(projectSelect).not.toContain('project_work_model_versions');
     expect(projectSelect).not.toMatch(/pipeline_stage,\s*status,/);
+    expect(commandCentreDependencies.isProjectWorkModelV2).toHaveBeenCalledWith(client, UUID.project);
   });
 
   it('uses project work as the sole V2 operation owner without loading legacy operations', async () => {
+    commandCentreDependencies.isProjectWorkModelV2.mockResolvedValueOnce(true);
     const client = createClient(
-      projectRow([estimateRow()], [quoteRow()], 2),
+      projectRow([estimateRow()], [quoteRow()]),
       DETAIL,
     );
     const result = await getProjectCommandCentre(
@@ -213,8 +219,9 @@ describe('getProjectCommandCentre', () => {
   });
 
   it('fails closed when a marked V2 project has no project-work projection', async () => {
+    commandCentreDependencies.isProjectWorkModelV2.mockResolvedValueOnce(true);
     commandCentreDependencies.getProjectWorkProjection.mockResolvedValueOnce(null);
-    const client = createClient(projectRow([], [], 2));
+    const client = createClient(projectRow([]));
 
     await expect(
       getProjectCommandCentre(`proj_${UUID.project}`, client),

@@ -1,6 +1,6 @@
 # Project Work Items Technical And Cutover Plan
 
-Status: The approved new-project V2 slice is implemented in the current worktree. Its forward migration is not applied or deployed, existing projects remain legacy, and the Project Overview visual redesign remains unapproved.
+Status: The approved new-project V2 slice is implemented. Migration `20260729_000002` was applied in staging on 2026-07-29, but the first rehearsal exposed a PostgREST schema-cache reload failure. Forward repair `20260729_000003` is repository-local and unapplied. Existing projects remain legacy, production is unchanged, and the Project Overview visual redesign remains unapproved.
 
 Purpose: replace the competing legacy project-task systems with one small, durable work-item foundation without weakening lifecycle, commercial, local-first, authentication, public-token, or side-effect boundaries.
 
@@ -9,6 +9,8 @@ This plan does not authorise the previously proposed Project Overview redesign. 
 ## Current Repository State
 
 `20260729_000002_project_work_items_v2.sql` and the associated server/API adapters implement the coherent foundation for newly created projects. Staff creation uses `project_create_v2`; a newly created `New` project linked by its intake enquiry initializes the same model. A narrow creation-time check prevents an old project from being activated by a later enquiry insert. Existing projects are not marked, backfilled, or classified. The Contacted population is unchanged.
+
+The first staging application completed the DDL but PostgREST continued to report the new marker/state tables and their project relationship as absent from its schema cache (`PGRST205`/`PGRST200`). That made every project-detail snapshot fail at classification. The application now reads model markers through the direct `modelBoundary.ts` owner rather than embedded project relationships. Forward migration `20260729_000003_project_work_items_v2_schema_cache.sql` repairs either missing project foreign key and sends the PostgREST reload only after the DDL transaction commits. Staging is not rollout-ready until that repair is applied and both a direct marker read and an authenticated legacy-project snapshot pass.
 
 The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, and quote-reconciliation boundaries described below. The current Overview consumes the V2 projection without a visual redesign. The executable PGlite migration contract passes locally, but rollout still requires a positively identified database rehearsal, authenticated non-destructive QA, full repository gates, and reviewed environment promotion.
 
@@ -663,7 +665,7 @@ Review in bounded batches, beginning with the 57 due projects. Each decision use
 
 ### A. Hidden foundation
 
-Repository status: the foundation is implemented in the unapplied forward migration and server domain. The existing-project seed preview remains unimplemented.
+Repository status: the foundation is implemented and `20260729_000002` has entered staging rehearsal. The schema-cache repair and authenticated integrity smoke remain pending. The existing-project seed preview remains unimplemented.
 
 - Add tables, checks, indexes, RLS, commands, repositories, read models, and tests.
 - Add the per-project work-model marker and make legacy generators/projections respect it.
@@ -912,7 +914,7 @@ The current worktree implements the approved Option B foundation, ending before 
 12. admin-only archive/restore commands; and
 13. focused static, unit, component, route, and boundary tests.
 
-The migration is not applied or deployed. The slice establishes the repository write-to-read boundary for future new projects while leaving irreversible backlog classification, old-table deletion, the missing cohort-level shadow/classification report, a staff consumer for the team queue, confirmation correction, and visual redesign outside rollout.
+The foundation migration is applied only to staging and is not production-deployed. Its first rehearsal is incomplete until the follow-up schema-cache repair and authenticated smoke pass. The slice establishes the repository write-to-read boundary for future new projects while leaving irreversible backlog classification, old-table deletion, the missing cohort-level shadow/classification report, a staff consumer for the team queue, confirmation correction, and visual redesign outside rollout.
 
 ## 17. Current Schedule And Parallel-Work Boundary
 

@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-29 | Project Work V2                  | Promoted | Read the V2 marker through its direct server-owned boundary rather than a PostgREST embedded relationship. After new-table DDL, reload PostgREST outside the DDL transaction and prove both the direct marker read and an authenticated legacy-project snapshot before resuming project writers. A repository migration file is not evidence that the hosted API cache observed its tables or relationships. |
 | 2026-07-29 | Schedule Mutation Trust          | Promoted | Preview Schedule V2 commands without force, confirm only when the server identifies other moved jobs, re-preview immediately after approval, and force only when the reviewed impacts are unchanged. Every optimistic mutation owns an exact rollback checkpoint and one in-flight lifecycle; accepted state updates only the compatible active-view cache and invalidates incompatible snapshots. Gantt start-plus-duration adjustment is one atomic RPC-backed command, while ambiguous failures reconcile visibly. Database-revision protection against near-simultaneous staff edits remains follow-up work. |
 | 2026-07-29 | Portal UI Authority              | Promoted | Treat the checked-in and rendered portal UI as canonical. Portal and marketing have separate UI systems; catalogues and historical migration language are regression/history evidence, not authority for a broad restyle. Preserve active specialist and compatibility owners, and require explicit user approval for cross-route visual migrations or shared-token replacement. |
 | 2026-07-29 | Portal Operational Lists/Create  | Promoted | Keep ordinary Projects/Contacts discovery bounded and server-paged with response query identity; never present a retained page under a different scope/filter. Project creation is one server-owned stable-ID command: detect strong contact duplicates before writes, separate confirmed records from setup-automation state, preserve saved records when setup needs attention, and mark indeterminate writes or unverifiable cleanup as do-not-retry administrator reconciliation. |
@@ -3926,3 +3927,35 @@ Related docs/tests:
 `apps/portal/app/staff/schedule/ScheduleBoardView.test.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `npm run test:portal:schedule`
+
+### 2026-07-29 - Project Work V2 - Prove The Hosted API Cache
+
+Date: 2026-07-29
+Area: Project Work V2 migration, PostgREST schema cache, and project reads
+Status: Promoted
+Decision or mistake: The V2 migration created its tables and sent a schema
+reload notification inside the DDL transaction, while several readers
+classified projects through an embedded
+`projects -> project_work_model_versions` relationship. The first staging
+rehearsal left PostgREST reporting both the relationship and the new tables as
+missing from its schema cache, so every individual project snapshot failed
+before it could classify a legacy project.
+Why it mattered: Successful SQL execution did not prove that authenticated API
+reads could observe the new schema. One unavailable optional classification
+relationship took down the complete project-detail route.
+Current guardrail: Read the V2 marker through
+`projects/workItems/modelBoundary.ts`, not a PostgREST embedded relationship.
+For new-table rollout, commit DDL before sending the PostgREST reload
+notification. Before resuming project or enquiry writers, prove a direct marker
+read and an authenticated legacy-project snapshot against the exact target
+environment. If an idempotent `create table if not exists` migration may have
+met a partial table, add a forward relationship repair rather than editing the
+applied migration.
+Promoted to: `docs/project-work-items-technical-plan.md`;
+`docs/project-work-items-and-follow-up.md`;
+`docs/portal-production-readiness.md`
+Related docs/tests:
+`supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql`;
+`apps/portal/lib/projects/workItems/modelBoundary.test.ts`;
+`apps/portal/lib/projects/getProjectPageSnapshot.test.ts`;
+`test/project-work-items-v2-migration.test.ts`

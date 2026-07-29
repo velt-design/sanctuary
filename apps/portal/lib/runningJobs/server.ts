@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { fetchAllPages, fetchRowsByIdChunks } from '@/lib/list/listLimits';
+import { getProjectWorkModelV2Ids } from '@/lib/projects/workItems/modelBoundary';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -130,18 +131,6 @@ function legacyDisplayValue(displayCells: LegacyRunningJobDisplayCells, key: Run
   return trimCellText(displayCells[key] ?? '');
 }
 
-function relationRecord(value: unknown): Record<string, unknown> | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return candidate && typeof candidate === 'object' && !Array.isArray(candidate)
-    ? candidate as Record<string, unknown>
-    : null;
-}
-
-function workModelVersionFromProject(row: Record<string, unknown>): 2 | null {
-  const relation = relationRecord(row.workModel);
-  return Number(relation?.model_version) === 2 ? 2 : null;
-}
-
 function contactFromProject(project: ProjectRow): { id: string | null; name: string; phone: string; updatedAt: string | null } {
   const raw = Array.isArray(project.contacts) ? project.contacts[0] : project.contacts ?? null;
   return {
@@ -212,7 +201,6 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
     'updated_at',
     'deposit_paid_date',
     'final_payment_date',
-    'workModel:project_work_model_versions(model_version)',
     'contacts ( id, name, phone, updated_at )',
   ].join(',');
 
@@ -238,7 +226,12 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
     active: typeof row?.is_active === 'boolean' ? row.is_active : true,
   }));
 
-  const projects = projectsResult.rows.map((row: any) => ({
+  const projectRows = projectsResult.rows as any[];
+  const v2ProjectIds = await getProjectWorkModelV2Ids(
+    supabase,
+    projectRows.map((row) => String(row?.id ?? '')).filter(Boolean),
+  );
+  const projects = projectRows.map((row: any) => ({
     id: String(row?.id ?? ''),
     name: typeof row?.name === 'string' ? row.name : null,
     contact_id: typeof row?.contact_id === 'string' ? row.contact_id : null,
@@ -248,7 +241,7 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
     updated_at: typeof row?.updated_at === 'string' ? row.updated_at : null,
     deposit_paid_date: typeof row?.deposit_paid_date === 'string' ? row.deposit_paid_date : null,
     final_payment_date: typeof row?.final_payment_date === 'string' ? row.final_payment_date : null,
-    work_model_version: workModelVersionFromProject(row as Record<string, unknown>),
+    work_model_version: v2ProjectIds.has(String(row?.id ?? '')) ? 2 as const : null,
     contacts: row?.contacts ?? null,
   }));
 

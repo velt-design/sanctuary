@@ -6,6 +6,7 @@ import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { getProjectWorkProjection } from '@/lib/projects/workItems/repository';
 import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
+import { getProjectWorkModelV2Ids } from '@/lib/projects/workItems/modelBoundary';
 import {
   ACTIVE_LEAD_TO_QUOTE_STAGES,
   PROJECT_OWNER_REQUIRED_STAGES,
@@ -28,10 +29,6 @@ type Row = Record<string, any>;
 const V2_PROJECTION_BATCH_SIZE = 20;
 
 function list(value: unknown): Row[] { return Array.isArray(value) ? value as Row[] : []; }
-function relationRows(value: unknown): Row[] {
-  if (Array.isArray(value)) return value as Row[];
-  return value && typeof value === 'object' ? [value as Row] : [];
-}
 function text(value: unknown): string | null { return typeof value === 'string' && value.trim() ? value.trim() : null; }
 function timestamp(value: unknown): string | null {
   const raw = text(value);
@@ -50,10 +47,6 @@ function group(rows: Row[]): Map<string, Row[]> {
     out.set(projectId, bucket);
   }
   return out;
-}
-
-function usesV2ProjectWork(project: Row): boolean {
-  return relationRows(project.workModel).some((row) => Number(row.model_version) === 2);
 }
 
 async function read(query: PromiseLike<{ data: unknown; error: { message?: string } | null }>, label: string) {
@@ -93,7 +86,7 @@ export async function getProjectCommandExceptions(
   const projects = await read(
     supabase
       .from('projects')
-      .select('id,name,pipeline_stage,created_at,workModel:project_work_model_versions(model_version)'),
+      .select('id,name,pipeline_stage,created_at'),
     'exception projects',
   );
   const activeProjects: Array<Row & { id: string; stage: string }> = projects.flatMap((project) => {
@@ -107,9 +100,10 @@ export async function getProjectCommandExceptions(
     return { counts: { selection_conflict: 0, no_action: 0, missing_owner: 0 }, projects: [], totalProjects: 0, generatedAt: now.toISOString() };
   }
   const ids = activeProjects.map((project) => project.id);
-  const v2Projects = activeProjects.filter(usesV2ProjectWork);
+  const v2ProjectIds = await getProjectWorkModelV2Ids(supabase, ids);
+  const v2Projects = activeProjects.filter((project) => v2ProjectIds.has(project.id));
   const legacyIds = activeProjects
-    .filter((project) => !usesV2ProjectWork(project))
+    .filter((project) => !v2ProjectIds.has(project.id))
     .map((project) => project.id);
   const [staffRows, assignments, v2Projections] = await Promise.all([
     getPortalStaffDirectory(supabase),
@@ -155,7 +149,7 @@ export async function getProjectCommandExceptions(
       isAdmin: viewer.isAdmin,
     });
     const reasons: ProjectCommandException['reasons'] = [];
-    if (usesV2ProjectWork(project)) {
+    if (v2ProjectIds.has(project.id)) {
       const projection = v2Projections.get(project.id);
       if (!projection) throw new Error(`V2 project work could not be loaded for ${project.id}`);
       if (projection.effectiveState !== 'ACTIVE') continue;

@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { logPortalServerWarn, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
+import { fetchRowsByIdChunks } from '@/lib/list/listLimits';
+import { getProjectWorkModelV2Ids } from '@/lib/projects/workItems/modelBoundary';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { addDaysYmd, diffDaysYmd, isYmd, todayYmd } from '@/lib/scheduling/date';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
@@ -55,11 +57,6 @@ type BoardProjectEstimateDiagnostics = {
 };
 
 const SCHEDULE_PROJECT_SELECT = 'id, name, pipeline_stage, follow_up_date';
-const SCHEDULE_READY_PROJECT_SELECT = [
-  SCHEDULE_PROJECT_SELECT,
-  'workModel:project_work_model_versions(model_version)',
-  'operationalState:project_operational_states(state)',
-].join(', ');
 const SCHEDULE_ESTIMATE_SELECT = 'id, project_id, status, created_at, version, duration_days, crew_hours';
 
 type CrewRow = {
@@ -781,33 +778,50 @@ function uniqueSortedIds(ids: Iterable<unknown>): string[] {
   return Array.from(new Set(Array.from(ids, (id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean))).sort();
 }
 
-function embeddedRelationRecord(value: unknown): Record<string, unknown> | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return candidate && typeof candidate === 'object' && !Array.isArray(candidate)
-    ? candidate as Record<string, unknown>
-    : null;
+export function isSchedulingReadyOperationalProject(input: {
+  modelVersion: 2 | null;
+  operationalState: string | null;
+}): boolean {
+  if (input.modelVersion !== 2) return true;
+  return String(input.operationalState ?? '').trim().toUpperCase() === 'ACTIVE';
 }
 
-export function isSchedulingReadyOperationalProject(row: unknown): boolean {
-  if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
-  const raw = row as Record<string, unknown>;
-  const workModel = embeddedRelationRecord(raw.workModel);
-  if (Number(workModel?.model_version) !== 2) return true;
-  const operationalState = embeddedRelationRecord(raw.operationalState);
-  return String(operationalState?.state ?? '').trim().toUpperCase() === 'ACTIVE';
+async function filterSchedulingReadyOperationalProjects(rows: unknown): Promise<unknown[]> {
+  const candidates = Array.isArray(rows) ? rows : [];
+  const projectIds = uniqueSortedIds(candidates.map((row: any) => row?.id));
+  if (!projectIds.length) return [];
+
+  const v2ProjectIds = await getProjectWorkModelV2Ids(supabaseServiceRole, projectIds);
+  const operationalRows = await fetchRowsByIdChunks<{ project_id: string; state: string }>(
+    Array.from(v2ProjectIds),
+    (chunkIds) => supabaseServiceRole
+      .from('project_operational_states')
+      .select('project_id,state')
+      .in('project_id', chunkIds),
+  );
+  const operationalStates = new Map(
+    operationalRows.map((row) => [row.project_id, row.state]),
+  );
+
+  return candidates.filter((row: any) => {
+    const projectId = typeof row?.id === 'string' ? row.id : '';
+    return isSchedulingReadyOperationalProject({
+      modelVersion: v2ProjectIds.has(projectId) ? 2 : null,
+      operationalState: operationalStates.get(projectId) ?? null,
+    });
+  });
 }
 
 async function listSchedulingReadyProjects(diagnostics?: PortalServerLogContext | null): Promise<{ data: unknown[]; archivedProjectFilterRetried: boolean }> {
   const withArchiveFilter = await supabaseServiceRole
     .from('projects')
-    .select(SCHEDULE_READY_PROJECT_SELECT)
+    .select(SCHEDULE_PROJECT_SELECT)
     .eq('pipeline_stage', SCHEDULING_READY_PROJECT_STATUS)
     .is('archived_at', null);
 
   if (!withArchiveFilter.error) {
     return {
-      data: (Array.isArray(withArchiveFilter.data) ? withArchiveFilter.data : [])
-        .filter(isSchedulingReadyOperationalProject),
+      data: await filterSchedulingReadyOperationalProjects(withArchiveFilter.data),
       archivedProjectFilterRetried: false,
     };
   }
@@ -826,13 +840,12 @@ async function listSchedulingReadyProjects(diagnostics?: PortalServerLogContext 
 
   const withoutArchiveFilter = await supabaseServiceRole
     .from('projects')
-    .select(SCHEDULE_READY_PROJECT_SELECT)
+    .select(SCHEDULE_PROJECT_SELECT)
     .eq('pipeline_stage', SCHEDULING_READY_PROJECT_STATUS);
   if (withoutArchiveFilter.error) throw withoutArchiveFilter.error;
 
   return {
-    data: (Array.isArray(withoutArchiveFilter.data) ? withoutArchiveFilter.data : [])
-      .filter(isSchedulingReadyOperationalProject),
+    data: await filterSchedulingReadyOperationalProjects(withoutArchiveFilter.data),
     archivedProjectFilterRetried: true,
   };
 }

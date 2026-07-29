@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const fromMock = vi.fn();
 const logPortalServerError = vi.fn();
 const getAuthoritativeProjectWorkProjection = vi.fn();
+const isProjectWorkModelV2 = vi.fn();
 
 vi.mock('@/lib/api/routeDiagnostics', () => ({
   logPortalServerError,
@@ -10,6 +11,10 @@ vi.mock('@/lib/api/routeDiagnostics', () => ({
 
 vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => ({
   getAuthoritativeProjectWorkProjection,
+}));
+
+vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
+  isProjectWorkModelV2,
 }));
 
 type QueryResult = { data: any; error: any };
@@ -54,6 +59,7 @@ describe('getProjectPageSnapshot', () => {
     fakeAuth.auth.getUser.mockClear();
     fakeAuth.rpc.mockClear();
     getAuthoritativeProjectWorkProjection.mockReset();
+    isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
   it('returns a snapshot without scheduling invoice retries during read', async () => {
@@ -153,6 +159,8 @@ describe('getProjectPageSnapshot', () => {
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
     expect(fromMock).toHaveBeenNthCalledWith(4, 'project_task_checks');
+    expect(projectQuery.select).toHaveBeenCalledWith('*,contact:contacts(*)');
+    expect(isProjectWorkModelV2).toHaveBeenCalledWith(expect.any(Object), projectId);
     expect(relatedQuery.eq).toHaveBeenCalledWith('quotes.acceptedVersions.status', 'ACCEPTED');
     expect(relatedQuery.eq).toHaveBeenCalledWith('openInvoices.status', 'OPEN');
     expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
@@ -205,6 +213,7 @@ describe('getProjectPageSnapshot', () => {
     expect(fromMock).toHaveBeenCalledTimes(2);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'project_owner_assignments');
+    expect(isProjectWorkModelV2).toHaveBeenCalledWith(expect.any(Object), projectId);
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
   });
 
@@ -308,6 +317,7 @@ describe('getProjectPageSnapshot', () => {
 
   it('does not read legacy task checks for a V2 project', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
+    isProjectWorkModelV2.mockResolvedValueOnce(true);
     getAuthoritativeProjectWorkProjection.mockResolvedValue({
       projectId,
       modelVersion: 2,
@@ -333,7 +343,6 @@ describe('getProjectPageSnapshot', () => {
           id: projectId,
           name: 'V2 project',
           pipeline_stage: 'NEW',
-          workModel: [{ model_version: 2 }],
         },
         error: null,
       }))
