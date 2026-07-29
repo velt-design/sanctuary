@@ -7,6 +7,7 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 const pushMock = vi.fn();
 const apiJsonMock = vi.fn();
 const upsertContactCachesMock = vi.fn();
+const invalidateContactsIndexCachesMock = vi.fn();
 const queryClientMock = {};
 
 function changeValue(target: HTMLInputElement | null, value: string) {
@@ -44,11 +45,17 @@ vi.mock('@/lib/localFirst/portalEntities', () => ({
   upsertContactCaches: (...args: unknown[]) => upsertContactCachesMock(...args),
 }));
 
+vi.mock('@/lib/queries/contactsIndex', () => ({
+  invalidateContactsIndexCaches: (...args: unknown[]) => invalidateContactsIndexCachesMock(...args),
+}));
+
 describe('ContactCreateClient', () => {
   beforeEach(() => {
     apiJsonMock.mockReset();
     pushMock.mockReset();
     upsertContactCachesMock.mockReset();
+    invalidateContactsIndexCachesMock.mockReset();
+    invalidateContactsIndexCachesMock.mockResolvedValue(undefined);
     apiJsonMock.mockResolvedValue({
       contact: {
         id: 'ct_1',
@@ -100,6 +107,7 @@ describe('ContactCreateClient', () => {
         displayName: 'Alex Mason',
       }),
     );
+    expect(invalidateContactsIndexCachesMock).toHaveBeenCalledWith(queryClientMock, 'host');
     expect(pushMock).toHaveBeenCalledWith('/staff/contacts/ct_1');
 
     rendered.unmount();

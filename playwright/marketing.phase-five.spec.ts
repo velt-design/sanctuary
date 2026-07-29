@@ -48,8 +48,8 @@ const semanticParityRoutes = [
   {
     path: '/',
     requiredMarkers: [
-      'data-homepage-variant="design_conversation_home_v2"',
-      'Begin with built work.',
+      'data-homepage-variant="design_conversation_home_v3"',
+      'Custom pergolas for Auckland homes and sites.',
       'role="radiogroup"',
       'application/ld+json',
       'id="footer-contact-heading"',
@@ -124,14 +124,14 @@ const semanticParityRoutes = [
     ],
     exactMarkerCounts: [
       ['class="acrylic-project-card"', 3],
-      ['data-seo-landing-disclosure=', 3],
+      ['data-seo-landing-disclosure=', 1],
     ],
   },
   {
     path: '/architects-designers-builders',
     requiredMarkers: [
       'data-seo-landing="architects-designers-builders"',
-      'Professional enquiry',
+      'Professional project',
     ],
     forbiddenMarkers: [
       'Pergola guide progression',

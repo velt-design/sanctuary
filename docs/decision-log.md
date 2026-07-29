@@ -21,6 +21,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-29 | Portal Operational Lists/Create  | Promoted | Keep ordinary Projects/Contacts discovery bounded and server-paged with response query identity; never present a retained page under a different scope/filter. Project creation is one server-owned stable-ID command: detect strong contact duplicates before writes, separate confirmed records from setup-automation state, preserve saved records when setup needs attention, and mark indeterminate writes or unverifiable cleanup as do-not-retry administrator reconciliation. |
+| 2026-07-29 | Marketing Copy Reduction         | Promoted | Remove repeated decisions, explanations and conversion prompts at their owners; do not replace long pages with more hidden copy. Keep one useful action, preserve governed evidence and intake/SEO contracts, version material homepage copy changes, and include public noindex flows in claims review rather than relying only on the sitemap. |
 | 2026-07-28 | Quote PDF Asset Runtime          | Promoted | Keep quote assets module-owned. When Next emits a hashed browser URL in a server bundle, resolve the exact current server-output file and make staging update smoke fail on swallowed artifact refresh errors; never probe source roots. |
 | 2026-07-28 | Commercial Revision Conflicts    | Promoted | Treat stale quote revisions as non-retryable application conflicts, not SQLSTATE `40001`; prove immediate API `409` behavior in disposable PostgreSQL and provider-free staging smoke before production review. |
 | 2026-07-28 | Commercial Workflow Trust        | Promoted | Bind each save/send/accept action to one stable intent and exact commercial revision. Freeze provider requests before dispatch, checkpoint provider acceptance before replay-safe finalisation, keep acceptance committed when invoice delivery fails, and never let unavailable recovery enrichment hide an otherwise readable historical quote. |
@@ -3790,3 +3792,61 @@ Why it mattered: Staff could save a quote successfully while its regenerated PDF
 Current guardrail: Keep the source asset module-relative, read native production `file:` URLs directly, and map only webpack development's exact hashed media URL to the current isolated server output. Do not probe source roots. The staging quote-update smoke must inspect server errors and fail if artifact refresh is swallowed.
 Promoted to: `docs/quotes-invoices-job-packs.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/quotes/quotePdfAssets.ts`; `scripts/run-commercial-staging-smoke.mjs`; `apps/portal/lib/quotes/pdf.test.ts`
+
+### 2026-07-29 - Marketing Copy Reduction - Remove The Repeated Decision
+
+Date: 2026-07-29
+Area: Marketing mobile copy, navigation, forms and conversion hierarchy
+Status: Promoted
+Decision or mistake: Earlier density work often preserved the same narrative
+inside responsive disclosures, while navigation, form introductions and final
+CTAs repeated decisions already owned by the page or shared footer. A
+sitemap-only claims review also missed public noindex entry flows.
+Why it mattered: Mobile visitors still had to scan repeated explanations and
+conversion prompts, and unsafe consent or performance wording could survive
+outside the sitemap.
+Current guardrail: Delete or combine repeated copy at its source before adding
+a disclosure. Keep one useful action per decision point, one compact optional
+technical group in forms and no generic final CTA after an embedded form.
+Preserve governed evidence, metadata, schema, canonicals, enquiry payloads,
+attribution and analytics names. Advance the homepage variant when material
+copy changes, and include public noindex flows in claims review.
+Promoted to: `docs/mobile-content-density-refinement.md`;
+`docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`;
+`docs/marketing-claims-register.md`
+Related docs/tests: `playwright/marketing.mobile-content-density.spec.ts`;
+`playwright/marketing.homepage.spec.ts`; `playwright/marketing.contact.spec.ts`;
+`playwright/marketing.products.spec.ts`; `playwright/marketing.projects.spec.ts`;
+`playwright/marketing.acrylic-copy-variant.spec.ts`
+
+### 2026-07-29 - Portal Operational Lists/Create - Bound Reads And Confirm The Command
+
+Date: 2026-07-29
+Area: Projects, Contacts, project creation, and commercial delivery recovery
+Status: Promoted
+Decision or mistake: Projects and Contacts index screens downloaded broad record
+sets and then filtered/rendered them in the browser. Project creation also split
+contact/project persistence across browser-owned steps, making partial success
+and retry safety difficult to state truthfully.
+Why it mattered: Ordinary list cost grew with the database, retained rows could
+be mistaken for a newly selected scope, and staff could not know whether a
+failed create left one of its records behind.
+Current guardrail: Staff index routes return stable, exact-count, maximum-100-row
+RPC pages and include the query identity used to build the response. The client
+must suppress retained data whose scope/filter/page identity differs. Project
+creation submits stable contact/project IDs to one server coordinator, checks
+strong normalized contact duplicates first, runs the existing automation owner,
+and returns a server-confirmed record receipt with a separate setup-automation
+state. Matching command replay must not repeat automation or claim it was
+rechecked. A setup failure preserves the confirmed records and returns an
+attention receipt; verified compensation is limited to an unused contact after
+a definitively failed project write. Indeterminate writes or unverifiable
+cleanup must return an explicit do-not-retry reconciliation state.
+Promoted to: `docs/projects-contacts-estimates-calculator.md`;
+`docs/staff-api-auth-contracts.md`; `docs/supabase-schema-map.md`;
+`docs/quotes-invoices-job-packs.md`
+Related docs/tests: `apps/portal/lib/projects/createProjectCommand.test.ts`;
+`apps/portal/app/api/staff/v1/projects/route.test.ts`;
+`apps/portal/app/staff/projects/ProjectsIndexClient.test.tsx`;
+`apps/portal/app/staff/contacts/ContactsIndexClient.test.tsx`;
+`test/portal-operational-lists-migration.test.ts`

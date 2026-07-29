@@ -98,7 +98,7 @@ const baseProjects: Project[] = [
       },
     ],
     blurb:
-      'Freestanding gable outdoor room beside the house, with a new deck, fireplace, clear acrylic glazing, cedar ceiling and matte black Colorsteel finish.',
+      'A freestanding gable room combining mixed roofing, cedar lining, a new deck, fireplace and lighting.',
     constraint:
       'Create a sheltered outdoor room beside the house without relying on the existing house for support.',
     configuration: 'Freestanding',
@@ -198,7 +198,7 @@ const baseProjects: Project[] = [
       },
     ],
     blurb:
-      'First-floor box-perimeter pergola with opal acrylic roofing, set against a dark contemporary home with a clean horizontal roofline.',
+      'A first-floor box-perimeter pergola designed around the balustrade and outlook.',
     constraint:
       'Cover a first-floor deck while preserving the glass balustrade, outlook and natural light.',
     roofApproach: '6 mm opal acrylic at a 5 degree fall with a hip-style end junction',
@@ -271,7 +271,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-tamaki-dr-04.jpg', alt: 'Detail of steel and aluminium connections at Lilliput Mini Golf', objectPosition: '50% 50%' },
     ],
     blurb:
-      'Budget-balanced pitched pergola in Slate Blue Matt, installed as part of a mini golf course renovation on Tamaki Drive.',
+      'A pitched pergola supplied and installed within a consultant-led venue renovation.',
     constraint:
       'Integrate coverage into the mini golf course without blocking key sightlines or competing with the renovation budget.',
     roofApproach: 'Acrylic panels on a shallow 8 degree pitched roof',
@@ -352,7 +352,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-waiheke-03.jpg', alt: 'Daytime view of the pergola over the deck', objectPosition: '50% 48%' },
       { src: '/images/project-waiheke-01.jpg', alt: 'Perimeter frame with coastal planting', objectPosition: '50% 48%' },
     ],
-    blurb: 'Box-perimeter pergola extending a coastal deck, with the roof fall concealed behind a clean perimeter beam line.',
+    blurb: 'A box-perimeter deck cover designed to preserve the water view.',
     constraint:
       'Extend the living space onto the deck without interrupting the water outlook or exposing the roof fall and gutters.',
     roofApproach: '4 degree roof fall and gutters concealed behind the perimeter beam',
@@ -409,7 +409,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-goodhome-03.jpg', alt: 'Detail of structural column and planter', objectPosition: '50% 52%' },
       { src: '/images/project-goodhome-04.jpg', alt: 'Lighting wash across the roof panels', objectPosition: '50% 44%' },
     ],
-    blurb: 'Two-zone gable roof matching the villa-style facade, extending the restaurant into a covered front courtyard.',
+    blurb: 'Two gables extending the villa-style facade over the restaurant courtyard.',
     constraint:
       'Cover the restaurant courtyard while preserving the villa-style facade and its established 25 degree gable rhythm.',
     roofApproach: 'Acrylic roofing over two 25 degree gable zones',
@@ -466,7 +466,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-kiwi-rail-02.jpg', alt: 'Night lighting along rail canopy', objectPosition: '50% 50%' },
       { src: '/images/project-kiwi-rail-03.jpg', alt: 'Detail of structural connection', objectPosition: '50% 50%' },
     ],
-    blurb: 'Aluminium and acrylic canopy with integrated strip lighting along a key circulation route at the head office.',
+    blurb: 'An aluminium and acrylic canopy with integrated lighting along a workplace route.',
     constraint:
       'Cover a connection between circulation routes while keeping the long workplace canopy visually light.',
     roofApproach: 'Acrylic canopy at a recorded 5 degree pitch',
@@ -534,7 +534,7 @@ const baseProjects: Project[] = [
         objectPosition: '50% 45%',
       },
     ],
-    blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens across dining, entry and circulation zones.',
+    blurb: 'A patio and carport using insulated and acrylic roof zones around a complex house.',
     constraint:
       'Resolve a combined patio and carport around the house geometry while retaining daylight through the entry and circulation zones.',
     roofApproach: 'Insulated panels with opal and light grey acrylic roof zones',
@@ -618,7 +618,7 @@ const baseProjects: Project[] = [
         objectPosition: '50% 44%',
       },
     ],
-    blurb: 'Aluminium gable canopy with dark-tint acrylic roofing, adding a sheltered outdoor zone to a specialty dessert cafe.',
+    blurb: 'A dark-tint acrylic gable canopy aligned with the cafe frontage.',
     constraint:
       'Add sheltered cafe space while matching the existing frontage and keeping it visually open.',
     roofApproach: 'Dark-tint acrylic roofing on a 30 degree gable',
@@ -674,7 +674,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-waitakere-ranges-01.jpg', alt: 'Lanai with bush backdrop', objectPosition: '50% 48%' },
       { src: '/images/project-waitakere-ranges-02.jpg', alt: 'Night view with fireplace', objectPosition: '50% 50%' },
     ],
-    blurb: 'Hipped courtyard pergola with opal acrylic roofing, blending a fresh structure into a Tuscan-style home.',
+    blurb: 'An opal-acrylic hip roof replacing the previous courtyard pergola.',
     constraint:
       'Replace the older pergola on the same footprint while coordinating a contemporary frame with the Tuscan-style home.',
     roofApproach: 'Opal acrylic on a recorded 5 degree hip roof',
@@ -736,7 +736,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-velskov-03.jpg', alt: 'Detail of the pergola in the Velskov forest farm', objectPosition: '50% 50%' },
     ],
     blurb:
-      'Shallow-pitch commercial pergola set in the middle of a native forest farm, providing sheltered space without competing with the canopy.',
+      'A low-profile shelter for a working space beneath the forest canopy.',
     constraint:
       'Provide a dry working space within native forest while keeping the structure low beneath the canopy.',
     roofApproach: 'Shallow 7 degree pitched roof',
@@ -798,7 +798,7 @@ const baseProjects: Project[] = [
       },
     ],
     blurb:
-      'Large box-perimeter carport with a gable roof set inside the frame, combining steel PFC beams, aluminium rafters and 6 mm acrylic roofing.',
+      'A box-perimeter carport with acrylic roofing and an internal gable.',
     constraint:
       'Cover a wide driveway while keeping vehicle access clear and the space bright.',
     roofApproach: '6 mm acrylic with a 5 degree fall and an internal gable',
@@ -894,7 +894,7 @@ const baseProjects: Project[] = [
       },
     ],
     blurb:
-      'Poolside gable pavilion with black aluminium and steel framing, warm timber sarking, integrated downlights and LED strip lighting.',
+      'A poolside gable pavilion with timber lining and integrated lighting.',
     constraint:
       'Shelter the poolside lounge without blocking the outlook or making the deck feel heavy.',
     roofApproach: 'Insulated gable roof with timber sarking',
@@ -961,7 +961,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-st-heliers-01.jpg', alt: 'Pergola at a St Heliers townhouse', objectPosition: '50% 50%' },
       { src: '/images/project-st-heliers-02.jpg', alt: 'Side view of the townhouse pergola', objectPosition: '50% 50%' },
     ],
-    blurb: 'Open gable extension with opal acrylic roofing and custom aluminium gable framing for a strong street-front presence.',
+    blurb: 'An open gable with opal acrylic and a custom street-facing frame.',
     constraint:
       'Extend the roofline while giving the street-facing gable end an intentional architectural pattern.',
     roofApproach: 'Opal acrylic over an open gable form',
@@ -994,7 +994,7 @@ const baseProjects: Project[] = [
       { src: '/images/project-dairy-flat-03.jpg', alt: 'Side view of the Dairy Flat pergola', objectPosition: '50% 44%' },
       { src: '/images/project-dairy-flat-02.jpg', alt: 'Detail of the pergola framing at Dairy Flat', objectPosition: '50% 42%' },
     ],
-    blurb: 'Gable extension following the house roofline in aluminium and acrylic, with an infilled gable end on one side of the covered area.',
+    blurb: 'An aluminium and acrylic gable following the existing roofline.',
     constraint:
       'Extend the existing roofline without darkening the adjoining outdoor space.',
     roofApproach: 'Acrylic gable roof following the existing house roofline',

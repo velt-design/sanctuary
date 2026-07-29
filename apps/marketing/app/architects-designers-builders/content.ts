@@ -18,57 +18,50 @@ export const professionalCapabilityConfig = {
       'Long aluminium and acrylic canopy connecting circulation routes at the KiwiRail head office',
     objectPosition: '50% 48%',
     eyebrow: 'For architects, designers and builders',
-    title: 'Bring Sanctuary into the project at the right level.',
+    title: 'Pergola delivery for architects, designers and builders.',
     intro:
-      'Share an early brief, concept, consultant set or tender package. Sanctuary can help define the fixed-roof pergola scope, resolve buildable interfaces and take responsibility for the agreed design, supply and installation work.',
-    primaryCta: 'Send plans or a project brief',
-    secondaryCta: 'Review completed collaborations',
+      'Share a brief, drawings or tender package. We can define and deliver the agreed scope.',
+    primaryCta: 'Send project brief',
+    secondaryCta: 'View collaborations',
     secondaryHref: '#professional-projects',
     proof: [
-      'Early design or defined package',
-      'Engineering interfaces coordinated',
-      'Supported plans and files accepted',
+      'Early or developed packages',
+      'Clear responsibilities',
+      'Plans and files accepted',
     ],
   },
   blocks: [
     {
       kind: 'split-intro',
       id: 'professional-role',
-      eyebrow: 'A clear role in the wider team',
-      title: 'Start by defining the outcome, information and responsibility',
+      eyebrow: 'Project role',
+      title: 'Define the scope and responsibility.',
       paragraphs: [
-        'Sanctuary can develop the pergola design from an early architectural brief or work within a more defined project package. The agreed role may cover design development, project-specific engineering coordination, supply, installation and connected trade interfaces.',
-        'The first conversation identifies what is already resolved, which consultants and contractors are involved, what information governs the work and where responsibility needs to sit.',
-        'Scope, approvals and technical decisions remain project-specific. Sanctuary confirms its deliverables and dependencies before the project moves into fabrication or site work.',
+        'Sanctuary can develop the pergola from an early brief or deliver a defined package. We confirm deliverables, dependencies and interfaces before fabrication.',
       ],
     },
     {
       kind: 'projects',
       id: 'professional-projects',
-      eyebrow: 'Governed project evidence',
-      title: 'Three completed projects, three different collaboration models',
-      intro:
-        'These records show an architect-led canopy, a consultant-led venue renovation and a building-integrated hospitality response.',
+      eyebrow: 'Completed work',
+      title: 'Three collaboration models.',
       items: [
         {
           slug: 'kiwi-rail-platform',
           label: 'Architect-led canopy',
-          summary:
-            'JCY Architects engaged Sanctuary to help deliver a 30 metre aluminium and acrylic canopy with integrated strip lighting between workplace circulation routes.',
+          summary: 'An architect-led aluminium and acrylic canopy with integrated lighting.',
           facts: ['Architect-led design', '115 m² recorded canopy'],
         },
         {
           slug: 'lilliput-mini-golf',
           label: 'Consultant-led renovation',
-          summary:
-            'Sanctuary worked alongside the client architect and engineer, focusing its scope on supply and installation while coordinating with the wider renovation team.',
+          summary: 'Supply and installation within a consultant-led venue renovation.',
           facts: ['Drawings by project architect and engineer', '72 m² recorded cover'],
         },
         {
           slug: 'goodhome-commercial-terrace',
           label: 'Building integration',
-          summary:
-            'A two-zone gable was developed around the restaurant facade, matching the existing 25 degree roof rhythm and coordinating screens and lighting in the completed setting.',
+          summary: 'Two gables aligned with the restaurant facade and wider fit-out.',
           facts: ['25 degree building relationship', '67.7 m² recorded cover'],
         },
       ],
@@ -76,22 +69,20 @@ export const professionalCapabilityConfig = {
     {
       kind: 'numbered-cards',
       id: 'professional-inputs',
-      eyebrow: 'Useful project information',
-      title: 'Send what exists now. The gaps can be identified together.',
-      intro:
-        'A complete package is not required for the first review, but the governing information should be visible.',
+      eyebrow: 'What to send',
+      title: 'Send what exists now.',
       items: [
         {
-          title: 'Early brief or concept',
-          text: 'Include intended use, site, architectural intent, target programme and the decisions that are still open.',
+          title: 'Brief or concept',
+          text: 'Include the site, intended use, design intent and open decisions.',
         },
         {
-          title: 'Drawings and specifications',
-          text: 'Share relevant plans, elevations, sections, details, schedules or tender information in the existing supported file formats.',
+          title: 'Drawings',
+          text: 'Share relevant plans, sections, details or tender information.',
         },
         {
-          title: 'Team and responsibilities',
-          text: 'Name the client, architect, designer, engineer, builder and connected trades where known, together with the scope Sanctuary is being asked to own.',
+          title: 'Team and scope',
+          text: 'Name the project team and the responsibility Sanctuary should own.',
         },
       ],
     },
@@ -99,52 +90,48 @@ export const professionalCapabilityConfig = {
       kind: 'decision-cards',
       id: 'professional-interfaces',
       tone: 'warm',
-      eyebrow: 'Interfaces to resolve',
-      title: 'Keep structure, building and connected work on one coordinated path',
-      intro:
-        'The exact owners are agreed for the actual project; these are the common interfaces to close before fabrication.',
+      eyebrow: 'Interfaces',
+      title: 'Coordinate the building, structure and trades.',
       items: [
         {
           title: 'Architecture and building connection',
-          outcome: 'Pergola form, set-out, levels, junctions, drainage and finish respond to the governing building information.',
-          consider: 'Survey information, primary structure, cladding, waterproofing, clearances, tolerances and responsibility for adjacent work.',
+          outcome: 'Align form, levels, junctions, drainage and finish.',
+          consider: 'Structure, cladding, clearances and adjacent work.',
         },
         {
           title: 'Project-specific engineering',
-          outcome: 'Structural inputs and connection requirements are coordinated with the developing pergola scope where required.',
-          consider: 'Design loads, existing structure, foundations, producer documentation, review points and the engineer responsible for each element.',
+          outcome: 'Coordinate structural inputs and connection requirements.',
+          consider: 'Loads, foundations, documents and engineering responsibility.',
         },
         {
           title: 'Services and specialist trades',
-          outcome: 'Lighting, heating, blinds, controls, signage and other connected elements have defined locations and fixing requirements.',
-          consider: 'Loads, power, cabling, clearances, penetrations, installers, commissioning and future service access.',
+          outcome: 'Define locations for lighting, heating, blinds and controls.',
+          consider: 'Power, clearances, installers and service access.',
         },
         {
           title: 'Procurement and installation',
-          outcome: 'The agreed Sanctuary package has a clear release, fabrication, site and handover sequence.',
-          consider: 'Approved information, lead times, access, protection, other trades, inspections, completion documents and exclusions.',
+          outcome: 'Set a clear release, fabrication, site and handover sequence.',
+          consider: 'Information, access, trades, inspections and exclusions.',
         },
       ],
     },
     {
       kind: 'process',
       id: 'professional-process',
-      eyebrow: 'A practical collaboration path',
-      title: 'Three steps to define and deliver the right package',
-      intro:
-        'Each step closes the information and responsibility needed for the next one.',
+      eyebrow: 'Delivery',
+      title: 'Define and deliver the package.',
       items: [
         {
-          title: 'Review the brief and information',
-          copy: 'Confirm the project stage, design intent, site constraints, governing documents, team and the outcome expected from Sanctuary.',
+          title: 'Review the brief',
+          copy: 'Confirm the stage, intent, constraints, documents and team.',
         },
         {
-          title: 'Agree scope and interfaces',
-          copy: 'Define deliverables, exclusions, engineering and approval responsibilities, connected trades, programme dependencies and information release points.',
+          title: 'Agree the scope',
+          copy: 'Define deliverables, exclusions, responsibilities and interfaces.',
         },
         {
-          title: 'Coordinate, build and hand over',
-          copy: 'Develop and release the agreed package, coordinate fabrication and installation, then close the completion information included in scope.',
+          title: 'Build and hand over',
+          copy: 'Coordinate fabrication, installation and completion information.',
         },
       ],
     },
@@ -157,31 +144,31 @@ export const professionalCapabilityConfig = {
         {
           question: 'At what project stage should Sanctuary be involved?',
           answer: [
-            'Sanctuary can review an early brief or a more developed consultant or tender package. Earlier involvement can help identify pergola-specific geometry, drainage, structure and connected-trade interfaces before they are fixed.',
+            'Sanctuary can review an early brief or a developed consultant or tender package.',
           ],
         },
         {
           question: 'Can Sanctuary work to architect and engineer drawings?',
           answer: [
-            'Yes, where the agreed scope and documentation are suitable. Lilliput Mini Golf is a governed example where Sanctuary supplied and installed the structure while working to drawings prepared by the project architect and engineer.',
+            'Yes, where the agreed scope and documentation are suitable.',
           ],
         },
         {
           question: 'Can Sanctuary coordinate project-specific engineering?',
           answer: [
-            'Sanctuary can coordinate the project engineer where that service is included. The engineering scope, inputs, producer documentation and sign-off responsibilities are confirmed for the actual project.',
+            'Yes, where included. Scope and sign-off responsibilities are confirmed for the project.',
           ],
         },
         {
           question: 'What file types can be sent with the enquiry?',
           answer: [
-            'Use the upload control below for the currently supported photos, plans, sketches and documents. The same validated attachment policy used across Sanctuary enquiries applies here.',
+            'Use the upload control below for supported photos, plans, sketches and documents.',
           ],
         },
         {
           question: 'Does Sanctuary have to own the complete pergola design?',
           answer: [
-            'No. The role can be shaped around the project information and procurement path, from design development through to a defined supply-and-install package. Responsibility boundaries must be agreed before work proceeds.',
+            'No. The role can range from design development to a defined supply-and-install package.',
           ],
         },
       ],
@@ -199,33 +186,14 @@ export const professionalCapabilityConfig = {
       blockIds: ['professional-faq'],
     },
   ],
-  finalCta: {
-    eyebrow: 'Start with the information you have',
-    title: 'Send the project brief and define the role together',
-    text: 'Share the project stage, relevant drawings or specifications, known consultants and the responsibility you want Sanctuary to consider. A complete pergola solution does not need to be predetermined.',
-    button: 'Send plans or a project brief',
-    checklistTitle: 'Useful first inputs',
-    checklist: [
-      'Project name, address and intended use',
-      'Your organisation and role',
-      'Current project stage and programme',
-      'Plans, elevations, sections or sketches',
-      'Relevant specification or tender information',
-      'Known architect, engineer, builder and trades',
-      'Proposed Sanctuary scope',
-      'Open technical or responsibility questions',
-    ],
-  },
   form: {
     ariaLabel: 'Architect, designer and builder project enquiry form',
     eyebrow: 'Professional project enquiry',
-    heading: 'Send plans or a project brief',
-    intro:
-      'Tell us what is already defined and what you need Sanctuary to own. Attach the relevant project information in the supported formats below.',
-    submitLabel: 'Send professional project brief',
-    messageLabel: 'Project brief and requested Sanctuary role',
-    messagePlaceholder:
-      'Describe the project, current design intent, open decisions and the scope or responsibility you want Sanctuary to consider.',
+    heading: 'Send your project brief.',
+    intro: 'Share what is defined, what is open and what Sanctuary should own.',
+    submitLabel: 'Send project brief',
+    messageLabel: 'Project and requested role',
+    messagePlaceholder: 'Describe the project, open decisions and proposed Sanctuary scope.',
     briefFields: [
       {
         name: 'organisationAndRole',

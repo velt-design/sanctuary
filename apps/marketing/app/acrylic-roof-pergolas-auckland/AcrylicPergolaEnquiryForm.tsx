@@ -143,12 +143,12 @@ const fieldTargets: Record<EnquiryFormField, string> = {
 const fieldOrder: readonly EnquiryFormField[] = ENQUIRY_FORM_FIELD_ORDER;
 
 export default function AcrylicPergolaEnquiryForm({
-  eyebrow = 'Tell us about the site',
-  heading = 'Request an initial estimate',
-  intro = 'Share your suburb, approximate dimensions and a few photos of the area. Tell us what matters most, whether that is preserving daylight, adding rain cover, reducing glare or creating a more sheltered outdoor room.',
-  submitLabel = 'Request my initial estimate',
-  messageLabel = 'Brief project description',
-  messagePlaceholder = 'Tell us how you use the space, which rooms sit beside it and what you would like the roof to improve.',
+  eyebrow = 'Start here',
+  heading = 'Project brief',
+  intro = 'Share the site, intended use and what you know so far.',
+  submitLabel = 'Send project brief',
+  messageLabel = 'Project brief',
+  messagePlaceholder = 'How will you use the space? What should the pergola improve?',
   briefFields = [],
   directContact,
   initialEnquiryType,
@@ -294,7 +294,7 @@ export default function AcrylicPergolaEnquiryForm({
       const responsePayload = await response.json().catch(() => null);
       if (!response.ok || !responsePayload?.ok) {
         throw new Error(
-          'Your entered details remain on the page. Please try again, call Sanctuary or email the project information directly.',
+          'Please try again or contact us directly.',
         );
       }
 
@@ -309,7 +309,7 @@ export default function AcrylicPergolaEnquiryForm({
       setSubmitError(
         error instanceof Error && error.message
           ? error.message
-          : 'Your entered details remain on the page. Please try again, call Sanctuary or email the project information directly.',
+          : 'Please try again or contact us directly.',
       );
       setSubmitState('error');
     } finally {
@@ -334,7 +334,7 @@ export default function AcrylicPergolaEnquiryForm({
         {contextDisplay.isVisible ? (
           <div className="acrylic-form__context" aria-label="Enquiry context">
             <strong>{contextDisplay.heading}</strong>
-            <span>{contextDisplay.audience}</span>
+            {contextDisplay.audience ? <span>{contextDisplay.audience}</span> : null}
           </div>
         ) : null}
       </div>
@@ -383,12 +383,9 @@ export default function AcrylicPergolaEnquiryForm({
 
         <div className="acrylic-form__field acrylic-form__field--wide">
           <label htmlFor="acrylic-enquiry-message">
-            Project brief <span>Optional</span>
+            {messageLabel} <span>Optional</span>
           </label>
-          <p className="acrylic-form__help" id="acrylic-enquiry-message-help">
-            {messageLabel}
-          </p>
-          <textarea id="acrylic-enquiry-message" name="message" rows={5} placeholder={messagePlaceholder} aria-describedby="acrylic-enquiry-message-help" />
+          <textarea id="acrylic-enquiry-message" name="message" rows={5} placeholder={messagePlaceholder} />
         </div>
 
         <div className="acrylic-form__field">
@@ -454,133 +451,6 @@ export default function AcrylicPergolaEnquiryForm({
           ) : null}
         </div>
 
-        <fieldset className="acrylic-form__fieldset acrylic-form__field--wide">
-          <legend>
-            Approximate dimensions <span>Optional</span>
-          </legend>
-          <div className="acrylic-form__dimensions">
-            <label>
-              Width
-              <input name="widthM" inputMode="decimal" placeholder="Unknown" />
-              <small>metres</small>
-            </label>
-            <label>
-              Projection or depth
-              <input name="depthM" inputMode="decimal" placeholder="Unknown" />
-              <small>metres</small>
-            </label>
-            <label>
-              Approximate height
-              <input name="heightM" inputMode="decimal" placeholder="Unknown" />
-              <small>metres</small>
-            </label>
-          </div>
-        </fieldset>
-
-        {briefFields.map((field) => (
-          <div className={`acrylic-form__field${field.wide ? ' acrylic-form__field--wide' : ''}`} key={field.name}>
-            <label htmlFor={`acrylic-enquiry-${field.name}`}>
-              {field.label} <span>Optional</span>
-            </label>
-            {field.type === 'textarea' ? (
-              <textarea id={`acrylic-enquiry-${field.name}`} name={field.name} rows={4} placeholder={field.placeholder} />
-            ) : field.type === 'select' ? (
-              <select id={`acrylic-enquiry-${field.name}`} name={field.name} defaultValue="">
-                <option value="">Choose if known</option>
-                {field.options?.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input id={`acrylic-enquiry-${field.name}`} name={field.name} placeholder={field.placeholder} />
-            )}
-          </div>
-        ))}
-
-        <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-style">
-            Preferred pergola form <span>Optional</span>
-          </label>
-          <select id="acrylic-enquiry-style" name="style" defaultValue="">
-            <option value="">Choose if known</option>
-            {pergolaForms.map(([value, label]) => (
-              <option key={label} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-attachment">
-            Attached, freestanding or unsure <span>Optional</span>
-          </label>
-          <select id="acrylic-enquiry-attachment" name="attachment" defaultValue="">
-            <option value="">Choose if known</option>
-            <option value="attached">Attached</option>
-            <option value="freestanding">Freestanding</option>
-            <option value="unsure">Unsure</option>
-          </select>
-        </div>
-
-        <div className="acrylic-form__field acrylic-form__field--wide">
-          <label htmlFor="acrylic-enquiry-roof">
-            Roof approach <span>Optional</span>
-          </label>
-          <select id="acrylic-enquiry-roof" name="roofPreference" defaultValue="">
-            <option value="">Choose if known</option>
-            {roofPreference.options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <fieldset className="acrylic-form__fieldset">
-          <legend>
-            Main priorities <span>Optional</span>
-          </legend>
-          <div className="acrylic-form__checks">
-            {priorities.map((priority) => (
-              <label key={priority}>
-                <input type="checkbox" name="priorities" value={priority} />
-                <span>{priority}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="acrylic-form__fieldset">
-          <legend>
-            Desired accessories <span>Optional</span>
-          </legend>
-          <div className="acrylic-form__checks">
-            {accessories.map((accessory) => (
-              <label key={accessory}>
-                <input type="checkbox" name="accessories" value={accessory} />
-                <span>{accessory}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-consent">
-            Current plans or consent status <span>Optional</span>
-          </label>
-          <input id="acrylic-enquiry-consent" name="consentStatus" placeholder="For example: early ideas or plans available" />
-        </div>
-
-        <div className="acrylic-form__field">
-          <label htmlFor="acrylic-enquiry-timeframe">
-            Intended project timeframe <span>Optional</span>
-          </label>
-          <input id="acrylic-enquiry-timeframe" name="timeframe" placeholder="Leave blank if unsure" />
-        </div>
-
         <div className="acrylic-form__field acrylic-form__field--wide">
           <label htmlFor="acrylic-enquiry-files">
             Photos, plans or sketches <span>Optional</span>
@@ -622,6 +492,139 @@ export default function AcrylicPergolaEnquiryForm({
           ) : null}
         </div>
 
+        <details className="acrylic-form__optional acrylic-form__field--wide">
+          <summary>Add optional project details</summary>
+          <div className="acrylic-form__optional-fields">
+        <fieldset className="acrylic-form__fieldset acrylic-form__field--wide">
+          <legend>
+            Dimensions <span>Optional</span>
+          </legend>
+          <div className="acrylic-form__dimensions">
+            <label>
+              Width
+              <input name="widthM" inputMode="decimal" placeholder="Unknown" />
+              <small>metres</small>
+            </label>
+            <label>
+              Depth
+              <input name="depthM" inputMode="decimal" placeholder="Unknown" />
+              <small>metres</small>
+            </label>
+            <label>
+              Height
+              <input name="heightM" inputMode="decimal" placeholder="Unknown" />
+              <small>metres</small>
+            </label>
+          </div>
+        </fieldset>
+
+        {briefFields.map((field) => (
+          <div className={`acrylic-form__field${field.wide ? ' acrylic-form__field--wide' : ''}`} key={field.name}>
+            <label htmlFor={`acrylic-enquiry-${field.name}`}>
+              {field.label} <span>Optional</span>
+            </label>
+            {field.type === 'textarea' ? (
+              <textarea id={`acrylic-enquiry-${field.name}`} name={field.name} rows={4} placeholder={field.placeholder} />
+            ) : field.type === 'select' ? (
+              <select id={`acrylic-enquiry-${field.name}`} name={field.name} defaultValue="">
+                <option value="">Choose if known</option>
+                {field.options?.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input id={`acrylic-enquiry-${field.name}`} name={field.name} placeholder={field.placeholder} />
+            )}
+          </div>
+        ))}
+
+        <div className="acrylic-form__field">
+          <label htmlFor="acrylic-enquiry-style">
+            Pergola form <span>Optional</span>
+          </label>
+          <select id="acrylic-enquiry-style" name="style" defaultValue="">
+            <option value="">Choose if known</option>
+            {pergolaForms.map(([value, label]) => (
+              <option key={label} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="acrylic-form__field">
+          <label htmlFor="acrylic-enquiry-attachment">
+            Attachment <span>Optional</span>
+          </label>
+          <select id="acrylic-enquiry-attachment" name="attachment" defaultValue="">
+            <option value="">Choose if known</option>
+            <option value="attached">Attached</option>
+            <option value="freestanding">Freestanding</option>
+            <option value="unsure">Unsure</option>
+          </select>
+        </div>
+
+        <div className="acrylic-form__field acrylic-form__field--wide">
+          <label htmlFor="acrylic-enquiry-roof">
+            Roof <span>Optional</span>
+          </label>
+          <select id="acrylic-enquiry-roof" name="roofPreference" defaultValue="">
+            <option value="">Choose if known</option>
+            {roofPreference.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <fieldset className="acrylic-form__fieldset">
+          <legend>
+            Priorities <span>Optional</span>
+          </legend>
+          <div className="acrylic-form__checks">
+            {priorities.map((priority) => (
+              <label key={priority}>
+                <input type="checkbox" name="priorities" value={priority} />
+                <span>{priority}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="acrylic-form__fieldset">
+          <legend>
+            Other options <span>Optional</span>
+          </legend>
+          <div className="acrylic-form__checks">
+            {accessories.map((accessory) => (
+              <label key={accessory}>
+                <input type="checkbox" name="accessories" value={accessory} />
+                <span>{accessory}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="acrylic-form__field">
+          <label htmlFor="acrylic-enquiry-consent">
+            Plans or consent <span>Optional</span>
+          </label>
+          <input id="acrylic-enquiry-consent" name="consentStatus" placeholder="For example: early ideas or plans available" />
+        </div>
+
+        <div className="acrylic-form__field">
+          <label htmlFor="acrylic-enquiry-timeframe">
+            Timeframe <span>Optional</span>
+          </label>
+          <input id="acrylic-enquiry-timeframe" name="timeframe" placeholder="Leave blank if unsure" />
+        </div>
+
+          </div>
+        </details>
+
         <div className="acrylic-form__honeypot" aria-hidden="true" inert>
           <label htmlFor="acrylic-enquiry-website">Website</label>
           <input id="acrylic-enquiry-website" name="website" tabIndex={-1} autoComplete="off" />
@@ -630,11 +633,10 @@ export default function AcrylicPergolaEnquiryForm({
 
       <div className="acrylic-form__submit">
         <p>
-          We use your details and uploads to assess and respond to your enquiry. They will not be published. See our <Link href="/privacy">Privacy Policy</Link>{' '}
-          for more information.
+          We use your details and files to assess and respond. They are not published. See our <Link href="/privacy">Privacy Policy</Link>.
         </p>
         <button type="submit" disabled={submitState === 'sending' || submitState === 'success'}>
-          {submitState === 'sending' ? 'Sending project details...' : submitState === 'success' ? 'Project details sent' : submitLabel}
+          {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? 'Project brief sent' : submitLabel}
         </button>
       </div>
 
@@ -647,18 +649,15 @@ export default function AcrylicPergolaEnquiryForm({
       >
         {submitState === 'success' ? (
           <div className="acrylic-form__status-message acrylic-form__status-message--success" role="status">
-            <h3>Thanks, we have received your project details.</h3>
-            <p>
-              We received your {enquiryType} enquiry
-              {contextDisplay.itemDescription ? ` about ${contextDisplay.itemDescription}` : ''}. Your entered details remain above while the Sanctuary team
-              reviews the information and next step.
-            </p>
+            <h3>Project brief sent.</h3>
+            <p>We’ll review it and contact you about the next step.</p>
           </div>
         ) : null}
         {submitState === 'error' ? (
           <div className="acrylic-form__status-message acrylic-form__status-message--error" role="alert">
-            <h3>We could not send your enquiry.</h3>
+            <h3>Your enquiry was not sent.</h3>
             <p>{submitError}</p>
+            <p>Your details are still here. Please try again.</p>
           </div>
         ) : null}
       </div>

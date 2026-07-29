@@ -436,7 +436,7 @@ export default function Header() {
               data-homepage-event="header_estimate_click"
               data-enquiry-type={routeEnquiryContext.enquiryType}
             >
-              <span className="nav-cta__label">Get an estimate</span>
+              <span className="nav-cta__label">Start your project</span>
             </Link>
             <button
               ref={mobileToggleRef}
@@ -490,7 +490,7 @@ export default function Header() {
                   data-enquiry-type={routeEnquiryContext.enquiryType}
                   onClick={handleMobileNavigation}
                 >
-                  Get an estimate
+                  Start your project
                 </Link>
               </li>
             </ul>

@@ -38,7 +38,7 @@ function OptionCard<T extends string>({
   inputRef,
 }: OptionCardProps<T>) {
   const inputType = mode === 'single' ? 'radio' : 'checkbox';
-  const indicatorText = checked ? 'Selected' : 'View details';
+  const indicatorText = checked ? 'Selected' : 'Details';
 
   return (
     <label
@@ -243,7 +243,7 @@ export function StepSection({
           <div className="start-step-collapsed rounded-xl border border-border bg-neutral-50 px-3 py-2.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-[0.12em] text-neutral-500">Saved choice</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-neutral-500">Selected</p>
                 <div className="mt-1 text-sm text-neutral-800">{collapsedSummary}</div>
               </div>
               {onChange ? (
@@ -428,8 +428,8 @@ type ConditionalSubPanelProps<OptionId extends string> = {
 };
 
 export function ConditionalSubPanel<OptionId extends string>({
-  title = 'Refine this choice (optional)',
-  helperText = "You can skip this; we'll confirm in consultation.",
+  title = 'Optional detail',
+  helperText = 'Skip this if you are unsure.',
   options,
   value,
   onChange,
@@ -554,11 +554,6 @@ export type TabbedModalOption<T extends string> = {
     src: string;
     alt: string;
   };
-  bestFor?: ReadonlyArray<string>;
-  consider?: ReadonlyArray<string>;
-  worksWellWith?: ReadonlyArray<string>;
-  microEducation?: string;
-  exampleUseCase: string;
 };
 
 type TabbedOptionModalProps<T extends string> = {
@@ -671,54 +666,6 @@ export function TabbedOptionModal<T extends string>({
           <div className="min-w-0">
             <h3 className="text-[20px] font-semibold leading-tight text-neutral-900">{heading}</h3>
             <p className="mt-2 text-[16px] leading-relaxed text-black/70">{activeOption.summary}</p>
-            {activeOption.bestFor?.length ? (
-              <div className="mt-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Best for</p>
-                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
-                  {activeOption.bestFor.slice(0, 3).map((item) => (
-                    <li key={`${activeOption.id}-best-${item}`}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {activeOption.consider?.length ? (
-              <div className="mt-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Consider</p>
-                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
-                  {activeOption.consider.slice(0, 2).map((item) => (
-                    <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {activeOption.microEducation ? (
-              <div
-                className="mt-4 rounded-xl border border-black/10 border-l-2 bg-black/[0.02] p-4 pl-4"
-                style={{ borderLeftColor: 'var(--color-brand)' }}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-black/40">Insight</p>
-                <p className="mt-1 text-[15px] leading-relaxed text-black/70">{activeOption.microEducation}</p>
-              </div>
-            ) : null}
-            <div className="mt-6">
-              <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Example use case</p>
-              <p className="mt-4 text-[15px] leading-relaxed text-black/70">{activeOption.exampleUseCase}</p>
-            </div>
-            {activeOption.worksWellWith?.length ? (
-              <div className="mt-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Works well with</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {activeOption.worksWellWith.map((item) => (
-                    <span
-                      key={`${activeOption.id}-works-${item}`}
-                      className="inline-flex h-7 items-center rounded-full border border-black/10 px-3 text-[12px] text-black/70"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
         {renderSubPanel ? renderSubPanel(activeOption.id) : null}
@@ -735,11 +682,6 @@ export type ExtrasExplorerOption<T extends string> = {
     src: string;
     alt: string;
   };
-  bestFor?: ReadonlyArray<string>;
-  consider?: ReadonlyArray<string>;
-  worksWellWith?: ReadonlyArray<string>;
-  microEducation?: string;
-  exampleUseCase: string;
 };
 
 type ExtrasExplorerModalProps<T extends string> = {
@@ -807,7 +749,7 @@ export function ExtrasExplorerModal<T extends string>({
     <ModalSurface
       open={open}
       title={title}
-      description="Add or remove extras in one session, then continue when your selection is ready."
+      description="Choose any extras you want to discuss."
       onClose={onClose}
       headerActions={
         <div className="hidden lg:flex">
@@ -885,54 +827,6 @@ export function ExtrasExplorerModal<T extends string>({
           <div className="min-w-0">
             <h3 className="text-[20px] font-semibold leading-tight text-neutral-900">{heading}</h3>
             <p className="mt-2 text-[16px] leading-relaxed text-black/70">{activeOption.summary}</p>
-            {activeOption.bestFor?.length ? (
-              <div className="mt-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Best for</p>
-                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
-                  {activeOption.bestFor.slice(0, 3).map((item) => (
-                    <li key={`${activeOption.id}-best-${item}`}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {activeOption.consider?.length ? (
-              <div className="mt-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Consider</p>
-                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
-                  {activeOption.consider.slice(0, 2).map((item) => (
-                    <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {activeOption.microEducation ? (
-              <div
-                className="mt-4 rounded-xl border border-black/10 border-l-2 bg-black/[0.02] p-4 pl-4"
-                style={{ borderLeftColor: 'var(--color-brand)' }}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-black/40">Insight</p>
-                <p className="mt-1 text-[15px] leading-relaxed text-black/70">{activeOption.microEducation}</p>
-              </div>
-            ) : null}
-            <div className="mt-6">
-              <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Example use case</p>
-              <p className="mt-4 text-[15px] leading-relaxed text-black/70">{activeOption.exampleUseCase}</p>
-            </div>
-            {activeOption.worksWellWith?.length ? (
-              <div className="mt-6">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Works well with</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {activeOption.worksWellWith.map((item) => (
-                    <span
-                      key={`${activeOption.id}-works-${item}`}
-                      className="inline-flex h-7 items-center rounded-full border border-black/10 px-3 text-[12px] text-black/70"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
       </section>
@@ -945,18 +839,13 @@ type ConsentResultCardProps = {
   result: ConsentCheckResult;
   links: ReadonlyArray<{ label: string; href: string }>;
   disclaimer: string;
-  ctaLabel: string;
-  ctaHref?: string;
 };
 
-export function ConsentResultCard({ ready, result, links, disclaimer, ctaLabel, ctaHref = '#start-submit' }: ConsentResultCardProps) {
+export function ConsentResultCard({ ready, result, links, disclaimer }: ConsentResultCardProps) {
   if (!ready) {
     return (
-      <div className="space-y-3 rounded-xl border border-border bg-neutral-50 p-4">
-        <p className="text-base font-semibold text-neutral-900">Add dimensions and site basics to run quick-check.</p>
-        <p className="text-sm text-neutral-700">
-          Once roof setup, attachment, level, public access, and dimensions are in place, this panel updates live.
-        </p>
+      <div className="rounded-xl border border-border bg-neutral-50 p-4">
+        <p className="text-sm text-neutral-700">Complete the site details first.</p>
       </div>
     );
   }
@@ -964,24 +853,8 @@ export function ConsentResultCard({ ready, result, links, disclaimer, ctaLabel, 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-neutral-50 p-4">
       <p className="text-base font-semibold text-neutral-900">{result.title}</p>
-      <p className="text-sm text-neutral-700">Area calculated: {result.areaM2 == null ? 'unknown' : `${result.areaM2.toFixed(1)}m^2`}.</p>
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-neutral-900">Why this appears likely</p>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700">
-          {result.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
-          ))}
-        </ul>
-      </div>
-      <p className="text-sm text-neutral-800">{result.nextStep}</p>
-      <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{disclaimer}</p>
+      <p className="text-sm text-neutral-700">{disclaimer}</p>
       <div className="flex flex-wrap items-center gap-3">
-        <a
-          href={ctaHref}
-          className="rounded border border-black bg-black px-4 py-2 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
-        >
-          {ctaLabel}
-        </a>
         {links.map((link) => (
           <a
             key={link.href}

@@ -71,6 +71,13 @@ describe('governed product catalogue', () => {
     }
   });
 
+  it('keeps catalogue summaries short enough to scan on mobile', () => {
+    for (const product of products) {
+      expect(product.indexSummary.split(/\s+/).length).toBeLessThanOrEqual(15);
+      expect(product.proposition).toBe(product.indexSummary);
+    }
+  });
+
   it('keeps the Warkworth gable apex in the governed product crop', () => {
     expect(getProductBySlug('gable')?.hero.objectPosition).toBe(
       WARKWORTH_EXTERIOR_OBJECT_POSITION,

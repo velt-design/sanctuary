@@ -17,29 +17,26 @@ type AudiencePathway = {
 
 export const audiencePathways: readonly AudiencePathway[] = [
   {
-    title: 'For Auckland homes',
-    copy:
-      'Begin with the home, outdoor area and intended use. Complex sites and integrated details stay within the same residential design process.',
+    title: 'Auckland homes',
+    copy: 'Plan the roof, structure and details around the house and outdoor area.',
     href: '/pergolas-auckland',
-    action: 'Plan a home pergola',
+    action: 'Explore home pergolas',
     enquiryType: 'residential',
     event: 'design_conversation_capability_open',
   },
   {
     title: 'Commercial projects',
-    copy:
-      'Plan hospitality, workplace and other selected commercial structures around operations, access and delivery.',
+    copy: 'Plan the structure around operations, access and delivery.',
     href: '/commercial-pergolas-auckland#project-details',
-    action: 'Review commercial capability',
+    action: 'Explore commercial work',
     enquiryType: 'commercial',
     event: 'design_conversation_capability_open',
   },
   {
     title: 'Professional collaboration',
-    copy:
-      'Architects, designers and builders can share drawings, concepts, tender information and defined project responsibilities.',
+    copy: 'Share drawings, tender information and project responsibilities.',
     href: '/architects-designers-builders',
-    action: 'Work with Sanctuary',
+    action: 'Explore collaboration',
     enquiryType: 'professional',
     event: 'design_conversation_capability_open',
   },
@@ -47,18 +44,15 @@ export const audiencePathways: readonly AudiencePathway[] = [
 
 export const processSteps = [
   {
-    title: 'Share a useful brief',
-    copy:
-      'Send the suburb, project photos, approximate dimensions and intended use. Sanctuary reviews the information and identifies a useful next step.',
+    title: 'Share the brief',
+    copy: 'Send the suburb, photos, rough dimensions and intended use.',
   },
   {
-    title: 'Develop and confirm the design',
-    copy:
-      'The site, exposure, connections and access shape the design. Sanctuary confirms the form, materials, inclusions, price and current programme in writing.',
+    title: 'Confirm the design',
+    copy: 'We confirm the form, materials, scope, price and current programme.',
   },
   {
-    title: 'Build, install and hand over',
-    copy:
-      'The pergola is prepared and installed by the Sanctuary team, then handed over with applicable care, warranty and support information.',
+    title: 'Build and install',
+    copy: 'We prepare, install and hand over the completed pergola.',
   },
 ] as const;

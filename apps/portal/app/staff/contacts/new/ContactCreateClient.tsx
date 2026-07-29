@@ -11,6 +11,7 @@ import { Button, Input } from '@/components/ui/foundation/FoundationControls';
 import { AlertBanner } from '@/components/ui/foundation/FoundationFeedback';
 import { Card, PageLayout } from '@/components/ui/foundation/FoundationSurfaces';
 import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
+import { invalidateContactsIndexCaches } from '@/lib/queries/contactsIndex';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import type { Contact } from '@/lib/types/contact';
@@ -70,6 +71,7 @@ export default function ContactCreateClient() {
                 }),
               });
               upsertContactCaches(queryClient, host, response.contact);
+              void invalidateContactsIndexCaches(queryClient, host);
               router.push(`/staff/contacts/${encodeURIComponent(response.contact.id)}`);
             } catch (reason) {
               setError(reason instanceof Error ? reason.message : 'Failed to create contact');

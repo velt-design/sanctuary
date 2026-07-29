@@ -74,10 +74,8 @@ export function getProjectTechnicalSections(project: Project): Project['sections
   return project.sections.filter((section) => !/^design brief$/i.test(section.title));
 }
 
-export function getProjectIntroCta(project: Project): string {
-  return project.type === 'Commercial'
-    ? 'Share plans or a project brief'
-    : 'Discuss a similar project';
+export function getProjectIntroCta(_project: Project): string {
+  return 'Send project brief';
 }
 
 export function getProjectContextLinks(project: Project): ProjectContextLink[] {

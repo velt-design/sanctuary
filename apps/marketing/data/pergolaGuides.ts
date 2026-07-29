@@ -30,16 +30,14 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
     number: '01',
     eyebrow: 'Start with the whole brief',
     title: 'Plan the project',
-    introduction:
-      'Use these guides when the important decision is the overall room, site response or project type, rather than one isolated component.',
+    introduction: 'Plan the room, site and project type.',
     guides: [
       {
         number: '01',
         href: '/pergolas-auckland',
         title: 'Pergolas Auckland',
         prompt: 'Begin with the whole brief',
-        summary:
-          'A broad planning guide to roof form, daylight, weather edges and the relationship between a pergola and the home.',
+        summary: 'Plan roof form, daylight and weather edges around the home.',
         role: 'service',
         label: 'Service guide',
       },
@@ -48,8 +46,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/custom-pergolas-auckland',
         title: 'Custom Pergolas Auckland',
         prompt: 'Resolve a site-specific design',
-        summary:
-          'How a bespoke pergola develops from the house, outdoor area, constraints and way the finished space should be used.',
+        summary: 'Resolve difficult connections, levels, posts and project interfaces.',
         role: 'service',
         label: 'Service guide',
       },
@@ -58,8 +55,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/outdoor-rooms-auckland',
         title: 'Outdoor Rooms Auckland',
         prompt: 'Design the life below the roof',
-        summary:
-          'Plan a more complete outdoor room around shelter, warmth, lighting, services, furniture and changing seasons.',
+        summary: 'Coordinate shelter, furniture, lighting and services.',
         role: 'service',
         label: 'Planning guide',
       },
@@ -68,8 +64,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/commercial-pergolas-auckland',
         title: 'Commercial Pergolas Auckland',
         prompt: 'Make more of the venue',
-        summary:
-          'How Sanctuary designs and builds commercial pergolas while coordinating engineering, consent and trades from the venue brief through installation.',
+        summary: 'Define Sanctuary’s role, site coordination and delivery scope.',
         role: 'service',
         label: 'Service guide',
       },
@@ -80,16 +75,14 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
     number: '02',
     eyebrow: 'Shape the architecture',
     title: 'Choose form and structure',
-    introduction:
-      'Use these guides to understand how frame material and roof geometry influence proportion, drainage, volume and connection to the building.',
+    introduction: 'Compare frame material and roof geometry.',
     guides: [
       {
         number: '05',
         href: '/aluminium-pergolas-auckland',
         title: 'Aluminium Pergolas Auckland',
         prompt: 'Understand the frame',
-        summary:
-          'Explore how aluminium structure, spans, posts, finishes and junctions shape an architectural pergola.',
+        summary: 'See how posts, spans, finishes and junctions shape the frame.',
         role: 'product-guide',
         label: 'Material guide',
       },
@@ -98,8 +91,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/gable-pergolas-auckland',
         title: 'Gable Pergolas Auckland',
         prompt: 'Plan ridge, eaves and volume',
-        summary:
-          'Consider the height, symmetry, light and spatial character created by a roof rising to a central ridge.',
+        summary: 'Plan ridge height, pitch, eaves and gable ends.',
         role: 'product-guide',
         label: 'Roof-form guide',
       },
@@ -108,8 +100,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/pitched-pergolas-auckland',
         title: 'Pitched Pergolas Auckland',
         prompt: 'Follow one roof plane',
-        summary:
-          'Understand when a single-slope roof can make a clean connection while managing height, fall, drainage and daylight.',
+        summary: 'Plan one roof plane around height, fall and drainage.',
         role: 'product-guide',
         label: 'Roof-form guide',
       },
@@ -120,16 +111,14 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
     number: '03',
     eyebrow: 'Test the important trade-offs',
     title: 'Compare scope and components',
-    introduction:
-      'Use these guides when cost, roof behaviour or a changing edge is the decision that will set the direction of the wider design.',
+    introduction: 'Compare scope, roof behaviour and changing edges.',
     guides: [
       {
         number: '08',
         href: '/pergola-cost-auckland',
         title: 'Pergola Cost Auckland',
         prompt: 'Compare scope before price',
-        summary:
-          'See which design and delivery choices shape project cost, and what information makes an early estimate more useful.',
+        summary: 'See what shapes cost and makes quotes comparable.',
         role: 'decision-guide',
         label: 'Cost guide',
       },
@@ -138,8 +127,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/pergolas-with-blinds',
         title: 'Pergolas With Blinds',
         prompt: 'Plan the changing edge',
-        summary:
-          'Consider blinds as part of the architecture, including wind, low sun, privacy, openings and how the edge works when raised.',
+        summary: 'Plan one changing edge for low sun, privacy or exposure.',
         role: 'product-guide',
         label: 'Integration guide',
       },
@@ -148,8 +136,7 @@ export const pergolaGuideChapters: PergolaGuideChapter[] = [
         href: '/acrylic-pergolas-vs-louvre-roofs',
         title: 'Acrylic Pergolas vs Louvre Roofs',
         prompt: 'Compare roof behaviour',
-        summary:
-          'Compare fixed acrylic roofing and opening louvres through daylight, rain detailing, ventilation, maintenance and use.',
+        summary: 'Compare a Sanctuary fixed roof with an external louvre proposal.',
         role: 'decision-guide',
         label: 'Comparison guide',
       },

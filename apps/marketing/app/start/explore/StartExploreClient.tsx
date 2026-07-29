@@ -2,8 +2,6 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import RoofComparisonSection from '@/components/explore/RoofComparisonSection';
-import RoofStudiesSection, { type RoofShapeSelectedPayload } from '@/components/explore/RoofStudiesSection';
 import { ButtonLink } from '@/components/ui/Button';
 import Container from '@/components/ui/Container';
 import { LineGlyphButton } from '@/components/ui/LineGlyphButton';
@@ -13,6 +11,7 @@ import { usePrefersReducedMotion } from './_foundation/usePrefersReducedMotion';
 type MaterialId = 'acrylic' | 'timber' | 'combo' | 'aluminium';
 type Mode = 'browse' | 'focus';
 type AluminiumColorId = 'silver' | 'white' | 'black' | 'bronze';
+type RoofFormId = 'roof-shape-pitched' | 'roof-shape-gable' | 'roof-shape-hip' | 'roof-shape-box-perimeter';
 
 type ImageMediaSpec = {
   mediaType?: 'image';
@@ -31,10 +30,19 @@ type VideoMediaSpec = {
 
 type MediaSpec = ImageMediaSpec | VideoMediaSpec;
 
+type RoofForm = {
+  id: RoofFormId;
+  title: string;
+  summary: string;
+  image: {
+    src: string;
+    alt: string;
+  };
+};
+
 type MaterialConfig = {
   id: MaterialId;
   label: string;
-  bubbleTitle: string;
   bubbleBody: string;
   media: { browse: MediaSpec; focus: MediaSpec };
   aluminiumColors?: Array<{
@@ -52,13 +60,39 @@ const MATERIALS_STAGE_WIDTH = 'min(92vw, 1610px)';
 const REEL_ALIGNED_COPY_STYLE: React.CSSProperties = { width: REEL_COPY_WIDTH, marginInline: 'auto' };
 const MATERIALS_STAGE_WRAP_STYLE: React.CSSProperties = { width: MATERIALS_STAGE_WIDTH, marginInline: 'auto' };
 
+const ROOF_FORMS: RoofForm[] = [
+  {
+    id: 'roof-shape-pitched',
+    title: 'Pitched',
+    summary: 'A single roof plane with one clear drainage direction.',
+    image: { src: '/images/pitch-landing.jpg', alt: 'Pitched pergola roof' },
+  },
+  {
+    id: 'roof-shape-gable',
+    title: 'Gable',
+    summary: 'A central ridge adds height and a clear centre.',
+    image: { src: '/images/gable-landing.jpg', alt: 'Gable pergola roof' },
+  },
+  {
+    id: 'roof-shape-hip',
+    title: 'Hip',
+    summary: 'A composed roof for corners and views from several sides.',
+    image: { src: '/images/hip-landing.jpg', alt: 'Hip pergola roof' },
+  },
+  {
+    id: 'roof-shape-box-perimeter',
+    title: 'Box perimeter',
+    summary: 'A level outer frame hides the working roof fall.',
+    image: { src: '/images/box-landing.jpg', alt: 'Box-perimeter pergola roof' },
+  },
+];
+
 
 const MATERIALS: MaterialConfig[] = [
   {
     id: 'acrylic',
     label: 'Acrylic',
-    bubbleTitle: 'Acrylic.',
-    bubbleBody: 'Bright, clean light with a crisp finish. A minimal look that stays quiet in the architecture.',
+    bubbleBody: 'A fixed roof that keeps daylight.',
     media: {
       browse: {
         mediaType: 'video',
@@ -77,8 +111,7 @@ const MATERIALS: MaterialConfig[] = [
   {
     id: 'timber',
     label: 'Timber',
-    bubbleTitle: 'Timber.',
-    bubbleBody: 'Warm texture and a softer atmosphere. Designed to feel like part of the home, not an add-on.',
+    bubbleBody: 'A solid roof with a timber ceiling.',
     media: {
       browse: {
         mediaType: 'video',
@@ -97,8 +130,7 @@ const MATERIALS: MaterialConfig[] = [
   {
     id: 'combo',
     label: 'Combination',
-    bubbleTitle: 'Combination.',
-    bubbleBody: 'Balance warmth and precision. A composed mix that lets structure stay clean while texture does the work.',
+    bubbleBody: 'Solid and acrylic zones in one roof.',
     media: {
       browse: {
         mediaType: 'video',
@@ -117,8 +149,7 @@ const MATERIALS: MaterialConfig[] = [
   {
     id: 'aluminium',
     label: 'Aluminium',
-    bubbleTitle: 'Aluminium.',
-    bubbleBody: 'Powder-coated finish with precise lines. Choose a color that sits quietly with the exterior palette.',
+    bubbleBody: 'Powder-coated framing in a colour chosen for the site.',
     media: {
       browse: {
         src: '/images/product-gable-01.jpg',
@@ -246,6 +277,7 @@ function IconChevronDown() {
 
 
 export default function StartExploreClient({ debug }: { debug?: boolean }) {
+  const [activeRoof, setActiveRoof] = React.useState<RoofFormId>('roof-shape-pitched');
   const [active, setActive] = React.useState<MaterialId>('acrylic');
   const [mode, setMode] = React.useState<Mode>('browse');
   const [aluColor, setAluColor] = React.useState<AluminiumColorId>('silver');
@@ -338,15 +370,26 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     };
   }
 
-  const handleRoofShapeSelected = React.useCallback((payload: RoofShapeSelectedPayload) => {
-    window.dispatchEvent(new CustomEvent('sanctuary:roof-shape-selected', { detail: payload }));
-  }, []);
-
   const handleRequestScrollToMaterials = React.useCallback((behavior: ScrollBehavior) => {
     const nextSection = materialsSectionRef.current;
     if (!nextSection) return;
     nextSection.scrollIntoView({ behavior, block: 'start' });
   }, []);
+
+  const selectRoofForm = React.useCallback(
+    (roof: RoofForm) => {
+      setActiveRoof(roof.id);
+      window.dispatchEvent(
+        new CustomEvent('sanctuary:roof-shape-selected', {
+          detail: {
+            roofShapeId: roof.id,
+            roofShapeTitle: roof.title,
+          },
+        })
+      );
+    },
+    []
+  );
 
   const showSwatches = isFocus && active === 'aluminium' && Boolean(aluminiumCfg?.aluminiumColors);
 
@@ -355,33 +398,68 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
       <section className={cn('border-b border-page bg-page [border-bottom-width:var(--bw)]', debug && 'outline outline-1 outline-rose-500/40')}>
         <Container className="py-[clamp(40px,8vh,112px)]">
           <div className="mx-auto max-w-[760px] text-center">
-            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Design chapter</p>
             <h1 className="mt-3 text-balance text-[clamp(34px,4vw,56px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
-              Take a closer look.
+              Compare roof forms and materials.
             </h1>
             <p className="mx-auto mt-4 max-w-[58ch] text-[17px] leading-[1.6] text-muted">
-              Dial in roof and light behavior with the same material controls used in design conversations.
+              Choose a form, then compare the main roof materials.
             </p>
           </div>
         </Container>
       </section>
 
-      <RoofStudiesSection
-        debug={debug}
-        onShapeSelected={handleRoofShapeSelected}
-        onRequestScrollToNext={handleRequestScrollToMaterials}
-      />
+      <section className={cn('border-b border-page bg-page py-[clamp(36px,7vh,88px)] [border-bottom-width:var(--bw)]', debug && 'outline outline-1 outline-cyan-500/30')}>
+        <Container>
+          <h2 className="text-[clamp(28px,3.2vw,42px)] font-semibold leading-tight text-ink">Roof forms</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label="Roof form">
+            {ROOF_FORMS.map((roof) => {
+              const selected = activeRoof === roof.id;
+              return (
+                <button
+                  key={roof.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => selectRoofForm(roof)}
+                  className={cn(
+                    'overflow-hidden border bg-card text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35',
+                    selected ? 'border-ink' : 'border-card'
+                  )}
+                >
+                  <span className="relative block aspect-[4/3]">
+                    <Image
+                      src={roof.image.src}
+                      alt={roof.image.alt}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-cover"
+                    />
+                  </span>
+                  <span className="block p-4">
+                    <span className="block text-lg font-semibold text-ink">{roof.title}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-muted">{roof.summary}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => handleRequestScrollToMaterials(prefersReducedMotion ? 'auto' : 'smooth')}
+            className="mt-6 border border-ink bg-ink px-5 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
+          >
+            Compare materials
+          </button>
+        </Container>
+      </section>
 
       <section ref={materialsSectionRef} className={cn('bg-page py-[clamp(36px,7vh,104px)]', debug && 'outline outline-1 outline-emerald-500/35')}>
         <div style={REEL_ALIGNED_COPY_STYLE}>
           <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Materials.</p>
           <h2 className="mt-3 max-w-[24ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
-            Bright and open, or cool and shaded - dial it in with materials.
+            Roof materials.
           </h2>
           <p className="mt-6 max-w-[76ch] text-[17px] leading-[1.66] text-muted">
-            Material choice sets the tone for the entire pergola - how light moves through it, how warm it feels, how much upkeep it asks for, and how it will age over time.{' '}
-            <span className="text-ink">Acrylic keeps spaces bright and open. Timber adds warmth and texture. Combination systems balance both.</span>{' '}
-            Aluminium stays crisp and architectural, with colour options that sit quietly alongside your exterior palette.
+            Compare daylight, ceiling feel and frame finish.
           </p>
         </div>
       </section>
@@ -515,18 +593,16 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
         </div>
       </section>
 
-      <RoofComparisonSection debug={debug} />
-
       <section className="mt-7 border-y border-page bg-page [border-top-width:var(--bw)] [border-bottom-width:var(--bw)] lg:mt-10">
         <Container className="py-6">
           <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-between">
-            <p className="text-sm text-muted">Selections update instantly as you click.</p>
+            <p className="text-sm text-muted">Ready to share your brief?</p>
             <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-end">
               <ButtonLink href="/contact" variant="brand" size="md" className="rounded-none">
-                Book a Design Consultation
+                Contact us
               </ButtonLink>
               <ButtonLink href="/start" variant="outline" size="md" className="rounded-none">
-                Start the guide
+                Start your brief
               </ButtonLink>
             </div>
           </div>

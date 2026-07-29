@@ -118,8 +118,9 @@ describe('projectCache helpers', () => {
     const contact = { id: 'ct_1', displayName: 'Alex', phone: '111' } as any;
     const response = (archive: ProjectsIndexResponse['archive']): ProjectsIndexResponse => ({
       archive,
-      projects: { rows: [project], totalCount: 1, truncated: false },
+      projects: { rows: [project], totalCount: 1, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
       contacts: { rows: [contact], totalCount: 1, truncated: false },
+      query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
       generatedAt: '2026-07-19T00:00:00.000Z',
     });
     client.setQueryData(qk.projects.list('host', 'active'), [project]);
@@ -160,8 +161,9 @@ describe('projectCache helpers', () => {
     } as any;
     const response = (archive: ProjectsIndexResponse['archive'], rows: any[], totalCount: number): ProjectsIndexResponse => ({
       archive,
-      projects: { rows, totalCount, truncated: false },
+      projects: { rows, totalCount, truncated: false, page: 1, pageSize: 50, totalPages: Math.max(1, Math.ceil(totalCount / 50)) },
       contacts: { rows: [], totalCount: 0, truncated: false },
+      query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
       generatedAt: '2026-07-19T00:00:00.000Z',
     });
 

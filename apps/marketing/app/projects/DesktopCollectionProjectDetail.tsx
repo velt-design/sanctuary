@@ -10,8 +10,6 @@ import type { ProjectDetailContentProps } from './ProjectDetailContent';
 
 type LoadedProjectDetail = {
   Component: ComponentType<ProjectDetailContentProps>;
-  nextProject?: Project;
-  previousProject?: Project;
   project: Project;
   projectCount: number;
   projectIndex: number;
@@ -36,14 +34,6 @@ function resolveProjectDetail(
 
   return {
     Component,
-    nextProject: projectRecords.length > 1
-      ? projectRecords[(projectIndex + 1) % projectRecords.length]
-      : undefined,
-    previousProject: projectRecords.length > 1
-      ? projectRecords[
-        (projectIndex - 1 + projectRecords.length) % projectRecords.length
-      ]
-      : undefined,
     project,
     projectCount: projectRecords.length,
     projectIndex,
@@ -98,8 +88,6 @@ export default function DesktopCollectionProjectDetail({
 
   const {
     Component,
-    nextProject,
-    previousProject,
     project,
     projectCount,
     projectIndex,
@@ -112,8 +100,6 @@ export default function DesktopCollectionProjectDetail({
       projectIndex={projectIndex}
       projectCount={projectCount}
       relatedProjects={relatedProjects}
-      previousProject={previousProject}
-      nextProject={nextProject}
       sourcePath="/projects"
       titleAs="h2"
     />

@@ -154,26 +154,24 @@ export default function PergolasAucklandPage() {
             Pergola design and installation in Auckland
           </Eyebrow>
           <Heading as="h1" variant="page" id="pergolas-auckland-title">
-            Pergolas for Auckland homes, designed from the house out
+            Custom pergolas for Auckland homes.
           </Heading>
           <Text size="large" className="acrylic-hero__intro">
-            Sanctuary designs and installs around the house, the site and the
-            way the outdoor area needs to work. Start with photos and rough
-            dimensions, not a preselected product.
+            Designed around your house, outdoor area and how you want to use it.
           </Text>
           <div className="acrylic-hero__actions">
             <Button href="#project-details">
-              Send photos and rough dimensions
+              Send photos and dimensions
             </Button>
-            <TextLink href="#design-brief">See the service fit</TextLink>
+            <TextLink href="#project-evidence">View projects</TextLink>
           </div>
           <ul
             className="acrylic-hero__proof"
             aria-label="Sanctuary pergola approach"
           >
-            <li>Site-specific form and layout</li>
-            <li>Residential projects across Auckland</li>
-            <li>Design and installation together</li>
+            <li>Designed for the site</li>
+            <li>Built projects across Auckland</li>
+            <li>One design and installation team</li>
           </ul>
         </Container>
       </section>
@@ -186,20 +184,13 @@ export default function PergolasAucklandPage() {
       >
         <Container width="wide" className="acrylic-intro-grid">
           <div>
-            <Eyebrow className="acrylic-eyebrow">Service fit</Eyebrow>
+            <Eyebrow className="acrylic-eyebrow">The brief</Eyebrow>
             <Heading id="one-connected-design">
-              Start with the change the outdoor area needs
+              Start with what the space needs to do.
             </Heading>
           </div>
           <div className="acrylic-prose acrylic-prose--large">
-            <p>
-              The useful brief names how the space should work, what the home
-              should keep and which rain, sun, wind or privacy problem matters.
-            </p>
-            <p>
-              Roof form, material, posts, drainage and edges can then be
-              resolved as one response to the measured site.
-            </p>
+            <p>Name the intended use, what should stay open and the main weather or privacy issue.</p>
           </div>
         </Container>
       </Section>
@@ -213,15 +204,11 @@ export default function PergolasAucklandPage() {
         <Container width="wide">
           <header className="acrylic-section__header acrylic-section__header--wide">
             <Eyebrow className="acrylic-eyebrow">
-              Built evidence across Auckland
+              Built in Auckland
             </Eyebrow>
             <Heading id="completed-projects">
-              Three homes. Three different answers.
+              Three homes. Three responses.
             </Heading>
-            <p>
-              These projects show how form, roofing and the existing home were
-              resolved at full scale. They are evidence, not templates.
-            </p>
           </header>
           <div className="acrylic-project-grid">
             {projectProof.map(({ project, label, summary, facts }) => (
@@ -251,20 +238,20 @@ export default function PergolasAucklandPage() {
                   <ul className="seo-landing__project-facts">
                     {facts.map((fact) => <li key={fact}>{fact}</li>)}
                   </ul>
-                  <span>Review the completed project</span>
+                  <span>View project</span>
                 </div>
               </Link>
             ))}
           </div>
           <div className="acrylic-section__action">
             <Button href="/projects" variant="outline">
-              Browse completed projects
+              View all projects
             </Button>
             <Button
               href="#project-details"
               className="pergolas-auckland__mobile-project-cta"
             >
-              Discuss my site
+              Send my brief
             </Button>
           </div>
         </Container>
@@ -279,10 +266,10 @@ export default function PergolasAucklandPage() {
         <Container width="wide">
           <header className="acrylic-section__header acrylic-section__header--wide">
             <Eyebrow className="acrylic-eyebrow">
-              Three clear stages
+              The process
             </Eyebrow>
             <Heading id="clear-process">
-              Move from an early brief to an agreed design
+              From brief to agreed scope.
             </Heading>
           </header>
           <ProcessSteps items={[...residentialProcessSteps]} />
@@ -298,17 +285,13 @@ export default function PergolasAucklandPage() {
           <div className="acrylic-intro-grid">
             <div>
               <Eyebrow className="acrylic-eyebrow">
-                Investment follows scope
+                Cost follows scope
               </Eyebrow>
               <Heading id="investment-drivers">
-                Four drivers make an early comparison useful
+                What shapes cost.
               </Heading>
-              <p className="acrylic-lead">
-                Similar footprints can require different structures,
-                connections and site work.
-              </p>
               <Link href="/pergola-cost-auckland">
-                Review the complete cost and scope guide
+                Read the cost guide
               </Link>
             </div>
             <div className="acrylic-price-grid">
@@ -451,38 +434,6 @@ export default function PergolasAucklandPage() {
       </MobileServiceDisclosure>
 
       <Section
-        tone="inverse"
-        className="acrylic-section acrylic-section--final-cta"
-        aria-labelledby="useful-first-look"
-        data-service-final-enquiry
-      >
-        <Container width="wide" className="acrylic-final-grid">
-          <div>
-            <Eyebrow className="acrylic-eyebrow">One useful next step</Eyebrow>
-            <Heading id="useful-first-look">
-              Show Sanctuary the house, not just the empty deck
-            </Heading>
-            <p>
-              Wide photos, a view from inside and rough dimensions are enough
-              to begin.
-            </p>
-            <div className="acrylic-hero__actions">
-              <Button href="#project-details">Send my project details</Button>
-            </div>
-          </div>
-          <div>
-            <h3>Start with</h3>
-            <ul className="acrylic-check-list">
-              <li>The project suburb</li>
-              <li>Rough width and projection</li>
-              <li>Wide photos of the house and outdoor area</li>
-              <li>How the space should work</li>
-            </ul>
-          </div>
-        </Container>
-      </Section>
-
-      <Section
         id="project-details"
         tone="warm"
         className="acrylic-section acrylic-section--estimate"
@@ -496,12 +447,12 @@ export default function PergolasAucklandPage() {
               sourcePath: route,
               sourceComponent: 'embedded_form',
             }}
-            eyebrow="Start with what you know"
-            heading="Send your pergola project details"
-            intro="Add the suburb, a few photos and rough dimensions. Tell us what the outdoor area cannot do today and what the new structure should improve."
-            submitLabel="Send my project details"
-            messageLabel="What should the pergola change?"
-            messagePlaceholder="Describe how you use the area, the rooms beside it and the main issue with rain, sun, wind or privacy."
+            eyebrow="Project brief"
+            heading="Tell us about your project."
+            intro="Share the site, intended use and what you know so far."
+            submitLabel="Send project brief"
+            messageLabel="Your project"
+            messagePlaceholder="How will you use the space? What should the pergola improve?"
             briefFields={[
               {
                 name: 'siteAddress',

@@ -151,7 +151,7 @@ for (const viewport of [
 
     const currentLink = page
       .getByRole('navigation', { name: 'Mobile primary' })
-      .getByRole('link', { name: 'Contact' });
+      .getByRole('link', { name: 'Start your project' });
     const currentPress = await holdActive(page, currentLink);
     expect(currentPress.pressed.backgroundColor)
       .not.toBe(currentPress.before.backgroundColor);
@@ -179,7 +179,9 @@ test('homepage and footer adapters provide active feedback while selected state 
   expect(selectedPress.pressed.opacity).toBe('1');
 
   const projectCard = page.locator('[data-intent-response] article').first();
-  const projectLink = projectCard.getByRole('link', { name: 'View project' });
+  const projectLink = projectCard.locator(
+    'a[data-design-conversation-event="design_conversation_project_open"]',
+  );
   await expectHeldFeedback(page, projectLink, projectCard);
 
   const audienceCard = page.locator('article').filter({
@@ -294,6 +296,7 @@ test('contact choices, file controls and sending controls preserve state precede
   const selectedLabel = selectedRadio.locator('..');
   const selectedPress = await holdActive(page, selectedLabel);
   expect(selectedPress.pressed.opacity).toBe('1');
+  await page.getByText('Add optional project details', { exact: true }).click();
 
   const unselectedLabel = page.getByRole('radio', {
     name: 'Commercial',
@@ -331,11 +334,11 @@ test('contact choices, file controls and sending controls preserve state precede
   const submit = page.locator('.contact-form__submit button');
   await submit.click();
   await expect(submit).toBeDisabled();
-  await expect(submit).toHaveText('Sending your enquiry');
+  await expect(submit).toHaveText('Sending brief');
   await expect(submit).toHaveCSS('opacity', '0.64');
   await expect(submit).toHaveCSS('transform', 'none');
   finishSubmission?.();
-  await expect(page.getByRole('status')).toContainText('Project details received');
+  await expect(page.getByRole('status')).toContainText('Project brief sent');
   await expect(submit).toBeDisabled();
 });
 
@@ -353,7 +356,7 @@ test('reduced motion resolves governed transitions while active surfaces remain 
 
   await page.goto('/contact');
   const contactAction = page.getByRole('link', {
-    name: 'Start your project brief',
+    name: 'Send a project brief',
   });
   await expect(contactAction).toHaveCSS('transition-duration', /^0s(?:, 0s)*$/);
 
@@ -411,7 +414,7 @@ test('route progress never appears before its existing 150 ms delay', async ({
       .__tm02ProgressTimings = timings;
   });
 
-  await page.getByRole('link', { name: 'Compare pergola forms and roof approaches' })
+  await page.getByRole('link', { name: 'Compare pergola options' })
     .click();
   await expect(page).toHaveURL(/\/products$/);
   await page.waitForTimeout(220);

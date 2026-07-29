@@ -93,32 +93,28 @@ export const defaultStartFlowDraft: StartFlowDraft = {
 
 export const startFlowContent = {
   hero: {
-    heading: 'Design your pergola consultation in 3 minutes.',
-    subheading:
-      'Choose style and materials, check consent basics, then book a Design Consultation.',
-    startCta: 'Start the guide',
-    skipCta: 'Jump to consultation booking',
+    heading: 'Start your pergola brief.',
+    subheading: 'Choose your project type, preferred roof and what you know about the site.',
+    startCta: 'Start',
+    skipCta: 'Continue your brief',
   },
   branch: {
-    heading: 'Choose your path',
+    heading: 'Project type',
     options: [
       {
         value: 'residential' as const,
         label: 'Residential',
-        description:
-          'Make an outdoor room that feels built-in - light, shade, warmth, and weather protection.',
+        description: 'A pergola for your home or residential property.',
       },
       {
         value: 'commercial' as const,
         label: 'Commercial',
-        description:
-          'Create a durable, compliant cover for customers and staff - built for NZ wind and heavy use.',
+        description: 'A pergola for a business, venue or shared site.',
       },
       {
         value: 'professional' as const,
         label: 'Professional',
-        description:
-          'Specification-friendly pergolas: details, drawings, coordination, and engineering support.',
+        description: 'An architect, designer or builder enquiry.',
       },
     ],
   },
@@ -128,37 +124,27 @@ export const startFlowContent = {
       {
         value: 'pitched' as const,
         label: 'Pitched',
-        what: 'One clean fall for reliable drainage and a crisp roofline.',
-        bestWhen: ['Narrow spaces', 'You want head height', 'Simple drainage'],
-        watchOut: 'Needs correct fall and gutter strategy.',
+        what: 'A single roof plane with one drainage direction.',
       },
       {
         value: 'gable' as const,
         label: 'Gable',
-        what: 'Peaked roof for headroom, daylight, and airflow at the ridge.',
-        bestWhen: ['Larger decks', 'You want a centrepiece', 'Ventilation matters'],
-        watchOut: 'Can feel bright, so tint or blinds can help.',
+        what: 'A central ridge that adds height.',
       },
       {
         value: 'hip' as const,
         label: 'Hip',
-        what: 'Falls on all sides for tidy edges and better corner wind behaviour.',
-        bestWhen: ['Corner decks', 'Complex facades', 'Exposed wind directions'],
-        watchOut: 'Slightly more complexity in flashings.',
+        what: 'A roof that falls to several sides.',
       },
       {
         value: 'perimeter' as const,
         label: 'Box-perimeter',
-        what: 'Minimal, modern look with clean perimeter lines.',
-        bestWhen: ['Modern architecture', 'Flat visual profile', 'Tight eaves lines'],
-        watchOut: 'Drainage and detailing must be well set out.',
+        what: 'A level outer frame that hides the working roof fall.',
       },
       {
         value: 'unsure' as const,
         label: 'Not sure',
-        what: "We'll recommend a style after a quick look at your photos and roofline.",
-        bestWhen: ['You want guidance', 'Your roofline is complex'],
-        watchOut: 'A Design Consultation is often needed to confirm details.',
+        what: "We'll recommend a form after reviewing your site.",
       },
     ],
     waterDirectionOptions: [
@@ -173,22 +159,22 @@ export const startFlowContent = {
       {
         value: 'acrylic' as const,
         label: 'Acrylic',
-        description: 'Create a fixed overhead roof with a clear, opal or tinted daylight character.',
+        description: 'A fixed roof that keeps daylight.',
       },
       {
         value: 'timber' as const,
         label: 'Timber',
-        description: 'A warm ceiling feel that reads like an interior extension.',
+        description: 'A solid roof with a timber ceiling.',
       },
       {
         value: 'combination' as const,
         label: 'Combination',
-        description: 'Shade where you sit, skylight where you need daylight.',
+        description: 'Solid and acrylic zones in one roof.',
       },
       {
         value: 'unsure' as const,
         label: 'Not sure',
-        description: 'We can recommend the best fit after reviewing your brief and photos.',
+        description: "We'll recommend a material after reviewing your brief.",
       },
     ],
     acrylicTintOptions: [
@@ -218,8 +204,7 @@ export const startFlowContent = {
     ],
   },
   site: {
-    heading: 'Your site in 60 seconds',
-    measureHelp: 'How to measure: round to the nearest 0.1m.',
+    heading: 'Site details',
     installSurfaceOptions: [
       { value: 'deck' as const, label: 'Deck' },
       { value: 'concrete_pad' as const, label: 'Concrete pad' },
@@ -245,9 +230,9 @@ export const startFlowContent = {
     ],
   },
   consent: {
-    heading: 'Building consent exemption quick-check',
+    heading: 'Consent review',
     disclaimer:
-      'This quick check is general guidance only. Council interpretation, site conditions, and overlays or precincts can change requirements.',
+      "Consent depends on the final design and property. We'll identify the checks needed for your project.",
     links: [
       {
         label: 'Official building guidance',
@@ -269,47 +254,38 @@ export const startFlowContent = {
       {
         value: 'blinds' as const,
         label: 'Drop-down blinds',
-        description: 'On-demand wind, rain, and low-sun control.',
+        description: 'Lower one edge for sun or privacy.',
       },
       {
         value: 'slats' as const,
         label: 'Slat screens',
-        description: 'Privacy and wind filtering without closing the space.',
+        description: 'Fixed privacy with light between the slats.',
       },
       {
         value: 'acrylic_infills' as const,
         label: 'Acrylic infill panels',
-        description: 'Block wind and rain while keeping views.',
+        description: 'A transparent fixed edge.',
       },
       {
         value: 'downlights' as const,
         label: 'Downlights',
-        description: 'Even lighting over dining and task zones.',
+        description: 'Focused light for dining and circulation.',
       },
       {
         value: 'led_strips' as const,
         label: 'LED strip lighting',
-        description: 'Soft perimeter glow and safer edges.',
+        description: 'Concealed ambient light.',
       },
       {
         value: 'heaters' as const,
         label: 'Patio heaters',
-        description: 'Targeted warmth for shoulder seasons.',
+        description: 'Targeted radiant heat for a seating area.',
       },
     ],
     noneLabel: 'No extras right now',
   },
   process: {
-    heading: 'From design to build',
-    timeline: [
-      'Enquiry',
-      'Design Consultation',
-      'On-site design review',
-      'Design sign-off',
-      'Deposit and scheduling',
-      'On-site build',
-      'Completion',
-    ],
+    heading: 'Timeframe',
     timeframeOptions: [
       { value: 'asap' as const, label: 'ASAP' },
       { value: 'one_to_three_months' as const, label: '1-3 months' },
@@ -319,7 +295,6 @@ export const startFlowContent = {
   },
   submit: {
     heading: 'Send your brief',
-    supportingCopy:
-      "Sprint 3 will wire this section to submit directly to /api/enquiry with validation, summary append, and success state.",
+    supportingCopy: 'We will review it and contact you about the next step.',
   },
 } as const;

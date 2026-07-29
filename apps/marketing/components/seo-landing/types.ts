@@ -136,14 +136,6 @@ export type SeoLandingPageConfig = {
   blockOrder?: readonly string[];
   guideFirstLayer?: SeoLandingGuideFirstLayer;
   mobileDisclosureGroups?: readonly SeoLandingDisclosureGroup[];
-  finalCta: {
-    eyebrow: string;
-    title: string;
-    text: string;
-    button: string;
-    checklistTitle: string;
-    checklist: readonly string[];
-  };
   form: {
     ariaLabel: string;
     eyebrow: string;

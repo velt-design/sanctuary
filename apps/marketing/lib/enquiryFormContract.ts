@@ -13,26 +13,26 @@ export const ENQUIRY_AUDIENCE_OPTIONS: ReadonlyArray<{
   {
     value: 'residential',
     label: 'Residential',
-    description: 'A pergola for your home, deck or renovation.',
+    description: 'A home, deck or renovation.',
   },
   {
     value: 'commercial',
     label: 'Commercial',
-    description: 'A business, hospitality, property or multi-unit site.',
+    description: 'A business or shared site.',
   },
   {
     value: 'professional',
     label: 'Architect, designer or builder',
-    description: 'A project you are developing on behalf of a client.',
+    description: 'A client project.',
   },
 ];
 
 export const ENQUIRY_FORM_FIELD_ORDER: readonly EnquiryFormField[] = ['enquiryType', 'suburb', 'message', 'name', 'phone', 'email', 'files'];
 
-export const ENQUIRY_FORM_REQUIRED_NOTE = 'Fields marked Required are needed to send the enquiry.';
+export const ENQUIRY_FORM_REQUIRED_NOTE = 'Required fields are marked.';
 
 export const ENQUIRY_ATTACHMENT_HELP_TEXT =
-  `PDF, JPG, JPEG, PNG or WebP. Add up to ${ENQUIRY_ATTACHMENT_LIMITS.maxFiles} files. ` + 'Each file can be up to 20 MB, with 20 MB total.';
+  `Up to ${ENQUIRY_ATTACHMENT_LIMITS.maxFiles} PDF, JPG, JPEG, PNG or WebP files, 20 MB total.`;
 
 export function validateEnquiryForm(formData: FormData, files: File[]): EnquiryFormFieldErrors {
   const errors: EnquiryFormFieldErrors = {};
@@ -80,17 +80,14 @@ export function getEnquiryContextDisplay(
   const projectLabel = labels.sourceProjectLabel ?? labelFromSlug(context.sourceProject);
   const productLabel = labels.sourceProductLabel ?? labelFromSlug(context.sourceProduct);
   const itemLabel = projectLabel ? `Project: ${projectLabel}` : productLabel ? `Pergola option: ${productLabel}` : null;
-  const itemDescription = projectLabel
-    ? `${projectLabel.toLowerCase().startsWith('the ') ? '' : 'the '}${projectLabel} project`
-    : productLabel
-      ? `the ${productLabel} option`
-      : null;
   const audienceLabel = getEnquiryAudienceLabel(context.enquiryType);
+  const isItemContext = Boolean(itemLabel);
 
   return {
-    isVisible: Boolean(context.enquiryType || context.sourcePath || context.sourceComponent || context.sourceProject || context.sourceProduct),
-    heading: itemLabel ?? 'Your enquiry source is saved',
-    audience: audienceLabel ? `${audienceLabel} enquiry` : 'Choose the project type that fits your enquiry',
-    itemDescription,
+    isVisible: Boolean(isItemContext || audienceLabel),
+    heading: itemLabel ?? (audienceLabel ? `${audienceLabel} project` : ''),
+    audience: isItemContext
+      ? (audienceLabel ? `${audienceLabel} enquiry` : 'Choose a project type')
+      : '',
   };
 }

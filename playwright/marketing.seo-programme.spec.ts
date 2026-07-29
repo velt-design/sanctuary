@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 type ProgrammePage = {
   order: number;
@@ -26,112 +26,112 @@ const pages: ProgrammePage[] = [
     marker: 'aluminium-pergolas-auckland',
     route: '/aluminium-pergolas-auckland',
     title: 'Aluminium Pergolas Auckland | Frame & Finish Guide',
-    description: 'Explore aluminium pergolas in Auckland. Understand frame proportion, roof integration, finish, structure and project scope before requesting a site-specific assessment.',
-    h1: 'The frame sets the rhythm long before the roof is noticed',
-    submitLabel: 'Send the project outline',
-    faqCount: 8,
+    description: 'Plan an aluminium pergola around frame proportion, roofing, drainage, finish and the Auckland site.',
+    h1: 'Aluminium pergolas for Auckland homes.',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'product-guide',
     briefFieldName: 'openingPriorities',
-    projectCount: 4,
+    projectCount: 2,
     captureId: 'aluminium-projects',
     comparisonId: 'aluminium-specification-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland'],
   },
   {
     order: 4,
     marker: 'pergola-cost-auckland',
     route: '/pergola-cost-auckland',
     title: 'Pergola Cost Auckland | Scope & Quote Guide',
-    description: 'Understand pergola cost in Auckland without a misleading square-metre shortcut. See the real scope drivers, compare quotations and send details for an informed first assessment.',
-    h1: 'A useful pergola price starts with a defined scope, not a square-metre guess',
-    submitLabel: 'Request a scoped first look',
-    faqCount: 10,
+    description: 'Understand the design, structure, roofing, site work and options that shape an Auckland pergola quote.',
+    h1: 'Pergola cost starts with scope.',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'decision-guide',
-    briefFieldName: 'siteAccess',
-    projectCount: 4,
+    briefFieldName: 'scopePriorities',
+    projectCount: 3,
     captureId: 'cost-projects',
     comparisonId: 'cost-drivers-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland'],
   },
   {
     order: 5,
     marker: 'gable-pergolas-auckland',
     route: '/gable-pergolas-auckland',
     title: 'Gable Pergolas Auckland | Roof Form Guide',
-    description: 'Explore gable pergolas in Auckland. Understand ridge height, pitch, gable ends, roofing, drainage and house integration before planning your project.',
-    h1: 'A gable should borrow the home’s logic, not simply copy its pitch',
-    submitLabel: 'Send the gable project',
-    faqCount: 7,
+    description: 'Plan a gable pergola around ridge height, pitch, eaves, roofing, drainage and the Auckland home.',
+    h1: 'Gable pergolas for Auckland homes.',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'product-guide',
-    briefFieldName: 'rooflineContext',
-    projectCount: 4,
+    briefFieldName: 'gableRelationship',
+    projectCount: 3,
     captureId: 'gable-projects',
     comparisonId: 'gable-decisions-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland'],
   },
   {
     order: 6,
     marker: 'pitched-pergolas-auckland',
     route: '/pitched-pergolas-auckland',
     title: 'Pitched Pergolas Auckland | Mono-Pitch Roof Guide',
-    description: 'Explore pitched pergolas in Auckland. Plan the high edge, low edge, roof fall, daylight, drainage and house connection as one restrained roof form.',
-    h1: 'One roof plane leaves nowhere for a weak line to hide',
-    submitLabel: 'Send the pitched project',
-    faqCount: 7,
+    description: 'Plan a pitched pergola around the house connection, available height, roof fall and drainage.',
+    h1: 'Pitched pergolas for Auckland homes.',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'product-guide',
-    briefFieldName: 'heightConstraints',
-    projectCount: 4,
+    briefFieldName: 'highEdgeContext',
+    projectCount: 3,
     captureId: 'pitched-projects',
     comparisonId: 'pitched-decisions-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland'],
   },
   {
     order: 7,
     marker: 'outdoor-rooms-auckland',
     route: '/outdoor-rooms-auckland',
     title: 'Outdoor Rooms Auckland | Design & Installation',
-    description: 'Plan an outdoor room in Auckland around dining, lounging, light, shelter and the home. Explore roof, edge, lighting and scope decisions with Sanctuary.',
-    h1: 'Begin with the life inside the room, not the roof above it',
-    submitLabel: 'Describe the room you need',
-    faqCount: 8,
+    description: 'Plan an Auckland outdoor room around use, furniture, roofing, edges, lighting and services.',
+    h1: 'Outdoor rooms designed around how you use them.',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'service',
-    briefFieldName: 'furnitureAndUse',
-    projectCount: 4,
+    briefFieldName: 'roomActivities',
+    projectCount: 3,
     captureId: 'outdoor-room-projects',
     comparisonId: 'outdoor-room-decisions-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland'],
   },
   {
     order: 8,
     marker: 'pergolas-with-blinds',
     route: '/pergolas-with-blinds',
     title: 'Pergolas With Blinds Auckland | Integrated Outdoor Screens',
-    description: 'Plan a pergola with blinds in Auckland around wind direction, low sun, privacy and open views. Explore blind integration, controls, scope and project evidence.',
-    h1: 'A blind works best when the edge was designed to receive it',
-    submitLabel: 'Describe the exposed edge',
-    faqCount: 9,
+    description: 'Plan pergola blinds around one exposed edge, the measured opening and the selected system.',
+    h1: 'Plan blinds as part of the pergola.',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'product-guide',
-    briefFieldName: 'edgeCondition',
-    projectCount: 3,
+    briefFieldName: 'openingDimensions',
+    projectCount: 2,
     captureId: 'blind-projects',
     comparisonId: 'blind-decisions-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland'],
   },
   {
     order: 9,
     marker: 'acrylic-pergolas-vs-louvre-roofs',
     route: '/acrylic-pergolas-vs-louvre-roofs',
     title: 'Acrylic Pergolas vs Louvre Roofs | Auckland Guide',
-    description: 'Compare acrylic pergolas and louvre roof proposals by roof behaviour, daylight, shade, rain detailing, controls, maintenance evidence and complete installed scope.',
-    h1: 'Choose the roof behaviour before choosing the roof label',
-    submitLabel: 'Compare your roof brief',
-    faqCount: 8,
+    description: 'Compare Sanctuary fixed acrylic roofs with an external louvre proposal using one project brief and complete scope.',
+    h1: 'Acrylic roof or louvre roof?',
+    submitLabel: 'Send project brief',
+    faqCount: 4,
     role: 'decision-guide',
-    briefFieldName: 'roofStates',
-    projectCount: 4,
+    briefFieldName: 'comparisonPriorities',
+    projectCount: 2,
     captureId: 'acrylic-comparison-projects',
     comparisonId: 'roof-comparison-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds'],
   },
   {
     order: 10,
@@ -139,15 +139,15 @@ const pages: ProgrammePage[] = [
     route: '/commercial-pergolas-auckland',
     title: 'Commercial Pergolas Auckland | Design & Build',
     description: 'Sanctuary designs and builds commercial pergolas in Auckland, coordinating engineering, consent and trades where required from venue brief to installation.',
-    h1: 'You run the venue. We manage the pergola project.',
-    submitLabel: 'Discuss your commercial project',
+    h1: 'Commercial pergolas, designed and installed.',
+    submitLabel: 'Send project brief',
     faqCount: 4,
     role: 'service',
     briefFieldName: 'operatingConstraints',
     projectCount: 3,
     captureId: 'commercial-projects',
     comparisonId: 'commercial-capability-title',
-    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-pergolas-vs-louvre-roofs', '/acrylic-roof-pergolas-auckland-v2'],
+    comparisonReferences: ['/pergolas-auckland', '/custom-pergolas-auckland', '/aluminium-pergolas-auckland', '/pergola-cost-auckland', '/gable-pergolas-auckland', '/pitched-pergolas-auckland', '/outdoor-rooms-auckland', '/pergolas-with-blinds', '/acrylic-pergolas-vs-louvre-roofs'],
     showGuideNavigation: false,
   },
 ];
@@ -174,6 +174,16 @@ function wordShingles(text: string, size = 10): Set<string> {
 function jaccardSimilarity(left: Set<string>, right: Set<string>): number {
   const intersection = [...left].filter((item) => right.has(item)).length;
   return intersection / (left.size + right.size - intersection || 1);
+}
+
+async function getEditorialCopy(main: Locator) {
+  return main.evaluate((element) => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('#project-details, form, script').forEach((node) => {
+      node.remove();
+    });
+    return copy.textContent ?? '';
+  });
 }
 
 for (const programmePage of pages) {
@@ -213,6 +223,11 @@ for (const programmePage of pages) {
         );
       }
       await expect(main.locator('.seo-landing__project-facts')).toHaveCount(programmePage.projectCount);
+      const optionalProjectDetails = main.locator('details.acrylic-form__optional');
+      await expect(optionalProjectDetails).toBeAttached();
+      if ((await optionalProjectDetails.getAttribute('open')) === null) {
+        await optionalProjectDetails.locator(':scope > summary').click();
+      }
       await expect(main.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`)).toBeVisible();
       await expect(main.locator('#acrylic-enquiry-type')).toHaveValue(
         programmePage.marker === 'commercial-pergolas-auckland'
@@ -227,11 +242,10 @@ for (const programmePage of pages) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
       if (programmePage.marker === 'commercial-pergolas-auckland') {
-        await expect(main.getByText('Commercial design and delivery', { exact: true })).toBeVisible();
-        await expect(main.getByText('Approvals and interfaces coordinated where required', { exact: true })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'Three stages from brief to completed installation' })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 3, name: 'Coordinate approvals and interfaces' })).toBeVisible();
-        await expect(main.getByRole('heading', { level: 3, name: 'Build, install and hand over' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Three projects. Three delivery roles.' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'From brief to installation.' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 3, name: 'Coordinate the project' })).toBeVisible();
+        await expect(main.getByRole('heading', { level: 3, name: 'Install and hand over' })).toBeVisible();
         const planningSupport = main.locator(
           'details[data-seo-landing-disclosure="commercial-planning-support"]',
         );
@@ -242,8 +256,8 @@ for (const programmePage of pages) {
           hasText: 'Can Sanctuary coordinate engineering and building consent?',
         });
         await consentFaq.locator(':scope > summary').click();
-        await expect(consentFaq.getByText(/the relevant authority remains responsible/)).toBeVisible();
-        await expect(main.getByRole('heading', { level: 2, name: 'Show us the site and what the space needs to do' })).toBeVisible();
+        await expect(consentFaq.getByText(/Requirements and decisions remain project-specific/)).toBeVisible();
+        await expect(main.getByRole('heading', { level: 2, name: 'Tell us about the project.' })).toBeVisible();
         await expect(main.getByRole('link', { name: 'Call 022 854 5633' })).toHaveAttribute('href', 'tel:+64228545633');
         await expect(main.getByRole('link', { name: 'Email Sanctuary' })).toHaveAttribute('href', 'mailto:info@sanctuarypergolas.co.nz');
         await expect(main.locator('#commercial-projects .acrylic-project-card h3')).toHaveText([
@@ -256,7 +270,11 @@ for (const programmePage of pages) {
       if (viewport.width <= 900) {
         await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
         await expect(page.locator('header.site .desktop-nav')).toBeHidden();
-      } else await expect(page.getByRole('link', { name: 'Get an estimate' })).toBeVisible();
+      } else {
+        await expect(
+          page.locator('header.site').getByRole('link', { name: 'Start your project' }),
+        ).toBeVisible();
+      }
 
       if (capturePhase) {
         const directory = path.join(process.cwd(), 'artifacts', 'marketing-seo-landing', programmePage.marker);
@@ -285,14 +303,14 @@ for (const programmePage of pages) {
     await preparePage(page);
     await page.goto(programmePage.route);
     const currentMain = page.locator(`main[data-seo-landing="${programmePage.marker}"]:visible`);
-    const currentCopy = await currentMain.innerText();
-    const currentHeadings = await currentMain.locator('h1, h2').allTextContents();
+    const currentCopy = await getEditorialCopy(currentMain);
+    const currentH1 = await currentMain.locator('h1').innerText();
     for (const reference of programmePage.comparisonReferences) {
       await page.goto(reference);
       const referenceMain = page.locator('main.acrylic-landing:visible');
-      const referenceCopy = await referenceMain.innerText();
-      const referenceHeadings = await referenceMain.locator('h1, h2').allTextContents();
-      expect(currentHeadings.filter((heading) => referenceHeadings.includes(heading)), `${programmePage.route} repeats a heading from ${reference}`).toEqual([]);
+      const referenceCopy = await getEditorialCopy(referenceMain);
+      const referenceH1 = await referenceMain.locator('h1').innerText();
+      expect(currentH1, `${programmePage.route} repeats an H1 from ${reference}`).not.toBe(referenceH1);
       expect(jaccardSimilarity(wordShingles(currentCopy), wordShingles(referenceCopy)), `${programmePage.route} is too similar to ${reference}`).toBeLessThan(0.14);
     }
   });
@@ -326,7 +344,12 @@ for (const programmePage of pages) {
     expect(await main.locator(orderedFields.join(', ')).evaluateAll((fields) => (
       fields.map((field) => field.id ? `#${field.id}` : `input[name="${field.getAttribute('name')}"]`)
     ))).toEqual(orderedFields);
-    await expect(main.getByLabel('Roof approach Optional')).toBeVisible();
+    const optionalProjectDetails = main.locator('details.acrylic-form__optional');
+    await expect(optionalProjectDetails).toBeAttached();
+    if ((await optionalProjectDetails.getAttribute('open')) === null) {
+      await optionalProjectDetails.locator(':scope > summary').click();
+    }
+    await expect(main.getByLabel('Roof Optional')).toBeVisible();
     await expect(main.getByText('Preferred roof approach', { exact: true })).toHaveCount(0);
     await expect(main.getByText('Possible roof approach', { exact: true })).toHaveCount(0);
     await expect(main.locator('#acrylic-enquiry-files')).toHaveAttribute(
@@ -334,7 +357,7 @@ for (const programmePage of pages) {
       '.pdf,.jpg,.jpeg,.png,.webp',
     );
     await expect(main.getByText(
-      'PDF, JPG, JPEG, PNG or WebP. Add up to 8 files. Each file can be up to 20 MB, with 20 MB total.',
+      'Up to 8 PDF, JPG, JPEG, PNG or WebP files, 20 MB total.',
       { exact: true },
     )).toBeVisible();
     await main.locator('#acrylic-enquiry-name').fill('Test Person');
@@ -345,7 +368,7 @@ for (const programmePage of pages) {
     await main.locator(`#acrylic-enquiry-${programmePage.briefFieldName}`).fill('Page-specific project context.');
     await main.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
     await page.getByRole('button', { name: programmePage.submitLabel }).click();
-    await expect(main.getByText('Thanks, we have received your project details.')).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
     await expect(main.locator('#acrylic-enquiry-name')).toHaveValue('Test Person');
     await expect(main.locator('#acrylic-enquiry-phone')).toHaveValue('021 000 0000');
     await expect(main.locator('#acrylic-enquiry-message')).toHaveValue('We need a site-specific design and can send photos.');

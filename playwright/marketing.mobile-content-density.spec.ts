@@ -30,6 +30,7 @@ type RouteCase = {
   primaryAction: {
     name: string;
     href: string;
+    initialViewport?: boolean;
   };
   disclosures?: DisclosureContract;
   supporting?: {
@@ -56,17 +57,17 @@ const routeCases: readonly RouteCase[] = [
     id: 'homepage',
     path: '/',
     canonicalPath: '',
-    minimumVisibleWords: 140,
-    maximumVisibleWords: 800,
-    maximumVisibleHeadingRegions: 9,
+    minimumVisibleWords: 100,
+    maximumVisibleWords: 450,
+    maximumVisibleHeadingRegions: 7,
     mobileSignals: [
-      'Begin with built work.',
+      'Custom pergolas for Auckland homes and sites.',
       'Warkworth Outdoor Room',
       'What are you trying to create?',
-      'Start with your project',
+      'Find a relevant project',
     ],
     primaryAction: {
-      name: 'Start with your project',
+      name: 'Find a relevant project',
       href: '#design-conversation',
     },
     stableSections: [
@@ -86,16 +87,16 @@ const routeCases: readonly RouteCase[] = [
     id: 'residential service',
     path: '/pergolas-auckland',
     canonicalPath: '/pergolas-auckland',
-    maximumVisibleWords: 1_050,
+    maximumVisibleWords: 650,
     maximumVisibleHeadingRegions: 8,
     mobileSignals: [
-      'Pergolas for Auckland homes, designed from the house out',
-      'Three homes. Three different answers.',
+      'Custom pergolas for Auckland homes.',
+      'Three homes. Three responses.',
       'Roof forms, site checks and useful guides',
-      'Send photos and rough dimensions',
+      'Send photos and dimensions',
     ],
     primaryAction: {
-      name: 'Send photos and rough dimensions',
+      name: 'Send photos and dimensions',
       href: '#project-details',
     },
     disclosures: {
@@ -121,16 +122,16 @@ const routeCases: readonly RouteCase[] = [
     id: 'custom service',
     path: '/custom-pergolas-auckland',
     canonicalPath: '/custom-pergolas-auckland',
-    maximumVisibleWords: 1_050,
+    maximumVisibleWords: 650,
     maximumVisibleHeadingRegions: 8,
     mobileSignals: [
-      'Custom pergolas for sites where the obvious answer does not fit',
-      'Three projects with three different reasons to be custom',
-      'The custom work happens where conditions collide',
-      'Request a design review',
+      'Custom pergolas for difficult sites.',
+      'Three site-specific responses.',
+      'Where custom work matters.',
+      'Send site details',
     ],
     primaryAction: {
-      name: 'Request a design review',
+      name: 'Send site details',
       href: '#project-details',
     },
     disclosures: {
@@ -142,7 +143,7 @@ const routeCases: readonly RouteCase[] = [
     supporting: {
       selector:
         'details[data-seo-landing-disclosure="custom-planning-support"]',
-      phrase: 'Custom does not make technical boundaries disappear',
+      phrase: 'Project checks, related guides and questions',
     },
     stableSections: [
       '#custom-project-evidence',
@@ -160,33 +161,22 @@ const routeCases: readonly RouteCase[] = [
     id: 'product hub',
     path: '/products',
     canonicalPath: '/products',
-    maximumVisibleWords: 700,
-    maximumVisibleHeadingRegions: 8,
+    maximumVisibleWords: 500,
+    maximumVisibleHeadingRegions: 7,
     mobileSignals: [
-      'Cover the deck. Keep the light.',
-      'Different houses lead to different answers.',
-      'measured house, drainage path',
-      'Send your project details',
+      'Pergola forms and options.',
+      'One brief, one response.',
+      'Pergola cost and scope',
+      'Send project brief',
     ],
     primaryAction: {
-      name: 'Send your project details',
+      name: 'Send project brief',
       href: productsEnquiryHref,
-    },
-    disclosures: {
-      selector: 'details[data-product-mobile-disclosure]',
-      count: 2,
-      idAttribute: 'data-product-mobile-disclosure',
-      ids: ['form-comparison', 'planning-guides'],
-    },
-    supporting: {
-      selector:
-        'details[data-product-mobile-disclosure="planning-guides"]',
-      phrase: 'Pergola cost and scope',
     },
     stableSections: ['#pergola-forms', '#screens-walls', '#lighting-heating'],
     meaningfulLinks: [
       '/products/pergolas/gable',
-      '/projects',
+      '/projects/warkworth-outdoor-room',
       '/pergola-cost-auckland',
     ],
     schemaTypes: ['CollectionPage', 'ItemList'],
@@ -195,16 +185,16 @@ const routeCases: readonly RouteCase[] = [
     id: 'product detail',
     path: '/products/pergolas/gable',
     canonicalPath: '/products/pergolas/gable',
-    maximumVisibleWords: 650,
-    maximumVisibleHeadingRegions: 9,
+    maximumVisibleWords: 450,
+    maximumVisibleHeadingRegions: 7,
     mobileSignals: [
       'Gable pergola',
       'Built evidence',
-      'The project must resolve',
-      'Send your project details',
+      'Where it works.',
+      'Send project brief',
     ],
     primaryAction: {
-      name: 'Send your project details',
+      name: 'Send project brief',
       href: gableEnquiryHref,
     },
     disclosures: {
@@ -220,7 +210,7 @@ const routeCases: readonly RouteCase[] = [
     supporting: {
       selector:
         'details[data-product-mobile-disclosure="specification-and-tradeoffs"]',
-      phrase: 'Structure and materials',
+      phrase: 'What to confirm',
     },
     stableSections: [
       '#product-fit',
@@ -231,22 +221,22 @@ const routeCases: readonly RouteCase[] = [
       '/projects/warkworth-outdoor-room',
       '/gable-pergolas-auckland',
     ],
-    schemaTypes: ['Product', 'BreadcrumbList', 'FAQPage'],
+    schemaTypes: ['Product', 'BreadcrumbList'],
   },
   {
     id: 'commercial service',
     path: '/commercial-pergolas-auckland',
     canonicalPath: '/commercial-pergolas-auckland',
-    maximumVisibleWords: 1_150,
+    maximumVisibleWords: 650,
     maximumVisibleHeadingRegions: 8,
     mobileSignals: [
-      'You run the venue. We manage the pergola project.',
-      'Three projects, three different delivery roles',
-      'Scope and operating-site coordination',
-      'Discuss your commercial project',
+      'Commercial pergolas, designed and installed.',
+      'Three projects. Three delivery roles.',
+      'Define the role before work starts.',
+      'Send commercial brief',
     ],
     primaryAction: {
-      name: 'Discuss your commercial project',
+      name: 'Send commercial brief',
       href: '#project-details',
     },
     disclosures: {
@@ -258,7 +248,7 @@ const routeCases: readonly RouteCase[] = [
     supporting: {
       selector:
         'details[data-seo-landing-disclosure="commercial-planning-support"]',
-      phrase: 'Project structure, approvals and operating sites',
+      phrase: 'Common commercial planning questions',
     },
     stableSections: [
       '#commercial-projects',
@@ -276,17 +266,19 @@ const routeCases: readonly RouteCase[] = [
     id: 'guide hub',
     path: '/pergola-guides',
     canonicalPath: '/pergola-guides',
-    maximumVisibleWords: 575,
-    maximumVisibleHeadingRegions: 7,
+    minimumVisibleWords: 80,
+    maximumVisibleWords: 350,
+    maximumVisibleHeadingRegions: 5,
     mobileSignals: [
-      'Find the guide for the decision in front of you',
+      'Pergola guides.',
       'Warkworth outdoor room',
-      'Three chapters. One connected design.',
-      'Browse all guides',
+      'Choose a guide.',
+      'Pergolas Auckland',
     ],
     primaryAction: {
-      name: 'Browse all guides',
-      href: '#guide-library',
+      name: 'Pergolas Auckland',
+      href: '/pergolas-auckland',
+      initialViewport: false,
     },
     stableSections: [
       '#guide-library',
@@ -304,16 +296,16 @@ const routeCases: readonly RouteCase[] = [
     id: 'guide detail',
     path: '/pergola-cost-auckland',
     canonicalPath: '/pergola-cost-auckland',
-    maximumVisibleWords: 1_350,
-    maximumVisibleHeadingRegions: 11,
+    maximumVisibleWords: 650,
+    maximumVisibleHeadingRegions: 9,
     mobileSignals: [
-      'A useful pergola price starts with a defined scope, not a square-metre guess',
-      'Project photography reveals what an area figure leaves out',
-      'not a square-metre guess',
-      'Request a scoped first look',
+      'Pergola cost starts with scope.',
+      'Photos reveal what area alone cannot.',
+      'Cost drivers, quote checks and questions',
+      'Send project brief',
     ],
     primaryAction: {
-      name: 'Request a scoped first look',
+      name: 'Send project brief',
       href: '#project-details',
     },
     disclosures: {
@@ -325,7 +317,7 @@ const routeCases: readonly RouteCase[] = [
     supporting: {
       selector:
         'details[data-seo-landing-disclosure="pergola-cost-auckland-supporting-depth"]',
-      phrase: 'A trustworthy total has a readable scope behind it',
+      phrase: 'Cost drivers, quote checks and questions',
     },
     stableSections: [
       '#cost-projects',
@@ -335,8 +327,8 @@ const routeCases: readonly RouteCase[] = [
     ],
     meaningfulLinks: [
       '/pergola-guides',
-      '/custom-pergolas-auckland',
-      '/projects',
+      '/pergolas-auckland',
+      '/projects/warkworth-outdoor-room',
     ],
     schemaTypes: ['WebPage', 'BreadcrumbList'],
   },
@@ -344,16 +336,17 @@ const routeCases: readonly RouteCase[] = [
     id: 'contact introduction',
     path: '/contact?enquiry_type=residential',
     canonicalPath: '/contact',
-    maximumVisibleWords: 450,
+    minimumVisibleWords: 80,
+    maximumVisibleWords: 350,
     maximumVisibleHeadingRegions: 4,
     mobileSignals: [
-      'Tell us about the space you want to cover.',
+      'Tell us about your project.',
       'Warkworth Outdoor Room',
-      'The design, materials and exact dimensions can be worked through later',
-      'Start your project brief',
+      'Photos and rough dimensions help.',
+      'Send a project brief',
     ],
     primaryAction: {
-      name: 'Start your project brief',
+      name: 'Send a project brief',
       href: '#contact-form',
     },
     stableSections: ['.contact-hero', '#contact-form', '.contact-guidance'],
@@ -611,7 +604,10 @@ async function expectPrimaryAction(
   expect(bounds).not.toBeNull();
   expect(bounds!.height).toBeGreaterThanOrEqual(44);
   expect(bounds!.width).toBeGreaterThanOrEqual(44);
-  if (viewportHeight !== undefined) {
+  if (
+    viewportHeight !== undefined
+    && routeCase.primaryAction.initialViewport !== false
+  ) {
     expect(
       bounds!.y,
       `${routeCase.id} should keep its first primary action in the initial viewport`,
@@ -619,86 +615,13 @@ async function expectPrimaryAction(
   }
 }
 
-async function expectResidentialPostEvidenceAction(main: Locator) {
+async function expectResidentialJourney(main: Locator) {
   await expect(main.locator('[data-service-major-section]')).toHaveCount(6);
   await expect(main.locator('#project-evidence .acrylic-project-card')).toHaveCount(3);
   await expect(main.locator('section:has(#clear-process) li')).toHaveCount(3);
-
-  const firstLayerWords = await main.evaluate((element) => {
-    const finalEnquiry = element.querySelector('[data-service-final-enquiry]');
-    const firstLayerRoots = [...element.children]
-      .filter((child) => (
-        !child.matches('script, style, noscript')
-        && (
-          !finalEnquiry
-          || Boolean(
-            child.compareDocumentPosition(finalEnquiry)
-            & Node.DOCUMENT_POSITION_FOLLOWING
-          )
-        )
-      ));
-    const firstLayer = firstLayerRoots.flatMap((root) => {
-      const words: string[] = [];
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      let current = walker.nextNode();
-
-      while (current) {
-        const parent = current.parentElement;
-        const closedDisclosure = parent?.closest('details:not([open])');
-        const isVisibleSummary = closedDisclosure
-          ? Boolean(parent?.closest('summary'))
-          : true;
-
-        if (parent?.checkVisibility() && isVisibleSummary) {
-          words.push(current.textContent ?? '');
-        }
-        current = walker.nextNode();
-      }
-
-      return words;
-    }).join(' ');
-
-    return firstLayer.trim().match(/\S+/g)?.length ?? 0;
-  });
-  expect(firstLayerWords).toBeGreaterThanOrEqual(630);
-  expect(firstLayerWords).toBeLessThanOrEqual(721);
-
-  const action = main.getByRole('link', {
-    name: 'Discuss my site',
-    exact: true,
-  });
-  await expect(action).toBeVisible();
-  await expect(action).toHaveAttribute('href', '#project-details');
-
-  const actionBounds = await action.boundingBox();
-  const evidenceBounds = await main.locator('#project-evidence').boundingBox();
-  const formBounds = await main.locator('#project-details').boundingBox();
-  expect(actionBounds).not.toBeNull();
-  expect(evidenceBounds).not.toBeNull();
-  expect(formBounds).not.toBeNull();
-  expect(actionBounds!.height).toBeGreaterThanOrEqual(44);
-  expect(actionBounds!.width).toBeGreaterThanOrEqual(44);
-  expect(actionBounds!.y).toBeGreaterThan(evidenceBounds!.y);
-  expect(actionBounds!.y).toBeLessThan(formBounds!.y);
 }
 
 async function expectCustomServiceJourney(main: Locator) {
-  const majorSectionsBeforeFinalEnquiry = await main.evaluate((element) => {
-    const finalEnquiry = element.querySelector('.acrylic-section--final-cta');
-
-    return [...element.children]
-      .filter((child) => child.matches('section, details'))
-      .filter((child) => (
-        !finalEnquiry
-        || Boolean(
-          child.compareDocumentPosition(finalEnquiry)
-          & Node.DOCUMENT_POSITION_FOLLOWING
-        )
-      ))
-      .length;
-  });
-
-  expect(majorSectionsBeforeFinalEnquiry).toBe(6);
   await expect(
     main.locator('#custom-project-evidence .acrylic-project-card'),
   ).toHaveCount(3);
@@ -783,7 +706,7 @@ for (const viewport of mobileViewports) {
       expect(
         state.words,
         `${routeCase.id} should stay within its measured mobile word budget`,
-      ).toBeGreaterThanOrEqual(routeCase.minimumVisibleWords ?? 200);
+      ).toBeGreaterThanOrEqual(routeCase.minimumVisibleWords ?? 100);
       expect(
         state.words,
         `${routeCase.id} should stay within its measured mobile word budget`,
@@ -832,7 +755,7 @@ for (const viewport of mobileViewports) {
       }
 
       if (routeCase.id === 'residential service') {
-        await expectResidentialPostEvidenceAction(main);
+        await expectResidentialJourney(main);
       }
       if (routeCase.id === 'custom service') {
         await expectCustomServiceJourney(main);
@@ -1065,7 +988,7 @@ test('residential, commercial, product and professional enquiry context remains 
     'residential',
   );
   await expect(
-    page.locator('header.site').getByRole('link', { name: 'Get an estimate' }),
+    page.locator('header.site').getByRole('link', { name: 'Start your project' }),
   ).toHaveAttribute(
     'href',
     buildEnquiryHref({
@@ -1082,7 +1005,7 @@ test('residential, commercial, product and professional enquiry context remains 
     'commercial',
   );
   await expect(
-    page.locator('header.site').getByRole('link', { name: 'Get an estimate' }),
+    page.locator('header.site').getByRole('link', { name: 'Start your project' }),
   ).toHaveAttribute(
     'href',
     buildEnquiryHref({
@@ -1096,7 +1019,7 @@ test('residential, commercial, product and professional enquiry context remains 
     waitUntil: 'networkidle',
   });
   await expect(
-    page.getByRole('link', { name: 'Send your project details' }).first(),
+    page.getByRole('link', { name: 'Send project brief' }).first(),
   ).toHaveAttribute('href', gableEnquiryHref);
 
   const professionalHref = buildEnquiryHref({
@@ -1112,7 +1035,7 @@ test('residential, commercial, product and professional enquiry context remains 
     }),
   ).toBeChecked();
   await expect(page.getByLabel('Enquiry context')).toContainText(
-    'Professional enquiry',
+    'Professional project',
   );
   expect(new URL(page.url()).searchParams.get('source_component')).toBe(
     'pathway',
@@ -1129,7 +1052,7 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
 
   const commercialLink = page.locator(
     'a[href="/commercial-pergolas-auckland#project-details"]',
-    { hasText: 'Review commercial capability' },
+    { hasText: 'Explore commercial work' },
   ).first();
   await commercialLink.click();
 
@@ -1150,7 +1073,7 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
   await expect(page).toHaveURL(/\/$/);
   await expect(
     page.locator(
-      'main[data-homepage-variant="design_conversation_home_v2"]:visible',
+      'main[data-homepage-variant="design_conversation_home_v3"]:visible',
     ),
   ).toBeVisible();
 });

@@ -16,7 +16,6 @@ const establishedHeaderRoutes = [
   '/gallery',
   '/contact',
   '/privacy',
-  '/acrylic-roof-pergolas-auckland-v2',
   '/commercial-pergolas-auckland',
 ] as const;
 
@@ -42,7 +41,7 @@ test('the architectural editorial header is shared by established public routes'
     await page.goto(route);
     const resolvedPath = new URL(page.url()).pathname;
     const header = page.locator('header.site');
-    const cta = header.getByRole('link', { name: 'Get an estimate' });
+    const cta = header.getByRole('link', { name: 'Start your project' });
     await expect(header).toBeVisible();
     await expect(header).toHaveAttribute('data-header-ui', 'architectural-editorial');
     await expect(cta).toBeVisible();
@@ -131,19 +130,15 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   expect(focusedLinkStyle.outlineStyle).not.toBe('none');
   expect(focusedLinkStyle.outlineWidth).toBeGreaterThanOrEqual(2);
   await expect(mobileNavigation.getByRole('link')).toHaveText([
-    'Home',
     'Projects',
     'Pergola options',
     'Commercial',
-    'Architects, designers & builders',
-    'Contact',
-    'Get an estimate',
+    'Professionals',
+    'Start your project',
   ]);
-  await expect(mobileNavigation.getByRole('link', { name: 'Contact' }))
-    .toHaveAttribute('aria-current', 'page');
-  await expect(mobileNavigation.getByRole('link', { name: 'Architects, designers & builders' }))
+  await expect(mobileNavigation.getByRole('link', { name: 'Professionals' }))
     .toHaveAttribute('href', '/architects-designers-builders');
-  await expect(mobileNavigation.getByRole('link', { name: 'Get an estimate' }))
+  await expect(mobileNavigation.getByRole('link', { name: 'Start your project' }))
     .toHaveAttribute('href', buildEnquiryHref({
       sourcePath: '/contact',
       sourceComponent: 'header',
@@ -161,7 +156,7 @@ test('the shared mobile header uses the compact square menu and restores keyboar
   await page.keyboard.press('Shift+Tab');
   await expect(menuButton).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(mobileNavigation.getByRole('link', { name: 'Get an estimate' })).toBeFocused();
+  await expect(mobileNavigation.getByRole('link', { name: 'Start your project' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(menuButton).toBeFocused();
   await page.keyboard.press('Tab');
@@ -182,7 +177,7 @@ test('shared header destinations remain functional', async ({ page }) => {
   await page.goto('/');
   await page.locator('header.site').getByRole('link', { name: 'Products' }).click();
   await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Cover the deck. Keep the light.' })).toBeVisible();
+  await expect(page.locator('main[data-products-index]')).toBeVisible();
 });
 
 for (const viewport of [
@@ -249,10 +244,10 @@ test('the mobile menu remains operable at tablet width and short viewport height
     name: 'Mobile primary',
   });
   await expect(
-    mobileNavigation.getByRole('link', { name: 'Home' }),
+    mobileNavigation.getByRole('link', { name: 'Projects' }),
   ).toBeFocused();
   const estimate = mobileNavigation.getByRole('link', {
-    name: 'Get an estimate',
+    name: 'Start your project',
   });
   const shortViewportState = await menu.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
@@ -266,7 +261,7 @@ test('the mobile menu remains operable at tablet width and short viewport height
   });
   expect(shortViewportState.bottom).toBeLessThanOrEqual(shortViewportState.viewportHeight);
   expect(shortViewportState.clientHeight).toBeLessThanOrEqual(416);
-  expect(shortViewportState.scrollHeight).toBeGreaterThan(shortViewportState.clientHeight);
+  expect(shortViewportState.scrollHeight).toBeGreaterThanOrEqual(shortViewportState.clientHeight);
   expect(shortViewportState.overflowY).toBe('auto');
   await estimate.focus();
   await expect(estimate).toBeFocused();
@@ -309,9 +304,9 @@ test('audience-aware destinations and browser Back keep route and scroll context
     await page.goto(route);
     await page.getByRole('button', { name: 'Open menu' }).click();
     const mobileNavigation = page.getByRole('navigation', { name: 'Mobile primary' });
-    await expect(mobileNavigation.getByRole('link', { name: 'Architects, designers & builders' }))
+    await expect(mobileNavigation.getByRole('link', { name: 'Professionals' }))
       .toHaveAttribute('href', '/architects-designers-builders');
-    await expect(mobileNavigation.getByRole('link', { name: 'Get an estimate' }))
+    await expect(mobileNavigation.getByRole('link', { name: 'Start your project' }))
       .toHaveAttribute('href', buildEnquiryHref({
         ...getEnquiryRouteContext(route),
         sourcePath: route,

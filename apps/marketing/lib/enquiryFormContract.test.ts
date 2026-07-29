@@ -58,7 +58,7 @@ describe('enquiry form contract', () => {
     ).toEqual({
       files: 'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
     });
-    expect(ENQUIRY_ATTACHMENT_HELP_TEXT).toBe('PDF, JPG, JPEG, PNG or WebP. Add up to 8 files. Each file can be up to 20 MB, with 20 MB total.');
+    expect(ENQUIRY_ATTACHMENT_HELP_TEXT).toBe('Up to 8 PDF, JPG, JPEG, PNG or WebP files, 20 MB total.');
   });
 
   it('builds consistent audience and item context for forms and success states', () => {
@@ -76,14 +76,29 @@ describe('enquiry form contract', () => {
       isVisible: true,
       heading: 'Project: The Good Home Takanini',
       audience: 'Commercial enquiry',
-      itemDescription: 'The Good Home Takanini project',
     });
 
     expect(getEnquiryContextDisplay({})).toEqual({
       isVisible: false,
-      heading: 'Your enquiry source is saved',
-      audience: 'Choose the project type that fits your enquiry',
-      itemDescription: null,
+      heading: '',
+      audience: '',
+    });
+
+    expect(
+      getEnquiryContextDisplay({
+        sourcePath: '/pergolas-auckland',
+        sourceComponent: 'embedded_form',
+      }),
+    ).toEqual({
+      isVisible: false,
+      heading: '',
+      audience: '',
+    });
+
+    expect(getEnquiryContextDisplay({ enquiryType: 'residential' })).toEqual({
+      isVisible: true,
+      heading: 'Residential project',
+      audience: '',
     });
   });
 });

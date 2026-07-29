@@ -6,50 +6,40 @@ import {
 export const PRODUCT_DETAIL_DISCLOSURE_GROUPS = [
   {
     id: 'fit-and-definition',
-    summary: 'How it works and where it fits',
+    summary: 'How it works',
   },
   {
     id: 'specification-and-tradeoffs',
-    summary: 'Specification, options and trade-offs',
+    summary: 'What to confirm',
   },
   {
     id: 'related-support',
-    summary: 'Compare alternatives and related guidance',
+    summary: 'Compare and plan',
   },
 ] as const;
-
-function listAsSentence(items?: string[]): string {
-  return (items ?? []).join(' · ');
-}
 
 function getSpecificationRows(product: ProductRecord) {
   const details = product.details;
 
   return [
     {
-      label: 'Structure and materials',
+      label: 'Structure',
       value:
-        listAsSentence(details.structureMaterials)
+        details.structureMaterials?.[0]
         || 'Specified for the completed design.',
     },
     {
-      label: 'What the design confirms',
+      label: 'Performance',
       value:
-        listAsSentence(details.indicativePerformance)
-        || listAsSentence(details.performance)
+        details.indicativePerformance?.[0]
+        || details.performance?.[0]
         || 'Final details follow the measured site and selected products.',
     },
     {
-      label: 'Installation scope',
+      label: 'Installation',
       value:
-        listAsSentence(details.install)
+        details.install?.[0]
         || 'Sequence and responsibilities are confirmed in the project proposal.',
-    },
-    {
-      label: 'Care',
-      value:
-        listAsSentence(details.maintenance)
-        || 'Cleaning and inspection follow the current guidance for the selected products.',
     },
   ];
 }
@@ -76,17 +66,13 @@ export function buildProductDetailViewModel(
     return relatedProduct && !alternativeSlugs.has(relatedProduct.slug)
       ? [relatedProduct]
       : [];
-  });
+  }).slice(0, 1);
 
   return {
     disclosureGroups: PRODUCT_DETAIL_DISCLOSURE_GROUPS,
     visibleFit: {
       suitableCondition: product.decision.worksWhen[0],
       constraint: product.decision.resolve[0],
-    },
-    supportingFit: {
-      suitableConditions: product.decision.worksWhen.slice(1),
-      constraints: product.decision.resolve.slice(1),
     },
     galleryItems: product.gallery.map((media) => ({
       id: media.src,
@@ -102,10 +88,6 @@ export function buildProductDetailViewModel(
     specifications: getSpecificationRows(product),
     alternatives,
     relatedProducts,
-    faqs: (product.details.faqs ?? []).map((faq) => ({
-      question: faq.q,
-      answer: faq.a,
-    })),
     evidenceStatus: product.evidence.status,
   };
 }

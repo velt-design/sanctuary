@@ -742,23 +742,23 @@ export const productCategories: Array<{
   {
     slug: 'pergolas',
     label: 'Pergola forms',
-    heading: 'Start with the shape of the room.',
+    heading: 'Choose the roof shape.',
     introduction:
-      'The roof form changes height, light, drainage and how the new structure sits beside the house. These four starting points are adapted to the measured site rather than sold as fixed kits.',
+      'Form changes height, drainage and how the pergola meets the house.',
   },
   {
     slug: 'screens-walls',
     label: 'Screens and edge treatments',
-    heading: 'Decide how open the edges should feel.',
+    heading: 'Control the edges.',
     introduction:
-      'A fixed screen, clear panel or deployable blind changes privacy and exposure in a different way. The useful choice depends on the outlook you want to keep and the edge you need to manage.',
+      'Use a fixed or adjustable edge for privacy, sun or exposure.',
   },
   {
     slug: 'lighting-heating',
     label: 'Lighting and heating',
-    heading: 'Plan evening comfort into the structure.',
+    heading: 'Plan for evening use.',
     introduction:
-      'Lighting, switching, cabling and heater clearances are easier to resolve before the frame is built. Treat them as part of the outdoor room rather than retail products added at the end.',
+      'Set lighting, cabling and heater clearances before the frame is built.',
   },
 ];
 
@@ -772,9 +772,9 @@ export const products: ProductRecord[] = [
     name: 'Pitched pergola',
     shortName: 'Pitched',
     indexSummary:
-      'A single roof plane that can sit quietly against the house and send water in one deliberate direction.',
+      'A single roof plane for tight connections and one clear drainage direction.',
     proposition:
-      'Cover the deck with a simple roof line that respects tighter eaves, doors and important views.',
+      'A single roof plane for tight connections and one clear drainage direction.',
     outcome: {
       heading: 'Shelter the useful part of the deck without making the addition feel oversized.',
       copy:
@@ -862,9 +862,9 @@ export const products: ProductRecord[] = [
     name: 'Gable pergola',
     shortName: 'Gable',
     indexSummary:
-      'Two roof planes and a central ridge create height, a clear centre line and the character of an outdoor pavilion.',
+      'A central ridge adds height and a clear centre to the outdoor room.',
     proposition:
-      'Give the deck more height and presence while keeping the roof proportioned to the house.',
+      'A central ridge adds height and a clear centre to the outdoor room.',
     outcome: {
       heading: 'Make the covered area feel like a room in its own right.',
       copy:
@@ -953,9 +953,9 @@ export const products: ProductRecord[] = [
     name: 'Hip pergola',
     shortName: 'Hip',
     indexSummary:
-      'Several roof planes meet in a composed form that can address corners, multiple outlooks and more complex façades.',
+      'A composed roof for courtyards, corners and views from several sides.',
     proposition:
-      'Wrap the room with a balanced roof edge where a single fall would not settle naturally.',
+      'A composed roof for courtyards, corners and views from several sides.',
     outcome: {
       heading: 'Create a covered courtyard that feels resolved from every side.',
       copy:
@@ -1042,9 +1042,9 @@ export const products: ProductRecord[] = [
     name: 'Box-perimeter pergola',
     shortName: 'Box perimeter',
     indexSummary:
-      'A level architectural outer edge conceals the working roof fall and gives the addition a crisp, horizontal profile.',
+      'A level outer frame hides the working roof fall and drainage.',
     proposition:
-      'Keep the roof line visually calm when the house and outlook call for a clean horizontal edge.',
+      'A level outer frame hides the working roof fall and drainage.',
     outcome: {
       heading: 'Get a precise outer frame without pretending the roof is flat.',
       copy:
@@ -1133,9 +1133,9 @@ export const products: ProductRecord[] = [
     name: 'Slat screens',
     shortName: 'Slat screens',
     indexSummary:
-      'A fixed, breathable edge that can screen neighbours, services or low-level views without becoming a solid wall.',
+      'Fixed privacy with light and air between the slats.',
     proposition:
-      'Create privacy where you need it while leaving light, outlook and air between the slats.',
+      'Fixed privacy with light and air between the slats.',
     outcome: {
       heading: 'Give the deck a boundary without closing the room in.',
       copy:
@@ -1224,9 +1224,9 @@ export const products: ProductRecord[] = [
     name: 'Acrylic infill panels',
     shortName: 'Acrylic infill',
     indexSummary:
-      'A clear or tinted fixed edge treatment that can moderate exposure while retaining useful light and outlook.',
+      'A transparent fixed edge that can reduce exposure without becoming a solid wall.',
     proposition:
-      'Add a clearer edge to the pergola without turning it into a solid wall.',
+      'A transparent fixed edge that can reduce exposure without becoming a solid wall.',
     outcome: {
       heading: 'Keep the view while making one exposed edge feel more settled.',
       copy:
@@ -1315,9 +1315,9 @@ export const products: ProductRecord[] = [
     name: 'Drop-down blinds',
     shortName: 'Drop-down blinds',
     indexSummary:
-      'A deployable edge for changing low sun, privacy and exposure while leaving the pergola open at other times.',
+      'Lower one edge for sun, privacy or exposure, then open it again.',
     proposition:
-      'Close a selected edge when conditions change, then roll it away when you want the deck open.',
+      'Lower one edge for sun, privacy or exposure, then open it again.',
     outcome: {
       heading: 'Make the edge adjustable instead of committing to a permanent wall.',
       copy:
@@ -1405,9 +1405,9 @@ export const products: ProductRecord[] = [
     name: 'Integrated downlights',
     shortName: 'Downlights',
     indexSummary:
-      'Focused, low-profile light for tables, preparation areas, steps and circulation below the pergola.',
+      'Focused light for dining, steps and circulation.',
     proposition:
-      'Put useful light where people dine and move, while keeping fittings visually quiet in the structure.',
+      'Focused light for dining, steps and circulation.',
     outcome: {
       heading: 'Use the covered area after dark without washing everything in harsh light.',
       copy:
@@ -1495,9 +1495,9 @@ export const products: ProductRecord[] = [
     name: 'LED strip lighting',
     shortName: 'LED strip lighting',
     indexSummary:
-      'A concealed linear light that defines the structure, supports safe movement and creates a softer ambient layer.',
+      'Concealed ambient light along edges or ceiling details.',
     proposition:
-      'Give the pergola a calm perimeter glow without putting bright points of light in direct view.',
+      'Concealed ambient light along edges or ceiling details.',
     outcome: {
       heading: 'Make the structure legible after dark and keep the mood relaxed.',
       copy:
@@ -1585,9 +1585,9 @@ export const products: ProductRecord[] = [
     name: 'Integrated patio heaters',
     shortName: 'Patio heaters',
     indexSummary:
-      'Targeted electric radiant heat planned around the seating zone, structure, electrical supply and exact product clearances.',
+      'Targeted radiant heat for a defined seating area.',
     proposition:
-      'Direct warmth toward the places people sit, with the heater and its clearances coordinated into the room.',
+      'Targeted radiant heat for a defined seating area.',
     outcome: {
       heading: 'Take the edge off a cool evening in the part of the deck you actually use.',
       copy:

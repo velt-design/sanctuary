@@ -36,7 +36,7 @@ describe('commercial service journey content', () => {
     ]);
   });
 
-  it('keeps capability and planning pathways visible before one supporting disclosure', () => {
+  it('keeps three capability owners and two planning pathways before one supporting disclosure', () => {
     expect(commercialPergolasConfig.blockOrder).toEqual([
       'commercial-projects',
       'commercial-process',
@@ -60,10 +60,15 @@ describe('commercial service journey content', () => {
     );
 
     expect(capability?.kind).toBe('editorial-image');
-    expect(capability && 'items' in capability ? capability.items : []).toHaveLength(6);
-    expect(capability && 'lead' in capability ? capability.lead : '').toContain(
-      'cannot remove every project variable',
-    );
+    expect(capability && 'items' in capability ? capability.items : [])
+      .toHaveLength(3);
+    expect(
+      capability?.kind === 'editorial-image'
+        ? capability.items.map(({ title }) => title)
+        : [],
+    ).toEqual(['Design', 'Site coordination', 'Delivery']);
+    expect(capability && 'lead' in capability ? capability.lead : '')
+      .toContain('consultant-led package');
     expect(
       pathways?.kind === 'link-cards'
         ? pathways.items.map(({ href }) => href)
@@ -73,7 +78,12 @@ describe('commercial service journey content', () => {
 
   it('keeps the commercial enquiry contract while shortening the first brief', () => {
     expect(commercialPergolasConfig.enquiryType).toBe('commercial');
-    expect(commercialPergolasConfig.finalCta.checklist).toHaveLength(5);
+    expect(commercialPergolasConfig.form.heading).toBe(
+      'Tell us about the project.',
+    );
+    expect(commercialPergolasConfig.form.submitLabel).toBe(
+      'Send project brief',
+    );
     expect(commercialPergolasConfig.form.directContact).toEqual({
       intro: 'Prefer a direct conversation?',
       phoneLabel: 'Call 022 854 5633',

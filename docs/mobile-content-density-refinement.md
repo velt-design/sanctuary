@@ -1,7 +1,7 @@
 # Mobile Content Density Refinement
 
-Status: current implementation record, including Mobile UX Roadmap Phases 3
-and 4 production follow-up.
+Status: current implementation record, including the 29 July 2026 major copy
+reduction.
 
 ## Index
 
@@ -9,6 +9,7 @@ and 4 production follow-up.
 - Ownership and compatibility: [Content and consumer map](#content-and-consumer-map)
 - Bounded decisions: [Bounded implementation plan](#bounded-implementation-plan)
 - Measured outcome: [Implemented result](#implemented-result)
+- Current reduced state: [Major copy reduction](#29-july-2026-major-copy-reduction)
 - Optional-detail boundaries: [Disclosure inventory](#disclosure-inventory)
 - Tests and screenshots: [Verification and evidence](#verification-and-evidence)
 - Follow-on work: [Remaining risks and deliberate deferrals](#remaining-risks-and-deliberate-deferrals)
@@ -33,16 +34,19 @@ first-question design conversation documented in
 `docs/marketing-ui-foundation.md`; disclosure measurements below remain
 historical evidence for the retired homepage.
 
-The pass covers the homepage, residential and custom service pages, the
-product hub and product pages, commercial and professional journeys, the guide
-hub and guide pages, and the contact introduction. Project-index and
-project-detail copy and all project records remain out of scope.
+The original pass covered the homepage, residential and custom service pages,
+the product hub and product pages, commercial and professional journeys, the
+guide hub and guide pages, and the contact introduction. Project-index and
+project-detail copy were out of scope at that time. The 29 July 2026
+implementation supersedes that boundary and reduces the shared header, footer,
+forms, homepage, service pages, guides, product pages and project details.
 
-The implementation must:
+The original disclosure-led implementation had to:
 
 - preserve one semantic content tree and the complete supporting content;
 - preserve desktop copy and composition unless correcting a narrow shared
-  defect;
+  defect. The later approved copy-reduction pass intentionally supersedes this
+  copy-preservation rule while retaining responsive structure and contracts;
 - keep proposition, suitability, constraints, evidence, and a next action in
   the default mobile reading path;
 - use native, server-rendered, desktop-expanded disclosures for supporting
@@ -51,6 +55,55 @@ The implementation must:
   enquiry context, and analytics contracts; and
 - retain visible focus, 44px controls, reduced-motion handling, and zero
   horizontal overflow at 430px, 390px, and 360px.
+
+## 29 July 2026 major copy reduction
+
+The current public site uses the following shorter decision path:
+
+- The mobile menu contains `Projects`, `Pergola options`, `Commercial` and
+  `Professionals`, followed by the route-aware `Start your project` action.
+  The logo owns Home and the action owns Contact, so neither is repeated in the
+  menu.
+- The footer opens with `Tell us about your project.` and keeps one contact
+  action, phone, email, three useful pathways, review proof, warehouse, privacy
+  and social links. It no longer repeats a second project-pathway heading or
+  closing pitch.
+- Direct and embedded forms lead with project type, suburb, brief, contact
+  details and files. Dimensions, form, roof and other technical choices are
+  inside one `Add optional project details` disclosure. Required fields,
+  payloads, retry identity, uploads, attribution, privacy and consented
+  analytics are unchanged.
+- Pages that already finish with an embedded form do not add another generic
+  final conversion section. The product hub plus product and project details,
+  which link to rather than embed the form, keep one short final project
+  action before the shared footer.
+- The homepage is `design_conversation_home_v3`. It retains one closed
+  question and the same governed two-project match contract, but uses shorter
+  hero, choice, result, capability and process copy. Stable
+  `data-design-conversation-event` names and the existing storage key remain.
+- The product hub retains all ten catalogue destinations with one-line
+  summaries, one governed project and one guide. Product details retain one
+  fit condition, one constraint, one controlled gallery, an honest evidence
+  state and exactly three concise supporting disclosures.
+- Project cards use the approved short summaries. Details show one summary,
+  `Brief`, one `Response`, `Facts`, `Gallery` and `Technical details`.
+  Curated related projects remain; the redundant circular previous/next
+  project navigation is removed.
+- `/acrylic-roof-pergolas-auckland` is the only acrylic landing-page owner.
+  The retired noindex v2 source now permanently redirects there in one hop and
+  is absent from internal navigation and the sitemap.
+
+The current cross-family mobile budgets in
+`playwright/marketing.mobile-content-density.spec.ts` are ceilings, not copy
+targets: homepage and product detail 450 words, residential/custom/commercial
+and representative guide detail 650, product hub 500, guide hub and contact
+350. The suite applies these budgets with disclosure bodies closed at 430px,
+390px and 360px. It also requires the route-specific proposition, evidence or
+constraint, one useful action, meaningful links, schema and canonical identity,
+44px controls, keyboard/focus behavior, reduced motion, no horizontal overflow,
+server-rendered supporting content and expanded desktop detail. Focused
+homepage, header, contact, product, project, acrylic, service and guide suites
+cover their complete route matrices and redirect behavior.
 
 ## Audit method
 
@@ -151,11 +204,12 @@ Unconfigured consumers retain their current output. Complete sections remain
 in DOM order and are emitted open in server HTML; hydrated mobile behavior
 closes optional groups while desktop remains visually expanded.
 
-### Remain unchanged
+### Remain unchanged in the historical first pass
 
-- Project-index and project-detail content and project records.
-- Homepage and contact copy unless a narrowly shared accessibility correction
-  requires a change.
+- Project-index and project-detail content and project records were unchanged
+  until the 29 July 2026 reduction recorded above.
+- Homepage and contact copy were unchanged in the first pass; their current
+  compact versions are recorded above.
 - Metadata, canonical URLs, schema payloads, public claims, meaningful link
   destinations, source-aware enquiry routing, payloads, and analytics names.
 - Professional source context. The Phase 7 professional capability page is
@@ -261,8 +315,8 @@ is hidden from interaction.
 | --- | --- |
 | Residential | One compact `service-planning-support` group for secondary planning questions, roof/edge detail and useful guide links. |
 | Custom | One compact `custom-planning-support` group for site-reading depth, technical boundaries and useful guide links. |
-| Product hub | The compact four-form comparison and one planning-guide group. Integrated options are direct secondary gateways, not disclosures. |
-| Product details | Three groups per route: `fit-and-definition`; `specification-and-tradeoffs`; and `related-support`. |
+| Product hub | No responsive disclosure. Four form cards and two text-led option gateways expose all ten destinations, followed by one project and one guide. |
+| Product details | Three groups per route: `fit-and-definition` (`How it works`); `specification-and-tradeoffs` (`What to confirm`); and `related-support` (`Compare and plan`). |
 | Commercial | One `commercial-planning-support` group for four common questions. Project proof, the three-stage process, consolidated capability and operating-site guidance, plus professional and cost pathways remain visible. |
 | Outdoor rooms | Everyday-use detail; coordinated room decisions; planning links and FAQs. |
 | Aluminium | Frame outcomes; specification detail; planning links and FAQs. |
@@ -278,9 +332,9 @@ payload was rewritten.
 
 ## Preserved contracts and affected consumers
 
-- Desktop retains the complete copy and established section order from the
-  same semantic tree. Responsive disclosure wrappers become layout-neutral
-  and stay open above their route breakpoint.
+- Desktop and mobile use the same reduced semantic tree. Responsive disclosure
+  bodies remain complete for their current purpose, become layout-neutral and
+  stay open above their route breakpoint.
 - Route metadata, canonicals, Open Graph values and structured data remain
   driven by their existing config and catalogue owners. Supporting headings
   and links remain rendered, semantic and crawlable.
@@ -305,11 +359,12 @@ payload was rewritten.
   route-owned `main` landmark. Global scroll handling now prefers a valid
   fragment target over its no-hash top reset, including targets outside a
   disclosure.
-- Project copy, records, links and filter behavior remain unchanged. As a
-  build-compatibility adapter, the `/projects` route now passes its serialized
-  query parameters through `ProjectsExperience` to `ProjectNavigator`.
-  Existing filter, refresh, browser-history, sticky-rail and modal-navigation
-  checks cover that bounded consumer.
+- Project routes still use the governed record, canonical slug, metadata,
+  schema, gallery and enquiry context. The visible detail is reduced to the
+  approved summary, brief, first response, facts, gallery and technical
+  detail. Curated related work is the only end-of-story project navigation;
+  the duplicate circular previous/next links are retired. Collection filters,
+  refresh, browser history, sticky rail and modal navigation are unchanged.
 
 ## Verification and evidence
 
@@ -443,6 +498,25 @@ Commercial structure and copy follow-up, 27 July 2026:
   on wide desktop, an intentional full-width third card after two intermediate
   columns, and the existing single-column mobile sequence.
 
+Major copy-reduction follow-up, 29 July 2026:
+
+- The cross-family contract now protects shorter page-specific H1s, one useful
+  action and ceilings of 350 to 650 initially visible words at 430px, 390px and
+  360px. These ceilings are regression limits, not permission to add filler.
+- The shared mobile header removes duplicate Home and Contact links; the
+  footer and embedded-form routes remove repeated closing pitches.
+- Forms keep their first-brief fields visible and place technical choices in
+  one optional disclosure without changing intake validation, attachment,
+  retry, attribution or analytics behavior.
+- The homepage advances to `design_conversation_home_v3`; event names,
+  governed matches and closed-intent storage remain stable.
+- Products keep all ten canonical routes, honest evidence states, one gallery
+  and three disclosure IDs. Projects keep governed facts and media while
+  removing repeated narrative and circular navigation.
+- The canonical acrylic page absorbs the useful reduced content. The v2 route
+  is retired through a permanent one-hop redirect rather than maintained as a
+  second copy owner.
+
 ## Remaining risks and deliberate deferrals
 
 - The earlier open-then-close disclosure risk is resolved. The server retains
@@ -459,14 +533,14 @@ Commercial structure and copy follow-up, 27 July 2026:
   PR 14 when marking Phase 1 complete; automated Chromium remains supporting
   evidence rather than a substitute.
 - Commercial proof ordering, the professional capability route, guide
-  first-layer simplification and compact footer/homepage close are resolved by
-  Phase 4. Future changes must preserve their evidence order, canonical
-  audience/source context, complete no-JavaScript depth, distinct guide
-  headings, seven-region homepage and neutral direct contact.
+  first-layer simplification and compact footer/homepage close are resolved.
+  Future changes must preserve their evidence order, canonical audience/source
+  context, complete no-JavaScript depth, distinct guide headings, the bounded
+  v3 homepage and neutral direct contact.
 - Product gallery duplication and residual service/product restructuring are
   resolved by Phase 3. Future changes must preserve the three-group product
   contract, one controlled gallery, service six-region budgets and the honest
   evidence states.
-- Project-index and project-detail copy, records, photography and desktop
-  composition remain deliberately untouched; Phase 2 changed payload and
-  mobile gallery interaction only.
+- Project records, facts and photography remain governed. The 29 July copy
+  reduction intentionally changed their summaries and visible detail hierarchy
+  while preserving the Phase 2 collection, filter and gallery interactions.

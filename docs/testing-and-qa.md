@@ -71,6 +71,10 @@ The component lane owns open/closed state, inert hidden content, focus cycling,
 Escape return, reversible body scroll locking, history cleanup and the 901px
 CSS/JavaScript breakpoint contract. The browser lane covers the approved
 mobile destinations and route-aware enquiry URLs at 430px, 390px and 360px.
+The current menu must expose Projects, `Pergola options`, Commercial and
+Professionals exactly once, followed by `Start your project`; Home remains the
+brand destination and Contact remains the project action rather than duplicate
+menu rows.
 Its established-route matrix includes a commercial project and verifies that
 known project headers carry the governed audience and slug while product
 headers carry the product slug without an inferred audience. It also covers
@@ -100,7 +104,10 @@ one visible H1, early and final CTA continuity, one controlled gallery,
 server-rendered keyboard-operable disclosure content, minimum 44 pixel targets,
 loaded imagery, metadata and schema, mobile height budgets, reduced motion, no
 horizontal overflow, no nested content scroll and explicit handling of
-unpublished heater evidence.
+unpublished heater evidence. The hub has no responsive disclosure, retains all
+ten canonical product links and shows one governed project plus one guide.
+Details retain exactly three disclosure IDs and Product/Breadcrumb schema;
+retired product FAQ copy must not return through an invisible FAQ schema.
 
 Phase 3 service/product changes should also run
 `npx playwright test playwright/marketing.phase-three.spec.ts --config=playwright.marketing.config.ts`.
@@ -146,6 +153,11 @@ performance ceilings. For the LCP ceiling, start a local production build,
 point `MARKETING_BASE_URL` at it, and add
 `MARKETING_HOMEPAGE_PRODUCTION_PERF=1`; development compilation is deliberately
 excluded from LCP evidence.
+
+The homepage lane identifies the current copy as
+`design_conversation_home_v3`. Stable event names, the governed two-project
+matches and the closed-intent storage key remain unchanged; tests assert the
+v3 analytics property so results are not mixed with earlier copy variants.
 
 The internal `/__foundation/marketing` catalogue fails closed in production
 unless `ENABLE_MARKETING_FOUNDATION=true`. A full deployed browser sweep will
@@ -196,6 +208,14 @@ The wider JavaScript-disabled context remains the required server-rendering
 check: one route-owned `main` and H1, the next action, and complete open
 supporting content remain visible without hydration.
 
+Current closed-detail word ceilings are part of that contract: 450 for the
+homepage and representative product detail, 500 for the product hub, 650 for
+residential, custom, commercial and representative guide detail, and 350 for
+the guide hub and contact. They are upper bounds, not writing targets. Page
+families that embed the enquiry form must not regain a generic conversion
+section after it, while the product hub plus product and project details keep
+one short final project action.
+
 Contact-page or embedded-enquiry changes should run
 `npx vitest run apps/marketing/lib/enquiryFormContract.test.ts apps/marketing/app/contact/contactFormModel.test.ts apps/marketing/app/contact/enquiryRoute.test.ts apps/marketing/lib/enquiryAttachments.test.ts apps/marketing/app/api/enquiry/route.test.ts`
 and
@@ -211,8 +231,11 @@ attachment policy errors; visible failure when attachment signing or upload is
 unavailable; and lower-case
 non-personal canonical context in payloads and analytics. The embedded-route
 matrix additionally asserts the shared required/optional contract, field order,
-`Roof approach`, governed upload accept list and limits, commercial audience,
-route attribution and retained success values.
+one `Add optional project details` disclosure, governed upload accept list and
+limits, commercial audience, route attribution and retained success values.
+The acrylic variant spec now owns a redirects-disabled assertion that
+`/acrylic-roof-pergolas-auckland-v2` permanently redirects in one hop to the
+self-canonical primary route; it is no longer a second page-content suite.
 
 Project-page changes should run
 `npx vitest run apps/marketing/app/projects/projectFilters.test.ts apps/marketing/app/projects/projectPresentation.test.ts apps/marketing/data/projects.claims.test.ts`
@@ -243,6 +266,12 @@ representative desktop regression coverage. Set
 collection payload plus current project-gallery screenshots at 430, 390, 360
 and desktop under
 `artifacts/mobile-ux-phase-2/`.
+
+Project-detail copy checks require the approved short summary, visible Brief
+and first Response, Facts, Gallery and Technical details. Curated related
+projects are the only end-of-story project navigation; circular project
+previous/next links must not return. Gallery Previous/Next controls remain part
+of the separate media interaction contract above.
 
 Portal readiness sweeps:
 
@@ -275,6 +304,14 @@ npx vitest run apps/portal/lib/commercial apps/portal/app/api/quotes/_lib apps/p
 The focused commercial suite also proves that a missing recovery RPC preserves read-only quote detail, marks commercial actions unavailable, and returns an explicit `503` from delivery/recovery routes. Quote/invoice provider tests inject transport and must not send real email. Browser review may preview but must stop before send, public acceptance, or invoice delivery.
 
 The data-free commercial recovery fixture is `/qa/commercial-workflow-fixture`. It requires `ENABLE_PORTAL_QA_FIXTURES=1`, renders the production quote detail and prepared-delivery dialog, and has retryable plus staff-attention scenarios without database, provider, email, token, or customer-record access. `playwright/portal.commercial-workflow-fixture.spec.ts` checks both scenarios at 1280x900 and 390x844, including read-only frozen content, retry eligibility, overflow, 44px mobile targets, dialog focus return, browser errors, and attached screenshots. It belongs to the `portal-fixture` project.
+
+Projects/Contacts list and project-create changes should run:
+
+```bash
+npx vitest run apps/portal/lib/projects/createProjectContract.test.ts apps/portal/lib/projects/createProjectCommand.test.ts apps/portal/app/api/staff/v1/projects/route.test.ts apps/portal/app/api/staff/v1/projects/index/route.test.ts apps/portal/app/api/staff/v1/contacts/index/route.test.ts apps/portal/app/api/contacts/[contactId]/route.test.ts apps/portal/lib/projects/serverProjectsIndex.test.ts apps/portal/lib/contacts/serverContactsIndex.test.ts apps/portal/lib/queries/projectsIndex.test.ts apps/portal/lib/queries/contactsIndex.test.ts apps/portal/app/staff/projects/ProjectsIndexClient.test.tsx apps/portal/app/staff/contacts/ContactsIndexClient.test.tsx test/portal-operational-lists-migration.test.ts
+```
+
+The static migration contract proves bounded pages, stable ordering, scalar access checks, duplicate normalization, and authenticated-only grants without applying SQL or reading shared data. Before any environment browser check, apply `20260729_000001_portal_operational_lists.sql` through the normal migration process; a `503 ..._SCHEMA_NOT_READY` is a failed prerequisite, not a UI empty state. Browser verification should use an authenticated local/test account, existing records, and read-only list/search/pagination interactions at desktop, compact desktop, tablet, and narrow widths. Project-create browser checks should submit only against a disposable fixture or an intercepted API response; routine review must not create persistent contacts/projects or trigger real email.
 
 For deterministic quote-artifact review, set `QUOTE_ARTIFACT_OUTPUT_DIR` to an OS-temp directory and run `apps/portal/lib/quotes/quoteArtifactVisualFixtures.test.ts`. Render the emitted PDFs with Poppler and inspect every page of the simple, multi-page, long-description, and long-terms cases. Generated fixtures are review artifacts only and must not be committed or mistaken for delivery evidence.
 

@@ -11,7 +11,7 @@ vi.mock('@/lib/api/staffApi', async () => {
   };
 });
 
-describe('PATCH /api/contacts/[contactId]', () => {
+describe('/api/contacts/[contactId]', () => {
   beforeEach(() => {
     vi.resetModules();
     requireStaffContext.mockReset();
@@ -20,6 +20,44 @@ describe('PATCH /api/contacts/[contactId]', () => {
       ok: true,
       session: { user: { email: 'ops@example.com' }, role: 'staff' },
       supabase: { from: (...args: unknown[]) => fromMock(...args) },
+    });
+  });
+
+  it('loads one contact for an authenticated combobox selection', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Alex Mason',
+        email: 'alex@example.com',
+        phone: '021',
+        created_at: '2026-04-07T00:00:00.000Z',
+        updated_at: '2026-04-08T00:00:00.000Z',
+      },
+      error: null,
+    });
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const select = vi.fn(() => ({ eq }));
+    fromMock.mockReturnValue({ select });
+
+    const mod = await import('./route');
+    const res = await mod.GET(
+      new Request('http://localhost/api/contacts/ct_11111111-1111-4111-8111-111111111111', {
+        headers: { 'x-request-id': 'req_contacts_get_ok' },
+      }),
+      { params: Promise.resolve({ contactId: 'ct_11111111-1111-4111-8111-111111111111' }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+    await expect(res.json()).resolves.toEqual({
+      contact: {
+        id: 'ct_11111111-1111-4111-8111-111111111111',
+        displayName: 'Alex Mason',
+        email: 'alex@example.com',
+        phone: '021',
+        createdAt: '2026-04-07T00:00:00.000Z',
+        updatedAt: '2026-04-08T00:00:00.000Z',
+      },
     });
   });
 

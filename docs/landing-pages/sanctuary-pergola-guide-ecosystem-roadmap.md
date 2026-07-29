@@ -1,6 +1,7 @@
 # Sanctuary Pergolas Guide Ecosystem Implementation Roadmap
 
-**Status:** Active implementation programme  
+**Status:** Active implementation programme; major copy reduction and G27
+variant consolidation complete
 **Prepared:** 24 July 2026  
 **Repository:** `velt-design/sanctuary`  
 **Current repository path:** `docs/landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md`
@@ -29,6 +30,27 @@ Authority order:
 - This roadmap governs target information architecture, guide visibility, implementation order, and pull-request scope.
 - Current code and tests define the implementation baseline that must be changed safely.
 - The earlier guide-cluster improvement, completion-audit, and SEO-programme documents remain useful implementation history. Their assumption that all ten programme pages belong in the public guide directory is superseded by this roadmap.
+
+### 29 July 2026 implementation checkpoint
+
+The approved major copy-reduction pass changed presentation density without
+changing the roadmap's unresolved guide-classification goals:
+
+- homepage tracking is now `design_conversation_home_v3`;
+- the mobile header, footer and enquiry forms use the compact shared contracts;
+- service and guide pages that end in an embedded form no longer repeat a
+  generic final CTA below it;
+- the guide hub and retained guide pages use shorter, decision-led copy while
+  the current ten-route directory model remains in place until its dedicated
+  classification goals are implemented;
+- product and project surfaces use the reduced decision paths recorded in
+  `docs/mobile-content-density-refinement.md`; and
+- G27 is complete: `/acrylic-roof-pergolas-auckland` is the sole canonical
+  content owner and `/acrylic-roof-pergolas-auckland-v2` permanently redirects
+  there in one hop.
+
+This checkpoint does not mark G04 through G23 complete and does not approve the
+optional form or consent guides. Claims and evidence gates below remain active.
 
 ## Operating protocol for coding agents
 
@@ -220,7 +242,11 @@ For all existing public routes:
 
 Removing a service page from the guide hub must not alter any of those behaviours.
 
-The only planned redirect is the eventual consolidation of `/acrylic-roof-pergolas-auckland-v2` into `/acrylic-roof-pergolas-auckland`, after the variant decision and external-link check.
+The approved redirect is now implemented:
+`/acrylic-roof-pergolas-auckland-v2` permanently redirects in one hop to
+`/acrylic-roof-pergolas-auckland`. The primary route remains self-canonical,
+indexable and in the sitemap; the retired variant is not a content or sitemap
+member.
 
 ### Schema
 
@@ -328,7 +354,9 @@ The following existing URLs remain unchanged throughout required phases:
 - `/projects` and all current project routes
 - `/contact`
 
-`/acrylic-roof-pergolas-auckland-v2` remains noindex and canonicalised to the primary route until its dedicated consolidation goal is approved.
+`/acrylic-roof-pergolas-auckland-v2` is retired through the approved permanent
+redirect to the primary route. Direct redirect tests run with automatic
+redirect following disabled.
 
 ---
 
@@ -660,8 +688,8 @@ The following existing URLs remain unchanged throughout required phases:
 
 **Likely files and components:**
 
-- `apps/marketing/app/home-v2/Homepage.tsx`
-- `apps/marketing/app/home-v2/content.ts`
+- `apps/marketing/app/_home/Homepage.tsx`
+- `apps/marketing/app/_home/content.ts`
 - `apps/marketing/components/Header.tsx`
 - homepage and shared-header Playwright tests
 - homepage interaction tracking
@@ -737,22 +765,27 @@ The following existing URLs remain unchanged throughout required phases:
 
 ### Phase 10 - Variant consolidation, documentation, and final regression
 
-**Objective:** Remove the temporary acrylic variant only after a decision, align canonical documentation, and prove the completed ecosystem.
+**Objective:** Keep the completed acrylic consolidation aligned in
+documentation and prove the completed ecosystem.
 
-**Why this phase comes last:** The variant may contain copy worth retaining, and the final regression should test the settled architecture rather than an intermediate state.
+**Why this phase comes last:** The useful variant copy is consolidated and the
+redirect is live. Final regression should test that settled architecture
+rather than the retired two-page state.
 
-**Dependencies:** Required phases complete. Variant consolidation also requires an editorial or experiment decision and an external-link check.
+**Dependencies:** The editorial consolidation decision is complete. Final
+ecosystem regression still depends on the required roadmap phases and
+production/external verification.
 
 **Likely files and components:**
 
 - `/acrylic-roof-pergolas-auckland` source files
-- `/acrylic-roof-pergolas-auckland-v2` source files
 - `apps/marketing/next.config.ts`
-- sitemap and redirect tests
+- sitemap and `playwright/marketing.acrylic-copy-variant.spec.ts`
 - guide programme documentation
 - full marketing test suite and build
 
-**Pages affected:** The acrylic primary and variant routes, plus documentation and final tests.
+**Pages affected:** The acrylic primary route, retired-route redirect response,
+documentation and final tests.
 
 **Included:**
 
@@ -765,18 +798,22 @@ The following existing URLs remain unchanged throughout required phases:
 **Excluded:**
 
 - changes to the primary acrylic URL
-- a redirect before the variant decision
 - unrelated cleanup
 
 **Expected customer outcome:** One authoritative acrylic page remains.
 
 **Expected SEO outcome:** Duplicate variant risk is removed while the primary canonical retains continuity.
 
-**Primary risks:** Redirecting before useful copy is merged, deleting an externally linked variant without checking, or leaving old tests and docs that reintroduce the ten-guide assumption.
+**Primary risks:** Reintroducing variant content, breaking the one-hop redirect,
+missing external-link monitoring, or leaving old tests and docs that
+reintroduce the ten-guide assumption.
 
 **Validation required:** Redirect response, primary canonical and indexability, sitemap absence for the variant, full marketing unit and browser suites, production build, docs guards, dead-code check, and production crawl.
 
-**Phase complete when:** The primary acrylic page is authoritative, the variant redirects in one hop, all roadmap docs reflect the final architecture, and the full marketing gate passes.
+**Phase complete when:** The primary acrylic page remains authoritative, the
+variant redirect stays one hop, all roadmap docs reflect the final
+architecture, and the full marketing gate passes. The redirect portion is
+complete; final ecosystem regression remains G28 work.
 
 ---
 
@@ -807,7 +844,9 @@ Required goals should proceed in recommended order. G11 through G18 may run as c
 **Completed:** 27 July 2026  
 **Pull request:** Not yet assigned
 
-**Ready-to-use Codex goal prompt**
+**Historical Codex goal prompt (completed; do not rerun)**
+
+The prompt below is retained as implementation evidence.
 
 ```text
 Work only on roadmap goal G01 in `velt-design/sanctuary`.
@@ -1818,7 +1857,8 @@ Update focused tests and run the single-page browser matrix, claims tests, marke
 - Generic process, cost, consent, and product duplication is reduced.
 - The strongest use-led sections remain.
 - Related guides, products, projects, and service pathways are useful and non-duplicative.
-- One H1, one form, one final CTA, current canonical, and current schema remain.
+- One H1, one embedded form, no post-form CTA, the current canonical and the
+  current schema remain.
 
 **Tests to add or update**
 
@@ -1830,7 +1870,8 @@ Update focused tests and run the single-page browser matrix, claims tests, marke
 **Manual checks**
 
 - Read the page as an early-stage homeowner.
-- Check the first screen, section order, project relevance, and final CTA at mobile and desktop widths.
+- Check the first screen, section order, project relevance, form close and
+  footer transition at mobile and desktop widths.
 - Confirm Riverhead and Tindalls snippets use the corrected project evidence from Phase 1.
 
 **SEO or redirect risk**
@@ -2005,7 +2046,8 @@ Update focused tests and run the Blinds route, product tests where links change,
 - The guide and product page have clearly different jobs.
 - No current project example implies a sealed room or universal wind or rain result.
 - Blind, slat, and acrylic infill pathways are understandable.
-- The page retains one H1, form, final CTA, canonical, and guide membership.
+- The page retains one H1, one embedded form, no post-form CTA, its canonical
+  and guide membership.
 
 **Tests to add or update**
 
@@ -2708,7 +2750,7 @@ Update consent and focused browser tests, the security/privacy owner doc if even
 
 - `docs/security-privacy-quality.md`
 - `apps/marketing/components/ConsentProvider.tsx` and tracking helpers
-- `apps/marketing/app/home-v2/HomepageInteractionTracker.tsx`
+- `apps/marketing/app/_home/HomepageDesignConversationTracker.tsx`
 - `apps/marketing/app/pergola-guides/page.tsx`
 - Guide relationship/navigation components created in G09
 - `apps/marketing/app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.tsx`
@@ -2800,10 +2842,11 @@ Update homepage browser tests and event assertions. Do not add a new guide topic
 
 **Context Codex must inspect**
 
-- `apps/marketing/app/home-v2/Homepage.tsx`
-- `apps/marketing/app/home-v2/content.ts`
-- `apps/marketing/app/home-v2/home-v2.module.css` only if a small placement adjustment is necessary
-- `playwright/marketing.home-v2.spec.ts`
+- `apps/marketing/app/_home/Homepage.tsx`
+- `apps/marketing/app/_home/content.ts`
+- `apps/marketing/app/_home/homepage.module.css` only if a small placement
+  adjustment is necessary
+- `playwright/marketing.homepage.spec.ts`
 - Curated guide data from G07
 - Existing homepage guide click events
 
@@ -2816,9 +2859,9 @@ Update homepage browser tests and event assertions. Do not add a new guide topic
 
 **Likely files**
 
-- `apps/marketing/app/home-v2/content.ts`
-- `apps/marketing/app/home-v2/Homepage.tsx`
-- `playwright/marketing.home-v2.spec.ts`
+- `apps/marketing/app/_home/content.ts`
+- `apps/marketing/app/_home/Homepage.tsx`
+- `playwright/marketing.homepage.spec.ts`
 - Homepage interaction tests if the event payload changes
 
 **Implementation requirements**
@@ -2826,13 +2869,14 @@ Update homepage browser tests and event assertions. Do not add a new guide topic
 - Feature only current core guides.
 - Use restrained, decision-led copy.
 - Keep `Explore all pergola guides` or an equivalent explicit hub link.
-- Preserve consent-gated event attributes and all existing hero/final enquiry actions.
+- Preserve consent-gated event attributes and all current project and enquiry
+  actions.
 - Keep customer-facing copy free of em dashes.
 
 **Exclusions and guardrails**
 
 - No homepage hero rewrite.
-- No redesign of product, project, review, process, or final CTA sections.
+- No redesign of product, project, review, process or enquiry pathways.
 - No new analytics system.
 - No new route.
 - No change to homepage canonical, schema, robots, or metadata unless a factual error is discovered.
@@ -2847,8 +2891,9 @@ Update homepage browser tests and event assertions. Do not add a new guide topic
 
 **Tests to add or update**
 
-- Update `playwright/marketing.home-v2.spec.ts` for guide order, links, placement, mobile visibility, and event attributes.
-- Run `npx playwright test playwright/marketing.home-v2.spec.ts --config=playwright.marketing.config.ts`.
+- Update `playwright/marketing.homepage.spec.ts` for guide order, links,
+  placement, mobile visibility and event attributes.
+- Run `npx playwright test playwright/marketing.homepage.spec.ts --config=playwright.marketing.config.ts`.
 - Run marketing typecheck.
 - Run the production marketing build if section order or shared rendering changes.
 
@@ -3250,12 +3295,22 @@ The approved consent guide is live, governed, date-stamped, technically sound, a
 ### G27 - Consolidate the acrylic copy variant
 
 **Phase:** Phase 10 - Variant consolidation, documentation, and final regression  
-**Status:** Not started  
+**Status:** Complete, 29 July 2026
 **Relative effort:** Small to medium  
 **Implementation risk:** Low  
-**Dependencies:** Documented variant decision and external-link check
+**Dependencies:** Approved editorial consolidation decision; external
+Search Console and link monitoring remain a post-release check
 
-**Ready-to-use Codex goal prompt**
+**Implemented outcome:** Useful copy was consolidated into the shorter primary
+acrylic page. The v2 source and variant-only presentation were retired.
+`apps/marketing/next.config.ts` owns a permanent one-hop redirect to the
+self-canonical primary route, and the redirect spec checks the response with
+automatic following disabled.
+
+**Historical Codex goal prompt (completed; do not rerun)**
+
+The prompt below is retained as implementation evidence. Its decision gate and
+v2 source paths are no longer current instructions.
 
 ```text
 Work only on roadmap goal G27 in `velt-design/sanctuary`.
@@ -3268,6 +3323,9 @@ Do not redirect or change any other guide, service, product, or project page. Pr
 
 Add redirect and regression tests, run focused acrylic, SEO, redirect, dead-code, marketing typecheck, build, and `npm run architecture:changed`.
 ```
+
+The remaining G27 scope and checklists are historical implementation evidence;
+references to v2 source files describe paths that existed before retirement.
 
 **Context Codex must inspect**
 
@@ -3336,7 +3394,8 @@ Add redirect and regression tests, run focused acrylic, SEO, redirect, dead-code
 
 **SEO or redirect risk**
 
-Low because the variant is already noindex and canonicalised to the primary route, but the redirect should still be one hop and external links should be checked.
+Low. Keep the permanent redirect one hop and check external links without
+restoring a second content or canonical owner.
 
 **Definition of done**
 
@@ -3345,7 +3404,7 @@ One authoritative acrylic landing page remains, with the test variant permanentl
 ### G28 - Synchronise governance docs and run final ecosystem regression
 
 **Phase:** Phase 10 - Variant consolidation, documentation, and final regression  
-**Status:** Not started  
+**Status:** In progress; copy-reduction docs aligned, final regression pending
 **Relative effort:** Medium  
 **Implementation risk:** Medium  
 **Dependencies:** All approved required goals; optional goals only if authorised and completed
@@ -3569,7 +3628,7 @@ A missing approval blocks only the claim or public feature that depends on it. I
 | Louvre product-range position | Written confirmation of whether Sanctuary supplies, installs, resells, partners on, or only compares louvre systems | Sanctuary product lead and leadership | Any change from the current external-proposal position in G14, G19, or G27 | Retain the current disclosure that Sanctuary's published offer is fixed acrylic, solid, and combination roofs |
 | Consent and approval terminology | Current authority and building-control sources, legal or technical review, approved wording, named internal owner, review date, and re-review triggers | Sanctuary design lead, legal adviser, and relevant authority where required | G26 and any stronger consent copy elsewhere | Keep current project-specific caveats; do not publish a dedicated consent route |
 | Service area and site-visit terms | Current service boundary, travel conditions, availability of site visits, any fee, and review date | Sanctuary operations and commercial lead | Any exact location or free-visit expansion in guide and service copy | Use Auckland only where already verified and avoid free or universal availability wording |
-| Acrylic v2 consolidation decision | Approved winning copy, confirmation that the variant is no longer needed, repository search, and available external-link or Search Console check | Sanctuary marketing and SEO owner | G27 | Keep the v2 route noindex, nofollow, and canonicalised to the primary route |
+| Acrylic v2 consolidation decision | Complete 29 July 2026: approved reduced primary copy, retired variant source and one-hop permanent redirect. External-link and Search Console monitoring remain post-release checks. | Sanctuary marketing and SEO owner | None; G27 complete | Keep the primary route authoritative and the redirect one hop |
 | Search Console access | Production property access, URL Inspection, page and query data, canonical selection, external links, and removal tools where needed | Sanctuary marketing or SEO owner | No code goal; required for post-release validation and prudent G27 checking | Proceed with repository-safe changes and record external verification as pending |
 | Analytics access and baseline | Current analytics property access, consent-aware event visibility, route and conversion baseline, and data-quality review | Sanctuary marketing or analytics owner | No structural code goal; required to judge outcomes after G21 and later releases | Implement consent-safe events, validate technically, and avoid numerical success targets |
 
@@ -3819,7 +3878,8 @@ Use requests with redirects disabled where relevant:
 - all existing public guide, service, product, project, hub, and contact routes return direct 200 responses
 - removing a page from the hub creates no redirect
 - the historic brochure keeps its intended permanent redirect and robots header
-- G27 creates one permanent redirect from the v2 acrylic route to the primary route
+- G27's permanent redirect from the v2 acrylic route to the primary route
+  remains one hop
 - no redirect chain or loop appears
 
 #### 8. Internal-link tests
@@ -4362,7 +4422,7 @@ G01 -> G02 -> G03
    -> G11 through G18, one guide per PR
    -> G19 -> G20 -> G21
    -> G22 -> G23
-   -> G27 when approved
+   -> G27 (complete)
    -> G28
 ```
 
@@ -4381,7 +4441,7 @@ G24 is optional and should follow the form-guide and product ownership work. G25
 Required for the audited target state:
 
 - G01 through G23
-- G27 when the copy-test decision is complete
+- G27 (complete)
 - G28
 
 Optional expansion:

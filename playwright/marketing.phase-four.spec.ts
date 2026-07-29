@@ -51,43 +51,43 @@ const guideDetailRoutes = [
   {
     path: '/outdoor-rooms-auckland',
     projectSlug: 'warkworth-outdoor-room',
-    projectCount: 4,
+    projectCount: 3,
     returnHref: '/pergolas-auckland',
   },
   {
     path: '/aluminium-pergolas-auckland',
     projectSlug: 'dairy-flat-estate',
-    projectCount: 4,
+    projectCount: 2,
     returnHref: '/products',
   },
   {
     path: '/gable-pergolas-auckland',
     projectSlug: 'warkworth-outdoor-room',
-    projectCount: 4,
+    projectCount: 3,
     returnHref: '/products/pergolas/gable',
   },
   {
     path: '/pitched-pergolas-auckland',
     projectSlug: 'velskov-forest',
-    projectCount: 4,
+    projectCount: 3,
     returnHref: '/products/pergolas/pitched',
   },
   {
     path: '/pergola-cost-auckland',
     projectSlug: 'warkworth-outdoor-room',
-    projectCount: 4,
+    projectCount: 3,
     returnHref: '/pergolas-auckland',
   },
   {
     path: '/pergolas-with-blinds',
     projectSlug: 'tindalls-bay-pavilion',
-    projectCount: 3,
+    projectCount: 2,
     returnHref: '/products/screens-walls/drop-down-blinds',
   },
   {
     path: '/acrylic-pergolas-vs-louvre-roofs',
     projectSlug: 'mt-maunganui-box',
-    projectCount: 4,
+    projectCount: 2,
     returnHref: '/products',
   },
 ] as const;
@@ -561,7 +561,7 @@ test('commercial journey leads with three cases and three delivery stages', asyn
       }),
     ).toEqual({
       firstId: 'commercial-projects',
-      count: 6,
+      count: 5,
       overflow: false,
     });
   }
@@ -590,7 +590,7 @@ test('commercial journey leads with three cases and three delivery stages', asyn
     commercialMain.locator('#commercial-capability .acrylic-editorial-media img'),
   ).toHaveAttribute('src', /project-kiwi-rail-03/);
   await expect(
-    page.locator('header.site').getByRole('link', { name: 'Get an estimate' }),
+    page.locator('header.site').getByRole('link', { name: 'Start your project' }),
   ).toHaveAttribute(
     'href',
     buildEnquiryHref({
@@ -642,7 +642,7 @@ test('professional capability route is discoverable, governed and source aware',
     await expect(
       main.getByRole('heading', {
         level: 1,
-        name: 'Bring Sanctuary into the project at the right level.',
+        name: 'Pergola delivery for architects, designers and builders.',
       }),
     ).toBeVisible();
     await expect(
@@ -679,7 +679,7 @@ test('professional capability route is discoverable, governed and source aware',
     await expect(
       page
         .getByRole('navigation', { name: 'Mobile primary' })
-        .getByRole('link', { name: 'Architects, designers & builders' }),
+        .getByRole('link', { name: 'Professionals' }),
     ).toHaveAttribute('aria-current', 'page');
     await page.keyboard.press('Escape');
   }
@@ -698,7 +698,7 @@ test('professional capability route is discoverable, governed and source aware',
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/architects-designers-builders');
   await expect(
-    page.locator('header.site').getByRole('link', { name: 'Get an estimate' }),
+    page.locator('header.site').getByRole('link', { name: 'Start your project' }),
   ).toHaveAttribute(
     'href',
     buildEnquiryHref({
@@ -750,6 +750,7 @@ test('professional form submits canonical context without personal analytics pro
     .fill('Please review the canopy brief and the structural interfaces.');
   await page.locator('#acrylic-enquiry-name').fill('Phase Four Test Person');
   await page.locator('#acrylic-enquiry-phone').fill('022 000 0044');
+  await page.getByText('Add optional project details', { exact: true }).click();
   await page
     .locator('#acrylic-enquiry-organisationAndRole')
     .fill('Example Architects — project architect');
@@ -757,11 +758,11 @@ test('professional form submits canonical context without personal analytics pro
     .locator('#acrylic-enquiry-requestedScope')
     .fill('Design development, engineering coordination and installation.');
   await page
-    .getByRole('button', { name: 'Send professional project brief' })
+    .getByRole('button', { name: 'Send project brief' })
     .click();
   await expect(
     page.getByRole('heading', {
-      name: 'Thanks, we have received your project details.',
+      name: 'Project brief sent.',
     }),
   ).toBeVisible();
 
@@ -960,12 +961,12 @@ test('homepage keeps the first design conversation bounded and the footer compac
     await page.setViewportSize(viewport);
     await page.goto('/', { waitUntil: 'networkidle' });
     const main = page.locator(
-      'main[data-homepage-variant="design_conversation_home_v2"]',
+      'main[data-homepage-variant="design_conversation_home_v3"]',
     );
     const footer = page.locator('footer');
 
     await expect(main.locator(':scope > section, :scope > aside')).toHaveCount(
-      6,
+      5,
     );
     await expect(main.getByRole('radio')).toHaveCount(3);
     await expect(main.locator('[data-intent-response]')).toHaveCount(0);
@@ -992,7 +993,7 @@ test('homepage keeps the first design conversation bounded and the footer compac
       ),
     ).toHaveCount(3);
     await expect(
-      footer.getByRole('link', { name: 'Discuss your project' }),
+      footer.getByRole('link', { name: 'Start your project' }),
     ).toHaveAttribute('href', '/contact');
     await expect(
       footer.getByRole('link', {

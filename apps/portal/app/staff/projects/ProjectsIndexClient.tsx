@@ -30,7 +30,6 @@ import { preloadProjectOpen, projectDetailHref } from '@/lib/queries/projectOpen
 import { useProjectInstantOpen } from './ProjectInstantOpen';
 import {
   buildContactsById,
-  filterProjectsForIndex,
   parseProjectsIndexFilters,
   todayYmd,
   type ArchiveFilter,
@@ -40,6 +39,11 @@ import { useProjectsIndexData } from './useProjectsIndexData';
 import { useProjectsIndexMutations } from './useProjectsIndexMutations';
 import type { ProjectIndexEditableField } from './projectsIndexMutations';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
+import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
+import type {
+  ProjectsIndexPageSize,
+  ProjectsIndexSort,
+} from '@/lib/projects/projectsIndexContract';
 import {
   AlertBanner,
   Badge,
@@ -51,6 +55,7 @@ import {
   Input,
   LoadingSkeleton,
   PageLayout,
+  Pagination,
   ProjectStageBadge,
   SearchFilterBar,
   Select,
@@ -97,6 +102,10 @@ export default function ProjectsIndexClient({
   const [statusFilter, setStatusFilter] = useState<NonNullable<Project['status']> | 'all'>(initialFiltersRef.current.statusFilter ?? 'all');
   const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFiltersRef.current.dueFilter);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFiltersRef.current.archiveFilter);
+  const [sort, setSort] = useState<ProjectsIndexSort>('newest');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<ProjectsIndexPageSize>(50);
+  const debouncedQuery = useDebouncedValue(query, 180);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
@@ -111,7 +120,16 @@ export default function ProjectsIndexClient({
 
   const queryClient = useQueryClient();
   const projectMutations = useProjectsIndexMutations(host);
-  const projectsIndex = useProjectsIndexData(host, archiveFilter);
+  const projectsIndex = useProjectsIndexData({
+    archive: archiveFilter,
+    search: debouncedQuery,
+    status: statusFilter,
+    due: dueFilter,
+    today: currentTodayYmd,
+    page,
+    pageSize,
+    sort,
+  });
   const projects = projectsIndex.data?.projects.rows ?? [];
   const contacts = projectsIndex.data?.contacts.rows ?? [];
 
@@ -128,6 +146,15 @@ export default function ProjectsIndexClient({
   }, [searchParams]);
 
   useEffect(() => {
+    setPage(1);
+  }, [archiveFilter, debouncedQuery, dueFilter, pageSize, sort, statusFilter]);
+
+  useEffect(() => {
+    const totalPages = projectsIndex.data?.projects.totalPages;
+    if (totalPages && page > totalPages) setPage(totalPages);
+  }, [page, projectsIndex.data?.projects.totalPages]);
+
+  useEffect(() => {
     const t = searchParams.get('toast');
     if (t === 'project_deleted') {
       toast.success('Project deleted.');
@@ -139,19 +166,10 @@ export default function ProjectsIndexClient({
     return buildContactsById(contacts);
   }, [contacts]);
 
-  const filteredProjects = useMemo(() => {
-    return filterProjectsForIndex(
-      projects,
-      contactsById,
-      {
-        query,
-        statusFilter,
-        dueFilter,
-        archiveFilter,
-      },
-      currentTodayYmd,
-    );
-  }, [archiveFilter, contactsById, currentTodayYmd, dueFilter, projects, query, statusFilter]);
+  const filteredProjects = projects;
+  const totalCount = projectsIndex.data?.projects.totalCount ?? 0;
+  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
 
   const prepareProjectOpen = useCallback(
     (projectId: string) => {
@@ -319,14 +337,6 @@ export default function ProjectsIndexClient({
         entityLabelPlural="projects"
         truncated={projectsIndex.data?.projects.truncated ?? false}
       />
-      <ListCountBanner
-        totalCount={projectsIndex.data?.contacts.totalCount ?? null}
-        visibleCount={contacts.length}
-        entityLabelSingular="contact"
-        entityLabelPlural="contacts"
-        truncated={projectsIndex.data?.contacts.truncated ?? false}
-      />
-
       <div className={styles.stack}>
         <Card title="Filters" padding="compact" aria-label="Filters">
             <SearchFilterBar
@@ -338,8 +348,10 @@ export default function ProjectsIndexClient({
                 { id: 'projectStatusFilter', label: 'Status', value: statusFilter, onChange: (value) => setStatusFilter(value as NonNullable<Project['status']> | 'all'), options: [{ value: 'all', label: 'All statuses' }, ...PROJECT_STATUS_ORDER.map((status) => ({ value: status, label: projectStatusLabel(status) ?? status }))] },
                 { id: 'projectArchiveFilter', label: 'Archive', value: archiveFilter, onChange: (value) => setArchiveFilter(value as ArchiveFilter), options: [{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }, { value: 'all', label: 'All' }] },
                 { id: 'projectDueFilter', label: 'Next action', value: dueFilter, onChange: (value) => setDueFilter(value as typeof dueFilter), options: [{ value: 'all', label: 'Any date' }, { value: 'due', label: 'Due today or overdue' }, { value: 'overdue', label: 'Overdue' }, { value: 'today', label: 'Due today' }] },
+                { id: 'projectSort', label: 'Sort', value: sort, onChange: (value) => setSort(value as ProjectsIndexSort), options: [{ value: 'newest', label: 'Newest first' }, { value: 'oldest', label: 'Oldest first' }, { value: 'name_asc', label: 'Name A–Z' }, { value: 'name_desc', label: 'Name Z–A' }, { value: 'next_action_asc', label: 'Next action soonest' }, { value: 'next_action_desc', label: 'Next action latest' }] },
+                { id: 'projectPageSize', label: 'Rows', value: String(pageSize), onChange: (value) => setPageSize(Number(value) as ProjectsIndexPageSize), options: [{ value: '25', label: '25 rows' }, { value: '50', label: '50 rows' }, { value: '100', label: '100 rows' }] },
               ]}
-              onClearAll={() => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); }}
+              onClearAll={() => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); setSort('newest'); setPage(1); }}
             />
         </Card>
 
@@ -350,20 +362,20 @@ export default function ProjectsIndexClient({
           action={(
             <div className={styles.muted} suppressHydrationWarning>
               {projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? 'Updating…' : null}
-              {projectsIndex.state === 'fresh' ? `${filteredProjects.length} shown` : null}
+              {projectsIndex.state === 'fresh' ? `${rangeStart}–${rangeEnd} of ${totalCount}` : null}
               {projectsIndex.state === 'unavailable' ? 'Access unavailable' : null}
-              {projectsIndex.state === 'refresh-failed' ? (
-                <>
-                  {projects.length ? 'Refresh failed · ' : null}
-                  <Button type="button" size="small" variant="quiet" onClick={() => void projectsIndex.retry()}>
-                    Retry
-                  </Button>
-                </>
-              ) : null}
+              {projectsIndex.state === 'refresh-failed' ? 'Refresh failed' : null}
             </div>
           )}
         >
+            {projectsIndex.state === 'refresh-failed' ? (
+              <DataStatePanel
+                state={projects.length ? 'stale' : 'error'}
+                onRetry={() => void projectsIndex.retry()}
+              />
+            ) : null}
             {filteredProjects.length ? (
+              <>
                 <Table aria-label="Projects">
                   <TableHeader>
                     <TableRow>
@@ -566,16 +578,23 @@ export default function ProjectsIndexClient({
                     })}
                   </TableBody>
                 </Table>
+                <Pagination
+                  currentPage={page}
+                  totalPages={projectsIndex.data?.projects.totalPages ?? 1}
+                  itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} projects`}
+                  onPageChange={setPage}
+                />
+              </>
             ) : projectsIndex.state === 'pending' || projectsIndex.state === 'cached' ? (
               <LoadingSkeleton rows={5} columns={4} label="Updating projects…" />
             ) : projectsIndex.state === 'unavailable' ? (
               <DataStatePanel state="unavailable" />
             ) : projectsIndex.state === 'refresh-failed' ? (
-              <DataStatePanel state={projects.length ? 'stale' : 'error'} onRetry={() => void projectsIndex.retry()} />
+              null
             ) : (
               <DataStatePanel
-                state={projects.length ? 'filtered-empty' : 'empty'}
-                onClear={projects.length ? () => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); } : undefined}
+                state={debouncedQuery || statusFilter !== 'all' || dueFilter !== 'all' ? 'filtered-empty' : 'empty'}
+                onClear={debouncedQuery || statusFilter !== 'all' || dueFilter !== 'all' ? () => { setQuery(''); setStatusFilter('all'); setArchiveFilter('active'); setDueFilter('all'); setSort('newest'); setPage(1); } : undefined}
               />
             )}
         </Card>

@@ -92,12 +92,11 @@ export function getDesktopHeaderNavigation(
 export function getMobileHeaderNavigation(
   pathname: string,
 ): HeaderNavigationItem[] {
-  const [home, projects, products, contact] = primaryNavigationItems.map((item) => (
+  const [, projects, products] = primaryNavigationItems.map((item) => (
     toNavigationItem(item, pathname, true)
   ));
 
   return [
-    home,
     projects,
     products,
     {
@@ -108,10 +107,9 @@ export function getMobileHeaderNavigation(
     },
     {
       id: 'professional',
-      label: 'Architects, designers & builders',
+      label: 'Professionals',
       href: '/architects-designers-builders',
       current: pathname === '/architects-designers-builders',
     },
-    contact,
   ];
 }

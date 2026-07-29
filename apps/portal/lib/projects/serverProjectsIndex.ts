@@ -1,166 +1,108 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { mapContactRecord } from '@/lib/contacts/contactRecord';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
-import { appIdFromUuid } from '@/lib/supabase/mappers';
-import type { Contact } from '@/lib/types/contact';
-import type { Project } from '@/lib/types/project';
-import { normalizeProjectStatus } from '@/lib/types/project';
-import {
-  fetchAllPages,
-  type ChunkedListFetchResult,
-} from '@/lib/list/listLimits';
-import { nowIso } from '@/lib/utils/time';
+import { mapProjectRecord } from './projectRecord';
+import type {
+  ProjectsIndexParams,
+  ProjectsIndexResponse,
+} from './projectsIndexContract';
 
-function toPostgrestError(value: unknown): { code?: string; message?: string } | null {
-  if (!value || typeof value !== 'object') return null;
-  const v = value as { code?: string; message?: string };
-  return {
-    code: v.code,
-    message: v.message,
-  };
-}
-
-function missingColumnFromError(error: unknown): string | null {
-  const pg = toPostgrestError(error);
-  if (!pg || pg.code?.trim() !== 'PGRST204') return null;
-  const match = (pg.message ?? '').match(/'([^']+)' column/i);
-  return match ? match[1] : null;
-}
-
-function sortContacts(contacts: Contact[]): Contact[] {
-  return contacts
-    .slice()
-    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
-}
-
-function mapContactRow(row: Record<string, unknown>): Contact {
-  const id = typeof row.id === 'string' ? row.id : '';
-  const createdAt = typeof row.created_at === 'string' ? row.created_at : nowIso();
-  const updatedAt = typeof row.updated_at === 'string' ? row.updated_at : createdAt;
-  const displayName = typeof row.name === 'string' ? row.name.trim() : '';
-
-  return {
-    id: appIdFromUuid('ct', id),
-    displayName,
-    email: typeof row.email === 'string' ? row.email : '',
-    phone: typeof row.phone === 'string' ? row.phone : '',
-    createdAt,
-    updatedAt,
-  };
-}
-
-function mapProjectRow(row: Record<string, unknown>): Project {
-  const createdAt = typeof row.created_at === 'string' ? row.created_at : nowIso();
-  const updatedAt = typeof row.updated_at === 'string' ? row.updated_at : createdAt;
-  const normalized = normalizeProjectStatus(row.pipeline_stage ?? row.status ?? row.legacy_status ?? 'NEW');
-  const projectName = typeof row.name === 'string' ? row.name : '';
-  const siteAddress = typeof row.site_address === 'string' ? row.site_address : '';
-  const followUpDate = typeof row.follow_up_date === 'string' ? row.follow_up_date : null;
-  const contactId = typeof row.contact_id === 'string' ? appIdFromUuid('ct', row.contact_id) : undefined;
-
-  return {
-    id: appIdFromUuid('proj', typeof row.id === 'string' ? row.id : ''),
-    createdAt,
-    updatedAt,
-    ...(contactId ? { contactId } : null),
-    projectName,
-    name: projectName,
-    region: typeof row.region === 'string' ? row.region : undefined,
-    quoteRef: typeof row.quote_ref === 'string' ? row.quote_ref : undefined,
-    siteAddress: siteAddress || undefined,
-    address: siteAddress || undefined,
-    status: normalized.status,
-    isLost: normalized.isLost,
-    isArchived: typeof row.archived_at === 'string' ? true : normalized.isArchived,
-    legacyStatus: normalized.legacyStatus,
-    nextActionDate: followUpDate,
-    followUpDate,
-    nextActionType: typeof row.next_action_type === 'string' ? (row.next_action_type as Project['nextActionType']) : null,
-    depositAmountCents:
-      typeof row.deposit_amount_cents === 'number' && Number.isFinite(row.deposit_amount_cents) ? row.deposit_amount_cents : null,
-    depositPaidDate: typeof row.deposit_paid_date === 'string' ? row.deposit_paid_date : null,
-    finalPaymentDate: typeof row.final_payment_date === 'string' ? row.final_payment_date : null,
-    notes: typeof row.notes === 'string' ? row.notes : '',
-  };
-}
-
-type LoadProjectsIndexOptions = {
-  archiveFilter?: 'active' | 'archived' | 'all';
+type RpcPayload = {
+  rows?: unknown;
+  totalCount?: unknown;
+  page?: unknown;
+  pageSize?: unknown;
 };
 
-/**
- * PR-PG1 (2026-06-16): return shape changed from
- * `{ projects: Project[]; contacts: Contact[] }` to
- * `{ projects: ListFetchResult<Project>; contacts: ListFetchResult<Contact> }`
- * so the projects index page can surface the row count via
- * `ListCountBanner`.
- *
- * PR-PG1c (2026-06-16): both queries go through `fetchAllPages()` to
- * defeat Supabase's project-level `db-max-rows` cap. Return shapes
- * gain `truncated`. The `archived_at`-missing fallback branch goes
- * through the same helper so it can't silently truncate either.
- */
+export class ProjectsIndexSchemaError extends Error {
+  constructor() {
+    super('Projects search is temporarily unavailable while the portal database is updated.');
+    this.name = 'ProjectsIndexSchemaError';
+  }
+}
+
+function isMissingFunction(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  return code === 'PGRST202'
+    || code === '42883'
+    || /staff_projects_index_v1|schema cache|function .* does not exist/i.test(message);
+}
+
+function readPayload(value: unknown): RpcPayload {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as RpcPayload
+    : {};
+}
+
+function finiteInteger(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : fallback;
+}
+
+function contactFromProjectRow(row: Record<string, unknown>) {
+  if (typeof row.contact_id !== 'string') return null;
+  return mapContactRecord({
+    id: row.contact_id,
+    name: row.contact_name,
+    email: row.contact_email,
+    phone: row.contact_phone,
+    created_at: row.contact_created_at,
+    updated_at: row.contact_updated_at,
+  });
+}
+
 export async function loadProjectsIndexData(
+  params: ProjectsIndexParams,
   supabase?: SupabaseClient,
-  options?: LoadProjectsIndexOptions,
-): Promise<{
-  projects: ChunkedListFetchResult<Project>;
-  contacts: ChunkedListFetchResult<Contact>;
-}> {
+): Promise<Pick<ProjectsIndexResponse, 'projects' | 'contacts'>> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const archiveFilter = options?.archiveFilter ?? 'active';
+  const result = await client.rpc('staff_projects_index_v1', {
+    p_archive: params.archive,
+    p_search: params.search,
+    p_status: params.status,
+    p_due: params.due,
+    p_today: params.today,
+    p_page: params.page,
+    p_page_size: params.pageSize,
+    p_sort: params.sort,
+  });
+  if (result.error) {
+    if (isMissingFunction(result.error)) throw new ProjectsIndexSchemaError();
+    throw result.error;
+  }
 
-  const buildProjectsPage = (from: number, to: number) => {
-    const base = client.from('projects').select('*', { count: 'exact' });
-    const ordered =
-      archiveFilter === 'active'
-        ? base.is('archived_at', null).order('created_at', { ascending: false })
-        : archiveFilter === 'archived'
-          ? base.not('archived_at', 'is', null).order('created_at', { ascending: false })
-          : base.order('created_at', { ascending: false });
-    return ordered.range(from, to);
-  };
-
-  const projectsPromise = (async (): Promise<ChunkedListFetchResult<Record<string, unknown>>> => {
-    try {
-      return await fetchAllPages<Record<string, unknown>>(buildProjectsPage);
-    } catch (err) {
-      if (missingColumnFromError(err) === 'archived_at') {
-        // archived_at column absent: no archived projects can exist.
-        return archiveFilter === 'archived'
-          ? { rows: [], totalCount: 0, truncated: false }
-          : fetchAllPages<Record<string, unknown>>((from, to) =>
-              client
-                .from('projects')
-                .select('*', { count: 'exact' })
-                .order('created_at', { ascending: false })
-                .range(from, to),
-            );
-      }
-      throw err;
-    }
-  })();
-
-  const contactsPromise = fetchAllPages<Record<string, unknown>>((from, to) =>
-    client
-      .from('contacts')
-      .select('*', { count: 'exact' })
-      .order('name', { ascending: true })
-      .range(from, to),
+  const payload = readPayload(result.data);
+  const rawRows = (Array.isArray(payload.rows) ? payload.rows : []) as Record<string, unknown>[];
+  const projects = rawRows.map(mapProjectRecord);
+  const contacts = new Map(
+    rawRows
+      .map(contactFromProjectRow)
+      .filter((contact): contact is NonNullable<ReturnType<typeof contactFromProjectRow>> => Boolean(contact))
+      .map((contact) => [contact.id, contact]),
   );
-  const [projectsResult, contactsResult] = await Promise.all([projectsPromise, contactsPromise]);
+  const totalCount = finiteInteger(payload.totalCount, projects.length);
+  const page = Math.max(1, finiteInteger(payload.page, params.page));
+  const pageSize = params.pageSize;
 
   return {
     projects: {
-      rows: projectsResult.rows.map((row) => mapProjectRow(row)),
-      totalCount: projectsResult.totalCount,
-      truncated: projectsResult.truncated,
+      rows: projects,
+      totalCount,
+      truncated: false,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
     },
     contacts: {
-      rows: sortContacts(contactsResult.rows.map((row) => mapContactRow(row))),
-      totalCount: contactsResult.totalCount,
-      truncated: contactsResult.truncated,
+      rows: Array.from(contacts.values()),
+      totalCount: null,
+      truncated: false,
     },
   };
 }

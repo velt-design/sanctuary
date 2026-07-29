@@ -6,10 +6,26 @@
 .formActions { margin-top: var(--ui-space-5); padding-top: var(--ui-space-4); border-top: var(--ui-border-width) solid var(--ui-border); }
 .subsection { grid-column: 1 / -1; display: grid; gap: var(--ui-space-4); margin-top: var(--ui-space-2); padding: var(--ui-space-4); border: var(--ui-border-width) solid var(--ui-border); border-left: var(--ui-status-edge) solid var(--ui-action); background: var(--ui-surface-secondary); }
 .subsectionHeader { margin: 0; color: var(--ui-text-strong); font-family: var(--ui-font-display); font-size: var(--ui-font-size-card-heading); text-transform: uppercase; }
+.subsectionIntro { margin: 0; color: var(--ui-text-muted); }
 .status { grid-column: 1 / -1; }
 .diagnostics { grid-column: 1 / -1; border: var(--ui-border-width) solid var(--ui-border); border-left: var(--ui-status-edge) solid var(--ui-status-info-border); background: var(--ui-status-info-bg); padding: var(--ui-space-3); }
 .diagnostics summary { cursor: pointer; color: var(--ui-text-strong); font-size: var(--ui-font-size-label); font-weight: 700; text-transform: uppercase; }
 .diagnostics pre { margin: var(--ui-space-3) 0 0; overflow: auto; color: var(--ui-text); font: var(--ui-font-size-label)/1.4 ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; }
+.contactMode { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); }
+.contactCombobox { position: relative; display: grid; gap: var(--ui-space-2); }
+.contactCombobox > label { color: var(--ui-text-strong); font-size: var(--ui-font-size-label); font-weight: 700; }
+.contactCombobox > input { width: 100%; min-height: var(--ui-control-height); border: var(--ui-border-width) solid var(--ui-border-strong); border-radius: var(--ui-radius-control); background: var(--ui-surface); color: var(--ui-text); padding: 0 var(--ui-space-3); font: inherit; }
+.contactCombobox > input:focus-visible { outline: var(--ui-focus-width) solid var(--ui-focus); outline-offset: var(--ui-focus-offset); }
+.contactSelection { margin: 0; color: var(--ui-text-muted); font-size: var(--ui-font-size-label); }
+.contactResults { position: absolute; z-index: 10; top: calc(100% + var(--ui-space-1)); left: 0; right: 0; max-height: 20rem; overflow: auto; border: var(--ui-border-width) solid var(--ui-border-strong); background: var(--ui-surface); }
+.contactResults > p { margin: 0; padding: var(--ui-space-3); color: var(--ui-text-muted); }
+.contactResults > button { display: grid; width: 100%; gap: var(--ui-space-1); border: 0; border-bottom: var(--ui-border-width) solid var(--ui-border); background: transparent; color: var(--ui-text); padding: var(--ui-space-3); text-align: left; cursor: pointer; }
+.contactResults > button:last-child { border-bottom: 0; }
+.contactResults > button:hover,
+.contactResults > button:focus-visible,
+.contactResultActive { background: var(--ui-surface-secondary) !important; outline: none; }
+.contactResults > button span { color: var(--ui-text-muted); font-size: var(--ui-font-size-label); }
+.duplicateCandidates { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); margin-top: var(--ui-space-3); }
 
 @media (max-width: 767px) {
   .formGrid { grid-template-columns: 1fr; }

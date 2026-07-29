@@ -1,9 +1,31 @@
 import { createRouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
+import { mapContactRecord } from '@/lib/contacts/contactRecord';
 import { isRecord, mapContact, readString, updateContactWithRetry } from '../_shared';
 
 export const runtime = 'nodejs';
+
+export async function GET(req: Request, ctx: { params: Promise<{ contactId: string }> }) {
+  const diagnostics = createRouteDiagnostics(req, '/api/contacts/[contactId]');
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+
+  let contactUuid: string;
+  try {
+    const { contactId } = await ctx.params;
+    contactUuid = uuidFromAppId(contactId, 'ct');
+  } catch {
+    return jsonError('Invalid contactId', 400, diagnostics);
+  }
+
+  const result = await auth.supabase.from('contacts').select('*').eq('id', contactUuid).maybeSingle();
+  if (result.error) return jsonError('Failed to load contact', 500, diagnostics);
+  if (!result.data) return jsonError('Contact not found', 404, diagnostics);
+  const response = jsonOk({ contact: mapContactRecord(result.data as Record<string, unknown>) }, 200, diagnostics);
+  response.headers.set('cache-control', 'private, no-store');
+  return response;
+}
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ contactId: string }> }) {
   const diagnostics = createRouteDiagnostics(req, '/api/contacts/[contactId]');

@@ -435,7 +435,6 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
   for (const route of [
     '/commercial-pergolas-auckland',
     '/acrylic-roof-pergolas-auckland',
-    '/acrylic-roof-pergolas-auckland-v2',
     '/acrylic-pergolas-vs-louvre-roofs',
     '/start',
     '/',
@@ -449,10 +448,6 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
 
   await page.goto('/acrylic-roof-pergolas-auckland');
   let main = visibleMain(page);
-  await expect(main.locator('.acrylic-editorial-media img')).toHaveAttribute(
-    'src',
-    /project-dairy-flat-02\.jpg/,
-  );
   await expect(main.locator('a[href="/projects/atelier-shu-cafe"] img')).toHaveAttribute(
     'src',
     /project-atelier-shu-03\.jpg/,
@@ -472,8 +467,6 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
 
   for (const route of [
     '/acrylic-roof-pergolas-auckland',
-    '/acrylic-roof-pergolas-auckland-v2',
-    '/acrylic-pergolas-vs-louvre-roofs',
     '/start',
   ]) {
     await page.goto(route);
@@ -481,6 +474,10 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
       'img[src*="project-atelier-shu-03.jpg"]',
     )).toHaveCount(1);
   }
+  await page.goto('/acrylic-pergolas-vs-louvre-roofs');
+  await expect(
+    visibleMain(page).locator('img[src*="project-atelier-shu-03.jpg"]'),
+  ).toHaveCount(0);
 });
 
 test('every canonical project route has complete case-study structure, metadata, and a loaded hero', async ({ page }) => {
@@ -519,7 +516,11 @@ test('every canonical project route has complete case-study structure, metadata,
     )).not.toHaveAttribute('open', '');
     await expect(caseStudy.locator(
       'details[data-project-mobile-disclosure="brief"]',
-    )).not.toHaveAttribute('open', '');
+    )).toHaveCount(0);
+    await expect(caseStudy.getByRole('heading', { level: 3, name: 'Brief' }))
+      .toBeVisible();
+    await expect(caseStudy.getByRole('heading', { level: 3, name: 'Response' }))
+      .toBeVisible();
     await expect(caseStudy.locator('.project-case-study__breadcrumbs a'))
       .toHaveAttribute('href', '/projects');
     await expect(caseStudy.locator(
@@ -712,8 +713,8 @@ for (const viewport of [
       )).toHaveAttribute('open', '');
       await expect(main.locator('.project-case-study__fact-list')).toBeVisible();
       await expect(main.locator(
-        'details[data-project-mobile-disclosure="brief"] summary',
-      )).toBeHidden();
+        'details[data-project-mobile-disclosure="brief"]',
+      )).toHaveCount(0);
     } else {
       const galleryMetrics = await gallery.evaluate((element) => {
         const style = getComputedStyle(element);
@@ -935,7 +936,7 @@ test('mobile navigator is a focus-managed modal sheet with reversible scroll loc
   expect(await page.evaluate(() => document.body.scrollTop)).toBe(readingPosition);
 });
 
-test('technical detail, contextual links, related work, and circular project navigation remain usable', async ({ page }) => {
+test('technical detail and one related-project path remain usable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(representativeRoute);
   await dismissConsent(page);
@@ -950,20 +951,13 @@ test('technical detail, contextual links, related work, and circular project nav
   await expect(technical.locator('.project-case-study__technical-grid')).toBeVisible();
 
   await expect(main.locator('.project-case-study__related-list a')).not.toHaveCount(0);
-  await expect(main.locator('.project-case-study__pagination a')).toHaveCount(2);
+  await expect(main.locator('.project-case-study__pagination')).toHaveCount(0);
   await expect(main.locator('.project-case-study__intro-actions a')).not.toHaveCount(0);
 
   const relatedProject = main.locator('.project-case-study__related-list a').first();
   const relatedProjectHref = await relatedProject.getAttribute('href');
   await relatedProject.click();
   await expect(page).toHaveURL(new RegExp(`${relatedProjectHref}$`));
-  await page.goBack();
-  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
-
-  const previousProject = main.locator('.project-case-study__pagination a[rel="prev"]');
-  const previousProjectHref = await previousProject.getAttribute('href');
-  await previousProject.click();
-  await expect(page).toHaveURL(new RegExp(`${previousProjectHref}$`));
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
 
@@ -983,16 +977,6 @@ test('technical detail, contextual links, related work, and circular project nav
     sourceComponent: 'project_cta',
     sourceProject: representativeProject.slug,
   }));
-
-  const nextProject = main.locator('.project-case-study__pagination a[rel="next"]');
-  const nextProjectHref = await nextProject.getAttribute('href');
-  await nextProject.click();
-  await expect(page).toHaveURL(new RegExp(`${nextProjectHref}$`));
-  await page.goBack();
-  await expect(page).toHaveURL(new RegExp(`${representativeRoute}$`));
-  await expect(visibleProjectsMain(page).locator(
-    '[data-project-gallery-layout="responsive-strip"]',
-  )).toBeVisible();
 
   await main.locator('.project-case-study__breadcrumbs a').click();
   await expect(page).toHaveURL(/\/projects$/);
@@ -1028,11 +1012,10 @@ test('project disclosures are native, keyboard operable, and expanded on desktop
   await expect(facts).toHaveAttribute('open', '');
   await expect(facts.getByText('Structure & finish', { exact: true })).toBeVisible();
 
-  const brief = main.locator('details[data-project-mobile-disclosure="brief"]');
-  await brief.locator('summary').focus();
-  await page.keyboard.press('Enter');
-  await expect(brief).toHaveAttribute('open', '');
-  await expect(brief.getByText('The brief', { exact: true })).toBeVisible();
+  await expect(main.locator('details[data-project-mobile-disclosure="brief"]'))
+    .toHaveCount(0);
+  await expect(main.getByRole('heading', { level: 3, name: 'Brief' }))
+    .toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   for (const disclosure of await main.locator(
@@ -1052,14 +1035,12 @@ test('collapsed project content remains present and expanded in server HTML', as
   expect(html).toMatch(
     /<details[^>]*data-project-mobile-disclosure="facts"[^>]*open=""/,
   );
-  expect(html).toMatch(
-    /<details[^>]*data-project-mobile-disclosure="brief"[^>]*open=""/,
-  );
+  expect(html).not.toContain('data-project-mobile-disclosure="brief"');
   expect(html).toMatch(
     /<details[^>]*data-project-mobile-disclosure="technical"[^>]*open=""/,
   );
   expect(html).toContain('Structure &amp; finish');
-  expect(html).toContain('The brief');
+  expect(html).toContain('>Brief<');
   expect(html).toContain('Outdoor room details');
 });
 

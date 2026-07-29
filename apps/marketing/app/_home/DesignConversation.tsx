@@ -145,7 +145,7 @@ export default function DesignConversation({
           })}
         </div>
         <p className={styles.questionCaveat} id="intent-question-caveat">
-          These are starting points, not design recommendations.
+          Starting points only.
         </p>
       </fieldset>
 
@@ -167,7 +167,6 @@ export default function DesignConversation({
           data-intent-response={selectedResponse.value}
         >
           <div className={styles.selectedSummary}>
-            <span>Project context</span>
             <strong>{selectedResponse.summaryLabel}</strong>
             <button
               type="button"
@@ -183,15 +182,14 @@ export default function DesignConversation({
                 optionRefs.current[0]?.focus();
               }}
             >
-              Change starting point
+              Change
             </button>
           </div>
 
           <div className={styles.responseHeader}>
             <div>
-              <p className={styles.responseEyebrow}>Relevant built examples</p>
               <h2 id="homepage-response-heading">
-                Two built projects to begin the conversation
+                Related projects
               </h2>
             </div>
             <p>{selectedResponse.statement}</p>
@@ -215,7 +213,7 @@ export default function DesignConversation({
                 </figure>
                 <div className={styles.projectBody}>
                   <p className={styles.projectIndex}>
-                    Built example / {String(index + 1).padStart(2, '0')}
+                    {String(index + 1).padStart(2, '0')}
                   </p>
                   <h3>{project.title}</h3>
                   <ul className={styles.projectMeta}>
@@ -251,7 +249,7 @@ export default function DesignConversation({
                       data-project-intent={selectedResponse.value}
                       data-selected-project={project.slug}
                     >
-                      Use this project as a reference
+                      Use as a reference
                     </Link>
                   </div>
                 </div>
@@ -259,14 +257,8 @@ export default function DesignConversation({
             ))}
           </div>
 
-          <p className={styles.responseCaveat}>
-            These projects share a related project context. Site dimensions,
-            exposure, connections and intended use still determine the right
-            response.
-          </p>
-
           <div className={styles.escapeActions}>
-            <Link href="/projects">Browse all completed projects</Link>
+            <Link href="/projects">View all projects</Link>
             <Link
               href={selectedResponse.generalEnquiryHref}
               data-design-conversation-event="design_conversation_general_enquiry_click"
@@ -274,13 +266,13 @@ export default function DesignConversation({
               data-matched-projects={matchedProjectSlugs}
               data-project-intent={selectedResponse.value}
             >
-              Continue without a project reference
+              Start without a reference
             </Link>
           </div>
         </section>
       ) : (
         <div className={styles.initialEscapeActions}>
-          <Link href="/projects">Browse completed projects</Link>
+          <Link href="/projects">View all projects</Link>
           <Link
             href={buildEnquiryHref({
               sourcePath: HOME_PATH,
@@ -288,7 +280,7 @@ export default function DesignConversation({
             })}
             data-design-conversation-event="design_conversation_general_enquiry_click"
           >
-            Start without choosing a project
+            Start without choosing
           </Link>
         </div>
       )}

@@ -2,15 +2,13 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Start Your Pergola Project',
-  description:
-    'Use the guided start flow to choose style and materials, capture site details, and prepare your pergola brief.',
+  title: 'Start Your Pergola Brief',
+  description: 'Choose your project type, preferred roof and site details.',
   alternates: { canonical: '/start' },
   openGraph: {
     url: '/start',
-    title: 'Start Your Pergola Project – Sanctuary Pergolas',
-    description:
-      'Use the guided start flow to choose style and materials, capture site details, and prepare your pergola brief.',
+    title: 'Start Your Pergola Brief – Sanctuary Pergolas',
+    description: 'Choose your project type, preferred roof and site details.',
   },
   robots: {
     index: false,

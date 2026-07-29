@@ -6,6 +6,16 @@ Public copy must not state a numeric or categorical claim from this register unt
 
 The July 2026 guide-cluster pass removed ungoverned headline durations, combined warranty durations, category-wide UV and heat outcomes, generic span ranges, numeric wind thresholds, broad maintenance comparisons and absolute wind or rain language from indexable marketing pages. The final refinement also replaced homepage material scores with written considerations, qualified lighting and heater performance, aligned linked project detail with the current project summaries and removed unsupported blind-control detail. A browser regression reads every route in the generated sitemap. Those surfaces now use proposal-stage or exact-product wording until an owner approves evidence here. The outdated brochure endpoint is retired to the governed web guide library rather than treated as current claim evidence.
 
+The 29 July 2026 copy reduction introduced no new claim approval. It removed
+categorical consent, wind, programme and weather language from the public
+`/start` flow, kept the external-proposal louvre position and reduced the
+canonical acrylic page to qualitative, site-specific choices. The sitemap
+crawl remains necessary but is not sufficient: claims checks and manual review
+must also include public noindex entry flows such as `/start` and
+`/start/explore`. The retired acrylic v2 route permanently redirects to the
+governed primary route and is no longer a second copy surface. Every Pending or
+project-specific status below is unchanged.
+
 | Claim area | Public wording status | Evidence required | Important limitation | Approval owner | Review date | Applies to |
 | --- | --- | --- | --- | --- | --- | --- |
 | Pergola price bands and examples | Pending approval. Do not publish a number. | Dated set of representative projects and current sell pricing, with scope and outliers identified. | State GST treatment, inclusions, exclusions, engineering, consent, site access and accessories beside every band. | Sanctuary commercial lead and finance | Pending | Cost guide and any page mentioning price |

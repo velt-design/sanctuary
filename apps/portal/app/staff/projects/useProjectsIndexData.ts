@@ -1,44 +1,37 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/lib/repo/apiClient';
-import {
-  projectsIndexPlaceholderFromCaches,
-  projectsIndexQueryOptions,
-  seedProjectsIndexCanonicalCaches,
-  type ProjectsIndexArchiveFilter,
-  type ProjectsIndexResponse,
-} from '@/lib/queries/projectsIndex';
+import { projectsIndexQueryOptions } from '@/lib/queries/projectsIndex';
+import type { ProjectsIndexParams } from '@/lib/projects/projectsIndexContract';
 
-type ProjectsIndexReadState =
-  | 'pending'
-  | 'cached'
-  | 'fresh'
-  | 'refresh-failed'
-  | 'unavailable';
+type ProjectsIndexReadState = 'pending' | 'cached' | 'fresh' | 'refresh-failed' | 'unavailable';
 
 function isAccessEndingError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 401 || error.status === 403);
 }
 
-export function useProjectsIndexData(host: string, archive: ProjectsIndexArchiveFilter) {
-  const queryClient = useQueryClient();
-  const placeholder = useMemo(
-    () => projectsIndexPlaceholderFromCaches(queryClient, host, archive),
-    [archive, host, queryClient],
-  );
+export function useProjectsIndexData(params: ProjectsIndexParams) {
   const query = useQuery({
-    ...projectsIndexQueryOptions(archive),
-    placeholderData: placeholder,
+    ...projectsIndexQueryOptions(params.archive, params),
+    placeholderData: keepPreviousData,
     refetchOnMount: 'always',
     retry: (failureCount, error) => !isAccessEndingError(error) && failureCount < 2,
   });
 
   const unavailable = isAccessEndingError(query.error);
-  const knownData: ProjectsIndexResponse | undefined = unavailable
-    ? undefined
-    : query.data ?? placeholder;
+  const responseMatchesRequest = Boolean(
+    query.data
+      && query.data.archive === params.archive
+      && query.data.query.search === params.search.trim()
+      && query.data.query.status === params.status
+      && query.data.query.due === params.due
+      && query.data.query.today === params.today
+      && query.data.query.sort === params.sort
+      && query.data.projects.page === params.page
+      && query.data.projects.pageSize === params.pageSize,
+  );
+  const knownData = unavailable || !responseMatchesRequest ? undefined : query.data;
 
   let state: ProjectsIndexReadState;
   if (unavailable) state = 'unavailable';
@@ -46,11 +39,6 @@ export function useProjectsIndexData(host: string, archive: ProjectsIndexArchive
   else if (!knownData) state = 'pending';
   else if (query.isFetching || query.isPlaceholderData) state = 'cached';
   else state = 'fresh';
-
-  useEffect(() => {
-    if (!query.data || query.isPlaceholderData || unavailable) return;
-    seedProjectsIndexCanonicalCaches(queryClient, host, query.data);
-  }, [host, query.data, query.isPlaceholderData, queryClient, unavailable]);
 
   return {
     state,

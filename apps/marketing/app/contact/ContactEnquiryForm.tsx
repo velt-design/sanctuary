@@ -246,7 +246,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
         const message =
           typeof responsePayload?.error === 'string' && responsePayload.error.trim()
             ? responsePayload.error
-            : 'We could not send your enquiry. Please try again.';
+            : 'We could not reach the enquiry service.';
         setSubmitError(message);
         setSubmitState('error');
         trackSubmitEvent('error', selectedRoofs, selectedAddOns, {
@@ -260,7 +260,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
       setSubmitState('success');
       trackSubmitEvent('success', selectedRoofs, selectedAddOns, undefined, submissionId);
     } catch (error) {
-      const message = error instanceof Error && error.message ? error.message : 'We could not send your enquiry. Please try again.';
+      const message = error instanceof Error && error.message ? error.message : 'We could not reach the enquiry service.';
       setSubmitError(message);
       setSubmitState('error');
       trackSubmitEvent('error', selectedRoofs, selectedAddOns, {
@@ -283,14 +283,14 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
       aria-labelledby="contact-form-title"
     >
       <header className="contact-form__intro">
-        <p className="contact-eyebrow">Project enquiry</p>
-        <h2 id="contact-form-title">Share the useful first details.</h2>
-        <p>Start with what you know. The design, materials and exact dimensions can be worked through later.</p>
+        <p className="contact-eyebrow">Start here</p>
+        <h2 id="contact-form-title">Project brief</h2>
+        <p>Share the site, intended use and what you know so far.</p>
         <p className="contact-form__required-note">{ENQUIRY_FORM_REQUIRED_NOTE}</p>
         {contextDisplay.isVisible ? (
           <div className="contact-form__context" aria-label="Enquiry context">
             <strong>{contextDisplay.heading}</strong>
-            <span>{contextDisplay.audience}</span>
+            {contextDisplay.audience ? <span>{contextDisplay.audience}</span> : null}
           </div>
         ) : null}
       </header>
@@ -334,8 +334,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
         <div className="contact-form__section-heading">
           <span>02</span>
           <div>
-            <h3 id="contact-project-details-title">The site and desired outcome</h3>
-            <p>Share the useful first brief before any optional technical choices.</p>
+            <h3 id="contact-project-details-title">Your project</h3>
           </div>
         </div>
 
@@ -355,8 +354,47 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
               id="contact-message"
               name="message"
               rows={6}
-              placeholder="How would you like to use the covered area? Tell us about rain, sun, wind, light or how the pergola should relate to the house."
+              placeholder="How will you use the space? What should the pergola improve?"
             />
+          </div>
+
+          <div className="contact-form__field contact-form__field--wide">
+            <label htmlFor="contact-files">
+              Photos, plans or sketches <span>Optional</span>
+            </label>
+            <p className="contact-form__help" id="contact-files-help">
+              {ENQUIRY_ATTACHMENT_HELP_TEXT}
+            </p>
+            <input
+              id="contact-files"
+              name="files"
+              type="file"
+              accept={ENQUIRY_ATTACHMENT_ACCEPT}
+              multiple
+              aria-invalid={Boolean(fieldErrors.files)}
+              aria-describedby={`contact-files-help${fieldErrors.files ? ` ${errorId('files')}` : ''}`}
+              onChange={handleFiles}
+            />
+            {files.length ? (
+              <ul className="contact-form__files" aria-label="Selected files">
+                {files.map((file, index) => (
+                  <li key={`${file.name}-${file.lastModified}-${index}`}>
+                    <span>
+                      <strong>{file.name}</strong>
+                      <small>{formatFileSize(file.size)}</small>
+                    </span>
+                    <button type="button" onClick={() => removeFile(index)} aria-label={`Remove ${file.name}`}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {fieldErrors.files ? (
+              <p className="contact-form__error" id={errorId('files')}>
+                {fieldErrors.files}
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -365,8 +403,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
         <div className="contact-form__section-heading">
           <span>03</span>
           <div>
-            <h3 id="contact-details-title">Your contact details</h3>
-            <p>Tell us how to reach you about the project brief above.</p>
+            <h3 id="contact-details-title">Your details</h3>
           </div>
         </div>
 
@@ -442,58 +479,12 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
         </div>
       </section>
 
-      <section className="contact-form__section" aria-labelledby="contact-technical-details-title">
-        <div className="contact-form__section-heading">
-          <span>04</span>
-          <div>
-            <h3 id="contact-technical-details-title">Optional technical details</h3>
-            <p>Include only what you know. Every choice can remain open for review.</p>
-          </div>
-        </div>
-
+      <details className="contact-form__section contact-form__optional">
+        <summary>Add optional project details</summary>
         <div className="contact-form__grid">
           <ContactTechnicalFields />
-
-          <div className="contact-form__field contact-form__field--wide">
-            <label htmlFor="contact-files">
-              Photos, plans or sketches <span>Optional</span>
-            </label>
-            <p className="contact-form__help" id="contact-files-help">
-              {ENQUIRY_ATTACHMENT_HELP_TEXT}
-            </p>
-            <input
-              id="contact-files"
-              name="files"
-              type="file"
-              accept={ENQUIRY_ATTACHMENT_ACCEPT}
-              multiple
-              aria-invalid={Boolean(fieldErrors.files)}
-              aria-describedby={`contact-files-help${fieldErrors.files ? ` ${errorId('files')}` : ''}`}
-              onChange={handleFiles}
-            />
-            {files.length ? (
-              <ul className="contact-form__files" aria-label="Selected files">
-                {files.map((file, index) => (
-                  <li key={`${file.name}-${file.lastModified}-${index}`}>
-                    <span>
-                      <strong>{file.name}</strong>
-                      <small>{formatFileSize(file.size)}</small>
-                    </span>
-                    <button type="button" onClick={() => removeFile(index)} aria-label={`Remove ${file.name}`}>
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {fieldErrors.files ? (
-              <p className="contact-form__error" id={errorId('files')}>
-                {fieldErrors.files}
-              </p>
-            ) : null}
-          </div>
         </div>
-      </section>
+      </details>
 
       <div className="contact-form__honeypot" aria-hidden="true" inert>
         <label htmlFor="contact-website">Website</label>
@@ -503,48 +494,31 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
       <div className="contact-form__submit">
         <div>
           <p>
-            We use your details and uploads to assess and respond to your enquiry. They will not be published. See our{' '}
+            We use your details and files to assess and respond. They are not published. See our{' '}
             <Link href="/privacy">Privacy Policy</Link>.
           </p>
           <div className="contact-form__live" aria-live="polite" aria-atomic="true">
-            {submitState === 'sending' ? 'Sending your project details.' : ''}
+            {submitState === 'sending' ? 'Sending project brief.' : ''}
           </div>
         </div>
         <button className="contact-action contact-action--primary" type="submit" disabled={submitState === 'sending' || submitState === 'success'}>
-          {submitState === 'sending' ? 'Sending your enquiry' : submitState === 'success' ? 'Project details sent' : 'Send us your project details'}
+          {submitState === 'sending' ? 'Sending brief' : submitState === 'success' ? 'Project brief sent' : 'Send project brief'}
         </button>
       </div>
 
       {submitState === 'error' && submitError ? (
         <div className="contact-form__submit-error" ref={submitErrorRef} role="alert" tabIndex={-1}>
-          <h3>We could not send your enquiry.</h3>
+          <h3>Your enquiry was not sent.</h3>
           <p>{submitError}</p>
-          <p>Your entered details remain above. Please correct anything needed and try again.</p>
+          <p>Your details are still here. Please try again.</p>
         </div>
       ) : null}
 
       {submitState === 'success' ? (
         <section className="contact-success" ref={successRef} role="status" aria-live="polite" tabIndex={-1}>
-          <p className="contact-eyebrow">Project details received</p>
-          <h2>Thank you. We have your project brief.</h2>
-          <p>
-            We received your {enquiryType} enquiry
-            {contextDisplay.itemDescription ? ` about ${contextDisplay.itemDescription}` : ''}. Your entered details remain above while we review the site,
-            scope and most useful next step.
-          </p>
-          <div className="contact-success__links">
-            <Link className="contact-action contact-action--primary" href="/projects">
-              Explore completed projects
-            </Link>
-            <Link className="contact-action contact-action--text" href="/products">
-              Review pergola options
-            </Link>
-          </div>
-          <div className="contact-success__direct">
-            <span>Need to add something?</span>
-            <a href="tel:+64228545633">Call 022 854 5633</a>
-            <a href="mailto:info@sanctuarypergolas.co.nz">Email Sanctuary</a>
-          </div>
+          <p className="contact-eyebrow">Sent</p>
+          <h2>Project brief sent.</h2>
+          <p>We’ll review it and contact you about the next step.</p>
         </section>
       ) : null}
     </form>

@@ -40,14 +40,13 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       <section className="contact-hero" aria-labelledby="contact-page-title">
         <div className="contact-shell contact-hero__layout">
           <div className="contact-hero__copy">
-            <p className="contact-eyebrow">Start a conversation</p>
-            <h1 id="contact-page-title">Tell us about the space you want to cover.</h1>
+            <p className="contact-eyebrow">Project enquiry</p>
+            <h1 id="contact-page-title">Tell us about your project.</h1>
             <p>
-              Sanctuary designs and installs custom fixed-roof pergolas around the
-              home, the site and how the outdoor area will be used.
+              Share the site, intended use and what you know so far.
             </p>
             <a className="contact-action contact-action--primary" href="#contact-form">
-              Start your project brief
+              Send a project brief
             </a>
           </div>
 
@@ -82,40 +81,15 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
 
           <aside className="contact-guidance" aria-labelledby="contact-guidance-title">
             <div>
-              <p className="contact-eyebrow">A useful first brief</p>
-              <h2 id="contact-guidance-title">Share what you know. Unsure is fine.</h2>
+              <p className="contact-eyebrow">Keep it simple</p>
+              <h2 id="contact-guidance-title">Photos and rough dimensions help.</h2>
               <p>
-                Location and rough dimensions help us understand the site. You can
-                leave design choices open.
+                Leave design choices open if you are unsure.
               </p>
             </div>
 
-            <ol className="contact-guidance__list">
-              <li>
-                <span>01</span>
-                <div>
-                  <strong>Describe the outcome</strong>
-                  <p>Tell us how you want to use the area and what currently limits it.</p>
-                </div>
-              </li>
-              <li>
-                <span>02</span>
-                <div>
-                  <strong>Add the site basics</strong>
-                  <p>Share the suburb and approximate size if they are known.</p>
-                </div>
-              </li>
-              <li>
-                <span>03</span>
-                <div>
-                  <strong>We review the next step</strong>
-                  <p>We will identify the useful questions, options or site checks to discuss.</p>
-                </div>
-              </li>
-            </ol>
-
             <div className="contact-guidance__direct">
-              <p className="contact-eyebrow">Prefer to speak directly?</p>
+              <p className="contact-eyebrow">Contact Sanctuary</p>
               <a href="tel:+64228545633">022 854 5633</a>
               <a href="mailto:info@sanctuarypergolas.co.nz">
                 info@sanctuarypergolas.co.nz

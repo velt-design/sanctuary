@@ -14,7 +14,6 @@ import {
 } from '@/components/marketing-foundation';
 import { projects, type Project } from '@/data/projects';
 import { GOOGLE_PLACE } from '@/data/reviews';
-import { buildEnquiryHref } from '@/lib/enquiryContext';
 import { getGoogleRating } from '@/lib/googleReviews';
 import DesignConversation from './DesignConversation';
 import JsonLd from '@/components/JsonLd';
@@ -33,11 +32,6 @@ import {
   processSteps,
 } from './content';
 import styles from './homepage.module.css';
-
-const generalEnquiryHref = buildEnquiryHref({
-  sourcePath: HOME_PATH,
-  sourceComponent: 'hero',
-});
 
 export const metadata: Metadata = {
   title: { absolute: homepageTitle },
@@ -195,11 +189,11 @@ export default async function HomePage() {
               className={styles.heroHeading}
               id="homepage-heading"
             >
-              Begin with built work.
+              Custom pergolas for Auckland homes and sites.
             </Heading>
             <Text size="large" className={styles.heroProposition}>
-              Bespoke fixed-roof pergolas designed around the home or
-              commercial site, its architecture and intended use.
+              Designed and installed around the architecture and how the
+              space will be used.
             </Text>
             <ActionGroup
               className={styles.heroActions}
@@ -210,7 +204,7 @@ export default async function HomePage() {
                 data-design-conversation-event="design_conversation_start"
                 data-step-number="1"
               >
-                Start with your project
+                Find a relevant project
               </Button>
               <TextLink
                 className={styles.heroProjectLink}
@@ -248,12 +242,12 @@ export default async function HomePage() {
             <span>{review.count} Google reviews</span>
           </a>
           <div>
-            <strong>Design &amp; build</strong>
-            <span>One team from first brief to installation</span>
+            <strong>Design and build</strong>
+            <span>One team through installation</span>
           </div>
           <div>
             <strong>Built evidence</strong>
-            <span>Real residential and commercial projects</span>
+            <span>Residential and commercial projects</span>
           </div>
         </Container>
       </aside>
@@ -268,14 +262,12 @@ export default async function HomePage() {
             id="design-conversation"
           >
             <div>
-              <p>One useful starting point</p>
               <h2 id="design-conversation-heading">
                 What are you trying to create?
               </h2>
             </div>
             <p id="design-conversation-guidance">
-              Choose the closest starting point and we will show two completed
-              projects with a related brief.
+              Choose one to see two related projects.
             </p>
           </div>
           <DesignConversation responses={responses} />
@@ -290,16 +282,13 @@ export default async function HomePage() {
         <Container width="wide">
           <div className={styles.capabilityIntroduction}>
             <div>
-              <p>Designed around the site</p>
               <h2 id="homepage-capability-heading">
-                Fixed-roof pergolas shaped by the architecture.
+                Choose a project path.
               </h2>
             </div>
             <p>
-              Sanctuary designs and builds project-specific fixed-roof
-              pergolas for Auckland homes and selected commercial sites.
-              Form, roof, drainage and integrated details are resolved
-              together around the architecture and intended use.
+              Sanctuary designs and installs fixed-roof pergolas for homes
+              and selected commercial sites.
             </p>
           </div>
           <div className={styles.audienceGrid}>
@@ -325,13 +314,13 @@ export default async function HomePage() {
               href="/products"
               data-design-conversation-event="design_conversation_support_open"
             >
-              Compare pergola forms and roof approaches
+              Compare pergola options
             </Link>
             <Link
               href="/pergola-guides"
               data-design-conversation-event="design_conversation_support_open"
             >
-              Read the planning guides
+              Read pergola guides
             </Link>
           </div>
         </Container>
@@ -343,9 +332,8 @@ export default async function HomePage() {
       >
         <Container width="wide" className={styles.processGrid}>
           <div>
-            <p>Design and build process</p>
             <h2 id="homepage-process-heading">
-              From a useful brief to an installed structure.
+              From brief to installation.
             </h2>
           </div>
           <ol>
@@ -362,34 +350,6 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      <section
-        className={styles.enquiryClose}
-        aria-labelledby="homepage-close-heading"
-      >
-        <Container width="wide" className={styles.enquiryCloseGrid}>
-          <div>
-            <p>Prefer to begin directly?</p>
-            <h2 id="homepage-close-heading">
-              Share the site, intended use and what you know so far.
-            </h2>
-          </div>
-          <div>
-            <p>
-              Photos and approximate dimensions are useful, but an early idea
-              is enough to begin an initial project conversation.
-            </p>
-            <div className={styles.closeActions}>
-              <Link
-                href={generalEnquiryHref}
-                data-design-conversation-event="design_conversation_general_enquiry_click"
-              >
-                Share your project details
-              </Link>
-              <a href="tel:+64228545633">Call 022 854 5633</a>
-            </div>
-          </div>
-        </Container>
-      </section>
     </MarketingPage>
   );
 }

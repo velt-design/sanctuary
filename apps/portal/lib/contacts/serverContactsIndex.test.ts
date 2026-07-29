@@ -1,94 +1,52 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { loadContactsIndexData, ContactsIndexSchemaError } from './serverContactsIndex';
 
-const fromMock = vi.fn();
-
-function createQuery(result: { data: any; error: any; count?: number | null }) {
-  // PR-PG1 (2026-06-16): `.range()` is the new terminal call after
-  // `.order(...)`. Mock chain resolves at `.range()`. `count` defaults
-  // to `null` to match Supabase's `count: 'exact'` response.
-  //
-  // PR-PG1c (2026-06-16): `fetchAllPages()` calls `.range(from, to)`
-  // repeatedly until a short page is returned. The mock's single
-  // resolved payload satisfies the first page; since `data.length` is
-  // always less than the chunk size in these fixtures, the helper
-  // exits after one call. If you need to test multi-page behavior,
-  // see `apps/portal/lib/list/listLimits.test.ts:fetchAllPages`.
-  const resolved = Promise.resolve({ count: null, ...result });
-  const query: any = {
-    select: vi.fn(() => query),
-    order: vi.fn(() => query),
-    range: vi.fn(() => resolved),
-    then: (onFulfilled: any, onRejected: any) => resolved.then(onFulfilled, onRejected),
-  };
-  return query;
-}
+const params = { search: 'alex', page: 2, pageSize: 25, sort: 'name_asc' } as const;
 
 describe('loadContactsIndexData', () => {
-  beforeEach(() => {
-    vi.resetModules();
-    fromMock.mockReset();
-  });
-
-  it('maps and sorts contacts into the same wire shape as the browser repo', async () => {
-    fromMock.mockImplementation((table: string) => {
-      if (table !== 'contacts') throw new Error(`Unexpected table ${table}`);
-      return createQuery({
-        data: [
-          {
-            id: '22222222-2222-4222-8222-222222222222',
-            name: ' Zoe ',
-            email: 'zoe@example.com',
-            phone: '021',
-            created_at: '2026-04-05T00:00:00.000Z',
-            updated_at: '2026-04-05T00:00:00.000Z',
-          },
-          {
-            id: '11111111-1111-4111-8111-111111111111',
-            name: 'Alex',
-            email: '',
-            phone: '',
-            created_at: '2026-04-04T00:00:00.000Z',
-            updated_at: '2026-04-04T00:00:00.000Z',
-          },
-        ],
-        error: null,
-      });
-    });
-
-    const { loadContactsIndexData } = await import('./serverContactsIndex');
-    // PR-PG1c (2026-06-16): return shape is `{ rows, totalCount, truncated }`.
-    await expect(loadContactsIndexData({ from: fromMock } as any)).resolves.toEqual({
-      rows: [
-        {
-          id: 'ct_11111111-1111-4111-8111-111111111111',
-          displayName: 'Alex',
-          email: '',
-          phone: '',
-          createdAt: '2026-04-04T00:00:00.000Z',
-          updatedAt: '2026-04-04T00:00:00.000Z',
-        },
-        {
-          id: 'ct_22222222-2222-4222-8222-222222222222',
-          displayName: 'Zoe',
-          email: 'zoe@example.com',
+  it('maps one bounded RPC page into the browser contact contract', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        rows: [{
+          id: '11111111-1111-4111-8111-111111111111',
+          name: ' Alex ',
+          email: 'alex@example.com',
           phone: '021',
-          createdAt: '2026-04-05T00:00:00.000Z',
-          updatedAt: '2026-04-05T00:00:00.000Z',
-        },
-      ],
-      totalCount: null,
+          created_at: '2026-04-04T00:00:00.000Z',
+          updated_at: '2026-04-05T00:00:00.000Z',
+        }],
+        totalCount: 61,
+        page: 2,
+        pageSize: 25,
+      },
+      error: null,
+    });
+
+    await expect(loadContactsIndexData(params, { rpc } as any)).resolves.toEqual({
+      rows: [{
+        id: 'ct_11111111-1111-4111-8111-111111111111',
+        displayName: 'Alex',
+        email: 'alex@example.com',
+        phone: '021',
+        createdAt: '2026-04-04T00:00:00.000Z',
+        updatedAt: '2026-04-05T00:00:00.000Z',
+      }],
+      totalCount: 61,
       truncated: false,
+      page: 2,
+      pageSize: 25,
+      totalPages: 3,
+    });
+    expect(rpc).toHaveBeenCalledWith('staff_contacts_index_v1', {
+      p_search: 'alex',
+      p_page: 2,
+      p_page_size: 25,
+      p_sort: 'name_asc',
     });
   });
 
-  it('throws on Supabase query failure', async () => {
-    const error = new Error('contacts query failed');
-    fromMock.mockImplementation((table: string) => {
-      if (table !== 'contacts') throw new Error(`Unexpected table ${table}`);
-      return createQuery({ data: null, error });
-    });
-
-    const { loadContactsIndexData } = await import('./serverContactsIndex');
-    await expect(loadContactsIndexData({ from: fromMock } as any)).rejects.toBe(error);
+  it('reports a missing rollout function as an explicit schema gate', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'function missing' } });
+    await expect(loadContactsIndexData(params, { rpc } as any)).rejects.toBeInstanceOf(ContactsIndexSchemaError);
   });
 });

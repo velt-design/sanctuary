@@ -35,10 +35,13 @@ function cachedProject(queryClient: QueryClient, host: string, projectId: string
   }
 
   for (const archive of ['all', 'active', 'archived'] as const) {
-    const project = queryClient
-      .getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive))
-      ?.projects.rows.find((entry) => entry.id === projectId);
-    if (project) return project;
+    const matches = queryClient.getQueriesData<ProjectsIndexResponse>({
+      queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive),
+    });
+    for (const [, response] of matches) {
+      const project = response?.projects.rows.find((entry) => entry.id === projectId);
+      if (project) return project;
+    }
   }
 
   return undefined;

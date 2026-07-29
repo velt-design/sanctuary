@@ -15,6 +15,7 @@ import styles from "./QuotesTab.module.css";
 import QuotePdfInlinePreview from "./QuotePdfInlinePreview";
 import QuoteEmailPreviewPanel from "./QuoteEmailPreviewPanel";
 import QuoteModal from "./QuoteWorkflowModal";
+import CommercialFinalFailureGuidance from "@/components/commercial/CommercialFinalFailureGuidance";
 import {
   ATTACHMENT_INPUT_ACCEPT,
   MAX_ATTACHMENT_COUNT,
@@ -326,13 +327,13 @@ export default function QuoteWorkflowDialogs({
                   </>
                 ) : null}
                 {!preparedDelivery.canRetry ? (
-                  <div className={styles.errorText}>
-                    This delivery needs staff attention and cannot be retried
-                    from the portal.
-                    {preparedDelivery.lastErrorCode
-                      ? ` Reference: ${preparedDelivery.lastErrorCode}.`
-                      : ""}
-                  </div>
+                  <CommercialFinalFailureGuidance
+                    artifact="quote"
+                    reference={detail.quoteRef}
+                    evidence="the prepared time above"
+                    errorReference={preparedDelivery.lastErrorCode || "DELIVERY_NEEDS_ATTENTION"}
+                    className={styles.errorText}
+                  />
                 ) : null}
               </>
             ) : null}

@@ -322,6 +322,19 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   border-top: 1px solid var(--color-rule);
 }
 
+.contact-form__optional > summary {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font: 500 clamp(1.2rem, 2vw, 1.65rem)/1.15 var(--font-display);
+  letter-spacing: -.025em;
+}
+
+.contact-form__optional[open] > summary {
+  margin-bottom: 1.75rem;
+}
+
 .contact-form__type > legend {
   width: 100%;
   display: grid;
@@ -746,42 +759,6 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   line-height: 1.55;
 }
 
-.contact-guidance__list {
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--color-rule);
-}
-
-.contact-guidance__list li {
-  display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr);
-  gap: .75rem;
-  padding-block: 1rem;
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.contact-guidance__list li > span {
-  color: var(--color-text-subtle);
-  font-size: .62rem;
-  font-weight: 650;
-  letter-spacing: .08em;
-}
-
-.contact-guidance__list div {
-  display: grid;
-  gap: .35rem;
-}
-
-.contact-guidance__list strong {
-  font: 550 .86rem/1.35 var(--font-display);
-}
-
-.contact-guidance__list p {
-  color: var(--color-text-secondary);
-  font-size: .72rem;
-  line-height: 1.5;
-}
-
 .contact-guidance__direct {
   display: grid;
   gap: .25rem;
@@ -823,39 +800,6 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
   max-width: 38rem;
   color: rgba(255, 255, 255, .74);
   line-height: 1.6;
-}
-
-.contact-success__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .75rem;
-}
-
-.contact-success .contact-action--text {
-  color: var(--color-inverse-text);
-}
-
-.contact-success__direct {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 1rem;
-  align-items: center;
-  margin-top: 1rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, .25);
-  font-size: .76rem;
-}
-
-.contact-success__direct span {
-  color: rgba(255, 255, 255, .58);
-}
-
-.contact-success__direct a {
-  min-height: 2.75rem;
-  display: inline-flex;
-  align-items: center;
-  color: inherit;
-  text-underline-offset: .25em;
 }
 
 @media (max-width: 980px) {
@@ -982,18 +926,6 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
     padding-inline: 1.25rem;
   }
 
-  .contact-success__links {
-    display: grid;
-  }
-
-  .contact-success__links .contact-action {
-    width: 100%;
-  }
-
-  .contact-success__direct {
-    grid-template-columns: 1fr;
-    gap: .25rem;
-  }
 }
 
 @media (max-width: 360px) {

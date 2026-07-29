@@ -40,6 +40,8 @@ This doc owns current-state guidance for portal automation events, project tasks
 
 Staff project action routes call `automationRunner.runEvent()` or directly perform a route-owned side effect. `AutomationRunner` writes an idempotent `audit_events` row first; duplicate idempotency keys stop repeated handling.
 
+Project creation keeps record persistence and initial setup evidence separate. `POST /api/staff/v1/projects` returns confirmed contact/project records even when `ui.action.project_created` setup needs attention; that outcome is `202` with an explicit receipt and must not trigger record rollback or a replacement project. Stable-ID command replay does not claim that setup was rechecked. This preserves the idempotent automation owner without presenting its request-local completion as part of the database record transaction.
+
 Event handlers can:
 
 - create project tasks

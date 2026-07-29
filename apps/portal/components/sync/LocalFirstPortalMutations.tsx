@@ -153,6 +153,7 @@ export default function LocalFirstPortalMutations() {
           );
           if (!response.contact) throw new Error('Contact not saved');
           upsertContactCaches(queryClient, hostKey, response.contact);
+          void invalidateContactsIndexCaches(queryClient, hostKey);
           return {
             kind: 'success',
             clearWorkingCopyIfMatches: payload.draft,

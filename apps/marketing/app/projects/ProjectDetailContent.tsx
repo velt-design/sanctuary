@@ -5,7 +5,6 @@ import { buildEnquiryHref } from '@/lib/enquiryContext';
 import MobileProjectDisclosure from './MobileProjectDisclosure';
 import ProjectGallery from './ProjectGallery';
 import {
-  getProjectContextLinks,
   getProjectFacts,
   getProjectFeatureTags,
   getProjectFormLabel,
@@ -19,8 +18,6 @@ export type ProjectDetailContentProps = {
   projectIndex: number;
   projectCount: number;
   relatedProjects?: Project[];
-  previousProject?: Project;
-  nextProject?: Project;
   showBreadcrumb?: boolean;
   sourcePath?: string;
   titleAs?: 'h1' | 'h2';
@@ -31,8 +28,6 @@ export default function ProjectDetailContent({
   projectIndex,
   projectCount,
   relatedProjects = [],
-  previousProject,
-  nextProject,
   showBreadcrumb = false,
   sourcePath,
   titleAs = 'h1',
@@ -42,7 +37,6 @@ export default function ProjectDetailContent({
       <article className="project-case-study project-case-study--empty">
         <p className="project-case-study__eyebrow">Projects</p>
         <h2>No projects are available</h2>
-        <p>Please return soon to explore Sanctuary project case studies.</p>
       </article>
     );
   }
@@ -52,7 +46,6 @@ export default function ProjectDetailContent({
   const mobileFactSummary = getProjectMobileFactSummary(project);
   const features = getProjectFeatureTags(project);
   const technicalSections = getProjectTechnicalSections(project);
-  const contextLinks = getProjectContextLinks(project);
   const caseStudyHeroImage = project.caseStudyHeroImage ?? project.heroImage;
   const seenImages = new Set([caseStudyHeroImage.src]);
   const detailImages = project.gallery.filter((image) => {
@@ -62,6 +55,7 @@ export default function ProjectDetailContent({
   });
   const projectNumber = String(projectIndex + 1).padStart(2, '0');
   const projectTotal = String(projectCount).padStart(2, '0');
+  const response = project.description[1] ?? project.description[0];
   const enquiryHref = buildEnquiryHref({
     enquiryType: project.type === 'Commercial' ? 'commercial' : 'residential',
     sourcePath: sourcePath ?? `/projects/${project.slug}`,
@@ -82,6 +76,7 @@ export default function ProjectDetailContent({
           <span aria-current="page">{project.title}</span>
         </nav>
       ) : null}
+
       <header className="project-case-study__intro">
         <div className="project-case-study__intro-heading">
           <p className="project-case-study__eyebrow">
@@ -101,18 +96,6 @@ export default function ProjectDetailContent({
             <Link className="project-action project-action--primary" href={enquiryHref}>
               {getProjectIntroCta(project)}
             </Link>
-            {contextLinks.length ? (
-              <nav
-                className="project-case-study__context-links"
-                aria-label="Related pergola guides"
-              >
-                {contextLinks.map((link) => (
-                  <Link className="project-action project-action--text" href={link.href} key={link.href}>
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            ) : null}
           </div>
         </div>
       </header>
@@ -130,15 +113,34 @@ export default function ProjectDetailContent({
           />
         </div>
         <figcaption>
-          <span>{projectNumber} · {project.location}</span>
+          <span>{project.location}</span>
           <span>{getProjectFormLabel(project)} · {project.type}</span>
         </figcaption>
       </figure>
 
+      <section className="project-case-study__story" aria-labelledby="project-story-title">
+        <div className="project-case-study__section-heading">
+          <p className="project-case-study__eyebrow">Case study</p>
+          <h2 id="project-story-title">Brief and response</h2>
+        </div>
+        <div className="project-case-study__story-copy">
+          <section>
+            <h3>Brief</h3>
+            <p>{project.constraint}</p>
+          </section>
+          {response ? (
+            <section>
+              <h3>Response</h3>
+              <p>{response}</p>
+            </section>
+          ) : null}
+        </div>
+      </section>
+
       <section className="project-case-study__facts" aria-labelledby="project-facts-title">
         <div className="project-case-study__section-heading">
-          <p className="project-case-study__eyebrow">Project facts</p>
-          <h2 id="project-facts-title">Built details.</h2>
+          <p className="project-case-study__eyebrow">Project record</p>
+          <h2 id="project-facts-title">Facts</h2>
         </div>
         <MobileProjectDisclosure
           bodyClassName="project-case-study__facts-body"
@@ -147,7 +149,6 @@ export default function ProjectDetailContent({
           summary={(
             <>
               <span>
-                <span className="project-case-study__eyebrow">Built details</span>
                 <strong>{mobileFactSummary.measurement}</strong>
                 <small>{mobileFactSummary.roofApproach}</small>
               </span>
@@ -155,85 +156,32 @@ export default function ProjectDetailContent({
             </>
           )}
         >
-            <dl className="project-case-study__fact-list">
-              {facts.map((fact) => (
-                <div key={fact.label}>
-                  <dt>{fact.label}</dt>
-                  <dd>{fact.value}</dd>
-                </div>
-              ))}
-            </dl>
-            {features.length ? (
-              <div className="project-case-study__features">
-                <p>Selected details</p>
-                <ul>
-                  {features.map((feature) => <li key={feature}>{feature}</li>)}
-                </ul>
+          <dl className="project-case-study__fact-list">
+            {facts.map((fact) => (
+              <div key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
               </div>
-            ) : null}
+            ))}
+          </dl>
+          {features.length ? (
+            <div className="project-case-study__features">
+              <p>Details</p>
+              <ul>
+                {features.map((feature) => <li key={feature}>{feature}</li>)}
+              </ul>
+            </div>
+          ) : null}
         </MobileProjectDisclosure>
-      </section>
-
-      <section className="project-case-study__story" aria-labelledby="project-story-title">
-        <div className="project-case-study__section-heading">
-          <p className="project-case-study__eyebrow">Case study</p>
-          <h2 id="project-story-title">The brief and response.</h2>
-        </div>
-        <div className="project-case-study__story-copy">
-          {project.description[0] ? (
-            <MobileProjectDisclosure
-              bodyClassName="project-case-study__story-disclosure-body"
-              className="project-case-study__story-disclosure"
-              kind="brief"
-              summary={(
-                <>
-                <span>The original brief</span>
-                <span aria-hidden="true">+</span>
-                </>
-              )}
-            >
-                <h3>The brief</h3>
-                <p>{project.description[0]}</p>
-            </MobileProjectDisclosure>
-          ) : null}
-          <section>
-            <h3>Design constraint</h3>
-            <p>{project.constraint}</p>
-          </section>
-          {project.description.length > 1 ? (
-            <section>
-              <h3>Sanctuary&apos;s response</h3>
-              <p>{project.description[1]}</p>
-              {project.description.length > 2 ? (
-                <MobileProjectDisclosure
-                  bodyClassName="project-case-study__story-more-body"
-                  className="project-case-study__story-more"
-                  kind="response"
-                  summary={(
-                    <>
-                    <span>More about the response</span>
-                    <span aria-hidden="true">+</span>
-                    </>
-                  )}
-                >
-                    {project.description.slice(2).map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                </MobileProjectDisclosure>
-              ) : null}
-            </section>
-          ) : null}
-        </div>
       </section>
 
       {detailImages.length ? (
         <section className="project-case-study__gallery-section" aria-labelledby="project-gallery-title">
           <div className="project-case-study__gallery-heading">
             <div>
-              <p className="project-case-study__eyebrow">Project gallery</p>
-              <h2 id="project-gallery-title">See the project in detail.</h2>
+              <p className="project-case-study__eyebrow">Project images</p>
+              <h2 id="project-gallery-title">Gallery</h2>
             </div>
-            <p>Swipe or use the controls to review the project on smaller screens.</p>
           </div>
           <ProjectGallery images={detailImages} projectTitle={project.title} />
         </section>
@@ -242,8 +190,8 @@ export default function ProjectDetailContent({
       {project.videoYoutubeId ? (
         <section className="project-case-study__video" aria-labelledby="project-video-title">
           <div className="project-case-study__section-heading">
-            <p className="project-case-study__eyebrow">Project film</p>
-            <h2 id="project-video-title">See the setting in motion.</h2>
+            <p className="project-case-study__eyebrow">Video</p>
+            <h2 id="project-video-title">Project film</h2>
           </div>
           <div className="project-case-study__video-frame">
             <iframe
@@ -266,28 +214,25 @@ export default function ProjectDetailContent({
             kind="technical"
             summary={(
               <>
-              <span>
-                <span className="project-case-study__eyebrow">Project detail</span>
-                <span id="project-technical-title">Materials and technical details.</span>
-              </span>
-              <span aria-hidden="true">+</span>
+                <span id="project-technical-title">Technical details</span>
+                <span aria-hidden="true">+</span>
               </>
             )}
           >
-              {technicalSections.map((section, index) => (
-                <section key={section.title}>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <h3>{section.title}</h3>
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                  {section.bullets?.length ? (
-                    <ul>
-                      {section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
-                    </ul>
-                  ) : null}
-                </section>
-              ))}
+            {technicalSections.map((section, index) => (
+              <section key={section.title}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <h3>{section.title}</h3>
+                {section.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                {section.bullets?.length ? (
+                  <ul>
+                    {section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+                  </ul>
+                ) : null}
+              </section>
+            ))}
           </MobileProjectDisclosure>
         </section>
       ) : null}
@@ -296,10 +241,9 @@ export default function ProjectDetailContent({
         <section className="project-case-study__related" aria-labelledby="related-projects-title">
           <div className="project-case-study__gallery-heading">
             <div>
-              <p className="project-case-study__eyebrow">Continue exploring</p>
-              <h2 id="related-projects-title">Related projects.</h2>
+              <p className="project-case-study__eyebrow">Next</p>
+              <h2 id="related-projects-title">Related projects</h2>
             </div>
-            <p>Similar forms, settings or project briefs.</p>
           </div>
           <div className="project-case-study__related-list">
             {relatedProjects.map((related) => (
@@ -325,34 +269,14 @@ export default function ProjectDetailContent({
         </section>
       ) : null}
 
-      {previousProject || nextProject ? (
-        <nav className="project-case-study__pagination" aria-label="Previous and next projects">
-          {previousProject ? (
-            <Link href={`/projects/${previousProject.slug}`} rel="prev">
-              <span>Previous project</span>
-              <strong>{previousProject.title}</strong>
-            </Link>
-          ) : <span />}
-          {nextProject ? (
-            <Link href={`/projects/${nextProject.slug}`} rel="next">
-              <span>Next project</span>
-              <strong>{nextProject.title}</strong>
-            </Link>
-          ) : null}
-        </nav>
-      ) : null}
-
       <section className="project-case-study__final-cta" aria-labelledby="project-enquiry-title">
         <div>
-          <p className="project-case-study__eyebrow">Start a conversation</p>
-          <h2 id="project-enquiry-title">Planning a similar project?</h2>
-          <p>
-            Share the site, plans or early brief. We can help define the right
-            response.
-          </p>
+          <p className="project-case-study__eyebrow">Project brief</p>
+          <h2 id="project-enquiry-title">Planning something similar?</h2>
+          <p>Send the site, plans or brief.</p>
         </div>
         <Link className="project-action project-action--primary" href={enquiryHref}>
-          Send us your project details
+          Send project brief
         </Link>
       </section>
     </article>

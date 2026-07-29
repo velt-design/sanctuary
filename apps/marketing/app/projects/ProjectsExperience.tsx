@@ -42,13 +42,6 @@ export default function ProjectsExperience({
   const relatedProjects = (selectedProject.related ?? [])
     .map((slug) => projects.find((project) => project.slug === slug))
     .filter((project): project is Project => Boolean(project));
-  const previousProject = projects.length > 1
-    ? projects[(selectedIndex - 1 + projects.length) % projects.length]
-    : undefined;
-  const nextProject = projects.length > 1
-    ? projects[(selectedIndex + 1) % projects.length]
-    : undefined;
-
   return (
     <main
       className={`projects-experience${detailMode ? '' : ' projects-experience--collection'}`}
@@ -74,8 +67,6 @@ export default function ProjectsExperience({
             projectIndex={selectedIndex}
             projectCount={projects.length}
             relatedProjects={relatedProjects}
-            previousProject={previousProject}
-            nextProject={nextProject}
             showBreadcrumb
             sourcePath={`/projects/${selectedProject.slug}`}
             titleAs="h1"

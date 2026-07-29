@@ -5,7 +5,7 @@ import {
 } from '../../lib/enquiryContext';
 
 export const HOME_PATH = '/';
-export const HOME_VARIANT = 'design_conversation_home_v2';
+export const HOME_VARIANT = 'design_conversation_home_v3';
 export const HOME_INTENT_STORAGE_KEY =
   'sanctuary:homepage-design-conversation:intent';
 
@@ -57,62 +57,62 @@ export type IntentResponse = {
 const intentConfigs: readonly IntentConfig[] = [
   {
     value: 'home-cover',
-    label: 'Cover an outdoor area at home',
-    summaryLabel: 'A covered area at home',
+    label: 'Cover a deck',
+    summaryLabel: 'Deck cover',
     statement:
-      'Start with how the cover should relate to the home, preserve light and make the existing outdoor area more usable.',
+      'Start with the house connection, daylight and how the deck should work.',
     enquiryType: 'residential',
     matches: [
       {
         slug: 'dairy-flat-estate',
         rationale:
-          'An acrylic gable follows the existing roofline, with an infilled gable end and an open garden side.',
+          'An acrylic gable follows the roofline with one infilled end.',
       },
       {
         slug: 'mt-maunganui-box',
         rationale:
-          'A first-floor box-perimeter cover follows the deck geometry around the glass balustrade and outlook.',
+          'A box-perimeter cover follows the first-floor deck and outlook.',
       },
     ],
   },
   {
     value: 'outdoor-room',
-    label: 'Create a complete outdoor room',
-    summaryLabel: 'A complete outdoor room',
+    label: 'Create an outdoor room',
+    summaryLabel: 'Outdoor room',
     statement:
-      'A more complete room brings the roof, structure, ceiling, lighting and intended use into one coordinated design response.',
+      'Coordinate the roof, structure, ceiling, lighting and intended use.',
     enquiryType: 'residential',
     matches: [
       {
         slug: 'warkworth-outdoor-room',
         rationale:
-          'A freestanding gable combines shelter, cedar lining, lighting, glazing and a fireplace within one resolved garden room.',
+          'A freestanding gable combines mixed roofing, cedar lining, lighting and a fireplace.',
         imageIndex: 0,
       },
       {
         slug: 'riverhead-gable-pavilion',
         rationale:
-          'A poolside pavilion uses an insulated roof, timber sarking and integrated lighting without closing off the outlook.',
+          'A poolside gable uses a timber-lined roof and integrated lighting.',
         imageIndex: 1,
       },
     ],
   },
   {
     value: 'commercial-professional',
-    label: 'Plan a commercial or architect-led project',
-    summaryLabel: 'A commercial or architect-led project',
+    label: 'Commercial or professional project',
+    summaryLabel: 'Commercial or professional project',
     statement:
-      'Built precedents can clarify how Sanctuary coordinates architectural intent, structure, operations and installation responsibilities.',
+      'See how Sanctuary coordinates design, operations and installation.',
     matches: [
       {
         slug: 'goodhome-commercial-terrace',
         rationale:
-          'Two linked gables extend an established hospitality facade while coordinating shelter, screens, lighting and day-to-day use.',
+          'Two gables extend a hospitality facade over the courtyard.',
       },
       {
         slug: 'kiwi-rail-platform',
         rationale:
-          'An architect-led aluminium and acrylic canopy coordinates a long workplace route, integrated lighting and installation within a wider project team.',
+          'An architect-led canopy and lighting follow a workplace route.',
       },
     ],
   },

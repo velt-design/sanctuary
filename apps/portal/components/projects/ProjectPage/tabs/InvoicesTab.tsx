@@ -23,6 +23,7 @@ import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { qk } from '@/lib/queries/keys';
 import { sendProjectDepositInvoice } from '@/lib/repo/invoicesRepo';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import CommercialFinalFailureGuidance from '@/components/commercial/CommercialFinalFailureGuidance';
 
 function formatMoneyFromCents(value: number): string {
   if (!Number.isFinite(value)) return '-';
@@ -182,9 +183,12 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
                         </span>
                       ) : null}
                       {invoice.finalFailure ? (
-                        <span className={styles.error}>
-                          Needs staff attention before another delivery attempt.
-                        </span>
+                        <CommercialFinalFailureGuidance
+                          artifact="invoice"
+                          reference={invoice.invoiceRef}
+                          evidence="the last-attempt time"
+                          className={styles.error}
+                        />
                       ) : null}
                       {invoice.lastDeliveryError ? <span className={styles.error}>{invoice.lastDeliveryError}</span> : null}
                     </div>

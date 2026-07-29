@@ -20,72 +20,72 @@ const internalPlanningLanguage = /\b(?:this|the)\s+(?:page|guide)\s+owns\b|\bpag
 const projectEvidence = [
   {
     route: '/projects/warkworth-outdoor-room',
-    expected: /clear acrylic glazing placed through the roof and gable ends in response to the daylight brief/i,
+    expected: /freestanding gable room combining mixed roofing/i,
     retired: /keeps daylight moving through the space|bring natural light into the outdoor room/i,
   },
   {
     route: '/projects/mt-maunganui-box',
-    expected: /opal acrylic was selected in response to the brief for daylight and glare/i,
+    expected: /first-floor box-perimeter pergola designed around the balustrade and outlook/i,
     retired: /soft filtered light|softens glare|soft, even light quality|reduce glare/i,
   },
   {
     route: '/projects/lilliput-mini-golf',
-    expected: /establishes the recorded roof fall/i,
+    expected: /pitched pergola supplied and installed within a consultant-led venue renovation/i,
     retired: /keep rain off|plenty of daylight|shedding water cleanly/i,
   },
   {
     route: '/projects/goodhome-commercial-terrace',
-    expected: /two new gable zones align with the established rhythm/i,
+    expected: /two gables extending the villa-style facade/i,
     retired: /50 mm insulated|DMX|Heatstrip|blends seamlessly|part of the original structure/i,
   },
   {
     route: '/projects/kiwi-rail-platform',
-    expected: /cover a pathway between key circulation routes/i,
+    expected: /aluminium and acrylic canopy with integrated lighting along a workplace route/i,
     retired: /pantograph|ColorCote|EN 12464|service platform|stay dry|dry, well-lit|safe and inviting/i,
   },
   {
     route: '/projects/tindalls-bay-pavilion',
-    expected: /identified in the brief for wind and privacy/i,
+    expected: /patio and carport using insulated and acrylic roof zones/i,
     retired: /twinwall polycarbonate|Somfy RTS|wind\/rain sensors|daylight can flood|wind protection|bright but protected/i,
   },
   {
     route: '/projects/atelier-shu-cafe',
-    expected: /aligned the gable frame and colour with the established frontage/i,
+    expected: /dark-tint acrylic gable canopy aligned with the cafe frontage/i,
     retired: /laminated glass|acoustic interlayer|frameless sliding|feels like it has always been there|changes the shade and light character/i,
   },
   {
     route: '/projects/muriwai-courtyard',
-    expected: /5 degree hip roof retains the established footprint/i,
+    expected: /opal-acrylic hip roof replacing the previous courtyard pergola/i,
     retired: /cedar soffit|fireplace fan|projector cabling|bright, sheltered outdoor room|diffusing daylight/i,
   },
   {
     route: '/projects/waiheke-holiday-home',
-    expected: /hiding the 4° fall/i,
+    expected: /box-perimeter deck cover designed to preserve the water view/i,
     retired: /Somfy RTS|infrared heaters|insulated aluminium roof/i,
   },
   {
     route: '/projects/velskov-forest',
-    expected: /covering a space for farm activity/i,
+    expected: /low-profile shelter for a working space beneath the forest canopy/i,
     retired: /dry, usable space for farm activity/i,
   },
   {
     route: '/projects/ardmore-box-carport',
-    expected: /6 mm acrylic glazing across the driveway/i,
+    expected: /box-perimeter carport with acrylic roofing and an internal gable/i,
     retired: /strong weather protection|providing weather cover|keeping the space bright/i,
   },
   {
     route: '/projects/riverhead-gable-pavilion',
-    expected: /skillion insulation sits above the lining/i,
+    expected: /poolside gable pavilion with timber lining and integrated lighting/i,
     retired: /all-season|proper weather protection|improves comfort|comfortable covered lounge/i,
   },
   {
     route: '/projects/st-heliers-townhouse',
-    expected: /selecting opal acrylic roofing in response to the brief for daylight and glare/i,
+    expected: /open gable with opal acrylic and a custom street-facing frame/i,
     retired: /keep the patio bright while cutting glare/i,
   },
   {
     route: '/projects/dairy-flat-estate',
-    expected: /acrylic roofing was selected in response to the daylight brief/i,
+    expected: /aluminium and acrylic gable following the existing roofline/i,
     retired: /maximum light|shelter from wind and rain|bright and sheltered/i,
   },
 ] as const;
@@ -117,7 +117,7 @@ test('guide and product roles stay customer-facing, indexable and free of duplic
     await expect(main).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('form')).toHaveCount(1);
-    await expect(main.locator('.acrylic-section--final-cta')).toHaveCount(1);
+    await expect(main.locator('.acrylic-section--final-cta')).toHaveCount(0);
     await expect(main.locator('.acrylic-sticky-cta')).toHaveCount(0);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
@@ -162,7 +162,7 @@ test('the acrylic page stays product-specific and the louvre comparison preserve
   await expect(acrylicPage.getByRole('link', { name: 'Review scope and quote comparison' })).toHaveAttribute('href', '/pergola-cost-auckland');
   await expect(acrylicPage.getByRole('heading', { name: 'From initial enquiry to installation' })).toHaveCount(0);
   await expect(acrylicPage.getByRole('heading', { name: 'What affects the cost of an acrylic roof pergola?' })).toHaveCount(0);
-  await expect(acrylicPage.locator('details')).toHaveCount(9);
+  await expect(acrylicPage.locator('details')).toHaveCount(5);
 
   await page.goto('/acrylic-pergolas-vs-louvre-roofs');
   const louvreScopeAnswer = page.locator('.acrylic-faq-list > details', {
@@ -171,7 +171,7 @@ test('the acrylic page stays product-specific and the louvre comparison preserve
   await louvreScopeAnswer.locator('summary').click();
   const comparisonCopy = await page.locator('main[data-marketing-foundation-page]').innerText();
   expect(comparisonCopy).toContain("Sanctuary's published roof offer is fixed acrylic, solid and combination roofs.");
-  expect(comparisonCopy).toContain('The comparison does not present louvres as a Sanctuary product.');
+  expect(comparisonCopy).toContain('not a Sanctuary product.');
 });
 
 test('linked project pages use the current evidence record rather than contradictory legacy detail', async ({ page }) => {
@@ -191,12 +191,12 @@ test('dependent guide snippets keep project outcomes tied to the recorded design
   for (const snippet of [
     {
       route: '/acrylic-pergolas-vs-louvre-roofs',
-      expected: /infilled gable end and open garden side/i,
+      expected: /infilled end and open garden side/i,
       retired: /keeping the outdoor area bright/i,
     },
     {
       route: '/gable-pergolas-auckland',
-      expected: /infilled gable end and open garden side/i,
+      expected: /infilled end and open garden side/i,
       retired: /adding shelter while retaining the garden connection/i,
     },
     {
@@ -216,23 +216,23 @@ test('homepage design conversation uses written project context instead of unsup
   await preparePage(page);
   await page.goto('/');
   const conversation = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v2"]:visible section[aria-labelledby="design-conversation-heading"]',
+    'main[data-homepage-variant="design_conversation_home_v3"]:visible section[aria-labelledby="design-conversation-heading"]',
   );
   await expect(conversation).toBeVisible();
   await expect(conversation.getByText(
-    'These are starting points, not design recommendations.',
+    'Starting points only.',
   )).toBeVisible();
   await conversation.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   }).click();
   await expect(conversation.getByText(
-    'Start with how the cover should relate to the home, preserve light and make the existing outdoor area more usable.',
+    'Start with the house connection, daylight and how the deck should work.',
   )).toBeVisible();
   await expect(conversation.getByText(
-    'An acrylic gable follows the existing roofline, with an infilled gable end and an open garden side.',
+    'An acrylic gable follows the roofline with one infilled end.',
   )).toBeVisible();
   await expect(conversation.getByText(
-    'A first-floor box-perimeter cover follows the deck geometry around the glass balustrade and outlook.',
+    'A box-perimeter cover follows the first-floor deck and outlook.',
   )).toBeVisible();
   await expect(conversation.getByText(/\b[1-5]\s*\/\s*5\b/)).toHaveCount(0);
   const copy = await page.locator('body').innerText();

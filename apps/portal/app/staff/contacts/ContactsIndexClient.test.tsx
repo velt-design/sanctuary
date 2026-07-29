@@ -35,11 +35,20 @@ vi.mock('./useContactsIndexData', () => ({
 function indexResult(
   state: 'pending' | 'cached' | 'fresh' | 'refresh-failed' | 'unavailable',
   rows = state === 'pending' || state === 'unavailable' ? [] : [contact],
+  search = '',
 ) {
   return {
     state,
     data: state === 'pending' || state === 'unavailable' ? undefined : {
-      contacts: { rows, totalCount: rows.length, truncated: false },
+      contacts: {
+        rows,
+        totalCount: rows.length,
+        truncated: false,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      },
+      query: { search, sort: 'name_asc' },
       generatedAt: state === 'fresh' ? 'fresh' : 'cached',
     },
     error: state === 'refresh-failed' ? new Error('offline') : null,
@@ -53,7 +62,10 @@ describe('ContactsIndexClient', () => {
     retry.mockReset();
     finishInstantRoute.mockReset();
     useContactsIndexData.mockReset();
-    useContactsIndexData.mockReturnValue(indexResult('fresh'));
+    useContactsIndexData.mockImplementation((params: { search?: string }) =>
+      params.search
+        ? indexResult('fresh', [], params.search)
+        : indexResult('fresh'));
   });
 
   afterEach(() => { document.body.innerHTML = ''; });
@@ -101,9 +113,19 @@ describe('ContactsIndexClient', () => {
     rendered.unmount();
   });
 
-  it('uses a global-search handoff as the initial local filter', () => {
+  it('does not claim to show or update a saved list when the first refresh fails', () => {
+    useContactsIndexData.mockReturnValue(indexResult('refresh-failed', []));
+    const rendered = renderIntoDocument(<ContactsIndexClient />);
+    expect(rendered.container.textContent).toContain('No saved list is available. Retry the request.');
+    expect(rendered.container.textContent).not.toContain('Showing the last saved list.');
+    expect(rendered.container.textContent).not.toContain('Updating contacts...');
+    rendered.unmount();
+  });
+
+  it('hands a global-search query to the server-backed index', () => {
     const rendered = renderIntoDocument(<ContactsIndexClient initialQuery="missing" />);
     expect((rendered.container.querySelector('#contactSearch') as HTMLInputElement).value).toBe('missing');
+    expect(useContactsIndexData).toHaveBeenCalledWith(expect.objectContaining({ search: 'missing' }));
     expect(rendered.container.textContent).toContain('No contacts match your search.');
     expect(rendered.container.textContent).not.toContain('Alex Mason');
     rendered.unmount();

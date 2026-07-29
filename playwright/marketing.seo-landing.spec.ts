@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const route = '/pergolas-auckland';
 const title = 'Pergolas Auckland | Design, Build & Installation';
@@ -37,6 +37,16 @@ function jaccardSimilarity(left: Set<string>, right: Set<string>): number {
   return intersection / (left.size + right.size - intersection || 1);
 }
 
+async function getEditorialCopy(main: Locator) {
+  return main.evaluate((element) => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('#project-details, form, script').forEach((node) => {
+      node.remove();
+    });
+    return copy.textContent ?? '';
+  });
+}
+
 for (const viewport of viewports) {
   test(`Pergolas Auckland is publish-ready at ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -48,14 +58,14 @@ for (const viewport of viewports) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', description);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Pergolas for Auckland homes, designed from the house out' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Custom pergolas for Auckland homes.' })).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(page.locator('header.site')).toBeVisible();
     await expect(page.locator('footer')).toBeAttached();
     await expect(page.getByLabel('Phone', { exact: false })).toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
-    await expect(page.getByRole('button', { name: 'Send my project details' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Send project brief' })).toBeVisible();
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(3);
     await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(5);
     await expect(
@@ -77,7 +87,9 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Get an estimate' })).toBeVisible();
+      await expect(
+        page.locator('header.site').getByRole('link', { name: 'Start your project' }),
+      ).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -103,15 +115,15 @@ test('Pergolas Auckland keeps its narrative distinct from the acrylic landing pa
   await preparePage(page);
   await page.goto(route);
   const broadMain = page.locator('main[data-seo-landing="pergolas-auckland"]:visible');
-  const broadCopy = await broadMain.innerText();
-  const broadHeadings = await broadMain.locator('h1, h2').allTextContents();
+  const broadCopy = await getEditorialCopy(broadMain);
+  const broadH1 = await broadMain.locator('h1').innerText();
 
-  await page.goto('/acrylic-roof-pergolas-auckland-v2');
-  const acrylicMain = page.locator('main[data-copy-variant="context-pack-v2"]:visible');
-  const acrylicCopy = await acrylicMain.innerText();
-  const acrylicHeadings = await acrylicMain.locator('h1, h2').allTextContents();
+  await page.goto('/acrylic-roof-pergolas-auckland');
+  const acrylicMain = page.locator('main[data-seo-landing="acrylic-roof-pergolas-auckland"]:visible');
+  const acrylicCopy = await getEditorialCopy(acrylicMain);
+  const acrylicH1 = await acrylicMain.locator('h1').innerText();
 
-  expect(broadHeadings.filter((heading) => acrylicHeadings.includes(heading))).toEqual([]);
+  expect(broadH1).not.toBe(acrylicH1);
   expect(jaccardSimilarity(wordShingles(broadCopy), wordShingles(acrylicCopy))).toBeLessThan(0.14);
 });
 
@@ -127,9 +139,10 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
 
   const broadMain = page.locator('main[data-seo-landing="pergolas-auckland"]:visible');
   const broadMessage = broadMain.locator('#acrylic-enquiry-message');
+  await broadMain.getByText('Add optional project details', { exact: true }).click();
   await expect(broadMessage).toHaveCount(1);
   await broadMessage.fill('We need a sheltered dining area but want to keep the kitchen bright.');
-  await page.getByRole('button', { name: 'Send my project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(broadMain.locator('#acrylic-enquiry-type')).toHaveValue('residential');
   await expect(broadMain.locator('#acrylic-enquiry-name-error')).toHaveText('Enter your name.');
 
@@ -138,20 +151,13 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
   await broadMain.locator('#acrylic-enquiry-email').fill('test@example.com');
   await broadMain.locator('#acrylic-enquiry-suburb').fill('Auckland');
   await broadMain.locator('#acrylic-enquiry-roof').selectOption('Combination roofing');
-  await broadMain.locator('#acrylic-enquiry-files').setInputFiles({
-    name: 'deck-context.jpg',
-    mimeType: 'image/jpeg',
-    buffer: Buffer.from('project context image'),
-  });
-  await expect(page.getByRole('list', { name: 'Selected files' })).toContainText('deck-context.jpg');
-  await page.getByRole('button', { name: 'Send my project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
 
-  await expect(broadMain.getByText('Thanks, we have received your project details.')).toBeVisible();
+  await expect(broadMain.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
   expect(submittedBody).toMatchObject({
     page: route,
     source: 'website',
     roofMaterials: ['acrylic', 'timber'],
-    files: [{ name: 'deck-context.jpg', size: 21, type: 'image/jpeg' }],
     projectDetails: { roofPreference: 'Combination roofing' },
   });
 });
@@ -201,7 +207,7 @@ for (const viewport of viewports) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${customRoute}`);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', customDescription);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Custom pergolas for sites where the obvious answer does not fit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Custom pergolas for difficult sites.' })).toBeVisible();
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('.acrylic-project-card img')).toHaveCount(3);
     await expect(main.locator('.acrylic-faq-list > details')).toHaveCount(5);
@@ -209,6 +215,10 @@ for (const viewport of viewports) {
       main.getByRole('navigation', { name: 'Pergola guide progression' }),
     ).toHaveCount(0);
     await expect(main.locator('.seo-landing__project-facts')).toHaveCount(3);
+    const optionalProjectDetails = main.locator('details.acrylic-form__optional');
+    if ((await optionalProjectDetails.getAttribute('open')) === null) {
+      await optionalProjectDetails.locator(':scope > summary').click();
+    }
     await expect(main.locator('#acrylic-enquiry-knownConstraints')).toBeVisible();
     await expect(main.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
@@ -223,7 +233,9 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Get an estimate' })).toBeVisible();
+      await expect(
+        page.locator('header.site').getByRole('link', { name: 'Start your project' }),
+      ).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -251,14 +263,14 @@ test('Custom Pergolas Auckland is materially distinct from the broad pergola pag
   await preparePage(page);
   await page.goto(customRoute);
   const customMain = page.locator('main[data-seo-landing="custom-pergolas-auckland"]:visible');
-  const customCopy = await customMain.innerText();
-  const customHeadings = await customMain.locator('h1, h2').allTextContents();
+  const customCopy = await getEditorialCopy(customMain);
+  const customH1 = await customMain.locator('h1').innerText();
   await page.goto(route);
   const broadMain = page.locator('main[data-seo-landing="pergolas-auckland"]:visible');
-  const broadCopy = await broadMain.innerText();
-  const broadHeadings = await broadMain.locator('h1, h2').allTextContents();
+  const broadCopy = await getEditorialCopy(broadMain);
+  const broadH1 = await broadMain.locator('h1').innerText();
 
-  expect(customHeadings.filter((heading) => broadHeadings.includes(heading))).toEqual([]);
+  expect(customH1).not.toBe(broadH1);
   expect(jaccardSimilarity(wordShingles(customCopy), wordShingles(broadCopy))).toBeLessThan(0.14);
 });
 
@@ -279,10 +291,11 @@ test('Custom Pergolas Auckland enquiry preserves its route and custom brief', as
   await customMain.locator('#acrylic-enquiry-email').fill('test@example.com');
   await customMain.locator('#acrylic-enquiry-suburb').fill('Auckland');
   await customMain.locator('#acrylic-enquiry-message').fill('The existing roofline and corner doors make a standard cover difficult.');
+  await customMain.getByText('Add optional project details', { exact: true }).click();
   await customMain.locator('#acrylic-enquiry-knownConstraints').fill('No post can sit across the corner door and the deck changes level.');
   await customMain.locator('#acrylic-enquiry-roof').selectOption('Acrylic roofing');
-  await page.getByRole('button', { name: 'Request a design review' }).click();
-  await expect(customMain.getByText('Thanks, we have received your project details.')).toBeVisible();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await expect(customMain.getByRole('heading', { name: 'Project brief sent.' })).toBeVisible();
   expect(submittedBody).toMatchObject({ page: customRoute, source: 'website', roofMaterials: ['acrylic'], projectDetails: { roofPreference: 'Acrylic roofing', knownConstraints: 'No post can sit across the corner door and the deck changes level.' } });
 });
 

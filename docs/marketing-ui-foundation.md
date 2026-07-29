@@ -63,13 +63,21 @@ the source action.
 
 Phase 3 PR 8 adds the shared public mobile-navigation contract:
 
-- `Header.tsx` remains the only global public-header owner. `headerNavigation.ts` owns the established Home, Projects, Products and Contact destinations plus the approved mobile commercial and professional pathways. Desktop labels and composition remain unchanged; mobile clarifies Products as `Pergola options`.
+- `Header.tsx` remains the only global public-header owner.
+  `headerNavigation.ts` keeps the established desktop Home, Projects, Products
+  and Contact destinations. The compact mobile menu exposes only Projects,
+  `Pergola options`, Commercial and Professionals; the brand owns Home and the
+  route-aware `Start your project` action owns Contact.
 - The professional link targets the canonical
   `/architects-designers-builders` capability route. That route owns the
   professional embedded-form context; the existing estimate action continues
   to infer its audience from the current route and retains its analytics
   attribute.
-- The closed portalled menu is `aria-hidden` and inert. Opening moves focus to Home; Tab and Shift+Tab cycle through the visible trigger and menu links; Escape closes and returns focus; route, history and desktop-breakpoint changes close without leaving stale scroll locks.
+- The closed portalled menu is `aria-hidden` and inert. Opening moves focus to
+  the first visible destination; Tab and Shift+Tab cycle through the trigger,
+  menu links and project action; Escape closes and returns focus; route,
+  history and desktop-breakpoint changes close without leaving stale scroll
+  locks.
 - The JavaScript breakpoint matches the CSS mobile range through 900px. Body position, inline styles and reading position are reversibly locked on every public route, while destination navigation leaves scroll ownership to the router. Short viewports scroll within the menu, every control remains at least 44px high, and directly relevant transitions are removed for reduced motion.
 - PR 8 does not add a global sticky action. The fixed consent banner, Projects selector sheet, existing route-local overlays and a legacy route-local mobile action cannot guarantee that another site-wide fixed control would avoid consent controls, form fields and content at short viewport heights. The shared menu and existing route-aware page actions remain the calm persistent path.
 
@@ -105,11 +113,27 @@ Analytics, consent, pixels, structured data, project content, reviews, and enqui
 
 The token-scoped public quote route is an approved presentation-only adoption. `apps/marketing/app/quote/[quoteId]/quoteEditorial.module.css` translates the Foundation into a no-imagery customer document: Instrument Sans display type, Inter body type, warm neutral surfaces, square controls, fine rules, and the olive action accent. The route keeps one visible commercial summary with explicit GST, stacks line-item labels and values without horizontal overflow at narrow widths, and preserves 44px actions. Public quote lookup, token/expiry handling, attachment authorization, acceptance form action and hidden token, status semantics, and all quote lifecycle behavior remain unchanged. The public invoice route keeps its existing separate presentation owner.
 
-`/acrylic-roof-pergolas-auckland` is the first approved route-scoped adoption. It imports the foundation fonts and reusable `Container`, `Section`, `Heading`, `Eyebrow`, `Text`, `Button`, `TextLink`, and `ProcessSteps` exports, while its specialised tint comparison, project proof, FAQ, and enquiry form remain route-owned.
+`/acrylic-roof-pergolas-auckland` is the first approved route-scoped adoption. It imports the foundation fonts and reusable layout and type primitives, while its concise tint comparison, comfort and weather checks, three governed projects, four focused FAQs and enquiry form remain route-owned.
 
-The route defines the same semantic page tokens locally. Its approved copy, canonical URL, metadata, FAQ schema, project links, attribution, secure attachment upload, enquiry API contract, consent behavior, and form-state logic remain owned by the landing page and existing marketing integrations.
+The route defines the same semantic page tokens locally. Its canonical URL,
+metadata, visible FAQ content, project links, attribution, secure attachment
+upload, enquiry API contract, consent behavior and form-state logic remain
+owned by the landing page and existing marketing integrations.
+`/acrylic-roof-pergolas-auckland-v2` is retired and permanently redirects to
+this canonical route in one hop; it is not a second content, canonical or
+sitemap owner.
 
-The ten-route SEO landing-page programme is the second approved adoption. It uses the config-driven owners in `apps/marketing/components/seo-landing/` for the page shell, editorial blocks, responsive comparison matrix, structured data, conversion section and route-configured enquiry copy. Route content and metadata remain in each route folder, while the existing enquiry API, attachment, attribution, privacy and conversion-event contracts remain unchanged. Nine routes opt into route-owned, unique and contiguous `mobileDisclosureGroups`; unconfigured consumers keep their previous output. The groups move supporting sections behind concise mobile summaries while leaving the complete blocks in DOM order and expanded on desktop.
+The ten-route SEO landing-page programme is the second approved adoption. It
+uses the config-driven owners in `apps/marketing/components/seo-landing/` for
+the page shell, editorial blocks, responsive comparison matrix, structured
+data and route-configured enquiry copy. The embedded enquiry form now closes
+the shared page shell without a second conversion section. Route content and
+metadata remain in each route folder, while the existing enquiry API,
+attachment, attribution, privacy and conversion-event contracts remain
+unchanged. Custom, commercial and professional routes own
+`mobileDisclosureGroups`; seven other directory routes use `guideFirstLayer`
+and one supporting-depth disclosure. Supporting content remains in DOM order,
+server rendered and expanded on desktop.
 
 The programme routes are listed in `docs/landing-pages/seo-landing-page-programme.md`. They share the architectural system without sharing substantial copy: each has a distinct search intent, metadata identity, H1, section narrative, project selection and FAQ set. Every route retains `#4f5748` olive green as the action accent; burgundy and purple are not part of this adoption.
 
@@ -131,7 +155,7 @@ supporting-depth disclosure. Remaining authored paragraphs, project records
 and blocks stay in original order inside that disclosure, remain expanded
 without JavaScript and keep distinct headings across the SEO programme.
 
-The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` estimate action, and a 64px solid collapsed mobile state. Its desktop navigation is centred on the midpoint of the space between Projects and Products rather than on the unequal outer link widths. The mobile menu exposes Home, Projects, Pergola options, Commercial, Architects/designers/builders, Contact and the route-aware estimate action. It preserves source context, keeps body scroll locked, contains keyboard focus within the open navigation and trigger, closes with Escape or navigation, and returns focus to its trigger when the visitor dismisses it.
+The shared public header now uses the architectural editorial treatment across marketing routes: Instrument Sans branding, Inter navigation, square controls, a thin 1px rule, the olive `#4f5748` project action, and a 64px solid collapsed mobile state. Its desktop navigation is centred on the midpoint of the space between Projects and Products rather than on the unequal outer link widths. The mobile menu exposes Projects, Pergola options, Commercial and Professionals, followed by `Start your project`. It preserves source context, keeps body scroll locked, contains keyboard focus within the open navigation and trigger, closes with Escape or navigation, and returns focus to its trigger when the visitor dismisses it.
 
 The ten programme routes and `/pergola-guides` additionally use the approved hero-overlay state on desktop. At the top of those pages, the hero begins at the viewport edge beneath a transparent header with white navigation and a fine light rule, fills at least one viewport, and keeps the following section below the fold. After a deliberate scroll, the header returns to the solid canvas, dark text and blur treatment. At 900px and below the header stays solid and the hero begins below it. Keep transparent overlap limited to routes listed by the shared header; all other public routes use the same new header in its solid state.
 
@@ -166,16 +190,17 @@ properties without personal values.
 
 `SiteFooter.tsx` owns the approved compact site utility. It has no viewport
 minimum, displays the public phone and email as direct actions, keeps one
-neutral `/contact` action, three project-pathway links, review proof, warehouse,
-privacy and social utility. At the target production widths its height is
-730-766px and all footer actions are at least 44px high. It does not duplicate
-the full header navigation.
+neutral `/contact` action, Commercial, Professionals and Pergola Guides links,
+review proof, warehouse, privacy and social utility. It opens directly with
+`Tell us about your project.` and does not repeat a project-pathway heading or
+closing pitch. All footer actions remain at least 44px high and the footer does
+not duplicate the full header navigation.
 
 The public homepage is an approved route-scoped foundation adoption described below. Its content, responsive presentation and shared header remain owned by the root homepage implementation rather than by the internal catalogue.
 
 `/projects` and every canonical `/projects/[slug]` case-study route are an approved route-scoped adoption. They use one governed project source and one responsive semantic tree per route. The collection keeps the established sticky project rail and selected case study on desktop; below 900px the same navigator list becomes a normal-flow one-column sequence of image-led cards. Mobile collection requests receive typed summaries only and do not mount the selected case-study component, hero, gallery or video. A desktop media boundary dynamically loads the governed full record and detail component at 900px and above, preserving the legacy `?slug=` selection without shipping that hidden tree to mobile. Detail routes retain the focus-managed mobile selector sheet as their only collection interaction. Canonical project links, metadata and structured data continue to point to the detail routes.
 
-The projects surface owns its Foundation-derived tokens and square, rule-led editorial layout in `apps/marketing/app/projects/projects.css`. It preserves the existing header, footer, consent, contact destination, project URLs and project data owner. Facts omit unavailable values, and the visible brief, constraint, design response, roof approach, gallery, technical detail, related work and circular previous/next links all come from the governed project record rather than route-local claims. Desktop case-study heroes use the taller editorial frame, while repeated portrait or gable media retain a governed focal position so the roof apex is not lost in wide crops.
+The projects surface owns its Foundation-derived tokens and square, rule-led editorial layout in `apps/marketing/app/projects/projects.css`. It preserves the existing header, footer, consent, contact destination, project URLs and project data owner. Facts omit unavailable values. The visible approved summary, Brief, first Response, roof approach, Gallery, Technical details and related work all come from the governed project record rather than route-local claims. Curated related work is the only end-of-story project navigation; the duplicate circular previous/next links are retired. Desktop case-study heroes use the taller editorial frame, while repeated portrait or gable media retain a governed focal position so the roof apex is not lost in wide crops.
 
 On the mobile collection, project imagery uses the shared `EditorialCard` and `Figure` contract in a reserved 4:5 frame. Each card exposes only its canonical title, location, residential/commercial audience and existing roof-form label, and every non-leading image remains lazy. Hidden desktop card media requests only the one-pixel fallback size, so the desktop rail does not acquire a second portfolio payload. The existing audience and roof-form fields are filters, not a new project taxonomy.
 
@@ -183,7 +208,12 @@ Collection filters use the shared single-tree `Disclosure` contract. They are op
 
 At 640px and below, detail routes add a compact, tappable return breadcrumb. Their project selector remains a focus-managed modal sheet with reversible body scroll locking, Escape handling and focus restoration. Case-study heroes use a 4:3 frame. Below 900px project media uses one native horizontal strip containing the governed gallery images. Alternating 4:3 and 3:4 frames keep their different heights and align to the top, while native touch scrolling and scroll snap preserve the earlier free-swipe feel. Compact Previous/Next controls above the strip provide a non-swipe path without taking ownership away from native scrolling; they retain focus, expose contextual names and edge state, report `Image n of total`, support Arrow Left/Right plus Home/End on the focusable region, meet the 44px target and remove smooth scrolling under reduced motion. Every image keeps its caption and lazy-loading contract, and the established desktop editorial mosaic remains unchanged. This route-owned interaction is an explicit product-owner preference; project detail routes must not be moved back to a single-frame controlled carousel without approval. Product detail routes continue to use the shared controlled `ResponsiveGallery`. Related projects become compact horizontal cards, and the introductory and final enquiry actions remain visible.
 
-The mobile case study keeps a governed dimension or area and roof summary, the design constraint and the first Sanctuary response visible. Full facts, the original brief, additional response paragraphs and technical detail use native disclosures when available. Their complete content is rendered open in server HTML, remains visible without JavaScript and is expanded with non-interactive summaries hidden on desktop. Hydrated mobile clients close the secondary content. Visible and generated project-page content must not use em dashes.
+The mobile case study keeps its approved summary, Brief and first Response
+visible. Full Facts and Technical details use native disclosures when
+available. Their complete content is rendered open in server HTML, remains
+visible without JavaScript and is expanded with non-interactive summaries
+hidden on desktop. Hydrated mobile clients close the secondary content.
+Visible and generated project-page content must not use em dashes.
 
 `/products` and all ten canonical `/products/[category]/[item]` routes are an approved route-scoped adoption. The index is a complete decision hub for four pergola forms, three screen or edge treatments and three lighting or heating options. Detail routes use one server-rendered editorial composition with a pergola-form and integrated-option variant. Both use normal document flow rather than the retired accordion rail or nested page scrollers, and every detail route exposes one visible H1 at every width.
 
@@ -193,17 +223,37 @@ Project evidence has three explicit states. `governed` links a product decision 
 
 The product presentation is owned by `apps/marketing/components/products/` and its scoped CSS module. It keeps square corners, one-pixel rules, Foundation typography and the olive action accent. Product details render one deliberate shared `ResponsiveGallery` sequence with one active image; built-project evidence does not mount the same inventory again. Privacy has its own Foundation-derived module and is not imported by product routes. Product enquiry actions use the shared enquiry-context builder so the product slug, source path and CTA component survive the contact transition. Product routes do not invent a residential audience; the contact form remains neutral unless reliable metadata or entry context supplies one.
 
-The product hub leads immediately from its hero into four image-led pergola forms and a compact non-horizontal comparison. Screens/walls and lighting/heating are two text-led secondary gateways with three canonical destinations each; they do not repeat a ten-item primary inventory. Two projects and one compact guide disclosure complete the decision path. All ten canonical catalogue routes and the neutral source-aware product enquiry remain.
+The product hub leads immediately from its hero into four image-led pergola
+forms. Screens/walls and lighting/heating are two text-led secondary gateways
+with three canonical destinations each. One governed project and one direct
+guide link complete the decision path without another hub disclosure. All ten
+canonical catalogue routes and the neutral source-aware product enquiry
+remain.
 
-Product details keep the outcome, one primary suitability, one meaningful constraint, project evidence and both enquiry actions visible. A small typed view model consolidates supporting content into exactly three native groups: `fit-and-definition`, `specification-and-tradeoffs` and `related-support`. Their complete content remains server rendered, open without JavaScript and expanded with non-interactive summaries above 640px. Governed, context-only and not-published evidence caveats remain visible and cannot be upgraded by presentation code.
+Product details keep one primary suitability, one meaningful constraint,
+project evidence, one controlled gallery and both enquiry actions visible. A
+small typed view model consolidates supporting content into exactly three
+native groups: `fit-and-definition` (`How it works`),
+`specification-and-tradeoffs` (`What to confirm`) and `related-support`
+(`Compare and plan`). The final group exposes at most one alternative and one
+guide. Supporting content remains server rendered, open without JavaScript and
+expanded with non-interactive summaries above 640px. Product and Breadcrumb
+schema remain; retired FAQ copy is no longer emitted as visible content or
+FAQ schema. Governed, context-only and not-published evidence caveats remain
+visible and cannot be upgraded by presentation code.
 
 Visible product-page copy and decorative markers use natural punctuation without em dashes. Catalogue unit coverage governs the ten product records, while the product browser suite checks rendered copy and generated marker content on representative routes.
 
 `/contact` is an approved route-scoped adoption. Its small server page owns the editorial introduction, governed Warkworth project image and query-string preselection before hydration. `ContactEnquiryForm.tsx` owns one responsive form tree at every width, and `contact.css` owns the square, rule-led Foundation presentation. The three retired legacy contact stylesheets and the duplicated desktop/mobile page trees must not be restored.
 
-The direct and embedded residential, custom, commercial and professional enquiry forms share the contract in `apps/marketing/lib/enquiryFormContract.ts`. Required fields match the intake API: project type, name and phone; project suburb, desired outcome, email and technical choices are optional. Both form families put project type, location, desired outcome and contact details before optional dimensions, style, `Roof approach` and add-ons. Their upload controls use the governed attachment accept list and describe the actual eight-file, 20 MB per-file and 20 MB total limits. Do not add route-local required-field rules or upload copy.
+The direct and embedded residential, custom, commercial and professional enquiry forms share the contract in `apps/marketing/lib/enquiryFormContract.ts`. Required fields match the intake API: project type, name and phone; project suburb, project brief, email and technical choices are optional. Both form families keep project type, suburb, brief, contact details and files in the first layer. Dimensions, pergola form, roof approach and other options sit inside one native `Add optional project details` disclosure. Their upload controls use the governed attachment accept list and the shared concise eight-file, 20 MB total helper. Do not add route-local required-field rules or upload copy.
 
 The forms keep the existing `/api/enquiry` payload, browser-generated submission UUID across retries, shared residential/commercial/professional attachment policy and metadata fallback, attribution fields, consent-gated conversion events, privacy link and direct contact routes. Every visible field has a persistent label, validation focuses a linked error summary, result focus is explicit, and failed or successful submissions retain entered values. A synchronous ref lock closes the double-click window before any asynchronous upload or request begins. The shared enquiry-context contract server-renders validated audience, source path, source component, project slug and product slug values above the form and repeats recognised context in the success state; direct `/contact` stays neutral and unknown values are ignored. Visible and generated contact content must not use em dashes.
+
+Routes that already end in this embedded form do not render a second generic
+conversion section after it. The shared footer supplies the final site-wide
+contact path. The product hub plus product and project details link to, rather
+than embed, the enquiry form and retain one short route-owned final action.
 
 The approved public homepage lives at `/` and is owned by
 `apps/marketing/app/_home/`. It opens with the completed Warkworth Outdoor Room
@@ -242,15 +292,15 @@ and mobile.
 
 Homepage controls expose stable `data-design-conversation-event` attributes.
 `HomepageDesignConversationTracker.tsx` records only the event name,
-`design_conversation_home_v2` variant, viewport category, destination, closed
+`design_conversation_home_v3` variant, viewport category, destination, closed
 intent, canonical project slugs, matched pair, step and validated audience
 after analytics consent. Pointer activation and radio Arrow, Home and End
 selection use the same tracked activation path. The shared header publishes its
 validated route audience to the homepage tracker. Tracking captures no
 visitor-entered content and does not backfill pre-consent interactions.
-The refined copy and commercial/architect-led match are reported as `v2`;
-stable event names and the unchanged closed-intent storage key preserve the
-interaction contract while keeping pre-refinement results distinguishable.
+The major copy reduction is reported as `v3`; stable event names and the
+unchanged closed-intent storage key preserve the interaction contract while
+keeping earlier copy variants distinguishable.
 
 The former production implementation under `apps/marketing/app/home-v2/` is
 retired except for its redirect entrypoint. `/home-v2` and
@@ -310,7 +360,15 @@ evidence to `artifacts/mobile-touch-motion/tm-01/`.
 
 The Playwright lane checks the standalone catalogue, shared header, homepage, every SEO programme route, the product hub and details, the project collection and case studies, the contact route, and the guide directory at desktop, compact desktop, tablet and mobile widths. It covers metadata, canonical/index state, unique identities, project and FAQ rendering, internal destinations, overflow, navigation, form attribution, sitemap inclusion and visible schema parity.
 
-The mobile-content-density suite owns cross-family first-layer, disclosure, keyboard, focus, 44px target, reduced-motion, heading, link, metadata, schema, enquiry, overflow, desktop expansion and no-JavaScript contracts at 430px, 390px and 360px. Its script-blocked lane proves pending detail is hidden and unfocusable before hydration and resolves without changing height.
+The mobile-content-density suite owns cross-family first-layer, disclosure,
+keyboard, focus, 44px target, reduced-motion, heading, link, metadata, schema,
+enquiry, overflow, desktop expansion and no-JavaScript contracts at 430px,
+390px and 360px. Current closed-detail ceilings are 450 words for the homepage
+and product detail, 500 for the product hub, 650 for residential, custom,
+commercial and representative guide detail, and 350 for the guide hub and
+contact. These are maximums, not content targets. Its script-blocked lane
+proves pending detail is hidden and unfocusable before hydration and resolves
+without changing height.
 
 The dedicated Phase 3 suite visits the hub, all ten product routes, residential and custom at all three target widths. It enforces exact disclosure IDs, one controlled gallery and active image, no duplicate image request, HTML and visible-copy budgets, six-region service structures, high-priority hero loading and CLS at or below `0.1`. Set `MARKETING_PHASE_THREE_CAPTURE=1` to write production-compatible measurements and representative screenshots under `artifacts/mobile-ux-phase-3/`.
 
@@ -330,4 +388,15 @@ in production unless explicitly enabled. Full deployed browser runs therefore
 report its 18 catalogue-only assertions as expected failures; public-route
 results and the complete local foundation suite are the relevant signals.
 
-The product suite additionally verifies every catalogue route, one visible H1, loaded imagery, early and final CTA continuity, the single gallery, keyboard-operable server-rendered detail, 44px targets, height budgets, metadata, schema, reduced motion, no nested scroller and honest unpublished heater evidence. The projects suite retains the complete Phase 2 collection, gallery, filter, navigation and responsive contract. The contact suite retains canonical and legacy preselection, project/product refresh and history, validation, attachment, duplicate-submit, consented analytics and lower-case non-personal context coverage. Homepage and hero-navigation suites preserve the established desktop composition and responsive header states.
+The product suite additionally verifies every catalogue route, one visible H1,
+loaded imagery, both project actions, the single gallery, three
+keyboard-operable server-rendered groups, 44px targets, height budgets,
+metadata, Product/Breadcrumb schema, reduced motion, no nested scroller and
+honest unpublished heater evidence. The projects suite retains the Phase 2
+collection, gallery, filter, selector and responsive contracts while asserting
+the reduced Brief/Response hierarchy and single related-project navigation
+system. The contact suite retains canonical and legacy preselection,
+project/product refresh and history, validation, attachment, duplicate-submit,
+consented analytics and lower-case non-personal context coverage. Homepage and
+hero-navigation suites preserve the established desktop composition,
+`design_conversation_home_v3` and responsive header states.

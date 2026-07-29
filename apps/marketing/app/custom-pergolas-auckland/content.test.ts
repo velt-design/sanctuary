@@ -8,7 +8,7 @@ describe('custom service journey content', () => {
     expect(customPergolasConfig.mobileDisclosureGroups).toEqual([
       {
         id: 'custom-planning-support',
-        summary: 'Technical boundaries, useful guides and questions',
+        summary: 'Project checks, related guides and questions',
         blockIds: [
           'custom-boundaries',
           'custom-next-decisions',

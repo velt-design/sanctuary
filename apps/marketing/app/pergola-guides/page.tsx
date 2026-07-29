@@ -5,13 +5,11 @@ import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/inter';
 import JsonLd from '@/components/JsonLd';
 import {
-  Button,
   Container,
   Eyebrow,
   Heading,
   Section,
   Text,
-  TextLink,
 } from '@/components/marketing-foundation';
 import { pergolaGuideChapters, pergolaGuideEditorialReview, pergolaGuides } from '@/data/pergolaGuides';
 import { absoluteUrl } from '@/lib/seo';
@@ -106,20 +104,11 @@ export default function PergolaGuidesPage() {
         <div className="guide-hub-hero__copy">
           <Eyebrow className="guide-hub-hero__eyebrow">Sanctuary pergola design library</Eyebrow>
           <Heading as="h1" variant="page" id="guide-hub-title">
-            Find the guide for the decision in front of you
+            Pergola guides.
           </Heading>
           <Text size="large">
-            Ten practical guides to help you plan the whole project, choose its architectural form and compare the details that set its scope.
+            Start with the decision you need to make.
           </Text>
-          <div className="guide-hub-hero__actions">
-            <Button href="#guide-library">Browse all guides</Button>
-            <TextLink href="/pergolas-auckland">Start with the broad brief</TextLink>
-          </div>
-          <dl className="guide-hub-hero__facts" aria-label="Guide library overview">
-            <div><dt>10</dt><dd>Design guides</dd></div>
-            <div><dt>03</dt><dd>Decision chapters</dd></div>
-            <div><dt>01</dt><dd>Connected brief</dd></div>
-          </dl>
           <p className="guide-hub-hero__review">
             Editorial review: {pergolaGuideEditorialReview.reviewer} ·{' '}
             <time dateTime={pergolaGuideEditorialReview.date}>{pergolaGuideEditorialReview.dateLabel}</time>
@@ -140,7 +129,6 @@ export default function PergolaGuidesPage() {
           />
           <figcaption>
             <span>Warkworth outdoor room</span>
-            <span>Form, material and use resolved together</span>
           </figcaption>
         </figure>
       </section>
@@ -148,24 +136,8 @@ export default function PergolaGuidesPage() {
       <Section id="guide-library" className="guide-hub-index" aria-labelledby="guide-library-title">
         <Container width="wide">
           <div className="guide-hub-index__intro">
-            <div>
-              <Eyebrow>Choose your starting point</Eyebrow>
-              <Heading id="guide-library-title">Three chapters. One connected design.</Heading>
-            </div>
-            <Text size="large">
-              Start with the decision you need to make now. Each guide keeps that choice connected to the wider architecture, outdoor space and delivery brief.
-            </Text>
+            <Heading id="guide-library-title">Choose a guide.</Heading>
           </div>
-
-          <nav className="guide-hub-chapters" aria-label="Guide chapters">
-            {pergolaGuideChapters.map((chapter) => (
-              <Link key={chapter.id} href={`#${chapter.id}`} className="guide-hub-chapter-link">
-                <span>{chapter.number}</span>
-                <strong>{chapter.title}</strong>
-                <small>{chapter.guides.length} guides</small>
-              </Link>
-            ))}
-          </nav>
         </Container>
       </Section>
 
@@ -179,10 +151,8 @@ export default function PergolaGuidesPage() {
         >
           <Container width="wide" className="guide-hub-group__layout">
             <header className="guide-hub-group__header">
-              <span className="guide-hub-group__number" aria-hidden="true">{chapter.number}</span>
               <Eyebrow>{chapter.eyebrow}</Eyebrow>
               <Heading id={`${chapter.id}-title`}>{chapter.title}</Heading>
-              <Text>{chapter.introduction}</Text>
             </header>
 
             <div className="guide-hub-list">
@@ -195,8 +165,6 @@ export default function PergolaGuidesPage() {
                 >
                   <span className="guide-hub-card__number">{guide.number}</span>
                   <div className="guide-hub-card__heading">
-                    <small>{guide.label}</small>
-                    <em>{guide.prompt}</em>
                     <h3 id={`guide-${guide.number}-title`}>
                       <Link
                         href={guide.href}
@@ -216,23 +184,6 @@ export default function PergolaGuidesPage() {
         </Section>
       ))}
 
-      <Section tone="inverse" className="guide-hub-conversion" aria-labelledby="guide-hub-conversion-title">
-        <Container width="wide" className="guide-hub-conversion__layout">
-          <div>
-            <Eyebrow>When the guides become a brief</Eyebrow>
-            <Heading id="guide-hub-conversion-title">
-              Bring the house, the outdoor area and the open questions.
-            </Heading>
-          </div>
-          <div className="guide-hub-conversion__copy">
-            <Text size="large">For a general Auckland project, begin with the broad service guide. If difficult connections, restricted posts, changing levels or consultant coordination already define the problem, begin with the custom guide.</Text>
-            <div className="guide-hub-conversion__actions">
-              <Button href="/pergolas-auckland">Open the broad guide</Button>
-              <TextLink href="/custom-pergolas-auckland">Open the custom guide</TextLink>
-            </div>
-          </div>
-        </Container>
-      </Section>
     </main>
   );
 }

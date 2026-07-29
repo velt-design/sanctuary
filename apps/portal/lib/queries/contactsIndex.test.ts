@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { qk } from './keys';
 import {
   CONTACTS_INDEX_QUERY_SCOPE,
-  contactsIndexPlaceholderFromCaches,
-  seedContactsIndexCanonicalCaches,
+  contactsIndexQueryOptions,
+  patchContactAcrossIndexCaches,
   upsertContactAcrossIndexCaches,
   type ContactsIndexResponse,
 } from './contactsIndex';
@@ -12,62 +12,50 @@ import { PROJECTS_INDEX_QUERY_SCOPE, type ProjectsIndexResponse } from './projec
 
 const contact = { id: 'ct_1', displayName: 'Alex', email: '', phone: '' } as any;
 const updatedContact = { ...contact, phone: '021' };
+const params = { search: 'alex', page: 2, pageSize: 25, sort: 'name_desc' } as const;
+
+function contactsResponse(): ContactsIndexResponse {
+  return {
+    contacts: { rows: [contact], totalCount: 51, truncated: false, page: 2, pageSize: 25, totalPages: 3 },
+    query: { search: 'alex', sort: 'name_desc' },
+    generatedAt: 'cached',
+  };
+}
 
 function projectsResponse(): ProjectsIndexResponse {
   return {
     archive: 'active',
-    projects: { rows: [], totalCount: 0, truncated: false },
-    contacts: { rows: [contact], totalCount: 1, truncated: false },
+    projects: { rows: [], totalCount: 0, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
+    contacts: { rows: [contact], totalCount: null, truncated: false },
+    query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
     generatedAt: 'cached',
   };
 }
 
 describe('contacts index query cache', () => {
-  it('bootstraps from the canonical contact cache without crossing users or hosts', () => {
-    const userA = new QueryClient();
-    const userB = new QueryClient();
-    userA.setQueryData(qk.contacts.list('host-a'), [contact]);
-
-    expect(contactsIndexPlaceholderFromCaches(userA, 'host-a')?.contacts.rows).toEqual([contact]);
-    expect(contactsIndexPlaceholderFromCaches(userA, 'host-b')).toBeUndefined();
-    expect(contactsIndexPlaceholderFromCaches(userB, 'host-a')).toBeUndefined();
+  it('keys and requests each bounded server page independently', () => {
+    const options = contactsIndexQueryOptions(params);
+    expect(options.queryKey).toEqual(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE, params));
+    expect(String(options.queryFn)).toContain('apiJson');
   });
 
-  it('reuses complete contact metadata already held by the Projects index', () => {
-    const client = new QueryClient();
-    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'), projectsResponse());
-    expect(contactsIndexPlaceholderFromCaches(client, 'host')).toEqual({
-      contacts: { rows: [contact], totalCount: 1, truncated: false },
-      generatedAt: 'cached',
-    });
-  });
-
-  it('seeds the canonical list and every existing Projects-index scope from fresh data', () => {
-    const client = new QueryClient();
-    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'), projectsResponse());
-    const response: ContactsIndexResponse = {
-      contacts: { rows: [updatedContact], totalCount: 1, truncated: false },
-      generatedAt: 'fresh',
-    };
-    seedContactsIndexCanonicalCaches(client, 'host', response);
-
-    expect(client.getQueryData(qk.contacts.list('host'))).toEqual([updatedContact]);
-    expect(client.getQueryData<ContactsIndexResponse>(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE))).toEqual(response);
-    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.contacts.rows).toEqual([updatedContact]);
-  });
-
-  it('keeps contact, Contacts-index, and Projects-index caches coherent after an upsert', () => {
+  it('patches every cached Contacts and Projects page without adding a row to unrelated pages', () => {
     const client = new QueryClient();
     client.setQueryData(qk.contacts.list('host'), [contact]);
-    client.setQueryData(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE), {
-      contacts: { rows: [contact], totalCount: 1, truncated: false },
-      generatedAt: 'cached',
-    } satisfies ContactsIndexResponse);
-    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'), projectsResponse());
+    client.setQueryData(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE, params), contactsResponse());
+    client.setQueryData(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE, { ...params, page: 3 }), {
+      ...contactsResponse(),
+      contacts: { ...contactsResponse().contacts, rows: [] },
+    });
+    client.setQueryData(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', { page: 1 }), projectsResponse());
 
     upsertContactAcrossIndexCaches(client, 'host', updatedContact);
     expect(client.getQueryData<any[]>(qk.contacts.list('host'))?.[0].phone).toBe('021');
-    expect(client.getQueryData<ContactsIndexResponse>(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE))?.contacts.rows[0].phone).toBe('021');
-    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.contacts.rows[0].phone).toBe('021');
+    expect(client.getQueryData<ContactsIndexResponse>(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE, params))?.contacts.rows[0].phone).toBe('021');
+    expect(client.getQueryData<ContactsIndexResponse>(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE, { ...params, page: 3 }))?.contacts.rows).toEqual([]);
+    expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', { page: 1 }))?.contacts.rows[0].phone).toBe('021');
+
+    patchContactAcrossIndexCaches(client, 'host', contact.id, (entry) => ({ ...entry, displayName: 'Alex Mason' }));
+    expect(client.getQueryData<ContactsIndexResponse>(qk.contacts.index(CONTACTS_INDEX_QUERY_SCOPE, params))?.contacts.rows[0].displayName).toBe('Alex Mason');
   });
 });

@@ -3,7 +3,10 @@ import type { ProjectPageSnapshot, ProjectPageSnapshotResponse } from '@/lib/pro
 import { qk } from './keys';
 import type { Project } from '@/lib/types/project';
 import type { Contact } from '@/lib/types/contact';
-import { patchContactAcrossIndexCaches } from './contactsIndex';
+import {
+  CONTACTS_INDEX_QUERY_SCOPE,
+  patchContactAcrossIndexCaches,
+} from './contactsIndex';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { invalidatePortalSearchQueries } from './portalSearch';
@@ -47,6 +50,14 @@ function withProjectMembership(
 
 function adjustKnownCount(totalCount: number | null, delta: number): number | null {
   return totalCount === null || delta === 0 ? totalCount : Math.max(0, totalCount + delta);
+}
+
+function canOptimisticallyEnterFirstProjectPage(current: ProjectsIndexResponse): boolean {
+  return current.projects.page === 1
+    && current.query.search === ''
+    && current.query.status === 'all'
+    && current.query.due === 'all'
+    && current.query.sort === 'newest';
 }
 
 export function buildProjectSnapshotPlaceholder(
@@ -137,7 +148,9 @@ export function patchProjectListItem(
   }
 
   for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
-    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) => {
+    queryClient.setQueriesData<ProjectsIndexResponse>(
+      { queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive) },
+      (current) => {
       if (!current) return current;
       const existing = current.projects.rows.find((project) => project.id === projectId);
       if (!existing) return current;
@@ -147,7 +160,15 @@ export function patchProjectListItem(
       const rows = belongs
         ? current.projects.rows.map((project) => (project.id === projectId ? nextProject : project))
         : current.projects.rows.filter((project) => project.id !== projectId);
-      return { ...current, projects: { ...current.projects, rows } };
+      const removed = existing && !belongs ? 1 : 0;
+      return {
+        ...current,
+        projects: {
+          ...current.projects,
+          rows,
+          totalCount: adjustKnownCount(current.projects.totalCount, -removed),
+        },
+      };
     });
   }
   void invalidatePortalSearchQueries(queryClient, 'none');
@@ -172,15 +193,20 @@ export function upsertProjectListItem(
   }
 
   for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
-    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) => {
+    queryClient.setQueriesData<ProjectsIndexResponse>(
+      { queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive) },
+      (current) => {
       if (!current) return current;
       const belongs = archive === 'all' || (archive === 'active' ? !project.isArchived : Boolean(project.isArchived));
+      const existing = current.projects.rows.find((entry) => entry.id === project.id);
+      if (!existing && (!belongs || !canOptimisticallyEnterFirstProjectPage(current))) return current;
       const next = withProjectMembership(current.projects.rows, project, belongs);
+      const rows = next.rows.slice(0, current.projects.pageSize);
       return {
         ...current,
         projects: {
           ...current.projects,
-          rows: next.rows,
+          rows,
           totalCount: adjustKnownCount(current.projects.totalCount, next.countDelta),
         },
       };
@@ -205,16 +231,21 @@ export function removeProjectListItem(queryClient: QueryClient, host: string, pr
     );
   }
   for (const archive of ['active', 'archived', 'all'] as const satisfies readonly ProjectsIndexArchiveFilter[]) {
-    queryClient.setQueryData<ProjectsIndexResponse | undefined>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive), (current) =>
-      current
-        ? {
-            ...current,
-            projects: {
-              ...current.projects,
-              rows: current.projects.rows.filter((project) => project.id !== projectId),
-            },
-          }
-        : current,
+    queryClient.setQueriesData<ProjectsIndexResponse>(
+      { queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, archive) },
+      (current) => {
+        if (!current) return current;
+        const removed = current.projects.rows.some((project) => project.id === projectId);
+        if (!removed) return current;
+        return {
+          ...current,
+          projects: {
+            ...current.projects,
+            rows: current.projects.rows.filter((project) => project.id !== projectId),
+            totalCount: adjustKnownCount(current.projects.totalCount, -1),
+          },
+        };
+      },
     );
   }
   void invalidatePortalSearchQueries(queryClient, 'none');
@@ -229,7 +260,10 @@ export async function invalidateProjectsIndexCaches(
     queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }),
     queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }),
     options?.includeContacts
-      ? queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) })
+      ? Promise.all([
+          queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) }),
+          queryClient.invalidateQueries({ queryKey: qk.contacts.indexPrefix(CONTACTS_INDEX_QUERY_SCOPE) }),
+        ])
       : Promise.resolve(),
     invalidatePortalSearchQueries(queryClient),
   ]);

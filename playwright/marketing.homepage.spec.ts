@@ -16,17 +16,17 @@ const viewports = [
 
 const intentScenarios = [
   {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
     value: 'home-cover',
     projects: ['Dairy Flat Estate', 'Mt Maunganui Box'],
   },
   {
-    name: /Create a complete outdoor room/,
+    name: /Create an outdoor room/,
     value: 'outdoor-room',
     projects: ['Warkworth Outdoor Room', 'Riverhead Gable Pavilion'],
   },
   {
-    name: /Plan a commercial or architect-led project/,
+    name: /Commercial or professional project/,
     value: 'commercial-professional',
     projects: ['The Good Home Takanini', 'KiwiRail Head Office'],
   },
@@ -46,7 +46,7 @@ async function preparePage(page: Page, analytics = false) {
 
 async function getHomepageMain(page: Page) {
   const main = page.locator(
-    'main[data-homepage-variant="design_conversation_home_v2"]:visible',
+    'main[data-homepage-variant="design_conversation_home_v3"]:visible',
   );
   await expect(main).toHaveCount(1);
   return main;
@@ -99,7 +99,7 @@ for (const [index, viewport] of viewports.entries()) {
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.getByRole('heading', {
       level: 1,
-      name: 'Begin with built work.',
+      name: 'Custom pergolas for Auckland homes and sites.',
     })).toBeVisible();
     await expect(main.getByText('Warkworth Outdoor Room', { exact: true }))
       .toBeVisible();
@@ -114,7 +114,7 @@ for (const [index, viewport] of viewports.entries()) {
     await expect(radios).toHaveCount(3);
     if (viewport.width <= 430) {
       await main.getByRole('link', {
-        name: 'Start with your project',
+        name: 'Find a relevant project',
       }).click();
       await expect(radios.first()).toBeInViewport({ ratio: 0.8 });
     }
@@ -196,7 +196,7 @@ test('keyboard radio behavior changes the project response without moving focus 
   )).toBe(2);
 
   await main.getByRole('button', {
-    name: 'Change starting point',
+    name: 'Change',
     exact: true,
   }).click();
   await expect(radios.first()).toBeFocused();
@@ -211,11 +211,11 @@ test('the journey remains operable in the 360x400 CSS viewport produced by 200 p
   await page.goto(route);
   const main = await getHomepageMain(page);
 
-  const start = main.getByRole('link', { name: 'Start with your project' });
+  const start = main.getByRole('link', { name: 'Find a relevant project' });
   await start.scrollIntoViewIfNeeded();
   await start.click();
   const firstIntent = main.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   });
   await expect(firstIntent).toBeInViewport({ ratio: 0.8 });
   await firstIntent.click();
@@ -233,7 +233,7 @@ test('the selected completed project arrives at contact as validated enquiry con
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Create a complete outdoor room/,
+    name: /Create an outdoor room/,
   }).click();
   const warkworthCard = main.locator('article').filter({
     hasText: 'Warkworth Outdoor Room',
@@ -276,7 +276,7 @@ test('consented analytics records the bounded interaction once without personal 
   )).toBe(1);
 
   await main.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   }).click();
   await expect.poll(async () => (
     (await getDesignEvents(page)).filter((event) => (
@@ -315,7 +315,7 @@ test('consented analytics records the bounded interaction once without personal 
   expect(events.find((event) => (
     event.event === 'design_conversation_intent_select'
   ))).toMatchObject({
-    homepage_variant: 'design_conversation_home_v2',
+    homepage_variant: 'design_conversation_home_v3',
     viewport_category: 'desktop',
     source_path: route,
     project_intent: 'home-cover',
@@ -342,7 +342,7 @@ test('denied analytics consent records no design-conversation events', async ({
   await page.goto(route);
   const main = await getHomepageMain(page);
   await main.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   }).click();
 
   const eventCount = await page.evaluate(() => (
@@ -367,7 +367,7 @@ test('selected options and inverse actions keep visible hover and focus contrast
   const main = await getHomepageMain(page);
 
   const selectedIntent = main.getByRole('radio', {
-    name: 'Cover an outdoor area at home',
+    name: 'Cover a deck',
     exact: true,
   });
   await selectedIntent.click();
@@ -378,7 +378,7 @@ test('selected options and inverse actions keep visible hover and focus contrast
   await expect(selectedIntent).toHaveCSS('outline-color', 'rgb(244, 244, 240)');
 
   const heroAction = main.getByRole('link', {
-    name: 'Start with your project',
+    name: 'Find a relevant project',
   });
   await page.evaluate(() => window.scrollTo(0, 0));
   await heroAction.focus();
@@ -395,7 +395,7 @@ test('selected options and inverse actions keep visible hover and focus contrast
   await closingAction.focus();
   await expect(closingAction).toHaveCSS(
     'outline-color',
-    'rgb(244, 244, 240)',
+    'rgb(17, 18, 16)',
   );
 });
 
@@ -456,7 +456,7 @@ test('reduced motion removes the project-response transition', async ({
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Create a complete outdoor room/,
+    name: /Create an outdoor room/,
   }).click();
   const motion = await main.locator('[data-intent-response]').evaluate(
     (response) => ({
@@ -510,7 +510,7 @@ test('the bounded homepage stays within its repeatable performance budget', asyn
   await page.waitForTimeout(500);
 
   const firstAnswer = main.getByRole('radio', {
-    name: 'Cover an outdoor area at home',
+    name: 'Cover a deck',
     exact: true,
   });
   await firstAnswer.scrollIntoViewIfNeeded();
@@ -613,7 +613,7 @@ test('the conversation remains usable when session storage is unavailable', asyn
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Plan a commercial or architect-led project/,
+    name: /Commercial or professional project/,
   }).click();
   await expect(main.locator(
     '[data-intent-response="commercial-professional"]',
@@ -630,7 +630,7 @@ test('a cached return restores the validated first answer without hiding other c
   let main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   }).click();
   await expect(main.locator('[data-intent-response="home-cover"]'))
     .toBeVisible();
@@ -638,7 +638,7 @@ test('a cached return restores the validated first answer without hiding other c
   await page.reload();
   main = await getHomepageMain(page);
   await expect(main.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   })).toHaveAttribute('aria-checked', 'true');
   await expect(main.locator('[data-intent-response="home-cover"]'))
     .toBeVisible();
@@ -656,14 +656,14 @@ test('project text and enquiry actions remain useful when a response image fails
   const main = await getHomepageMain(page);
 
   await main.getByRole('radio', {
-    name: /Cover an outdoor area at home/,
+    name: /Cover a deck/,
   }).click();
   const dairyFlatCard = main.locator('article').filter({
     hasText: 'Dairy Flat Estate',
   });
   await expect(dairyFlatCard).toBeVisible();
   await expect(dairyFlatCard).toContainText(
-    'An acrylic gable follows the existing roofline',
+    'An acrylic gable follows the roofline',
   );
   await expect(dairyFlatCard.getByRole('link', {
     name: 'Use Dairy Flat Estate as an enquiry reference',
@@ -680,7 +680,7 @@ test('the production homepage is canonical, indexable and carries its crawlable 
 
   await expect(homepage.getByRole('heading', {
     level: 1,
-    name: 'Begin with built work.',
+    name: 'Custom pergolas for Auckland homes and sites.',
   })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).not.toHaveAttribute(
     'content',
@@ -695,20 +695,20 @@ test('the production homepage is canonical, indexable and carries its crawlable 
   );
   await expect(homepage.getByRole('heading', {
     level: 2,
-    name: 'Fixed-roof pergolas shaped by the architecture.',
+    name: 'Choose a project path.',
   })).toBeVisible();
   await expect(homepage.getByRole('heading', {
     level: 2,
-    name: 'From a useful brief to an installed structure.',
+    name: 'From brief to installation.',
   })).toBeVisible();
   await expect(homepage.getByRole('link', {
-    name: 'Plan a home pergola',
+    name: 'Explore home pergolas',
   })).toHaveAttribute('href', '/pergolas-auckland');
   await expect(homepage.getByRole('link', {
-    name: 'Review commercial capability',
+    name: 'Explore commercial work',
   })).toHaveAttribute('href', '/commercial-pergolas-auckland#project-details');
   await expect(homepage.getByRole('link', {
-    name: 'Work with Sanctuary',
+    name: 'Explore collaboration',
   })).toHaveAttribute('href', '/architects-designers-builders');
 
   const schemaTypes = await page.locator(
@@ -757,7 +757,7 @@ test('the homepage keeps one coherent landmark and screen-reader question struct
     name: 'What are you trying to create?',
   })).toHaveCount(1);
   await expect(main.getByRole('radio', {
-    name: 'Cover an outdoor area at home',
+    name: 'Cover a deck',
     exact: true,
   })).toHaveCount(1);
   await expect(main.getByRole('status')).toHaveAttribute('aria-live', 'polite');
@@ -795,7 +795,7 @@ test.describe('without JavaScript', () => {
       .toBeHidden();
     await expect(main.getByRole('heading', {
       level: 1,
-      name: 'Begin with built work.',
+      name: 'Custom pergolas for Auckland homes and sites.',
     })).toBeVisible();
 
     await expect(main.getByRole('heading', {
@@ -822,15 +822,15 @@ test.describe('without JavaScript', () => {
     await expect(main.getByLabel('Sanctuary project proof')).toBeVisible();
     await expect(main.getByRole('heading', {
       level: 2,
-      name: 'Fixed-roof pergolas shaped by the architecture.',
+      name: 'Choose a project path.',
     })).toBeVisible();
     await expect(main.getByRole('heading', {
       level: 2,
-      name: 'From a useful brief to an installed structure.',
+      name: 'From brief to installation.',
     })).toBeVisible();
     await expect(main.getByRole('link', {
-      name: 'Share your project details',
-    }).last()).toBeVisible();
+      name: 'Continue without a project reference',
+    }).first()).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 });

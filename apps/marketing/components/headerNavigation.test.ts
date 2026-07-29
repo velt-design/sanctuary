@@ -34,15 +34,13 @@ describe('shared header navigation model', () => {
 
   it('clarifies product discovery and exposes the approved mobile pathways', () => {
     expect(getMobileHeaderNavigation('/projects').map(({ label, href }) => ({ label, href }))).toEqual([
-      { label: 'Home', href: '/' },
       { label: 'Projects', href: '/projects' },
       { label: 'Pergola options', href: '/products' },
       { label: 'Commercial', href: '/commercial-pergolas-auckland' },
       {
-        label: 'Architects, designers & builders',
+        label: 'Professionals',
         href: '/architects-designers-builders',
       },
-      { label: 'Contact', href: '/contact' },
     ]);
   });
 
@@ -70,6 +68,6 @@ describe('shared header navigation model', () => {
       .map((item) => item.id)).toEqual(['professional']);
     expect(getMobileHeaderNavigation('/contact')
       .filter((item) => item.current)
-      .map((item) => item.id)).toEqual(['contact']);
+      .map((item) => item.id)).toEqual([]);
   });
 });

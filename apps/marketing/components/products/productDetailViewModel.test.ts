@@ -21,11 +21,11 @@ describe('product detail editorial view model', () => {
       );
       expect(model.visibleFit.constraint).toBe(product.decision.resolve[0]);
       expect(model.specifications.map((row) => row.label)).toEqual([
-        'Structure and materials',
-        'What the design confirms',
-        'Installation scope',
-        'Care',
+        'Structure',
+        'Performance',
+        'Installation',
       ]);
+      expect(model.relatedProducts.length).toBeLessThanOrEqual(1);
     }
   });
 

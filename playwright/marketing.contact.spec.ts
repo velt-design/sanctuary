@@ -126,7 +126,7 @@ for (const viewport of [
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.getByRole('heading', {
       level: 1,
-      name: 'Tell us about the space you want to cover.',
+      name: 'Tell us about your project.',
     })).toBeVisible();
     await expect(main.getByRole('radio', { name: 'Residential', exact: false }))
       .toBeChecked();
@@ -136,7 +136,7 @@ for (const viewport of [
     );
     await expect(page).toHaveTitle('Start Your Pergola Project | Sanctuary Pergolas');
 
-    const earlyAction = main.getByRole('link', { name: 'Start your project brief' });
+    const earlyAction = main.getByRole('link', { name: 'Send a project brief' });
     await expect(earlyAction).toHaveAttribute('href', '#contact-form');
     if (viewport.width <= 430) {
       expect((await earlyAction.boundingBox())?.y ?? viewport.height)
@@ -243,7 +243,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
 
   await page.goto('/', { waitUntil: 'networkidle' });
   const professionalPathway = page.getByRole('link', {
-    name: 'Work with Sanctuary',
+    name: 'Explore collaboration',
   });
   await expect(professionalPathway).toHaveAttribute(
     'href',
@@ -272,9 +272,9 @@ test('neutral, audience, project and product entry routes use one canonical cont
         sourceComponent: 'header',
       },
       audience: 'residential',
-      contextLabel: 'Residential enquiry',
+      contextLabel: 'Residential project',
       link: (currentPage) => currentPage.locator('header.site')
-        .getByRole('link', { name: 'Get an estimate' }),
+        .getByRole('link', { name: 'Start your project' }),
     },
     {
       name: 'commercial service header',
@@ -285,9 +285,9 @@ test('neutral, audience, project and product entry routes use one canonical cont
         sourceComponent: 'header',
       },
       audience: 'commercial',
-      contextLabel: 'Commercial enquiry',
+      contextLabel: 'Commercial project',
       link: (currentPage) => currentPage.locator('header.site')
-        .getByRole('link', { name: 'Get an estimate' }),
+        .getByRole('link', { name: 'Start your project' }),
     },
     {
       name: 'professional service header',
@@ -298,9 +298,9 @@ test('neutral, audience, project and product entry routes use one canonical cont
         sourceComponent: 'header',
       },
       audience: 'professional',
-      contextLabel: 'Professional enquiry',
+      contextLabel: 'Professional project',
       link: (currentPage) => currentPage.locator('header.site')
-        .getByRole('link', { name: 'Get an estimate' }),
+        .getByRole('link', { name: 'Start your project' }),
     },
     {
       name: 'residential project CTA',
@@ -328,7 +328,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
       audience: 'commercial',
       contextLabel: 'Project: The Good Home Takanini',
       link: (currentPage) => currentPage.locator('header.site')
-        .getByRole('link', { name: 'Get an estimate' }),
+        .getByRole('link', { name: 'Start your project' }),
     },
     {
       name: 'neutral product CTA',
@@ -341,7 +341,7 @@ test('neutral, audience, project and product entry routes use one canonical cont
       contextLabel: 'Pergola option: Gable pergola',
       link: (currentPage) => currentPage.locator(
         'main[data-product-detail]',
-      ).getByRole('link', { name: 'Send your project details' }).first(),
+      ).getByRole('link', { name: 'Send project brief' }).first(),
     },
   ];
 
@@ -386,7 +386,7 @@ test('validation is specific, focuses an error summary and preserves entered det
 
   const message = page.getByLabel('Project brief Optional');
   await message.fill('A sheltered dining area that keeps daylight in the kitchen.');
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.locator('#contact-enquiryType-error')).toHaveText(
     'Choose a project type.',
   );
@@ -399,7 +399,7 @@ test('validation is specific, focuses an error summary and preserves entered det
   await expect(page.getByRole('radio').first()).toBeFocused();
 
   await page.getByRole('radio', { name: 'Residential', exact: false }).check();
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.locator('#contact-name-error')).toHaveText('Enter your name.');
   await expect(summary).toBeFocused();
   await summary.getByRole('link', { name: 'Enter your name.' }).click();
@@ -408,7 +408,7 @@ test('validation is specific, focuses an error summary and preserves entered det
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Optional').fill('not-an-email');
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.locator('#contact-email-error')).toHaveText(
     'Enter a valid email address or leave this field blank.',
   );
@@ -446,16 +446,20 @@ test('direct form puts the useful first brief before optional technical detail',
     fields.map((field) => `#${field.id}`)
   ))).toEqual(orderedFields);
 
-  await expect(page.getByRole('group', { name: 'Roof approach Optional' })).toBeVisible();
   await expect(page.locator('#contact-files')).toBeVisible();
   await expect(page.locator('#contact-files')).toHaveAttribute(
     'accept',
     '.pdf,.jpg,.jpeg,.png,.webp',
   );
   await expect(page.getByText(
-    'PDF, JPG, JPEG, PNG or WebP. Add up to 8 files. Each file can be up to 20 MB, with 20 MB total.',
+    'Up to 8 PDF, JPG, JPEG, PNG or WebP files, 20 MB total.',
     { exact: true },
   )).toBeVisible();
+  const optionalDetails = page.getByText('Add optional project details', { exact: true });
+  await expect(optionalDetails).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Roof Optional' })).toBeHidden();
+  await optionalDetails.click();
+  await expect(page.getByRole('group', { name: 'Roof Optional' })).toBeVisible();
 });
 
 test('API errors keep values and retries reuse the submission UUID', async ({ page }) => {
@@ -484,7 +488,7 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
   await page.getByLabel('Phone Required').fill('021 000 0000');
   await page.getByLabel('Email Optional').fill('test@example.com');
   await page.getByLabel('Project brief Optional').fill('Keep this project brief.');
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
 
   const alert = page.locator('.contact-form__submit-error');
   await expect(alert).toContainText('Enquiry service unavailable');
@@ -493,9 +497,9 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
   await expect(page.getByLabel('Project brief Optional'))
     .toHaveValue('Keep this project brief.');
 
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.getByRole('status')).toContainText(
-    'Thank you. We have your project brief.',
+    'Project brief sent.',
   );
   await expect(page.getByRole('status')).toBeFocused();
   await expect(page.getByLabel('Name Required')).toHaveValue('Test Person');
@@ -555,12 +559,12 @@ test('the submit lock prevents duplicate requests and consent controls lead even
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
 
-  const submit = page.getByRole('button', { name: 'Send us your project details' });
+  const submit = page.getByRole('button', { name: 'Send project brief' });
   await submit.evaluate((button) => {
     (button as HTMLButtonElement).click();
     (button as HTMLButtonElement).click();
   });
-  await expect(page.getByRole('status')).toContainText('Project details received');
+  await expect(page.getByRole('status')).toContainText('Project brief sent.');
   expect(requestCount).toBe(1);
 
   const events = await page.evaluate(() => ({
@@ -584,10 +588,6 @@ test('the submit lock prevents duplicate requests and consent controls lead even
   expect(JSON.stringify(events)).not.toContain('"enquiry_type":"Residential"');
   expect(JSON.stringify(events)).not.toContain('"enquiry_type":"Unknown"');
   expect(JSON.stringify(events)).not.toContain('Test Person');
-  await expect(page.getByRole('link', { name: 'Explore completed projects' }))
-    .toHaveAttribute('href', '/projects');
-  await expect(page.getByRole('link', { name: 'Review pergola options' }))
-    .toHaveAttribute('href', '/products');
 });
 
 test('residential attachments keep exact policy errors and fail visibly when upload signing is unavailable', async ({
@@ -632,7 +632,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await expect(page.locator('#contact-files-error')).toHaveText(
     'Each file must be larger than 0 bytes and no larger than 20 MB.',
   );
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   expect(requestCount).toBe(0);
   const summary = page.locator('#contact-error-summary');
   await expect(summary).toBeFocused();
@@ -649,7 +649,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await expect(page.locator('#contact-files-error')).toHaveText(
     'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
   );
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   expect(requestCount).toBe(0);
   await expect(summary).toBeFocused();
   await summary.getByRole('link', {
@@ -665,7 +665,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await expect(page.getByRole('list', { name: 'Selected files' })).toContainText(
     'plan.pdf',
   );
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.locator('.contact-form__submit-error')).toContainText(
     'We could not upload your attachments. Please try again or remove them before submitting.',
   );
@@ -721,7 +721,7 @@ test('product context is visible and included in the submitted payload', async (
   });
 
   await page.goto('/products/pergolas/gable', { waitUntil: 'networkidle' });
-  await page.getByRole('link', { name: 'Send your project details' }).first().click();
+  await page.getByRole('link', { name: 'Send project brief' }).first().click();
   await expect(page.getByLabel('Enquiry context')).toContainText(
     'Pergola option: Gable pergola',
   );
@@ -731,8 +731,8 @@ test('product context is visible and included in the submitted payload', async (
   await page.getByRole('radio', { name: 'Commercial', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
-  await expect(page.getByRole('status')).toContainText('Gable pergola option');
+  await page.getByRole('button', { name: 'Send project brief' }).click();
+  await expect(page.getByRole('status')).toContainText('Project brief sent.');
 
   expect(submittedBody).toMatchObject({
     enquiryType: 'commercial',
@@ -768,7 +768,7 @@ test('form semantics exclude the honeypot and keep IDs and error associations va
   await expect(honeypot).toHaveAttribute('tabindex', '-1');
   await expect(honeypot.locator('xpath=..')).toHaveAttribute('aria-hidden', 'true');
 
-  await page.getByRole('button', { name: 'Send us your project details' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   const typeErrorId = await page.locator('fieldset.contact-form__type')
     .getAttribute('aria-describedby');
   expect(typeErrorId).toBe('contact-enquiryType-error');

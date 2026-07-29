@@ -75,7 +75,6 @@ const serviceAudienceByPath = new Map<string, EnquiryAudience>([
   ['/pergolas-with-blinds', 'residential'],
   ['/acrylic-pergolas-vs-louvre-roofs', 'residential'],
   ['/acrylic-roof-pergolas-auckland', 'residential'],
-  ['/acrylic-roof-pergolas-auckland-v2', 'residential'],
   ['/commercial-pergolas-auckland', 'commercial'],
   ['/architects-designers-builders', 'professional'],
 ]);

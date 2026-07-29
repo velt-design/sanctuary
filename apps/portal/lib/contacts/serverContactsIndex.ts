@@ -2,57 +2,76 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
-import { appIdFromUuid } from '@/lib/supabase/mappers';
-import type { Contact } from '@/lib/types/contact';
-import {
-  fetchAllPages,
-  type ChunkedListFetchResult,
-} from '@/lib/list/listLimits';
-import { nowIso } from '@/lib/utils/time';
+import { mapContactRecord } from './contactRecord';
+import type {
+  ContactsIndexParams,
+  ContactsIndexResponse,
+} from './contactsIndexContract';
 
-function sortContacts(contacts: Contact[]): Contact[] {
-  return contacts
-    .slice()
-    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+type RpcPayload = {
+  rows?: unknown;
+  totalCount?: unknown;
+  page?: unknown;
+  pageSize?: unknown;
+};
+
+export class ContactsIndexSchemaError extends Error {
+  constructor() {
+    super('Contacts search is temporarily unavailable while the portal database is updated.');
+    this.name = 'ContactsIndexSchemaError';
+  }
 }
 
-function mapContactRow(row: Record<string, unknown>): Contact {
-  const id = typeof row.id === 'string' ? row.id : '';
-  const createdAt = typeof row.created_at === 'string' ? row.created_at : nowIso();
-  const updatedAt = typeof row.updated_at === 'string' ? row.updated_at : createdAt;
-  const displayName = typeof row.name === 'string' ? row.name.trim() : '';
-
-  return {
-    id: appIdFromUuid('ct', id),
-    displayName,
-    email: typeof row.email === 'string' ? row.email : '',
-    phone: typeof row.phone === 'string' ? row.phone : '',
-    createdAt,
-    updatedAt,
-  };
+function isMissingFunction(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code : '';
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  return code === 'PGRST202'
+    || code === '42883'
+    || /staff_contacts_index_v1|schema cache|function .* does not exist/i.test(message);
 }
 
-/**
- * PR-PG1 (2026-06-16): return shape changed from `Contact[]` to
- * `ListFetchResult<Contact>` so the page can surface the total row
- * count via `ListCountBanner`.
- *
- * PR-PG1c (2026-06-16): now returns `ChunkedListFetchResult<Contact>`
- * (adds `truncated`) and goes through `fetchAllPages()` to defeat the
- * Supabase project-level `db-max-rows` cap that silently clamps every
- * single PostgREST response to 1000 rows regardless of `.range(...)`.
- */
+function readPayload(value: unknown): RpcPayload {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as RpcPayload
+    : {};
+}
+
+function finiteInteger(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : fallback;
+}
+
 export async function loadContactsIndexData(
+  params: ContactsIndexParams,
   supabase?: SupabaseClient,
-): Promise<ChunkedListFetchResult<Contact>> {
+): Promise<ContactsIndexResponse['contacts']> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const result = await fetchAllPages<Record<string, unknown>>((from, to) =>
-    client
-      .from('contacts')
-      .select('*', { count: 'exact' })
-      .order('name', { ascending: true })
-      .range(from, to),
-  );
-  const rows = sortContacts(result.rows.map((row) => mapContactRow(row)));
-  return { rows, totalCount: result.totalCount, truncated: result.truncated };
+  const result = await client.rpc('staff_contacts_index_v1', {
+    p_search: params.search,
+    p_page: params.page,
+    p_page_size: params.pageSize,
+    p_sort: params.sort,
+  });
+  if (result.error) {
+    if (isMissingFunction(result.error)) throw new ContactsIndexSchemaError();
+    throw result.error;
+  }
+
+  const payload = readPayload(result.data);
+  const rows = (Array.isArray(payload.rows) ? payload.rows : [])
+    .map((row) => mapContactRecord(row as Record<string, unknown>));
+  const totalCount = finiteInteger(payload.totalCount, rows.length);
+  const page = Math.max(1, finiteInteger(payload.page, params.page));
+  const pageSize = params.pageSize;
+  return {
+    rows,
+    totalCount,
+    truncated: false,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+  };
 }

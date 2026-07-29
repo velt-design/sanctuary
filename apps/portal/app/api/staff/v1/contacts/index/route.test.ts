@@ -7,7 +7,10 @@ vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
   return { ...actual, requireStaffContext };
 });
-vi.mock('@/lib/contacts/serverContactsIndex', () => ({ loadContactsIndexData }));
+vi.mock('@/lib/contacts/serverContactsIndex', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/contacts/serverContactsIndex')>();
+  return { ...actual, loadContactsIndexData };
+});
 
 describe('GET /api/staff/v1/contacts/index', () => {
   beforeEach(() => {
@@ -23,10 +26,13 @@ describe('GET /api/staff/v1/contacts/index', () => {
       rows: [{ id: 'ct_1' }],
       totalCount: 1,
       truncated: false,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
     });
   });
 
-  it('loads the complete index through the auth-bound client with diagnostics', async () => {
+  it('loads a server-filtered page through the auth-bound client with diagnostics', async () => {
     const mod = await import('./route');
     const response = await mod.GET(new Request('http://localhost/api/staff/v1/contacts/index', {
       headers: { 'x-request-id': 'req_contacts' },
@@ -35,9 +41,20 @@ describe('GET /api/staff/v1/contacts/index', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(response.headers.get('x-portal-request-id')).toBe('req_contacts');
-    expect(loadContactsIndexData).toHaveBeenCalledWith(expect.anything());
+    expect(loadContactsIndexData).toHaveBeenCalledWith(
+      { search: '', page: 1, pageSize: 50, sort: 'name_asc' },
+      expect.anything(),
+    );
     await expect(response.json()).resolves.toEqual({
-      contacts: { rows: [{ id: 'ct_1' }], totalCount: 1, truncated: false },
+      contacts: {
+        rows: [{ id: 'ct_1' }],
+        totalCount: 1,
+        truncated: false,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      },
+      query: { search: '', sort: 'name_asc' },
       generatedAt: expect.any(String),
     });
   });

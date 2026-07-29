@@ -16,12 +16,12 @@ const viewports = [
 const mobileRefinementRoutes = [
   {
     route: '/products',
-    maximumHeightAt390: 10_258,
-    disclosureKinds: ['form-comparison', 'planning-guides'],
+    maximumHeightAt390: 8_500,
+    disclosureKinds: [],
   },
   {
     route: '/products/pergolas/gable',
-    maximumHeightAt390: 7_200,
+    maximumHeightAt390: 6_000,
     disclosureKinds: [
       'fit-and-definition',
       'specification-and-tradeoffs',
@@ -30,7 +30,7 @@ const mobileRefinementRoutes = [
   },
   {
     route: '/products/screens-walls/drop-down-blinds',
-    maximumHeightAt390: 7_200,
+    maximumHeightAt390: 6_000,
     disclosureKinds: [
       'fit-and-definition',
       'specification-and-tradeoffs',
@@ -39,7 +39,7 @@ const mobileRefinementRoutes = [
   },
   {
     route: '/products/lighting-heating/patio-heaters',
-    maximumHeightAt390: 7_200,
+    maximumHeightAt390: 6_000,
     disclosureKinds: [
       'fit-and-definition',
       'specification-and-tradeoffs',
@@ -140,7 +140,7 @@ test('the product catalogue owns all ten canonical routes and the sitemap expose
   const main = page.locator('main[data-products-index]');
   await expect(main.locator('h1')).toHaveCount(1);
   await expect(main.getByRole('heading', { level: 1 })).toHaveText(
-    'Cover the deck. Keep the light.',
+    'Pergola forms and options.',
   );
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     'href',
@@ -181,7 +181,7 @@ for (const viewport of viewports) {
       });
       await expect(h1).toHaveCount(1);
       await expect(h1).toBeVisible();
-      await expect(main.getByRole('link', { name: 'Send your project details' }).first())
+      await expect(main.getByRole('link', { name: 'Send project brief' }).first())
         .toHaveAttribute('href', expectedEnquiryHref);
       await expect(main).not.toContainText('[[VERIFY]]');
       await expect(main).not.toContainText('—');
@@ -225,7 +225,7 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
       }
 
       const callsToAction = main.getByRole('link', {
-        name: 'Send your project details',
+        name: 'Send project brief',
       });
       await expect(callsToAction).toHaveCount(2);
       expect((await callsToAction.first().boundingBox())?.y ?? 844)
@@ -241,7 +241,7 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
         await expect(main.locator('[data-product-option-gateway] img'))
           .toHaveCount(0);
         await expect(main.locator('[data-product-project-grid] > article'))
-          .toHaveCount(2);
+          .toHaveCount(1);
       } else {
         const galleries = main.locator('[data-product-gallery]');
         await expect(galleries).toHaveCount(1);
@@ -287,7 +287,7 @@ test('all ten product routes retain the complete mobile content contract', async
     await expect(main.getByText(product.decision.resolve[0], { exact: true }))
       .toBeVisible();
     await expect(main).not.toContainText('—');
-    await expect(main.getByRole('link', { name: 'Send your project details' }))
+    await expect(main.getByRole('link', { name: 'Send project brief' }))
       .toHaveCount(2);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       'href',
@@ -305,8 +305,8 @@ test('all ten product routes retain the complete mobile content contract', async
     expect(schemaTypes).toEqual(expect.arrayContaining([
       'Product',
       'BreadcrumbList',
-      'FAQPage',
     ]));
+    expect(schemaTypes).not.toContain('FAQPage');
 
     const emDashDecorationCount = await main.locator('*').evaluateAll((elements) =>
       elements.reduce((count, element) => {
@@ -339,7 +339,7 @@ test('mobile product disclosures are keyboard operable and desktop content stays
   await page.keyboard.press('Enter');
   await expect(specificationAndTradeoffs).toHaveAttribute('open', '');
   await expect(
-    specificationAndTradeoffs.getByText('Structure and materials', {
+    specificationAndTradeoffs.getByText('Structure', {
       exact: true,
     }),
   )
@@ -349,7 +349,7 @@ test('mobile product disclosures are keyboard operable and desktop content stays
   await expect(specificationAndTradeoffs).toHaveAttribute('open', '');
   await expect(summary).toBeHidden();
   await expect(
-    specificationAndTradeoffs.getByText('Care', { exact: true }),
+    specificationAndTradeoffs.getByText('Installation', { exact: true }),
   ).toBeVisible();
 });
 
@@ -361,7 +361,7 @@ test('collapsed mobile decision content remains server rendered', async ({ reque
   expect(html).toMatch(
     /<details[^>]*data-product-mobile-disclosure="specification-and-tradeoffs"[^>]*open=""/,
   );
-  expect(html).toContain('Structure and materials');
+  expect(html).toContain('Structure');
   expect(html).toContain('Volume versus visual presence');
   expect(html).toContain('Ridge height, eave height and the view from inside the house.');
 });
@@ -394,7 +394,7 @@ test('a pergola form and an accessory preserve metadata, structured data and evi
     });
     expect(schemaTypes).toContain('Product');
     expect(schemaTypes).toContain('BreadcrumbList');
-    expect(schemaTypes).toContain('FAQPage');
+    expect(schemaTypes).not.toContain('FAQPage');
     await expect(page.getByText('Built evidence', { exact: true }).first()).toBeVisible();
   }
 });
@@ -435,7 +435,7 @@ test('unpublished heater evidence is labelled rather than inferred from context 
   const main = page.locator('main[data-product-detail]:visible').last();
   await expect(main).not.toContainText('—');
   await expect(page.getByRole('heading', {
-    name: 'No named heater installation is published yet.',
+    name: 'No named heater installation is published.',
   })).toBeVisible();
   await expect(page.locator('p:visible').filter({
     hasText: 'Context photography must not be read as heater-product evidence.',
@@ -443,7 +443,7 @@ test('unpublished heater evidence is labelled rather than inferred from context 
   await expect(main.locator('a[href="/products/lighting-heating/downlights"]'))
     .toHaveCount(1);
   await expect(main.locator('a[href="/products/screens-walls/drop-down-blinds"]'))
-    .toHaveCount(1);
+    .toHaveCount(0);
 });
 
 test('product media motion is removed when reduced motion is requested', async ({ page }) => {

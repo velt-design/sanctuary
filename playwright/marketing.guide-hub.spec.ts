@@ -54,12 +54,12 @@ for (const viewport of viewports) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', description);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Find the guide for the decision in front of you' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Pergola guides.' })).toBeVisible();
     await expect(main.getByText('Editorial review: Sanctuary Pergolas')).toBeVisible();
     await expect(main.locator('time[datetime="2026-07-22"]')).toHaveText('22 July 2026');
     await expect(main.locator('h1')).toHaveCount(1);
     await expect(main.locator('[data-guide-link]')).toHaveCount(expectedGuides.length);
-    await expect(main.getByRole('navigation', { name: 'Guide chapters' }).locator('a')).toHaveCount(3);
+    await expect(main.getByRole('navigation', { name: 'Guide chapters' })).toHaveCount(0);
 
     for (const guide of expectedGuides) {
       const link = main.locator(`[data-guide-link][href="${guide.href}"]`);
@@ -69,11 +69,7 @@ for (const viewport of viewports) {
       await expect(link, `${guide.title} should be linked once`).toHaveCount(1);
       await expect(link).toHaveText(guide.title);
       await expect(card).toContainText(guide.number);
-      await expect(card).toContainText(guide.label);
       const guideContent = pergolaGuides.find(({ href }) => href === guide.href);
-      await expect(card.locator('.guide-hub-card__heading em')).toHaveText(
-        guideContent!.prompt,
-      );
       await expect(card.locator('.guide-hub-card__summary')).toHaveText(
         guideContent!.summary,
       );
@@ -83,18 +79,20 @@ for (const viewport of viewports) {
     const commercialGuide = main.locator(
       '[data-guide-card]:has([data-guide-link][href="/commercial-pergolas-auckland"])',
     );
-    await expect(commercialGuide).toContainText('Make more of the venue');
     await expect(commercialGuide).toContainText(
-      'How Sanctuary designs and builds commercial pergolas while coordinating engineering, consent and trades from the venue brief through installation.',
+      'Define Sanctuary’s role, site coordination and delivery scope.',
     );
 
     const renderedGuides = await main.locator('[data-guide-card]').evaluateAll((cards) => cards.map((card) => ({
       number: card.querySelector('.guide-hub-card__number')?.textContent?.trim(),
       href: card.querySelector<HTMLAnchorElement>('[data-guide-link]')?.getAttribute('href'),
       title: card.querySelector('[data-guide-link]')?.textContent?.trim(),
-      label: card.querySelector('.guide-hub-card__heading small')?.textContent?.trim(),
     })));
-    expect(renderedGuides).toEqual(expectedGuides.map((guide) => ({ ...guide })));
+    expect(renderedGuides).toEqual(expectedGuides.map(({ number, href, title }) => ({
+      number,
+      href,
+      title,
+    })));
 
     for (const chapter of expectedChapterNumbers) {
       const numbers = await main.locator(`#${chapter.id} .guide-hub-card__number`).allTextContents();
@@ -109,7 +107,12 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Get an estimate', exact: true })).toBeVisible();
+      await expect(
+        page.locator('header.site').getByRole('link', {
+          name: 'Start your project',
+          exact: true,
+        }),
+      ).toBeVisible();
     }
 
     if (capture) {

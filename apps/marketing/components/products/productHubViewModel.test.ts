@@ -32,7 +32,7 @@ describe("buildProductHubViewModel", () => {
     ).toEqual([3, 3]);
   });
 
-  it("preserves every canonical product route and only two project stories", () => {
+  it("preserves every canonical product route and keeps one project story", () => {
     const model = buildProductHubViewModel();
 
     expect([...model.canonicalProductRoutes].sort()).toEqual(
@@ -40,7 +40,7 @@ describe("buildProductHubViewModel", () => {
     );
     expect(model.projectStories.map((project) => project.slug)).toEqual([
       "warkworth-outdoor-room",
-      "muriwai-courtyard",
     ]);
+    expect(model.guideLinks).toHaveLength(1);
   });
 });

@@ -15,7 +15,9 @@ const openProject = vi.fn();
 const prefetchQuery = vi.fn();
 const invalidateQueries = vi.fn();
 const setQueryData = vi.fn();
+const setQueriesData = vi.fn();
 const getQueryData = vi.fn();
+const getQueriesData = vi.fn();
 const toastError = vi.fn();
 const toastSuccess = vi.fn();
 const toastInfo = vi.fn();
@@ -82,7 +84,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       prefetchQuery,
       invalidateQueries,
       setQueryData,
+      setQueriesData,
       getQueryData,
+      getQueriesData,
     }),
   };
 });
@@ -112,6 +116,39 @@ const initialContacts: Contact[] = [
   },
 ];
 
+function matchingIndexData(options: { queryKey: readonly unknown[] }) {
+  const archive = options.queryKey[3] as 'active' | 'archived' | 'all';
+  const params = options.queryKey[4] as {
+    search: string;
+    status: Project['status'] | 'all';
+    due: 'all' | 'due' | 'overdue' | 'today';
+    today: string;
+    page: number;
+    pageSize: 25 | 50 | 100;
+    sort: 'newest';
+  };
+  return {
+    archive,
+    projects: {
+      rows: initialProjects,
+      totalCount: 1,
+      truncated: false,
+      page: params.page,
+      pageSize: params.pageSize,
+      totalPages: 1,
+    },
+    contacts: { rows: initialContacts, totalCount: 1, truncated: false },
+    query: {
+      search: params.search,
+      status: params.status,
+      due: params.due,
+      today: params.today,
+      sort: params.sort,
+    },
+    generatedAt: '2026-04-03T01:00:00.000Z',
+  };
+}
+
 describe('ProjectsIndexClient', () => {
   beforeEach(() => {
     replace.mockReset();
@@ -121,20 +158,18 @@ describe('ProjectsIndexClient', () => {
     prefetchQuery.mockResolvedValue(undefined);
     invalidateQueries.mockReset();
     setQueryData.mockReset();
+    setQueriesData.mockReset();
     getQueryData.mockReset();
+    getQueriesData.mockReset();
+    getQueriesData.mockReturnValue([]);
     toastError.mockReset();
     toastSuccess.mockReset();
     toastInfo.mockReset();
     apiJsonMock.mockReset();
     apiJsonMock.mockResolvedValue({});
     useQueryMock.mockReset();
-    useQueryMock.mockImplementation(() => ({
-      data: {
-        archive: 'active',
-        projects: { rows: initialProjects, totalCount: 1, truncated: false },
-        contacts: { rows: initialContacts, totalCount: 1, truncated: false },
-        generatedAt: '2026-04-03T01:00:00.000Z',
-      },
+    useQueryMock.mockImplementation((options) => ({
+      data: matchingIndexData(options),
       error: null,
       isFetching: false,
       isPlaceholderData: false,
@@ -156,7 +191,15 @@ describe('ProjectsIndexClient', () => {
 
     expect(useQueryMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'),
+        queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', {
+          search: 'deck',
+          status: 'SENT',
+          due: 'today',
+          today: '2026-04-03',
+          page: 1,
+          pageSize: 50,
+          sort: 'newest',
+        }),
       }),
     );
     expect((rendered.container.querySelector('#projectSearch') as HTMLInputElement | null)?.value).toBe('deck');
@@ -189,7 +232,7 @@ describe('ProjectsIndexClient', () => {
 
   it('does not retain active rows while the archived scope is pending', () => {
     useQueryMock.mockImplementation((options: { queryKey: readonly unknown[] }) => {
-      if (options.queryKey.at(-1) === 'archived') {
+      if (options.queryKey[3] === 'archived') {
         return {
           data: undefined,
           error: null,
@@ -199,12 +242,7 @@ describe('ProjectsIndexClient', () => {
         };
       }
       return {
-        data: {
-          archive: 'active',
-          projects: { rows: initialProjects, totalCount: 1, truncated: false },
-          contacts: { rows: initialContacts, totalCount: 1, truncated: false },
-          generatedAt: '2026-04-03T01:00:00.000Z',
-        },
+        data: matchingIndexData(options),
         error: null,
         isFetching: false,
         isPlaceholderData: false,
@@ -252,18 +290,13 @@ describe('ProjectsIndexClient', () => {
 
   it('keeps known rows visible when a refresh fails', () => {
     const refetch = vi.fn();
-    useQueryMock.mockReturnValue({
-      data: {
-        archive: 'active',
-        projects: { rows: initialProjects, totalCount: 1, truncated: false },
-        contacts: { rows: initialContacts, totalCount: 1, truncated: false },
-        generatedAt: '2026-04-03T01:00:00.000Z',
-      },
+    useQueryMock.mockImplementation((options) => ({
+      data: matchingIndexData(options),
       error: new Error('offline'),
       isFetching: false,
       isPlaceholderData: false,
       refetch,
-    });
+    }));
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
         initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
@@ -274,22 +307,18 @@ describe('ProjectsIndexClient', () => {
     expect(rendered.container.querySelector('main')?.getAttribute('data-projects-index-state')).toBe('refresh-failed');
     expect(rendered.container.textContent).toContain('Deck Build');
     expect(rendered.container.textContent).toContain('Retry');
+    expect(Array.from(rendered.container.querySelectorAll('button')).filter((button) => button.textContent === 'Retry')).toHaveLength(1);
     rendered.unmount();
   });
 
   it.each([401, 403])('hides cached rows after an access-ending %s response', (status) => {
-    useQueryMock.mockReturnValue({
-      data: {
-        archive: 'active',
-        projects: { rows: initialProjects, totalCount: 1, truncated: false },
-        contacts: { rows: initialContacts, totalCount: 1, truncated: false },
-        generatedAt: '2026-04-03T01:00:00.000Z',
-      },
+    useQueryMock.mockImplementation((options) => ({
+      data: matchingIndexData(options),
       error: new ApiError('Access ended', { status, body: null }),
       isFetching: false,
       isPlaceholderData: false,
       refetch: vi.fn(),
-    });
+    }));
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
         initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}

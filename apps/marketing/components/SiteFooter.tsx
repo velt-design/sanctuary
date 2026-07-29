@@ -15,17 +15,14 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
     <footer className="relative bg-[#121212] text-[#f5f6f7]">
       <div className="mx-auto grid w-full max-w-7xl gap-6 px-6 py-8 sm:px-8 md:grid-cols-2 md:gap-10 md:px-12 md:py-16 lg:grid-cols-[1.15fr_0.85fr_0.9fr]">
         <section aria-labelledby="footer-contact-heading" className="grid content-start gap-3 md:gap-5">
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#f5f6f7]/65">
-            Have a project in mind?
-          </p>
           <h2 id="footer-contact-heading" className="max-w-lg text-3xl font-semibold tracking-[0.08em] uppercase sm:text-4xl">
-            Start with the site and intended use.
+            Tell us about your project.
           </h2>
           <Link
             href="/contact"
             className={`inline-flex min-h-11 w-fit items-center justify-center border border-[#f5f6f7] px-6 py-3 text-sm font-medium tracking-[0.16em] uppercase ${styles.primaryAction}`}
           >
-            Discuss your project
+            Start your project
           </Link>
           <div className="grid gap-1 text-sm">
             <a
@@ -43,10 +40,7 @@ export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProp
           </div>
         </section>
 
-        <section aria-labelledby="footer-pathways-heading" className="grid content-start gap-2 md:gap-4">
-          <h2 id="footer-pathways-heading" className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f5f6f7]/65">
-            Project pathways
-          </h2>
+        <section className="grid content-start gap-2 md:gap-4">
           <nav aria-label="Footer navigation" className="grid text-sm font-medium uppercase tracking-[0.12em]">
             <Link href="/commercial-pergolas-auckland" className={`inline-flex min-h-11 items-center border-b border-white/15 ${styles.navigationLink}`}>
               Commercial

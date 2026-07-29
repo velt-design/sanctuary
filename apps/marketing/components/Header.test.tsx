@@ -169,13 +169,11 @@ describe('shared mobile header interaction', () => {
     expect(menu?.getAttribute('aria-hidden')).toBe('false');
     expect(menu?.hasAttribute('inert')).toBe(false);
     expect(links.map((link) => link.textContent)).toEqual([
-      'Home',
       'Projects',
       'Pergola options',
       'Commercial',
-      'Architects, designers & builders',
-      'Contact',
-      'Get an estimate',
+      'Professionals',
+      'Start your project',
     ]);
     expect(document.activeElement).toBe(links[0]);
     expect(document.body.classList.contains('no-scroll')).toBe(true);

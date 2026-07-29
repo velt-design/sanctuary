@@ -45,16 +45,6 @@ const productHubGuideLinks = [
     label: "Pergola cost and scope",
     copy: "Understand the inputs that change scope before comparing proposals.",
   },
-  {
-    href: "/custom-pergolas-auckland",
-    label: "Why custom design matters",
-    copy: "See how the house connection, measured levels and priorities shape the result.",
-  },
-  {
-    href: "/pergolas-with-blinds",
-    label: "Planning screens and blinds",
-    copy: "Compare fixed and deployable edges before deciding how open the room should feel.",
-  },
 ] as const;
 
 export function buildProductHubViewModel() {
@@ -71,7 +61,7 @@ export function buildProductHubViewModel() {
     category,
     products: getProductsByCategory(category.slug),
   }));
-  const projectStories = ["warkworth-outdoor-room", "muriwai-courtyard"].map(
+  const projectStories = ["warkworth-outdoor-room"].map(
     (slug) => {
       const project = projects.find((candidate) => candidate.slug === slug);
       if (!project) {

@@ -17,6 +17,7 @@ const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/invoices/server.ts',
   'apps/portal/lib/marketingAttribution/server.ts',
+  'apps/portal/lib/projects/createProjectCommand.ts',
   'apps/portal/lib/quotes/serverCore.ts',
   'apps/portal/lib/quotes/serverEmail.ts',
   'apps/portal/lib/quotes/serverLoaders.ts',
@@ -29,7 +30,11 @@ const COMPATIBILITY_CLIENT_PATTERN = /\bsupabaseServer\b|\bgetSupabaseServer\s*\
 const SERVICE_ROLE_PATTERN = /\bsupabaseServiceRole\b|\bgetSupabaseServiceRole\s*\(/;
 
 function trackedFiles(): string[] {
-  return execFileSync('git', ['ls-files', '-z'], { cwd: process.cwd(), encoding: 'utf8' })
+  return execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+    { cwd: process.cwd(), encoding: 'utf8' },
+  )
     .split('\0')
     .filter(Boolean);
 }

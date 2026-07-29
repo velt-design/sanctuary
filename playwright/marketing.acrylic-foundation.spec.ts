@@ -33,7 +33,7 @@ for (const viewport of viewports) {
 
     await expect(page).toHaveTitle('Acrylic Roof Pergolas Auckland | Sanctuary Pergolas');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://www.sanctuarypergolas.co.nz${route}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Acrylic roof pergolas for Auckland homes, designed to keep the light' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Acrylic roof pergolas for Auckland homes.' })).toBeVisible();
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('header.site')).toBeVisible();
     await expect(page.locator('footer')).toBeAttached();
@@ -48,7 +48,9 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible();
       await expect(page.locator('header.site .desktop-nav')).toBeHidden();
     } else {
-      await expect(page.getByRole('link', { name: 'Get an estimate' })).toBeVisible();
+      await expect(
+        page.locator('header.site').getByRole('link', { name: 'Start your project' }),
+      ).toBeVisible();
     }
 
     await expect(page.locator('.acrylic-sticky-cta')).toHaveCount(0);
@@ -59,7 +61,7 @@ for (const viewport of viewports) {
       await page.locator('#compare-tints').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(evidenceDirectory, `${capturePhase}-${viewport.name}-tints.png`) });
       const projectImages = page.locator('.acrylic-project-card img');
-      await expect(projectImages).toHaveCount(4);
+      await expect(projectImages).toHaveCount(3);
       await projectImages.first().scrollIntoViewIfNeeded();
       await expect(projectImages.first()).toBeVisible();
       await expect.poll(() => projectImages.first().evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
@@ -99,7 +101,7 @@ test('acrylic landing interactions remain accessible and preserve form input on 
   const message = page.locator('#acrylic-enquiry-message');
   await message.fill('A covered deck that keeps daylight in the kitchen.');
   expect(await message.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
-  await page.getByRole('button', { name: 'Request my initial estimate' }).click();
+  await page.getByRole('button', { name: 'Send project brief' }).click();
   const errorSummary = page.locator('#acrylic-enquiry-error-summary');
   await expect(errorSummary).toBeFocused();
   await expect(errorSummary).toContainText('Enter your name.');
@@ -111,7 +113,9 @@ test('acrylic landing interactions remain accessible and preserve form input on 
   await expect(faq).toHaveCount(1);
   await faq.locator('summary').click();
   await expect(faq).toHaveAttribute('open', '');
-  await expect(faq.getByText('Clear prioritises daylight and sky views.')).toBeVisible();
+  await expect(faq.getByText(
+    'Choose for the site, sun path, adjoining rooms, roof area and intended use—not the sample colour alone.',
+  )).toBeVisible();
 });
 
 test('acrylic landing route remains listed in the public sitemap', async ({ page }) => {

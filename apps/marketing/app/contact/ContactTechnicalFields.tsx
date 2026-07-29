@@ -22,9 +22,8 @@ export default function ContactTechnicalFields() {
     <>
       <fieldset className="contact-form__subsection contact-form__field--wide">
         <legend>
-          Approximate dimensions <span>Optional</span>
+          Dimensions <span>Optional</span>
         </legend>
-        <p>Leave any measurement blank if it is not known yet.</p>
         <div className="contact-form__dimensions">
           <label htmlFor="contact-width">
             Width
@@ -34,14 +33,14 @@ export default function ContactTechnicalFields() {
             </span>
           </label>
           <label htmlFor="contact-depth">
-            Projection or depth
+            Depth
             <span>
               <input id="contact-depth" name="depthM" type="number" min="1" max="10" step="0.1" inputMode="decimal" placeholder="3.0" />
               <small>metres</small>
             </span>
           </label>
           <label htmlFor="contact-height">
-            Approximate height
+            Height
             <span>
               <input id="contact-height" name="heightM" type="number" min="1.5" max="6" step="0.1" inputMode="decimal" placeholder="2.5" />
               <small>metres</small>
@@ -52,7 +51,7 @@ export default function ContactTechnicalFields() {
 
       <div className="contact-form__field">
         <label htmlFor="contact-style">
-          Preferred pergola form <span>Optional</span>
+          Pergola form <span>Optional</span>
         </label>
         <select id="contact-style" name="style" defaultValue="">
           <option value="">Not sure yet</option>
@@ -66,7 +65,7 @@ export default function ContactTechnicalFields() {
 
       <fieldset className="contact-form__subsection">
         <legend>
-          Roof approach <span>Optional</span>
+          Roof <span>Optional</span>
         </legend>
         <div className="contact-form__checks">
           {roofOptions.map(([value, label]) => (
@@ -80,7 +79,7 @@ export default function ContactTechnicalFields() {
 
       <fieldset className="contact-form__subsection contact-form__field--wide">
         <legend>
-          Options you may want to discuss <span>Optional</span>
+          Other options <span>Optional</span>
         </legend>
         <div className="contact-form__checks contact-form__checks--four">
           {addOnOptions.map(([value, label]) => (

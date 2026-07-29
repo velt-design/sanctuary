@@ -123,6 +123,11 @@ const nextConfig: NextConfig = {
       { source: '/about-us', destination: '/', permanent: true },
       { source: '/gallery', destination: '/projects', permanent: true },
       { source: '/testimonials', destination: '/projects', permanent: true },
+      {
+        source: '/acrylic-roof-pergolas-auckland-v2',
+        destination: '/acrylic-roof-pergolas-auckland',
+        permanent: true,
+      },
       // Avoid self-redirect loops. Only include redirects when source !== destination.
 
       // Renamed project slugs -> accurate slugs (keep inbound links / SEO equity)

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import HeaderActions from '@/components/layout/HeaderActions';
 import StaffPageHeader from '@/components/layout/StaffPageHeader';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
-import { ButtonLink, Input } from '@/components/ui/foundation/FoundationControls';
+import { ButtonLink, Input, Select } from '@/components/ui/foundation/FoundationControls';
 import { DataStatePanel } from '@/components/ui/foundation/FoundationFeedback';
 import {
   Card,
@@ -17,17 +17,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/foundation/FoundationSurfaces';
+import { Pagination } from '@/components/ui/foundation/FoundationPagination';
 import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import ContactsImportAction from './ContactsImportAction';
 import styles from './contacts.module.css';
 import { useContactsIndexData } from './useContactsIndexData';
+import { useDebouncedValue } from '@/lib/list/useDebouncedValue';
+import type {
+  ContactsIndexPageSize,
+  ContactsIndexSort,
+} from '@/lib/contacts/contactsIndexContract';
 
 export default function ContactsIndexClient({ initialQuery = '' }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<ContactsIndexPageSize>(50);
+  const [sort, setSort] = useState<ContactsIndexSort>('name_asc');
+  const debouncedQuery = useDebouncedValue(query, 180);
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const contactsIndex = useContactsIndexData(host);
+  const contactsIndex = useContactsIndexData({
+    search: debouncedQuery,
+    page,
+    pageSize,
+    sort,
+  });
   const { finishInstantRoute } = usePortalRouteTransition();
   const contacts = contactsIndex.data?.contacts.rows ?? [];
 
@@ -35,15 +50,18 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
     finishInstantRoute('contacts-index');
   }, [finishInstantRoute]);
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return contacts;
-    return contacts.filter((contact) =>
-      contact.displayName.toLowerCase().includes(normalized) ||
-      contact.email.toLowerCase().includes(normalized) ||
-      contact.phone.toLowerCase().includes(normalized),
-    );
-  }, [contacts, query]);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, pageSize, sort]);
+
+  useEffect(() => {
+    const totalPages = contactsIndex.data?.contacts.totalPages;
+    if (totalPages && page > totalPages) setPage(totalPages);
+  }, [contactsIndex.data?.contacts.totalPages, page]);
+
+  const totalCount = contactsIndex.data?.contacts.totalCount ?? 0;
+  const rangeStart = totalCount ? (page - 1) * pageSize + 1 : 0;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
 
   return (
     <PageLayout
@@ -55,7 +73,7 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
         variant="index"
         title="Contacts"
         description="Search customer records, review linked projects, or add a new enquiry contact."
-        count={contactsIndex.data?.contacts.totalCount ?? contacts.length}
+        count={contactsIndex.data?.contacts.totalCount ?? undefined}
         right={
           <HeaderActions>
             <ContactsImportAction contacts={contacts} host={host} />
@@ -74,7 +92,7 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
 
       <div className={styles.stack}>
         <Card title="Find contacts" aria-label="Search contacts" padding="compact">
-          <div role="search" aria-label="Search and filter" className={styles.searchField}>
+          <div role="search" aria-label="Search and filter" className={styles.listControls}>
             <Input
               id="contactSearch"
               label="Search"
@@ -82,12 +100,41 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Name, email, phone..."
             />
+            <Select
+              id="contactSort"
+              label="Sort"
+              value={sort}
+              onChange={(event) => setSort(event.target.value as ContactsIndexSort)}
+            >
+              <option value="name_asc">Name A–Z</option>
+              <option value="name_desc">Name Z–A</option>
+              <option value="created_desc">Newest first</option>
+              <option value="created_asc">Oldest first</option>
+            </Select>
+            <Select
+              id="contactPageSize"
+              label="Rows per page"
+              value={String(pageSize)}
+              onChange={(event) => setPageSize(Number(event.target.value) as ContactsIndexPageSize)}
+            >
+              <option value="25">25 rows</option>
+              <option value="50">50 rows</option>
+              <option value="100">100 rows</option>
+            </Select>
           </div>
         </Card>
 
         <Card
           title="All contacts"
-          action={<span className={styles.muted}>{contactsIndex.state === 'pending' || contactsIndex.state === 'cached' ? 'Updating...' : `${filtered.length} shown`}</span>}
+          action={(
+            <span className={styles.muted}>
+              {contactsIndex.state === 'pending' || contactsIndex.state === 'cached'
+                ? 'Updating...'
+                : contactsIndex.state === 'refresh-failed'
+                  ? contacts.length ? `Refresh failed · ${rangeStart}–${rangeEnd} of ${totalCount}` : 'Refresh failed'
+                  : `${rangeStart}–${rangeEnd} of ${totalCount}`}
+            </span>
+          )}
           aria-label="Contacts list"
           aria-busy={contactsIndex.state === 'pending' || contactsIndex.state === 'cached'}
           padding="none"
@@ -104,36 +151,46 @@ export default function ContactsIndexClient({ initialQuery = '' }: { initialQuer
                 <DataStatePanel
                   state="stale"
                   title="Could not refresh contacts"
-                  description="Showing the last saved list."
+                  description={contacts.length
+                    ? 'Showing the last saved list.'
+                    : 'No saved list is available. Retry the request.'}
                   onRetry={() => void contactsIndex.retry()}
                 />
               ) : null}
 
-              {filtered.length ? (
-                <Table className={styles.responsiveTable}>
-                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {filtered.map((contact) => (
-                      <TableRow key={contact.id}>
-                        <TableCell><strong>{contact.displayName}</strong></TableCell>
-                        <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.email || '\u2014'}</TableCell>
-                        <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.phone || '\u2014'}</TableCell>
-                        <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(contact.createdAt)}</TableCell>
-                        <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              {contacts.length ? (
+                <>
+                  <Table className={styles.responsiveTable}>
+                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead className={styles.mobileOptional}>Email</TableHead><TableHead className={styles.mobileOptional}>Phone</TableHead><TableHead className={styles.mobileOptional}>Created</TableHead><TableHead><span className="visually-hidden">Actions</span></TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {contacts.map((contact) => (
+                        <TableRow key={contact.id}>
+                          <TableCell><strong>{contact.displayName}</strong></TableCell>
+                          <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.email || '\u2014'}</TableCell>
+                          <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{contact.phone || '\u2014'}</TableCell>
+                          <TableCell className={`${styles.muted} ${styles.mobileOptional}`}>{formatPortalDateTime(contact.createdAt)}</TableCell>
+                          <TableCell className={styles.rowAction}><ButtonLink variant="quiet" size="small" href={`/staff/contacts/${encodeURIComponent(contact.id)}`}>Open</ButtonLink></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={contactsIndex.data?.contacts.totalPages ?? 1}
+                    itemSummary={`${rangeStart}–${rangeEnd} of ${totalCount} contacts`}
+                    onPageChange={setPage}
+                  />
+                </>
               ) : contactsIndex.state === 'fresh' ? (
                 <DataStatePanel
-                  state={query.trim() ? 'filtered-empty' : 'empty'}
-                  title={query.trim() ? 'No contacts match your search.' : 'No contacts found.'}
-                  description={query.trim() ? 'Clear or adjust the search.' : 'Create the first contact to begin.'}
-                  onClear={query.trim() ? () => setQuery('') : undefined}
+                  state={debouncedQuery.trim() ? 'filtered-empty' : 'empty'}
+                  title={debouncedQuery.trim() ? 'No contacts match your search.' : 'No contacts found.'}
+                  description={debouncedQuery.trim() ? 'Clear or adjust the search.' : 'Create the first contact to begin.'}
+                  onClear={debouncedQuery.trim() ? () => setQuery('') : undefined}
                 />
-              ) : (
+              ) : contactsIndex.state === 'pending' || contactsIndex.state === 'cached' ? (
                 <LoadingSkeleton rows={5} columns={5} label="Updating contacts..." />
-              )}
+              ) : null}
             </>
           )}
         </Card>

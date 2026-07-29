@@ -107,263 +107,65 @@ const NEXT_SECTION: Record<ConfirmableStepId, StepId | null> = {
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_PHOTO_COUNT = 8;
 
-const BRANCH_GUIDE: Record<
-  EnquiryType,
-  {
-    bestFor: string[];
-    consider: string[];
-    worksWellWith: string[];
-    microEducation: string;
-    exampleUseCase: string;
-  }
-> = {
-  residential: {
-    bestFor: ['Outdoor family dining', 'Weather cover with light', 'Projects under active renovation'],
-    consider: ['Confirm sun direction early', 'Decide if privacy control is needed'],
-    worksWellWith: ['Acrylic roof', 'Drop-down blinds', 'Warm lighting'],
-    microEducation: 'Clients like you usually start here when the goal is a true outdoor room, not just shade.',
-    exampleUseCase:
-      'A family renovating their rear deck chooses this path to compare roof style, glazing, and privacy extras before locking a consultation brief.',
-  },
-  commercial: {
-    bestFor: ['Customer seating zones', 'Staff shelter areas', 'Public-facing hospitality'],
-    consider: ['Durability and cleaning cycles', 'Public circulation around the structure'],
-    worksWellWith: ['Timber + acrylic mix', 'Heaters', 'Lighting'],
-    microEducation: 'Commercial briefs tend to benefit from early compliance and circulation checks.',
-    exampleUseCase:
-      'A cafe owner planning year-round seating uses this path to align durability, lighting, and consent considerations in one guided shortlist.',
-  },
-  professional: {
-    bestFor: ['Architect-led projects', 'Developer coordination', 'Documentation-first workflows'],
-    consider: ['Lead time for engineering', 'Detail sign-off sequence'],
-    worksWellWith: ['Material pairing studies', 'Consent pathway review', 'Program staging'],
-    microEducation: 'Design teams usually choose this path when they want detail-first collaboration.',
-    exampleUseCase:
-      'An architect preparing early concept options uses this path to set style and material intent before a coordinated Design Consultation.',
-  },
-};
-
-const ROOF_STYLE_PAIRINGS: Record<RoofStyle, string[]> = {
-  pitched: ['Acrylic clear', 'Downlights'],
-  gable: ['Acrylic opal', 'Drop-down blinds'],
-  hip: ['Timber lining', 'Slat screens'],
-  perimeter: ['Combination roof', 'LED strip lighting'],
-  unsure: ['Design Consultation', 'Photo-led recommendation'],
-};
-
-const ROOF_STYLE_EXAMPLE_USE_CASE: Record<RoofStyle, string> = {
-  pitched: 'A compact courtyard project selects pitched to keep drainage simple while preserving head height along the house edge.',
-  gable: 'A wide entertainment deck selects gable to create a brighter, taller centre line with balanced airflow.',
-  hip: 'An exposed corner site selects hip to soften wind behavior and keep the roof expression tidy from all sides.',
-  perimeter: 'A modern extension selects box-perimeter for a clean architectural edge while coordinating drainage in detailed design.',
-  unsure: 'A homeowner uploads reference photos and keeps this tab active while Sanctuary recommends a style in consultation.',
-};
-
-const ROOF_MATERIAL_GUIDE: Record<
-  RoofMaterialChoice,
-  {
-    bestFor: string[];
-    consider: string[];
-    worksWellWith: string[];
-    microEducation: string;
-    exampleUseCase: string;
-  }
-> = {
-  acrylic: {
-    bestFor: ['Keeping the area bright', 'Weather protection without closing in'],
-    consider: ['Summer glare control', 'Tint choice for comfort'],
-    worksWellWith: ['Drop-down blinds', 'Downlights'],
-    microEducation: 'Acrylic is often selected where natural light is the highest priority.',
-    exampleUseCase:
-      'A north-facing dining zone uses acrylic with tint review to keep daylight while controlling glare in summer afternoons.',
-  },
-  timber: {
-    bestFor: ['Warm ceiling finish', 'Architectural integration with interiors'],
-    consider: ['Finish maintenance over time', 'Lighting integration detail'],
-    worksWellWith: ['LED strips', 'Heaters'],
-    microEducation: 'Timber is common when the pergola is treated as an extension of the home.',
-    exampleUseCase:
-      'A renovation project extends interior materials outdoors, using timber lining and integrated lighting for an all-season room feel.',
-  },
-  combination: {
-    bestFor: ['Targeted daylight zones', 'Balanced shade and brightness'],
-    consider: ['Panel layout planning', 'Transition detailing between materials'],
-    worksWellWith: ['Skylight strips', 'Slat screens'],
-    microEducation: 'Combination layouts are frequently chosen to tune comfort by zone.',
-    exampleUseCase:
-      'A long outdoor room uses combination roofing with daylight strips over circulation and denser shade above seating.',
-  },
-  unsure: {
-    bestFor: ['Early-stage planning', 'Projects awaiting photos or orientation review'],
-    consider: ['Comfort priorities first', 'How you use the area day to day'],
-    worksWellWith: ['Roof style guidance', 'Design Consultation'],
-    microEducation: 'Not sure is a valid choice while you compare light, warmth, and maintenance tradeoffs.',
-    exampleUseCase:
-      'A homeowner still comparing comfort priorities keeps this as draft while reviewing examples and confirming direction later.',
-  },
-};
-
-const TIMEFRAME_GUIDE: Record<
-  Timeframe,
-  {
-    summary: string;
-    bestFor: string[];
-    consider: string[];
-    worksWellWith: string[];
-    microEducation: string;
-    exampleUseCase: string;
-  }
-> = {
-  asap: {
-    summary: 'Prioritise earliest possible consultation and scheduling windows.',
-    bestFor: ['Time-sensitive property updates', 'Upcoming events'],
-    consider: ['Approvals may still affect dates'],
-    worksWellWith: ['Fast photo sharing', 'Early design lock'],
-    microEducation: 'ASAP briefs move fastest when site photos and measurements are ready before consultation.',
-    exampleUseCase:
-      'A family planning a near-term event selects ASAP and confirms dimensions early so design and scheduling can be prioritized.',
-  },
-  one_to_three_months: {
-    summary: 'Ideal for projects moving this season with a short planning runway.',
-    bestFor: ['Active renovation stages', 'Committed projects'],
-    consider: ['Finalize material choices early'],
-    worksWellWith: ['Design Consultation', 'Site information readiness'],
-    microEducation: 'This window usually benefits from locking roof direction and extras in the first consultation.',
-    exampleUseCase:
-      'A renovation already underway selects this timeframe to align pergola detailing with other contractors on site.',
-  },
-  three_to_six_months: {
-    summary: 'Balanced planning window for design detail and installation preparation.',
-    bestFor: ['Staged home upgrades', 'Commercial program alignment'],
-    consider: ['Coordinate with other trades'],
-    worksWellWith: ['Detailed specifications', 'Engineering coordination'],
-    microEducation: 'Three-to-six month plans typically allow the cleanest sequencing for design, approvals, and build booking.',
-    exampleUseCase:
-      'A staged property upgrade chooses this window to coordinate consent, structural checks, and installation sequencing.',
-  },
-  researching: {
-    summary: 'Best when you are gathering options before choosing a direction.',
-    bestFor: ['Early exploration', 'Budget and layout discovery'],
-    consider: ['Save references you like'],
-    worksWellWith: ['Style browsing', 'Material education'],
-    microEducation: 'Researching is useful when you want guidance without locking scope too early.',
-    exampleUseCase:
-      'An early-stage brief uses this option while comparing style and material combinations before committing to dates.',
-  },
-};
-
-const EXTRAS_GUIDE: Record<
-  ExtraId,
-  {
-    bestFor: string[];
-    consider: string[];
-    worksWellWith: string[];
-    microEducation: string;
-    exampleUseCase: string;
-  }
-> = {
-  blinds: {
-    bestFor: ['Weather control', 'Low-angle sun protection', 'Flexible privacy'],
-    consider: ['Wind exposure', 'Control location'],
-    worksWellWith: ['Downlights', 'Acrylic roofs'],
-    microEducation: 'Blinds are often the first add-on for projects focused on all-season comfort.',
-    exampleUseCase:
-      'An evening dining deck adds drop-down blinds on one exposed edge to improve comfort without closing the pergola permanently.',
-  },
-  slats: {
-    bestFor: ['Filtered privacy', 'Architectural screening', 'Wind softening'],
-    consider: ['Sightline planning', 'Screen orientation'],
-    worksWellWith: ['Combination roofs', 'LED strips'],
-    microEducation: 'Slat screens are usually chosen where privacy and airflow need balance.',
-    exampleUseCase:
-      'A boundary-facing patio adds slat screens to control overlooking while keeping a light, open feel.',
-  },
-  acrylic_infills: {
-    bestFor: ['Rain blocking', 'Wind shielding', 'Clear enclosure zones'],
-    consider: ['Ventilation strategy', 'Panel cleaning access'],
-    worksWellWith: ['Heaters', 'Downlights'],
-    microEducation: 'Infill panels are commonly used to protect seating zones from prevailing weather.',
-    exampleUseCase:
-      'A windswept corner lounge adds acrylic infills on two sides to improve rain protection and extend seasonal use.',
-  },
-  downlights: {
-    bestFor: ['Task lighting', 'Even night-time coverage', 'Dining visibility'],
-    consider: ['Circuit planning', 'Switching zones'],
-    worksWellWith: ['Blinds', 'Timber finishes'],
-    microEducation: 'Downlights are typically selected first when clients want practical night-time usability.',
-    exampleUseCase:
-      'A family entertaining area adds downlights over the table zone for practical lighting through evening use.',
-  },
-  led_strips: {
-    bestFor: ['Ambient glow', 'Edge definition', 'Night-time atmosphere'],
-    consider: ['Dimming control', 'Driver placement'],
-    worksWellWith: ['Slat screens', 'Combination roofs'],
-    microEducation: 'LED strips are often paired with downlights to separate ambience from task lighting.',
-    exampleUseCase:
-      'A modern outdoor room adds LED strips to perimeter beams for soft evening light and stronger architectural lines.',
-  },
-  heaters: {
-    bestFor: ['Cool-season comfort', 'Evening use', 'Targeted warmth'],
-    consider: ['Power load', 'Mounting clearance'],
-    worksWellWith: ['Blinds', 'Acrylic infills'],
-    microEducation: 'Heaters are usually most effective when paired with weather-control extras.',
-    exampleUseCase:
-      'A shoulder-season entertaining space adds patio heaters plus blinds to keep the area usable through cooler months.',
-  },
+const TIMEFRAME_SUMMARY: Record<Timeframe, string> = {
+  asap: 'As soon as practical.',
+  one_to_three_months: 'Within 1–3 months.',
+  three_to_six_months: 'Within 3–6 months.',
+  researching: 'No set date yet.',
 };
 
 const INSTALL_SURFACE_SUMMARY: Record<InstallSurface, string> = {
-  deck: 'Mounted to or through existing deck framing.',
-  concrete_pad: 'Anchored directly into concrete slab or pad.',
-  pavers: 'Requires checking paver base and local footing needs.',
-  ground_garden: 'May need new foundation points before install.',
-  not_sure: 'We can identify this during Design Consultation.',
+  deck: 'Existing deck.',
+  concrete_pad: 'Existing concrete.',
+  pavers: 'Paver base needs checking.',
+  ground_garden: 'New footings may be needed.',
+  not_sure: "We'll check the site.",
 };
 
 const LEVEL_SUMMARY: Record<SiteLevel, string> = {
-  ground: 'Most common installation access and setup.',
-  first: 'Raised installation with additional access planning.',
-  second_plus: 'Higher-level install with stricter access requirements.',
-  not_sure: 'We can help confirm from photos and measurements.',
+  ground: 'At ground level.',
+  first: 'At first-storey level.',
+  second_plus: 'Second storey or above.',
+  not_sure: "We'll confirm from your site information.",
 };
 
 const ATTACHMENT_SUMMARY: Record<SiteAttachment, string> = {
-  attached: 'Connected to an existing structure.',
-  freestanding: 'Independent posts and supports.',
-  not_sure: 'We can assess attachment options in consultation.',
+  attached: 'Connects to the building.',
+  freestanding: 'Independent of the building.',
+  not_sure: "We'll assess the options.",
 };
 
 const ACCESS_SUMMARY: Record<PublicAccess, string> = {
-  yes: 'Area is used by public visitors or customers.',
-  no: 'Primarily private use.',
-  not_sure: 'We can clarify public access implications together.',
+  yes: 'Used by visitors or customers.',
+  no: 'Private use.',
+  not_sure: "We'll confirm this with you.",
 };
 
 const ACRYLIC_LIGHT_FEEL_SUMMARY: Record<AcrylicLightFeel, string> = {
-  clear: 'Maximum daylight and a crisp open-sky feel.',
-  opal: 'Softer, diffused light with reduced contrast.',
-  tinted: 'Lower glare in bright conditions while retaining daylight.',
-  not_sure: 'Choose this to confirm in consultation.',
+  clear: 'Clear overhead light.',
+  opal: 'Softer, diffused light.',
+  tinted: 'Tinted daylight.',
+  not_sure: 'Decide later.',
 };
 
 const TIMBER_FINISH_SUMMARY: Record<TimberFinish, string> = {
-  natural: 'Highlight timber grain and warm tone.',
-  stained: 'Tone-match to existing joinery or deck finishes.',
-  painted: 'Crisp finish to align with surrounding architecture.',
-  not_sure: 'Choose this to confirm finish later.',
+  natural: 'Natural timber.',
+  stained: 'Stained timber.',
+  painted: 'Painted finish.',
+  not_sure: 'Decide later.',
 };
 
 const DAYLIGHT_PLACEMENT_SUMMARY: Record<DaylightPlacement, string> = {
-  circulation: 'Prioritize daylight over movement paths and walkways.',
-  seating: 'Prioritize daylight where people sit and gather.',
-  balanced: 'Balance daylight and shade across use zones.',
-  not_sure: 'Choose this to review placement in consultation.',
+  circulation: 'Daylight over circulation.',
+  seating: 'Daylight over seating.',
+  balanced: 'Balance daylight and shade.',
+  not_sure: 'Decide later.',
 };
 
 const WATER_DIRECTION_SUMMARY: Record<WaterDirectionPreference, string> = {
-  away_from_house: 'Fall directs water away from the house edge.',
-  toward_house: 'Fall directs water toward the house gutter line.',
-  not_sure: 'Choose this to confirm drainage strategy in consultation.',
+  away_from_house: 'Fall away from the house.',
+  toward_house: 'Fall toward the house gutter.',
+  not_sure: 'Decide during design.',
 };
 
 function defaultSiteForEnquiryType(enquiryType: EnquiryType): StartFlowDraft['site'] {
@@ -530,7 +332,7 @@ function buildSummaryBlock(params: {
     `Attached: ${attachedLabel}`,
     `Public access: ${publicAccessLabel}`,
     `Extras: ${extrasLabel}`,
-    `Consent check: ${consentTitle} (area ${areaLabel})`,
+    `Consent review: ${consentTitle} (area ${areaLabel})`,
     `Timeframe: ${timeframeLabel}`,
     '---',
   ].join('\n');
@@ -1406,7 +1208,6 @@ export default function StartPage() {
         value: option.value,
         title: option.label,
         summary: option.description,
-        tags: BRANCH_GUIDE[option.value].bestFor.slice(0, 2),
         image: BRANCH_MEDIA[option.value],
       })),
     [content.branch.options]
@@ -1418,7 +1219,6 @@ export default function StartPage() {
         value: option.value,
         title: option.label,
         summary: option.what,
-        tags: option.bestWhen.slice(0, 2),
         image: ROOF_STYLE_MEDIA[option.value],
       })),
     [content.roofStyle.options]
@@ -1430,7 +1230,6 @@ export default function StartPage() {
         value: option.value,
         title: option.label,
         summary: option.description,
-        tags: ROOF_MATERIAL_GUIDE[option.value].bestFor.slice(0, 2),
         image: ROOF_MATERIAL_MEDIA[option.value],
       })),
     [content.roofMaterial.options]
@@ -1536,7 +1335,7 @@ export default function StartPage() {
       content.process.timeframeOptions.map((option) => ({
         value: option.value,
         title: option.label,
-        summary: TIMEFRAME_GUIDE[option.value].summary,
+        summary: TIMEFRAME_SUMMARY[option.value],
         image: TIMEFRAME_MEDIA[option.value],
       })),
     [content.process.timeframeOptions]
@@ -1549,11 +1348,6 @@ export default function StartPage() {
         label: option.label,
         summary: option.description,
         image: BRANCH_MEDIA[option.value],
-        bestFor: BRANCH_GUIDE[option.value].bestFor,
-        consider: BRANCH_GUIDE[option.value].consider,
-        worksWellWith: BRANCH_GUIDE[option.value].worksWellWith,
-        microEducation: BRANCH_GUIDE[option.value].microEducation,
-        exampleUseCase: BRANCH_GUIDE[option.value].exampleUseCase,
       })),
     [content.branch.options]
   );
@@ -1565,11 +1359,6 @@ export default function StartPage() {
         label: option.label,
         summary: option.what,
         image: ROOF_STYLE_MEDIA[option.value],
-        bestFor: option.bestWhen,
-        consider: [option.watchOut],
-        worksWellWith: ROOF_STYLE_PAIRINGS[option.value],
-        microEducation: 'Clients with similar layouts often decide after comparing daylight and drainage behavior.',
-        exampleUseCase: ROOF_STYLE_EXAMPLE_USE_CASE[option.value],
       })),
     [content.roofStyle.options]
   );
@@ -1581,11 +1370,6 @@ export default function StartPage() {
         label: option.label,
         summary: option.description,
         image: ROOF_MATERIAL_MEDIA[option.value],
-        bestFor: ROOF_MATERIAL_GUIDE[option.value].bestFor,
-        consider: ROOF_MATERIAL_GUIDE[option.value].consider,
-        worksWellWith: ROOF_MATERIAL_GUIDE[option.value].worksWellWith,
-        microEducation: ROOF_MATERIAL_GUIDE[option.value].microEducation,
-        exampleUseCase: ROOF_MATERIAL_GUIDE[option.value].exampleUseCase,
       })),
     [content.roofMaterial.options]
   );
@@ -1595,13 +1379,8 @@ export default function StartPage() {
       content.process.timeframeOptions.map((option) => ({
         id: option.value,
         label: option.label,
-        summary: TIMEFRAME_GUIDE[option.value].summary,
+        summary: TIMEFRAME_SUMMARY[option.value],
         image: TIMEFRAME_MEDIA[option.value],
-        bestFor: TIMEFRAME_GUIDE[option.value].bestFor,
-        consider: TIMEFRAME_GUIDE[option.value].consider,
-        worksWellWith: TIMEFRAME_GUIDE[option.value].worksWellWith,
-        microEducation: TIMEFRAME_GUIDE[option.value].microEducation,
-        exampleUseCase: TIMEFRAME_GUIDE[option.value].exampleUseCase,
       })),
     [content.process.timeframeOptions]
   );
@@ -1613,11 +1392,6 @@ export default function StartPage() {
         label: option.label,
         summary: option.description,
         image: EXTRA_MEDIA[option.value],
-        bestFor: EXTRAS_GUIDE[option.value].bestFor,
-        consider: EXTRAS_GUIDE[option.value].consider,
-        worksWellWith: EXTRAS_GUIDE[option.value].worksWellWith,
-        microEducation: EXTRAS_GUIDE[option.value].microEducation,
-        exampleUseCase: EXTRAS_GUIDE[option.value].exampleUseCase,
       })),
     [content.extras.options]
   );
@@ -1690,7 +1464,7 @@ export default function StartPage() {
       rows.push({ label: 'Site + dimensions', value: siteSummary, step: 'site' });
     }
     if (completion.consent) {
-      rows.push({ label: 'Consent check', value: confirmedConsentResult.title, step: 'consent' });
+      rows.push({ label: 'Consent review', value: confirmedConsentResult.title, step: 'consent' });
     }
     if (completion.extras) {
       rows.push({ label: 'Extras', value: extrasSummary, step: 'extras' });
@@ -1716,18 +1490,12 @@ export default function StartPage() {
     timeframeSummary,
   ]);
 
-  const consentCtaLabel =
-    consentResult.code === 'building_consent_likely_required' ||
-    consentResult.code === 'possibly_exempt_with_professional_signoff_20_to_30'
-      ? 'Book a Design Consultation to review consent pathway'
-      : 'Book a Design Consultation';
-
   const submitButtonLabel =
     submitState === 'sending'
-      ? 'Booking...'
+      ? 'Sending...'
       : submitState === 'success'
-        ? 'Booked'
-        : 'Book Design Consultation';
+        ? 'Sent'
+        : 'Send project brief';
 
   const publicAccessLabel =
     draft.enquiryType === 'commercial'
@@ -1817,8 +1585,7 @@ export default function StartPage() {
                 id="branch"
                 stepLabel="Step 1"
                 title={content.branch.heading}
-                intro="Choose the path that best fits your project type."
-                helper="Card clicks set a draft choice and open details. Continue confirms the step."
+                intro="Choose who the project is for."
                 isExpanded={firstIncompleteStep === 'branch'}
                 isComplete={completion.branch}
                 sectionRef={setSectionRef('branch')}
@@ -1826,7 +1593,7 @@ export default function StartPage() {
                 onChange={() => handleStepChange('branch')}
                 canContinue={branchCanContinue}
                 onContinue={confirmBranch}
-                continueLabel="Continue to Roof Style"
+                continueLabel="Continue"
               >
                 <OptionCardGroup
                   mode="single"
@@ -1846,8 +1613,7 @@ export default function StartPage() {
                 id="roofStyle"
                 stepLabel="Step 2"
                 title={content.roofStyle.heading}
-                intro="Browse forms and pick the roof character that matches your space."
-                helper="Switching tabs in the modal will not change your selection until you explicitly select."
+                intro="Choose a form or ask us to recommend one."
                 isExpanded={firstIncompleteStep === 'roofStyle'}
                 isComplete={completion.roofStyle}
                 sectionRef={setSectionRef('roofStyle')}
@@ -1855,7 +1621,7 @@ export default function StartPage() {
                 onChange={() => handleStepChange('roofStyle')}
                 canContinue={roofStyleCanContinue}
                 onContinue={confirmRoofStyle}
-                continueLabel="Continue to Roof Material"
+                continueLabel="Continue"
               >
                 <OptionCardGroup
                   mode="single"
@@ -1874,8 +1640,7 @@ export default function StartPage() {
                 id="roofMaterial"
                 stepLabel="Step 3"
                 title={content.roofMaterial.heading}
-                intro="Set your roof material direction."
-                helper="Material cards open a tabbed guide. Use the modal's refine panel for optional secondary preferences."
+                intro="Choose a material or leave it open."
                 isExpanded={firstIncompleteStep === 'roofMaterial'}
                 isComplete={completion.roofMaterial}
                 sectionRef={setSectionRef('roofMaterial')}
@@ -1883,7 +1648,7 @@ export default function StartPage() {
                 onChange={() => handleStepChange('roofMaterial')}
                 canContinue={roofMaterialCanContinue}
                 onContinue={confirmRoofMaterial}
-                continueLabel="Continue to Site Basics"
+                continueLabel="Continue"
               >
                 <OptionCardGroup
                   mode="single"
@@ -1902,8 +1667,7 @@ export default function StartPage() {
                 id="site"
                 stepLabel="Step 4"
                 title={content.site.heading}
-                intro="Capture site basics and quick measurements."
-                helper="This step stays draft-only until you press Continue."
+                intro="Add what you know. Rough measurements are fine."
                 isExpanded={firstIncompleteStep === 'site'}
                 isComplete={completion.site}
                 sectionRef={setSectionRef('site')}
@@ -1911,10 +1675,10 @@ export default function StartPage() {
                 onChange={() => handleStepChange('site')}
                 canContinue={siteCanContinue}
                 onContinue={confirmSite}
-                continueLabel="Continue to Consent Quick-check"
+                continueLabel="Continue"
               >
                 <div className="space-y-4 rounded-xl border border-border p-4">
-                  <h3 className="text-base font-semibold text-neutral-900">4A. Site basics</h3>
+                  <h3 className="text-base font-semibold text-neutral-900">Site basics</h3>
 
                   <label className="block space-y-1">
                     <span className="text-sm font-medium text-neutral-900">Suburb / city</span>
@@ -2016,7 +1780,7 @@ export default function StartPage() {
                 </div>
 
                 <div className="space-y-4 rounded-xl border border-border p-4">
-                  <h3 className="text-base font-semibold text-neutral-900">4B. Quick measurements</h3>
+                  <h3 className="text-base font-semibold text-neutral-900">Rough measurements</h3>
                   <div className="grid gap-4 lg:grid-cols-[1fr_260px] lg:items-start">
                     <div className="grid gap-3 md:grid-cols-3">
                       <label className="space-y-1">
@@ -2073,7 +1837,7 @@ export default function StartPage() {
 
                   {dimensionsRequired && !(widthM && depthM) ? (
                     <p className="text-sm text-neutral-600">
-                      Residential and commercial paths require length and projection before continuing.
+                      Add length and projection to continue.
                     </p>
                   ) : null}
                 </div>
@@ -2085,8 +1849,7 @@ export default function StartPage() {
                 id="consent"
                 stepLabel="Step 5"
                 title={content.consent.heading}
-                intro="This quick-check updates live as your dimensions and site inputs change."
-                helper="Guidance only. Final consent pathway is confirmed during Design Consultation."
+                intro="Requirements are checked against the final project."
                 isExpanded={firstIncompleteStep === 'consent'}
                 isComplete={completion.consent}
                 sectionRef={setSectionRef('consent')}
@@ -2094,14 +1857,13 @@ export default function StartPage() {
                 onChange={() => handleStepChange('consent')}
                 canContinue={consentPrerequisitesReady}
                 onContinue={confirmConsent}
-                continueLabel="Continue to Extras"
+                continueLabel="Continue"
               >
                 <ConsentResultCard
                   ready={consentPrerequisitesReady}
                   result={consentResult}
                   disclaimer={content.consent.disclaimer}
                   links={content.consent.links}
-                  ctaLabel={consentCtaLabel}
                 />
               </StepSection>
             ) : null}
@@ -2111,8 +1873,7 @@ export default function StartPage() {
                 id="extras"
                 stepLabel="Step 6"
                 title={content.extras.heading}
-                intro="Select one or more extras, or explicitly choose no extras for now."
-                helper="Extras are draft selections until you press Continue."
+                intro="Choose any extras you want to discuss."
                 isExpanded={firstIncompleteStep === 'extras'}
                 isComplete={completion.extras}
                 sectionRef={setSectionRef('extras')}
@@ -2120,7 +1881,7 @@ export default function StartPage() {
                 onChange={() => handleStepChange('extras')}
                 canContinue={extrasCanContinue}
                 onContinue={confirmExtras}
-                continueLabel="Continue to Timeframe"
+                continueLabel="Continue"
               >
                 <OptionCardGroup
                   mode="multi"
@@ -2152,8 +1913,7 @@ export default function StartPage() {
                 id="process"
                 stepLabel="Step 7"
                 title={content.process.heading}
-                intro="Choose your intended timeframe for design and scheduling."
-                helper="Timeframe is confirmed only when you press Continue."
+                intro="When would you like to start?"
                 isExpanded={firstIncompleteStep === 'process'}
                 isComplete={completion.process}
                 sectionRef={setSectionRef('process')}
@@ -2161,18 +1921,9 @@ export default function StartPage() {
                 onChange={() => handleStepChange('process')}
                 canContinue={processCanContinue}
                 onContinue={confirmProcess}
-                continueLabel="Continue to Consultation Booking"
+                continueLabel="Continue"
               >
-                <ol className="grid gap-2 text-sm text-neutral-700 md:grid-cols-2">
-                  {content.process.timeline.map((item, index) => (
-                    <li key={item} className="rounded border border-border bg-neutral-50 px-3 py-2">
-                      <span className="font-medium text-neutral-900">{index + 1}.</span> {item}
-                    </li>
-                  ))}
-                </ol>
-
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-neutral-900">Desired timeframe</p>
                   <OptionCardGroup
                     mode="single"
                     name="start-timeframe"
@@ -2191,9 +1942,8 @@ export default function StartPage() {
               <StepSection
                 id="submit"
                 stepLabel="Step 8"
-                title="Book your Design Consultation"
-                intro="Submit your details so Sanctuary can schedule your Design Consultation."
-                helper="Your completed brief is attached automatically."
+                title={content.submit.heading}
+                intro={content.submit.supportingCopy}
                 isExpanded={firstIncompleteStep === 'submit' || submitState === 'success'}
                 isComplete={completion.submit}
                 sectionRef={setSectionRef('submit')}
@@ -2201,14 +1951,14 @@ export default function StartPage() {
               >
                 {submitState === 'success' ? (
                   <div className="rounded border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
-                    <p className="font-semibold">Thanks. Your Design Consultation request has been sent.</p>
-                    <p className="mt-1">Our team will review your brief and follow up shortly.</p>
+                    <p className="font-semibold">Project brief sent.</p>
+                    <p className="mt-1">We'll review it and contact you about the next step.</p>
                     {submitMeta?.enquiryRequestId ? <p className="mt-2">Reference: {submitMeta.enquiryRequestId}</p> : null}
                   </div>
                 ) : (
                   <form className="space-y-4" onSubmit={handleSubmit}>
                     <div className="space-y-2 rounded-lg border border-border bg-neutral-50 p-3">
-                      <p className="text-sm font-semibold text-neutral-900">Review your confirmed brief</p>
+                      <p className="text-sm font-semibold text-neutral-900">Your brief</p>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {reviewRows.map((row) => (
                           <div key={`submit-${row.label}`} className="rounded border border-border bg-white px-2 py-1.5 text-xs">
@@ -2262,7 +2012,7 @@ export default function StartPage() {
                     </div>
 
                     <label className="block space-y-1">
-                      <span className="text-sm font-medium text-neutral-900">Email (recommended)</span>
+                      <span className="text-sm font-medium text-neutral-900">Email</span>
                       <input
                         type="email"
                         value={draft.email}
@@ -2281,7 +2031,7 @@ export default function StartPage() {
                     </label>
 
                     <div className="space-y-2 rounded border border-border p-3">
-                      <p className="text-sm font-medium text-neutral-900">Photos (recommended)</p>
+                      <p className="text-sm font-medium text-neutral-900">Photos</p>
                       <input
                         type="file"
                         accept={ENQUIRY_ATTACHMENT_ACCEPT}
@@ -2426,21 +2176,15 @@ export default function StartPage() {
         onClose={() => setQuickInfoModal(null)}
       >
         {quickInfoModal ? (
-          <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
-            <div className="relative overflow-hidden rounded-xl border border-border bg-neutral-100">
-              <div className="relative aspect-[4/3]">
-                <Image
-                  src={quickInfoModal.image.src}
-                  alt={quickInfoModal.image.alt}
-                  fill
-                  sizes="220px"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-neutral-800">{quickInfoModal.summary ?? 'Review this option, then continue when ready.'}</p>
-              <p className="text-xs text-neutral-600">Close this panel to keep browsing. Continue is confirmed on-page.</p>
+          <div className="relative overflow-hidden rounded-xl border border-border bg-neutral-100">
+            <div className="relative aspect-[4/3]">
+              <Image
+                src={quickInfoModal.image.src}
+                alt={quickInfoModal.image.alt}
+                fill
+                sizes="(max-width: 768px) 100vw, 480px"
+                className="object-cover"
+              />
             </div>
           </div>
         ) : null}
@@ -2484,15 +2228,14 @@ export default function StartPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-neutral-600">Complete and confirm a step to add it to your brief.</p>
+            <p className="text-sm text-neutral-600">Your choices will appear here.</p>
           )}
         </div>
       </ModalSurface>
 
       <TabbedOptionModal
         open={activeModal === 'branch'}
-        title="Choose your project path"
-        description="Browse each path before confirming your direction."
+        title="Project type"
         options={branchModalOptions}
         activeTabId={branchTab}
         selectedDraftId={draft.enquiryType}
@@ -2510,8 +2253,7 @@ export default function StartPage() {
 
       <TabbedOptionModal
         open={activeModal === 'roofStyle'}
-        title="Roof style guide"
-        description="Use tabs to learn without changing your selection by accident."
+        title="Roof style"
         options={roofStyleModalOptions}
         activeTabId={roofStyleTab}
         selectedDraftId={draft.style}
@@ -2535,8 +2277,7 @@ export default function StartPage() {
 
       <TabbedOptionModal
         open={activeModal === 'roofMaterial'}
-        title="Roof material guide"
-        description="Use tabs to compare material behavior without auto-selecting."
+        title="Roof material"
         options={roofMaterialModalOptions}
         activeTabId={roofMaterialTab}
         selectedDraftId={draft.roofMaterialChoice}
@@ -2581,7 +2322,7 @@ export default function StartPage() {
 
       <ExtrasExplorerModal
         open={activeModal === 'extras'}
-        title="Extras Explorer"
+        title="Extras"
         options={extrasModalOptions}
         activeExtraId={extrasTab}
         selectedExtraIds={selectedExtraIds}
@@ -2593,14 +2334,13 @@ export default function StartPage() {
         onSetNoExtras={setNoExtras}
         onClose={() => setActiveModal(null)}
         onPrimary={confirmExtras}
-        primaryLabel="Continue to Timeframe"
+        primaryLabel="Continue"
         primaryDisabled={!extrasCanContinue}
       />
 
       <TabbedOptionModal
         open={activeModal === 'process'}
-        title="Timeframe guide"
-        description="Pick your preferred timeline, then continue to consultation booking."
+        title="Timeframe"
         options={timeframeModalOptions}
         activeTabId={timeframeTab}
         selectedDraftId={draft.timeframe}
