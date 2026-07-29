@@ -30,7 +30,7 @@ function buildProps(state: ScheduleModalState): ScheduleActionModalsProps {
     setPinEdit: vi.fn(),
     setDaysRemainingEdit: vi.fn(),
     setDowntimeEdit: vi.fn(),
-    setFinishEarlyPrompt: vi.fn(),
+    onCancelFinishEarly: vi.fn(),
     onSaveQuickEdit: vi.fn(),
     onSaveCommitment: vi.fn(),
     onSaveDuration: vi.fn(),
@@ -122,6 +122,30 @@ describe('ScheduleActionModals', () => {
 
     expect(props.onFinishEarlyPullForward).toHaveBeenCalledTimes(1);
 
+    rendered.unmount();
+  });
+
+  it('routes finish-early cancellation through the parent trust handler', () => {
+    const props = buildProps(
+      buildState({
+        finishEarlyPrompt: {
+          jobId: 'proj_alpha',
+          scheduleItemId: 'sch_1',
+          freedDays: 2,
+          actualFinish: '2026-04-03',
+          forecastEndExclusive: '2026-04-06',
+          impacts: [],
+        },
+      }),
+    );
+    const rendered = renderIntoDocument(<ScheduleActionModals {...props} />);
+    const cancelButton = Array.from(document.body.querySelectorAll('button')).find(
+      (node) => node.textContent === 'Cancel',
+    ) as HTMLButtonElement;
+
+    act(() => cancelButton.click());
+
+    expect(props.onCancelFinishEarly).toHaveBeenCalledTimes(1);
     rendered.unmount();
   });
 });

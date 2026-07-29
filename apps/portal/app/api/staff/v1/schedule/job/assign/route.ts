@@ -2,6 +2,7 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn, type RouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitAssignJob } from '@/lib/scheduling/scheduleCommands';
+import { excludeTargetCommitImpacts, parseScheduleForce } from '@/lib/scheduling/scheduleMutationRequest';
 import {
   applyScheduleItemPositions,
   buildCrewContext,
@@ -191,7 +192,9 @@ export async function POST(req: Request) {
   const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : '';
   const crewId = typeof body.crew_id === 'string' ? body.crew_id.trim() : '';
   const positionRaw = body.position;
-  const force = Boolean(body.force);
+  const parsedForce = parseScheduleForce(body.force);
+  if (!parsedForce.ok) return jsonError(parsedForce.error, 400, diagnostics);
+  const force = parsedForce.value;
   const requestedPosition = typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : null;
 
   if (!jobId || !crewId) {
@@ -485,6 +488,11 @@ export async function POST(req: Request) {
     sourceForecastUpdates = [];
     sourceFormatted = null;
   }
+
+  impacts = excludeTargetCommitImpacts(impacts, {
+    jobId,
+    scheduledJobId: existingScheduledJobId,
+  });
 
   if (impacts.length && !force) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);

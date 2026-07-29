@@ -106,12 +106,20 @@ describe('POST /api/staff/v1/schedule/job/pin', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_pin_ok');
   });
 
-  it('returns confirmation before any RPC call', async () => {
-    computeCommitImpacts.mockReturnValue([{ job_id: 'job-1' }]);
+  it('requires confirmation only for another affected job', async () => {
+    computeCommitImpacts.mockReturnValue([
+      { job_id: 'job-1', scheduled_job_id: 'scheduled-job-1', before_start: '2026-04-10', after_start: '2026-04-15' },
+      { job_id: 'job-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-17' },
+    ]);
     const mod = await import('./route');
     const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/pin', { method: 'POST' }));
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ requires_confirmation: true, impacts: [{ job_id: 'job-1' }] });
+    await expect(res.json()).resolves.toEqual({
+      requires_confirmation: true,
+      impacts: [
+        { job_id: 'job-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-17' },
+      ],
+    });
     expect(rpc).not.toHaveBeenCalled();
   });
 

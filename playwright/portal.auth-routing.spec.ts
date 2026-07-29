@@ -257,12 +257,14 @@ test.describe('portal auth routing authenticated flows', () => {
 
     const targetLane = page.locator('section[aria-label^="Lane "]').first();
     await expect(targetLane).toBeVisible();
+    const moveHandle = sourceCard.getByRole('button', { name: /^Move / });
+    await expect(moveHandle).toBeVisible();
 
     const assignResponse = page.waitForResponse(
       (res) => res.url().includes('/api/staff/v1/schedule/job/assign') && res.request().method() === 'POST',
       { timeout: 60_000 },
     );
-    await sourceCard.dragTo(targetLane);
+    await moveHandle.dragTo(targetLane);
 
     const response = await assignResponse;
     expect(response.ok(), `Assign request failed with status ${response.status()}: ${await response.text()}`).toBe(true);

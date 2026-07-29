@@ -66,7 +66,11 @@ export default function ProductsHub() {
         ]}
       />
 
-      <section className={styles.indexHero}>
+      <section
+        className={styles.indexHero}
+        aria-labelledby="products-title"
+        data-products-index-hero
+      >
         <div className={styles.indexHeroMedia}>
           <Image
             src="/images/project-riverhead-gable-01.jpg"
@@ -75,22 +79,19 @@ export default function ProductsHub() {
             loading="eager"
             fetchPriority="high"
             sizes="100vw"
-            style={{ objectPosition: '50% 45%' }}
+            style={{ objectPosition: '50% 38%' }}
           />
         </div>
         <div className={styles.heroShade} aria-hidden="true" />
         <Container width="wide" className={styles.indexHeroContent}>
-          <Eyebrow>Pergola choices</Eyebrow>
-          <Heading as="h1" variant="display">
-            Pergola forms and options.
+          <Heading as="h1" variant="display" id="products-title">
+            Choose your pergola form.
           </Heading>
-          <Text size="large">
-            Choose a roof form, then add only the edges, lighting or heat the
-            space needs.
+          <Text size="large" className={styles.indexHeroIntro}>
+            Add screens, lighting or heating.
           </Text>
           <div className={styles.heroActions}>
-            <Button href={enquiryHref}>Send project brief</Button>
-            <TextLink href="#pergola-forms">See the options</TextLink>
+            <Button href="#pergola-forms">Compare roof forms</Button>
           </div>
         </Container>
       </section>

@@ -42,10 +42,6 @@ type RouteCase = {
   schemaTypes: readonly string[];
 };
 
-const productsEnquiryHref = buildEnquiryHref({
-  sourcePath: '/products',
-  sourceComponent: 'product_cta',
-});
 const gableEnquiryHref = buildEnquiryHref({
   sourcePath: '/products/pergolas/gable',
   sourceComponent: 'product_cta',
@@ -164,14 +160,15 @@ const routeCases: readonly RouteCase[] = [
     maximumVisibleWords: 500,
     maximumVisibleHeadingRegions: 7,
     mobileSignals: [
-      'Pergola forms and options.',
+      'Choose your pergola form.',
+      'Compare four roof forms.',
       'One brief, one response.',
       'Pergola cost and scope',
       'Send project brief',
     ],
     primaryAction: {
-      name: 'Send project brief',
-      href: productsEnquiryHref,
+      name: 'Compare roof forms',
+      href: '#pergola-forms',
     },
     stableSections: ['#pergola-forms', '#screens-walls', '#lighting-heating'],
     meaningfulLinks: [
@@ -1043,7 +1040,7 @@ test('residential, commercial, product and professional enquiry context remains 
   expect(new URL(page.url()).searchParams.get('source_path')).toBe('/');
 });
 
-test('mobile fragment links reveal targets after cross-route clicks', async ({
+test('the mobile commercial pathway opens the top of the target page', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1051,23 +1048,21 @@ test('mobile fragment links reveal targets after cross-route clicks', async ({
   await page.goto('/', { waitUntil: 'networkidle' });
 
   const commercialLink = page.locator(
-    'a[href="/commercial-pergolas-auckland#project-details"]',
+    'a[href="/commercial-pergolas-auckland"]',
     { hasText: 'Explore commercial work' },
   ).first();
   await commercialLink.click();
 
   await expect(page).toHaveURL(
-    /\/commercial-pergolas-auckland#project-details$/,
+    /\/commercial-pergolas-auckland$/,
   );
-  const commercialTarget = page.locator('#project-details');
-  await expect(commercialTarget).toBeVisible();
+  await expect(page.getByRole('heading', {
+    level: 1,
+    name: 'Commercial pergolas, designed and installed.',
+  })).toBeVisible();
   await expect
-    .poll(() =>
-      commercialTarget.evaluate((element) =>
-        Math.round(element.getBoundingClientRect().top),
-      ),
-    )
-    .toBeLessThan(844);
+    .poll(() => page.evaluate(() => Math.round(window.scrollY)))
+    .toBeLessThan(100);
 
   await page.goBack({ waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/$/);

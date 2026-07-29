@@ -2,6 +2,7 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitPlannedCommitment } from '@/lib/scheduling/scheduleCommands';
+import { excludeTargetCommitImpacts, parseScheduleForce } from '@/lib/scheduling/scheduleMutationRequest';
 import {
   buildCrewContext,
   buildJobMetaMap,
@@ -83,7 +84,9 @@ function parseInput(body: any): { ok: true; value: ParsedCommitmentInput } | { o
   const plannedFlexDays = flexDays ?? defaultFlexDaysForCommitment(commitmentType);
   const hardLock = typeof body.hard_lock === 'boolean' ? body.hard_lock : defaultHardLockForCommitment(commitmentType);
 
-  const force = Boolean(body.force);
+  const parsedForce = parseScheduleForce(body.force);
+  if (!parsedForce.ok) return parsedForce;
+  const force = parsedForce.value;
   const today = typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined;
 
   return {
@@ -180,15 +183,18 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
     today: ctx.today,
   });
 
-  const impacts = computeCommitImpacts({
-    before: crewCtx.recompute,
-    after: afterRecompute,
-    jobMetaById: buildJobMetaMap(jobs),
-    today: ctx.today,
-    horizonDays: 10,
-    region,
-    calendar: ctx.calendar,
-  });
+  const impacts = excludeTargetCommitImpacts(
+    computeCommitImpacts({
+      before: crewCtx.recompute,
+      after: afterRecompute,
+      jobMetaById: buildJobMetaMap(jobs),
+      today: ctx.today,
+      horizonDays: 10,
+      region,
+      calendar: ctx.calendar,
+    }),
+    { jobId: input.jobId, scheduledJobId: String(jobRow.id) },
+  );
 
   if (impacts.length && !input.force) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);

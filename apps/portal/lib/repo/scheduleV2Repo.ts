@@ -138,7 +138,14 @@ export async function unassignJob(input: { job_id: string; force?: boolean; toda
   });
 }
 
-export async function reorderItems(input: { crew_id: string; ordered_item_ids?: string[]; item_id?: string; new_position?: number; force?: boolean; today?: string }) {
+export async function reorderItems(input: {
+  crew_id: string;
+  ordered_item_ids?: string[];
+  item_id?: string;
+  new_position?: number;
+  force?: boolean;
+  today?: string;
+}) {
   return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/items/reorder', {
     method: 'POST',
     body: JSON.stringify(input),
@@ -154,6 +161,19 @@ export async function setJobDuration(input: { job_id: string; forecast_duration_
 
 export async function pinJob(input: { job_id: string; requested_start_date: string; force?: boolean; today?: string }) {
   return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/pin', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function adjustJob(input: {
+  job_id: string;
+  requested_start_date: string;
+  forecast_duration_days: number;
+  force?: boolean;
+  today?: string;
+}) {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/adjust', {
     method: 'POST',
     body: JSON.stringify(input),
   });

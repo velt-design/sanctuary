@@ -79,7 +79,10 @@ export default function SeoLandingPage({ config }: { config: SeoLandingPageConfi
         <>
           <SeoLandingBlocks blocks={[guideFirstLayer.answerBlock]} />
           <div data-guide-first-layer-project>
-            <SeoLandingBlocks blocks={[guideFirstLayer.projectBlock]} />
+            <SeoLandingBlocks
+              blocks={[guideFirstLayer.projectBlock]}
+              eagerProjectImages
+            />
           </div>
           <nav
             aria-label="Continue from this guide"

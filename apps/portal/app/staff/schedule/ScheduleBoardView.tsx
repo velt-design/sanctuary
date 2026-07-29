@@ -236,11 +236,6 @@ function formatCommitmentLabel(item: ScheduleItem): string | null {
   return `Starts ${formatShortDate(item.plannedStart)}`;
 }
 
-function isElementOrParentNoDnd(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest('[data-no-dnd="true"]'));
-}
-
 function rectFromElement(element: Element | null | undefined): BoardDragRect | null {
   if (!element) return null;
   const rect = element.getBoundingClientRect();
@@ -459,6 +454,7 @@ function JobCardShell({
   dragging,
   menu,
   cardRef,
+  dragHandleRef,
   style,
   dropTarget,
 }: {
@@ -480,9 +476,21 @@ function JobCardShell({
   dragging?: boolean;
   menu?: ReactNode;
   cardRef: (node: HTMLElement | null) => void;
+  dragHandleRef?: (node: HTMLElement | null) => void;
   style?: CSSProperties;
   dropTarget?: boolean;
 }) {
+  const identity = (
+    <>
+      <span className={styles.jobTitle} title={title}>
+        {title}
+      </span>
+      <span className={styles.jobDescriptor} title={descriptor}>
+        {descriptor}
+      </span>
+    </>
+  );
+
   return (
     <div
       ref={cardRef}
@@ -493,32 +501,40 @@ function JobCardShell({
       data-draggable={draggable ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
       data-issue-level={issueLevel ?? (warning ? 'warning' : undefined)}
-      role={onOpen ? 'button' : undefined}
-      tabIndex={onOpen ? 0 : undefined}
-      {...(dragProps as any)}
-      onDoubleClick={(e) => {
-        if (!onOpen || dragging || isElementOrParentNoDnd(e.target)) return;
-        onOpen();
-      }}
-      onKeyDown={(e) => {
-        if (!onOpen) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
     >
       <div className={styles.jobTopRow}>
         <div className={styles.jobMain}>
-          <div className={styles.jobTitle} title={title}>
-            {title}
-          </div>
-          <div className={styles.jobDescriptor} title={descriptor}>
-            {descriptor}
-          </div>
+          {onOpen ? (
+            <button
+              type="button"
+              className={styles.projectOpenButton}
+              data-no-dnd="true"
+              aria-label={`Open project ${title}`}
+              onClick={onOpen}
+            >
+              {identity}
+            </button>
+          ) : (
+            <div className={styles.jobIdentity}>{identity}</div>
+          )}
         </div>
 
-        <div className={styles.jobRight}>{menu}</div>
+        <div className={styles.jobRight}>
+          {draggable ? (
+            <button
+              ref={dragHandleRef}
+              type="button"
+              className={styles.dragHandle}
+              data-dragging={dragging ? 'true' : undefined}
+              {...(dragProps as any)}
+              aria-label={`Move ${title}`}
+              title={`Move ${title}`}
+            >
+              <span aria-hidden="true">Move</span>
+            </button>
+          ) : null}
+          {menu}
+        </div>
       </div>
 
       <div className={styles.badgesRow}>
@@ -544,7 +560,7 @@ function JobCardShell({
 
 function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
   const router = useRouter();
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
     id: job.id,
     data: { kind: 'job' },
   });
@@ -567,6 +583,7 @@ function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
       draggable
       dragging={isDragging}
       cardRef={(node) => setNodeRef(node as any)}
+      dragHandleRef={setActivatorNodeRef}
       style={style}
     />
   );
@@ -597,7 +614,10 @@ function ScheduledJobCard({
 }) {
   const router = useRouter();
   const locked = isLockedScheduleStatus(scheduleStatus);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: locked });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: locked,
+  });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -627,6 +647,7 @@ function ScheduledJobCard({
         setNodeRef(node as any);
         onMount?.(node);
       }}
+      dragHandleRef={setActivatorNodeRef}
       style={style}
       dropTarget={dropTarget}
     />
@@ -650,7 +671,7 @@ function DowntimeCard({
   issueLevel?: 'warning' | 'error';
   onMount?: (node: HTMLElement | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -684,6 +705,7 @@ function DowntimeCard({
         setNodeRef(node as any);
         onMount?.(node);
       }}
+      dragHandleRef={setActivatorNodeRef}
       style={style}
       dropTarget={dropTarget}
     />
@@ -876,7 +898,11 @@ export default function ScheduleBoardView({
       onDragEnd={handleDragEnd}
     >
       <div className={styles.panels}>
-        <aside className={cx(styles.leftPanel, unscheduledCollapsed && styles.leftPanelCollapsed)} aria-label="Unscheduled jobs">
+        <aside
+          className={cx(styles.leftPanel, unscheduledCollapsed && styles.leftPanelCollapsed)}
+          data-collapsed={unscheduledCollapsed ? 'true' : 'false'}
+          aria-label="Unscheduled jobs"
+        >
           <div className={styles.panelHeader}>
             <h2 className={styles.panelTitle}>Unscheduled</h2>
             <div className={styles.panelHeaderActions}>
@@ -895,7 +921,8 @@ export default function ScheduleBoardView({
 
           <div className={styles.filters}>
             <input
-              className={styles.input}
+              className={cx(styles.input, styles.boardSearchInput)}
+              aria-label="Search unscheduled projects"
               placeholder="Search projects…"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
@@ -999,7 +1026,7 @@ export default function ScheduleBoardView({
                 </span>
               </>
             ) : null}
-            <label className={styles.toggleControl}>
+            <label className={cx(styles.toggleControl, styles.boardToggleControl)}>
               <input
                 type="checkbox"
                 className={styles.toggleCheckbox}

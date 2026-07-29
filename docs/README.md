@@ -40,6 +40,8 @@ Portal and marketing have separate UI systems. `ui-foundation.md` describes the 
 | `project-command-centre-v1.md` | Product contract | You are changing the Project Operational Command Centre product behavior, scope, exclusions, or acceptance criteria. |
 | `project-command-centre-roadmap.md` | Active programme | You need the current Command Centre stage, completion evidence, or next approved stage. |
 | `project-command-centre-architecture.md` | Current architecture | You are changing the Command Centre read model, resolver, API, Overview components, caching, fixtures, or later-stage technical plan. |
+| `project-work-items-and-follow-up.md` | Proposed product contract | You are planning the approved email-only lead cadence, project-state/journey-phase model, work-item replacement, Site Visit interim rule, Contacted backlog triage, or legacy-task retirement. It is not current implementation. |
+| `project-work-items-technical-plan.md` | Approval-gated implementation plan | You are planning the work-item schema, commands, Auckland calendar, compatibility projection, legacy cutover, reconciliation, or verification needed to replace the project-task systems. It is not current implementation. |
 | `repo-health-trends.md` | Advisory dashboard | You are choosing cleanup lanes, reviewing repo health pressure, or checking whether cleanup metrics are trending better or worse. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `target-architecture.md` | Target contract | You need the north-star structure, target area map, target data path, or migration direction before expanding an area. |

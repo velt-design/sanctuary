@@ -2,6 +2,7 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitScheduleJobPatch } from '@/lib/scheduling/scheduleCommands';
+import { parseScheduleForce } from '@/lib/scheduling/scheduleMutationRequest';
 import {
   buildCrewContext,
   buildJobMetaMap,
@@ -27,7 +28,9 @@ export async function POST(req: Request) {
 
   const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : '';
   const durationRaw = body.forecast_duration_days;
-  const force = Boolean(body.force);
+  const parsedForce = parseScheduleForce(body.force);
+  if (!parsedForce.ok) return jsonError(parsedForce.error, 400, diagnostics);
+  const force = parsedForce.value;
 
   if (!jobId) return jsonError('job_id is required', 400, diagnostics);
 

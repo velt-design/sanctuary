@@ -94,18 +94,26 @@ describe('runCommitmentMutation', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('returns confirmation before any RPC call', async () => {
+  it('requires confirmation only for another affected job', async () => {
     parseJsonBody.mockResolvedValueOnce({
       ok: true,
       body: { job_id: 'job-1', commitment_type: 'fixed_date', start_date: '2026-04-15', duration_days: 2 },
     });
     normalizePlannedCommitmentType.mockReturnValue('fixed_date');
-    computeCommitImpacts.mockReturnValue([{ job_id: 'job-1' }]);
+    computeCommitImpacts.mockReturnValue([
+      { job_id: 'job-1', scheduled_job_id: 'scheduled-job-1', before_start: '2026-04-10', after_start: '2026-04-15' },
+      { job_id: 'job-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-17' },
+    ]);
 
     const mod = await import('./commitmentMutation');
     const res = await mod.runCommitmentMutation(new Request('http://localhost/api/staff/v1/schedule/job/lock', { method: 'POST' }), 'lock');
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ requires_confirmation: true, impacts: [{ job_id: 'job-1' }] });
+    await expect(res.json()).resolves.toEqual({
+      requires_confirmation: true,
+      impacts: [
+        { job_id: 'job-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-17' },
+      ],
+    });
     expect(rpc).not.toHaveBeenCalled();
   });
 

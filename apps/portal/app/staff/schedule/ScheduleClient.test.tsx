@@ -5,7 +5,7 @@ import ScheduleClient from './ScheduleClient';
 import { qk } from '@/lib/queries/keys';
 import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
-import { assignJob, fetchScheduleGantt } from '@/lib/repo/scheduleV2Repo';
+import { adjustJob, assignJob, fetchScheduleGantt, markJobDone, pinJob, reorderItems, setJobDuration } from '@/lib/repo/scheduleV2Repo';
 import { ApiError } from '@/lib/repo/apiClient';
 
 const routerReplace = vi.fn();
@@ -25,7 +25,11 @@ const toastMocks = vi.hoisted(() => ({
 }));
 const dndMocks = vi.hoisted(() => ({
   latestContextProps: null as any,
+  latestBoardProps: null as any,
   activeId: null as string | null,
+}));
+const ganttMocks = vi.hoisted(() => ({
+  latestProps: null as any,
 }));
 const sendBeaconMock = vi.fn();
 
@@ -53,6 +57,7 @@ vi.mock('next/dynamic', () => ({
       );
     }
     if (typeof props?.onDrop === 'function') {
+      dndMocks.latestBoardProps = props;
       dndMocks.latestContextProps = {
         onDragStart: (event: any) => {
           dndMocks.activeId = String(event.active.id);
@@ -119,6 +124,7 @@ vi.mock('next/dynamic', () => ({
       );
     }
     if (!Array.isArray(props?.holidays)) return null;
+    ganttMocks.latestProps = props;
     const labelFor = (holiday: { date: string; name?: string }) => {
       const [, month, day] = holiday.date.split('-');
       const monthLabel = month === '04' ? 'Apr' : month;
@@ -209,6 +215,7 @@ vi.mock('@/lib/repo/scheduleRepo', () => ({
 }));
 vi.mock('@/lib/repo/scheduleV2Repo', () => ({
   ackClientUpdate: vi.fn(),
+  adjustJob: vi.fn(),
   assignJob: vi.fn(),
   createDowntime: vi.fn(),
   deleteDowntime: vi.fn(),
@@ -303,9 +310,22 @@ const betaEstimateId = `est_${BETA_ESTIMATE_UUID}`;
 const betaJobId = `job_${betaProjectId}_${betaEstimateId}`;
 const scheduleItemId = `sch_${SCHEDULE_ITEM_UUID}`;
 
+function emptyCrewMutationResponse() {
+  return {
+    ok: true,
+    crew_id: CREW_UUID,
+    schedule: {
+      crew_id: CREW_UUID,
+      items: [],
+      conflicts: [],
+      next_available_date: '2026-04-10',
+    },
+  } as any;
+}
+
 function boardMutationSnapshot(): ScheduleV2Snapshot {
   return {
-    generatedAt: '2026-04-07T00:00:00.000Z',
+    generatedAt: new Date().toISOString(),
     installers: [
       {
         id: crewId,
@@ -414,9 +434,16 @@ describe('ScheduleClient', () => {
     toastMocks.success.mockReset();
     toastMocks.info.mockReset();
     dndMocks.latestContextProps = null;
+    dndMocks.latestBoardProps = null;
     dndMocks.activeId = null;
+    ganttMocks.latestProps = null;
+    vi.mocked(adjustJob).mockReset();
     vi.mocked(assignJob).mockReset();
     vi.mocked(fetchScheduleGantt).mockReset();
+    vi.mocked(markJobDone).mockReset();
+    vi.mocked(pinJob).mockReset();
+    vi.mocked(reorderItems).mockReset();
+    vi.mocked(setJobDuration).mockReset();
     searchParamsString = '';
     scheduleSnapshotQueryFn.mockReset();
     scheduleSnapshotQueryOptions.mockReset();
@@ -815,6 +842,196 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
+  it('resizes and pins a Gantt job through one atomic adjustment command', async () => {
+    vi.useFakeTimers();
+    searchParamsString = 'view=gantt';
+    const snapshot = { ...boardMutationSnapshot(), unscheduledJobs: [] };
+    vi.mocked(adjustJob).mockResolvedValue(emptyCrewMutationResponse());
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const boardCacheKey = qk.schedule.board('example.supabase.co', '2026-04-07');
+    queryClient.setQueryData(boardCacheKey, boardMutationSnapshot());
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(ganttMocks.latestProps).toBeTruthy();
+    act(() => {
+      ganttMocks.latestProps.onResizePin(scheduleItemId, '2026-04-13', 3);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(adjustJob).toHaveBeenCalledTimes(1);
+    expect(adjustJob).toHaveBeenCalledWith({
+      job_id: ALPHA_PROJECT_UUID,
+      requested_start_date: '2026-04-13',
+      forecast_duration_days: 3,
+      force: false,
+      today: '2026-04-07',
+    });
+    expect(setJobDuration).not.toHaveBeenCalled();
+    expect(pinJob).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData<ScheduleV2Snapshot>(boardCacheKey)).toBeUndefined();
+
+    rendered.unmount();
+  });
+
+  it('preserves authoritative Gantt dates when an overlapping job depends on pre-range calendar context', async () => {
+    vi.useFakeTimers();
+    searchParamsString = 'view=gantt';
+    const snapshot = { ...boardMutationSnapshot(), unscheduledJobs: [], holidays: [] };
+    snapshot.scheduleItems = snapshot.scheduleItems.map((item) => ({
+      ...item,
+      mode: 'pinned',
+      forecastStart: '2026-04-02',
+      forecastEndExclusive: '2026-04-08',
+      forecastDurationDays: 3,
+      startDateOverride: '2026-04-02',
+      durationHoursOverride: 27,
+    }));
+    const authoritativeSnapshot = {
+      ...snapshot,
+      generatedAt: '2026-04-07T12:00:00.000Z',
+    };
+    scheduleGanttSnapshotQueryOptions.mockImplementation((host: string, today: string, range: { rangeStart: string; rangeEnd: string }) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockResolvedValue(authoritativeSnapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(adjustJob).mockResolvedValue({
+      ok: true,
+      crew_id: CREW_UUID,
+      schedule: {
+        crew_id: CREW_UUID,
+        items: [
+          {
+            id: SCHEDULE_ITEM_UUID,
+            item_type: 'job',
+            position: 0,
+            start: '2026-04-02',
+            end_exclusive: '2026-04-08',
+            duration_days: 3,
+            job: {
+              id: SCHEDULED_JOB_UUID,
+              job_id: ALPHA_PROJECT_UUID,
+              crew_id: CREW_UUID,
+              mode: 'pinned',
+              planned_commitment_type: null,
+              planned_week_start: null,
+              planned_start: null,
+              planned_duration_days: null,
+              planned_flex_days: null,
+              forecast_start: '2026-04-02',
+              forecast_end_exclusive: '2026-04-08',
+              forecast_duration_days: 3,
+              actual_start: null,
+              actual_finish: null,
+              status: 'not_started',
+              days_remaining: null,
+            },
+            downtime: null,
+          },
+        ],
+        conflicts: [],
+        next_available_date: '2026-04-08',
+      },
+    } as any);
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      ganttMocks.latestProps.onResizePin(scheduleItemId, '2026-04-02', 3);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const renderedItem = ganttMocks.latestProps.visibleScheduleItems.find(
+      (item: { id: string }) => item.id === scheduleItemId,
+    );
+    expect(renderedItem?.forecastStart).toBe('2026-04-02');
+    expect(renderedItem?.forecastEndExclusive).toBe('2026-04-08');
+
+    const cached = queryClient.getQueryData<ScheduleV2Snapshot>(
+      qk.schedule.gantt('example.supabase.co', '2026-04-06', '2026-06-28', '2026-04-07'),
+    );
+    expect(cached?.scheduleItems.find((item) => item.id === scheduleItemId)?.forecastEndExclusive).toBe('2026-04-08');
+
+    rendered.unmount();
+  });
+
+  it('restores the trusted Gantt snapshot if the post-commit authoritative refresh fails', async () => {
+    vi.useFakeTimers();
+    searchParamsString = 'view=gantt';
+    const snapshot = { ...boardMutationSnapshot(), unscheduledJobs: [] };
+    scheduleGanttSnapshotQueryOptions.mockImplementation((host: string, today: string, range: { rangeStart: string; rangeEnd: string }) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockRejectedValue(new Error('Authoritative range refresh failed')),
+      staleTime: 30_000,
+    }));
+    vi.mocked(adjustJob).mockResolvedValue(emptyCrewMutationResponse());
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      ganttMocks.latestProps.onResizePin(scheduleItemId, '2026-04-13', 3);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+    });
+
+    const renderedItem = ganttMocks.latestProps.visibleScheduleItems.find(
+      (item: { id: string }) => item.id === scheduleItemId,
+    );
+    expect(renderedItem?.forecastStart).toBe('2026-04-08');
+    expect(renderedItem?.forecastEndExclusive).toBe('2026-04-10');
+    expect(rendered.container.textContent).toContain('Schedule may be out of date');
+    expect(rendered.container.textContent).toContain('Last saved copy');
+    rendered.unmount();
+  });
+
   it('calls assignJob with the resolved end-of-lane position for a successful unscheduled drop', async () => {
     vi.useFakeTimers();
     const snapshot = boardMutationSnapshot();
@@ -823,7 +1040,7 @@ describe('ScheduleClient', () => {
       queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
       staleTime: 30_000,
     }));
-    vi.mocked(assignJob).mockResolvedValue({ ok: true } as any);
+    vi.mocked(assignJob).mockResolvedValue(emptyCrewMutationResponse());
 
     const { rendered } = renderSchedule(snapshot);
 
@@ -853,10 +1070,469 @@ describe('ScheduleClient', () => {
       job_id: BETA_PROJECT_UUID,
       crew_id: CREW_UUID,
       position: 1,
-      force: true,
+      force: false,
       today: '2026-04-07',
     });
 
+    rendered.unmount();
+  });
+
+  it('sends the raw moved item identity for a same-crew reorder', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    snapshot.unscheduledJobs = [];
+    snapshot.scheduleItems.push({
+      ...snapshot.scheduleItems[0],
+      id: `sch_${BETA_SCHEDULE_ITEM_UUID}`,
+      projectId: betaProjectId,
+      estimateId: betaEstimateId,
+      sortIndex: 1,
+      scheduledJobId: BETA_SCHEDULED_JOB_UUID,
+      forecastStart: '2026-04-10',
+      forecastEndExclusive: '2026-04-14',
+    });
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(reorderItems).mockResolvedValue(emptyCrewMutationResponse());
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: scheduleItemId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: scheduleItemId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(reorderItems).toHaveBeenCalledWith({
+      crew_id: CREW_UUID,
+      item_id: SCHEDULE_ITEM_UUID,
+      new_position: 1,
+      force: false,
+      today: '2026-04-07',
+    });
+
+    rendered.unmount();
+  });
+
+  it('asks before moving another job, then commits only after approval', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob)
+      .mockResolvedValueOnce({
+        requires_confirmation: true,
+        impacts: [
+          {
+            job_id: ALPHA_PROJECT_UUID,
+            scheduled_job_id: SCHEDULED_JOB_UUID,
+            before_start: '2026-04-08',
+            after_start: '2026-04-10',
+          },
+        ],
+      } as any)
+      .mockResolvedValueOnce({
+        requires_confirmation: true,
+        impacts: [
+          {
+            job_id: ALPHA_PROJECT_UUID,
+            scheduled_job_id: SCHEDULED_JOB_UUID,
+            before_start: '2026-04-08',
+            after_start: '2026-04-10',
+          },
+        ],
+      } as any)
+      .mockResolvedValueOnce(emptyCrewMutationResponse());
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(document.body.textContent).toContain('Move other scheduled jobs?');
+    expect(document.body.textContent).toContain('Alpha Deck');
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: false }));
+
+    const ganttButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Gantt',
+    ) as HTMLButtonElement | undefined;
+    act(() => {
+      ganttButton?.click();
+    });
+    expect(routerReplace).not.toHaveBeenCalled();
+    expect(toastMocks.info).toHaveBeenCalledWith('Finish or cancel the schedule change before switching views.');
+
+    const saveButton = Array.from(document.body.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save change',
+    ) as HTMLButtonElement | undefined;
+    expect(saveButton).toBeTruthy();
+
+    act(() => {
+      saveButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(assignJob).toHaveBeenCalledTimes(3);
+    expect(assignJob).toHaveBeenNthCalledWith(2, expect.objectContaining({ force: false }));
+    expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: true }));
+    expect(toastMocks.success).toHaveBeenCalledWith('Job scheduled.');
+
+    rendered.unmount();
+  });
+
+  it('shows every affected job before allowing a forced save', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    const impacts = Array.from({ length: 11 }, (_, index) => ({
+      job_id: `00000000-0000-4000-8000-${String(500 + index).padStart(12, '0')}`,
+      scheduled_job_id: `00000000-0000-4000-8000-${String(700 + index).padStart(12, '0')}`,
+      before_start: '2026-04-08',
+      after_start: `2026-04-${String(9 + index).padStart(2, '0')}`,
+    }));
+    vi.mocked(assignJob).mockResolvedValue({
+      requires_confirmation: true,
+      impacts,
+    } as any);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const dialog = document.body.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.querySelectorAll('li')).toHaveLength(11);
+
+    const cancelButton = Array.from(dialog?.querySelectorAll('button') ?? []).find(
+      (button) => button.textContent?.trim() === 'Cancel',
+    ) as HTMLButtonElement | undefined;
+    act(() => {
+      cancelButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    rendered.unmount();
+  });
+
+  it('does not force-save when affected dates change after approval', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob)
+      .mockResolvedValueOnce({
+        requires_confirmation: true,
+        impacts: [
+          {
+            job_id: ALPHA_PROJECT_UUID,
+            scheduled_job_id: SCHEDULED_JOB_UUID,
+            before_start: '2026-04-08',
+            after_start: '2026-04-10',
+          },
+        ],
+      } as any)
+      .mockResolvedValueOnce({
+        requires_confirmation: true,
+        impacts: [
+          {
+            job_id: ALPHA_PROJECT_UUID,
+            scheduled_job_id: SCHEDULED_JOB_UUID,
+            before_start: '2026-04-08',
+            after_start: '2026-04-11',
+          },
+        ],
+      } as any);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const fetchesBeforeDrop = scheduleSnapshotQueryFn.mock.calls.length;
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const saveButton = Array.from(document.body.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Save change',
+    ) as HTMLButtonElement | undefined;
+    act(() => {
+      saveButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(assignJob).toHaveBeenCalledTimes(2);
+    expect(assignJob).toHaveBeenNthCalledWith(1, expect.objectContaining({ force: false }));
+    expect(assignJob).toHaveBeenNthCalledWith(2, expect.objectContaining({ force: false }));
+    expect(assignJob).not.toHaveBeenCalledWith(expect.objectContaining({ force: true }));
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeDrop);
+    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+
+    rendered.unmount();
+  });
+
+  it('does not force-save a malformed target-only confirmation response', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob)
+      .mockResolvedValueOnce({
+        requires_confirmation: true,
+        impacts: [
+          {
+            job_id: BETA_PROJECT_UUID,
+            scheduled_job_id: BETA_SCHEDULED_JOB_UUID,
+            before_start: null,
+            after_start: '2026-04-10',
+          },
+        ],
+      } as any);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(document.body.textContent).not.toContain('Move other scheduled jobs?');
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(assignJob).toHaveBeenCalledWith(expect.objectContaining({ force: false }));
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+
+    rendered.unmount();
+  });
+
+  it('rolls back a previewed move when affected-job confirmation is cancelled', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockResolvedValue({
+      requires_confirmation: true,
+      impacts: [
+        {
+          job_id: ALPHA_PROJECT_UUID,
+          scheduled_job_id: SCHEDULED_JOB_UUID,
+          before_start: '2026-04-08',
+          after_start: '2026-04-10',
+        },
+      ],
+    } as any);
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const fetchesBeforeCancellation = scheduleSnapshotQueryFn.mock.calls.length;
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const cancelButton = Array.from(document.body.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Cancel',
+    ) as HTMLButtonElement | undefined;
+    expect(cancelButton).toBeTruthy();
+
+    act(() => {
+      cancelButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(assignJob).toHaveBeenLastCalledWith(expect.objectContaining({ force: false }));
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeCancellation);
+
+    rendered.unmount();
+  });
+
+  it('quietly reconciles when the finish-early decision is cancelled', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(markJobDone).mockResolvedValue({
+      requires_finish_early: true,
+      freed_days: 2,
+      actual_finish: '2026-04-08',
+      forecast_end_exclusive: '2026-04-10',
+      impacts: [],
+    } as any);
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const scheduleItem = snapshot.scheduleItems[0];
+    const actions = dndMocks.latestBoardProps.buildJobMenuActions({
+      id: scheduleItem.id,
+      scheduleItem,
+      job: null,
+      scheduleStatus: 'TENTATIVE',
+    });
+    const markDoneAction = actions.find((action: { label: string }) => action.label === 'Mark done');
+    act(() => markDoneAction?.onClick());
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(markJobDone).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).toContain('Finished early');
+    const fetchesBeforeCancel = scheduleSnapshotQueryFn.mock.calls.length;
+    const cancelButton = Array.from(document.body.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Cancel',
+    ) as HTMLButtonElement | undefined;
+    act(() => cancelButton?.click());
+    await act(async () => {
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+    });
+
+    expect(markJobDone).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain('Finished early');
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeCancel);
+    expect(rendered.container.textContent).toContain('Saved');
     rendered.unmount();
   });
 
@@ -868,13 +1544,19 @@ describe('ScheduleClient', () => {
       queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
       staleTime: 30_000,
     }));
-    vi.mocked(assignJob).mockRejectedValue(new Error('assign failed'));
+    vi.mocked(assignJob).mockRejectedValue(
+      new ApiError('assign failed', {
+        status: 422,
+        body: { error: 'assign failed' },
+      }),
+    );
 
     const { rendered } = renderSchedule(snapshot);
 
     await act(async () => {
       await Promise.resolve();
     });
+    const fetchesBeforeRejectedAssignment = scheduleSnapshotQueryFn.mock.calls.length;
 
     const unscheduledBefore = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledBefore?.textContent).toContain('Beta Deck');
@@ -898,8 +1580,343 @@ describe('ScheduleClient', () => {
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
     expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(rendered.container.textContent).toContain('Schedule change was not saved');
+    expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(fetchesBeforeRejectedAssignment);
+
+    const refreshButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Refresh schedule',
+    ) as HTMLButtonElement | undefined;
+    act(() => refreshButton?.click());
+    await act(async () => {
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+    });
+
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeRejectedAssignment);
+    expect(rendered.container.textContent).not.toContain('Schedule change was not saved');
+    expect(rendered.container.textContent).toContain('Saved');
 
     rendered.unmount();
+  });
+
+  it('fails closed and reconciles when an assignment response does not explicitly confirm success', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockResolvedValue({} as any);
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const fetchesBeforeAssignment = scheduleSnapshotQueryFn.mock.calls.length;
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeAssignment);
+
+    rendered.unmount();
+  });
+
+  it('fails closed when an explicitly successful response contains a malformed schedule row', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockResolvedValue({
+      ok: true,
+      crew_id: CREW_UUID,
+      schedule: {
+        crew_id: CREW_UUID,
+        items: [
+          {
+            id: BETA_SCHEDULE_ITEM_UUID,
+            item_type: 'job',
+            position: 0,
+            start: '2026-04-10',
+            end_exclusive: '2026-04-14',
+            duration_days: 2,
+            job: null,
+          },
+        ],
+        conflicts: [],
+        next_available_date: '2026-04-14',
+      },
+    } as any);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const fetchesBeforeAssignment = scheduleSnapshotQueryFn.mock.calls.length;
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({
+        active: { id: betaJobId },
+        activatorEvent: new Event('pointerdown'),
+      });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
+    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeAssignment);
+    rendered.unmount();
+  });
+
+  it('never force-saves a non-boolean confirmation discriminator', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockResolvedValue({
+      requires_confirmation: 'yes',
+      impacts: [
+        {
+          job_id: ALPHA_PROJECT_UUID,
+          scheduled_job_id: SCHEDULED_JOB_UUID,
+          before_start: '2026-04-08',
+          after_start: '2026-04-10',
+        },
+      ],
+    } as any);
+
+    const { rendered } = renderSchedule(snapshot);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({
+        active: { id: betaJobId },
+        activatorEvent: new Event('pointerdown'),
+      });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).not.toContain('Move other scheduled jobs?');
+    expect(toastMocks.success).not.toHaveBeenCalledWith('Job scheduled.');
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+    rendered.unmount();
+  });
+
+  it('blocks another mutation until an ambiguous-failure refetch returns the authoritative snapshot', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    const authoritativeSnapshot = {
+      ...snapshot,
+      generatedAt: '2026-04-07T12:00:00.000Z',
+    };
+    let resolveAuthoritativeSnapshot!: (value: ScheduleV2Snapshot) => void;
+    const authoritativeSnapshotPromise = new Promise<ScheduleV2Snapshot>((resolve) => {
+      resolveAuthoritativeSnapshot = resolve;
+    });
+    scheduleSnapshotQueryFn.mockImplementation(() => authoritativeSnapshotPromise);
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn,
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob)
+      .mockRejectedValueOnce(
+        new ApiError('Commit result unknown', {
+          status: 500,
+          body: { error: 'Commit result unknown' },
+        }),
+      )
+      .mockResolvedValue(emptyCrewMutationResponse());
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const dropBetaIntoCrew = () => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    };
+
+    act(dropBetaIntoCrew);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(scheduleSnapshotQueryFn).toHaveBeenCalledTimes(1);
+    expect(rendered.container.textContent).toContain('Refreshing');
+
+    act(dropBetaIntoCrew);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(toastMocks.info).toHaveBeenCalledWith(
+      'The schedule is refreshing. Try again when the latest saved version is visible.',
+    );
+    expect(rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]')?.textContent).toContain('Beta Deck');
+
+    await act(async () => {
+      resolveAuthoritativeSnapshot(authoritativeSnapshot);
+      await authoritativeSnapshotPromise;
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 5; index += 1) await Promise.resolve();
+    });
+
+    expect(rendered.container.textContent).toContain('Saved');
+
+    rendered.unmount();
+  });
+
+  it('keeps the saved cache and blocks a second write after remounting during a slow mutation', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    let resolveAssignment!: (value: ReturnType<typeof emptyCrewMutationResponse>) => void;
+    const pendingAssignment = new Promise<ReturnType<typeof emptyCrewMutationResponse>>((resolve) => {
+      resolveAssignment = resolve;
+    });
+    vi.mocked(assignJob).mockImplementation(() => pendingAssignment);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const first = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const dropBetaIntoCrew = () => {
+      dndMocks.latestContextProps.onDragStart({
+        active: { id: betaJobId },
+        activatorEvent: new Event('pointerdown'),
+      });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    };
+
+    act(dropBetaIntoCrew);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    const boardKey = qk.schedule.board('example.supabase.co', '2026-04-07');
+    expect(
+      queryClient
+        .getQueryData<ScheduleV2Snapshot>(boardKey)
+        ?.unscheduledJobs.some((job) => job.projectId === betaProjectId),
+    ).toBe(true);
+
+    first.unmount();
+    const second = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" />
+      </QueryClientProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(second.container.textContent).toContain('Beta Deck');
+    expect(second.container.textContent).toContain('Refreshing');
+
+    act(dropBetaIntoCrew);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+    expect(assignJob).toHaveBeenCalledTimes(1);
+    expect(toastMocks.info).toHaveBeenCalledWith(
+      'Another schedule change is still saving. Try again in a moment.',
+    );
+
+    const fetchesBeforeSettlement = scheduleSnapshotQueryFn.mock.calls.length;
+    await act(async () => {
+      resolveAssignment(emptyCrewMutationResponse());
+      await pendingAssignment;
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+      vi.runOnlyPendingTimers();
+      for (let index = 0; index < 6; index += 1) await Promise.resolve();
+    });
+
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeSettlement);
+    expect(second.container.textContent).toContain('Saved');
+    expect(second.container.textContent).toContain('Beta Deck');
+    second.unmount();
   });
 
   it('shows a specific API error and rolls back when unscheduled assignment returns 409', async () => {
@@ -970,6 +1987,7 @@ describe('ScheduleClient', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    const fetchesBeforeAmbiguousAssignment = scheduleSnapshotQueryFn.mock.calls.length;
 
     act(() => {
       dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
@@ -990,6 +2008,7 @@ describe('ScheduleClient', () => {
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
     expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job. Reference: req_assign_500.');
+    expect(scheduleSnapshotQueryFn.mock.calls.length).toBeGreaterThan(fetchesBeforeAmbiguousAssignment);
     const scheduleDebugPayloads = debugSpy.mock.calls
       .filter((call) => call[0] === '[schedule]')
       .map((call) => call[1] as { event?: string; [key: string]: unknown });
@@ -1080,9 +2099,19 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
-  it('keeps a repaired successful assignment on the board and writes the returned schedule to cache', async () => {
+  it('keeps a successful assignment in the Board cache and clears range-limited Gantt data', async () => {
     vi.useFakeTimers();
     const snapshot = boardMutationSnapshot();
+    snapshot.conflicts = [
+      {
+        crew_id: CREW_UUID,
+        job_id: SCHEDULED_JOB_UUID,
+        type: 'pinned_collision',
+        expected_cursor_start: '2026-04-08',
+        pinned_start: '2026-04-07',
+        overlap_days: 1,
+      },
+    ];
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
       queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
@@ -1157,6 +2186,13 @@ describe('ScheduleClient', () => {
     } as any);
 
     const { queryClient, rendered } = renderSchedule(snapshot);
+    const ganttCacheKey = qk.schedule.gantt(
+      'example.supabase.co',
+      '2026-04-06',
+      '2026-06-28',
+      '2026-04-07',
+    );
+    queryClient.setQueryData(ganttCacheKey, { ...snapshot, unscheduledJobs: [] });
 
     await act(async () => {
       await Promise.resolve();
@@ -1181,6 +2217,8 @@ describe('ScheduleClient', () => {
     const cached = queryClient.getQueryData<ScheduleV2Snapshot>(qk.schedule.board('example.supabase.co', '2026-04-07'));
     expect(cached?.scheduleItems.some((item) => item.id === `sch_${BETA_SCHEDULE_ITEM_UUID}`)).toBe(true);
     expect(cached?.unscheduledJobs.some((job) => job.projectId === betaProjectId)).toBe(false);
+    expect(cached?.conflicts).toEqual([]);
+    expect(queryClient.getQueryData<ScheduleV2Snapshot>(ganttCacheKey)).toBeUndefined();
     expect(rendered.container.textContent).toContain('Beta Deck');
     expect(toastMocks.success).toHaveBeenCalledWith('Job scheduled.');
 

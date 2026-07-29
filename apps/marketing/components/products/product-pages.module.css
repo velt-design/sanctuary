@@ -56,10 +56,10 @@
 }
 
 .indexHero {
-  min-height: min(78svh, 900px);
+  min-height: clamp(34rem, 64svh, 44rem);
   position: relative;
   display: flex;
-  align-items: end;
+  align-items: center;
   overflow: hidden;
   background: var(--color-inverse-surface);
   color: var(--color-inverse-text);
@@ -80,25 +80,29 @@
 
 .heroShade {
   background:
-    linear-gradient(90deg, rgba(8, 10, 8, .7) 0%, rgba(8, 10, 8, .28) 62%, rgba(8, 10, 8, .12)),
-    linear-gradient(180deg, transparent 48%, rgba(8, 10, 8, .64));
+    linear-gradient(90deg, rgba(8, 10, 8, .76) 0%, rgba(8, 10, 8, .5) 38%, rgba(8, 10, 8, .12) 76%, rgba(8, 10, 8, .05)),
+    linear-gradient(180deg, rgba(8, 10, 8, .04) 40%, rgba(8, 10, 8, .48));
 }
 
 .indexHeroContent {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 1.5rem;
-  padding-block: clamp(4rem, 9vw, 8rem);
-}
-
-.indexHeroContent > p:first-child,
-.indexHeroContent > p:nth-of-type(2) {
-  color: rgba(255, 255, 255, .78);
+  gap: 1.15rem;
+  padding-block: clamp(3.5rem, 6vw, 5.5rem);
 }
 
 .indexHeroContent h1 {
-  max-width: 10ch;
+  max-width: 14ch;
+  font-size: clamp(4rem, 5.6vw, 5.7rem);
+  line-height: .94;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.indexHeroIntro {
+  max-width: 36rem;
+  color: rgba(255, 255, 255, .78);
 }
 
 .heroActions {
@@ -106,10 +110,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: .75rem 1.5rem;
-}
-
-.indexHero .heroActions a:last-child {
-  color: white;
+  margin-top: .35rem;
 }
 
 .introGrid,
@@ -798,7 +799,18 @@
   }
 
   .indexHero {
-    min-height: min(74svh, 720px);
+    min-height: min(72svh, 640px);
+    align-items: end;
+  }
+
+  .indexHeroContent {
+    gap: 1rem;
+    padding-block: clamp(2.75rem, 8vw, 4rem);
+  }
+
+  .indexHeroContent h1 {
+    max-width: 11ch;
+    font-size: clamp(3.1rem, 13vw, 5.25rem);
   }
 
   .detailHero {
@@ -895,10 +907,6 @@
   .productExperience {
     --section-space: clamp(3rem, 12vw, 3.5rem);
     --section-space-compact: clamp(2rem, 8vw, 2.75rem);
-  }
-
-  .indexHero .heroActions a:last-child {
-    display: none;
   }
 
   .detailHeroCopy {

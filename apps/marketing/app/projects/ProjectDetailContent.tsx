@@ -107,6 +107,7 @@ export default function ProjectDetailContent({
             alt={caseStudyHeroImage.alt}
             fill
             priority
+            loading="eager"
             fetchPriority="high"
             sizes="(max-width: 899px) 100vw, (max-width: 1280px) calc(100vw - 320px), 1120px"
             style={{ objectPosition: caseStudyHeroImage.objectPosition ?? 'center' }}

@@ -17,7 +17,10 @@ function sectionTone(tone: SeoLandingBlock['tone']) {
   return tone === 'canvas' || !tone ? undefined : tone;
 }
 
-function renderSeoLandingBlock(block: SeoLandingBlock) {
+function renderSeoLandingBlock(
+  block: SeoLandingBlock,
+  eagerProjectImages = false,
+) {
     if (block.kind === 'split-intro') {
       return (
         <Section id={block.id} tone={sectionTone(block.tone)} className="acrylic-section acrylic-section--opening" aria-labelledby={`${block.id}-title`} key={block.id}>
@@ -97,7 +100,7 @@ function renderSeoLandingBlock(block: SeoLandingBlock) {
             <header className="acrylic-section__header acrylic-section__header--wide"><Eyebrow className="acrylic-eyebrow">{block.eyebrow}</Eyebrow><Heading id={`${block.id}-title`}>{block.title}</Heading>{block.intro ? <p>{block.intro}</p> : null}</header>
             <div className="acrylic-project-grid">{projectItems.map(({ project, label, role, summary, facts, image }) => (
               <Link href={`/projects/${project.slug}`} className="acrylic-project-card" key={project.slug}>
-                <div className="acrylic-project-card__media"><Image src={image.src} alt={image.alt} fill sizes="(max-width: 720px) 100vw, 50vw" style={{ objectPosition: image.objectPosition }} /></div>
+                <div className="acrylic-project-card__media"><Image src={image.src} alt={image.alt} fill loading={eagerProjectImages ? 'eager' : undefined} sizes="(max-width: 720px) 100vw, 50vw" style={{ objectPosition: image.objectPosition }} /></div>
                 <div className="acrylic-project-card__body"><Eyebrow className="acrylic-eyebrow">{label}</Eyebrow><h3>{project.title}</h3><p className="acrylic-project-card__location">{project.location} / {project.roof}</p>{role ? <p className="seo-landing__project-role">{role}</p> : null}<p>{summary}</p>{facts?.length ? <ul className="seo-landing__project-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul> : null}<span>Review the completed project</span></div>
               </Link>
             ))}</div>
@@ -205,11 +208,13 @@ function indexDisclosureGroups(
 type SeoLandingBlocksProps = {
   blocks: readonly SeoLandingBlock[];
   disclosureGroups?: readonly SeoLandingDisclosureGroup[];
+  eagerProjectImages?: boolean;
 };
 
 export default function SeoLandingBlocks({
   blocks,
   disclosureGroups = [],
+  eagerProjectImages = false,
 }: SeoLandingBlocksProps) {
   const groupsByStartIndex = indexDisclosureGroups(blocks, disclosureGroups);
   const output = [];
@@ -225,14 +230,14 @@ export default function SeoLandingBlocks({
           key={group.id}
           summary={group.summary}
         >
-          {groupedBlocks.map(renderSeoLandingBlock)}
+          {groupedBlocks.map((block) => renderSeoLandingBlock(block, eagerProjectImages))}
         </SeoLandingMobileDisclosure>,
       );
       index += group.blockIds.length;
       continue;
     }
 
-    output.push(renderSeoLandingBlock(blocks[index]));
+    output.push(renderSeoLandingBlock(blocks[index], eagerProjectImages));
     index += 1;
   }
 

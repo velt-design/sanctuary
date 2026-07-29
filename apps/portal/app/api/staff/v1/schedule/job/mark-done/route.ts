@@ -2,6 +2,7 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { commitMarkDone, type MarkDoneCommandResult } from '@/lib/scheduling/scheduleCommands';
+import { excludeTargetCommitImpacts, parseScheduleForce } from '@/lib/scheduling/scheduleMutationRequest';
 import {
   applyScheduleItemPositions,
   buildCrewContext,
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
   const body = parsed.body ?? {};
 
   const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : '';
-  const force = Boolean(body.force);
+  const parsedForce = parseScheduleForce(body.force);
+  if (!parsedForce.ok) return jsonError(parsedForce.error, 400, diagnostics);
+  const force = parsedForce.value;
   const finishEarlyAction = typeof body.finish_early_action === 'string' ? body.finish_early_action.trim().toLowerCase() : '';
 
   if (!jobId) return jsonError('job_id is required', 400, diagnostics);
@@ -134,15 +137,18 @@ export async function POST(req: Request) {
     today: ctx.today,
   });
 
-  const impacts = computeCommitImpacts({
-    before: crewCtx.recompute,
-    after: afterRecompute,
-    jobMetaById: buildJobMetaMap(jobs),
-    today: ctx.today,
-    horizonDays: 10,
-    region,
-    calendar: ctx.calendar,
-  });
+  const impacts = excludeTargetCommitImpacts(
+    computeCommitImpacts({
+      before: crewCtx.recompute,
+      after: afterRecompute,
+      jobMetaById: buildJobMetaMap(jobs),
+      today: ctx.today,
+      horizonDays: 10,
+      region,
+      calendar: ctx.calendar,
+    }),
+    { jobId, scheduledJobId: String(jobRow.id) },
+  );
 
   if (freedDays > 0 && !finishEarlyAction) {
     return jsonOk({
@@ -184,15 +190,18 @@ export async function POST(req: Request) {
       today: ctx.today,
     });
 
-    const bufferImpacts = computeCommitImpacts({
-      before: crewCtx.recompute,
-      after: bufferRecompute,
-      jobMetaById: buildJobMetaMap(jobs),
-      today: ctx.today,
-      horizonDays: 10,
-      region,
-      calendar: ctx.calendar,
-    });
+    const bufferImpacts = excludeTargetCommitImpacts(
+      computeCommitImpacts({
+        before: crewCtx.recompute,
+        after: bufferRecompute,
+        jobMetaById: buildJobMetaMap(jobs),
+        today: ctx.today,
+        horizonDays: 10,
+        region,
+        calendar: ctx.calendar,
+      }),
+      { jobId, scheduledJobId: String(jobRow.id) },
+    );
 
     if (bufferImpacts.length && !force) {
       return jsonOk({ requires_confirmation: true, impacts: bufferImpacts }, 200, diagnostics);

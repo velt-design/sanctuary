@@ -1,7 +1,12 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
-import { isYmd } from '@/lib/scheduling/date';
 import { commitScheduleReorder } from '@/lib/scheduling/scheduleCommands';
+import {
+  excludeTargetCommitImpacts,
+  isCalendarYmd,
+  isCanonicalScheduleUuid,
+  parseScheduleForce,
+} from '@/lib/scheduling/scheduleMutationRequest';
 import {
   applyScheduleItemPositions,
   buildCrewContext,
@@ -25,11 +30,40 @@ export async function POST(req: Request) {
   if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
-  const crewId = typeof body.crew_id === 'string' ? body.crew_id.trim() : '';
-  const orderedIds = Array.isArray(body.ordered_item_ids) ? body.ordered_item_ids.filter((id: any) => typeof id === 'string') : null;
-  const moveItemId = typeof body.item_id === 'string' ? body.item_id.trim() : '';
+  const crewId = typeof body.crew_id === 'string' ? body.crew_id : '';
+  const hasOrderedMode = Object.prototype.hasOwnProperty.call(body, 'ordered_item_ids');
+  const hasSingleItemMode =
+    Object.prototype.hasOwnProperty.call(body, 'item_id') ||
+    Object.prototype.hasOwnProperty.call(body, 'new_position');
+  if (hasOrderedMode === hasSingleItemMode) {
+    return jsonError('Provide exactly one reorder mode: ordered_item_ids or item_id with new_position', 400, diagnostics);
+  }
+
+  let orderedIds: string[] | null = null;
+  let moveItemId = '';
   const newPositionRaw = body.new_position;
-  const force = Boolean(body.force);
+  if (hasOrderedMode) {
+    if (
+      !Array.isArray(body.ordered_item_ids) ||
+      body.ordered_item_ids.length === 0 ||
+      body.ordered_item_ids.some((id: unknown) => !isCanonicalScheduleUuid(id)) ||
+      new Set(body.ordered_item_ids).size !== body.ordered_item_ids.length
+    ) {
+      return jsonError('ordered_item_ids must be a non-empty list of unique UUIDs', 400, diagnostics);
+    }
+    orderedIds = body.ordered_item_ids as string[];
+  } else {
+    moveItemId = typeof body.item_id === 'string' ? body.item_id : '';
+    if (!isCanonicalScheduleUuid(moveItemId)) {
+      return jsonError('item_id must be a UUID', 400, diagnostics);
+    }
+    if (!Number.isSafeInteger(newPositionRaw) || newPositionRaw < 0) {
+      return jsonError('new_position must be a non-negative safe integer', 400, diagnostics);
+    }
+  }
+  const parsedForce = parseScheduleForce(body.force);
+  if (!parsedForce.ok) return jsonError(parsedForce.error, 400, diagnostics);
+  const force = parsedForce.value;
 
   if (!crewId) {
     logPortalServerWarn(diagnostics, {
@@ -40,10 +74,16 @@ export async function POST(req: Request) {
     });
     return jsonError('crew_id is required', 400, diagnostics);
   }
+  if (!isCanonicalScheduleUuid(crewId)) {
+    return jsonError('crew_id must be a UUID', 400, diagnostics);
+  }
+  if (body.today !== undefined && !isCalendarYmd(body.today)) {
+    return jsonError('today must be a valid YYYY-MM-DD date', 400, diagnostics);
+  }
 
   let ctx;
   try {
-    ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
+    ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
       logPortalServerWarn(diagnostics, {
@@ -72,8 +112,34 @@ export async function POST(req: Request) {
     return jsonError('Crew not found', 404, diagnostics);
   }
 
+  if (orderedIds) {
+    const currentItemIds = new Set(crewCtx.items.map((item) => item.id));
+    const hasExactCrewMembership =
+      currentItemIds.size === crewCtx.items.length &&
+      orderedIds.length === crewCtx.items.length &&
+      orderedIds.every((itemId) => currentItemIds.has(itemId));
+    if (!hasExactCrewMembership) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.reorder.validation_failed',
+        status: 409,
+        message: 'ordered_item_ids must include every current crew item exactly once',
+        extra: {
+          reason: 'stale_ordered_item_ids',
+          crewId,
+          requestedItemCount: orderedIds.length,
+          currentItemCount: crewCtx.items.length,
+        },
+      });
+      return jsonError('ordered_item_ids must include every current crew item exactly once', 409, diagnostics);
+    }
+  }
+
+  const movedItem = hasSingleItemMode
+    ? crewCtx.items.find((item) => item.id === moveItemId) ?? null
+    : null;
+
   let nextItems = crewCtx.items.slice();
-  if (orderedIds && orderedIds.length) {
+  if (orderedIds) {
     nextItems = reorderItems(nextItems, orderedIds);
   } else if (moveItemId) {
     const sorted = nextItems.slice().sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
@@ -88,7 +154,7 @@ export async function POST(req: Request) {
       return jsonError('item_id not found in crew schedule', 404, diagnostics);
     }
     const [moving] = sorted.splice(idx, 1);
-    const newPosition = typeof newPositionRaw === 'number' && Number.isFinite(newPositionRaw) ? Math.trunc(newPositionRaw) : sorted.length;
+    const newPosition = newPositionRaw as number;
     const insertAt = Math.max(0, Math.min(newPosition, sorted.length));
     sorted.splice(insertAt, 0, moving);
     nextItems = sorted.map((item, index) => ({ ...item, position: index }));
@@ -111,15 +177,20 @@ export async function POST(req: Request) {
     today: ctx.today,
   });
 
-  const impacts = computeCommitImpacts({
-    before: crewCtx.recompute,
-    after: afterRecompute,
-    jobMetaById: buildJobMetaMap(crewCtx.jobs),
-    today: ctx.today,
-    horizonDays: 10,
-    region: crewCtx.crewRow.calendar_region || 'Auckland',
-    calendar: ctx.calendar,
-  });
+  const computedImpacts = computeCommitImpacts({
+      before: crewCtx.recompute,
+      after: afterRecompute,
+      jobMetaById: buildJobMetaMap(crewCtx.jobs),
+      today: ctx.today,
+      horizonDays: 10,
+      region: crewCtx.crewRow.calendar_region || 'Auckland',
+      calendar: ctx.calendar,
+    });
+  const impacts = hasSingleItemMode
+    ? excludeTargetCommitImpacts(computedImpacts, {
+        scheduledJobId: movedItem?.itemType === 'job' ? movedItem.jobId : null,
+      })
+    : computedImpacts;
 
   if (impacts.length && !force) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);

@@ -84,6 +84,24 @@
   color: var(--muted);
 }
 
+.saveStatus {
+  min-width: 82px;
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 700;
+  line-height: var(--ui-line-height-compact);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.saveStatus[data-state='failed'] {
+  color: var(--ui-status-error-text);
+}
+
+.saveStatus[data-state='stale'] {
+  color: var(--ui-status-warning-border);
+}
+
 .buttonSecondary {
   display: inline-flex;
   align-items: center;

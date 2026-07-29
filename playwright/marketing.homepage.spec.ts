@@ -706,7 +706,7 @@ test('the production homepage is canonical, indexable and carries its crawlable 
   })).toHaveAttribute('href', '/pergolas-auckland');
   await expect(homepage.getByRole('link', {
     name: 'Explore commercial work',
-  })).toHaveAttribute('href', '/commercial-pergolas-auckland#project-details');
+  })).toHaveAttribute('href', '/commercial-pergolas-auckland');
   await expect(homepage.getByRole('link', {
     name: 'Explore collaboration',
   })).toHaveAttribute('href', '/architects-designers-builders');

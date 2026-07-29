@@ -14,6 +14,10 @@ const reorderItems = vi.fn();
 const recomputeForCrew = vi.fn();
 
 const rpc = vi.fn();
+const CREW_UUID = '00000000-0000-4000-8000-000000000001';
+const ITEM_1_UUID = '00000000-0000-4000-8000-000000000101';
+const ITEM_2_UUID = '00000000-0000-4000-8000-000000000102';
+const UNKNOWN_ITEM_UUID = '00000000-0000-4000-8000-000000000199';
 
 vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
@@ -67,14 +71,17 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
-    parseJsonBody.mockResolvedValue({ ok: true, body: { crew_id: 'crew-1', ordered_item_ids: ['item-2', 'item-1'] } });
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: { crew_id: CREW_UUID, item_id: ITEM_2_UUID, new_position: 0 },
+    });
     isMissingSchemaError.mockReturnValue(false);
     loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
     buildCrewContext.mockReturnValue({
-      crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
+      crewRow: { id: CREW_UUID, calendar_region: 'Auckland' },
       items: [
-        { id: 'item-1', position: 0 },
-        { id: 'item-2', position: 1 },
+        { id: ITEM_1_UUID, itemType: 'job', jobId: 'scheduled-job-2', position: 0 },
+        { id: ITEM_2_UUID, itemType: 'job', jobId: 'scheduled-job-1', position: 1 },
       ],
       jobs: [{ id: 'job-1' }],
       downtimes: [],
@@ -83,19 +90,19 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
       downtimesById: new Map(),
     });
     reorderItems.mockReturnValue([
-      { id: 'item-2', position: 0 },
-      { id: 'item-1', position: 1 },
+      { id: ITEM_2_UUID, position: 0 },
+      { id: ITEM_1_UUID, position: 1 },
     ]);
     applyScheduleItemPositions.mockReturnValue([
-      { id: 'item-2', position: 0 },
-      { id: 'item-1', position: 1 },
+      { id: ITEM_2_UUID, position: 0 },
+      { id: ITEM_1_UUID, position: 1 },
     ]);
     recomputeForCrew.mockReturnValue({ job_updates: [{ id: 'job-update-1', forecast_start: '2026-04-14', forecast_end_exclusive: '2026-04-16', forecast_duration_days: 2 }] });
     buildJobMetaMap.mockReturnValue(new Map());
     computeCommitImpacts.mockReturnValue([]);
     formatCrewScheduleBlocks.mockReturnValue({
-      crew_id: 'crew-1',
-      items: [{ id: 'item-2' }],
+      crew_id: CREW_UUID,
+      items: [{ id: ITEM_2_UUID }],
       conflicts: [],
       next_available_date: '2026-04-14',
     });
@@ -118,10 +125,10 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
 
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith('schedule_v2_reorder_queue', {
-      p_crew_id: 'crew-1',
+      p_crew_id: CREW_UUID,
       p_positions: [
-        { id: 'item-2', position: 0 },
-        { id: 'item-1', position: 1 },
+        { id: ITEM_2_UUID, position: 0 },
+        { id: ITEM_1_UUID, position: 1 },
       ],
       p_forecast_updates: [
         {
@@ -135,10 +142,10 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
-      crew_id: 'crew-1',
+      crew_id: CREW_UUID,
       schedule: {
-        crew_id: 'crew-1',
-        items: [{ id: 'item-2' }],
+        crew_id: CREW_UUID,
+        items: [{ id: ITEM_2_UUID }],
         conflicts: [],
         next_available_date: '2026-04-14',
       },
@@ -148,8 +155,11 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_reorder_ok');
   });
 
-  it('returns confirmation before any RPC call', async () => {
-    computeCommitImpacts.mockReturnValue([{ job_id: 'job-1' }]);
+  it('requires confirmation only for another affected job', async () => {
+    computeCommitImpacts.mockReturnValue([
+      { job_id: 'project-1', scheduled_job_id: 'scheduled-job-1', before_start: '2026-04-10', after_start: '2026-04-12' },
+      { job_id: 'project-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-14' },
+    ]);
 
     const mod = await import('./route');
     const res = await mod.POST(
@@ -162,14 +172,166 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       requires_confirmation: true,
-      impacts: [{ job_id: 'job-1' }],
+      impacts: [
+        { job_id: 'project-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-14' },
+      ],
     });
     expect(rpc).not.toHaveBeenCalled();
     expect(res.headers.get('x-portal-request-id')).toBe('req_reorder_confirm');
   });
 
+  it('rejects a mixed ordered-list and single-item payload before loading schedule data', async () => {
+    parseJsonBody.mockResolvedValueOnce({
+      ok: true,
+      body: {
+        crew_id: CREW_UUID,
+        ordered_item_ids: [ITEM_2_UUID, ITEM_1_UUID],
+        item_id: ITEM_2_UUID,
+        new_position: 0,
+      },
+    });
+
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request('http://localhost/api/staff/v1/schedule/items/reorder', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Provide exactly one reorder mode: ordered_item_ids or item_id with new_position',
+    });
+    expect(loadScheduleContext).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [[]],
+    [[ITEM_2_UUID, {}]],
+    [[ITEM_2_UUID, ` ${ITEM_1_UUID}`]],
+    [[ITEM_2_UUID, ITEM_2_UUID]],
+  ])('rejects malformed ordered_item_ids %j without silently filtering them', async (orderedItemIds) => {
+    parseJsonBody.mockResolvedValueOnce({
+      ok: true,
+      body: { crew_id: CREW_UUID, ordered_item_ids: orderedItemIds },
+    });
+
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request('http://localhost/api/staff/v1/schedule/items/reorder', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'ordered_item_ids must be a non-empty list of unique UUIDs',
+    });
+    expect(loadScheduleContext).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1, undefined])(
+    'rejects invalid single-item new_position %j',
+    async (newPosition) => {
+      parseJsonBody.mockResolvedValueOnce({
+        ok: true,
+        body: {
+          crew_id: CREW_UUID,
+          item_id: ITEM_2_UUID,
+          ...(newPosition === undefined ? null : { new_position: newPosition }),
+        },
+      });
+
+      const { POST } = await import('./route');
+      const response = await POST(
+        new Request('http://localhost/api/staff/v1/schedule/items/reorder', { method: 'POST' }),
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        error: 'new_position must be a non-negative safe integer',
+      });
+      expect(loadScheduleContext).not.toHaveBeenCalled();
+      expect(rpc).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not suppress any affected job for an ordered-list reorder', async () => {
+    parseJsonBody.mockResolvedValueOnce({
+      ok: true,
+      body: {
+        crew_id: CREW_UUID,
+        ordered_item_ids: [ITEM_2_UUID, ITEM_1_UUID],
+      },
+    });
+    const impacts = [
+      { job_id: 'project-1', scheduled_job_id: 'scheduled-job-1', before_start: '2026-04-10', after_start: '2026-04-12' },
+      { job_id: 'project-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-12', after_start: '2026-04-14' },
+    ];
+    computeCommitImpacts.mockReturnValueOnce(impacts);
+
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request('http://localhost/api/staff/v1/schedule/items/reorder', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      requires_confirmation: true,
+      impacts,
+    });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects an ordered-list reorder containing an unknown crew item', async () => {
+    parseJsonBody.mockResolvedValueOnce({
+      ok: true,
+      body: {
+        crew_id: CREW_UUID,
+        ordered_item_ids: [ITEM_1_UUID, UNKNOWN_ITEM_UUID],
+      },
+    });
+
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request('http://localhost/api/staff/v1/schedule/items/reorder', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: 'ordered_item_ids must include every current crew item exactly once',
+    });
+    expect(reorderItems).not.toHaveBeenCalled();
+    expect(recomputeForCrew).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects an ordered-list reorder that omits a current crew item', async () => {
+    parseJsonBody.mockResolvedValueOnce({
+      ok: true,
+      body: {
+        crew_id: CREW_UUID,
+        ordered_item_ids: [ITEM_1_UUID],
+      },
+    });
+
+    const { POST } = await import('./route');
+    const response = await POST(
+      new Request('http://localhost/api/staff/v1/schedule/items/reorder', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: 'ordered_item_ids must include every current crew item exactly once',
+    });
+    expect(reorderItems).not.toHaveBeenCalled();
+    expect(recomputeForCrew).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('logs validation failures with route diagnostics', async () => {
-    parseJsonBody.mockResolvedValueOnce({ ok: true, body: { ordered_item_ids: ['item-2', 'item-1'] } });
+    parseJsonBody.mockResolvedValueOnce({
+      ok: true,
+      body: { ordered_item_ids: [ITEM_2_UUID, ITEM_1_UUID] },
+    });
 
     const mod = await import('./route');
     const res = await mod.POST(
@@ -238,7 +400,7 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
         status: 500,
         message: 'Failed to reorder schedule items',
         errorMessage: 'boom',
-        crewId: 'crew-1',
+        crewId: CREW_UUID,
         positionCount: 2,
         forecastUpdateCount: 1,
       }),

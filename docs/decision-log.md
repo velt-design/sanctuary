@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-29 | Schedule Mutation Trust          | Promoted | Preview Schedule V2 commands without force, confirm only when the server identifies other moved jobs, re-preview immediately after approval, and force only when the reviewed impacts are unchanged. Every optimistic mutation owns an exact rollback checkpoint and one in-flight lifecycle; accepted state updates only the compatible active-view cache and invalidates incompatible snapshots. Gantt start-plus-duration adjustment is one atomic RPC-backed command, while ambiguous failures reconcile visibly. Database-revision protection against near-simultaneous staff edits remains follow-up work. |
 | 2026-07-29 | Portal UI Authority              | Promoted | Treat the checked-in and rendered portal UI as canonical. Portal and marketing have separate UI systems; catalogues and historical migration language are regression/history evidence, not authority for a broad restyle. Preserve active specialist and compatibility owners, and require explicit user approval for cross-route visual migrations or shared-token replacement. |
 | 2026-07-29 | Portal Operational Lists/Create  | Promoted | Keep ordinary Projects/Contacts discovery bounded and server-paged with response query identity; never present a retained page under a different scope/filter. Project creation is one server-owned stable-ID command: detect strong contact duplicates before writes, separate confirmed records from setup-automation state, preserve saved records when setup needs attention, and mark indeterminate writes or unverifiable cleanup as do-not-retry administrator reconciliation. |
 | 2026-07-29 | Marketing Copy Reduction         | Promoted | Remove repeated decisions, explanations and conversion prompts at their owners; do not replace long pages with more hidden copy. Keep one useful action, preserve governed evidence and intake/SEO contracts, version material homepage copy changes, and include public noindex flows in claims review rather than relying only on the sitemap. |
@@ -3883,3 +3884,45 @@ Related docs/tests: `apps/portal/app/layout.tsx`;
 `apps/marketing/components/marketing-foundation`;
 `playwright/portal.ui-foundation.spec.ts`;
 `playwright/marketing.foundation.spec.ts`
+
+### 2026-07-29 - Schedule Mutation Trust - Preview, Roll Back, Then Commit Atomically
+
+Date: 2026-07-29
+Area: Schedule Board/Gantt optimistic state, affected-job confirmation, cache
+authority, and Gantt resize commands
+Status: Promoted
+Decision or mistake: The Schedule client forced every V2 command immediately,
+so existing server impact previews could never reach staff. Several optimistic
+paths had no exact rollback, Board and Gantt caches could disagree, transient
+toasts were the only failed/stale signal, and Gantt resize saved duration and
+pinning through two separate requests.
+Why it mattered: One failed or cancelled action could leave the screen ahead
+of the database, a later view could show a different schedule, and a partial
+Gantt save could persist timing the user never approved.
+Current guardrail: Preview each V2 mutation with `force: false`; show a named
+before/after impact review only when the server reports that other jobs move;
+after explicit approval, re-preview immediately and send `force: true` only if
+the affected job identities and dates are unchanged. Keep one mutation in
+flight across mounted/remounted owners, checkpoint the complete affected local
+Schedule state before optimism, keep that optimism out of shared query caches,
+and restore it on rejection, cancellation, changed preview, or a competing
+action. Fail closed unless success, confirmation, impacts, dates, UUIDs, and
+nested schedules match their complete contracts. Complete-list reorders must
+exactly match the current crew-item set. Apply accepted Board state only to a
+compatible cache; accepted Gantt commands restore the trusted checkpoint and
+refetch the authoritative range before presentation. Invalidate incompatible
+snapshots. Require explicit `ok: true`; reconcile network, HTTP 408, unexpected
+5xx, and malformed-response ambiguity without claiming success. HTTP 501 is
+the documented pre-commit schema/RPC-unavailable exception. Keep failed/stale
+state visible until a successful command or authoritative refresh. Commit
+Gantt start, duration, pin mode, and recomputed forecasts through one
+`schedule_v2_apply_job_patch` RPC-backed `/job/adjust` command. The client
+re-preview is not a database revision guard: guarded RPC or per-crew revision
+protection remains required for near-simultaneous staff edits.
+Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
+Related docs/tests:
+`apps/portal/app/staff/schedule/ScheduleClient.test.tsx`;
+`apps/portal/app/api/staff/v1/schedule/job/adjust/route.test.ts`;
+`apps/portal/app/staff/schedule/ScheduleBoardView.test.tsx`;
+`apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
+`npm run test:portal:schedule`

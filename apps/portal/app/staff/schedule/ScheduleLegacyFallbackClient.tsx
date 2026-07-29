@@ -1551,7 +1551,7 @@ export default function ScheduleLegacyFallbackClient({
           setPinEdit={setPinEdit}
           setDaysRemainingEdit={setDaysRemainingEdit}
           setDowntimeEdit={setDowntimeEdit}
-          setFinishEarlyPrompt={setFinishEarlyPrompt}
+          onCancelFinishEarly={() => setFinishEarlyPrompt(null)}
           onSaveQuickEdit={handleSaveQuickEdit}
           onSaveCommitment={handleSaveCommitment}
           onSaveDuration={handleSaveDuration}

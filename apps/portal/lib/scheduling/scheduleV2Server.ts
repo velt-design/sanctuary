@@ -4,6 +4,7 @@ import { logPortalServerWarn, type PortalServerLogContext } from '@/lib/api/rout
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { addDaysYmd, diffDaysYmd, isYmd, todayYmd } from '@/lib/scheduling/date';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import type { ScheduleCommitImpact } from '@/lib/scheduling/scheduleMutationRequest';
 import { SCHEDULING_READY_PROJECT_STATUS, normalizeSchedulingProjectStatus } from '@/lib/scheduling/readiness';
 import {
   addWorkingDays,
@@ -75,13 +76,6 @@ type ScheduleContext = {
   closures: CompanyClosure[];
   calendar: WorkingDayIndex;
   today: string;
-};
-
-type CommitImpact = {
-  job_id: string;
-  scheduled_job_id: string;
-  before_start: string | null;
-  after_start: string | null;
 };
 
 type CrewScheduleContext = {
@@ -562,12 +556,12 @@ export function computeCommitImpacts(input: {
   horizonDays: number;
   region: string;
   calendar: WorkingDayIndex;
-}): CommitImpact[] {
+}): ScheduleCommitImpact[] {
   const horizonEnd = addWorkingDays(input.today, input.horizonDays, input.region, input.calendar);
 
   const beforeMap = new Map(input.before.job_updates.map((u) => [u.id, u.forecast_start ?? null]));
   const afterMap = new Map(input.after.job_updates.map((u) => [u.id, u.forecast_start ?? null]));
-  const impacts: CommitImpact[] = [];
+  const impacts: ScheduleCommitImpact[] = [];
 
   for (const [jobId, afterStart] of afterMap.entries()) {
     const beforeStart = beforeMap.get(jobId) ?? null;

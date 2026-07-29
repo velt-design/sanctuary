@@ -11,6 +11,7 @@ type ScheduleConfirmationInput = {
   description: string;
   confirmLabel: string;
   destructive?: boolean;
+  details?: string[];
 };
 
 type ScheduleConfirmationRequest = ScheduleConfirmationInput & {
@@ -53,7 +54,14 @@ export function useScheduleConfirmation() {
     >
       <div className={styles.content}>
         <AlertBanner tone={request.destructive ? 'blocking' : 'warning'} title={request.title}>
-          {request.description}
+          <p className={styles.description}>{request.description}</p>
+          {request.details?.length ? (
+            <ul className={styles.details}>
+              {request.details.map((detail, index) => (
+                <li key={`${index}-${detail}`}>{detail}</li>
+              ))}
+            </ul>
+          ) : null}
         </AlertBanner>
         <div className={styles.actions}>
           <Button ref={cancelRef} variant="tertiary" onClick={() => settle(false)}>Cancel</Button>

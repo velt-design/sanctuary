@@ -681,16 +681,41 @@ Pricing Source Rollout:
 Schedule Board:
 
 - Assign an unscheduled job to a crew.
+- Start pointer and keyboard drag from the labelled Move control, not the card
+  or project-open control.
 - Reorder jobs within a crew.
 - Move a job between crews.
 - Unschedule a job and refresh.
+- When the preview reports affected jobs, confirm that names and before/after
+  dates appear; cancel once and verify the exact prior Board state returns.
+- After approval, change a reported affected date in a controlled test and
+  confirm the second preview prevents `force: true`, restores the prior local
+  state, and refreshes from the server.
+- Exercise a safe rejected mutation and confirm the page keeps a visible
+  failure/refresh state after the toast.
+- Exercise a timeout or malformed success response and confirm the page does
+  not claim the change was saved while it reconciles the authoritative state.
+- Confirm HTTP 501 is treated as the documented pre-commit schema/RPC
+  unavailable rejection, while network, 408, other 5xx, and malformed success
+  envelopes reconcile as commit-ambiguous.
+- Keep one deliberately slow command open across a Schedule client remount and
+  confirm the new instance stays read-only until the owning command finishes.
 - Confirm crew lanes stay fixed-width and horizontally scroll.
 
 Schedule Gantt:
 
 - Confirm week headers are Monday-aligned.
 - Confirm weekend shading is Saturday/Sunday.
-- Drag or resize bars only through supported interactions.
+- Open a focused bar with Enter/Space, close with Escape, and confirm focus
+  returns.
+- Focus a non-first quick-action button and press Enter; confirm the button
+  action runs instead of the dialog-level Open Project shortcut.
+- Resize a pinned bar and confirm one atomic `/job/adjust` request owns both
+  date and duration (never a sequential duration then pin pair).
+- Fail the post-accept range refresh safely and confirm the prior trusted range
+  remains visible as stale rather than showing optimistic dates as saved.
+- Operate the crew-label separator with Arrow/Home/End and confirm its ARIA
+  value tracks the width.
 - Toggle crew collapse and range options.
 
 ## Portal Production Readiness

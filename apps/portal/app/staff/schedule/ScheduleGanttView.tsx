@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Estimate } from '@/lib/types/estimate';
 import type { Installer, ScheduleItem, SchedulingIssue } from '@/lib/types/scheduling';
 import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
@@ -151,6 +151,10 @@ const GANTT_DEFAULT_ZOOM_WEEKS: GanttZoomWeeks = 12;
 const GANTT_LABEL_MIN_PX = 220;
 const GANTT_LABEL_DEFAULT_PX = 260;
 const GANTT_LABEL_MAX_PX = 420;
+const GANTT_LABEL_NARROW_MIN_PX = 120;
+const GANTT_TIMELINE_MIN_VIEWPORT_PX = 160;
+const GANTT_LABEL_RESIZER_WIDTH_PX = 16;
+const GANTT_LABEL_KEYBOARD_STEP_PX = 10;
 const GANTT_BAR_LABEL_MIN_PX = 120;
 const GANTT_TZ = SCHEDULE_TIME_ZONE;
 const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
@@ -275,6 +279,39 @@ function clampGanttLabelWidth(value: number): number {
   return Math.max(GANTT_LABEL_MIN_PX, Math.min(GANTT_LABEL_MAX_PX, Math.round(value)));
 }
 
+type GanttLabelWidthBounds = {
+  min: number;
+  max: number;
+  narrow: boolean;
+};
+
+function ganttLabelWidthBoundsForViewport(viewportWidthPx: number): GanttLabelWidthBounds {
+  if (!Number.isFinite(viewportWidthPx) || viewportWidthPx <= 0) {
+    return { min: GANTT_LABEL_MIN_PX, max: GANTT_LABEL_MAX_PX, narrow: false };
+  }
+  const responsiveMax = Math.max(
+    GANTT_LABEL_NARROW_MIN_PX,
+    Math.min(GANTT_LABEL_MAX_PX, Math.floor(viewportWidthPx - GANTT_TIMELINE_MIN_VIEWPORT_PX)),
+  );
+  if (responsiveMax < GANTT_LABEL_MIN_PX) {
+    return {
+      min: Math.min(GANTT_LABEL_NARROW_MIN_PX, responsiveMax),
+      max: responsiveMax,
+      narrow: true,
+    };
+  }
+  return { min: GANTT_LABEL_MIN_PX, max: responsiveMax, narrow: false };
+}
+
+function clampGanttLabelWidthToBounds(value: number, bounds: GanttLabelWidthBounds): number {
+  if (!Number.isFinite(value)) return bounds.max;
+  return Math.max(bounds.min, Math.min(bounds.max, Math.round(value)));
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
+
 function readGanttDensityPreference(): GanttDensity {
   if (typeof window === 'undefined') return 'compact';
   try {
@@ -380,6 +417,14 @@ function formatCommitmentLabel(item: ScheduleItem): string | null {
   return item.plannedStart ? `Starts ${formatShortDate(item.plannedStart)}` : 'Starts -';
 }
 
+function canAdjustGanttTiming(item: ScheduleItem | null): boolean {
+  if (!item || item.itemType === 'downtime') return false;
+  if (['in_progress', 'paused', 'done'].includes(item.jobStatus ?? '')) return false;
+  if (item.scheduleStatus === 'IN_PROGRESS' || item.scheduleStatus === 'COMPLETED') return false;
+  if (item.actualStartDate || item.actualEndDate) return false;
+  return true;
+}
+
 function isTextInputLikeTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -451,6 +496,7 @@ function GanttBarPopover({
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
+        role="dialog"
         aria-label="Gantt quick actions"
       >
         {details ? <div className={styles.ganttPopoverDetails}>{details}</div> : null}
@@ -497,6 +543,7 @@ export default function ScheduleGanttView({
 }: ScheduleGanttViewProps) {
   const ganttScrollRef = useRef<HTMLDivElement | null>(null);
   const ganttPopoverRef = useRef<HTMLDivElement | null>(null);
+  const ganttPopoverTriggerRef = useRef<HTMLElement | null>(null);
   const labelWidthPxRef = useRef(GANTT_LABEL_DEFAULT_PX);
   const pendingZoomAnchorRef = useRef<{ date: string; viewportOffsetPx: number } | null>(null);
   const ganttDragDeltaRef = useRef(0);
@@ -507,11 +554,17 @@ export default function ScheduleGanttView({
 
   const [zoomWeeks, setZoomWeeks] = useState<GanttZoomWeeks>(GANTT_DEFAULT_ZOOM_WEEKS);
   const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
-  const [labelWidthPx, setLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
+  const [preferredLabelWidthPx, setPreferredLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
+  const [narrowLabelWidthPx, setNarrowLabelWidthPx] = useState<number | null>(null);
+  const [ganttViewportWidthPx, setGanttViewportWidthPx] = useState(0);
   const [collapsedCrews, setCollapsedCrews] = useState<Record<string, boolean>>({});
-  const [showPlanned, setShowPlanned] = useState(false);
+  const [showPlanned, setShowPlanned] = useState(true);
   const [hoveredGanttRowId, setHoveredGanttRowId] = useState<string | null>(null);
-  const [ganttLabelResize, setGanttLabelResize] = useState<{ startX: number; startWidth: number } | null>(null);
+  const [ganttLabelResize, setGanttLabelResize] = useState<{
+    startX: number;
+    startWidth: number;
+    bounds: GanttLabelWidthBounds;
+  } | null>(null);
   const [ganttPopover, setGanttPopover] = useState<{ scheduleItemId: string; anchor: GanttPopoverAnchor } | null>(null);
   const [ganttDrag, setGanttDrag] = useState<{
     id: string;
@@ -523,6 +576,22 @@ export default function ScheduleGanttView({
   } | null>(null);
   const [ganttDragDelta, setGanttDragDelta] = useState(0);
   const [ganttDragPointer, setGanttDragPointer] = useState<{ x: number; y: number } | null>(null);
+  const labelWidthBounds = useMemo(() => ganttLabelWidthBoundsForViewport(ganttViewportWidthPx), [ganttViewportWidthPx]);
+  const labelWidthPx = clampGanttLabelWidthToBounds(
+    labelWidthBounds.narrow ? narrowLabelWidthPx ?? labelWidthBounds.max : preferredLabelWidthPx,
+    labelWidthBounds,
+  );
+
+  const applyInteractiveLabelWidth = useCallback((value: number, bounds: GanttLabelWidthBounds) => {
+    const next = clampGanttLabelWidthToBounds(value, bounds);
+    labelWidthPxRef.current = next;
+    if (bounds.narrow) {
+      setNarrowLabelWidthPx(next);
+      return next;
+    }
+    setPreferredLabelWidthPx(next);
+    return next;
+  }, []);
 
   useEffect(() => {
     scheduleItemByIdRef.current = scheduleItemById;
@@ -535,6 +604,23 @@ export default function ScheduleGanttView({
   useEffect(() => {
     labelWidthPxRef.current = labelWidthPx;
   }, [labelWidthPx]);
+
+  useLayoutEffect(() => {
+    const scroller = ganttScrollRef.current;
+    if (!scroller) return;
+    const updateViewportWidth = () => {
+      const next = Math.max(0, Math.floor(scroller.clientWidth));
+      setGanttViewportWidthPx((current) => (current === next ? current : next));
+    };
+    updateViewportWidth();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateViewportWidth) : null;
+    observer?.observe(scroller);
+    window.addEventListener('resize', updateViewportWidth);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateViewportWidth);
+    };
+  }, []);
 
   const issueLevelByScheduleId = useMemo(() => {
     const map = new Map<string, 'warning' | 'error'>();
@@ -971,10 +1057,10 @@ export default function ScheduleGanttView({
   useEffect(() => {
     if (!ganttLabelResize) return;
     const onMove = (event: PointerEvent) => {
-      setLabelWidthPx(clampGanttLabelWidth(ganttLabelResize.startWidth + event.clientX - ganttLabelResize.startX));
+      applyInteractiveLabelWidth(ganttLabelResize.startWidth + event.clientX - ganttLabelResize.startX, ganttLabelResize.bounds);
     };
     const onUp = () => {
-      writeGanttLabelWidthPreference(labelWidthPxRef.current);
+      if (!ganttLabelResize.bounds.narrow) writeGanttLabelWidthPreference(labelWidthPxRef.current);
       setGanttLabelResize(null);
     };
     window.addEventListener('pointermove', onMove);
@@ -983,7 +1069,7 @@ export default function ScheduleGanttView({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [ganttLabelResize]);
+  }, [applyInteractiveLabelWidth, ganttLabelResize]);
 
   const handleGanttZoomWeeksChange = (next: GanttZoomWeeks) => {
     if (next === zoomWeeks) return;
@@ -1009,14 +1095,17 @@ export default function ScheduleGanttView({
     const todayAbsolutePx = labelWidthPx + gantt.todayLinePx;
     const targetLeft = Math.max(0, todayAbsolutePx - (labelWidthPx + timelineViewportWidth * 0.3));
     const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-    scroller.scrollTo({ left: Math.min(maxLeft, targetLeft), behavior: 'smooth' });
+    scroller.scrollTo({
+      left: Math.min(maxLeft, targetLeft),
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    });
   };
 
   const beginGanttLabelResize = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    setGanttLabelResize({ startX: event.clientX, startWidth: labelWidthPx });
+    setGanttLabelResize({ startX: event.clientX, startWidth: labelWidthPx, bounds: labelWidthBounds });
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
@@ -1024,16 +1113,49 @@ export default function ScheduleGanttView({
     }
   };
 
+  const handleGanttLabelResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? GANTT_LABEL_KEYBOARD_STEP_PX * 2 : GANTT_LABEL_KEYBOARD_STEP_PX;
+    let next: number | null = null;
+    if (event.key === 'ArrowLeft') next = labelWidthPx - step;
+    if (event.key === 'ArrowRight') next = labelWidthPx + step;
+    if (event.key === 'Home') next = labelWidthBounds.min;
+    if (event.key === 'End') next = labelWidthBounds.max;
+    if (next == null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const applied = applyInteractiveLabelWidth(next, labelWidthBounds);
+    if (!labelWidthBounds.narrow) writeGanttLabelWidthPreference(applied);
+  };
+
   const openGanttPopover = (row: Extract<GanttRow, { kind: 'item' }>, target: HTMLElement) => {
     if (row.isDowntime) {
       setGanttPopover(null);
       return;
     }
+    ganttPopoverTriggerRef.current = target;
     const rect = target.getBoundingClientRect();
     setGanttPopover({
       scheduleItemId: row.scheduleItemId,
       anchor: { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height },
     });
+  };
+
+  const closeGanttPopover = () => {
+    const trigger = ganttPopoverTriggerRef.current;
+    setGanttPopover(null);
+    window.setTimeout(() => {
+      if (trigger?.isConnected) trigger.focus();
+    }, 0);
+  };
+
+  const handleGanttBarKeyDown = (
+    row: Extract<GanttRow, { kind: 'item' }>,
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (row.isDowntime || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openGanttPopover(row, event.currentTarget);
   };
 
   const beginGanttDrag = (
@@ -1042,6 +1164,8 @@ export default function ScheduleGanttView({
     e: React.PointerEvent,
   ) => {
     if (scheduleMode !== 'v2' || row.isDowntime || e.button !== 0) return;
+    const scheduleItem = scheduleItemByIdRef.current.get(row.scheduleItemId) ?? null;
+    if (!canAdjustGanttTiming(scheduleItem)) return;
     e.preventDefault();
     e.stopPropagation();
     setGanttPopover(null);
@@ -1071,9 +1195,10 @@ export default function ScheduleGanttView({
     if (isTextInputLikeTarget(event.target)) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      setGanttPopover(null);
+      closeGanttPopover();
       return;
     }
+    if (event.target !== event.currentTarget) return;
     if (!ganttPopoverDetails) return;
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -1166,11 +1291,17 @@ export default function ScheduleGanttView({
           <div
             className={styles.ganttLabelResizer}
             data-active={ganttLabelResize ? 'true' : 'false'}
-            style={{ left: labelWidthPx - 4 }}
+            style={{ left: labelWidthPx - GANTT_LABEL_RESIZER_WIDTH_PX / 2 }}
             role="separator"
+            tabIndex={0}
             aria-orientation="vertical"
             aria-label="Resize crew label column"
+            aria-valuemin={labelWidthBounds.min}
+            aria-valuemax={labelWidthBounds.max}
+            aria-valuenow={labelWidthPx}
+            aria-valuetext={`${labelWidthPx} pixels`}
             onPointerDown={beginGanttLabelResize}
+            onKeyDown={handleGanttLabelResizeKeyDown}
           />
           <div className={styles.ganttCorner}><div className={styles.ganttLeftHeaderGrid}><div className={styles.ganttColProject}>Crew / Project</div></div></div>
           <div className={styles.ganttHeader} style={{ width: gantt.totalWidth }}>
@@ -1187,8 +1318,13 @@ export default function ScheduleGanttView({
           </div>
           <div className={styles.todayLine} style={{ left: labelWidthPx + gantt.todayLinePx }} aria-hidden="true" />
           {ganttDragFeedback ? <div className={styles.ganttSnapGuide} style={{ left: labelWidthPx + ganttDragFeedback.snapLinePx }} aria-hidden="true" /> : null}
-          {gantt.rows.map((row) => (
-            <div
+          {gantt.rows.map((row) => {
+            const timingAdjustable =
+              row.kind === 'item' &&
+              scheduleMode === 'v2' &&
+              canAdjustGanttTiming(scheduleItemById.get(row.scheduleItemId) ?? null);
+            return (
+              <div
               key={row.id}
               className={styles.ganttRowWrap}
               data-kind={row.kind}
@@ -1256,6 +1392,7 @@ export default function ScheduleGanttView({
                     data-conflict={row.issueLevel === 'error' ? 'true' : undefined}
                     data-pinned={row.isPinned ? 'true' : undefined}
                     data-dragging={ganttDrag?.id === row.scheduleItemId ? 'true' : undefined}
+                    data-timing-adjustable={timingAdjustable ? 'true' : 'false'}
                     style={{
                       left: row.barLeftPx,
                       width: row.barWidthPx,
@@ -1280,23 +1417,40 @@ export default function ScheduleGanttView({
                         `End: ${formatShortDate(row.endDate)}`,
                       ].filter((line): line is string => Boolean(line)).join('\n');
                     })()}
-                    onPointerDown={(e) => beginGanttDrag(row, 'move', e)}
+                    role={row.isDowntime ? undefined : 'button'}
+                    tabIndex={row.isDowntime ? undefined : 0}
+                    aria-haspopup={row.isDowntime ? undefined : 'dialog'}
+                    aria-expanded={row.isDowntime ? undefined : ganttPopover?.scheduleItemId === row.scheduleItemId}
+                    aria-label={
+                      row.isDowntime
+                        ? undefined
+                        : `${row.projectName}. Forecast ${formatShortDate(row.startDate)} to ${formatShortDate(row.endDate)}. ${row.durationLabel}. Press Enter for actions.`
+                    }
+                    onPointerDown={timingAdjustable ? (e) => beginGanttDrag(row, 'move', e) : undefined}
                     onClick={(e) => {
                       if (shouldBlockGanttClick()) return;
                       e.stopPropagation();
                       openGanttPopover(row, e.currentTarget);
                     }}
+                    onKeyDown={(event) => handleGanttBarKeyDown(row, event)}
                   >
                     {row.isPinned ? <span className={styles.ganttPin} aria-hidden="true" /> : null}
                     {row.barWidthPx >= GANTT_BAR_LABEL_MIN_PX ? <span className={styles.ganttBarTextFade}><span className={styles.ganttBarText}>{row.projectName}</span></span> : null}
-                    {scheduleMode === 'v2' && !row.isDowntime ? (
-                      <span className={styles.ganttResizeHandle} role="presentation" onPointerDown={(e) => beginGanttDrag(row, 'resize', e)} onClick={(e) => e.stopPropagation()} />
+                    {timingAdjustable ? (
+                      <span
+                        className={styles.ganttResizeHandle}
+                        data-gantt-resize-handle="true"
+                        role="presentation"
+                        onPointerDown={(e) => beginGanttDrag(row, 'resize', e)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
                     ) : null}
                   </div>
                 ) : null}
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
       {ganttDragFeedback && ganttDragPointer ? (
@@ -1311,7 +1465,7 @@ export default function ScheduleGanttView({
           anchor={ganttPopover.anchor}
           actions={ganttPopoverDetails.actions}
           details={ganttPopoverDetails.details}
-          onClose={() => setGanttPopover(null)}
+          onClose={closeGanttPopover}
           onKeyDown={handleGanttPopoverKeyDown}
           focusRef={ganttPopoverRef}
         />

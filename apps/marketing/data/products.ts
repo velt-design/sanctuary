@@ -742,7 +742,7 @@ export const productCategories: Array<{
   {
     slug: 'pergolas',
     label: 'Pergola forms',
-    heading: 'Choose the roof shape.',
+    heading: 'Compare four roof forms.',
     introduction:
       'Form changes height, drainage and how the pergola meets the house.',
   },

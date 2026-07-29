@@ -77,23 +77,6 @@ export const pergolasWithBlindsConfig = {
       ],
     },
     {
-      kind: 'editorial-image',
-      id: 'blind-integration',
-      tone: 'neutral',
-      eyebrow: 'Integration',
-      title: 'Design the opening and blind together.',
-      image: {
-        src: '/images/project-tindalls-bay.jpg',
-        alt: 'Auckland coastal pavilion with a screened edge beside the dining area',
-        objectPosition: '50% 42%',
-      },
-      items: [
-        { title: 'Opening', text: 'Measure the clear width and height.' },
-        { title: 'Structure', text: 'Plan the headbox, guides, fixings and clearances.' },
-        { title: 'Services', text: 'Confirm power, controls and access where required.' },
-      ],
-    },
-    {
       kind: 'decision-cards',
       id: 'blind-decisions',
       tone: 'warm',

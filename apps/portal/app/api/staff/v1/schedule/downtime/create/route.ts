@@ -2,6 +2,7 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitCreateDowntime } from '@/lib/scheduling/scheduleCommands';
+import { parseScheduleForce } from '@/lib/scheduling/scheduleMutationRequest';
 import {
   applyScheduleItemPositions,
   buildCrewContext,
@@ -40,7 +41,9 @@ export async function POST(req: Request) {
   const durationRaw = body.duration_days;
   const reason = normalizeReason(body.reason);
   const note = typeof body.note === 'string' ? body.note.trim() : null;
-  const force = Boolean(body.force);
+  const parsedForce = parseScheduleForce(body.force);
+  if (!parsedForce.ok) return jsonError(parsedForce.error, 400, diagnostics);
+  const force = parsedForce.value;
 
   if (!crewId) return jsonError('crew_id is required', 400, diagnostics);
 

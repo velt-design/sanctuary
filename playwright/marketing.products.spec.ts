@@ -140,8 +140,10 @@ test('the product catalogue owns all ten canonical routes and the sitemap expose
   const main = page.locator('main[data-products-index]');
   await expect(main.locator('h1')).toHaveCount(1);
   await expect(main.getByRole('heading', { level: 1 })).toHaveText(
-    'Pergola forms and options.',
+    'Choose your pergola form.',
   );
+  await expect(main.getByRole('link', { name: 'Compare roof forms' }))
+    .toHaveAttribute('href', '#pergola-forms');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
     'href',
     `${publicOrigin}/products`,
@@ -161,6 +163,43 @@ test('the product catalogue owns all ten canonical routes and the sitemap expose
   for (const product of products) {
     expect(sitemap).toContain(`${publicOrigin}${product.route}`);
   }
+});
+
+test('the product hub keeps one clear choice above the desktop fold', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await preparePage(page);
+  await page.goto('/products', { waitUntil: 'networkidle' });
+
+  const hero = page.locator('[data-products-index-hero]');
+  await expect(hero.getByRole('heading', {
+    level: 1,
+    name: 'Choose your pergola form.',
+  })).toBeVisible();
+  await expect(hero.getByRole('link')).toHaveCount(1);
+  await expect(hero.getByRole('link', {
+    name: 'Compare roof forms',
+    exact: true,
+  })).toHaveAttribute('href', '#pergola-forms');
+
+  const layout = await hero.evaluate((element) => {
+    const heading = element.querySelector('h1');
+    const nextHeading = document.querySelector('#pergola-forms h2');
+    return {
+      headingFontSize: heading
+        ? Number.parseFloat(getComputedStyle(heading).fontSize)
+        : Number.POSITIVE_INFINITY,
+      heroHeight: element.getBoundingClientRect().height,
+      nextHeadingTop:
+        nextHeading?.getBoundingClientRect().top
+        ?? Number.POSITIVE_INFINITY,
+    };
+  });
+
+  expect(layout.heroHeight).toBeLessThanOrEqual(704);
+  expect(layout.headingFontSize).toBeLessThanOrEqual(92);
+  expect(layout.nextHeadingTop).toBeLessThan(1000);
 });
 
 for (const viewport of viewports) {
@@ -227,11 +266,18 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
       const callsToAction = main.getByRole('link', {
         name: 'Send project brief',
       });
-      await expect(callsToAction).toHaveCount(2);
-      expect((await callsToAction.first().boundingBox())?.y ?? 844)
-        .toBeLessThan(844);
 
       if (routeCase.route === '/products') {
+        const compareAction = main.getByRole('link', {
+          name: 'Compare roof forms',
+          exact: true,
+        });
+        await expect(compareAction).toBeVisible();
+        await expect(compareAction).toHaveAttribute('href', '#pergola-forms');
+        expect((await compareAction.boundingBox())?.y ?? 844)
+          .toBeLessThan(844);
+        await expect(callsToAction).toHaveCount(1);
+
         const formGrid = main.locator('[data-product-form-grid]');
         await expect(formGrid.locator(':scope > article')).toHaveCount(4);
         expect((await formGrid.boundingBox())?.y ?? Number.POSITIVE_INFINITY)
@@ -243,6 +289,10 @@ test('the refined mobile journey is shorter, scannable and touch safe at target 
         await expect(main.locator('[data-product-project-grid] > article'))
           .toHaveCount(1);
       } else {
+        await expect(callsToAction).toHaveCount(2);
+        expect((await callsToAction.first().boundingBox())?.y ?? 844)
+          .toBeLessThan(844);
+
         const galleries = main.locator('[data-product-gallery]');
         await expect(galleries).toHaveCount(1);
         await expect(galleries).toHaveAttribute('data-product-gallery', 'primary');

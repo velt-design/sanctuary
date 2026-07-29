@@ -226,8 +226,11 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     );
   });
 
-  it('returns confirmation before any RPC call', async () => {
-    computeCommitImpacts.mockReturnValueOnce([{ job_id: 'project-1' }]);
+  it('requires confirmation only for another affected job', async () => {
+    computeCommitImpacts.mockReturnValueOnce([
+      { job_id: 'project-1', scheduled_job_id: 'temporary-job', before_start: null, after_start: '2026-04-10' },
+      { job_id: 'project-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-10', after_start: '2026-04-12' },
+    ]);
 
     const mod = await import('./route');
     const res = await mod.POST(
@@ -240,7 +243,9 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       requires_confirmation: true,
-      impacts: [{ job_id: 'project-1' }],
+      impacts: [
+        { job_id: 'project-2', scheduled_job_id: 'scheduled-job-2', before_start: '2026-04-10', after_start: '2026-04-12' },
+      ],
     });
     expect(rpc).not.toHaveBeenCalled();
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_confirm');

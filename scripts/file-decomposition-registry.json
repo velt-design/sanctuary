@@ -137,8 +137,8 @@
         "apps/portal/app/staff/schedule/**",
         "apps/portal/lib/scheduling/**"
       ],
-      "whyLarge": "Board, Gantt, Site Visits, readiness, and legacy fallback remain heavy interactive surfaces.",
-      "nextSafeExtraction": "Extract workflow-specific clients, query/view models, and command adapters before adding new schedule modes.",
+      "whyLarge": "ScheduleClient still composes Board/Gantt query authority, legacy/V2 selection, drag/drop, optimistic commands, confirmation and reconciliation; ScheduleGanttView still combines timeline geometry, row/bar presentation and pointer/keyboard interactions. The shared mutation failure/fingerprint policy now lives in scheduleMutationTrust, request parsing/impact filtering lives in scheduleMutationRequest, and atomic start-plus-duration persistence has its own command route.",
+      "nextSafeExtraction": "Before adding another inline Schedule mutation, extract the V2 checkpoint/trust/cache/confirmation lifecycle from ScheduleClient as a focused controller with the existing failure and concurrency tests. Before adding more Gantt interactions, extract the job-bar/row interaction presenter from ScheduleGanttView while keeping date geometry and command ownership explicit.",
       "focusedTests": [
         "npm run test:portal:schedule",
         "npm run schedule:bundle-budget",

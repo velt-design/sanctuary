@@ -98,7 +98,7 @@ export type ScheduleActionModalsProps = {
   setPinEdit: Dispatch<SetStateAction<PinEditState>>;
   setDaysRemainingEdit: Dispatch<SetStateAction<DaysRemainingEditState>>;
   setDowntimeEdit: Dispatch<SetStateAction<DowntimeEditState>>;
-  setFinishEarlyPrompt: Dispatch<SetStateAction<FinishEarlyPromptState>>;
+  onCancelFinishEarly: () => void;
   onSaveQuickEdit: () => void;
   onSaveCommitment: () => void;
   onSaveDuration: () => void;
@@ -122,7 +122,7 @@ export default function ScheduleActionModals({
   setPinEdit,
   setDaysRemainingEdit,
   setDowntimeEdit,
-  setFinishEarlyPrompt,
+  onCancelFinishEarly,
   onSaveQuickEdit,
   onSaveCommitment,
   onSaveDuration,
@@ -623,13 +623,13 @@ export default function ScheduleActionModals({
         <Modal
           open
           ariaLabel="Finish early options"
-          onClose={() => setFinishEarlyPrompt(null)}
+          onClose={onCancelFinishEarly}
           maxWidthPx={560}
         >
           <div className={styles.actionModalBody}>
             <div className={styles.actionModalHeader}>
               <h2 className={styles.actionModalTitle}>Finished early</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
+              <button type="button" className={styles.buttonSecondary} onClick={onCancelFinishEarly}>
                 Close
               </button>
             </div>
@@ -664,7 +664,7 @@ export default function ScheduleActionModals({
             ) : null}
 
             <div className={`${styles.actionModalActions} ${styles.actionModalActionsWrap}`}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
+              <button type="button" className={styles.buttonSecondary} onClick={onCancelFinishEarly}>
                 Cancel
               </button>
               <button
