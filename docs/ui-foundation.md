@@ -1,14 +1,31 @@
-# Staff Portal UI Foundation
+# Staff Portal UI System
 
-Status: Current foundation contract.
+Status: Current portal UI contract.
 
-## Scope
+## Authority And Scope
 
-`/staff/ui-foundation` is the protected live catalogue for the staff portal's next shared visual system. It renders the same reusable exports that future portal screens should consume; it is not a parallel collection of demonstration-only markup.
+The checked-in portal implementation and its rendered behavior are the current
+staff UI canon. This document describes the shared owners, active specialist
+boundaries, visual rules and regression evidence that exist now. It is not a
+redesign brief, replacement programme or instruction to migrate another route.
 
-The production rollout is a replacement migration, not a compatibility skin. A route is complete only when its active presentation is built from Foundation tokens and reusable patterns with no legacy card, control, colour, radius, or arbitrary feature-level styling left in the rendered layer. Behavioural owners, API contracts, cache/local-first semantics, permissions, accessibility, and performance boundaries remain unchanged.
+`/staff/ui-foundation` is the protected live catalogue for shared portal
+exports. It demonstrates current reusable components and forced test states. It
+does not outrank production routes, require every specialist surface to use the
+same composition, or authorize changing a route merely to resemble the
+catalogue.
 
-The active checkpoint order is Shell, Projects Index, Project Detail, Contacts, Estimates/Quotes, Calculator, Schedule/Tasks, remaining staff routes, then Dashboard. Earlier checkpoints were reopened after the July 2026 visual audit found blended legacy presentation. The inventory below, not a prior checkpoint label, is the current completion record.
+Portal and marketing have separate UI systems. The marketing-only contract in
+`docs/marketing-ui-foundation.md` must not be imported into or used to set
+direction for the portal. A broad portal restyle, cross-route token migration or
+replacement of current specialist presentation requires explicit user
+approval.
+
+Names such as `legacy`, `compatibility`, `foundation`, or `specialist` describe
+implementation history or ownership; they do not by themselves make a live
+path removable. Behavioural owners, API contracts, cache/local-first
+semantics, permissions, accessibility and performance boundaries remain
+authoritative.
 
 ## Owners
 
@@ -54,7 +71,11 @@ Projects Index consumes the index `PageHeader`, `ButtonLink`, `SearchFilterBar`,
 
 `StaffPageHeader` is the shared composition for the global utility rail. It is adopted by Dashboard, Projects Index/Detail/Create, Contacts Index/Detail/Create, Schedule, Drafting Queue, Running Jobs, Imports, Pricebook, and Access, including the Projects and Contacts truthful pending states. It preserves each `PageHeader` variant and its page-owned actions while adding one grouped Projects/Contacts search owner. When the header has more than 960px of available width, identity, search, and actions share one row and equal flexible side tracks keep search on the header's geometric centreline. At 960px or below, including narrow sidebar layouts and 200% zoom, the default header wraps in the stable order identity, search, then actions; search remains centred and becomes full-width on mobile. Project Detail deliberately keeps its project name/stage, search, owner, and route actions on one internally scrollable command rail at narrow widths so the sticky project header remains exactly two rows with its tabs; it must not create document overflow or hide a permitted command. The search begins at two characters, debounces and cancels superseded requests, returns at most five results per group, supports `Ctrl/Cmd+K`, `/`, arrow keys, Enter, and Escape, and exposes explicit loading, empty, error, current-result, and opening states. Selecting a destination uses the shared non-blocking route-progress owner; the query and results clear only when the route commits, while selecting the current result closes and clears without a false navigation. Projects remain ranked first. Projects search real name, saved reference, site address, and linked contact name fields; Contacts search real name, email, phone, and address fields. No company or dedicated project-number field is claimed because neither exists in the current canonical schema. Local list filters remain separate and keep their existing owners.
 
-Future adoption still requires checking the route's identity, actions, metadata, local filters/tabs, pending states, mobile order, and overlay containment against the shared header archetypes. Calculator and Design Workbench remain deliberate exclusions until their unsaved-work navigation requirements have a defined search handoff. The public marketing site remains outside this contract.
+The routes named above are the current `StaffPageHeader` consumers. Calculator
+and Design Workbench deliberately remain outside global-search adoption because
+their unsaved-work navigation requirements have separate owners. Changing that
+boundary requires its own approved task and route-specific evidence. The public
+marketing site remains outside this contract.
 
 Contacts Index, Contact Create, Contact Detail, and CSV import compose `PageLayout`, header variants, foundation controls, cards, tables, loading/data states, alerts, and the shared modal. Their existing Contacts-index state machine, instant navigation, authenticated APIs, cache coherence, lazy import boundary, and local-first Contact Detail queue remain the behavioral owners. Mobile contact tables reduce to identity and action columns; secondary data remains available on wider screens and the detail field table reflows without document overflow.
 
@@ -79,42 +100,53 @@ Dashboard is the final migrated checkpoint. It uses the dashboard-only display h
 
 The canonical `/login` and `/access-status` routes use the same hard-edge Foundation tokens through `PublicAuthShell`; `/staff/login` remains a query-preserving redirect. Generic page-message and pending-state surfaces share that token owner, so authentication, failure, and loading states do not reintroduce the retired rounded-card layer.
 
-The replacement is also complete at source level for active portal presentation: route and shared-surface CSS use semantic `--ui-*` roles directly, static presentation has moved out of JSX into named owners, and obsolete standalone quote/estimate, project stylesheet, warning, and chevron implementations have been deleted. Runtime geometry, user-selected crew colours, and the separately owned design-workbench drawing surface remain data/specialist concerns rather than compatibility exceptions.
+The current portal intentionally combines shared semantic `--ui-*` roles with
+active route-owned, compatibility and specialist presentation. Examples
+include the compatibility tokens retained for the design workbench and theme
+editor, the default and Foundation-aware `PageHeader` paths, runtime geometry,
+user-selected crew colours, calculator composition and spreadsheet surfaces.
+These are part of the current system where they are still consumed. Do not
+delete, rename, flatten or visually replace them without proving their exact
+consumers and obtaining approval for any resulting UI change.
 
 ## Change Rules
 
-- Prefer semantic `--ui-*` roles over raw colour or spacing values in new foundation consumers.
-- Legacy tokens may remain only in explicitly inventoried, not-yet-migrated routes. They cannot remain in a route marked complete.
-- Add a catalogue example and focused test when adding a public primitive variant.
-- Update `playwright/support/portalRouteCatalog.ts` if the route contract changes.
-- A missing production pattern must be implemented as a reusable Foundation component, demonstrated in the catalogue, tested, and then consumed by the route.
+- Inspect the current rendered route, its code, its tests and its owning feature
+  doc before proposing a visual change. When this doc disagrees, those current
+  sources win and this doc must be corrected.
+- Prefer semantic `--ui-*` roles when extending an existing Foundation
+  consumer. Do not use that preference to rewrite an unrelated current
+  surface.
+- Preserve active route-owned and specialist presentation. A compatibility or
+  legacy name is not deletion evidence.
+- Add a catalogue example and focused test when changing a shared primitive
+  variant.
+- Update `playwright/support/portalRouteCatalog.ts` if the route contract
+  changes.
+- Decide whether a missing pattern is truly shared or route-specific from
+  current consumers. A new shared primitive requires a real reuse case; it
+  does not require an incidental migration of existing routes.
+- Never import the marketing Foundation into the portal or use its visual rules
+  as portal acceptance criteria.
 
-## Route Migration Inventory
+## Current Ownership And Adoption Map
 
-Status meanings: `migrated` means the named active layer has no legacy presentation; `in review` means the Foundation replacement exists but browser/route audit is not closed; `pending` means a legacy presentation remains and the route checkpoint is not complete.
+This map records current owners and important boundaries. It is not a backlog
+and has no implied completion sequence.
 
-| Route / surface | Legacy presentation owner being replaced | Foundation owner | Status |
-| --- | --- | --- | --- |
-| Staff shell | legacy sidebar/mobile chrome and compatibility tokens | `PortalShell`, inverse Foundation navigation, orange active edge, focus-managed drawer | Migrated |
-| `/staff/projects` | index-specific legacy table/filter/action styling | `PageHeader`, `SearchFilterBar`, `Table`, badges, data states, shared confirmation | Migrated |
-| Project Detail header | legacy masthead, project-ID line, pipeline visual, action menu, chevron workflow, tab strip | two-row detail `PageHeader`, inline `ProjectStageBadge`, `OverflowMenu`, `TabNavigation` | Migrated |
-| Project Detail status/details | rounded status/detail cards and inline field styling | square `Card`, `KeyValueGrid`, Foundation inputs and alerts | Migrated |
-| Project Detail design/commercial summary | legacy summary cards and ad hoc metrics | `Card`, `MetricGrid`, canonical status badges | Migrated |
-| Project Detail command | legacy command-centre card and action controls | `Card`, `ActionPanel`, `KeyValueGrid`, Foundation controls/timeline | Migrated |
-| Project Detail activity | legacy note cards and browser delete prompt | `Textarea`, `ActivityTimeline`, `DestructiveConfirmation` | Migrated |
-| Project Detail tasks/stage modal | legacy task rows, raw utility controls, legacy modal classes | `TaskList`, `TaskRow`, feedback, Foundation controls, semantic `PipelineModal` | Migrated |
-| Project Detail overview composition | blended legacy grid/card layer | warm `PageLayout`, square cards, `OperationalGrid` | Migrated |
-| Project Detail Commercial, Calculator, Invoices, Job Packs tabs | legacy tab-specific cards, tables, controls, and modal actions | shared tabs, controls, tables, badges, data states, and Foundation-token specialist calculator/spreadsheet owners | Migrated |
-| Contacts routes | legacy route-specific cards/tables/forms and dev diagnostic panel | Foundation layout, forms, tables, feedback, import dialog, semantic diagnostic surface | Migrated |
-| Estimates / Quotes | legacy presentation in active editors and dialogs | canonical badges, tables, sticky actions, dialogs, square semantic notes and row actions | Migrated |
-| Calculator | specialist command/configuration presentation | Foundation density, controls, feedback, panels, and approved geometry-status chips | Migrated |
-| Schedule / Tasks | rounded Board/Gantt/Site Visit cards, pill controls, and inline popover styling | hard-edge Foundation canvas, controls, feedback, semantic status edges, dialogs, and portal popovers | Migrated |
-| Remaining staff routes and settings | legacy route presentation | Foundation project form, shared spreadsheet, admin data surfaces, accessible Pricebook tabs, canonical quote redirects | Migrated |
-| Dashboard | legacy dashboard composition and exceptions feed | dashboard hero/quick actions, nine stage cells, attention/leads/estimates/action queue, flat activity, shared task rows | Migrated |
-| Public staff auth, access, and page states | rounded gradient cards, pill actions, and rounded loading blocks | hard-edge `PublicAuthShell`, semantic status edges, Foundation controls and reduced-motion skeletons | Migrated |
-| Compatibility URLs | standalone or superseded route presentation | server redirects to the canonical Dashboard, Login, Calculator, Running Jobs, Commercial, or Job Packs owner | Migrated (redirect-only) |
-
-Temporary exceptions must be recorded as `pending` with a named owner and removal checkpoint. They are excluded from final completion and the portal-wide READY verdict.
+| Surface | Current presentation owner | Boundary to preserve |
+| --- | --- | --- |
+| Staff shell and navigation | `PortalShell`, navigation modules, semantic portal tokens, mobile drawer | Keep current expanded/collapsed/mobile behavior, focus ownership and active compatibility tokens. |
+| Dashboard | dashboard header, quick actions, pipeline, operational panels, activity and task owners | Preserve current hierarchy and data semantics; do not infer new metrics or restyle other routes from Dashboard. |
+| Projects and Contacts | `StaffPageHeader`, `PageHeader`, shared controls/surfaces/statuses plus route-owned composition | Keep search, filters, pending states, cache/local-first behavior and page actions with their domain owners. |
+| Project Detail and commercial tabs | detail header/tabs, operational patterns, quote/invoice/job-pack owners and specialist tab composition | Shared components do not move commercial, local-first, side-effect or lazy-boundary authority. |
+| Calculator | specialist command, configuration, preview and save owners with current portal token/control integration | Do not flatten the specialist workspace into a generic page pattern or change costing/save behavior as UI cleanup. |
+| Schedule and Tasks | schedule-owned Board/Gantt/Site Visits composition with shared feedback, controls and dialogs | Preserve view boundaries, horizontal work regions, optimistic commands and legacy fallback isolation. |
+| Drafting Queue and Running Jobs | shared spreadsheet shell and route-owned spreadsheet presentation | Preserve zoom, local editing, internal scroll containment and field ownership. |
+| Design Workbench and theme editor | specialist presentation plus the active compatibility tokens declared in portal globals | Outside any general Foundation cleanup; follow their own architecture and visual-review guardrails. |
+| Public auth and page states | `PublicAuthShell`, semantic status edges, shared controls and reduced-motion states | Preserve credential-free routes, redirects, focus and responsive behavior. |
+| Foundation catalogue and QA mirror | `/staff/ui-foundation` and gated `/qa/ui-foundation-fixture` | Regression and discovery evidence only; never a blanket production migration target. |
+| Compatibility URLs | server redirects to current Dashboard, Login, Calculator, Running Jobs, Commercial or Job Packs owners | Redirect behavior is canonical; do not recreate retired presentation. |
 
 ## Verification
 

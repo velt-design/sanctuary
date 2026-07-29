@@ -58,6 +58,8 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - Browser UI should use API/query/local-first layers rather than direct Supabase table reads.
 - Schedule V2 writes go through staff API/RPC command routes; do not bypass with ad hoc table mutation.
 - Design List and Running Jobs share the spreadsheet shell and optimistic editing patterns.
+- Portal and marketing have separate UI systems. The checked-in portal implementation and its rendered behavior are the current portal UI canon; `docs/ui-foundation.md` describes that system but does not authorize a redesign, restyle, or route migration. The marketing-only system in `docs/marketing-ui-foundation.md` must not set portal direction, and the portal system must not be applied to marketing.
+- A cross-route visual migration, shared-token replacement, or broad UI-system change requires explicit user approval. Do not treat a catalogue, roadmap, compatibility label, or older migration entry as authority to change the current UI.
 
 ## Maintainability Default
 
@@ -100,6 +102,8 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/staff-api-auth-contracts.md`: staff/admin/public-token route auth, Supabase client boundaries, diagnostics, and response conventions.
 - `docs/automation-email-audit.md`: automation events, project tasks, follow-ups, email outbox, email previews, and audit side effects.
 - `docs/testing-and-qa.md`: test commands, Playwright, manual QA.
+- `docs/ui-foundation.md`: current staff portal UI owners, active specialist boundaries, visual contract, and regression evidence.
+- `docs/marketing-ui-foundation.md`: separate marketing-only UI owners, approved public-route adoptions, and regression evidence.
 - `docs/projects-contacts-estimates-calculator.md`: contacts, projects, project snapshots, calculator estimates, estimate locks, and local-first estimate mutations.
 - `docs/quotes-invoices-job-packs.md`: quote, invoice, public-token, PDF/email, and job-pack side effects.
 - `docs/parallel-work-guardrails.md`: canonical active guardrails for parallel work across apps, packages, docs, and workbench migration lanes. The old `docs/design-workbench-parallel-migration-rules.md` path is a redirect only.

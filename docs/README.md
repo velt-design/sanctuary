@@ -2,6 +2,8 @@
 
 These docs are current-state references and active guardrails for coding agents. They should describe what the repo does now, where source of truth lives, how to verify changes, and what recurring mistakes not to repeat.
 
+Portal and marketing have separate UI systems. `ui-foundation.md` describes the current staff portal implementation; `marketing-ui-foundation.md` describes the marketing-only implementation. Neither document, catalogue, or historical rollout note authorizes changing the other app or broadly restyling current routes.
+
 ## Read First
 
 1. `../AGENTS.md`: root agent guide and repo boundaries.
@@ -51,7 +53,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `automation-email-audit.md` | Current | You are touching automation events, project tasks, follow-ups, email outbox, email previews, audit events, or marketing enquiry email side effects. |
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `portal-route-catalog.md` | Current | You need portal route metadata, required roles, data requirements, owner docs, or browser-smoke status. |
-| `ui-foundation.md` | Current | You are changing shared portal tokens, reusable UI primitives, page-header variants, status components, or `/staff/ui-foundation`. |
+| `ui-foundation.md` | Current portal UI contract | You are changing current shared portal tokens, reusable UI primitives, page-header variants, status components, or `/staff/ui-foundation`. It is descriptive, not a migration mandate. |
 | `projects-contacts-estimates-calculator.md` | Current | You are touching contacts, projects, project snapshots/tasks, calculator estimates, estimate locks, or local-first estimate mutations. |
 | `calculator-trust-and-explainability-goal.md` | Active product goal | You are planning or implementing the Calculator Result Inspector, breakdowns, workings, trust cues, or explainability improvements. |
 | `calculator-ui-ux-review.md` | Current evidence review | You need the observed Calculator usability, accessibility, hierarchy, density, language, or responsive findings. |
@@ -69,7 +71,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
 | `security-privacy-quality.md` | Current | You are touching tracking, consent, CSP, Lighthouse, audits, or quality gates. |
-| `marketing-ui-foundation.md` | Current | You are changing the standalone internal marketing foundation catalogue or its route-local reusable primitives and patterns. |
+| `marketing-ui-foundation.md` | Current marketing-only UI contract | You are changing the standalone internal marketing catalogue or an existing marketing consumer of its reusable primitives and patterns. It does not apply to the portal. |
 | `marketing-claims-register.md` | Current governance | You are writing or reviewing public marketing claims and need the approved, pending, or prohibited evidence boundary. |
 | `landing-pages/sanctuary-pergola-guide-ecosystem-roadmap.md` | Active implementation programme | You are changing the pergola-guide ecosystem's information architecture, implementation order, or goal status. |
 

@@ -27,7 +27,7 @@ export const audiencePathways: readonly AudiencePathway[] = [
   {
     title: 'Commercial projects',
     copy: 'Plan the structure around operations, access and delivery.',
-    href: '/commercial-pergolas-auckland#project-details',
+    href: '/commercial-pergolas-auckland',
     action: 'Explore commercial work',
     enquiryType: 'commercial',
     event: 'design_conversation_capability_open',

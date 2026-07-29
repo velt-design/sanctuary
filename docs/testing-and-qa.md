@@ -490,11 +490,11 @@ npm run test:portal:performance:fixture
 
 `npm run test:portal:browser` includes the gated, customer-data-free Project Command Centre fixture at `/qa/project-command-centre-fixture`. Its matrix preserves the nine commercial/source scenarios and adds primary, empty, conflict, critical, and undated action states at 1600, 1366, 1024, 768, and 390 px with horizontal-overflow assertions. The fixture renders the production design/commercial and primary-action cards and requires `ENABLE_PORTAL_QA_FIXTURES=1`; the standard fixture harness supplies that flag.
 
-The UI foundation has a data-free visual mirror at `/qa/ui-foundation-fixture`, gated by the same `ENABLE_PORTAL_QA_FIXTURES=1` flag. Use it for desktop, tablet, and mobile screenshots when staff credentials are unavailable. `/staff/ui-foundation` remains the authoritative protected route and stays in authenticated agent-access smoke.
+The current portal UI system has a data-free visual mirror at `/qa/ui-foundation-fixture`, gated by the same `ENABLE_PORTAL_QA_FIXTURES=1` flag. Use it for desktop, tablet, and mobile screenshots when staff credentials are unavailable. `/staff/ui-foundation` remains the protected shared-component catalogue and stays in authenticated agent-access smoke. Both routes provide regression evidence; neither is a target mockup that authorizes restyling production routes.
 
 The same fixture flag exposes `/qa/commercial-workflow-fixture` for quote-delivery recovery. This route is the canonical customer-data-free visual source for the prepared-version banner, immutable request review, retryable failure, terminal staff-attention state, mobile touch targets, and modal focus behavior. It never dispatches a provider request; live send, acceptance, invoice creation, and invoice delivery remain separate deliberate staging checks after the commercial migration is applied.
 
-`playwright/portal.ui-foundation.spec.ts` is the production-hardening gate for `/staff/ui-foundation`, `/staff/projects`, and one discovered Project Detail route. It runs 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 plus 720x500 with a 200% zoom simulation. It combines semantic and interaction assertions with document-overflow, major-section-overlap, cropped-control, keyboard/focus-return, reduced-motion, and contrast checks; screenshots remain supplementary evidence rather than the only assertion.
+`playwright/portal.ui-foundation.spec.ts` is a regression gate for the current `/staff/ui-foundation`, `/staff/projects`, and one discovered Project Detail route. It runs 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 plus 720x500 with a 200% zoom simulation. It combines semantic and interaction assertions with document-overflow, major-section-overlap, cropped-control, keyboard/focus-return, reduced-motion, and contrast checks; screenshots remain supplementary evidence rather than the only assertion.
 
 `npm run test:portal:command-centre:auth` additionally requires `PORTAL_COMMAND_CENTRE_MUTATION_PROJECT_ID` and `PORTAL_COMMAND_CENTRE_CONFLICT_PROJECT_ID`. The mutation project must be a dedicated active `new`-through-`sent` test project with no other qualifying dated action or conflict. The conflict project must be dedicated, start with a real explicit-selection conflict, and be used with an admin test account. The suite fails rather than skipping when either project is missing, so a green result is Stage 2 completion evidence rather than a partial smoke.
 
@@ -634,7 +634,7 @@ Before shipping schedule changes:
 3. Run relevant schedule unit and route tests.
 4. Manually check Board, Gantt, and Site Visits if UI behavior changed.
 
-For UI-foundation presentation changes, run the authenticated non-mutating matrix after storage state exists:
+For an explicitly approved change to the current Schedule presentation, run the authenticated non-mutating matrix after storage state exists:
 
 ```bash
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps

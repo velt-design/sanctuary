@@ -36,6 +36,8 @@ Marketing owns public lead capture and public document viewing. It may call Supa
 
 Portal owns staff workflow state and staff APIs. Staff routes live under `apps/portal/app/staff`, admin routes under `apps/portal/app/admin`, and staff API routes under `apps/portal/app/api/staff/v1`.
 
+Marketing and Portal also own separate UI systems. Marketing UI primitives and editorial patterns live under `apps/marketing/components/marketing-foundation` and are documented in `docs/marketing-ui-foundation.md`. Portal shared UI primitives, tokens, operational patterns, and active specialist/compatibility boundaries live under `apps/portal` and are documented in `docs/ui-foundation.md`. There is no cross-app design-system migration target: current checked-in and rendered behavior is canonical for each app, and a broad restyle or token migration requires explicit user approval.
+
 Within Portal, `apps/portal/lib/commercial` owns cross-cutting quote/invoice command, durable email-intent, and audit adapters. Quote composition remains in `lib/quotes`, invoice artifacts remain in `lib/invoices`, and provider wire identity remains in `@sp/email-provider`; callers must not duplicate those responsibilities in routes or components.
 
 The portal's Calculator Brain lives at `/admin/costing` and is exposed to admins beneath the Pricebook navigation item. Browser code uses admin APIs and never writes Supabase tables directly. Portal server modules own draft/version persistence and audit orchestration; `@sp/costing` owns which values are supported, validation, application to the engine, calculations, diffs, and preview calculations. Published configuration rows are immutable, and estimate snapshots retain the exact version/snapshot used.

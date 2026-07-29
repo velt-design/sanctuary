@@ -136,7 +136,7 @@ async function measurePage(page: Page): Promise<PageMetrics> {
       __phaseThreeCls?: number;
     };
     const finalEnquiry = main.querySelector(
-      "[data-service-final-enquiry], .acrylic-section--final-cta",
+      "#project-details, .acrylic-section--estimate",
     );
     const firstLayerRoots = [...main.children].filter(
       (child) =>

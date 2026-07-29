@@ -2,7 +2,7 @@
 
 Status: Active evolving roadmap.
 
-Last updated: 2026-07-21.
+Last updated: 2026-07-29.
 
 Purpose: keep the highest-leverage usability work visible as the portal matures from a capable internal tool into a fast, trusted operating system for staff. This doc is intentionally product-facing: it tracks workflow clarity, visual hierarchy, user confidence, and the next UX passes worth doing.
 
@@ -12,6 +12,9 @@ Purpose: keep the highest-leverage usability work visible as the portal matures 
 - Keep this roadmap current when UX priorities change, a workflow is polished, or user feedback reveals a sharper problem.
 - Use `docs/platform-workflow.md` for the business workflow and `docs/portal-production-readiness.md` for production readiness; this doc owns usability priorities.
 - Prefer improving existing workflows before adding new surfaces.
+- The current checked-in and rendered portal UI is canonical. This roadmap can
+  prioritize verified usability problems, but it does not authorize a broad
+  restyle, Foundation migration, or marketing-to-portal UI adoption.
 
 ## UX Direction
 
@@ -27,7 +30,7 @@ The main UX standard:
 
 1. **Project Pages Speed**
    - Goal: make finding, opening, navigating, and revisiting a project feel immediate on the current UI foundation.
-   - Treat the existing Wave 1 timings as historical evidence until the redesigned shared shell and project composition pass a fresh production build, bundle gate, and five authenticated repetitions.
+   - Treat the existing Wave 1 timings as historical evidence after any performance-relevant change to the current shared shell or project composition; re-run a fresh production build, bundle gate, and five authenticated repetitions before drawing a new conclusion.
    - Prioritise Projects Index, Projects-to-project, browser Back, cold Project Detail, then Overview/Calculator/Commercial/Job Packs tab intent in that order. Warm feedback stays under 100 ms and useful content under 500 ms; fresh settlement remains separate and non-blocking.
    - Optimize only the slowest measured owner. Preserve current-user cache isolation, truthful pending/cached/failure states, exact-intent preload, specialist bundle boundaries, and server authority.
    - Measure create flows after the everyday journeys are green. Prefer immediate truthful pending feedback and an idempotent staff API before committing to offline provisional-project complexity.
@@ -75,10 +78,14 @@ The main UX standard:
    - Replace dead-end errors with practical recovery actions.
    - Make local-first pending, retry, conflict, and locked states consistent across staff workflows.
 
-10. **UI System Pass**
-   - Goal: make the portal feel cohesive.
-   - Standardise card headers, section spacing, pills, buttons, segmented controls, table rows, hover states, badges, and action links.
-   - Use recent Dashboard and Recent Activity refinements as the direction for dense internal tooling: compact, scannable, and restrained.
+10. **UI System Stewardship**
+    - Goal: preserve the current portal system while correcting verified,
+      route-specific usability or consistency defects.
+    - Reuse the existing owner for new controls and states. Record a proposed
+      cross-route standardisation or restyle as a finding and obtain explicit
+      approval before changing current screens.
+    - Do not treat Dashboard, the Foundation catalogue, marketing patterns, or
+      a compatibility label as blanket visual direction for another route.
 
 11. **Workflow-Based QA**
     - Goal: judge usability by complete staff journeys, not only by pages.
@@ -87,7 +94,7 @@ The main UX standard:
 
 ## Current Sequence
 
-1. Project Pages Speed revalidation and measured bottleneck fixes after the current UI-foundation checkpoint.
+1. Project Pages Speed revalidation and measured bottleneck fixes against the current checked-in portal UI.
 2. Current project-tab intent, useful-shell, and bundle-boundary performance.
 3. Project Command Centre authenticated completion gate.
 4. Project Command Centre Stage 3 lead-to-quote workstreams.

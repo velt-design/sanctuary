@@ -1,8 +1,8 @@
 # Marketing UI Foundation
 
-Status: Current foundation with approved public-route adoptions.
+Status: Current marketing-only UI contract with approved public-route adoptions.
 
-This document owns the Architectural Editorial UI system demonstrated at the standalone internal route `/__foundation/marketing`. It is an image-led, square-cornered, restrained reference for future explicitly approved marketing work. Public routes adopt it only through separately approved, route-scoped migrations.
+This document owns the Architectural Editorial UI system demonstrated at the standalone internal route `/__foundation/marketing`. It applies only to `apps/marketing`; it does not describe or set direction for the staff portal. Existing checked-in marketing routes and their rendered behavior are canonical. The catalogue documents shared owners and regression examples for current consumers, not a blanket instruction to restyle public routes. A new route adoption or broader visual change still requires separate, explicit approval.
 
 ## Source Of Truth
 
@@ -14,7 +14,7 @@ This document owns the Architectural Editorial UI system demonstrated at the sta
 - Shared header fonts: Instrument Sans and Inter, loaded by the public root layout; foundation routes use the same families.
 
 Public content owners, integrations and route layouts remain outside this
-foundation unless a separate task explicitly approves migration. The shared
+foundation unless a separate task explicitly approves a route-level change. The shared
 public header and Phase 4 compact utility footer are approved site-wide
 adoptions.
 
