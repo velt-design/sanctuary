@@ -29,6 +29,50 @@ test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => localStorage.removeItem('sp_consent_v1'));
 });
 
+test('keeps first-visit consent early in keyboard order and clear of the homepage action', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+
+  const banner = page.getByRole('region', { name: 'Cookie preferences' });
+  const primaryAction = page.getByRole('link', { name: 'Find a relevant project' });
+  await expect(banner).toBeVisible();
+  await expect(primaryAction).toBeVisible();
+
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(banner.getByRole('link', { name: 'Privacy Policy' })).toBeFocused();
+
+  const clearance = await Promise.all([
+    primaryAction.boundingBox(),
+    banner.boundingBox(),
+  ]);
+  expect(clearance[0]).not.toBeNull();
+  expect(clearance[1]).not.toBeNull();
+  expect(clearance[0]!.y + clearance[0]!.height)
+    .toBeLessThanOrEqual(clearance[1]!.y - 8);
+
+  for (const button of await banner.getByRole('button').all()) {
+    const bounds = await button.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    expect(bounds!.width).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test('moves focus into reopened consent preferences and restores the opener', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/privacy');
+  await page.getByRole('button', { name: 'Essential only' }).click();
+
+  const opener = page.getByRole('button', { name: 'Manage cookie preferences' });
+  await opener.click();
+  await expect(page.getByRole('button', { name: 'Essential only' })).toBeFocused();
+
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(opener).toBeFocused();
+});
+
 test('sends no optional vendor requests before an explicit choice or after essential-only', async ({ page }) => {
   const requests = await recordOptionalRequests(page);
   await page.goto('/');

@@ -10,6 +10,10 @@ import {
   takeMarketingRateLimit,
 } from '@/lib/marketingPublicRequest';
 import { getServiceSupabase } from '@/lib/supabaseService';
+import {
+  isPlausibleEnquiryPhone,
+  isValidEnquiryEmail,
+} from '../../../lib/enquiryContactValidation';
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_FIELD_LENGTH = 400;
@@ -164,12 +168,16 @@ export async function POST(req: Request) {
   // Minimal validation
   const name = sanitizeSingleLine(getField('name'), MAX_FIELD_LENGTH);
   const email = sanitizeSingleLine(getField('email'), MAX_FIELD_LENGTH);
+  const phone = sanitizeSingleLine(getField('phone'), MAX_FIELD_LENGTH);
   const message = sanitizeMultiline(getField('message'), MAX_MESSAGE_LENGTH);
-  if (!name || !email) {
-    return NextResponse.json({ ok: false, error: 'Name and email are required' }, { status: 422 });
+  if (!name || !email || !phone) {
+    return NextResponse.json({ ok: false, error: 'Name, email and phone are required' }, { status: 422 });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!isValidEnquiryEmail(email)) {
     return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 422 });
+  }
+  if (!isPlausibleEnquiryPhone(phone)) {
+    return NextResponse.json({ ok: false, error: 'Invalid phone' }, { status: 422 });
   }
 
   let supabase;
@@ -205,6 +213,7 @@ export async function POST(req: Request) {
   const fields = {
     name,
     email,
+    phone,
     suburb: sanitizeSingleLine(getField('suburb'), MAX_FIELD_LENGTH),
     enquiry_type: sanitizeSingleLine(getField('enquiry_type'), MAX_FIELD_LENGTH),
     width_m: sanitizeSingleLine(getField('width_m'), MAX_FIELD_LENGTH),
@@ -226,6 +235,7 @@ export async function POST(req: Request) {
   const lines = [
     `Name: ${fields.name}`,
     `Email: ${fields.email}`,
+    `Phone: ${fields.phone}`,
     fields.company ? `Company: ${fields.company}` : null,
     fields.suburb ? `Suburb: ${fields.suburb}` : null,
     fields.enquiry_type ? `Enquiry: ${fields.enquiry_type}` : null,
@@ -279,7 +289,7 @@ export async function POST(req: Request) {
   if (SLACK_WEBHOOK_URL) {
     try {
       const text = escapeForHtml(
-        `New website enquiry\n*Name:* ${fields.name}\n*Email:* ${fields.email}${
+        `New website enquiry\n*Name:* ${fields.name}\n*Email:* ${fields.email}\n*Phone:* ${fields.phone}${
           fields.company ? `\n*Company:* ${fields.company}` : ''
         }${fields.suburb ? `\n*Suburb:* ${fields.suburb}` : ''}\n*Enquiry:* ${
           fields.enquiry_type || 'General'

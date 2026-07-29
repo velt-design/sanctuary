@@ -246,9 +246,26 @@ Visible product-page copy and decorative markers use natural punctuation without
 
 `/contact` is an approved route-scoped adoption. Its small server page owns the editorial introduction, governed Warkworth project image and query-string preselection before hydration. `ContactEnquiryForm.tsx` owns one responsive form tree at every width, and `contact.css` owns the square, rule-led Foundation presentation. The three retired legacy contact stylesheets and the duplicated desktop/mobile page trees must not be restored.
 
-The direct and embedded residential, custom, commercial and professional enquiry forms share the contract in `apps/marketing/lib/enquiryFormContract.ts`. Required fields match the intake API: project type, name and phone; project suburb, project brief, email and technical choices are optional. Both form families keep project type, suburb, brief, contact details and files in the first layer. Dimensions, pergola form, roof approach and other options sit inside one native `Add optional project details` disclosure. Their upload controls use the governed attachment accept list and the shared concise eight-file, 20 MB total helper. Do not add route-local required-field rules or upload copy.
+The direct and embedded residential, custom, commercial and professional enquiry forms share the contract in `apps/marketing/lib/enquiryFormContract.ts`. Required fields match the intake API: project type, name, phone and email; project suburb, project brief and technical choices are optional. Both form families keep project type, suburb, brief, contact details and files in the first layer. Dimensions, pergola form, roof approach and other options sit inside one native `Add optional project details` disclosure. Their upload controls use the governed attachment accept list and the shared concise eight-file, 20 MB total helper. Do not add route-local required-field rules or upload copy.
 
-The forms keep the existing `/api/enquiry` payload, browser-generated submission UUID across retries, shared residential/commercial/professional attachment policy and metadata fallback, attribution fields, consent-gated conversion events, privacy link and direct contact routes. Every visible field has a persistent label, validation focuses a linked error summary, result focus is explicit, and failed or successful submissions retain entered values. A synchronous ref lock closes the double-click window before any asynchronous upload or request begins. The shared enquiry-context contract server-renders validated audience, source path, source component, project slug and product slug values above the form and repeats recognised context in the success state; direct `/contact` stays neutral and unknown values are ignored. Visible and generated contact content must not use em dashes.
+The enhanced forms keep the existing `/api/enquiry` payload and one
+browser-generated submission UUID across retries. Their no-JavaScript action
+uses `/api/enquiry/fallback`, which retains the core brief, repeated project
+options and validated route context, assigns a server UUID, and returns a
+noindex confirmation or safe recovery page without placing personal data in
+the URL. File inputs remain disabled until enhancement because signed private
+uploads require JavaScript. Both paths retain the shared
+residential/commercial/professional attachment policy and metadata fallback,
+attribution fields where available, consent-gated conversion events, privacy
+link and direct contact routes. Every visible field has a persistent label,
+validation focuses a linked error summary, result focus is explicit, and failed
+or successful enhanced submissions retain entered values. A synchronous ref
+lock closes the double-click window before any asynchronous upload or request
+begins. The shared enquiry-context contract server-renders validated audience,
+source path, source component, project slug and product slug values above the
+form and repeats recognised context in the success state; direct `/contact`
+stays neutral and unknown values are ignored. Visible and generated contact
+content must not use em dashes.
 
 Routes that already end in this embedded form do not render a second generic
 conversion section after it. The shared footer supplies the final site-wide

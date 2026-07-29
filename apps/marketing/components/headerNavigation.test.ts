@@ -15,11 +15,16 @@ describe('shared header navigation model', () => {
     );
   });
 
-  it('keeps the established desktop destinations and labels unchanged', () => {
+  it('exposes the residential, commercial and professional desktop pathways', () => {
     expect(getDesktopHeaderNavigation('/').map(({ label, href }) => ({ label, href }))).toEqual([
       { label: 'Home', href: '/' },
       { label: 'Projects', href: '/projects' },
       { label: 'Products', href: '/products' },
+      { label: 'Commercial', href: '/commercial-pergolas-auckland' },
+      {
+        label: 'Professionals',
+        href: '/architects-designers-builders',
+      },
       { label: 'Contact', href: '/contact' },
     ]);
   });
@@ -64,6 +69,12 @@ describe('shared header navigation model', () => {
       .filter((item) => item.current)
       .map((item) => item.id)).toEqual(['commercial']);
     expect(getMobileHeaderNavigation('/architects-designers-builders')
+      .filter((item) => item.current)
+      .map((item) => item.id)).toEqual(['professional']);
+    expect(getDesktopHeaderNavigation('/commercial-pergolas-auckland')
+      .filter((item) => item.current)
+      .map((item) => item.id)).toEqual(['commercial']);
+    expect(getDesktopHeaderNavigation('/architects-designers-builders')
       .filter((item) => item.current)
       .map((item) => item.id)).toEqual(['professional']);
     expect(getMobileHeaderNavigation('/contact')

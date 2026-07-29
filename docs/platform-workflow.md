@@ -6,9 +6,19 @@ This doc describes the current business workflow as represented in the codebase.
 
 Public enquiries start in `apps/marketing`.
 
-- Primary public flows: `/contact`, `/start`, `/start/explore`.
+- Primary public flows: `/contact` and the shared embedded enquiry form on
+  residential, commercial and professional service pages.
+- Project type, name, phone and email are required on every current enquiry
+  form. The shared client/server contract owns the validation rule.
 - API routes persist enquiries and send notifications through Supabase and Resend-backed helpers.
-- Each form keeps one client-generated submission UUID across retries. The server verifies any short-lived upload binding, then `marketing_enquiry_intake` atomically creates or reuses the contact/project/enquiry result. Attribution, the pricing snapshot and estimate draft, audit event, attachments, and autoresponder retain their existing owners after first-time intake; an idempotent replay does not duplicate those side effects.
+- Each enhanced form keeps one browser-generated submission UUID across
+  retries. The no-JavaScript POST adapter assigns an equivalent server UUID
+  before entering the same intake boundary. The server verifies any
+  short-lived upload binding, then `marketing_enquiry_intake` atomically
+  creates or reuses the contact/project/enquiry result. Attribution, the
+  pricing snapshot and estimate draft, audit event, attachments, and
+  autoresponder retain their existing owners after first-time intake; an
+  idempotent replay does not duplicate those side effects.
 - Optional uploads use private signed URLs bound to that submission. Expired, abandoned, forged, oversized, or unsupported uploads cannot enter another enquiry and are covered by scheduled cleanup/retention.
 - Tracking and consent behavior is documented in `security-privacy-quality.md`.
 - Automation, email outbox, autoresponder, and audit behavior is documented in `automation-email-audit.md`.

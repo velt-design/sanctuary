@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import type { Project } from '@/data/projects';
+import { buildEnquiryHref } from '@/lib/enquiryContext';
 import DesktopCollectionProjectDetail from './DesktopCollectionProjectDetail';
 import ProjectDetailContent from './ProjectDetailContent';
 import ProjectNavigator from './ProjectNavigator';
@@ -25,6 +27,10 @@ export default function ProjectsExperience({
   );
   const selectedProject = projects[selectedIndex] ?? null;
   const collectionProjects = getProjectCollectionItems(projects);
+  const collectionEnquiryHref = buildEnquiryHref({
+    sourcePath: '/projects',
+    sourceComponent: 'final_cta',
+  });
 
   if (!selectedProject) {
     return (
@@ -75,6 +81,22 @@ export default function ProjectsExperience({
           <DesktopCollectionProjectDetail initialSlug={selectedProject.slug} />
         )}
       </div>
+      {!detailMode ? (
+        <section
+          className="projects-experience__collection-close"
+          aria-labelledby="projects-collection-enquiry-title"
+          data-project-collection-cta
+        >
+          <div>
+            <p>Next step</p>
+            <h2 id="projects-collection-enquiry-title">Have a project in mind?</h2>
+            <p>Share a few details, photos or rough dimensions. We can help shape the next step.</p>
+          </div>
+          <Link className="project-action project-action--primary" href={collectionEnquiryHref}>
+            Start your project
+          </Link>
+        </section>
+      ) : null}
     </main>
   );
 }

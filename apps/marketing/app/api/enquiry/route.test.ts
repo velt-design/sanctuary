@@ -228,6 +228,7 @@ describe('POST /api/enquiry attribution', () => {
           submissionId: SUBMISSION_ID,
           enquiryType: 'residential',
           name: 'Taylor',
+          email: 'taylor@example.test',
           phone: '021000000',
           suburb: 'Mangere',
           dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
@@ -273,8 +274,9 @@ describe('POST /api/enquiry attribution', () => {
       source_component: 'project_cta',
       source_project: 'warkworth-outdoor-room',
     });
-    expect(db.audit_events).toHaveLength(1);
-    expect(db.audit_events[0]).toMatchObject({
+    const leadEvents = db.audit_events.filter((event) => event.type === 'marketing.lead_submitted');
+    expect(leadEvents).toHaveLength(1);
+    expect(leadEvents[0]).toMatchObject({
       project_id: 'project-1',
       type: 'marketing.lead_submitted',
       idempotency_key: 'marketing:marketing.lead_submitted:project-1:enquiry-1',
@@ -291,8 +293,8 @@ describe('POST /api/enquiry attribution', () => {
         },
       },
     });
-    expect(JSON.stringify(db.audit_events)).not.toContain('Taylor');
-    expect(JSON.stringify(db.audit_events)).not.toContain('must-not-be-kept');
+    expect(JSON.stringify(leadEvents)).not.toContain('Taylor');
+    expect(JSON.stringify(leadEvents)).not.toContain('must-not-be-kept');
     expect(h.priceAllBlinds).toHaveBeenCalledTimes(1);
     expect(h.priceAllBlinds.mock.calls[0]?.[0]).toEqual(
       expect.arrayContaining([
@@ -441,6 +443,7 @@ describe('POST /api/enquiry attribution', () => {
         submissionId: SUBMISSION_ID,
         enquiryType: 'residential',
         name: 'Alex',
+        email: 'alex@example.test',
         phone: '021000000',
         suburb: 'Takapuna',
         dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
@@ -467,6 +470,7 @@ describe('POST /api/enquiry attribution', () => {
       submissionId: SUBMISSION_ID,
       enquiryType: 'residential',
       name: 'Retry User',
+      email: 'retry@example.test',
       phone: '021000000',
       suburb: 'Albany',
       dimensions: { widthM: 5, depthM: 3, heightM: 2.4 },
@@ -500,7 +504,8 @@ describe('POST /api/enquiry attribution', () => {
     expect(db.projects).toHaveLength(1);
     expect(db.enquiry_requests).toHaveLength(1);
     expect(db.estimates).toHaveLength(1);
-    expect(db.audit_events).toHaveLength(1);
+    expect(db.audit_events.filter((event) => event.type === 'marketing.lead_submitted')).toHaveLength(1);
+    expect(db.audit_events.filter((event) => event.type === 'email_sent')).toHaveLength(1);
   });
 
   it('does not expose internal database failures to public clients', async () => {
@@ -525,6 +530,7 @@ describe('POST /api/enquiry attribution', () => {
         submissionId: SUBMISSION_ID,
         enquiryType: 'professional',
         name: 'Safe Error',
+        email: 'safe@example.test',
         phone: '021000000',
         source: 'website',
         honeypot: '',
@@ -553,5 +559,68 @@ describe('POST /api/enquiry attribution', () => {
 
     expect(response.status).toBe(403);
     expect(h.createClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: 'a missing email',
+      values: { email: '', phone: '021 000 0000' },
+      error: 'Email is required',
+    },
+    {
+      label: 'an invalid email',
+      values: { email: 'not-an-email', phone: '021 000 0000' },
+      error: 'Invalid email',
+    },
+    {
+      label: 'an implausible phone',
+      values: { email: 'test@example.test', phone: 'x' },
+      error: 'Invalid phone',
+    },
+  ])('rejects $label before database access', async ({ values, error }) => {
+    const { client } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId: SUBMISSION_ID,
+        enquiryType: 'residential',
+        name: 'Validation Test',
+        ...values,
+      }),
+    }));
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ ok: false, error });
+    expect(client.rpc).not.toHaveBeenCalled();
+  });
+
+  it('accepts a direct form-encoded fallback with a stable submission UUID', async () => {
+    const { client } = makeDb();
+    h.createClient.mockReturnValue(client);
+    const { POST } = await import('./route');
+    const body = new URLSearchParams({
+      submissionId: SUBMISSION_ID,
+      enquiryType: 'residential',
+      name: 'No Script Customer',
+      email: 'customer@example.test',
+      phone: '+61 2 9374 4000',
+      suburb: 'Auckland',
+      message: 'Please contact me about a pergola.',
+    });
+    const response = await POST(new Request('http://localhost/api/enquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true });
+    expect(client.rpc).toHaveBeenCalledWith(
+      'marketing_enquiry_intake',
+      expect.objectContaining({ p_submission_id: SUBMISSION_ID }),
+    );
   });
 });

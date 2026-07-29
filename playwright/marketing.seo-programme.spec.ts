@@ -338,9 +338,14 @@ for (const programmePage of pages) {
     await expect(main.locator('#acrylic-enquiry-type')).toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-name')).toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-phone')).toHaveAttribute('required', '');
+    await expect(main.locator('#acrylic-enquiry-email')).toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-suburb')).not.toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-message')).not.toHaveAttribute('required', '');
-    await expect(main.locator('#acrylic-enquiry-email')).not.toHaveAttribute('required', '');
+    await expect(main.locator('form.acrylic-form')).toHaveAttribute('method', 'post');
+    await expect(main.locator('form.acrylic-form')).toHaveAttribute(
+      'action',
+      '/api/enquiry/fallback',
+    );
     expect(await main.locator(orderedFields.join(', ')).evaluateAll((fields) => (
       fields.map((field) => field.id ? `#${field.id}` : `input[name="${field.getAttribute('name')}"]`)
     ))).toEqual(orderedFields);

@@ -52,6 +52,19 @@ test('the architectural editorial header is shared by established public routes'
       sourcePath: resolvedPath,
       sourceComponent: 'header',
     }));
+    await expect(header.getByRole('navigation', { name: 'Primary' }).getByRole('link'))
+      .toHaveText([
+        'Home',
+        'Projects',
+        'Products',
+        'Commercial',
+        'Professionals',
+        'Contact',
+      ]);
+    await expect(header.getByRole('link', { name: 'Commercial' }))
+      .toHaveAttribute('href', '/commercial-pergolas-auckland');
+    await expect(header.getByRole('link', { name: 'Professionals' }))
+      .toHaveAttribute('href', '/architects-designers-builders');
     await expect(page.locator('#mobile-menu')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.locator('#mobile-menu')).toHaveAttribute('inert', '');
     await expect(page.getByRole('navigation', { name: 'Mobile primary' })).toHaveCount(0);
@@ -178,6 +191,46 @@ test('shared header destinations remain functional', async ({ page }) => {
   await page.locator('header.site').getByRole('link', { name: 'Products' }).click();
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.locator('main[data-products-index]')).toBeVisible();
+});
+
+test('compact desktop keeps audience routes visible without colliding with the project action', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await preparePage(page);
+  await page.goto('/');
+
+  const header = page.locator('header.site');
+  const primary = header.getByRole('navigation', { name: 'Primary' });
+  const commercial = primary.getByRole('link', { name: 'Commercial' });
+  const professionals = primary.getByRole('link', { name: 'Professionals' });
+  const projectAction = header.getByRole('link', { name: 'Start your project' });
+  await expect(commercial).toBeVisible();
+  await expect(professionals).toBeVisible();
+  await expect(primary.getByRole('link', { name: 'Home' })).toBeHidden();
+  await expect(primary.getByRole('link', { name: 'Contact' })).toBeHidden();
+
+  const [professionalsBounds, actionBounds] = await Promise.all([
+    professionals.boundingBox(),
+    projectAction.boundingBox(),
+  ]);
+  expect(professionalsBounds).not.toBeNull();
+  expect(actionBounds).not.toBeNull();
+  expect(professionalsBounds!.x + professionalsBounds!.width)
+    .toBeLessThanOrEqual(actionBounds!.x - 4);
+});
+
+test('the skip link moves keyboard focus to the public content boundary', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await preparePage(page);
+  await page.goto('/contact');
+
+  const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+  await page.keyboard.press('Tab');
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
 });
 
 for (const viewport of [

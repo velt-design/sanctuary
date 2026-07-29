@@ -7,6 +7,7 @@ type EnquirySourceComponent =
   | 'project_cta'
   | 'product_cta'
   | 'final_cta'
+  | 'footer'
   | 'embedded_form';
 
 export type EnquiryContext = {
@@ -49,6 +50,7 @@ const sourceComponents = new Set<EnquirySourceComponent>([
   'project_cta',
   'product_cta',
   'final_cta',
+  'footer',
   'embedded_form',
 ]);
 

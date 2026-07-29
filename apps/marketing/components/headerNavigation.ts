@@ -7,7 +7,7 @@ type HeaderNavigationItem = {
 };
 
 type PrimaryNavigationItem = {
-  id: 'home' | 'projects' | 'products' | 'contact';
+  id: HeaderNavigationItem['id'];
   label: string;
   mobileLabel?: string;
   href: string;
@@ -33,6 +33,18 @@ const primaryNavigationItems: readonly PrimaryNavigationItem[] = [
     mobileLabel: 'Pergola options',
     href: '/products',
     matches: (pathname) => pathname === '/products' || pathname.startsWith('/products/'),
+  },
+  {
+    id: 'commercial',
+    label: 'Commercial',
+    href: '/commercial-pergolas-auckland',
+    matches: (pathname) => pathname === '/commercial-pergolas-auckland',
+  },
+  {
+    id: 'professional',
+    label: 'Professionals',
+    href: '/architects-designers-builders',
+    matches: (pathname) => pathname === '/architects-designers-builders',
   },
   {
     id: 'contact',
@@ -92,24 +104,7 @@ export function getDesktopHeaderNavigation(
 export function getMobileHeaderNavigation(
   pathname: string,
 ): HeaderNavigationItem[] {
-  const [, projects, products] = primaryNavigationItems.map((item) => (
-    toNavigationItem(item, pathname, true)
-  ));
-
-  return [
-    projects,
-    products,
-    {
-      id: 'commercial',
-      label: 'Commercial',
-      href: '/commercial-pergolas-auckland',
-      current: pathname === '/commercial-pergolas-auckland',
-    },
-    {
-      id: 'professional',
-      label: 'Professionals',
-      href: '/architects-designers-builders',
-      current: pathname === '/architects-designers-builders',
-    },
-  ];
+  return primaryNavigationItems
+    .filter((item) => item.id !== 'home' && item.id !== 'contact')
+    .map((item) => toNavigationItem(item, pathname, true));
 }

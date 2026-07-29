@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ROOF_MATERIAL_MEDIA } from '../apps/marketing/app/start/startFlowMedia';
 import { projects, type Project } from '../apps/marketing/data/projects';
 import { buildEnquiryHref } from '../apps/marketing/lib/enquiryContext';
 
@@ -146,6 +145,7 @@ test('projects index preserves a canonical collection route and legacy query sel
     'href',
     `${publicOrigin}/projects`,
   );
+  await expect(page.locator('[data-project-collection-cta]')).toBeHidden();
 
   const schemas = await page.locator('script[type="application/ld+json"]').allTextContents();
   const parsedSchemas = schemas.flatMap((schema) => {
@@ -191,6 +191,17 @@ test('mobile project index is one image-led semantic card sequence at every targ
     );
     await expect(cards.first()).not.toContainText(projects[0].blurb);
     await expect(cards.first()).not.toContainText(projects[0].year);
+    const collectionCta = main.locator('[data-project-collection-cta]');
+    await expect(collectionCta).toBeVisible();
+    await expect(collectionCta.getByRole('heading', { level: 2 }))
+      .toHaveText('Have a project in mind?');
+    await expect(collectionCta.getByRole('link', { name: 'Start your project' }))
+      .toHaveAttribute('href', buildEnquiryHref({
+        sourcePath: '/projects',
+        sourceComponent: 'final_cta',
+      }));
+    await expect(main.locator('.project-navigator__result-count'))
+      .toHaveCSS('color', 'rgb(95, 99, 92)');
 
     const [firstCard, secondCard] = await cards.evaluateAll((elements) =>
       elements.slice(0, 2).map((element) => {
@@ -205,6 +216,11 @@ test('mobile project index is one image-led semantic card sequence at every targ
     expect(secondCard?.y ?? 0).toBeGreaterThan(
       (firstCard?.y ?? 0) + (firstCard?.height ?? 0),
     );
+    const lastCard = await cards.last().boundingBox();
+    const collectionCtaBox = await collectionCta.boundingBox();
+    expect(lastCard).not.toBeNull();
+    expect(collectionCtaBox).not.toBeNull();
+    expect(collectionCtaBox!.y).toBeGreaterThan(lastCard!.y + lastCard!.height);
 
     const firstMedia = main.locator(
       '[data-project-card] [data-responsive-media] > div',
@@ -436,7 +452,6 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
     '/commercial-pergolas-auckland',
     '/acrylic-roof-pergolas-auckland',
     '/acrylic-pergolas-vs-louvre-roofs',
-    '/start',
     '/',
     '/gable-pergolas-auckland',
   ]) {
@@ -447,33 +462,13 @@ test('Atelier imagery stays selective and claim-aligned across guide surfaces', 
   }
 
   await page.goto('/acrylic-roof-pergolas-auckland');
-  let main = visibleMain(page);
+  const main = visibleMain(page);
   await expect(main.locator('a[href="/projects/atelier-shu-cafe"] img')).toHaveAttribute(
     'src',
     /project-atelier-shu-03\.jpg/,
   );
+  await expect(main.locator('img[src*="project-atelier-shu-03.jpg"]')).toHaveCount(1);
 
-  await page.goto('/start');
-  main = visibleMain(page);
-  await expect(main.locator('img[src*="project-atelier-shu-03.jpg"]')).toHaveAttribute(
-    'alt',
-    'Atelier Shu Cafe gable canopy integrated with the existing Newmarket frontage.',
-  );
-  await expect(main.locator('img[src*="project-atelier-shu-01.jpg"]')).toHaveCount(0);
-  expect(ROOF_MATERIAL_MEDIA.combination).toEqual({
-    src: '/images/materials-combination.jpg',
-    alt: 'Combination roof concept with timber-lined and acrylic roof zones.',
-  });
-
-  for (const route of [
-    '/acrylic-roof-pergolas-auckland',
-    '/start',
-  ]) {
-    await page.goto(route);
-    await expect(visibleMain(page).locator(
-      'img[src*="project-atelier-shu-03.jpg"]',
-    )).toHaveCount(1);
-  }
   await page.goto('/acrylic-pergolas-vs-louvre-roofs');
   await expect(
     visibleMain(page).locator('img[src*="project-atelier-shu-03.jpg"]'),

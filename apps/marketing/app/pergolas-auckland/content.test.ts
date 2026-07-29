@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { projects } from '../../data/projects';
 import {
+  faqItems,
   investmentDrivers,
   planningLinks,
   residentialProcessSteps,
@@ -36,5 +37,14 @@ describe('residential service journey content', () => {
       '/pergola-cost-auckland',
       '/outdoor-rooms-auckland',
     ]);
+  });
+
+  it('states the approved service-area qualification', () => {
+    expect(faqItems).toContainEqual({
+      question: 'Where does Sanctuary work?',
+      answer: [
+        'Sanctuary is based in Auckland and considers selected projects up to about a three-hour drive away when the scope is a good fit.',
+      ],
+    });
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 
 export default function ConsentBanner() {
@@ -9,6 +9,8 @@ export default function ConsentBanner() {
   const [analytics, setAnalytics] = useState(consent.analytics);
   const [marketing, setMarketing] = useState(consent.marketing);
   const [showChoices, setShowChoices] = useState(false);
+  const firstActionRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setAnalytics(consent.analytics);
@@ -20,6 +22,36 @@ export default function ConsentBanner() {
       setShowChoices(false);
     }
   }, [bannerOpen]);
+
+  useEffect(() => {
+    if (bannerOpen) {
+      if (!hasStoredChoice) return undefined;
+
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLElement
+        && activeElement !== document.body
+        && !activeElement.closest('.consent-banner')
+      ) {
+        openerRef.current = activeElement;
+        const focusFrame = window.requestAnimationFrame(() => {
+          firstActionRef.current?.focus();
+        });
+        return () => window.cancelAnimationFrame(focusFrame);
+      }
+
+      return undefined;
+    }
+
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener) return undefined;
+
+    const restoreFrame = window.requestAnimationFrame(() => {
+      if (document.contains(opener)) opener.focus();
+    });
+    return () => window.cancelAnimationFrame(restoreFrame);
+  }, [bannerOpen, hasStoredChoice]);
 
   const savePreferences = () => {
     setConsent({ analytics, marketing });
@@ -46,7 +78,12 @@ export default function ConsentBanner() {
           .
         </p>
         <div className="consent-banner__actions">
-          <button type="button" className="consent-btn consent-btn--ghost" onClick={rejectOptional}>
+          <button
+            ref={firstActionRef}
+            type="button"
+            className="consent-btn consent-btn--ghost"
+            onClick={rejectOptional}
+          >
             Essential only
           </button>
           <button type="button" className="consent-btn consent-btn--solid" onClick={acceptAll}>
@@ -56,6 +93,7 @@ export default function ConsentBanner() {
             type="button"
             className="consent-btn consent-btn--text"
             onClick={() => setShowChoices((open) => !open)}
+            aria-controls="consent-preference-choices"
             aria-expanded={showChoices}
           >
             {showChoices ? 'Hide choices' : 'Manage choices'}
@@ -68,7 +106,7 @@ export default function ConsentBanner() {
         </div>
       </div>
       {showChoices ? (
-        <div className="consent-banner__options">
+        <div id="consent-preference-choices" className="consent-banner__options">
           <label className="consent-banner__option">
             <input type="checkbox" checked={analytics} onChange={(event) => setAnalytics(event.target.checked)} />
             <span>Analytics cookies</span>

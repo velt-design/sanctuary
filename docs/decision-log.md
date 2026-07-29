@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-29 | Marketing Enquiry Reachability   | Promoted | Keep one public conversion system across `/contact` and embedded service-page forms. Require project type, name, phone and email through one client/server validator, reuse one browser-generated submission UUID across enhanced retries, assign each no-JavaScript POST a server UUID, and keep any rejected attachment visibly blocking until replaced or removed. Retire the unused `/start` and `/start/explore` flows rather than maintaining a parallel contract. |
 | 2026-07-29 | Schedule Mutation Trust          | Promoted | Preview Schedule V2 commands without force, confirm only when the server identifies other moved jobs, re-preview immediately after approval, and force only when the reviewed impacts are unchanged. Every optimistic mutation owns an exact rollback checkpoint and one in-flight lifecycle; accepted state updates only the compatible active-view cache and invalidates incompatible snapshots. Gantt start-plus-duration adjustment is one atomic RPC-backed command, while ambiguous failures reconcile visibly. Database-revision protection against near-simultaneous staff edits remains follow-up work. |
 | 2026-07-29 | Portal UI Authority              | Promoted | Treat the checked-in and rendered portal UI as canonical. Portal and marketing have separate UI systems; catalogues and historical migration language are regression/history evidence, not authority for a broad restyle. Preserve active specialist and compatibility owners, and require explicit user approval for cross-route visual migrations or shared-token replacement. |
 | 2026-07-29 | Portal Operational Lists/Create  | Promoted | Keep ordinary Projects/Contacts discovery bounded and server-paged with response query identity; never present a retained page under a different scope/filter. Project creation is one server-owned stable-ID command: detect strong contact duplicates before writes, separate confirmed records from setup-automation state, preserve saved records when setup needs attention, and mark indeterminate writes or unverifiable cleanup as do-not-retry administrator reconciliation. |
@@ -53,7 +54,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-07-25 | Enquiry Email Layout Comparison  | Promoted | Keep layout exploration preview-only until approval, compare alternatives with identical governed fixture data, label each real send distinctly, and treat simulated dark mode as guidance rather than inbox proof. |
 | 2026-07-25 | Enquiry Email Preview Delivery   | Promoted | Never leave a staging email action silently disabled. Report the safe server-owned readiness reason beside the control, require the actual provider secret value in the portal Preview environment, and redeploy after environment changes while preserving fixed-recipient and no-write controls. |
 | 2026-07-25 | Marketing Disclosure Hydration   | Promoted | Keep responsive disclosures open in server markup for no-JavaScript access, but hide only pending mobile bodies through the shared scripting-aware breakpoint contract so hydration resolves native state without changing visual height. |
-| 2026-07-25 | Marketing Enquiry Form Contract  | Promoted | Keep direct and embedded enquiry forms on the shared intake validator, audience labels, context presentation and attachment copy; only project type, name and phone are required, and optional technical detail follows the useful first brief. |
+| 2026-07-25 | Marketing Enquiry Form Contract  | Superseded | Superseded by the 2026-07-29 Marketing Enquiry Reachability decision, which also requires email and retires the parallel `/start` flows. |
 | 2026-07-25 | Marketing Enquiry Routing        | Promoted | Resolve audience from explicit service or governed project route metadata, keep product and unknown routes neutral, preserve canonical item slugs, and apply validated lower-case context after other analytics fields so callers cannot overwrite it. |
 | 2026-07-25 | Marketing Fragment Navigation    | Promoted | Responsive disclosures must reveal any fragment target they contain, and global route scroll handling must prefer a valid hash target over resetting to the top. Verify the real cross-route link and Back journey, not only a direct URL or attached target. |
 | 2026-07-25 | Marketing Server Rendering       | Promoted | Keep the marketing route template server-rendered and non-landmark, let each page own its single `main`, and do not add a top-level App Router loading boundary whose streamed replacement requires JavaScript to reveal the real public page. Test visible no-JavaScript browser output, not response-string presence alone. |
@@ -3436,10 +3437,13 @@ Related docs/tests: `apps/marketing/lib/enquiryContext.test.ts`; `apps/marketing
 
 Date: 2026-07-25
 Area: Direct and embedded public enquiry forms
-Status: Promoted
+Status: Superseded
 Decision or mistake: Direct and embedded forms separately defined audience labels, validation, field order, roof terminology and upload instructions. Embedded routes required email, suburb and a project brief even though the enquiry API requires only project type, name and phone, and successful direct submissions replaced the form and discarded the entered context.
 Why it mattered: The same enquiry meant different things depending on its entry page, optional business information looked mandatory, upload claims could drift from backend validation, and visitors lost the brief they had just submitted.
-Current guardrail: Keep the minimum required-field contract, audience options, context presentation and upload instructions in `apps/marketing/lib/enquiryFormContract.ts`. Put audience, location, desired outcome and contact details before optional technical fields, use `Roof approach`, preserve values on failure and success, and retain the synchronous submission lock before uploads or requests. Route-specific content may configure optional brief and roof choices but must not redefine the intake contract.
+Current guardrail: Superseded by the 2026-07-29 Marketing Enquiry
+Reachability decision. The shared contract now requires email as well as project
+type, name and phone. Its remaining audience, context, upload, ordering and
+submission-lock rules still apply.
 Promoted to: `docs/marketing-ui-foundation.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/marketing/lib/enquiryFormContract.test.ts`; `apps/marketing/app/contact/contactFormModel.test.ts`; `playwright/marketing.contact.spec.ts`; `playwright/marketing.seo-landing.spec.ts`; `playwright/marketing.seo-programme.spec.ts`
 
@@ -3926,3 +3930,31 @@ Related docs/tests:
 `apps/portal/app/staff/schedule/ScheduleBoardView.test.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `npm run test:portal:schedule`
+
+### 2026-07-29 - Marketing Enquiry Reachability - One Public Conversion Contract
+
+Date: 2026-07-29
+Area: Public marketing conversion, enquiry reachability and retired start flows
+Status: Promoted
+Decision or mistake: The public site maintained a short contact form, embedded
+service-page forms and an unlinked eight-step `/start` system. Email was
+optional even though an invalid phone value could pass the non-empty check.
+Embedded forms also defaulted to GET without JavaScript, and a rejected
+attachment could be forgotten before submit.
+Why it mattered: The same customer intent had competing routes and inconsistent
+recovery. Personal information could enter a URL, a lead could be unreachable,
+or a customer could believe a file was supplied when it was not.
+Current guardrail: Keep `/contact` and embedded service-page forms as the one
+public conversion system. Require project type, name, phone and email through
+the shared client/server validator. Reuse one browser-generated submission UUID
+across enhanced retries, assign each no-JavaScript POST a server UUID, and keep
+any rejected attachment visibly blocking until the customer removes or
+replaces it. Do not restore `/start` or `/start/explore` without an explicit
+product decision and a replacement plan for the current conversion owner.
+Promoted to: `docs/platform-workflow.md`;
+`docs/marketing-ui-foundation.md`; `docs/security-privacy-quality.md`;
+`docs/automation-email-audit.md`
+Related docs/tests: `apps/marketing/lib/enquiryFormContract.test.ts`;
+`apps/marketing/app/api/enquiry/route.test.ts`;
+`playwright/marketing.contact.spec.ts`;
+`playwright/marketing.seo-landing.spec.ts`

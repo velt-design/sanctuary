@@ -750,6 +750,7 @@ test('professional form submits canonical context without personal analytics pro
     .fill('Please review the canopy brief and the structural interfaces.');
   await page.locator('#acrylic-enquiry-name').fill('Phase Four Test Person');
   await page.locator('#acrylic-enquiry-phone').fill('022 000 0044');
+  await page.locator('#acrylic-enquiry-email').fill('phase-four@example.com');
   await page.getByText('Add optional project details', { exact: true }).click();
   await page
     .locator('#acrylic-enquiry-organisationAndRole')
@@ -994,7 +995,11 @@ test('homepage keeps the first design conversation bounded and the footer compac
     ).toHaveCount(3);
     await expect(
       footer.getByRole('link', { name: 'Start your project' }),
-    ).toHaveAttribute('href', '/contact');
+    ).toHaveAttribute('href', buildEnquiryHref({
+      enquiryType: 'residential',
+      sourcePath: '/',
+      sourceComponent: 'footer',
+    }));
     await expect(
       footer.getByRole('link', {
         name: '5.0 · 61 Google reviews',

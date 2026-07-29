@@ -8,11 +8,12 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('contact form model', () => {
-  it('requires only the fields required by the enquiry API', () => {
+  it('requires both contact methods alongside the project type and name', () => {
     expect(validateContactForm(formData({}), [])).toEqual({
       enquiryType: 'Choose a project type.',
       name: 'Enter your name.',
       phone: 'Enter your phone number.',
+      email: 'Enter your email address.',
     });
     expect(
       validateContactForm(
@@ -20,25 +21,27 @@ describe('contact form model', () => {
           enquiryType: 'residential',
           name: 'A Customer',
           phone: '021 123 4567',
+          email: 'customer@example.com',
         }),
         [],
       ),
     ).toEqual({});
   });
 
-  it('allows an omitted email and explains an invalid one', () => {
+  it('explains invalid contact details', () => {
     expect(
       validateContactForm(
         formData({
           enquiryType: 'commercial',
           name: 'A Customer',
-          phone: '021 123 4567',
+          phone: 'x',
           email: 'not-an-email',
         }),
         [],
       ),
     ).toEqual({
-      email: 'Enter a valid email address or leave this field blank.',
+      phone: 'Enter a valid phone number.',
+      email: 'Enter a valid email address.',
     });
   });
 
@@ -52,6 +55,7 @@ describe('contact form model', () => {
           enquiryType: 'professional',
           name: 'A Designer',
           phone: '021 123 4567',
+          email: 'designer@example.com',
         }),
         [executable],
       ),

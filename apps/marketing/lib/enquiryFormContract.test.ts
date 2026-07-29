@@ -8,11 +8,12 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe('enquiry form contract', () => {
-  it('requires only the fields required by the enquiry API', () => {
+  it('requires both contact methods alongside the project type and name', () => {
     expect(validateEnquiryForm(formData({}), [])).toEqual({
       enquiryType: 'Choose a project type.',
       name: 'Enter your name.',
       phone: 'Enter your phone number.',
+      email: 'Enter your email address.',
     });
     expect(
       validateEnquiryForm(
@@ -20,26 +21,44 @@ describe('enquiry form contract', () => {
           enquiryType: 'commercial',
           name: 'A Customer',
           phone: '021 123 4567',
+          email: 'customer@example.com',
         }),
         [],
       ),
     ).toEqual({});
   });
 
-  it('keeps email optional but validates it when supplied', () => {
+  it('validates email and rejects implausible phone values', () => {
     expect(
       validateEnquiryForm(
         formData({
           enquiryType: 'professional',
           name: 'A Designer',
-          phone: '021 123 4567',
+          phone: 'x',
           email: 'not-an-email',
         }),
         [],
       ),
     ).toEqual({
-      email: 'Enter a valid email address or leave this field blank.',
+      phone: 'Enter a valid phone number.',
+      email: 'Enter a valid email address.',
     });
+  });
+
+  it('accepts plausible local and international phone formats', () => {
+    for (const phone of ['021 123 4567', '+61 2 9374 4000', '+44 (0)20 7946 0958']) {
+      expect(
+        validateEnquiryForm(
+          formData({
+            enquiryType: 'residential',
+            name: 'A Customer',
+            phone,
+            email: 'customer@example.com',
+          }),
+          [],
+        ),
+      ).toEqual({});
+    }
   });
 
   it('uses the governed attachment policy and describes all limits', () => {
@@ -52,6 +71,7 @@ describe('enquiry form contract', () => {
           enquiryType: 'residential',
           name: 'A Customer',
           phone: '021 123 4567',
+          email: 'customer@example.com',
         }),
         [executable],
       ),

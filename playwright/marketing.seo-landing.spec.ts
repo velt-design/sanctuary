@@ -63,6 +63,7 @@ for (const viewport of viewports) {
     await expect(page.locator('header.site')).toBeVisible();
     await expect(page.locator('footer')).toBeAttached();
     await expect(page.getByLabel('Phone', { exact: false })).toHaveAttribute('required', '');
+    await expect(page.getByLabel('Email', { exact: false })).toHaveAttribute('required', '');
     await expect(main.locator('#acrylic-enquiry-style')).toHaveValue('');
     await expect(main.locator('#acrylic-enquiry-roof')).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Send project brief' })).toBeVisible();
@@ -160,6 +161,63 @@ test('Pergolas Auckland enquiry preserves validation, generic roof preference an
     roofMaterials: ['acrylic', 'timber'],
     projectDetails: { roofPreference: 'Combination roofing' },
   });
+  expect(submittedBody?.submissionId).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+});
+
+test('embedded enquiry keeps a rejected attachment blocking until it is corrected', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await preparePage(page);
+  let requestCount = 0;
+  await page.route('**/api/enquiry', async (routeHandler) => {
+    requestCount += 1;
+    await routeHandler.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+  await page.goto(route);
+
+  const main = page.locator('main[data-seo-landing="pergolas-auckland"]:visible');
+  const form = main.locator('form.acrylic-form');
+  await expect(form).toHaveAttribute('method', 'post');
+  await expect(form).toHaveAttribute('action', '/api/enquiry/fallback');
+  await expect(form.locator('input[name="page"]')).toHaveValue(route);
+  await expect(form.locator('input[name="enquiryContext"]')).toHaveValue(
+    JSON.stringify({
+      enquiry_type: 'residential',
+      source_path: route,
+      source_component: 'embedded_form',
+    }),
+  );
+  await main.locator('#acrylic-enquiry-name').fill('Attachment Test');
+  await main.locator('#acrylic-enquiry-phone').fill('+61 2 9374 4000');
+  await main.locator('#acrylic-enquiry-email').fill('attachment@example.com');
+
+  const files = main.locator('#acrylic-enquiry-files');
+  await files.setInputFiles({
+    name: 'payload.exe',
+    mimeType: 'application/x-msdownload',
+    buffer: Buffer.from('invalid'),
+  });
+  await expect(main.locator('#acrylic-enquiry-files-error')).toHaveText(
+    'Attachments must be PDF, JPG, PNG, or WebP files with matching file extensions.',
+  );
+
+  await main.getByRole('button', { name: 'Send project brief' }).click();
+  expect(requestCount).toBe(0);
+  await expect(main.locator('#acrylic-enquiry-error-summary')).toBeFocused();
+  await expect(main.locator('#acrylic-enquiry-files-error')).toBeVisible();
+
+  await files.setInputFiles({
+    name: 'plan.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-test'),
+  });
+  await expect(main.locator('#acrylic-enquiry-files-error')).toHaveCount(0);
+  await expect(main.getByRole('list', { name: 'Selected files' })).toContainText('plan.pdf');
 });
 
 test('Pergolas Auckland sitemap, internal links and page schema match the service role', async ({ page, request }) => {

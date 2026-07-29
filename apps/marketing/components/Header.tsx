@@ -5,11 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import {
-  START_MODAL_VISIBILITY_EVENT,
-  type StartModalVisibilityDetail,
-  isStartModalOpen,
-} from '@/lib/startModalBridge';
-import {
   buildEnquiryHref,
   getEnquiryRouteContext,
 } from '@/lib/enquiryContext';
@@ -20,8 +15,6 @@ import {
   isHeaderHeroOverlayPath,
 } from './headerNavigation';
 
-const HEADER_SCROLL_THRESHOLD_PX = 12;
-const HEADER_DIRECTION_SAMPLE_COUNT = 2;
 const HERO_HEADER_SOLID_SCROLL_PX = 24;
 const DESKTOP_MENU_MEDIA_QUERY = '(min-width: 901px)';
 const MENU_FOCUSABLE_SELECTOR = [
@@ -31,8 +24,6 @@ const MENU_FOCUSABLE_SELECTOR = [
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [startHeaderVisible, setStartHeaderVisible] = useState(false);
-  const [startHeaderSuppressed, setStartHeaderSuppressed] = useState(false);
   const [heroHeaderScrolled, setHeroHeaderScrolled] = useState(false);
   const pathname = usePathname();
   const currentPath = getCanonicalHeaderPathname(pathname);
@@ -44,9 +35,7 @@ export default function Header() {
     sourcePath: currentPath,
     sourceComponent: 'header',
   });
-  const isStartRoute = currentPath.startsWith('/start');
   const isHeroOverlayRoute = isHeaderHeroOverlayPath(currentPath);
-  const startModalSuppressedRef = useRef(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
@@ -54,30 +43,6 @@ export default function Header() {
   const mobileMenuScrollCapturedRef = useRef(false);
   const mobileMenuOpenedAtPathRef = useRef(currentPath);
   const restoreMobileMenuScrollRef = useRef(true);
-  const scrollStateRef = useRef({
-    lastY: 0,
-    upDelta: 0,
-    downDelta: 0,
-    direction: 0 as -1 | 0 | 1,
-    directionSamples: 0,
-  });
-
-  const resetScrollTracking = useCallback(() => {
-    if (typeof window === 'undefined') return;
-
-    scrollStateRef.current = {
-      lastY: window.scrollY,
-      upDelta: 0,
-      downDelta: 0,
-      direction: 0,
-      directionSamples: 0,
-    };
-  }, []);
-
-  const hideStartHeader = useCallback(() => {
-    setStartHeaderVisible(false);
-    resetScrollTracking();
-  }, [resetScrollTracking]);
 
   const closeMobileMenu = useCallback(({
     restoreFocus = false,
@@ -95,44 +60,6 @@ export default function Header() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (!isStartRoute) {
-      startModalSuppressedRef.current = false;
-      setStartHeaderSuppressed(false);
-      setStartHeaderVisible(false);
-      return;
-    }
-
-    hideStartHeader();
-  }, [hideStartHeader, isStartRoute]);
-
-  useEffect(() => {
-    if (!isStartRoute) return;
-
-    const applySuppressedState = (open: boolean) => {
-      startModalSuppressedRef.current = open;
-      setStartHeaderSuppressed(open);
-      hideStartHeader();
-    };
-
-    applySuppressedState(isStartModalOpen());
-
-    const onModalVisibility = (event: Event) => {
-      const detail = (event as CustomEvent<StartModalVisibilityDetail>).detail;
-      if (typeof detail?.open === 'boolean') {
-        applySuppressedState(detail.open);
-        return;
-      }
-
-      applySuppressedState(isStartModalOpen());
-    };
-
-    window.addEventListener(START_MODAL_VISIBILITY_EVENT, onModalVisibility);
-    return () => {
-      window.removeEventListener(START_MODAL_VISIBILITY_EVENT, onModalVisibility);
-    };
-  }, [hideStartHeader, isStartRoute]);
 
   useEffect(() => {
     if (!isHeroOverlayRoute) {
@@ -157,75 +84,6 @@ export default function Header() {
       window.removeEventListener('scroll', scheduleHeroHeaderSync);
     };
   }, [currentPath, isHeroOverlayRoute]);
-
-  useEffect(() => {
-    if (!isStartRoute) return;
-
-    let rafId = 0;
-    const onScrollSample = () => {
-      if (rafId) return;
-
-      rafId = window.requestAnimationFrame(() => {
-        rafId = 0;
-        if (startModalSuppressedRef.current) return;
-
-        const state = scrollStateRef.current;
-        const currentY = window.scrollY;
-        const delta = currentY - state.lastY;
-
-        if (Math.abs(delta) < 1) return;
-        state.lastY = currentY;
-
-        if (currentY <= 4) {
-          state.upDelta = 0;
-          state.downDelta = 0;
-          state.direction = 0;
-          state.directionSamples = 0;
-          setStartHeaderVisible(false);
-          return;
-        }
-
-        const direction: -1 | 1 = delta > 0 ? 1 : -1;
-        if (state.direction === direction) {
-          state.directionSamples += 1;
-        } else {
-          state.direction = direction;
-          state.directionSamples = 1;
-        }
-
-        if (direction === -1) {
-          state.upDelta += Math.abs(delta);
-          state.downDelta = 0;
-
-          if (state.directionSamples >= HEADER_DIRECTION_SAMPLE_COUNT && state.upDelta >= HEADER_SCROLL_THRESHOLD_PX) {
-            setStartHeaderVisible(true);
-            state.upDelta = 0;
-          }
-
-          return;
-        }
-
-        state.downDelta += delta;
-        state.upDelta = 0;
-        if (state.directionSamples >= HEADER_DIRECTION_SAMPLE_COUNT && state.downDelta >= HEADER_SCROLL_THRESHOLD_PX) {
-          setStartHeaderVisible(false);
-          state.downDelta = 0;
-        }
-      });
-    };
-
-    hideStartHeader();
-    window.addEventListener('scroll', onScrollSample, { passive: true });
-    window.addEventListener('resize', onScrollSample, { passive: true });
-
-    return () => {
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-      window.removeEventListener('scroll', onScrollSample);
-      window.removeEventListener('resize', onScrollSample);
-    };
-  }, [hideStartHeader, isStartRoute]);
 
   useEffect(() => {
     if (
@@ -377,9 +235,6 @@ export default function Header() {
     'site',
     isHeroOverlayRoute ? 'site--hero-overlay' : '',
     isHeroOverlayRoute && heroHeaderScrolled ? 'site--hero-scrolled' : '',
-    isStartRoute ? 'site--start-scroll' : '',
-    isStartRoute && startHeaderVisible && !startHeaderSuppressed ? 'site--start-visible' : '',
-    isStartRoute && startHeaderSuppressed ? 'site--start-suppressed' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -400,7 +255,10 @@ export default function Header() {
               <div className="nav-list nav-list--split">
                 <ul className="nav-list__cluster nav-list__cluster--left">
                   {desktopNavigationItems.slice(0, 2).map((item) => (
-                    <li key={item.id}>
+                    <li
+                      key={item.id}
+                      className={`nav-list__item nav-list__item--${item.id}`}
+                    >
                       <Link
                         className={`navlink-btn ${item.current ? 'active' : ''}`}
                         href={item.href}
@@ -413,7 +271,10 @@ export default function Header() {
                 </ul>
                 <ul className="nav-list__cluster nav-list__cluster--right">
                   {desktopNavigationItems.slice(2).map((item) => (
-                    <li key={item.id}>
+                    <li
+                      key={item.id}
+                      className={`nav-list__item nav-list__item--${item.id}`}
+                    >
                       <Link
                         id={item.id === 'products' ? 'nav-products' : undefined}
                         className={`navlink-btn ${item.current ? 'active' : ''}`}

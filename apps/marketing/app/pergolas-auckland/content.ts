@@ -143,6 +143,12 @@ export const faqItems = [
       'Send the suburb, wide photos, rough dimensions and intended use.',
     ],
   },
+  {
+    question: 'Where does Sanctuary work?',
+    answer: [
+      'Sanctuary is based in Auckland and considers selected projects up to about a three-hour drive away when the scope is a good fit.',
+    ],
+  },
 ] as const;
 
 export const generalRoofPreference = {

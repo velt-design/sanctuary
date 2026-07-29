@@ -87,7 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   '@type': 'ContactPoint',
                   contactType: 'customer service',
                   email: 'info@sanctuarypergolas.co.nz',
-                  areaServed: 'NZ',
+                  areaServed: 'Auckland and selected projects within about a three-hour drive of Auckland',
                 },
               ],
               sameAs: socialProfileUrls,
@@ -107,7 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 postalCode: '2022',
                 addressCountry: 'NZ',
               },
-              areaServed: ['Auckland', 'Upper North Island'],
+              areaServed: 'Auckland and selected projects within about a three-hour drive of Auckland',
               sameAs: socialProfileUrls,
               image: [
                 'https://www.sanctuarypergolas.co.nz/images/hero-1.jpg',
@@ -119,6 +119,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <ConsentProvider>
+          <a className="skip-link" href="#main-content">
+            Skip to main content
+          </a>
+          <ConsentBanner />
           <GoogleTagManager />
           <PortalMode />
           <WebVitals />
@@ -134,11 +138,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Suspense fallback={null}>
             <ProductSubHeader />
           </Suspense>
-          <div className="page-viewport"><div className="page-layer">{children}</div></div>
+          <div id="main-content" className="page-viewport" tabIndex={-1}>
+            <div className="page-layer">{children}</div>
+          </div>
           <FooterVisibilityGate>
             <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
           </FooterVisibilityGate>
-          <ConsentBanner />
           <MetaPixel />
           <ArchiproPixel />
         </ConsentProvider>

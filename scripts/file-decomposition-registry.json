@@ -205,20 +205,6 @@
       ]
     },
     {
-      "id": "marketing-start",
-      "label": "marketing start",
-      "status": "current",
-      "ownerArea": "Public conversion and guided-start experience",
-      "pathPatterns": ["apps/marketing/app/start/page.tsx"],
-      "whyLarge": "Page-level presentation, product selection, conversion copy, and interaction paths are concentrated in one public page.",
-      "nextSafeExtraction": "Extract section components, content data, and conversion state helpers before adding new campaign branches.",
-      "focusedTests": [
-        "npm run test:marketing",
-        "marketing build",
-        "Lighthouse checks when layout/performance changes"
-      ]
-    },
-    {
       "id": "marketing-product-catalogue",
       "label": "marketing product catalogue",
       "status": "current",
