@@ -16,6 +16,7 @@ import {
 } from '../commercial/emailIntent';
 import { insertCommercialAuditEvent } from '../commercial/audit';
 import { paymentDetailsLines, paymentDetailsText } from '../payments/paymentDetails';
+import { isProjectWorkModelV2 } from '../projects/workItems/modelBoundary';
 import { supabaseServiceRole } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
 import type { DepositInvoiceSummary } from './types';
@@ -1113,7 +1114,9 @@ async function deliverInvoiceEmail(
   return deliverInvoiceEmailDurably(invoice, recipients, actor);
 }
 
-async function clearInvoicePaidManualCheck(projectUuid: string) {
+export async function clearInvoicePaidManualCheck(projectUuid: string) {
+  if (await isProjectWorkModelV2(supabaseServiceRole, projectUuid)) return;
+
   const deleteRes = await supabaseServiceRole
     .from('project_task_checks')
     .delete()

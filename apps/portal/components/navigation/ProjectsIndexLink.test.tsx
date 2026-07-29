@@ -1,8 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectsIndexLink from './ProjectsIndexLink';
-import { qk } from '@/lib/queries/keys';
-import { PROJECTS_INDEX_QUERY_SCOPE } from '@/lib/queries/projectsIndex';
+import { projectsIndexQueryOptions } from '@/lib/queries/projectsIndex';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const routerPrefetch = vi.fn();
@@ -62,7 +61,7 @@ describe('ProjectsIndexLink', () => {
 
     expect(routerPrefetch).toHaveBeenCalledWith('/staff/projects?archive=archived');
     expect(prefetchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'archived') }),
+      expect.objectContaining({ queryKey: projectsIndexQueryOptions('archived').queryKey }),
     );
     rendered.unmount();
   });

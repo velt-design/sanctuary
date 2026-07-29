@@ -3,10 +3,13 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { computeEstimateEditability } from '@/lib/estimates/editability';
 import { buildQuoteHandoffPreviewFromEstimate } from '@/lib/quotes/estimateHandoffPreview';
+import { getProjectWorkProjection } from '@/lib/projects/workItems/repository';
+import { getProjectWorkDomainActions } from '@/lib/projects/workItems/getProjectWorkDomainActions';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
 import { resolveCommandCentreSelection } from './resolve';
 import { getProjectCommandOperations } from './getProjectCommandOperations';
+import { buildProjectOwnerSummary } from './actionResolver';
 import {
   resolveCommandCentreCostingState,
   summarizeCommandCentreDesign,
@@ -17,12 +20,15 @@ import type {
   CommandCentreQuoteCandidate,
   CommandCentreQuoteStatus,
   CommandCentreStatusTone,
+  ProjectCommandCentreCurrentDesign,
   ProjectCommandCentreResponse,
 } from './types';
 
 const PROJECT_COMMAND_CENTRE_SELECT = `
   id,
   pipeline_stage,
+  workModel:project_work_model_versions(model_version),
+  ownerAssignment:project_owner_assignments(owner_key,updated_at),
   estimates(id,project_id,created_at,status,version),
   quotes(
     id,
@@ -46,6 +52,11 @@ type AnyRecord = Record<string, unknown>;
 function relationRows(value: unknown): AnyRecord[] {
   if (Array.isArray(value)) return value.filter(isRecord);
   return isRecord(value) ? [value] : [];
+}
+
+function usesV2ProjectWork(projectRow: AnyRecord): boolean {
+  return relationRows(projectRow.workModel)
+    .some((row) => Number(row.model_version) === 2);
 }
 
 function trimmedString(value: unknown): string | null {
@@ -308,6 +319,96 @@ export async function getProjectCommandCentre(
     }
     if (estimatePriceIncGstCents === null) warnings.push('estimate_price_unavailable');
   }
+  const currentDesign: ProjectCommandCentreCurrentDesign = {
+    source: selection.source,
+    statusLabel: status.label,
+    statusTone: status.tone,
+    designState,
+    design: selectedDetail ? summarizeCommandCentreDesign(selectedDetail.inputs) : null,
+    price: quote
+      ? { source: 'quote', totalIncGstCents: quote.totalIncGstCents }
+      : estimate
+        ? { source: 'estimate', totalIncGstCents: estimatePriceIncGstCents }
+        : { source: 'none', totalIncGstCents: null },
+    estimate: estimate ? {
+      id: estimate.id,
+      versionLabel: estimate.versionLabel,
+      savedAt: estimate.createdAt,
+      isActiveDraft: estimate.status === 'draft' && !estimate.isLocked,
+      isLocked: estimate.isLocked,
+      isQuoteSource: quoteSelected,
+      costingState: resolveCommandCentreCostingState(selectedDetail?.outputs),
+    } : null,
+    quote: quote ? {
+      id: quote.id,
+      quoteRef: quote.quoteRef,
+      versionNumber: quote.versionNumber,
+      status: quote.status,
+      createdAt: quote.createdAt,
+      sentAt: quote.sentAt,
+      deliveryState: quoteDeliveryState(quote),
+    } : null,
+    newerEstimate: selection.newerEstimate ? {
+      id: selection.newerEstimate.id,
+      versionLabel: selection.newerEstimate.versionLabel,
+      savedAt: selection.newerEstimate.createdAt,
+    } : null,
+    latestDeclinedQuote: !quote && selection.latestDeclinedQuote ? {
+      quoteVersionId: selection.latestDeclinedQuote.id,
+      quoteRef: selection.latestDeclinedQuote.quoteRef,
+      versionNumber: selection.latestDeclinedQuote.versionNumber,
+      createdAt: selection.latestDeclinedQuote.createdAt,
+    } : null,
+    warnings,
+    links: {
+      designs: `${basePath}?tab=estimates`,
+      quotes: `${basePath}?tab=quotes`,
+      estimate: estimate
+        ? `${basePath}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`
+        : null,
+      quote: quote
+        ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}`
+        : null,
+    },
+  };
+
+  const common = {
+    projectId,
+    generatedAt: new Date().toISOString(),
+    currentDesign,
+  };
+  if (usesV2ProjectWork(projectRow)) {
+    const domainActions = await getProjectWorkDomainActions({
+      supabase,
+      projectId,
+      projectUuid,
+      currentDesign,
+    });
+    const projectWork = await getProjectWorkProjection({
+      supabase,
+      projectUuid,
+      ...domainActions,
+    });
+    if (!projectWork) throw new Error('V2 project work could not be loaded');
+    const ownerRow = relationRows(projectRow.ownerAssignment)[0];
+    const owner = buildProjectOwnerSummary({
+      stage,
+      assignment: ownerRow && trimmedString(ownerRow.owner_key)
+        ? {
+            ownerKey: String(ownerRow.owner_key),
+            updatedAt: isoTimestamp(ownerRow.updated_at) ?? new Date(0).toISOString(),
+          }
+        : null,
+      isAdmin: viewer.isAdmin,
+    });
+    return {
+      ...common,
+      workModel: 'v2',
+      projectWork,
+      owner,
+    };
+  }
+
   const operations = await getProjectCommandOperations({
     projectUuid,
     stage,
@@ -316,60 +417,8 @@ export async function getProjectCommandCentre(
     isAdmin: viewer.isAdmin,
   });
   return {
-    projectId,
-    generatedAt: new Date().toISOString(),
+    ...common,
+    workModel: 'legacy',
     operations,
-    currentDesign: {
-      source: selection.source,
-      statusLabel: status.label,
-      statusTone: status.tone,
-      designState,
-      design: selectedDetail ? summarizeCommandCentreDesign(selectedDetail.inputs) : null,
-      price: quote
-        ? { source: 'quote', totalIncGstCents: quote.totalIncGstCents }
-        : estimate
-          ? { source: 'estimate', totalIncGstCents: estimatePriceIncGstCents }
-          : { source: 'none', totalIncGstCents: null },
-      estimate: estimate ? {
-        id: estimate.id,
-        versionLabel: estimate.versionLabel,
-        savedAt: estimate.createdAt,
-        isActiveDraft: estimate.status === 'draft' && !estimate.isLocked,
-        isLocked: estimate.isLocked,
-        isQuoteSource: quoteSelected,
-        costingState: resolveCommandCentreCostingState(selectedDetail?.outputs),
-      } : null,
-      quote: quote ? {
-        id: quote.id,
-        quoteRef: quote.quoteRef,
-        versionNumber: quote.versionNumber,
-        status: quote.status,
-        createdAt: quote.createdAt,
-        sentAt: quote.sentAt,
-        deliveryState: quoteDeliveryState(quote),
-      } : null,
-      newerEstimate: selection.newerEstimate ? {
-        id: selection.newerEstimate.id,
-        versionLabel: selection.newerEstimate.versionLabel,
-        savedAt: selection.newerEstimate.createdAt,
-      } : null,
-      latestDeclinedQuote: !quote && selection.latestDeclinedQuote ? {
-        quoteVersionId: selection.latestDeclinedQuote.id,
-        quoteRef: selection.latestDeclinedQuote.quoteRef,
-        versionNumber: selection.latestDeclinedQuote.versionNumber,
-        createdAt: selection.latestDeclinedQuote.createdAt,
-      } : null,
-      warnings,
-      links: {
-        designs: `${basePath}?tab=estimates`,
-        quotes: `${basePath}?tab=quotes`,
-        estimate: estimate
-          ? `${basePath}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`
-          : null,
-        quote: quote
-          ? `${basePath}?tab=quotes&quoteId=${encodeURIComponent(quote.id)}`
-          : null,
-      },
-    },
   };
 }

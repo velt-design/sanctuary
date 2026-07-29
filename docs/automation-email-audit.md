@@ -12,7 +12,8 @@ This doc owns current-state guidance for portal automation events, project tasks
 
 ## Ownership
 
-- Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; canonical task/follow-up persistence and business-calendar due dates live in `taskPersistence.ts`.
+- V2 project-work owner: `apps/portal/lib/projects/workItems`; transactional state, work-item, confirmation, calendar, receipt, event, queue, compatibility, and reconciliation commands are defined by `20260729_000002_project_work_items_v2.sql`.
+- Legacy-project automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; legacy task/follow-up persistence lives in `taskPersistence.ts`.
 - Automation cache keys: `qk.automation` in `apps/portal/lib/queries/keys.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
 - Quote/invoice commercial email intents and audit adapter: `apps/portal/lib/commercial/emailIntent.ts` and `apps/portal/lib/commercial/audit.ts`.
@@ -28,8 +29,9 @@ This doc owns current-state guidance for portal automation events, project tasks
 ## Tables
 
 - `audit_events`: idempotent automation event log.
-- `tasks`: project tasks created by automation.
-- `followup_plans` and `followup_tasks`: quote follow-up sequences.
+- `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, and `project_command_receipts`: V2 project-work truth and append-only evidence.
+- `business_calendar_year_coverage`, `nz_holidays`, and `company_closures`: verified Auckland deadline inputs.
+- `tasks`, `followup_plans`, and `followup_tasks`: legacy-project task and quote-follow-up records.
 - `email_templates`: DB-backed template metadata and fallback HTML.
 - `email_outbox`: queued, sent, failed, or cancelled project email records.
 - `site_visit_events`: site visit state that automation may create or update.
@@ -38,9 +40,15 @@ This doc owns current-state guidance for portal automation events, project tasks
 
 ## Current Data Flow
 
-Staff project action routes call `automationRunner.runEvent()` or directly perform a route-owned side effect. `AutomationRunner` writes an idempotent `audit_events` row first; duplicate idempotency keys stop repeated handling.
+The repository contains a new-project-only V2 path, but its migration is not applied or deployed. Staff project creation uses `project_create_v2`; a newly created `New` project linked by its intake enquiry also initializes V2. The trigger's narrow creation-time check prevents an old project from being activated by a later enquiry insert. Initialization records `Active` plus one manual first-email obligation due after two Auckland open hours with a four-hour SLA. If the contact has no email, that item is blocked and the contact-email trigger reconciles it when an address is supplied. Existing projects receive no marker or backfill and continue on the legacy flow. There is no fallback staff-project creation path when the V2 schema is unavailable.
 
-Project creation keeps record persistence and initial setup evidence separate. `POST /api/staff/v1/projects` returns confirmed contact/project records even when `ui.action.project_created` setup needs attention; that outcome is `202` with an explicit receipt and must not trigger record rollback or a replacement project. Stable-ID command replay does not claim that setup was rechecked. This preserves the idempotent automation owner without presenting its request-local completion as part of the database record transaction.
+For V2, staff still send personal enquiry email in their normal email client and record the bounded confirmation. First-email confirmation creates one follow-up five business days later; follow-up confirmation creates one manual close review five business days later; customer reply cancels the open no-response cadence. No V2 command sends an email, creates a call task, changes project stage, or closes a project automatically.
+
+Durable quote send/resend and quote outcome owners call the server-only V2 reconciliation adapter after their own authoritative commit. A durable send creates or reschedules one manual follow-up, capped by expiry; prepared, failed, or unfinished delivery does not start it. Acceptance, decline, customer reply, or supersession cancels it. Reconciliation uses the exact project and quote-version identity. A failure opens or updates a bounded staff-safe repair signal keyed by the deterministic reconciliation command; successful later reconciliation resolves the relevant quote-family signals. Open repair signals preempt normal project work and enter the SQL queue. Raw provider or service errors are not persisted. Browser and public-token callers cannot invoke the service-role commands.
+
+V2 work is projected one way into `projects.next_action*` and `follow_up_date` for compatibility consumers. Legacy writers are rejected for V2 projects; compatibility fields are never imported back into V2 truth. No Contacted project has been automatically classified, migrated, closed, archived, or given a new cadence.
+
+For unmarked legacy projects, staff action routes call `automationRunner.runEvent()` or directly perform a route-owned side effect. `AutomationRunner` writes an idempotent `audit_events` row first; duplicate idempotency keys stop repeated handling.
 
 Event handlers can:
 
@@ -50,7 +58,7 @@ Event handlers can:
 - create quote follow-up plans and tasks
 - cancel open follow-ups when pipeline stage changes make them irrelevant
 
-`REVIEW_NEW_LEAD` is persisted with a 5:00pm Auckland next-business-day due timestamp using weekend, national/Auckland holiday, and company-closure data. Marking a project contacted persists the existing two-business-day cadence as `FOLLOWUP_CALL`; AutomationRunner no longer writes project next-action columns. Open automation/follow-up rows are canonical command-centre candidates.
+For legacy projects, `REVIEW_NEW_LEAD` is persisted with a 5:00pm Auckland next-business-day due timestamp using weekend, national/Auckland holiday, and company-closure data. Marking a project contacted persists the existing two-business-day cadence as `FOLLOWUP_CALL`; AutomationRunner no longer writes project next-action columns. These rows remain legacy command-centre candidates and must not be copied into V2 without a reviewed migration decision.
 
 Canonical task/follow-up tables are select-only to authenticated portal users. Automation persistence stays in the server-only service-role adapter, while Design Package task creation/status/due changes use the bounded `project_command_sync_design_task` RPC instead of direct authenticated table writes.
 
@@ -116,7 +124,7 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 
 ## Access Boundaries
 
-- `AutomationRunner` and its server-only `taskPersistence.ts` adapter intentionally use service-role access. The runner owns orchestration; `taskPersistence.ts` is the narrow persistence boundary for business-calendar reads plus idempotent automation task/follow-up writes. Both paths are named in the exact-match boundary allowlist so a new service-role consumer still fails the security test.
+- For legacy projects, `AutomationRunner` and its server-only `taskPersistence.ts` adapter intentionally use service-role access. For V2, only the named work-items system adapter may invoke reconciliation; staff routes use auth-bound commands. These paths remain exact-match allowlisted so a new service-role consumer still fails the security test.
 - Staff project action and preview routes must use staff auth helpers.
 - Public marketing enquiry/contact routes may write lead and email/audit records from server code, but must not expose staff workflow data.
 - Marketing enquiry autoresponder budgets and auto-created estimate drafts share one canonical costing snapshot. Saved calculator inputs must describe that snapshot (including the two-post standard assumption); do not recalculate separately for email and persistence.

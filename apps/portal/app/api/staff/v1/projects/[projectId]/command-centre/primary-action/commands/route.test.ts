@@ -25,6 +25,7 @@ const candidate = {
 };
 const state = {
   projectId,
+  workModel: 'legacy' as const,
   operations: {
     primaryAction: candidate, candidates: [candidate], candidateRevision: 'cc_revision', manualSelectionBaselineHash: 'cc_manual',
     selectionConflict: null,

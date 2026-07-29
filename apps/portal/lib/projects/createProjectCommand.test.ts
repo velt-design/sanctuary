@@ -2,12 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectCreateRequest } from './createProjectContract';
 
 const mocks = vi.hoisted(() => ({
-  runEvent: vi.fn(),
   serviceFrom: vi.fn(),
-}));
-
-vi.mock('@/lib/automation/AutomationRunner', () => ({
-  automationRunner: { runEvent: (...args: unknown[]) => mocks.runEvent(...args) },
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({
@@ -19,6 +14,7 @@ import {
   ProjectCreateCommandConflictError,
   ProjectCreateDuplicateContactsError,
   ProjectCreateRecoveryError,
+  ProjectCreateSchemaError,
 } from './createProjectCommand';
 
 const projectUuid = '11111111-1111-4111-8111-111111111111';
@@ -64,10 +60,10 @@ const projectRow = {
 
 function authClient(options: {
   duplicates?: unknown[];
+  duplicateError?: unknown;
   contactInsert?: { data: unknown; error: unknown };
   contactExisting?: { data: unknown; error: unknown };
-  projectInsert?: { data: unknown; error: unknown };
-  projectExisting?: { data: unknown; error: unknown };
+  projectRpc?: { data: unknown; error: unknown };
 } = {}) {
   const contactInsert = vi.fn(() => ({
     select: vi.fn(() => ({
@@ -79,26 +75,29 @@ function authClient(options: {
       maybeSingle: vi.fn().mockResolvedValue(options.contactExisting ?? { data: contactRow, error: null }),
     })),
   }));
-  const projectInsert = vi.fn(() => ({
-    select: vi.fn(() => ({
-      single: vi.fn().mockResolvedValue(options.projectInsert ?? { data: projectRow, error: null }),
-    })),
-  }));
-  const projectSelect = vi.fn(() => ({
-    eq: vi.fn(() => ({
-      maybeSingle: vi.fn().mockResolvedValue(options.projectExisting ?? { data: projectRow, error: null }),
-    })),
-  }));
   const from = vi.fn((table: string) => {
     if (table === 'contacts') return { insert: contactInsert, select: contactSelect };
-    if (table === 'projects') return { insert: projectInsert, select: projectSelect };
-    throw new Error(`Unexpected table ${table}`);
+    throw new Error(`Unexpected direct table ${table}`);
   });
-  const rpc = vi.fn().mockResolvedValue({ data: options.duplicates ?? [], error: null });
+  const projectCreate = vi.fn().mockResolvedValue(options.projectRpc ?? {
+    data: { project: projectRow, replayed: false },
+    error: null,
+  });
+  const rpc = vi.fn((name: string, payload: unknown) => {
+    if (name === 'staff_find_contact_duplicates_v1') {
+      return Promise.resolve({
+        data: options.duplicates ?? [],
+        error: options.duplicateError ?? null,
+      });
+    }
+    if (name === 'project_create_v2') return projectCreate(payload);
+    throw new Error(`Unexpected RPC ${name}`);
+  });
   return {
     client: { from, rpc } as any,
     contactInsert,
-    projectInsert,
+    from,
+    projectCreate,
     rpc,
   };
 }
@@ -126,14 +125,16 @@ function mockContactCleanup(options?: { linkedProjectSelectError?: unknown; cont
   return { linkedProjectSelect, contactDelete };
 }
 
+function projectCreateCallCount(rpc: ReturnType<typeof vi.fn>): number {
+  return rpc.mock.calls.filter(([name]) => name === 'project_create_v2').length;
+}
+
 describe('createProjectCommand', () => {
   beforeEach(() => {
-    mocks.runEvent.mockReset();
-    mocks.runEvent.mockResolvedValue(undefined);
     mocks.serviceFrom.mockReset();
   });
 
-  it('saves a new contact and project before returning a durable receipt', async () => {
+  it('creates the project and its V2 cadence through one authenticated RPC', async () => {
     const auth = authClient();
 
     const result = await createProjectCommand(auth.client, request);
@@ -143,14 +144,16 @@ describe('createProjectCommand', () => {
       p_phone: '021',
       p_exclude_contact_id: contactUuid,
     });
-    expect(auth.contactInsert).toHaveBeenCalledTimes(1);
-    expect(auth.projectInsert).toHaveBeenCalledTimes(1);
-    expect(mocks.runEvent).toHaveBeenCalledWith({
-      type: 'ui.action.project_created',
-      projectId: projectUuid,
-      stage: 'NEW',
-      payload: { source: 'portal' },
+    expect(auth.rpc).toHaveBeenCalledWith('project_create_v2', {
+      p_project_id: projectUuid,
+      p_contact_id: contactUuid,
+      p_name: 'Courtyard roof',
+      p_quote_ref: 'Q-18',
+      p_region: 'North',
+      p_site_address: '12 Beach Road',
     });
+    expect(auth.contactInsert).toHaveBeenCalledTimes(1);
+    expect(auth.from).not.toHaveBeenCalledWith('projects');
     expect(result).toMatchObject({
       project: { id: `proj_${projectUuid}`, contactId: `ct_${contactUuid}` },
       contact: { id: `ct_${contactUuid}`, displayName: 'Alex Mason' },
@@ -170,11 +173,10 @@ describe('createProjectCommand', () => {
     await expect(createProjectCommand(auth.client, request))
       .rejects.toBeInstanceOf(ProjectCreateDuplicateContactsError);
     expect(auth.contactInsert).not.toHaveBeenCalled();
-    expect(auth.projectInsert).not.toHaveBeenCalled();
-    expect(mocks.runEvent).not.toHaveBeenCalled();
+    expect(projectCreateCallCount(auth.rpc)).toBe(0);
   });
 
-  it('rejects a stable command ID that belongs to different contact details', async () => {
+  it('rejects a stable contact ID that belongs to different details', async () => {
     const auth = authClient({
       contactInsert: { data: null, error: { code: '23505', message: 'duplicate key' } },
       contactExisting: { data: { ...contactRow, name: 'Different person' }, error: null },
@@ -191,31 +193,59 @@ describe('createProjectCommand', () => {
         allowDuplicate: true,
       },
     })).rejects.toBeInstanceOf(ProjectCreateCommandConflictError);
-    expect(auth.projectInsert).not.toHaveBeenCalled();
-    expect(mocks.runEvent).not.toHaveBeenCalled();
+    expect(projectCreateCallCount(auth.rpc)).toBe(0);
   });
 
-  it('preserves the confirmed records and reports attention when setup automation fails', async () => {
-    const auth = authClient();
-    mocks.runEvent.mockRejectedValue(new Error('automation failed'));
+  it('maps a missing V2 RPC to schema unavailable and removes an unused new contact', async () => {
+    const auth = authClient({
+      projectRpc: {
+        data: null,
+        error: { code: 'PGRST202', message: 'Could not find project_create_v2 in the schema cache' },
+      },
+    });
+    const cleanup = mockContactCleanup();
 
-    await expect(createProjectCommand(auth.client, request)).rejects.toMatchObject({
-      name: 'ProjectCreateAutomationAttentionError',
-      response: {
-        project: { id: `proj_${projectUuid}` },
-        receipt: {
-          state: 'server_confirmed',
-          setupAutomation: 'needs_attention',
+    await expect(createProjectCommand(auth.client, request))
+      .rejects.toBeInstanceOf(ProjectCreateSchemaError);
+    expect(cleanup.linkedProjectSelect).toHaveBeenCalledTimes(1);
+    expect(cleanup.contactDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps the RPC stable-ID mismatch to a command conflict', async () => {
+    const auth = authClient({
+      projectRpc: {
+        data: null,
+        error: {
+          code: '40001',
+          message: 'PROJECT_CREATION_COMMAND_CONFLICT: project id is already used for different details',
         },
       },
     });
-    expect(mocks.serviceFrom).not.toHaveBeenCalled();
+    const cleanup = mockContactCleanup();
+
+    await expect(createProjectCommand(auth.client, request))
+      .rejects.toBeInstanceOf(ProjectCreateCommandConflictError);
+    expect(cleanup.contactDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes an unused new contact after a definitive RPC failure', async () => {
+    const projectError = { code: '22023', message: 'project creation rejected' };
+    const auth = authClient({
+      projectRpc: { data: null, error: projectError },
+    });
+    const cleanup = mockContactCleanup();
+
+    await expect(createProjectCommand(auth.client, request)).rejects.toBe(projectError);
+    expect(cleanup.linkedProjectSelect).toHaveBeenCalledTimes(1);
+    expect(cleanup.contactDelete).toHaveBeenCalledTimes(1);
   });
 
   it('requires administrator review when compensation cannot be verified', async () => {
     const auth = authClient({
-      projectInsert: { data: null, error: { message: 'project insert failed' } },
-      projectExisting: { data: null, error: null },
+      projectRpc: {
+        data: null,
+        error: { code: '22023', message: 'project creation rejected' },
+      },
     });
     mockContactCleanup({ linkedProjectSelectError: { message: 'cleanup check failed' } });
 
@@ -223,27 +253,16 @@ describe('createProjectCommand', () => {
       .rejects.toBeInstanceOf(ProjectCreateRecoveryError);
   });
 
-  it('removes an unused new contact after a definitively failed project write', async () => {
-    const projectError = { message: 'project insert failed' };
-    const auth = authClient({
-      projectInsert: { data: null, error: projectError },
-      projectExisting: { data: null, error: null },
-    });
-    const cleanup = mockContactCleanup();
-
-    await expect(createProjectCommand(auth.client, request)).rejects.toBe(projectError);
-    expect(cleanup.linkedProjectSelect).toHaveBeenCalledTimes(1);
-    expect(cleanup.contactDelete).toHaveBeenCalledTimes(1);
-    expect(mocks.runEvent).not.toHaveBeenCalled();
-  });
-
-  it('treats a matching stable-ID replay as confirmed without repeating automation', async () => {
+  it('returns a matching stable-ID replay without invoking legacy automation', async () => {
     const existingRequest: ProjectCreateRequest = {
       ...request,
       contact: { kind: 'existing', contactId: `ct_${contactUuid}` },
     };
     const auth = authClient({
-      projectInsert: { data: null, error: { code: '23505', message: 'duplicate key' } },
+      projectRpc: {
+        data: [{ project: projectRow, replayed: true }],
+        error: null,
+      },
     });
 
     const result = await createProjectCommand(auth.client, existingRequest);
@@ -251,8 +270,20 @@ describe('createProjectCommand', () => {
     expect(result.receipt).toMatchObject({
       state: 'server_confirmed',
       replayed: true,
+      createdContact: false,
       setupAutomation: 'not_rechecked',
     });
-    expect(mocks.runEvent).not.toHaveBeenCalled();
+    expect(auth.projectCreate).toHaveBeenCalledTimes(1);
+    expect(auth.from).not.toHaveBeenCalledWith('projects');
+  });
+
+  it('does not trust a malformed successful RPC result', async () => {
+    const auth = authClient({
+      projectRpc: { data: { replayed: false }, error: null },
+    });
+    mockContactCleanup();
+
+    await expect(createProjectCommand(auth.client, request))
+      .rejects.toBeInstanceOf(ProjectCreateRecoveryError);
   });
 });

@@ -1,24 +1,27 @@
 # Project Work Items And Lead Follow-Up
 
-Status: Approved planning contract. Not implemented.
+Status: Approved product contract with a repository-local V2 implementation. The forward migration is not applied or deployed.
 
-Purpose: define the future project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary before application or UI work begins.
+Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
 This document is intentionally UI-agnostic. It does not authorize the previously proposed Project Overview redesign.
 
-## Current-State Warning
+## Current Repository State
 
-The repository does not implement this contract yet.
+The current worktree implements the V2 foundation for newly created projects only:
 
-Current behavior remains documented by:
+- a new staff-created project is created through `project_create_v2`;
+- a newly created `New` project linked by its intake enquiry is initialized as V2; the trigger's narrow creation-time check prevents an old project from being activated by a later enquiry row;
+- initialization records `Active` state and one first-email obligation, due after two Auckland open hours with a separate four-hour SLA;
+- a missing contact email blocks that first obligation until the email is supplied;
+- lead and quote cadences advance only from durable domain evidence or an explicit staff confirmation;
+- the current Overview and task surfaces consume a V2 adapter without a visual redesign;
+- Site Visits is hidden from normal navigation and its optional completion fact is manual; and
+- Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries.
 
-- `automation-email-audit.md`
-- `project-command-centre-v1.md`
-- `project-command-centre-architecture.md`
-- `platform-workflow.md`
-- `projects-contacts-estimates-calculator.md`
+The migration `20260729_000002_project_work_items_v2.sql` is repository-local and unapplied. Until it is applied, the new staff project command fails closed rather than falling back to legacy creation. Existing projects receive no V2 marker or backfill and continue using the legacy model. No Contacted project was changed, classified, closed, archived, or added to the V2 queue.
 
-Implementation must update those current-state documents in the same change that makes this contract real.
+The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server queue emits at most one current row per project, preferring a durable recovery signal, then the highest-ranked eligible open item, one blocker, triage, or a due Waiting review; no dedicated staff queue page consumes it yet. Project-specific reads also compose specialist quote/design candidates through the Command Centre's canonical selectors. The SQL queue intentionally does not duplicate those selectors, so draft-quote and estimate specialist candidates remain absent until a deliberate server queue-composition contract is added. Confirmation history supports retained records, but the current staff command surface records confirmations only; correction/retraction remains an admin rollout prerequisite.
 
 ## 1. Product Model
 
@@ -434,7 +437,7 @@ The 36 already archived Contacted records are a separate administrative populati
 
 ## 15. Replacement Boundary
 
-The current implementation spreads project work across:
+Legacy projects still spread project work across:
 
 - code-defined stage tasks and `project_task_checks`;
 - automation `tasks`;
@@ -443,15 +446,16 @@ The current implementation spreads project work across:
 - primary-selection/control/version tables; and
 - compatibility `projects.next_action*` and `follow_up_date` fields.
 
-The intended replacement is:
+V2 projects use:
 
-- one canonical project work-item store for human obligations;
+- `project_operational_states` for Active, Waiting, and Closed state;
+- one canonical `project_work_items` store for human obligations;
 - one append-only work-item event history;
 - a small bounded confirmation model where manual evidence is unavoidable;
 - one server-derived primary work item; and
 - specialist-domain actions kept with their authoritative owners.
 
-Personal Dashboard reminders remain outside this replacement.
+The V2 marker is the one-way boundary: legacy writers are rejected for V2 projects, while unmarked projects retain legacy behavior. A one-way compatibility projection updates `projects.next_action*` and `follow_up_date` from the highest-ranked open V2 item for existing consumers; it never imports those fields back into V2 truth and does not project blocked items or specialist actions. Personal Dashboard reminders remain outside this replacement.
 
 ## 16. Migration Principles
 
@@ -468,14 +472,16 @@ Personal Dashboard reminders remain outside this replacement.
 
 Do not introduce a permanent bidirectional dual-write layer.
 
-## 17. Implementation Order
+## 17. Remaining Rollout Order
 
-1. Approve application implementation.
-2. Build and verify the replacement work-item foundation.
-3. Produce the read-only Contacted backlog classification and reviewed decisions.
-4. Reconcile and clean the existing pipeline.
-5. Retire the legacy task system.
-6. Separately decide whether to redesign the Project Overview UI against the trusted replacement contract.
+1. Run the forward migration in a disposable or positively identified non-production environment and execute the database contract, replay, permission, and rollback checks.
+2. Run authenticated, non-destructive QA for staff creation, V2 commands, Overview adaptation, quote reconciliation, Schedule/Running Jobs boundaries, stale conflicts, and access failures.
+3. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
+4. Add the read-only Contacted backlog classification, then obtain reviewed staff decisions in bounded batches; do not auto-migrate the 623-project population.
+5. Add an approved confirmation-correction command and decide where the one-row-per-project team queue is presented before broad rollout.
+6. Enable V2 only for the approved new-project cohort, monitor reconciliation, and keep old projects isolated on the legacy model.
+7. Migrate reviewed existing obligations and retire legacy readers/tables only in later explicit slices.
+8. Separately decide whether to redesign the Project Overview UI against the trusted V2 contract.
 
 ## 18. Deferred Decisions
 

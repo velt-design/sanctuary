@@ -67,6 +67,7 @@ export function buildProjectSnapshotPlaceholder(
   const normalized = normalizeProjectStatus(project.status ?? 'NEW');
   const stage = normalizePipelineStageKey(normalized.status) ?? 'new';
   const snapshot: ProjectPageSnapshot = {
+    workModel: 'legacy',
     project: {
       id: project.id,
       name: project.projectName ?? project.name ?? 'Project',

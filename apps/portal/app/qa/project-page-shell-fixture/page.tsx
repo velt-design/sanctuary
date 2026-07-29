@@ -10,6 +10,7 @@ function arePortalQaFixturesEnabled(): boolean {
 }
 
 const snapshot: ProjectPageSnapshot = {
+  workModel: 'legacy',
   project: {
     id: 'proj_fixture_shell',
     name: 'Aroha Smith - Takapuna',

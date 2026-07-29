@@ -14,6 +14,7 @@ import {
 } from '@/lib/projects/pipelineDefinition';
 import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
+import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 
 const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
 
@@ -24,7 +25,6 @@ const PROJECT_RELATED_SNAPSHOT_SELECT = `
   scheduleItems:schedule_items(id,start_date),
   quotes(id,acceptedVersions:quote_versions(id,status)),
   openInvoices:deposit_invoices(id,status),
-  manualChecks:project_task_checks(task_key),
   emails:email_outbox(id,subject,to_email,status,sent_at,created_at,email_type),
   jobPacks:job_pack_generations(id),
   notes:project_notes(id,body,author_id,author_email,author_display_name,created_at,updated_at,deleted_at)
@@ -147,6 +147,22 @@ function relationRows(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
 }
 
+function projectWorkModelVersion(projectRow: unknown): 2 | null {
+  if (!projectRow || typeof projectRow !== 'object') return null;
+  const raw = (projectRow as Record<string, unknown>).workModel;
+  const candidates = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object'
+      ? [raw]
+      : [];
+  return candidates.some((row) => (
+    row && typeof row === 'object'
+    && Number((row as Record<string, unknown>).model_version) === 2
+  ))
+    ? 2
+    : null;
+}
+
 async function loadProjectHeaderOwner(client: SupabaseClient, projectUuid: string): Promise<ProjectPageSnapshot['project']['owner']> {
   const assignment = await client
     .from('project_owner_assignments')
@@ -219,7 +235,11 @@ export async function getProjectPageSummary(
   if (!projectUuid) return null;
 
   const [projectRes, owner] = await Promise.all([
-    client.from('projects').select('*,contact:contacts(*)').eq('id', projectUuid).maybeSingle(),
+    client
+      .from('projects')
+      .select('*,contact:contacts(*),workModel:project_work_model_versions(model_version)')
+      .eq('id', projectUuid)
+      .maybeSingle(),
     loadProjectHeaderOwner(client, projectUuid),
   ]);
   if (projectRes?.error) {
@@ -229,7 +249,9 @@ export async function getProjectPageSummary(
   if (!projectRes?.data) return null;
 
   const summary = mapProjectSummary(projectRes.data, projectId);
+  const workModelVersion = projectWorkModelVersion(projectRes.data);
   return {
+    workModel: workModelVersion === 2 ? 'v2' : 'legacy',
     project: { ...summary.project, ...(owner ? { owner } : null) },
     pipeline: { stage: summary.stage },
     tasks: { stage: summary.stage, items: [] },
@@ -257,7 +279,7 @@ export async function getProjectPageSnapshot(
   const [projectRes, relatedRes, owner] = await Promise.all([
     client
       .from('projects')
-      .select('*,contact:contacts(*)')
+      .select('*,contact:contacts(*),workModel:project_work_model_versions(model_version)')
       .eq('id', projectUuid)
       .maybeSingle(),
     client
@@ -291,6 +313,7 @@ export async function getProjectPageSnapshot(
   }
 
   const summary = mapProjectSummary(projectRow, projectId);
+  const workModelVersion = projectWorkModelVersion(projectRow);
   const stage = summary.stage;
   const projectIdOut = summary.project.id;
   const nextActionDate = summary.nextActionDate;
@@ -321,9 +344,24 @@ export async function getProjectPageSnapshot(
   const hasOpenDepositInvoice = relationRows(relatedRow?.openInvoices).length > 0;
 
   const manualCompleted = new Set<TaskKey>();
-  for (const row of relationRows(relatedRow?.manualChecks)) {
-    const key = typeof (row as any)?.task_key === 'string' ? String((row as any).task_key) : '';
-    if (isManualTaskKey(key)) manualCompleted.add(key);
+  if (workModelVersion !== 2) {
+    const manualChecks = await client
+      .from('project_task_checks')
+      .select('task_key')
+      .eq('project_id', projectUuid);
+    if (manualChecks.error) {
+      logSnapshotError(
+        diagnostics,
+        'legacy project task checks query failed',
+        manualChecks.error,
+        'project_task_checks',
+      );
+      throw new Error('Failed to load complete project snapshot');
+    }
+    for (const row of relationRows(manualChecks.data)) {
+      const key = typeof (row as any)?.task_key === 'string' ? String((row as any).task_key) : '';
+      if (isManualTaskKey(key)) manualCompleted.add(key);
+    }
   }
 
   const taskContext: TaskContext = {
@@ -337,14 +375,24 @@ export async function getProjectPageSnapshot(
     nextActionDate,
   };
 
-  const taskItems = resolveStageTasks(stage, taskContext, manualCompleted);
+  const taskItems = workModelVersion === 2
+    ? []
+    : resolveStageTasks(stage, taskContext, manualCompleted);
   const finalStage = stage;
+  const projectWork = workModelVersion === 2
+    ? await getAuthoritativeProjectWorkProjection(projectIdOut, client)
+    : null;
+  if (workModelVersion === 2 && !projectWork) {
+    throw new Error('V2 project work could not be loaded');
+  }
 
   const notes = relationRows(relatedRow?.notes)
     .map((row) => mapProjectNote(row, currentUserId))
     .filter((value): value is ProjectNote => value !== null);
 
   return {
+    workModel: workModelVersion === 2 ? 'v2' : 'legacy',
+    ...(projectWork ? { projectWork } : null),
     project: {
       ...summary.project,
       ...(owner ? { owner } : null),

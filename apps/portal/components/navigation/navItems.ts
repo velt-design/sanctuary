@@ -41,7 +41,6 @@ export const NAV_ITEMS = [
     children: [
       { key: 'schedule-board', label: 'Board', href: '/staff/schedule?view=board' },
       { key: 'schedule-gantt', label: 'Gantt', href: '/staff/schedule?view=gantt' },
-      { key: 'schedule-site-visits', label: 'Site visits', href: '/staff/schedule?view=site-visits' },
     ],
   },
   { key: 'imports', label: 'Imports', href: '/imports', Icon: ArrowDownToLine, adminOnly: false },

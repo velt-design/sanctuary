@@ -6,6 +6,7 @@ import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projec
 import { projectCommandCentreQueryOptions } from '@/lib/queries/projects';
 import { ApiError } from '@/lib/repo/apiClient';
 import ProjectTasksSidebarClient from '../ProjectTasksSidebar.client';
+import ProjectWorkItemsSidebar from '../ProjectWorkItemsSidebar.client';
 import ProjectNotesPanel from './_components/ProjectNotesPanel.client';
 import {
   AlertBanner,
@@ -20,6 +21,7 @@ import styles from './overview/OverviewTab.module.css';
 const ProjectCurrentDesignCommercialCard = lazy(() => import('./overview/ProjectCurrentDesignCommercialCard'));
 const ProjectPrimaryActionCard = lazy(() => import('./overview/ProjectPrimaryActionCard'));
 const ProjectStatusDetailsCard = lazy(() => import('./overview/ProjectStatusDetailsCard'));
+const ProjectWorkCommandCard = lazy(() => import('./overview/ProjectWorkCommandCard'));
 
 export default function OverviewTab({
   snapshot,
@@ -81,13 +83,25 @@ export default function OverviewTab({
               <ProjectCurrentDesignCommercialCard data={commandQuery.data.currentDesign} />
             </Suspense>
             <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project command" /></Card>}>
-              <ProjectPrimaryActionCard
-                projectId={snapshot.project.id}
-                host={host}
-                operations={commandQuery.data.operations}
-                stale={commandQuery.isError}
-                onRefresh={() => void commandQuery.refetch()}
-              />
+              {commandQuery.data.workModel === 'v2' ? (
+                <ProjectWorkCommandCard
+                  projectId={snapshot.project.id}
+                  host={host}
+                  projectWork={commandQuery.data.projectWork}
+                  owner={commandQuery.data.owner}
+                  pipelineStage={snapshot.project.stage}
+                  stale={commandQuery.isError}
+                  onRefresh={() => void commandQuery.refetch()}
+                />
+              ) : (
+                <ProjectPrimaryActionCard
+                  projectId={snapshot.project.id}
+                  host={host}
+                  operations={commandQuery.data.operations}
+                  stale={commandQuery.isError}
+                  onRefresh={() => void commandQuery.refetch()}
+                />
+              )}
             </Suspense>
           </>
         ) : commandQuery.isPending ? (
@@ -110,7 +124,15 @@ export default function OverviewTab({
             <ProjectNotesPanel projectId={snapshot.project.id} initialNotes={snapshot.notes} />
           </Card>
           <Card title="Tasks" eyebrow="Current stage" padding="none" data-overview-column="tasks">
-            <ProjectTasksSidebarClient projectId={snapshot.project.id} tasks={snapshot.tasks} />
+            {snapshot.workModel === 'v2' && snapshot.projectWork ? (
+              <ProjectWorkItemsSidebar
+                projectId={snapshot.project.id}
+                projectWork={snapshot.projectWork}
+                host={host}
+              />
+            ) : (
+              <ProjectTasksSidebarClient projectId={snapshot.project.id} tasks={snapshot.tasks} />
+            )}
           </Card>
         </OperationalGrid>
       ) : (

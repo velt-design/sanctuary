@@ -92,7 +92,6 @@ function isChildActive(
 
       if (childKey === 'schedule-board') return scheduleView === 'board';
       if (childKey === 'schedule-gantt') return scheduleView === 'gantt';
-      if (childKey === 'schedule-site-visits') return scheduleView === 'site-visits';
       return false;
     }
     case 'pricebook': {

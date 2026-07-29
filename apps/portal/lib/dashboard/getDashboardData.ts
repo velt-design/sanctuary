@@ -127,13 +127,6 @@ export async function getDashboardData(opts: { queueMode: QueueMode; userId?: st
       href: projectsHref({ nextActionDue: true, due: 'today' }),
     },
     {
-      key: 'site_visits_to_book',
-      label: 'Site visits to book',
-      count: asNumber(attentionCounts.site_visits_to_book),
-      tone: 'warning',
-      href: siteVisitsHref(),
-    },
-    {
       key: 'projects_in_quoting',
       label: 'Projects in quoting',
       count: asNumber(attentionCounts.quotes_to_send),

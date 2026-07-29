@@ -2,6 +2,7 @@ import 'server-only';
 
 import { portalTodayYmd } from '@/lib/format/portalDateTime';
 import { portalDueDateToIso } from '@/lib/projects/commandCentre/actionResolver';
+import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 import { addDaysYmd } from '@/lib/scheduling/date';
 import { buildWorkingDayIndex, nextWorkingDay } from '@/lib/scheduling/workingDays';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
@@ -48,6 +49,7 @@ export async function upsertAutomationTask(params: {
   meta?: Record<string, unknown>;
   idempotencyKey: string;
 }): Promise<void> {
+  if (await isProjectWorkModelV2(supabaseServiceRole, params.projectId)) return;
   const { error } = await supabaseServiceRole.from('tasks').upsert({
     project_id: params.projectId,
     type: params.type,
@@ -69,6 +71,7 @@ export async function insertAutomationFollowupTask(params: {
   dueAt: string;
   idempotencyKey: string;
 }): Promise<void> {
+  if (await isProjectWorkModelV2(supabaseServiceRole, params.projectId)) return;
   const { error } = await supabaseServiceRole.from('followup_tasks').insert({
     plan_id: params.planId,
     project_id: params.projectId,

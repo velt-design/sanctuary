@@ -7,6 +7,7 @@ import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { deriveCrewShortCode, deriveRunningJobFields, getLatestRunningJobsEstimate, type RunningJobsEstimateLite } from './derive';
+import { legacyRunningJobTaskProjectIds, resolveRunningJobFactState } from './facts';
 import { groupRunningJobRows } from './group';
 import { shouldIncludeRunningJob } from './inclusion';
 import {
@@ -27,6 +28,7 @@ type ProjectRow = {
   updated_at: string | null;
   deposit_paid_date: string | null;
   final_payment_date: string | null;
+  work_model_version: 2 | null;
   contacts?: unknown;
 };
 
@@ -61,6 +63,11 @@ type MetaRow = {
   project_id: string;
   lights_status: RunningJobStatusValue | null;
   notes: string | null;
+  materials_ordered_at: string | null;
+  materials_ordered_by: string | null;
+  roofing_ordered_at: string | null;
+  roofing_ordered_by: string | null;
+  row_version: number;
   updated_at: string | null;
 };
 
@@ -123,6 +130,18 @@ function legacyDisplayValue(displayCells: LegacyRunningJobDisplayCells, key: Run
   return trimCellText(displayCells[key] ?? '');
 }
 
+function relationRecord(value: unknown): Record<string, unknown> | null {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+    ? candidate as Record<string, unknown>
+    : null;
+}
+
+function workModelVersionFromProject(row: Record<string, unknown>): 2 | null {
+  const relation = relationRecord(row.workModel);
+  return Number(relation?.model_version) === 2 ? 2 : null;
+}
+
 function contactFromProject(project: ProjectRow): { id: string | null; name: string; phone: string; updatedAt: string | null } {
   const raw = Array.isArray(project.contacts) ? project.contacts[0] : project.contacts ?? null;
   return {
@@ -147,11 +166,13 @@ function taskSetByProject(taskRows: TaskRow[]): Map<string, Set<string>> {
 }
 
 function hashRowVersion(input: {
+  workModelVersion: 2 | null;
   projectUpdatedAt: string | null;
   contactUpdatedAt: string | null;
   siteVisitUpdatedAt: string | null;
   scheduledJobUpdatedAt: string | null;
   metaUpdatedAt: string | null;
+  metaRowVersion: number;
   stage: string;
   tasks: {
     materialsOrdered: boolean;
@@ -191,6 +212,7 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
     'updated_at',
     'deposit_paid_date',
     'final_payment_date',
+    'workModel:project_work_model_versions(model_version)',
     'contacts ( id, name, phone, updated_at )',
   ].join(',');
 
@@ -226,6 +248,7 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
     updated_at: typeof row?.updated_at === 'string' ? row.updated_at : null,
     deposit_paid_date: typeof row?.deposit_paid_date === 'string' ? row.deposit_paid_date : null,
     final_payment_date: typeof row?.final_payment_date === 'string' ? row.final_payment_date : null,
+    work_model_version: workModelVersionFromProject(row as Record<string, unknown>),
     contacts: row?.contacts ?? null,
   }));
 
@@ -325,6 +348,7 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
         roofing_text: legacyDisplayValue(displayCells, 'roofing_text') || null,
       },
       state: {
+        workModelVersion: null,
         projectCreatedAt: null,
         hasSiteVisit: false,
         hasSchedule: false,
@@ -353,7 +377,12 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
           updatedAt: null,
         },
         meta: {
+          rowVersion: 0,
           lightsStatus: parseLegacyStatusValue(lightsRaw || null),
+          materialsOrderedAt: null,
+          materialsOrderedBy: null,
+          roofingOrderedAt: null,
+          roofingOrderedBy: null,
           updatedAt: null,
         },
       },
@@ -366,6 +395,9 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
   const supabase = await getSupabaseServerAuth();
   const { projects, crews } = await loadProjectsAndCrews(projectIdsFilter);
   const projectIds = projects.map((project) => project.id).filter(Boolean);
+  const legacyProjectIds = legacyRunningJobTaskProjectIds(
+    projects.map((project) => ({ id: project.id, modelVersion: project.work_model_version })),
+  );
 
   const salesPeople = SALES_PEOPLE.map((person) => ({
     id: person.id,
@@ -408,11 +440,16 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
         )
         .in('job_id', chunkIds),
     ),
-    fetchRowsByIdChunks<TaskRow>(projectIds, (chunkIds) =>
+    fetchRowsByIdChunks<TaskRow>(legacyProjectIds, (chunkIds) =>
       supabase.from('project_task_checks').select('project_id, task_key').in('project_id', chunkIds),
     ),
     fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
-      supabase.from('project_running_job_meta').select('project_id, lights_status, notes, updated_at').in('project_id', chunkIds),
+      supabase
+        .from('project_running_job_meta')
+        .select(
+          'project_id, lights_status, notes, materials_ordered_at, materials_ordered_by, roofing_ordered_at, roofing_ordered_by, row_version, updated_at',
+        )
+        .in('project_id', chunkIds),
     ),
     fetchRowsByIdChunks<any>(projectIds, (chunkIds) =>
       supabase
@@ -483,6 +520,13 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
       project_id: projectId,
       lights_status: row?.lights_status === 'No' || row?.lights_status === 'Yes' || row?.lights_status === 'TBC' ? row.lights_status : null,
       notes: typeof row?.notes === 'string' ? row.notes : null,
+      materials_ordered_at: typeof row?.materials_ordered_at === 'string' ? row.materials_ordered_at : null,
+      materials_ordered_by: typeof row?.materials_ordered_by === 'string' ? row.materials_ordered_by : null,
+      roofing_ordered_at: typeof row?.roofing_ordered_at === 'string' ? row.roofing_ordered_at : null,
+      roofing_ordered_by: typeof row?.roofing_ordered_by === 'string' ? row.roofing_ordered_by : null,
+      row_version: typeof row?.row_version === 'number' && Number.isSafeInteger(row.row_version)
+        ? Math.max(1, row.row_version)
+        : 0,
       updated_at: typeof row?.updated_at === 'string' ? row.updated_at : null,
     });
   }
@@ -550,10 +594,14 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
       project.name ?? '',
     );
 
-    const materialsOrdered = taskKeys.has('order_materials');
-    const roofingOrdered = taskKeys.has('roofing_ordered');
-    const jobCompleteTask = taskKeys.has('job_complete');
     const jobCompleted = Boolean(scheduledJob && (scheduledJob.status === 'done' || scheduledJob.actual_finish));
+    const facts = resolveRunningJobFactState({
+      modelVersion: project.work_model_version,
+      legacyTaskKeys: taskKeys,
+      materialsOrderedAt: meta?.materials_ordered_at ?? null,
+      roofingOrderedAt: meta?.roofing_ordered_at ?? null,
+      scheduleCompleted: jobCompleted,
+    });
 
     const row: RunningJobRow = {
       projectId: appIdFromUuid('proj', project.id),
@@ -569,16 +617,18 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
       stage,
       sortDate: estimatedStartDate,
       rowVersion: hashRowVersion({
+        workModelVersion: project.work_model_version,
         projectUpdatedAt: project.updated_at,
         contactUpdatedAt: contact.updatedAt,
         siteVisitUpdatedAt: siteVisit?.updated_at ?? null,
         scheduledJobUpdatedAt: scheduledJob?.updated_at ?? null,
         metaUpdatedAt: meta?.updated_at ?? null,
+        metaRowVersion: meta?.row_version ?? 0,
         stage,
         tasks: {
-          materialsOrdered,
-          roofingOrdered,
-          jobComplete: jobCompleteTask,
+          materialsOrdered: facts.materialsOrdered,
+          roofingOrdered: facts.roofingOrdered,
+          jobComplete: facts.jobComplete,
         },
       }),
       displayTextByCell: {},
@@ -590,7 +640,7 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
           ? salesPeopleById.get(siteVisit.assigned_sales_owner_id)?.shortLabel ?? siteVisit.assigned_sales_owner_id
           : null,
         deposit_paid_date: toYmd(project.deposit_paid_date),
-        materials_ordered: materialsOrdered,
+        materials_ordered: facts.materialsOrdered,
         pergola_type: derivedFields.derived.pergola_type ?? '',
         estimated_start_date: estimatedStartDate,
         final_payment_date: toYmd(project.final_payment_date),
@@ -602,11 +652,12 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
         size_text: derivedFields.derived.size_text ?? '',
         colour_text: derivedFields.derived.colour_text ?? '',
         roofing_text: derivedFields.derived.roofing_text ?? '',
-        roofing_ordered: roofingOrdered,
+        roofing_ordered: facts.roofingOrdered,
         running_notes: typeof meta?.notes === 'string' ? meta.notes : '',
       },
       derived: derivedFields.derived,
       state: {
+        workModelVersion: project.work_model_version,
         projectCreatedAt: project.created_at,
         hasSiteVisit: Boolean(siteVisit),
         hasSchedule: Boolean(scheduledJob),
@@ -614,9 +665,9 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
         hasEstimatedStartDate: Boolean(estimatedStartDate),
         hasLatestEstimate: Boolean(latestEstimate),
         tasks: {
-          materialsOrdered,
-          roofingOrdered,
-          jobComplete: jobCompleteTask,
+          materialsOrdered: facts.materialsOrdered,
+          roofingOrdered: facts.roofingOrdered,
+          jobComplete: facts.jobComplete,
         },
         siteVisit: {
           salespersonId: siteVisit?.assigned_sales_owner_id ?? null,
@@ -635,7 +686,12 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
           updatedAt: scheduledJob?.updated_at ?? null,
         },
         meta: {
+          rowVersion: meta?.row_version ?? 0,
           lightsStatus: meta?.lights_status ?? null,
+          materialsOrderedAt: meta?.materials_ordered_at ?? null,
+          materialsOrderedBy: meta?.materials_ordered_by ?? null,
+          roofingOrderedAt: meta?.roofing_ordered_at ?? null,
+          roofingOrderedBy: meta?.roofing_ordered_by ?? null,
           updatedAt: meta?.updated_at ?? null,
         },
       },

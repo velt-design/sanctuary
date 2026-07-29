@@ -208,4 +208,16 @@ describe('PortalSidebarPanel', () => {
 
     rendered.unmount();
   });
+
+  it('keeps Site Visits out of Schedule navigation', () => {
+    mockPathname = '/staff/schedule';
+    mockSearchParams = new URLSearchParams('view=board');
+    const rendered = renderSidebar();
+
+    expect(linkByText(rendered.container, 'Board')).toBeInstanceOf(HTMLAnchorElement);
+    expect(linkByText(rendered.container, 'Gantt')).toBeInstanceOf(HTMLAnchorElement);
+    expect(queryLinkByText(rendered.container, 'Site visits')).toBeNull();
+
+    rendered.unmount();
+  });
 });

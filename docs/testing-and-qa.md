@@ -9,6 +9,7 @@ Use the smallest test that covers the risk. Run broader suites when touching sha
 - Use `## Background-Job And Worker Tests` for JOB-01/JOB-02/JOB-03 provider-package, worker, migration, security, webhook, fault-injection, and isolated PGMQ database checks.
 - Use `## Portal Browser Tests` and `## Drawing Fixture Route` for Playwright/auth/drawing smoke expectations.
 - Use `## Schedule QA Gate` for Schedule V2 readiness and focused schedule checks.
+- Use `## Project Work Items V2 Gate` for the new-project work model, mixed-mode boundary, and rollout checks.
 - Use `## CI` to confirm which workflows enforce or report each gate.
 
 ## Canonical Command Source
@@ -625,6 +626,45 @@ $env:PORTAL_BASE_URL='http://127.0.0.1:3021'; npm run test:portal:browser; Remov
 Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\ENABLE_PORTAL_QA_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
 ```
 
+## Project Work Items V2 Gate
+
+Run the executable migration contract:
+
+```bash
+npx vitest run test/project-work-items-v2-migration.test.ts
+```
+
+It applies `20260729_000002_project_work_items_v2.sql` in PGlite, exercises calendar/cadence/state/queue/privilege contracts, and replays the migration. The queue assertion includes multiple open/blocked items and requires at most one row per project; the privilege assertion covers the narrow service-role marker/state reads used by Schedule and reconciliation. A local pass is not evidence that staging or production has been migrated.
+
+Run the focused Schedule, Running Jobs, and quote handoffs:
+
+```bash
+npx vitest run apps/portal/lib/scheduling/scheduleV2Server.test.ts apps/portal/lib/runningJobs/facts.test.ts apps/portal/lib/runningJobs/writeOps.test.ts apps/portal/lib/quotes/serverEmail.cadence.test.ts apps/portal/lib/projects/workItems/quoteCadenceReconciliation.test.ts
+```
+
+Run the Overview, snapshot, projection, command-route, and queue boundary:
+
+```bash
+npx vitest run apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkCommandCard.test.tsx apps/portal/lib/projects/getProjectPageSnapshot.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandCentre.test.ts apps/portal/lib/projects/commandCentre/getProjectCommandExceptions.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/work-items/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/state/commands/route.test.ts apps/portal/app/api/staff/v1/projects/[projectId]/confirmations/commands/route.test.ts apps/portal/app/api/staff/v1/work-items/queue/route.test.ts
+```
+
+For environment QA, deploy the migration and app in one short controlled window on a positively identified non-production environment. Pause or constrain new project/enquiry creation and quote lifecycle mutations during that window: app-first creation fails closed, while migration-first marketing intake can activate V2 before the new adapters are live. Resume only after the integrity smoke passes. Use disposable records and mocked or provider-disabled side effects; never send customer email, accept quotes, record payment, or mutate production/shared records. Verify:
+
+- a new staff project and a new enquiry-linked project initialize V2; an existing project remains legacy;
+- first email is due at +2 Auckland open hours with SLA +4, missing email blocks/unblocks, and one follow-up plus one manual close review are created only from confirmations;
+- no call, Site Visit booking, automatic email, automatic close, or stage change occurs;
+- Waiting/Closed/archive queue and compatibility behavior, stale versions, idempotent replay, access denial, and retry are truthful;
+- a deliberately lost manual-create response reuses the same command ID and cannot create a duplicate item;
+- close/outcome review resolves atomically for Close, Waiting, or Keep active with replacement work, and a customer reply remains recordable;
+- unassigned cadence work visibly falls back to the Project Owner, and a recorded Site Visit confirmation remains visibly ticked after refresh;
+- non-admin staff cannot archive/restore either model, and a committed V2 archive with a failed follow-up read returns success plus `refreshRequired` rather than a false failure;
+- durable quote finalisation/outcomes reconcile once, and a forced reconciliation failure is visible to operations rather than silently losing cadence;
+- Schedule readiness filters only unscheduled V2 candidates while scheduled rows remain visible;
+- Running Jobs V2 facts use its versioned owner and job completion uses Schedule actual finish; and
+- calendar coverage fails visibly when a deadline crosses an unverified year.
+
+Before enabling existing projects, run a separate read-only classification and reconciliation report. No Contacted backlog row is changed by this gate.
+
 ## Schedule QA Gate
 
 Before shipping schedule changes:
@@ -632,7 +672,7 @@ Before shipping schedule changes:
 1. Confirm migrations are applied through current Schedule V2 command/repair migrations.
 2. Confirm `GET /api/staff/v1/schedule/readiness` returns `200`.
 3. Run relevant schedule unit and route tests.
-4. Manually check Board, Gantt, and Site Visits if UI behavior changed.
+4. Manually check Board and Gantt if UI behavior changed; check Site Visits only through direct compatibility access or an approved reactivation.
 
 For an explicitly approved change to the current Schedule presentation, run the authenticated non-mutating matrix after storage state exists:
 
@@ -640,7 +680,7 @@ For an explicitly approved change to the current Schedule presentation, run the 
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-It covers Board at 1440/1280/1024/768/390, Gantt, Site Visits, Schedule and Site Visit dialogs, project Tasks, 720x500 at 200% zoom, document overflow, mobile targets, focus return, reduced motion, and browser/runtime evidence. It opens forms and dialogs but does not save, drag, delete, unschedule, or toggle a task.
+It covers Board at 1440/1280/1024/768/390, Gantt, the retained direct Site Visits compatibility route, Schedule and Site Visit dialogs, project Tasks, 720x500 at 200% zoom, document overflow, mobile targets, focus return, reduced motion, and browser/runtime evidence. It opens forms and dialogs but does not save, drag, delete, unschedule, or toggle a task.
 
 Minimum targeted schedule tests:
 

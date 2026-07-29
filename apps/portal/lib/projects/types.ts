@@ -1,5 +1,6 @@
 import type { PipelineStageKey, TaskKey, TaskKind } from '@/lib/projects/pipelineDefinition';
 import type { ProjectOwnerKey } from '@/lib/projects/commandCentre/types';
+import type { ProjectWorkProjection } from '@/lib/projects/workItems/types';
 
 export type ProjectStage = PipelineStageKey;
 
@@ -57,6 +58,8 @@ export type ProjectNote = {
 };
 
 export type ProjectPageSnapshot = {
+  workModel: 'legacy' | 'v2';
+  projectWork?: ProjectWorkProjection;
   project: {
     id: string;
     name: string;

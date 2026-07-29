@@ -1,6 +1,6 @@
 # Schedule
 
-Schedule V2 owns install planning and site visits in the staff portal.
+Schedule V2 owns install planning. Its Site Visits capability is retained but hidden from normal staff navigation.
 
 ## Ownership
 
@@ -15,11 +15,12 @@ Schedule V2 owns install planning and site visits in the staff portal.
 
 ## Views
 
-Schedule has three user-facing views:
+Schedule has two normal staff views:
 
 - Board: crew lanes, unscheduled jobs, drag/drop assignment and reorder.
 - Gantt: timeline by crew with bars, range controls, and collision/conflict visibility.
-- Site Visits: site visit scheduling and salesperson calendar workflow.
+
+The existing Site Visits route/data owner remains directly addressable as dormant compatibility code but is not shown in the Schedule tabs or portal navigation. Project work items do not link to it. Until reactivation is approved, staff may record the bounded manual `SITE_VISIT_COMPLETED` confirmation; that fact does not create work, mutate Schedule, or advance pipeline stage.
 
 ## V2 Write Model
 
@@ -97,6 +98,18 @@ Schedule deploys are not ready until:
 
 If readiness fails, check migrations and RPC availability before debugging UI state.
 
+## Project Work Integration
+
+The repository-local project-work slice is new-project-only and not deployed. Schedule retains all install truth:
+
+- the Deposit ready pool includes unmarked legacy projects and only Active V2 projects;
+- Waiting/Closed/archived V2 projects are excluded from readiness, while already scheduled rows remain visible;
+- no Schedule state is copied into a generic V2 work item;
+- `CLOSE COMPLETE` requires a Schedule V2 `done` job with an actual finish, plus the separate commercial checks; and
+- Running Jobs derives V2 job completion from Schedule rather than `project_task_checks`.
+
+Apply the project-work migration before its app changes. App-first rollout breaks Schedule's new model/state relation reads.
+
 ## Legacy Fallback
 
 The schedule client has an explicit legacy fallback boundary. It exists for schema-not-ready recovery and older data paths. Keep legacy-only loading and mutation code isolated from the normal V2 client path.
@@ -110,7 +123,7 @@ When touching fallback:
 
 ## Current Portal UI Contract
 
-Board, Gantt, Site Visits, and the legacy fallback render inside the full-width compact foundation canvas and shared searchable staff header without moving read or mutation ownership. Schedule view controls and page actions remain schedule-owned; global Projects/Contacts discovery remains separate from those controls. V2 load failures, scheduling issues, Site Visit stale/error state, and action failures use shared accessible feedback. Schedule action dialogs use the shared focus trap and return focus to their trigger; active V2 locked-job unscheduling and downtime deletion use the extracted confirmation owner. Site Visit unscheduling uses a two-step in-modal confirmation and states explicitly that project/contact data is retained.
+Board, Gantt, and the legacy fallback render inside the full-width compact foundation canvas and shared searchable staff header without moving read or mutation ownership. Schedule view controls and page actions remain schedule-owned; global Projects/Contacts discovery remains separate from those controls. V2 load failures, scheduling issues, and action failures use shared accessible feedback. The dormant Site Visit surface retains its existing stale/error and dialog behavior for direct compatibility access. Schedule action dialogs use the shared focus trap and return focus to their trigger; active V2 locked-job unscheduling and downtime deletion use the extracted confirmation owner.
 
 This describes the current Schedule presentation. It does not authorize
 restyling another route or replacing Schedule-owned composition with generic
@@ -128,8 +141,8 @@ the user's reduced-motion preference.
 At narrow widths the Unscheduled queue stacks above one horizontally focused
 crew lane; collapsing it reclaims the queue body so the first crew lane can
 use the remaining height. Gantt preserves usable timeline width by adapting
-its crew-label column. Site Visits stack the waiting queue above a horizontally
-focused day calendar. Route-level document overflow is not allowed; the Board,
+its crew-label column. The dormant Site Visits route retains its focused day
+calendar containment. Route-level document overflow is not allowed; the Board,
 Gantt, and calendar keep their specialist internal scroll owners. Presentation
 changes must not bypass Schedule V2 staff API/RPC commands, weaken optimistic
 rollback, or merge the explicit legacy fallback into the normal client.
@@ -150,7 +163,7 @@ Schedule is one of the heaviest portal surfaces. Watch:
 
 Action dialogs are part of the main Schedule client bundle so staff get immediate modal feedback. Board, Gantt, legacy fallback, diagnostics, and Site Visits keep their existing lazy/view boundaries.
 
-Board, Gantt, and Site Visits route changes use the shared non-blocking portal progress bar and mark only the selected view button busy. They must not replace the usable Schedule surface with the full-page loading overlay; full-page loading remains a cold-route/auth boundary only.
+Board and Gantt route changes use the shared non-blocking portal progress bar and mark only the selected view button busy. They must not replace the usable Schedule surface with the full-page loading overlay; full-page loading remains a cold-route/auth boundary only.
 
 Use:
 
@@ -217,7 +230,7 @@ Manual Gantt checks:
   remains visible as stale rather than showing optimistic dates as saved.
 - Crew collapse and range changes work.
 
-Manual Site Visits checks:
+Dormant Site Visits checks (only for direct compatibility QA or an approved reactivation):
 
 - Site visit list loads without Board/Gantt data dependency.
 - Booking, confirming, rescheduling, and unscheduling route through staff APIs.

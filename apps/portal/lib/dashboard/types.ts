@@ -7,7 +7,6 @@ export type ProjectStatus = CoreProjectStatus;
 type DashboardAttentionKey =
   | 'overdue'
   | 'due_today'
-  | 'site_visits_to_book'
   | 'projects_in_quoting';
 
 type DashboardAttentionTone = 'urgent' | 'warning' | 'neutral';

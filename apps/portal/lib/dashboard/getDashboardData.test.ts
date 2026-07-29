@@ -101,4 +101,22 @@ describe('getDashboardData', () => {
     expect(listVisibleDashboardTasks).not.toHaveBeenCalled();
     expect(data.personalTasks).toEqual([]);
   });
+
+  it('does not expose Site Visits as a Dashboard attention link', async () => {
+    getDashboardSnapshotCached.mockResolvedValue({
+      updated_at: '2026-05-30T00:00:00.000Z',
+      kpis: {},
+      attention_counts: { site_visits_to_book: 12 },
+      pipeline_counts: {},
+      work_queue: [],
+      schedule: { starting_soon: [], crew_next_available: [] },
+      site_visits: { unscheduled_count: 12, today: [], next7: [] },
+    });
+    const { getDashboardData } = await import('./getDashboardData');
+
+    const data = await getDashboardData({ queueMode: 'today' });
+
+    expect(data.attention.map((item) => item.key)).not.toContain('site_visits_to_book');
+    expect(data.attention.map((item) => item.href)).not.toContain('/staff/schedule?view=site-visits');
+  });
 });
