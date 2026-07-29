@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-30 | Schedule Continuity And Switching | Promoted | Once a Schedule API explicitly accepts a command, never render a known-older checkpoint while reconciliation loads. Gate optimism behind mutation ownership, cancel and start-stamp reads per view, reject pre-settlement or same-view out-of-order snapshots, and retain the confirmed Gantt target preview until an authoritative range replaces it. Keep Board/Gantt switches inside the mounted client, prefetch by intent, synchronize browser history, and derive only the active view model. |
 | 2026-07-29 | Project Work Queue And Triage    | Promoted | Keep one server-composed current row per V2 project in the team Work Queue and only a bounded preview on Dashboard; personal reminders remain separate. Legacy Contacted classification is admin-only, read-only, and excludes linked customer contact fields. Migrate only one reviewed, unchanged project per explicit command, never bulk-seed cadence. Confirmation correction appends history and an explicit review signal. Site Visits stays hidden/manual and outside work items; this does not authorize a Project Overview redesign. |
 | 2026-07-29 | Project Work Review Concurrency  | Promoted | Bind confirmation reconciliation to the exact repair-signal ID and row version. Bind legacy Contacted migration to a database fingerprint of every project and related evidence field used by classification, reject mismatch before V2 writes, and keep the internal fingerprint helper ungranted. |
 | 2026-07-29 | Portal Staging Auth Callback     | Promoted | Exchange controlled local/staging one-time links through `/login/callback` with a hashed magic-link token, a fail-closed session-cookie write, safe same-origin callback normalization, `private, no-store`, and `Referrer-Policy: no-referrer`. Never redirect an access/refresh-token fragment straight to a protected route or treat a successful token exchange without a durable cookie as a successful login. |
@@ -3917,9 +3918,11 @@ and restore it on rejection, cancellation, changed preview, or a competing
 action. Fail closed unless success, confirmation, impacts, dates, UUIDs, and
 nested schedules match their complete contracts. Complete-list reorders must
 exactly match the current crew-item set. Apply accepted Board state only to a
-compatible cache; accepted Gantt commands restore the trusted checkpoint and
-refetch the authoritative range before presentation. Invalidate incompatible
-snapshots. Require explicit `ok: true`; reconcile network, HTTP 408, unexpected
+compatible cache; accepted Gantt commands retain the confirmed direct-target
+preview while the authoritative range is fetched, then replace it atomically.
+If that fetch fails, keep the confirmed preview visible as stale and block
+writes until refresh. Invalidate incompatible snapshots. Require explicit
+`ok: true`; reconcile network, HTTP 408, unexpected
 5xx, and malformed-response ambiguity without claiming success. HTTP 501 is
 the documented pre-commit schema/RPC-unavailable exception. Keep failed/stale
 state visible until a successful command or authoritative refresh. Commit
@@ -3933,6 +3936,44 @@ Related docs/tests:
 `apps/portal/app/api/staff/v1/schedule/job/adjust/route.test.ts`;
 `apps/portal/app/staff/schedule/ScheduleBoardView.test.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
+`npm run test:portal:schedule`
+
+### 2026-07-30 - Schedule Continuity And Switching - Never Show Known-Old State
+
+Date: 2026-07-30
+Area: Schedule Board/Gantt request ordering, confirmed Gantt presentation, and
+in-page view switching
+Status: Promoted
+Decision or mistake: After an accepted Gantt command, the client restored the
+old checkpoint before fetching the authoritative range, so a bar visibly
+jumped backward and forward. A late Board/Gantt read could also arrive after a
+save and overwrite newer local state. Switching Board/Gantt through App Router
+navigation rebuilt the server page, while the inactive Board model was still
+derived during Gantt renders.
+Why it mattered: Staff could briefly see known-wrong dates after a successful
+save, mistake a stale response for the accepted result, and wait through
+avoidable navigation and rendering work every time they changed planning view.
+Current guardrail: Acquire mutation ownership and cancel current reads before
+optimism. Stamp Board and Gantt reads separately when they start; after any
+mutation settles, reject reads that began before that boundary, and never
+apply an older read after a newer read for the same view. Do not order the
+different Board and Gantt datasets against each other. Roll back only
+rejection, cancellation, or ambiguous failure. Once `ok: true` is validated
+for Gantt, retain the confirmed direct
+target preview while the authoritative range loads; atomically replace it on
+success, or keep it visible as stale and block writes on refresh failure.
+Switch Board/Gantt within the mounted client, update browser history without a
+server-page rebuild, prefetch the target query and lazy view from pointer/focus
+intent, synchronize canonical URL changes, and derive only the active view
+model. This changes continuity and performance, not portal colours, fonts, or
+visual language.
+Promoted to: `docs/schedule.md`; `docs/testing-and-qa.md`
+Related docs/tests:
+`apps/portal/app/staff/schedule/ScheduleClient.test.tsx`;
+`apps/portal/app/staff/schedule/scheduleSnapshotRequestTracker.test.ts`;
+`apps/portal/app/staff/schedule/ScheduleViewTabs.test.tsx`;
+`apps/portal/app/staff/schedule/page.test.tsx`;
+`apps/portal/lib/queries/schedule.test.ts`;
 `npm run test:portal:schedule`
 
 ### 2026-07-29 - Project Work V2 - Prove The Hosted API Cache

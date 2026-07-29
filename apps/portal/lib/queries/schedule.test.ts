@@ -56,9 +56,10 @@ describe('scheduleV2SnapshotQueryOptions', () => {
 
     const { SCHEDULE_BOARD_STALE_TIME_MS, scheduleV2SnapshotQueryOptions } = await import('./schedule');
     const opts = scheduleV2SnapshotQueryOptions('example.supabase.co', '2026-04-07');
-    const snapshot = await opts.queryFn!({} as any);
+    const signal = new AbortController().signal;
+    const snapshot = await opts.queryFn!({ signal } as any);
 
-    expect(fetchScheduleBoard).toHaveBeenCalledWith({ today: '2026-04-07' });
+    expect(fetchScheduleBoard).toHaveBeenCalledWith({ today: '2026-04-07', signal });
     expect(opts.staleTime).toBe(SCHEDULE_BOARD_STALE_TIME_MS);
     expect(snapshot.projects).toEqual([
       {
@@ -117,12 +118,14 @@ describe('scheduleV2SnapshotQueryOptions', () => {
       rangeStart: '2026-04-06',
       rangeEnd: '2026-06-28',
     });
-    const snapshot = await opts.queryFn!({} as any);
+    const signal = new AbortController().signal;
+    const snapshot = await opts.queryFn!({ signal } as any);
 
     expect(fetchScheduleGantt).toHaveBeenCalledWith({
       today: '2026-04-07',
       rangeStart: '2026-04-06',
       rangeEnd: '2026-06-28',
+      signal,
     });
     expect(opts.staleTime).toBe(SCHEDULE_GANTT_STALE_TIME_MS);
     expect(snapshot.unscheduledJobs).toEqual([]);

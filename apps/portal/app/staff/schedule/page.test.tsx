@@ -160,6 +160,15 @@ describe('StaffSchedulePage', () => {
     }
   });
 
+  it('derives only the model needed by the active Board or Gantt view', () => {
+    const scheduleClient = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleClient.tsx'), 'utf8');
+
+    expect(scheduleClient).toContain(
+      "if (view !== 'board' || activeSnapshotKind !== 'board') return EMPTY_SCHEDULE_BOARD_MODEL;",
+    );
+    expect(scheduleClient).toContain("view === 'gantt'\n        ? buildLaneItems");
+  });
+
   it('keeps V2 and legacy board model dependencies separated', () => {
     const v2Model = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleBoardModelV2.ts'), 'utf8');
     const legacyModel = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleBoardModelLegacy.ts'), 'utf8');

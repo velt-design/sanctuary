@@ -110,18 +110,32 @@ export type ScheduleMutationResult<T = Record<string, unknown>> = MutationResult
   }
 >;
 
-export async function fetchScheduleBoard(params?: { today?: string }): Promise<ScheduleBoardResponse> {
+export async function fetchScheduleBoard(params?: {
+  today?: string;
+  signal?: AbortSignal;
+}): Promise<ScheduleBoardResponse> {
   const query = params?.today ? `?today=${encodeURIComponent(params.today)}` : '';
-  return apiJson<ScheduleBoardResponse>(`/api/staff/v1/schedule/board${query}`, { method: 'GET' });
+  return apiJson<ScheduleBoardResponse>(`/api/staff/v1/schedule/board${query}`, {
+    method: 'GET',
+    signal: params?.signal,
+  });
 }
 
-export async function fetchScheduleGantt(params: { rangeStart: string; rangeEnd: string; today?: string }): Promise<ScheduleGanttResponse> {
+export async function fetchScheduleGantt(params: {
+  rangeStart: string;
+  rangeEnd: string;
+  today?: string;
+  signal?: AbortSignal;
+}): Promise<ScheduleGanttResponse> {
   const query = new URLSearchParams({
     rangeStart: params.rangeStart,
     rangeEnd: params.rangeEnd,
     ...(params.today ? { today: params.today } : null),
   }).toString();
-  return apiJson<ScheduleGanttResponse>(`/api/staff/v1/schedule/gantt?${query}`, { method: 'GET' });
+  return apiJson<ScheduleGanttResponse>(`/api/staff/v1/schedule/gantt?${query}`, {
+    method: 'GET',
+    signal: params.signal,
+  });
 }
 
 export async function assignJob(input: { job_id: string; crew_id: string; position: number; force?: boolean; today?: string }) {

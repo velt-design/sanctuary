@@ -45,7 +45,7 @@ import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { ApiError } from '@/lib/repo/apiClient';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryFunctionContext } from '@tanstack/react-query';
 import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
 import ScheduleActionModals, { type ScheduleModalState } from './ScheduleActionModals';
 import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
@@ -55,7 +55,16 @@ import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 import type { ScheduleLegacyFallbackClientProps } from './ScheduleLegacyFallbackClient';
 import { getScheduleSupabaseHost } from './scheduleRuntime';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
-import { EMPTY_SCHEDULE_BOARD_MODEL, buildScheduleBarsFromForecast, formatDuration, formatHours, makeJobId, mapV2UnscheduledJobs, safeProjectName } from './ScheduleBoardModelShared';
+import {
+  EMPTY_SCHEDULE_BOARD_MODEL,
+  buildLaneItems,
+  buildScheduleBarsFromForecast,
+  formatDuration,
+  formatHours,
+  makeJobId,
+  mapV2UnscheduledJobs,
+  safeProjectName,
+} from './ScheduleBoardModelShared';
 import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
 import { logScheduleDebug } from './scheduleDebug';
 import {
@@ -74,6 +83,7 @@ import {
 import { useScheduleConfirmation } from './useScheduleConfirmation';
 import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
 import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
+import { createScheduleSnapshotRequestTracker } from './scheduleSnapshotRequestTracker';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
@@ -120,7 +130,7 @@ type ScheduleMutationOptions = {
   formatErrorToast?: (error: unknown, fallback: string) => string;
   onSuccess?: (response: unknown) => void;
   onError?: (error: unknown) => void;
-  rollback?: () => void;
+  optimistic?: () => (() => void) | void;
   targetJobIds?: string[];
   confirmationTitle?: string;
   confirmationDescription?: string;
@@ -550,8 +560,8 @@ export default function ScheduleClient({
 }) {
   const toast = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { beginRouteTransition } = usePortalRouteTransition();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { confirm: confirmScheduleAction, dialog: scheduleConfirmationDialog } = useScheduleConfirmation();
   const [isTransitionPending, startUiTransition] = useTransition();
@@ -618,13 +628,35 @@ export default function ScheduleClient({
   const v2ReconciliationRunRef = useRef(0);
   const v2SnapshotIgnoredDuringMutationRef = useRef(false);
   const v2ObservedForeignMutationRef = useRef(false);
+  const v2CommittedPreviewPendingRef = useRef(false);
+  const requestedScheduleViewRef = useRef<ScheduleView | null>(null);
   const refreshScheduleRef = useRef<() => void>(() => {});
   const v2LocallyWrittenSnapshotsRef = useRef<WeakSet<object>>(new WeakSet());
   const v2LocallyWrittenGeneratedAtRef = useRef<Set<string>>(new Set());
+  const v2BoardSnapshotRequestTrackerRef = useRef(createScheduleSnapshotRequestTracker());
+  const v2GanttSnapshotRequestTrackerRef = useRef(createScheduleSnapshotRequestTracker());
   const v2HolidaysRef = useRef<NzHoliday[]>(initialV2Snapshot?.holidays ?? []);
   const v2ClosuresRef = useRef<CompanyClosure[]>(initialV2Snapshot?.closures ?? []);
   const initialScheduleTrustRef = useRef<ScheduleTrustState>(initialScheduleTrust(initialV2Snapshot?.generatedAt ?? null));
   const scheduleTrustRef = useRef<ScheduleTrustState>(initialScheduleTrustRef.current);
+  const loadTrackedBoardSnapshot = useCallback(
+    (context: QueryFunctionContext<ReturnType<typeof qk.schedule.board>>) => {
+      const options = scheduleV2SnapshotQueryOptions(hostKey, today);
+      return v2BoardSnapshotRequestTrackerRef.current.track(() => options.queryFn!(context));
+    },
+    [hostKey, today],
+  );
+  const loadTrackedGanttSnapshot = useCallback(
+    (context: QueryFunctionContext<ReturnType<typeof qk.schedule.gantt>>) => {
+      const options = scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange);
+      return v2GanttSnapshotRequestTrackerRef.current.track(() => options.queryFn!(context));
+    },
+    [ganttRange, hostKey, today],
+  );
+  const sealV2SnapshotRequestEpochs = useCallback(() => {
+    v2BoardSnapshotRequestTrackerRef.current.rejectStartedThroughCurrent();
+    v2GanttSnapshotRequestTrackerRef.current.rejectStartedThroughCurrent();
+  }, []);
 
   const [hydrated, setHydrated] = useState(() => Boolean(initialV2Snapshot));
   const [loadError, setLoadError] = useState<{ message: string; table?: string; code?: string } | null>(null);
@@ -974,7 +1006,14 @@ export default function ScheduleClient({
   }
 
   function applyV2OptimisticState(nextItems: ScheduleItem[], nextUnscheduledJobsSeed: SchedulableJob[]): void {
-    const recomputed = recomputeLocalForCrews(nextItems);
+    const isGanttPreview = v2StateKindRef.current === 'gantt';
+    const recomputed = isGanttPreview
+      ? {
+          scheduleItems: nextItems,
+          scheduleConflicts: scheduleConflictsRef.current,
+          nextAvailableByInstallerId: nextAvailRef.current,
+        }
+      : recomputeLocalForCrews(nextItems);
     setV2LocalState(
       {
         scheduleItems: recomputed.scheduleItems,
@@ -1150,15 +1189,25 @@ export default function ScheduleClient({
     const viewParam = next === 'site_visits' ? 'site-visits' : next;
     qs.set('view', viewParam);
     const href = `/staff/schedule?${qs.toString()}`;
-    const label = next === 'site_visits' ? 'Site visits' : next === 'gantt' ? 'Gantt' : 'Board';
-    beginRouteTransition({ href, label, source: 'schedule-view', control });
-    startUiTransition(() => {
+    if (next === 'site_visits') {
       router.replace(href);
-      if (next === 'board' && activeSnapshotKind !== 'board') {
+      return;
+    }
+    const label = next === 'gantt' ? 'Gantt' : 'Board';
+    beginRouteTransition({ href, label, source: 'schedule-view', control });
+    const cachedSnapshot = queryClient.getQueryData<ScheduleV2Snapshot>(
+      next === 'gantt' ? ganttSnapshotKey : boardSnapshotKey,
+    );
+    requestedScheduleViewRef.current = next;
+    window.history.replaceState(null, '', href);
+    startUiTransition(() => {
+      if (cachedSnapshot) {
+        applySnapshotFromQuery(cachedSnapshot, next);
+      } else if (activeSnapshotKind !== next) {
         v2GeneratedAtRef.current = '';
         setActiveSnapshotKind(null);
       }
-      if (next !== 'site_visits') setView(next);
+      setView(next);
     });
   };
 
@@ -1174,10 +1223,53 @@ export default function ScheduleClient({
     });
   };
 
-  const scheduleTabs = <ScheduleViewTabs view={view} onChange={setScheduleView} />;
+  const prefetchScheduleView = useCallback(
+    (next: ScheduleView) => {
+      if (scheduleMode !== 'v2' || next === view || next === 'site_visits') return;
+      if (
+        v2PendingMutationsRef.current > 0 ||
+        v2ReconciliationPendingRef.current ||
+        anyScheduleMutationIsActive()
+      ) {
+        return;
+      }
+      if (next === 'gantt') {
+        void import('./ScheduleGanttView');
+        void queryClient.prefetchQuery({
+          ...scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange),
+          queryFn: loadTrackedGanttSnapshot,
+        });
+        return;
+      }
+      void import('./ScheduleBoardView');
+      void queryClient.prefetchQuery({
+        ...scheduleV2SnapshotQueryOptions(hostKey, today),
+        queryFn: loadTrackedBoardSnapshot,
+      });
+    },
+    [
+      ganttRange,
+      hostKey,
+      loadTrackedBoardSnapshot,
+      loadTrackedGanttSnapshot,
+      queryClient,
+      scheduleMode,
+      today,
+      view,
+    ],
+  );
+
+  const scheduleTabs = (
+    <ScheduleViewTabs
+      view={view}
+      onChange={setScheduleView}
+      onIntent={prefetchScheduleView}
+    />
+  );
 
   const boardSnapshotQuery = useQuery({
     ...scheduleV2SnapshotQueryOptions(hostKey, today),
+    queryFn: loadTrackedBoardSnapshot,
     enabled: scheduleMode === 'v2' && view === 'board',
     initialData: scheduleMode === 'v2' && initialSnapshotKind === 'board' ? initialV2Snapshot ?? undefined : undefined,
     initialDataUpdatedAt: scheduleMode === 'v2' && initialSnapshotKind === 'board' ? initialV2SnapshotUpdatedAt : undefined,
@@ -1186,6 +1278,7 @@ export default function ScheduleClient({
 
   const ganttSnapshotQuery = useQuery({
     ...scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange),
+    queryFn: loadTrackedGanttSnapshot,
     enabled: scheduleMode === 'v2' && view === 'gantt',
     initialData: scheduleMode === 'v2' && initialSnapshotKind === 'gantt' ? initialV2Snapshot ?? undefined : undefined,
     initialDataUpdatedAt: scheduleMode === 'v2' && initialSnapshotKind === 'gantt' ? initialV2SnapshotUpdatedAt : undefined,
@@ -1248,6 +1341,29 @@ export default function ScheduleClient({
     options?: { authoritative?: boolean },
   ) {
     const incomingGeneratedAt = typeof snapshot.generatedAt === 'string' && snapshot.generatedAt ? snapshot.generatedAt : nowIso();
+    const requestTracker =
+      kind === 'gantt'
+        ? v2GanttSnapshotRequestTrackerRef.current
+        : v2BoardSnapshotRequestTrackerRef.current;
+    if (requestTracker.shouldReject(snapshot)) {
+      v2SnapshotIgnoredDuringMutationRef.current = true;
+      if (
+        v2PendingMutationsRef.current === 0 &&
+        !v2ReconciliationPendingRef.current &&
+        v2StateKindRef.current === kind
+      ) {
+        writeV2SnapshotToCache(
+          {
+            scheduleItems: scheduleItemsRef.current,
+            unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+            scheduleConflicts: scheduleConflictsRef.current,
+            nextAvailableByInstallerId: nextAvailRef.current,
+          },
+          v2GeneratedAtRef.current || nextV2GeneratedAt(),
+        );
+      }
+      return;
+    }
     const replacingSnapshotKind = activeSnapshotKind !== kind;
     const foreignMutationPending = foreignPendingMutationCount > 0;
     const locallyWritten =
@@ -1260,15 +1376,21 @@ export default function ScheduleClient({
     ) {
       return;
     }
-    if (!replacingSnapshotKind && (v2PendingMutationsRef.current > 0 || foreignMutationPending)) {
+    if (
+      !options?.authoritative &&
+      !replacingSnapshotKind &&
+      (v2PendingMutationsRef.current > 0 || foreignMutationPending)
+    ) {
       v2SnapshotIgnoredDuringMutationRef.current = true;
       return;
     }
 
+    requestTracker.markApplied(snapshot);
     v2GeneratedAtRef.current = incomingGeneratedAt;
     v2StateKindRef.current = kind;
     if (!foreignMutationPending && (options?.authoritative || !locallyWritten)) {
       v2ReconciliationPendingRef.current = false;
+      v2CommittedPreviewPendingRef.current = false;
     }
     v2SnapshotIgnoredDuringMutationRef.current = false;
     hydratedFromCacheRef.current = true;
@@ -1296,7 +1418,7 @@ export default function ScheduleClient({
     setActiveSnapshotKind(kind);
     setHydrated(true);
     if (
-      v2PendingMutationsRef.current === 0 &&
+      (v2PendingMutationsRef.current === 0 || options?.authoritative) &&
       foreignPendingMutationCount === 0 &&
       !v2ReconciliationPendingRef.current &&
       (scheduleTrustRef.current.status !== 'failed' || options?.authoritative)
@@ -1338,6 +1460,47 @@ export default function ScheduleClient({
     if (!ganttSnapshotQuery.data) return;
     applySnapshotFromQuery(ganttSnapshotQuery.data, 'gantt');
   }, [activeSnapshotKind, foreignPendingMutationCount, ganttSnapshotQuery.data, scheduleMode, view]);
+
+  useEffect(() => {
+    const requestedView = requestedScheduleViewRef.current;
+    if (requestedView) {
+      if (initialView === requestedView) {
+        requestedScheduleViewRef.current = null;
+      } else {
+        return;
+      }
+    }
+    if (initialView === 'site_visits') {
+      if (view !== 'site_visits') router.replace('/staff/schedule?view=site-visits');
+      return;
+    }
+    if (initialView === view) return;
+    if (
+      v2PendingMutationsRef.current > 0 ||
+      v2ReconciliationPendingRef.current ||
+      anyScheduleMutationIsActive()
+    ) {
+      return;
+    }
+    const cachedSnapshot = queryClient.getQueryData<ScheduleV2Snapshot>(
+      initialView === 'gantt' ? ganttSnapshotKey : boardSnapshotKey,
+    );
+    if (cachedSnapshot) {
+      applySnapshotFromQuery(cachedSnapshot, initialView);
+    } else if (activeSnapshotKind !== initialView) {
+      v2GeneratedAtRef.current = '';
+      setActiveSnapshotKind(null);
+    }
+    setView(initialView);
+  }, [
+    activeSnapshotKind,
+    boardSnapshotKey,
+    ganttSnapshotKey,
+    initialView,
+    queryClient,
+    router,
+    view,
+  ]);
 
   useEffect(() => {
     if (scheduleMode !== 'v2') return;
@@ -1437,11 +1600,17 @@ export default function ScheduleClient({
     const msg = err instanceof Error ? err.message : 'Failed to load schedule data.';
     const showingCached = hydratedFromCacheRef.current || installers.length > 0 || scheduleItems.length > 0 || projects.length > 0;
     if (showingCached) {
-      toast.error("Couldn't refresh schedule (showing last saved).");
+      toast.error(
+        v2CommittedPreviewPendingRef.current
+          ? "Saved, but couldn't verify the latest crew schedule."
+          : "Couldn't refresh schedule (showing last saved).",
+      );
       updateScheduleTrust({
         status: 'stale',
         savedAt: scheduleTrustRef.current.savedAt,
-        message: "Couldn't check for newer schedule changes. You are seeing the last saved version.",
+        message: v2CommittedPreviewPendingRef.current
+          ? 'The change was saved, but the latest schedule could not be loaded. The saved preview remains visible; refresh to verify the full crew schedule.'
+          : "Couldn't check for newer schedule changes. You are seeing the last saved version.",
         requestId: err instanceof ApiError ? err.requestId ?? null : null,
       });
       setSyncing(false);
@@ -1510,7 +1679,7 @@ export default function ScheduleClient({
   }, [installers]);
 
   const boardModel = useMemo(() => {
-    if (view === 'site_visits') return EMPTY_SCHEDULE_BOARD_MODEL;
+    if (view !== 'board' || activeSnapshotKind !== 'board') return EMPTY_SCHEDULE_BOARD_MODEL;
     return buildScheduleBoardModelV2({
       installers,
       orphanedScheduleItems,
@@ -1530,9 +1699,8 @@ export default function ScheduleClient({
     projectsById,
     scheduleItems,
     scheduleItemsRenderable,
-    scheduleMode,
-    today,
     unscheduledJobsSeed,
+    activeSnapshotKind,
     view,
     visibleScheduleItems,
   ]);
@@ -1543,11 +1711,19 @@ export default function ScheduleClient({
   const unscheduledEmpty = unscheduledJobsAll.length === 0;
 
   useEffect(() => {
+    if (view !== 'board') return;
     setUnscheduledCollapsed(unscheduledEmpty);
-  }, [unscheduledEmpty]);
+  }, [unscheduledEmpty, view]);
 
   const unscheduledJobs = boardModel.unscheduledJobs;
-  const laneItems = boardModel.laneItems;
+  const ganttLaneItems = useMemo(
+    () =>
+      view === 'gantt'
+        ? buildLaneItems({ installers, visibleScheduleItems })
+        : EMPTY_SCHEDULE_BOARD_MODEL.laneItems,
+    [installers, view, visibleScheduleItems],
+  );
+  const laneItems = view === 'gantt' ? ganttLaneItems : boardModel.laneItems;
   const emptyEstimatesById = useMemo(() => new Map(), []);
 
   const schedule = useMemo(() => {
@@ -1664,7 +1840,11 @@ export default function ScheduleClient({
       .join('\n');
   }
 
-  function refreshSchedule(options?: { authoritative?: boolean }): void {
+  async function refreshSchedule(options?: {
+    authoritative?: boolean;
+    preserveCommittedPreview?: boolean;
+  }): Promise<void> {
+    if (options?.preserveCommittedPreview) v2CommittedPreviewPendingRef.current = true;
     setLoadError(null);
     setSyncing(true);
     updateScheduleTrust({
@@ -1675,40 +1855,49 @@ export default function ScheduleClient({
       const reconciliationRun = v2ReconciliationRunRef.current + 1;
       v2ReconciliationRunRef.current = reconciliationRun;
       const snapshotKind = view === 'gantt' ? 'gantt' : 'board';
-      const activeOptions =
-        snapshotKind === 'gantt'
-          ? scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange)
-          : scheduleV2SnapshotQueryOptions(hostKey, today);
+      const activeQueryKey = snapshotKind === 'gantt' ? ganttSnapshotKey : boardSnapshotKey;
       const inactiveQueryKey = snapshotKind === 'gantt' ? boardSnapshotKey : ['schedule', hostKey, 'gantt'];
-      void (async () => {
-        await queryClient.cancelQueries({ queryKey: activeOptions.queryKey, exact: true });
+      try {
+        await queryClient.cancelQueries({ queryKey: activeQueryKey, exact: true });
         void queryClient.invalidateQueries({ queryKey: inactiveQueryKey, refetchType: 'none' });
-        try {
-          const snapshot =
-            snapshotKind === 'gantt'
-              ? await queryClient.fetchQuery({
-                  ...scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange),
-                  staleTime: 0,
-                })
-              : await queryClient.fetchQuery({
-                  ...scheduleV2SnapshotQueryOptions(hostKey, today),
-                  staleTime: 0,
-                });
-          if (v2ReconciliationRunRef.current !== reconciliationRun) return;
-          applySnapshotFromQuery(snapshot, snapshotKind, { authoritative: true });
+        const snapshot =
+          snapshotKind === 'gantt'
+            ? await queryClient.fetchQuery({
+                queryKey: ganttSnapshotKey,
+                queryFn: loadTrackedGanttSnapshot,
+                staleTime: 0,
+              })
+            : await queryClient.fetchQuery({
+                queryKey: boardSnapshotKey,
+                queryFn: loadTrackedBoardSnapshot,
+                staleTime: 0,
+              });
+        if (v2ReconciliationRunRef.current !== reconciliationRun) return;
+        applySnapshotFromQuery(snapshot, snapshotKind, { authoritative: true });
+        setSyncing(false);
+      } catch {
+        if (v2ReconciliationRunRef.current === reconciliationRun) {
+          v2ReconciliationPendingRef.current = false;
           setSyncing(false);
-        } catch {
-          if (v2ReconciliationRunRef.current === reconciliationRun) setSyncing(false);
+          updateScheduleTrust({
+            status: 'stale',
+            savedAt: scheduleTrustRef.current.savedAt,
+            message: options?.preserveCommittedPreview
+              ? 'The change was saved, but the latest schedule could not be loaded. The saved preview remains visible; refresh to verify the full crew schedule.'
+              : 'The latest saved schedule could not be loaded. The last trusted copy remains visible; refresh to try again.',
+          });
         }
-      })();
+      }
       return;
     }
-    void Promise.all([
+    await Promise.all([
       queryClient.invalidateQueries({ queryKey: boardSnapshotKey }),
       queryClient.invalidateQueries({ queryKey: ['schedule', hostKey, 'gantt'] }),
     ]);
   }
-  refreshScheduleRef.current = () => refreshSchedule();
+  refreshScheduleRef.current = () => {
+    void refreshSchedule();
+  };
 
   useEffect(() => {
     const foreignMutationCount = Math.max(
@@ -1744,31 +1933,17 @@ export default function ScheduleClient({
     opts?: ScheduleMutationOptions,
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
-      const boardCacheBeforeGate = queryClient.getQueryData<ScheduleV2Snapshot>(boardSnapshotKey);
-      const ganttCacheBeforeGate = queryClient.getQueryData<ScheduleV2Snapshot>(ganttSnapshotKey);
-      const restoreTrustedCachesAfterBlockedOptimism = () => {
-        if (boardCacheBeforeGate) {
-          queryClient.setQueryData(boardSnapshotKey, boardCacheBeforeGate);
-        } else {
-          queryClient.removeQueries({ queryKey: boardSnapshotKey, exact: true });
-        }
-        if (ganttCacheBeforeGate) {
-          queryClient.setQueryData(ganttSnapshotKey, ganttCacheBeforeGate);
-        } else {
-          queryClient.removeQueries({ queryKey: ganttSnapshotKey, exact: true });
-        }
-      };
+      let rollbackOptimistic: (() => void) | undefined;
       let rolledBack = false;
       let reconcileAfterFailure = false;
       const rollback = () => {
         if (rolledBack) return;
         rolledBack = true;
-        opts?.rollback?.();
+        rollbackOptimistic?.();
       };
 
       if (v2PendingMutationsRef.current > 0 || anyScheduleMutationIsActive()) {
         rollback();
-        restoreTrustedCachesAfterBlockedOptimism();
         toast.info('Another schedule change is still saving. Try again in a moment.');
         return false;
       }
@@ -1778,7 +1953,6 @@ export default function ScheduleClient({
         scheduleTrustRef.current.status === 'stale'
       ) {
         rollback();
-        restoreTrustedCachesAfterBlockedOptimism();
         toast.info('The schedule is refreshing. Try again when the latest saved version is visible.');
         return false;
       }
@@ -1795,6 +1969,13 @@ export default function ScheduleClient({
         savedAt: trustBeforeMutation.savedAt,
       });
       try {
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: boardSnapshotKey, exact: true }),
+          queryClient.cancelQueries({ queryKey: ['schedule', hostKey, 'gantt'] }),
+        ]);
+        const preparedRollback = opts?.optimistic?.();
+        if (typeof preparedRollback === 'function') rollbackOptimistic = preparedRollback;
+
         let res = await run(false);
 
         if (res && typeof res === 'object' && Object.prototype.hasOwnProperty.call(res, 'requires_confirmation')) {
@@ -1820,6 +2001,7 @@ export default function ScheduleClient({
               details: formatCommitImpactDetails(impacts),
             });
             if (!confirmed) {
+              sealV2SnapshotRequestEpochs();
               rollback();
               reconcileAfterFailure = true;
               v2ReconciliationPendingRef.current = true;
@@ -1871,6 +2053,7 @@ export default function ScheduleClient({
           throw new Error('The server returned an invalid saved schedule. Refreshing the authoritative schedule now.');
         }
 
+        sealV2SnapshotRequestEpochs();
         const shouldApplyResponseNow = v2PendingMutationsRef.current <= 1;
         let applied = shouldApplyResponseNow ? applyV2MutationResponse(res as ScheduleMutationResult) : true;
         if (!applied && opts?.allowMissingSchedule) {
@@ -1888,8 +2071,18 @@ export default function ScheduleClient({
         }
         const refreshRequired = !applied && opts?.refreshIfNoSchedule !== false;
         if (refreshRequired) {
-          rollback();
-          refreshSchedule();
+          v2SnapshotIgnoredDuringMutationRef.current = false;
+          v2ReconciliationPendingRef.current = true;
+          const reconciliation = refreshSchedule({
+            authoritative: true,
+            preserveCommittedPreview: true,
+          });
+          updateScheduleTrust({
+            status: 'refreshing',
+            savedAt: nowIso(),
+            message: 'Saved. Checking the latest crew schedule now.',
+          });
+          await reconciliation;
         }
 
         opts?.onSuccess?.(res);
@@ -1897,6 +2090,7 @@ export default function ScheduleClient({
         if (!refreshRequired) updateScheduleTrust({ status: 'saved', savedAt: nowIso() });
         return true;
       } catch (err) {
+        sealV2SnapshotRequestEpochs();
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
         const fallback = opts?.errorToast ?? msg;
         const userMessage = opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback;
@@ -1925,7 +2119,11 @@ export default function ScheduleClient({
         } else if (v2SnapshotIgnoredDuringMutationRef.current && v2PendingMutationsRef.current === 0) {
           v2SnapshotIgnoredDuringMutationRef.current = false;
           refreshSchedule();
-        } else if (v2PendingMutationsRef.current === 0 && !activeV2SnapshotIsFetching) {
+        } else if (
+          v2PendingMutationsRef.current === 0 &&
+          !activeV2SnapshotIsFetching &&
+          !v2ReconciliationPendingRef.current
+        ) {
           setSyncing(false);
         }
       }
@@ -2166,71 +2364,81 @@ export default function ScheduleClient({
   };
 
   const queueUnpinJob = (jobUuid: string, opts?: ScheduleMutationOptions) => {
-    const checkpoint = captureV2LocalCheckpoint();
-    runOptimisticUnpin(jobUuid);
     return runWithCommitConfirmation(
       (force) => unpinJob({ job_id: jobUuid, force, today }),
       {
         ...opts,
         targetJobIds: [jobUuid],
         expectedCrewId: opts?.expectedCrewId ?? expectedCrewUuidForJob(jobUuid),
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          runOptimisticUnpin(jobUuid);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
 
   const queuePinJob = (jobUuid: string, requestedStart: string, opts?: ScheduleMutationOptions) => {
-    const checkpoint = captureV2LocalCheckpoint();
-    runOptimisticPin(jobUuid, requestedStart);
     return runWithCommitConfirmation(
       (force) => pinJob({ job_id: jobUuid, requested_start_date: requestedStart, force, today }),
       {
         ...opts,
         targetJobIds: [jobUuid],
         expectedCrewId: opts?.expectedCrewId ?? expectedCrewUuidForJob(jobUuid),
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          runOptimisticPin(jobUuid, requestedStart);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
 
   const queueSetDurationJob = (jobUuid: string, durationDays: number, opts?: ScheduleMutationOptions) => {
-    const checkpoint = captureV2LocalCheckpoint();
-    runOptimisticDurationUpdate(jobUuid, durationDays);
     return runWithCommitConfirmation(
       (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: durationDays, force, today }),
       {
         ...opts,
         targetJobIds: [jobUuid],
         expectedCrewId: opts?.expectedCrewId ?? expectedCrewUuidForJob(jobUuid),
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          runOptimisticDurationUpdate(jobUuid, durationDays);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
 
   const queueMarkInProgressJob = (jobUuid: string, opts?: ScheduleMutationOptions) => {
-    const checkpoint = captureV2LocalCheckpoint();
-    runOptimisticMarkInProgress(jobUuid);
     return runWithCommitConfirmation(
       (force) => markJobInProgress({ job_id: jobUuid, force, today }),
       {
         ...opts,
         targetJobIds: [jobUuid],
         expectedCrewId: opts?.expectedCrewId ?? expectedCrewUuidForJob(jobUuid),
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          runOptimisticMarkInProgress(jobUuid);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
 
   const queueSetDaysRemainingJob = (jobUuid: string, daysRemaining: number, opts?: ScheduleMutationOptions) => {
-    const checkpoint = captureV2LocalCheckpoint();
-    runOptimisticDaysRemaining(jobUuid, daysRemaining);
     return runWithCommitConfirmation(
       (force) => setDaysRemaining({ job_id: jobUuid, days_remaining: daysRemaining, force, today }),
       {
         ...opts,
         targetJobIds: [jobUuid],
         expectedCrewId: opts?.expectedCrewId ?? expectedCrewUuidForJob(jobUuid),
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          runOptimisticDaysRemaining(jobUuid, daysRemaining);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
@@ -2264,10 +2472,7 @@ export default function ScheduleClient({
     return false;
   }
 
-  async function handleUnschedule(
-    id: string,
-    options?: { optimisticAlreadyApplied?: boolean; rollbackCheckpoint?: V2LocalCheckpoint },
-  ): Promise<boolean> {
+  async function handleUnschedule(id: string): Promise<boolean> {
     if (scheduleMode === 'v2') {
       const item = scheduleItemById.get(id) ?? null;
       if (!item || item.itemType === 'downtime') return false;
@@ -2280,7 +2485,6 @@ export default function ScheduleClient({
           destructive: true,
         });
         if (!ok) {
-          if (options?.rollbackCheckpoint) restoreV2LocalCheckpoint(options.rollbackCheckpoint);
           return false;
         }
       }
@@ -2288,22 +2492,26 @@ export default function ScheduleClient({
       try {
         projectUuid = uuidFromAppId(item.projectId, 'proj');
       } catch {
-        if (options?.rollbackCheckpoint) restoreV2LocalCheckpoint(options.rollbackCheckpoint);
         toast.error('Invalid project ID for unscheduling.');
         return false;
       }
       const expectedCrewId = safeUuidFromAppId('crew', item.installerId) ?? undefined;
-      const checkpoint = options?.rollbackCheckpoint ?? captureV2LocalCheckpoint();
-      if (!options?.optimisticAlreadyApplied) {
-        const optimistic = optimisticUnassign(scheduleItemsRef.current, unscheduledJobsSeedRef.current, id, projectsById);
-        applyV2OptimisticState(optimistic.items, optimistic.unscheduledSeed);
-      }
       return await runWithCommitConfirmation((force) => unassignJob({ job_id: projectUuid, force, today }), {
         successToast: 'Job unscheduled.',
         errorToast: 'Failed to unschedule job.',
         targetJobIds: [projectUuid],
         expectedCrewId,
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          const optimistic = optimisticUnassign(
+            scheduleItemsRef.current,
+            unscheduledJobsSeedRef.current,
+            id,
+            projectsById,
+          );
+          applyV2OptimisticState(optimistic.items, optimistic.unscheduledSeed);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       });
     }
 
@@ -2451,8 +2659,6 @@ export default function ScheduleClient({
   const handleAckClientUpdate = (item: ScheduleItem) => {
     const jobUuid = resolveProjectUuid(item);
     if (!jobUuid) return;
-    const checkpoint = captureV2LocalCheckpoint();
-    applyClientAckLocally(jobUuid);
     void runWithCommitConfirmation(
       () => ackClientUpdate({ job_id: jobUuid }),
       {
@@ -2460,7 +2666,11 @@ export default function ScheduleClient({
         errorToast: 'Failed to mark client as contacted.',
         refreshIfNoSchedule: false,
         allowMissingSchedule: true,
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          applyClientAckLocally(jobUuid);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
@@ -2497,8 +2707,6 @@ export default function ScheduleClient({
     const jobUuid = resolveProjectUuid(item);
     if (!jobUuid) return;
     const nextDuration = Math.max(1, Math.round(durationDays));
-    const checkpoint = captureV2LocalCheckpoint();
-    runOptimisticAdjust(jobUuid, requestedStart, nextDuration);
     void runWithCommitConfirmation(
       (force) =>
         adjustJob({
@@ -2513,7 +2721,11 @@ export default function ScheduleClient({
         errorToast: 'Failed to update job timing.',
         targetJobIds: [jobUuid],
         expectedCrewId: safeUuidFromAppId('crew', item.installerId) ?? undefined,
-        rollback: () => restoreV2LocalCheckpoint(checkpoint),
+        optimistic: () => {
+          const checkpoint = captureV2LocalCheckpoint();
+          runOptimisticAdjust(jobUuid, requestedStart, nextDuration);
+          return () => restoreV2LocalCheckpoint(checkpoint);
+        },
       },
     );
   };
@@ -2593,6 +2805,10 @@ export default function ScheduleClient({
     setSyncing(true);
     updateScheduleTrust({ status: 'saving', savedAt: trustBeforeMutation.savedAt });
     try {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: boardSnapshotKey, exact: true }),
+        queryClient.cancelQueries({ queryKey: ['schedule', hostKey, 'gantt'] }),
+      ]);
       const res: any = await markJobDone({ job_id: jobUuid, force: false, today });
       if (res && typeof res === 'object' && Object.prototype.hasOwnProperty.call(res, 'requires_finish_early')) {
         const finishEarlyPreview = parseScheduleFinishEarlyPreview(res);
@@ -2610,6 +2826,7 @@ export default function ScheduleClient({
             [jobUuid],
           ),
         });
+        sealV2SnapshotRequestEpochs();
         updateScheduleTrust(trustBeforeMutation);
         return;
       }
@@ -2634,6 +2851,7 @@ export default function ScheduleClient({
             details: formatCommitImpactDetails(impacts),
           });
           if (!confirmed) {
+            sealV2SnapshotRequestEpochs();
             reconcileAfterFailure = true;
             v2ReconciliationPendingRef.current = true;
             updateScheduleTrust({
@@ -2671,12 +2889,24 @@ export default function ScheduleClient({
       ) {
         throw new Error('The server returned an invalid saved schedule. Refreshing the authoritative schedule now.');
       }
+      sealV2SnapshotRequestEpochs();
       const shouldApplyResponseNow = v2PendingMutationsRef.current <= 1;
       const applied = shouldApplyResponseNow ? applyV2MutationResponse(finalResult as ScheduleMutationResult) : true;
-      if (!applied) refreshSchedule();
+      if (!applied) {
+        v2SnapshotIgnoredDuringMutationRef.current = false;
+        v2ReconciliationPendingRef.current = true;
+        const reconciliation = refreshSchedule({ authoritative: true });
+        updateScheduleTrust({
+          status: 'refreshing',
+          savedAt: nowIso(),
+          message: 'Saved. Checking the latest crew schedule now.',
+        });
+        await reconciliation;
+      }
       toast.success('Job marked done.');
       if (applied) updateScheduleTrust({ status: 'saved', savedAt: nowIso() });
     } catch (err) {
+      sealV2SnapshotRequestEpochs();
       const msg = err instanceof Error ? err.message : 'Failed to mark job done.';
       reconcileAfterFailure = scheduleMutationNeedsReconciliation(err);
       v2ReconciliationPendingRef.current = reconcileAfterFailure;
@@ -2698,7 +2928,11 @@ export default function ScheduleClient({
       } else if (v2SnapshotIgnoredDuringMutationRef.current && v2PendingMutationsRef.current === 0) {
         v2SnapshotIgnoredDuringMutationRef.current = false;
         refreshSchedule();
-      } else if (v2PendingMutationsRef.current === 0 && !activeV2SnapshotIsFetching) {
+      } else if (
+        v2PendingMutationsRef.current === 0 &&
+        !activeV2SnapshotIsFetching &&
+        !v2ReconciliationPendingRef.current
+      ) {
         setSyncing(false);
       }
     }
@@ -2901,18 +3135,7 @@ export default function ScheduleClient({
     if (scheduleMode === 'v2') {
       if (dropTarget.kind === 'unscheduled') {
         if (!isScheduled) return;
-
-        const checkpoint = captureV2LocalCheckpoint();
-        const optimistic = optimisticUnassign(scheduleItemsRef.current, unscheduledJobsSeedRef.current, activeId, projectsById);
-        applyV2OptimisticState(optimistic.items, optimistic.unscheduledSeed);
-
-        void (async () => {
-          await handleUnschedule(activeId, {
-            optimisticAlreadyApplied: true,
-            rollbackCheckpoint: checkpoint,
-          });
-        })();
-
+        void handleUnschedule(activeId);
         return;
       }
 
@@ -2947,11 +3170,6 @@ export default function ScheduleClient({
         };
         logScheduleDebug('board.assign.attempt', assignDebug);
 
-        const checkpoint = captureV2LocalCheckpoint();
-        const optimisticItems = optimisticAssignUnscheduled(scheduleItemsRef.current, job, destInstallerId, destIndex);
-        const optimisticUnscheduled = unscheduledJobsSeedRef.current.filter((unscheduled) => unscheduled.id !== activeId);
-        applyV2OptimisticState(optimisticItems, optimisticUnscheduled);
-
         void runWithCommitConfirmation(
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
           {
@@ -2960,7 +3178,20 @@ export default function ScheduleClient({
             formatErrorToast: formatAssignMutationErrorToast,
             targetJobIds: [projectUuid],
             expectedCrewId: crewUuid,
-            rollback: () => restoreV2LocalCheckpoint(checkpoint),
+            optimistic: () => {
+              const checkpoint = captureV2LocalCheckpoint();
+              const optimisticItems = optimisticAssignUnscheduled(
+                scheduleItemsRef.current,
+                job,
+                destInstallerId,
+                destIndex,
+              );
+              const optimisticUnscheduled = unscheduledJobsSeedRef.current.filter(
+                (unscheduled) => unscheduled.id !== activeId,
+              );
+              applyV2OptimisticState(optimisticItems, optimisticUnscheduled);
+              return () => restoreV2LocalCheckpoint(checkpoint);
+            },
             onSuccess: (response) => logScheduleDebug('board.assign.success', { ...assignDebug, response }),
             onError: (error) => logScheduleDebug('board.assign.failure', { ...assignDebug, error: scheduleMutationErrorDebug(error) }),
           },
@@ -3031,10 +3262,6 @@ export default function ScheduleClient({
         };
         logScheduleDebug('board.reorder.attempt', reorderDebug);
 
-        const checkpoint = captureV2LocalCheckpoint();
-        const optimisticItems = optimisticReorderCrew(scheduleItemsRef.current, destInstallerId, nextDest);
-        applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
-
         void runWithCommitConfirmation(
           (force) =>
             reorderScheduleItemsV2({
@@ -3056,7 +3283,16 @@ export default function ScheduleClient({
                   ]
                 : undefined,
             expectedCrewId: crewUuid,
-            rollback: () => restoreV2LocalCheckpoint(checkpoint),
+            optimistic: () => {
+              const checkpoint = captureV2LocalCheckpoint();
+              const optimisticItems = optimisticReorderCrew(
+                scheduleItemsRef.current,
+                destInstallerId,
+                nextDest,
+              );
+              applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
+              return () => restoreV2LocalCheckpoint(checkpoint);
+            },
             onSuccess: (response) => logScheduleDebug('board.reorder.success', { ...reorderDebug, response }),
             onError: (error) => logScheduleDebug('board.reorder.failure', { ...reorderDebug, error: scheduleMutationErrorDebug(error) }),
           },
@@ -3094,10 +3330,6 @@ export default function ScheduleClient({
         };
         logScheduleDebug('board.assign.attempt', moveDebug);
 
-        const checkpoint = captureV2LocalCheckpoint();
-        const optimisticItems = optimisticMoveBetweenCrews(scheduleItemsRef.current, activeId, sourceInstallerId, destInstallerId, insertAt);
-        applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
-
         void runWithCommitConfirmation(
           (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
           {
@@ -3108,7 +3340,18 @@ export default function ScheduleClient({
             requireSourceSchedule: true,
             expectedCrewId: crewUuid,
             expectedSourceCrewId: sourceCrewUuid,
-            rollback: () => restoreV2LocalCheckpoint(checkpoint),
+            optimistic: () => {
+              const checkpoint = captureV2LocalCheckpoint();
+              const optimisticItems = optimisticMoveBetweenCrews(
+                scheduleItemsRef.current,
+                activeId,
+                sourceInstallerId,
+                destInstallerId,
+                insertAt,
+              );
+              applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
+              return () => restoreV2LocalCheckpoint(checkpoint);
+            },
             onSuccess: (response) => logScheduleDebug('board.assign.success', { ...moveDebug, response }),
             onError: (error) => logScheduleDebug('board.assign.failure', { ...moveDebug, error: scheduleMutationErrorDebug(error) }),
           },
@@ -3589,7 +3832,7 @@ export default function ScheduleClient({
         : scheduleTrust.status === 'failed'
           ? 'Save failed'
           : scheduleTrust.status === 'stale'
-            ? 'Last saved copy'
+            ? 'Refresh needed'
             : savedTime
               ? `Saved ${savedTime}`
               : 'Saved';

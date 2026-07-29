@@ -51,17 +51,26 @@ Optimistic Board/Gantt changes use one owner-aware lifecycle:
 
 - Keep at most one Schedule mutation in flight across mounted/remounted client
   instances. A new instance remains read-only while another owner is saving.
+- Acquire that mutation owner and cancel active Board/Gantt reads before
+  applying optimism, so a rejected second action never flashes on screen.
 - Capture the complete affected local Schedule state before optimistic work.
 - Roll back that checkpoint on rejection, cancelled impact confirmation, or a
   competing local action.
 - Keep unconfirmed optimistic state component-local rather than publishing it
   into shared React Query caches.
+- Stamp Board and Gantt reads separately when they start. Within each view,
+  ignore any response that started before the current mutation settled, or
+  that is older than a snapshot already applied, even if cancellation reached
+  the server too late. Never compare ordering across the two different
+  datasets.
 - Validate the complete success, confirmation, impact, date, identity, and
   nested crew-schedule envelope before trusting it.
-- Apply an accepted Board response only to a compatible cache. For Gantt,
-  restore the trusted checkpoint and fetch the authoritative range before
-  showing the accepted result; if that fetch fails, show the prior trusted
-  snapshot as stale. Remove incompatible caches so they cannot cross views.
+- Apply an accepted Board response only to a compatible cache. For Gantt, keep
+  the confirmed direct-job preview visible while fetching the authoritative
+  range, then replace it atomically. If that fetch fails, keep the confirmed
+  preview visible as stale and block further writes until refresh. Never
+  restore a known-older checkpoint after the API has explicitly accepted the
+  command. Remove incompatible caches so they cannot cross views.
 - Block Board/Gantt view changes while a command or confirmation is pending.
 - Claim success only after the staff API explicitly returns `ok: true`.
 - Keep failed/stale state visible in the page until a successful save or an
@@ -197,7 +206,19 @@ Schedule is one of the heaviest portal surfaces. Watch:
 
 Action dialogs are part of the main Schedule client bundle so staff get immediate modal feedback. Board, Gantt, legacy fallback, diagnostics, and Site Visits keep their existing lazy/view boundaries.
 
-Board and Gantt route changes use the shared non-blocking portal progress bar and mark only the selected view button busy. They must not replace the usable Schedule surface with the full-page loading overlay; full-page loading remains a cold-route/auth boundary only.
+Board and Gantt changes are client-owned within the mounted Schedule page. The
+target lazy view and authenticated query are prefetched on pointer/focus
+intent, a fresh cached snapshot is applied immediately, and the URL is updated
+without asking the App Router to rebuild the server page. Back/Forward and
+direct URL changes still synchronize the selected view. Only the active view's
+model is derived: Board does not build while Gantt is active, and Gantt builds
+only its lane items.
+
+These changes retain the shared non-blocking portal progress bar and mark only
+the selected view button busy. They must not replace the usable Schedule
+surface with the full-page loading overlay; full-page loading remains a
+cold-route/auth boundary only. The separate dormant Site Visits route keeps
+normal App Router navigation.
 
 Use:
 
@@ -208,7 +229,7 @@ npm run test:portal:performance
 
 ## Verification
 
-Current local gate signal from 2026-07-29:
+Current local gate signal from 2026-07-30:
 
 ```bash
 npm run test:portal:schedule
@@ -216,8 +237,9 @@ npm run schedule:bundle-budget
 npx playwright test playwright/portal.schedule-tasks-ui.spec.ts --project=portal-chromium --no-deps
 ```
 
-The focused Schedule gate currently passes 46 files and 361 tests, including
-atomic Gantt adjustment, strict affected-job confirmation/cancellation,
+The focused Schedule gate currently passes 47 files and 371 tests, including
+atomic Gantt adjustment, confirmed-preview continuity, stale-response
+rejection, strict affected-job confirmation/cancellation,
 cross-instance mutation ownership, malformed-response rejection, optimistic
 rollback/reconciliation, cache authority, nine-crew Board rendering,
 crew-filter persistence/fail-open recovery, hidden-lane exclusion, wrapped-row
@@ -264,8 +286,9 @@ Manual Gantt checks:
   the dialog-level Open Project shortcut.
 - Resize a pinned bar and confirm one `/job/adjust` request owns start and
   duration.
-- Fail the post-accept range refresh safely and confirm the prior trusted range
-  remains visible as stale rather than showing optimistic dates as saved.
+- Delay the post-accept range refresh and confirm the accepted bar never jumps
+  back to its old dates. Fail that refresh safely and confirm the accepted
+  direct-job preview remains visible with a stale/refresh-needed state.
 - Crew collapse and range changes work.
 
 Dormant Site Visits checks (only for direct compatibility QA or an approved reactivation):

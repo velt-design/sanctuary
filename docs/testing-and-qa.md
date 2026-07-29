@@ -699,6 +699,7 @@ Minimum targeted schedule tests:
 
 ```bash
 npx vitest run apps/portal/lib/scheduling/workingDays.test.ts apps/portal/lib/scheduling/recompute.test.ts
+npx vitest run apps/portal/app/staff/schedule/ScheduleClient.test.tsx apps/portal/app/staff/schedule/scheduleSnapshotRequestTracker.test.ts apps/portal/lib/queries/schedule.test.ts
 ```
 
 ## Manual QA Checklist Seeds
@@ -753,7 +754,13 @@ Schedule Board:
   envelopes reconcile as commit-ambiguous.
 - Keep one deliberately slow command open across a Schedule client remount and
   confirm the new instance stays read-only until the owning command finishes.
-- Confirm crew lanes stay fixed-width and horizontally scroll.
+- Delay a pre-mutation Board response until after an accepted assignment and
+  confirm the older response cannot move the job back.
+- Confirm crew lanes wrap onto additional rows on larger screens without page
+  horizontal scroll.
+- Focus or hover Gantt, switch views, and confirm the current Schedule page
+  stays mounted while the prefetched view appears. Confirm browser Back/Forward
+  keeps the selected tab and URL aligned.
 
 Schedule Gantt:
 
@@ -765,8 +772,9 @@ Schedule Gantt:
   action runs instead of the dialog-level Open Project shortcut.
 - Resize a pinned bar and confirm one atomic `/job/adjust` request owns both
   date and duration (never a sequential duration then pin pair).
-- Fail the post-accept range refresh safely and confirm the prior trusted range
-  remains visible as stale rather than showing optimistic dates as saved.
+- Delay the post-accept range refresh and confirm the accepted bar never jumps
+  back to its old dates. Fail that refresh safely and confirm the accepted
+  direct-job preview remains visible with a refresh-needed state.
 - Operate the crew-label separator with Arrow/Home/End and confirm its ARIA
   value tracks the width.
 - Toggle crew collapse and range options.
