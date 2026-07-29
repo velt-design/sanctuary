@@ -17,7 +17,6 @@ export default defineConfig({
       { find: '@/lib/enquiryStoredAttachments', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryStoredAttachments.ts') },
       { find: '@/lib/enquiryIntake', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryIntake.ts') },
       { find: '@/lib/enquiryContext', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryContext.ts') },
-      { find: '@/lib/startModalBridge', replacement: path.resolve(__dirname, 'apps/marketing/lib/startModalBridge.ts') },
       { find: '@/lib/enquirySourceContext.server', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquirySourceContext.server.ts') },
       { find: '@/lib/marketingPublicRequest', replacement: path.resolve(__dirname, 'apps/marketing/lib/marketingPublicRequest.ts') },
       { find: '@/lib/sharedEmails', replacement: path.resolve(__dirname, 'apps/marketing/lib/sharedEmails.ts') },

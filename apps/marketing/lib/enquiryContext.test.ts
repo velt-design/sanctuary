@@ -22,6 +22,16 @@ describe('enquiry context', () => {
     );
   });
 
+  it('keeps route context when the footer starts an enquiry', () => {
+    expect(buildEnquiryHref({
+      ...getEnquiryRouteContext('/commercial-pergolas-auckland'),
+      sourcePath: '/commercial-pergolas-auckland',
+      sourceComponent: 'footer',
+    })).toBe(
+      '/contact?enquiry_type=commercial&source_path=%2Fcommercial-pergolas-auckland&source_component=footer#contact-form',
+    );
+  });
+
   it('parses canonical and legacy audience values while validating known items', () => {
     expect(parseEnquiryContext(
       {

@@ -37,24 +37,6 @@ header.site{
   transform:translateZ(0);
   transition:transform .6s cubic-bezier(.21,.8,.35,1), opacity .45s ease, background-color .5s ease, border-color .5s ease;
 }
-.site--start-scroll{
-  transform:translateY(-110%);
-  opacity:0;
-  pointer-events:none;
-  transition:transform .25s ease-out, opacity .25s ease-out, background-color .5s ease, border-color .5s ease, color .5s ease;
-}
-.site--start-scroll.site--start-visible{
-  transform:translateY(0);
-  opacity:1;
-  pointer-events:auto;
-  box-shadow:0 14px 32px -28px rgba(15,23,42,.85);
-}
-.site--start-scroll.site--start-suppressed,
-body.start-modal-open .site--start-scroll{
-  transform:translateY(-110%) !important;
-  opacity:0 !important;
-  pointer-events:none !important;
-}
 header.site{ --navH: 82px; }
 .navbar{position:relative;display:flex;align-items:center;justify-content:space-between;height:var(--navH);gap:18px}
 .site-brand{flex-shrink:0;display:flex;align-items:center;height:var(--navH);margin:0;color:inherit;font-family:"Instrument Sans Variable","Helvetica Neue",sans-serif;font-weight:650;line-height:1;letter-spacing:-.015em;text-transform:uppercase}
@@ -228,6 +210,15 @@ body.mobile-menu-open .mobile-toggle:active{background:color-mix(in srgb, var(--
   header.site.site--hero-overlay:not(.site--hero-scrolled) .nav-cta:focus-visible{outline-color:#fff}
 }
 
+/* At compact desktop widths the brand owns Home and the project action owns
+   Contact, leaving room for the two audience pathways without overlap. */
+@media (min-width:901px) and (max-width:1279px){
+  .nav-list__item--home,
+  .nav-list__item--contact{display:none}
+  .nav-list__cluster{gap:6px}
+  .navlink-btn{padding-inline:5px;font-size:.64rem}
+}
+
 @media (max-width:900px){
   :root{--navH:64px;--headerH:64px}
   header.site{--navH:64px}
@@ -241,7 +232,6 @@ body.mobile-menu-open .mobile-toggle:active{background:color-mix(in srgb, var(--
 
 @media (prefers-reduced-motion: reduce){
   header.site,
-  .site--start-scroll,
   .navlink-btn,
   .nav-cta,
   .mobile-toggle,

@@ -25,6 +25,7 @@ function contactRequest(eventId: string, ip: string): Request {
     body: JSON.stringify({
       name: 'Taylor',
       email: 'taylor@example.test',
+      phone: '+64 21 000 0000',
       message: 'Please contact me',
       enquiry_type: 'residential',
       event_id: eventId,
@@ -121,6 +122,23 @@ describe('POST /api/contact email compatibility path', () => {
     }));
 
     expect(response.status).toBe(415);
+    expect(h.getServiceSupabase).not.toHaveBeenCalled();
+  });
+
+  it('requires a plausible phone before the legacy compatibility path runs', async () => {
+    const { POST } = await import('./route');
+    const response = await POST(new Request('http://localhost/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Taylor',
+        email: 'taylor@example.test',
+        phone: 'x',
+      }),
+    }));
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ ok: false, error: 'Invalid phone' });
     expect(h.getServiceSupabase).not.toHaveBeenCalled();
   });
 });

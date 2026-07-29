@@ -167,7 +167,7 @@ for (const viewport of [
     expect(visibleFieldsWithoutLabels).toEqual([]);
     await expect(page.getByLabel('Name Required')).toHaveAttribute('autocomplete', 'name');
     await expect(page.getByLabel('Phone Required')).toHaveAttribute('inputmode', 'tel');
-    await expect(page.getByLabel('Email Optional')).toHaveAttribute('autocomplete', 'email');
+    await expect(page.getByLabel('Email Required')).toHaveAttribute('autocomplete', 'email');
 
     await expect(main).not.toContainText('—');
     const emDashDecorations = await main.locator('*').evaluateAll((elements) =>
@@ -407,16 +407,16 @@ test('validation is specific, focuses an error summary and preserves entered det
 
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
-  await page.getByLabel('Email Optional').fill('not-an-email');
+  await page.getByLabel('Email Required').fill('not-an-email');
   await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.locator('#contact-email-error')).toHaveText(
-    'Enter a valid email address or leave this field blank.',
+    'Enter a valid email address.',
   );
   await expect(summary).toBeFocused();
   await summary.getByRole('link', {
-    name: 'Enter a valid email address or leave this field blank.',
+    name: 'Enter a valid email address.',
   }).click();
-  await expect(page.getByLabel('Email Optional')).toBeFocused();
+  await expect(page.getByLabel('Email Required')).toBeFocused();
 });
 
 test('direct form puts the useful first brief before optional technical detail', async ({
@@ -429,9 +429,16 @@ test('direct form puts the useful first brief before optional technical detail',
   await expect(page.getByRole('group', { name: 'Project type Required' })).toBeVisible();
   await expect(page.getByLabel('Name Required')).toHaveAttribute('required', '');
   await expect(page.getByLabel('Phone Required')).toHaveAttribute('required', '');
+  await expect(page.getByLabel('Email Required')).toHaveAttribute('required', '');
   await expect(page.getByLabel('Suburb Optional')).not.toHaveAttribute('required', '');
   await expect(page.getByLabel('Project brief Optional')).not.toHaveAttribute('required', '');
-  await expect(page.getByLabel('Email Optional')).not.toHaveAttribute('required', '');
+  await expect(page.locator('#contact-form')).toHaveAttribute('method', 'post');
+  await expect(page.locator('#contact-form')).toHaveAttribute(
+    'action',
+    '/api/enquiry/fallback',
+  );
+  await expect(page.locator('#contact-form input[name="page"]')).toHaveValue('/contact');
+  await expect(page.locator('#contact-form input[name="enquiryContext"]')).toHaveValue('{}');
 
   const orderedFields = [
     '#contact-enquiry-type-residential',
@@ -462,6 +469,50 @@ test('direct form puts the useful first brief before optional technical detail',
   await expect(page.getByRole('group', { name: 'Roof Optional' })).toBeVisible();
 });
 
+test('no-JavaScript fallback keeps personal data out of the URL and uses native validation', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+
+  try {
+    await page.goto(
+      `${route}?enquiry_type=commercial&source_path=%2Fprojects%2Fgoodhome-commercial-terrace&source_component=project_cta`,
+    );
+    const form = page.locator('#contact-form');
+    await expect(form).toHaveAttribute('method', 'post');
+    await expect(form).toHaveAttribute('action', '/api/enquiry/fallback');
+    await expect(form).not.toHaveAttribute('novalidate', '');
+    await expect(page.locator('#contact-files')).toBeDisabled();
+    await expect(page.getByText('File upload needs JavaScript.')).toBeVisible();
+    await expect(form.locator('input[name="enquiryContext"]')).toHaveValue(
+      JSON.stringify({
+        enquiry_type: 'commercial',
+        source_path: '/projects/goodhome-commercial-terrace',
+        source_component: 'project_cta',
+      }),
+    );
+
+    const phone = page.getByLabel('Phone Required');
+    await phone.fill('x');
+    expect(await phone.evaluate(
+      (input: HTMLInputElement) => input.validity.patternMismatch,
+    )).toBe(true);
+    await phone.fill('022 854 5633');
+    expect(await phone.evaluate(
+      (input: HTMLInputElement) => input.validity.patternMismatch,
+    )).toBe(false);
+
+    await form.evaluate((element: HTMLFormElement) => element.requestSubmit());
+    await expect(page).toHaveURL(/\/contact\?/);
+    expect(await page.getByLabel('Name Required').evaluate(
+      (input: HTMLInputElement) => input.validationMessage,
+    )).not.toBe('');
+  } finally {
+    await context.close();
+  }
+});
+
 test('API errors keep values and retries reuse the submission UUID', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await preparePage(page);
@@ -483,10 +534,9 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
     waitUntil: 'networkidle',
     },
   );
-
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
-  await page.getByLabel('Email Optional').fill('test@example.com');
+  await page.getByLabel('Email Required').fill('test@example.com');
   await page.getByLabel('Project brief Optional').fill('Keep this project brief.');
   await page.getByRole('button', { name: 'Send project brief' }).click();
 
@@ -507,6 +557,9 @@ test('API errors keep values and retries reuse the submission UUID', async ({ pa
     'Keep this project brief.',
   );
   expect(payloads).toHaveLength(2);
+  expect(payloads[0]?.submissionId).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
   expect(payloads[0]?.submissionId).toBe(payloads[1]?.submissionId);
   expect(payloads[0]).toMatchObject({
     enquiryType: 'residential',
@@ -558,6 +611,7 @@ test('the submit lock prevents duplicate requests and consent controls lead even
   );
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
+  await page.getByLabel('Email Required').fill('test@example.com');
 
   const submit = page.getByRole('button', { name: 'Send project brief' });
   await submit.evaluate((button) => {
@@ -616,6 +670,7 @@ test('residential attachments keep exact policy errors and fail visibly when upl
   await page.goto(`${route}?enquiry_type=residential`, { waitUntil: 'networkidle' });
   await page.getByLabel('Name Required').fill('Test Homeowner');
   await page.getByLabel('Phone Required').fill('021 000 0000');
+  await page.getByLabel('Email Required').fill('test@example.com');
 
   const files = page.getByLabel('Photos, plans or sketches Optional');
   await files.evaluate((input) => {
@@ -731,6 +786,7 @@ test('product context is visible and included in the submitted payload', async (
   await page.getByRole('radio', { name: 'Commercial', exact: false }).check();
   await page.getByLabel('Name Required').fill('Test Person');
   await page.getByLabel('Phone Required').fill('021 000 0000');
+  await page.getByLabel('Email Required').fill('test@example.com');
   await page.getByRole('button', { name: 'Send project brief' }).click();
   await expect(page.getByRole('status')).toContainText('Project brief sent.');
 
@@ -773,6 +829,41 @@ test('form semantics exclude the honeypot and keep IDs and error associations va
     .getAttribute('aria-describedby');
   expect(typeErrorId).toBe('contact-enquiryType-error');
   await expect(page.locator(`#${typeErrorId}`)).toContainText('Choose a project type.');
+});
+
+test('contact form fragments clear the fixed header at mobile and desktop widths', async ({
+  page,
+}) => {
+  await preparePage(page);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ] as const) {
+    await page.setViewportSize(viewport);
+    await page.goto(
+      `${route}?enquiry_type=commercial&source_path=%2Fprojects%2Fgoodhome-commercial-terrace&source_component=project_cta&source_project=goodhome-commercial-terrace#contact-form`,
+      { waitUntil: 'networkidle' },
+    );
+
+    const header = page.locator('header.site');
+    const form = page.locator('#contact-form');
+    await expect(form).toBeVisible();
+    await expect(form.getByRole('heading', { name: 'Project brief' })).toBeVisible();
+
+    const [headerBounds, formBounds] = await Promise.all([
+      header.boundingBox(),
+      form.boundingBox(),
+    ]);
+    expect(headerBounds).not.toBeNull();
+    expect(formBounds).not.toBeNull();
+    expect(formBounds!.y).toBeGreaterThanOrEqual(
+      headerBounds!.y + headerBounds!.height + 8,
+    );
+    expect(formBounds!.y).toBeLessThanOrEqual(
+      headerBounds!.y + headerBounds!.height + 32,
+    );
+  }
 });
 
 test('capture Phase 1 enquiry continuity at the target mobile widths', async ({ page }) => {

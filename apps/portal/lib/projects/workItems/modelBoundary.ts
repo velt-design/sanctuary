@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchRowsByIdChunks } from '@/lib/list/listLimits';
+import { fetchRowsByIdChunks } from '../../list/listLimits';
 
 type ProjectWorkModelVersionRow = {
   project_id: string;

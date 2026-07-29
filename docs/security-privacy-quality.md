@@ -55,10 +55,18 @@ available they also include validated `source_path`, `source_component`,
 contract. These properties use known paths, component identifiers, and canonical
 project/product slugs only. Names, contact details, messages, dimensions, upload
 names, and upload contents must not be placed in enquiry URLs or analytics events.
-The success event's `lead_event_id` reuses the client-generated submission UUID
-that the intake boundary already validates. This non-personal opaque identifier
-allows one analytics success event to reconcile exactly with one accepted
-submission without exposing form content.
+Every direct or embedded enquiry form declares a POST fallback through
+`/api/enquiry/fallback` so a pre-hydration or no-JavaScript submission cannot
+serialize personal fields into the page URL. The adapter retains the submitted
+route context and repeated project options, assigns a server UUID, and redirects
+a successful submission to a noindex confirmation route. Optional file inputs
+remain disabled until enhancement because signed private uploads require
+JavaScript. Project type, name, phone and email are required through the same
+client/server intake contract.
+The enhanced success event's `lead_event_id` reuses the browser-generated
+submission UUID that the intake boundary already validates. This non-personal
+opaque identifier allows one analytics success event to reconcile exactly with
+one accepted submission without exposing form content.
 
 Major public enquiry links use `buildEnquiryHref`. The global header resolves
 audience and item context through the parity-tested route index in

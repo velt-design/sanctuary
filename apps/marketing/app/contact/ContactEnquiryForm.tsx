@@ -52,8 +52,14 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function ContactEnquiryForm({ initialEnquiryType, initialContext, sourceProjectLabel, sourceProductLabel }: ContactEnquiryFormProps) {
+export default function ContactEnquiryForm({
+  initialEnquiryType,
+  initialContext,
+  sourceProjectLabel,
+  sourceProductLabel,
+}: ContactEnquiryFormProps) {
   const { consent, hasStoredChoice } = useConsent();
+  const [isEnhanced, setIsEnhanced] = useState(false);
   const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(initialEnquiryType);
   const [files, setFiles] = useState<File[]>([]);
   const [fieldErrors, setFieldErrors] = useState<ContactFieldErrors>({});
@@ -66,6 +72,10 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
   const shouldFocusErrorSummaryRef = useRef(false);
   const successRef = useRef<HTMLElement | null>(null);
   const submitErrorRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setIsEnhanced(true);
+  }, []);
 
   useEffect(() => {
     if (submitState === 'success') successRef.current?.focus();
@@ -276,12 +286,20 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
       className="contact-form"
       id="contact-form"
       method="post"
-      action="/api/enquiry"
-      noValidate
+      action="/api/enquiry/fallback"
+      noValidate={isEnhanced}
       onInput={handleFormInput}
       onSubmit={handleSubmit}
       aria-labelledby="contact-form-title"
     >
+      <input type="hidden" name="page" value="/contact" readOnly />
+      <input type="hidden" name="source" value="website" readOnly />
+      <input
+        type="hidden"
+        name="enquiryContext"
+        value={JSON.stringify(contextProperties)}
+        readOnly
+      />
       <header className="contact-form__intro">
         <p className="contact-eyebrow">Start here</p>
         <h2 id="contact-form-title">Project brief</h2>
@@ -371,10 +389,18 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
               type="file"
               accept={ENQUIRY_ATTACHMENT_ACCEPT}
               multiple
+              disabled={!isEnhanced}
               aria-invalid={Boolean(fieldErrors.files)}
               aria-describedby={`contact-files-help${fieldErrors.files ? ` ${errorId('files')}` : ''}`}
               onChange={handleFiles}
             />
+            <p className="contact-form__help" hidden={isEnhanced}>
+              File upload needs JavaScript. You can email files to{' '}
+              <a href="mailto:info@sanctuarypergolas.co.nz">
+                info@sanctuarypergolas.co.nz
+              </a>
+              .
+            </p>
             {files.length ? (
               <ul className="contact-form__files" aria-label="Selected files">
                 {files.map((file, index) => (
@@ -447,6 +473,8 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
               inputMode="tel"
               autoComplete="tel"
               required
+              pattern="(?=(?:\D*\d){7,15}\D*$)\+?(?:\d|\s|\(|\)|\.|-)+"
+              title="Enter a phone number with 7 to 15 digits."
               aria-invalid={Boolean(fieldErrors.phone)}
               aria-describedby={fieldErrors.phone ? errorId('phone') : undefined}
             />
@@ -459,7 +487,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
 
           <div className="contact-form__field contact-form__field--wide">
             <label htmlFor="contact-email">
-              Email <span>Optional</span>
+              Email <span>Required</span>
             </label>
             <input
               id="contact-email"
@@ -467,6 +495,7 @@ export default function ContactEnquiryForm({ initialEnquiryType, initialContext,
               type="email"
               inputMode="email"
               autoComplete="email"
+              required
               aria-invalid={Boolean(fieldErrors.email)}
               aria-describedby={fieldErrors.email ? errorId('email') : undefined}
             />

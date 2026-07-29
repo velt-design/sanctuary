@@ -1,4 +1,8 @@
 import { ENQUIRY_ATTACHMENT_LIMITS, validateEnquiryAttachments } from './enquiryAttachments';
+import {
+  isPlausibleEnquiryPhone,
+  isValidEnquiryEmail,
+} from './enquiryContactValidation';
 import type { EnquiryAudience, EnquiryContext } from './enquiryContext';
 
 export type EnquiryFormField = 'enquiryType' | 'suburb' | 'message' | 'name' | 'phone' | 'email' | 'files';
@@ -44,9 +48,9 @@ export function validateEnquiryForm(formData: FormData, files: File[]): EnquiryF
   if (!enquiryType) errors.enquiryType = 'Choose a project type.';
   if (!name) errors.name = 'Enter your name.';
   if (!phone) errors.phone = 'Enter your phone number.';
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.email = 'Enter a valid email address or leave this field blank.';
-  }
+  else if (!isPlausibleEnquiryPhone(phone)) errors.phone = 'Enter a valid phone number.';
+  if (!email) errors.email = 'Enter your email address.';
+  else if (!isValidEnquiryEmail(email)) errors.email = 'Enter a valid email address.';
 
   const fileError = validateEnquiryAttachments(files);
   if (fileError) errors.files = fileError;

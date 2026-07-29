@@ -151,7 +151,7 @@ Authorised production outcome validation remains open. The existing Phase 5 evid
 | Project navigator | Separate modal sheet contract | Detail sheet uses root/body classes, focus containment, Escape and focus restoration; its lock model differs from the header | Current automated contracts are green | Verified repository | Preserve its separate owner |
 | Scroll reset and history | Browser Back/Forward was a remaining risk | `ScrollReset` prefers valid fragments, otherwise resets route scroll immediately and on the next frame | Current automated contracts are green | Verified repository | Do not include speculative history work |
 | Project filter state | Query-state continuity was implemented | Collection filters write validated query params with `router.push(..., { scroll: false })`; canonical project links exclude filter params | Current automated contracts are green | Verified repository | Preserve current behaviour |
-| Form contract | Required effort was reduced | Shared contract requires only project type, name and phone; email, suburb, brief and technical detail are optional | Public custom output still presents an older required-field contract | Verified repository and verified production mismatch | PDR-01 must verify direct and embedded required/optional semantics against the exact release |
+| Form contract | Required effort was reduced | Shared contract requires project type, name, phone and email; suburb, brief and technical detail are optional | Public custom output still presents an older required-field contract | Verified repository and verified production mismatch | PDR-01 must verify direct and embedded required/optional semantics against the exact release |
 | Enquiry context | Canonical non-personal source context exists | Route, component, project and product values are validated and lower-case; products remain neutral unless an audience is explicitly known | Current public service parity is incomplete | Verified repository; production verification required | PDR-01 verifies all entry paths; PDR-04 reconciles the accepted production result |
 | Submission reconciliation | Automated ID contract existed, authorised reconciliation was blocked | `lead_event_id` is expected to reuse the accepted `submissionId`; contact browser tests assert one event and duplicate-submit exclusion | No authorised current-release event-to-record proof | Verified repository; operational validation required | PDR-04 is mandatory |
 | Google analytics loading | Earlier docs referenced a coded GA loader | GTM is now the only Google browser runtime loader; `/runtime-ga.js` has been retired; consent mode is set before GTM loads | Production debug behaviour requires access | Verified repository; operational validation required | PDR-04 must use GTM/GA debug evidence and must not restore or test the retired coded loader |
@@ -357,7 +357,7 @@ The existing release-identity implementation and Phase 5 semantic test provide t
    - three process stages;
    - one `custom-planning-support` disclosure;
    - residential/custom source path and custom CTA context;
-   - only project type, name and phone required by the shared intake contract.
+   - project type, name, phone and email required by the shared intake contract.
 10. Verify commercial service role:
     - no guide progression;
     - three commercial projects precede the three-stage process;
@@ -483,7 +483,7 @@ Deployment configuration or hosting settings are in scope only where evidence id
 - Direct contact remains neutral.
 - Product entry remains audience-neutral while retaining product context.
 - Project entry retains governed audience and project context.
-- Direct and embedded forms expose only project type, name and phone as required.
+- Direct and embedded forms expose project type, name, phone and email as required.
 - Current footer utility appears across the route matrix.
 - Canonicals, robots, sitemap entries and structured-data types remain correct.
 - No route has more than one `main` or visible H1.
@@ -1069,7 +1069,7 @@ This control proves consent behaviour without creating another lead.
 3. Enter the approved synthetic test values.
 4. Select the approved route and context.
 5. When file validation is authorised, attach one small synthetic file.
-6. Record the client-generated `submissionId` locally in the restricted operator record.
+6. Record the browser-generated `submissionId` locally in the restricted operator record.
 7. Confirm the signing response and upload complete.
 8. Confirm the file descriptor submitted to intake contains a private path and a valid session token.
 9. Activate submit once.

@@ -331,6 +331,7 @@ test('contact choices, file controls and sending controls preserve state precede
 
   await page.getByLabel('Name Required').fill('TM 02 Test');
   await page.getByLabel('Phone Required').fill('021 000 0000');
+  await page.getByLabel('Email Required').fill('tm02@example.com');
   const submit = page.locator('.contact-form__submit button');
   await submit.click();
   await expect(submit).toBeDisabled();

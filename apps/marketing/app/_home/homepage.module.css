@@ -47,6 +47,13 @@
   padding-block: calc(var(--header-height) + 4rem) clamp(3.25rem, 7vw, 6.5rem);
 }
 
+@media (min-width: 900px) {
+  :global(body:has(.consent-banner)) .heroCopy,
+  :global(body:has(.consent-banner)) .heroProjectMeta {
+    transform: translateY(-5.5rem);
+  }
+}
+
 .heroCopy {
   grid-column: 1 / 9;
   display: grid;

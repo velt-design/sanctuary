@@ -232,7 +232,42 @@ body:has([data-contact-page]):not(.no-scroll):not(.scroll-locked) {
 
 .contact-form {
   min-width: 0;
+  scroll-margin-top: calc(var(--header-offset) + 1rem);
   border-top: 1px solid var(--color-rule-strong);
+}
+
+.contact-confirmation {
+  min-height: 100svh;
+  padding: clamp(7rem, 16vh, 11rem) var(--page-gutter) 5rem;
+  display: grid;
+  place-items: center;
+}
+
+.contact-confirmation > section {
+  width: min(46rem, 100%);
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border: 1px solid var(--color-rule);
+  background: var(--color-surface-elevated);
+}
+
+.contact-confirmation h1 {
+  max-width: 11ch;
+  margin: 0 0 1rem;
+  font: 500 clamp(2.5rem, 8vw, 5.5rem)/.9 var(--font-display);
+  letter-spacing: -.045em;
+}
+
+.contact-confirmation > section > p:not(.contact-eyebrow) {
+  max-width: 36rem;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  line-height: 1.6;
+}
+
+.contact-confirmation__actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
 }
 
 .contact-form__intro {

@@ -156,6 +156,7 @@ export default function AcrylicPergolaEnquiryForm({
   roofPreference = acrylicRoofPreference,
 }: AcrylicPergolaEnquiryFormProps = {}) {
   const { consent, hasStoredChoice } = useConsent();
+  const [isEnhanced, setIsEnhanced] = useState(false);
   const [enquiryType, setEnquiryType] = useState<EnquiryAudience | null>(initialEnquiryType ?? sourceContext.enquiryType ?? null);
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<EnquiryFormFieldErrors>({});
@@ -163,9 +164,14 @@ export default function AcrylicPergolaEnquiryForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const submissionIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
+  const attachmentErrorRef = useRef<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
   const shouldFocusErrorSummaryRef = useRef(false);
   const resultRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setIsEnhanced(true);
+  }, []);
 
   useEffect(() => {
     if (shouldFocusErrorSummaryRef.current && Object.values(errors).some(Boolean)) {
@@ -189,6 +195,7 @@ export default function AcrylicPergolaEnquiryForm({
     ...sourceContext,
     ...(enquiryType ? { enquiryType } : {}),
   };
+  const contextProperties = getEnquiryContextProperties(currentEnquiryContext);
   const contextDisplay = getEnquiryContextDisplay(currentEnquiryContext);
 
   const clearFieldError = (field: EnquiryFormField) => {
@@ -200,14 +207,17 @@ export default function AcrylicPergolaEnquiryForm({
     const nextFiles = [...files, ...incoming];
     const fileError = validateEnquiryAttachments(nextFiles);
     if (fileError) {
+      attachmentErrorRef.current = fileError;
       setErrors((current) => ({ ...current, files: fileError }));
       return;
     }
+    attachmentErrorRef.current = null;
     setFiles(nextFiles);
     clearFieldError('files');
   };
 
   const removeFile = (index: number) => {
+    attachmentErrorRef.current = null;
     setFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
     clearFieldError('files');
   };
@@ -218,6 +228,9 @@ export default function AcrylicPergolaEnquiryForm({
 
     const form = event.currentTarget;
     const nextErrors = validateEnquiryForm(new FormData(form), files);
+    if (attachmentErrorRef.current) {
+      nextErrors.files = attachmentErrorRef.current;
+    }
     setErrors(nextErrors);
     const firstError = Object.keys(nextErrors)[0] as EnquiryFormField | undefined;
     if (firstError) {
@@ -238,7 +251,6 @@ export default function AcrylicPergolaEnquiryForm({
       const selectedAccessories = formData.getAll('accessories').map(String);
       const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
       const selectedRoofOption = roofPreference.options.find((option) => option.value === selectedRoofPreference);
-      const contextProperties = getEnquiryContextProperties(currentEnquiryContext);
       const attribution = getBrowserMarketingAttribution();
       const addOns = {
         blinds: selectedAccessories.includes('Outdoor blinds'),
@@ -318,7 +330,27 @@ export default function AcrylicPergolaEnquiryForm({
   };
 
   return (
-    <form className="acrylic-form" noValidate onSubmit={handleSubmit} aria-labelledby="estimate-form-title">
+    <form
+      className="acrylic-form"
+      method="post"
+      action="/api/enquiry/fallback"
+      noValidate={isEnhanced}
+      onSubmit={handleSubmit}
+      aria-labelledby="estimate-form-title"
+    >
+      <input
+        type="hidden"
+        name="page"
+        value={sourceContext.sourcePath ?? '/contact'}
+        readOnly
+      />
+      <input type="hidden" name="source" value="website" readOnly />
+      <input
+        type="hidden"
+        name="enquiryContext"
+        value={JSON.stringify(contextProperties)}
+        readOnly
+      />
       <div className="acrylic-form__intro">
         <Eyebrow className="acrylic-eyebrow">{eyebrow}</Eyebrow>
         <Heading id="estimate-form-title">{heading}</Heading>
@@ -419,6 +451,8 @@ export default function AcrylicPergolaEnquiryForm({
             inputMode="tel"
             autoComplete="tel"
             required
+            pattern="(?=(?:\D*\d){7,15}\D*$)\+?(?:\d|\s|\(|\)|\.|-)+"
+            title="Enter a phone number with 7 to 15 digits."
             aria-invalid={Boolean(errors.phone)}
             aria-describedby={errors.phone ? fieldErrorId('phone') : undefined}
             onChange={() => clearFieldError('phone')}
@@ -432,7 +466,7 @@ export default function AcrylicPergolaEnquiryForm({
 
         <div className="acrylic-form__field acrylic-form__field--wide">
           <label htmlFor="acrylic-enquiry-email">
-            Email <span>Optional</span>
+            Email <span>Required</span>
           </label>
           <input
             id="acrylic-enquiry-email"
@@ -440,6 +474,7 @@ export default function AcrylicPergolaEnquiryForm({
             type="email"
             inputMode="email"
             autoComplete="email"
+            required
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? fieldErrorId('email') : undefined}
             onChange={() => clearFieldError('email')}
@@ -464,6 +499,7 @@ export default function AcrylicPergolaEnquiryForm({
             type="file"
             accept={ENQUIRY_ATTACHMENT_ACCEPT}
             multiple
+            disabled={!isEnhanced}
             aria-describedby={`acrylic-enquiry-files-help${errors.files ? ` ${fieldErrorId('files')}` : ''}`}
             aria-invalid={Boolean(errors.files)}
             onChange={(event) => {
@@ -471,6 +507,13 @@ export default function AcrylicPergolaEnquiryForm({
               event.currentTarget.value = '';
             }}
           />
+          <p className="acrylic-form__help" hidden={isEnhanced}>
+            File upload needs JavaScript. You can email files to{' '}
+            <a href="mailto:info@sanctuarypergolas.co.nz">
+              info@sanctuarypergolas.co.nz
+            </a>
+            .
+          </p>
           {files.length ? (
             <ul className="acrylic-form__file-list" aria-label="Selected files">
               {files.map((file, index) => (

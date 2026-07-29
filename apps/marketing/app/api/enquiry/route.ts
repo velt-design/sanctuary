@@ -48,6 +48,10 @@ import {
   createMarketingEnquiryIntake,
   MarketingEnquiryIntakeError,
 } from '@/lib/enquiryIntake';
+import {
+  isPlausibleEnquiryPhone,
+  isValidEnquiryEmail,
+} from '../../../lib/enquiryContactValidation';
 
 const MAX_FIELD_LENGTH = 400;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -289,7 +293,13 @@ export async function POST(req: Request) {
   if (!phone) {
     return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 422 });
   }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!isPlausibleEnquiryPhone(phoneRaw)) {
+    return NextResponse.json({ ok: false, error: 'Invalid phone' }, { status: 422 });
+  }
+  if (!email) {
+    return NextResponse.json({ ok: false, error: 'Email is required' }, { status: 422 });
+  }
+  if (!isValidEnquiryEmail(email)) {
     return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 422 });
   }
   if (!['residential', 'commercial', 'professional'].includes(enquiryType)) {

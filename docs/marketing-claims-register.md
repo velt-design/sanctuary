@@ -6,19 +6,17 @@ Public copy must not state a numeric or categorical claim from this register unt
 
 The July 2026 guide-cluster pass removed ungoverned headline durations, combined warranty durations, category-wide UV and heat outcomes, generic span ranges, numeric wind thresholds, broad maintenance comparisons and absolute wind or rain language from indexable marketing pages. The final refinement also replaced homepage material scores with written considerations, qualified lighting and heater performance, aligned linked project detail with the current project summaries and removed unsupported blind-control detail. A browser regression reads every route in the generated sitemap. Those surfaces now use proposal-stage or exact-product wording until an owner approves evidence here. The outdated brochure endpoint is retired to the governed web guide library rather than treated as current claim evidence.
 
-The 29 July 2026 copy reduction introduced no new claim approval. It removed
-categorical consent, wind, programme and weather language from the public
-`/start` flow, kept the external-proposal louvre position and reduced the
-canonical acrylic page to qualitative, site-specific choices. The sitemap
-crawl remains necessary but is not sufficient: claims checks and manual review
-must also include public noindex entry flows such as `/start` and
-`/start/explore`. The retired acrylic v2 route permanently redirects to the
-governed primary route and is no longer a second copy surface. Every Pending or
-project-specific status below is unchanged.
+The 29 July 2026 follow-up retires the separate `/start` and `/start/explore`
+flows instead of maintaining a second public conversion system. Claims checks
+and manual review continue to cover every public acquisition surface, including
+any future noindex entry flow. The retired acrylic v2 route permanently
+redirects to the governed primary route and is no longer a second copy surface.
+Every Pending or project-specific status below is unchanged.
 
 | Claim area | Public wording status | Evidence required | Important limitation | Approval owner | Review date | Applies to |
 | --- | --- | --- | --- | --- | --- | --- |
 | Pergola price bands and examples | Pending approval. Do not publish a number. | Dated set of representative projects and current sell pricing, with scope and outliers identified. | State GST treatment, inclusions, exclusions, engineering, consent, site access and accessories beside every band. | Sanctuary commercial lead and finance | Pending | Cost guide and any page mentioning price |
+| Service area and Auckland base | Approved for qualitative use. Sanctuary is Auckland based and considers selected projects up to about a three-hour drive away when the project is a good fit. The Auckland address is a staffed base of operations; customers should contact the team before visiting. | Sanctuary leadership confirmation of current travel and office practice. | Do not promise that every project inside the travel area will be accepted, describe the base as a showroom, or guarantee that a particular staff member is available without an appointment. | Sanctuary leadership | 2026-07-29 | Footer, service-area copy, contact details and structured data |
 | Louvre supply position | Pending approval. Do not present louvres as a Sanctuary product. | Current product-range decision and any supplier or delivery arrangement. | Separate Sanctuary fixed-roof approaches from external louvre proposals until confirmed. | Sanctuary product and leadership | Pending | Acrylic vs Louvre, forms and product navigation |
 | Workmanship warranty | Pending approval. Do not publish a duration. | Current signed warranty terms and exclusions. | Keep workmanship separate from product, coating, electrical and accessory warranties. | Sanctuary leadership and legal | Pending | All service pages, footer and sales material |
 | Product and coating warranties | Pending approval. Do not combine into one Sanctuary warranty. | Current manufacturer schedules for each specified product and finish. | Terms vary by product, exposure, installation and maintenance. | Sanctuary product lead | Pending | Product pages and guides |
