@@ -54,10 +54,12 @@ export default function LegacyContactedMigrationForm({
   project,
   onCancel,
   onSaved,
+  disabled = false,
 }: {
   project: LegacyContactedProject;
   onCancel: () => void;
   onSaved: (message: string) => void;
+  disabled?: boolean;
 }) {
   const attempts = useRef(new StableCommandAttempt()).current;
   const [draft, setDraft] = useState<LegacyMigrationDraft>(
@@ -79,6 +81,7 @@ export default function LegacyContactedMigrationForm({
   ) => setDraft((current) => ({ ...current, [key]: value }));
 
   const submit = async () => {
+    if (disabled || pending) return;
     const invalid = legacyMigrationDraftError(draft);
     if (invalid) {
       setError(invalid);
@@ -145,7 +148,7 @@ export default function LegacyContactedMigrationForm({
         <Select
           label="Reviewed disposition"
           value={draft.disposition}
-          disabled={pending}
+          disabled={pending || disabled}
           onChange={(event) => update(
             'disposition',
             event.target.value as LegacyMigrationDraft['disposition'],
@@ -162,13 +165,13 @@ export default function LegacyContactedMigrationForm({
               label="One clear next action"
               value={draft.title}
               maxLength={160}
-              disabled={pending}
+              disabled={pending || disabled}
               onChange={(event) => update('title', event.target.value)}
             />
             <Select
               label="Responsibility"
               value={draft.responsibilityArea}
-              disabled={pending}
+              disabled={pending || disabled}
               onChange={(event) => update(
                 'responsibilityArea',
                 event.target.value as LegacyMigrationDraft['responsibilityArea'],
@@ -182,7 +185,7 @@ export default function LegacyContactedMigrationForm({
               label="Due in Auckland"
               type="datetime-local"
               value={draft.dueAt}
-              disabled={pending}
+              disabled={pending || disabled}
               onChange={(event) => update('dueAt', event.target.value)}
             />
           </>
@@ -193,7 +196,7 @@ export default function LegacyContactedMigrationForm({
             label="Wake-up time in Auckland"
             type="datetime-local"
             value={draft.waitingUntil}
-            disabled={pending}
+            disabled={pending || disabled}
             onChange={(event) => update('waitingUntil', event.target.value)}
           />
         ) : null}
@@ -202,7 +205,7 @@ export default function LegacyContactedMigrationForm({
           <Select
             label="Closed outcome"
             value={draft.closedOutcome}
-            disabled={pending}
+            disabled={pending || disabled}
             onChange={(event) => update(
               'closedOutcome',
               event.target.value as LegacyMigrationDraft['closedOutcome'],
@@ -218,7 +221,7 @@ export default function LegacyContactedMigrationForm({
           label="Why this is correct"
           value={draft.reason}
           maxLength={1000}
-          disabled={pending}
+          disabled={pending || disabled}
           onChange={(event) => update('reason', event.target.value)}
         />
       </div>
@@ -226,7 +229,7 @@ export default function LegacyContactedMigrationForm({
       <Checkbox
         label="I reviewed the evidence and this one-project decision is correct."
         checked={reviewConfirmed}
-        disabled={pending}
+        disabled={pending || disabled}
         onChange={(event) => setReviewConfirmed(event.target.checked)}
       />
 
@@ -236,7 +239,7 @@ export default function LegacyContactedMigrationForm({
         <Button variant="tertiary" disabled={pending} onClick={onCancel}>Cancel</Button>
         <Button
           loading={pending}
-          disabled={!reviewConfirmed}
+          disabled={disabled || !reviewConfirmed}
           onClick={() => void submit()}
         >
           Confirm reviewed migration

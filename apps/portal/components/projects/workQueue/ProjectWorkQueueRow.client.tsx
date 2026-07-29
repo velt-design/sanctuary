@@ -41,12 +41,16 @@ export default function ProjectWorkQueueRow({
   entry,
   host,
   staff,
+  mutationsEnabled,
+  reassignmentEnabled,
 }: {
   entry: WorkQueueEntryView;
   host: string;
   staff: ProjectCommandStaffSummary[];
+  mutationsEnabled: boolean;
+  reassignmentEnabled: boolean;
 }) {
-  const commands = useWorkQueueItemCommands({ entry, host });
+  const commands = useWorkQueueItemCommands({ entry, host, mutationsEnabled });
   const sentCommand = sentConfirmationCommand(entry);
   const replyCommand = replyConfirmationCommand(entry);
   const manualCompletable = isManualCompletable(entry);
@@ -92,7 +96,7 @@ export default function ProjectWorkQueueRow({
           {sentCommand ? (
             <Button
               size="small"
-              disabled={primaryBusy}
+              disabled={primaryBusy || !mutationsEnabled}
               loading={commands.pendingAction === 'email-sent'}
               onClick={() => void commands.confirmSent(sentCommand)}
             >
@@ -101,7 +105,7 @@ export default function ProjectWorkQueueRow({
           ) : manualCompletable ? (
             <Button
               size="small"
-              disabled={primaryBusy}
+              disabled={primaryBusy || !mutationsEnabled}
               loading={commands.pendingAction === 'complete'}
               onClick={() => void commands.complete()}
             >
@@ -114,7 +118,7 @@ export default function ProjectWorkQueueRow({
             <Button
               size="small"
               variant="secondary"
-              disabled={primaryBusy}
+              disabled={primaryBusy || !mutationsEnabled}
               loading={commands.pendingAction === 'customer-reply'}
               onClick={() => void commands.confirmReply(replyCommand)}
             >
@@ -125,7 +129,13 @@ export default function ProjectWorkQueueRow({
       </div>
 
       {manageable ? (
-        <WorkQueueRowControls entry={entry} staff={staff} commands={commands} />
+        <WorkQueueRowControls
+          entry={entry}
+          staff={staff}
+          commands={commands}
+          mutationsEnabled={mutationsEnabled}
+          reassignmentEnabled={reassignmentEnabled}
+        />
       ) : null}
       {isConfirmationReview
         && entry.repairSignalId
@@ -135,6 +145,7 @@ export default function ProjectWorkQueueRow({
           repairSignalId={entry.repairSignalId}
           expectedSignalRowVersion={entry.repairSignalRowVersion}
           host={host}
+          disabled={!mutationsEnabled}
         />
       ) : null}
 

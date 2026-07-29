@@ -17,6 +17,7 @@ import {
   Select,
 } from '@/components/ui/foundation';
 import { ApiError } from '@/lib/repo/apiClient';
+import { isProjectWorkUnavailableError } from '@/lib/projects/workItems/client';
 import { fetchLegacyContactedReview } from '@/lib/projects/workItems/legacyTriage/client';
 import type {
   LegacyContactedCursor,
@@ -24,6 +25,7 @@ import type {
   LegacyContactedScope,
 } from '@/lib/projects/workItems/legacyTriage/types';
 import { qk } from '@/lib/queries/keys';
+import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import {
   supabaseHostFromUrl,
   supabaseRuntimeUrl,
@@ -70,13 +72,18 @@ export default function LegacyContactedReviewClient() {
     queryFn: () => fetchLegacyContactedReview({ scope, cursor, limit: 50 }),
     staleTime: 30_000,
     retry: (failureCount, error) => (
-      !isAccessEndingError(error) && failureCount < 2
+      !isAccessEndingError(error)
+      && !isProjectWorkUnavailableError(error)
+      && failureCount < 2
     ),
   });
   const unavailable = isAccessEndingError(query.error);
-  const reviewData = unavailable ? null : query.data;
+  const notReady = isProjectWorkUnavailableError(query.error);
+  const reviewData = unavailable || notReady ? null : query.data;
   const state = unavailable
     ? 'unavailable'
+    : notReady
+      ? 'not-ready'
     : query.error
       ? reviewData
         ? 'refresh-failed'
@@ -94,13 +101,12 @@ export default function LegacyContactedReviewClient() {
     setMessage(null);
   };
 
-  const migrated = async (savedMessage: string) => {
+  const migrated = async (projectId: string, savedMessage: string) => {
     setMessage(savedMessage);
     setReviewingProjectId(null);
     await Promise.allSettled([
       query.refetch(),
-      queryClient.invalidateQueries({ queryKey: qk.projectWork.queue(host) }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
+      invalidateProjectWorkReads(queryClient, host, projectId),
     ]);
   };
 
@@ -124,27 +130,31 @@ export default function LegacyContactedReviewClient() {
         )}
       />
 
-      <AlertBanner tone="info" title="This is a controlled migration">
-        Recommendations are evidence only. Nothing is contacted, archived, deleted, or changed until an administrator confirms one reviewed project.
-      </AlertBanner>
+      {state !== 'not-ready' ? (
+        <>
+          <AlertBanner tone="info" title="This is a controlled migration">
+            Recommendations are evidence only. Nothing is contacted, archived, deleted, or changed until an administrator confirms one reviewed project.
+          </AlertBanner>
 
-      <section className={styles.toolbar} aria-label="Legacy review controls">
-        <Select
-          label="Projects shown"
-          value={scope}
-          onChange={(event) => changeScope(event.target.value as LegacyContactedScope)}
-        >
-          <option value="due">Due for review</option>
-          <option value="all">All unreviewed Contacted projects</option>
-        </Select>
-        {reviewData ? (
-          <dl className={styles.summary}>
-            <div><dt>Due</dt><dd>{reviewData.summary.due}</dd></div>
-            <div><dt>Unreviewed</dt><dd>{reviewData.summary.total}</dd></div>
-            <div><dt>Already archived</dt><dd>{reviewData.summary.archived}</dd></div>
-          </dl>
-        ) : null}
-      </section>
+          <section className={styles.toolbar} aria-label="Legacy review controls">
+            <Select
+              label="Projects shown"
+              value={scope}
+              onChange={(event) => changeScope(event.target.value as LegacyContactedScope)}
+            >
+              <option value="due">Due for review</option>
+              <option value="all">All unreviewed Contacted projects</option>
+            </Select>
+            {reviewData ? (
+              <dl className={styles.summary}>
+                <div><dt>Due</dt><dd>{reviewData.summary.due}</dd></div>
+                <div><dt>Unreviewed</dt><dd>{reviewData.summary.total}</dd></div>
+                <div><dt>Already archived</dt><dd>{reviewData.summary.archived}</dd></div>
+              </dl>
+            ) : null}
+          </section>
+        </>
+      ) : null}
 
       {message ? (
         <AlertBanner tone="info" title="Project review saved">{message}</AlertBanner>
@@ -166,6 +176,13 @@ export default function LegacyContactedReviewClient() {
 
       {state === 'pending' ? (
         <LoadingSkeleton rows={8} columns={4} label="Loading old Contacted projects" />
+      ) : state === 'not-ready' ? (
+        <DataStatePanel
+          state="unavailable"
+          title="Legacy review not ready"
+          description="Project Work V2 is not available in this environment. No old project has been changed."
+          onRetry={() => void query.refetch()}
+        />
       ) : state === 'error' || state === 'unavailable' ? (
         <DataStatePanel
           state={state === 'unavailable' ? 'unavailable' : 'error'}
@@ -216,6 +233,7 @@ export default function LegacyContactedReviewClient() {
                       size="small"
                       variant={reviewing ? 'tertiary' : 'secondary'}
                       aria-expanded={reviewing}
+                      disabled={state !== 'fresh'}
                       onClick={() => {
                         setMessage(null);
                         setReviewingProjectId(reviewing ? null : project.projectId);
@@ -228,7 +246,8 @@ export default function LegacyContactedReviewClient() {
                     <LegacyContactedMigrationForm
                       project={project}
                       onCancel={() => setReviewingProjectId(null)}
-                      onSaved={(savedMessage) => void migrated(savedMessage)}
+                      onSaved={(savedMessage) => void migrated(project.projectId, savedMessage)}
+                      disabled={state !== 'fresh'}
                     />
                   ) : null}
                 </li>

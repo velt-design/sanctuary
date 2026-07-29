@@ -1365,6 +1365,15 @@ describe('Project Work Items V2 source contract', () => {
     expect(schemaCacheRepair).toContain(
       "conrelid = 'public.project_operational_states'::regclass",
     );
+    expect(schemaCacheRepair.match(/and conkey = array\[/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(schemaCacheRepair.match(/and confkey = array\[/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(schemaCacheRepair).toContain("and confdeltype = 'c'");
+    expect(schemaCacheRepair).toContain(
+      "conname = 'project_work_model_versions_project_id_fkey'",
+    );
+    expect(schemaCacheRepair).toContain(
+      "conname = 'project_operational_states_project_id_fkey'",
+    );
     expect(schemaCacheRepair).toMatch(
       /commit;\s*[\s\S]*notify pgrst, 'reload schema';\s*$/i,
     );

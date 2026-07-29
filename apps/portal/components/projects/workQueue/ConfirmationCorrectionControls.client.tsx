@@ -16,7 +16,7 @@ import {
   projectCommandIntent,
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
-import { qk } from '@/lib/queries/keys';
+import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import styles from './ConfirmationCorrectionControls.module.css';
 
 const CONFIRMATION_LABELS: Record<
@@ -96,16 +96,7 @@ export default function ConfirmationCorrectionControls({
           ? 'This correction was already recorded.'
           : 'Correction recorded. The project now requires an explicit work review.',
       );
-      await Promise.allSettled([
-        queryClient.invalidateQueries({
-          queryKey: qk.projects.commandCentre(host, projectId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: qk.projects.snapshot(host, projectId),
-        }),
-        queryClient.invalidateQueries({ queryKey: qk.projectWork.queue(host) }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
-      ]);
+      await invalidateProjectWorkReads(queryClient, host, projectId);
       onRefresh?.();
     } catch (caught) {
       setError(

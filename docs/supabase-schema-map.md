@@ -355,7 +355,7 @@ Primary read path:
 - Portal project snapshot, dashboard task, and automation helpers under `apps/portal/lib/projects`, `apps/portal/lib/dashboard`, and `apps/portal/lib/automation`.
 - Dashboard cached snapshot helper under `apps/portal/lib/dashboard/getDashboardSnapshotCached.ts`.
 - Dashboard data helpers under `apps/portal/lib/dashboard` read recent project-note activity and user-owned dashboard tasks.
-- The full staff Work Queue and Dashboard preview call `project_work_queue_v3()` through the auth-bound server repository, then compose canonical specialist candidates in `apps/portal/lib/projects/workItems/teamQueue.ts`.
+- The full staff Work Queue and Dashboard preview call `project_work_queue_v3()` through the auth-bound server repository, read V2 marker inventory and operational state through direct bounded owners, and then compose canonical specialist candidates in `apps/portal/lib/projects/workItems/teamQueue.ts`. They do not depend on embedded PostgREST project relationships, and missing or truncated authoritative inventory fails the complete queue read.
 - The admin legacy-review surface calls the stable Contacted classifier through an auth-bound admin route. The database read model returns project identity, bounded evidence, and the opaque optimistic fingerprint, not linked customer contact fields.
 
 Access rule:
@@ -380,8 +380,8 @@ Migration source:
 - `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into ordered truth and owns command-centre tables, RLS/grants/indexes/backfills/RPCs, and compatibility projection columns.
 - `20260721_000001_project_command_single_owner.sql` replaces the three-role owner contract with one named project owner, performs the deterministic legacy backfill, and replaces the owner command.
 - `20260729_000002_project_work_items_v2.sql` adds the model marker, state/work/confirmation/receipt/event/repair/calendar truth, semantic commands, initial V2 queue, one-way compatibility, and new-project-only initialization.
-- `20260729_000003_project_work_items_v2_schema_cache.sql` repairs the project relationships and requests the PostgREST schema reload after commit.
-- `20260729_000004_project_work_queue_and_legacy_triage.sql` adds the richer queue, append-only confirmation correction, admin-only no-contact-field Contacted classifier, and guarded one-project reviewed migration. It is forward-only and does not backfill or mutate the Contacted cohort when applied.
+- `20260729_000003_project_work_items_v2_schema_cache.sql` canonicalizes the named `project_work_model_versions.project_id -> projects.id ON DELETE CASCADE` and `project_operational_states.project_id -> projects.id ON DELETE CASCADE` foreign keys, removing conflicting same-relationship constraints, then requests the PostgREST schema reload after commit.
+- `20260729_000004_project_work_queue_and_legacy_triage.sql` adds the richer queue, append-only confirmation correction, admin-only no-contact-field Contacted classifier, and guarded one-project reviewed migration, then requests its PostgREST schema reload after commit. It is forward-only and does not backfill or mutate the Contacted cohort when applied.
 - If a supporting table becomes part of a new first-class workflow, add an ordered migration and update this map plus the owning feature doc.
 
 ## Verification

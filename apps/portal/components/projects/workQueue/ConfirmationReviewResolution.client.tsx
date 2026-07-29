@@ -13,7 +13,7 @@ import {
   projectCommandIntent,
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
-import { qk } from '@/lib/queries/keys';
+import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import styles from './ProjectWorkQueue.module.css';
 
 export default function ConfirmationReviewResolution({
@@ -21,11 +21,13 @@ export default function ConfirmationReviewResolution({
   repairSignalId,
   expectedSignalRowVersion,
   host,
+  disabled = false,
 }: {
   projectId: string;
   repairSignalId: string;
   expectedSignalRowVersion: number;
   host: string;
+  disabled?: boolean;
 }) {
   const { isAdmin } = usePortalSession();
   const queryClient = useQueryClient();
@@ -40,7 +42,7 @@ export default function ConfirmationReviewResolution({
 
   const submit = async () => {
     const reviewReason = reason.trim();
-    if (!reviewReason || pending) return;
+    if (!reviewReason || pending || disabled) return;
     const payload = {
       projectId,
       repairSignalId,
@@ -61,16 +63,7 @@ export default function ConfirmationReviewResolution({
       attempts.committed(intent);
       setCompleted(true);
       setConfirming(false);
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: qk.projectWork.queue(host) }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
-        queryClient.invalidateQueries({
-          queryKey: qk.projects.commandCentre(host, projectId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: qk.projects.snapshot(host, projectId),
-        }),
-      ]);
+      await invalidateProjectWorkReads(queryClient, host, projectId);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -103,7 +96,7 @@ export default function ConfirmationReviewResolution({
           label="What was checked"
           value={reason}
           maxLength={1000}
-          disabled={pending}
+          disabled={pending || disabled}
           onChange={(event) => {
             setReason(event.target.value);
             setConfirming(false);
@@ -117,7 +110,7 @@ export default function ConfirmationReviewResolution({
                 <Button
                   size="small"
                   variant="tertiary"
-                  disabled={pending}
+                  disabled={pending || disabled}
                   onClick={() => setConfirming(false)}
                 >
                   Cancel
@@ -125,6 +118,7 @@ export default function ConfirmationReviewResolution({
                 <Button
                   size="small"
                   loading={pending}
+                  disabled={disabled}
                   onClick={() => void submit()}
                 >
                   Confirm review complete
@@ -136,7 +130,7 @@ export default function ConfirmationReviewResolution({
           <Button
             size="small"
             variant="secondary"
-            disabled={!reason.trim()}
+            disabled={disabled || !reason.trim()}
             onClick={() => setConfirming(true)}
           >
             Mark review complete

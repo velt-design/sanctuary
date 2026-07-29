@@ -6,6 +6,7 @@ import {
   commandCentreQuoteDeliveryState,
   normalizeCommandCentreCommercialCandidates,
 } from '@/lib/projects/commandCentre/commercialSelection';
+import { fetchRowsByIdChunks } from '@/lib/list/listLimits';
 import { resolveCommandCentreSelection } from '@/lib/projects/commandCentre/resolve';
 import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
 import {
@@ -13,6 +14,7 @@ import {
   type ProjectWorkDomainActions,
 } from './domainActionAdapters';
 import { resolveProjectWorkEffectiveAssignee } from './effectiveAssignee';
+import { listProjectWorkModelV2Ids } from './modelBoundary';
 import type {
   ProjectWorkItemPriority,
   ProjectWorkItemSourceType,
@@ -26,12 +28,9 @@ const ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT = `
   name,
   pipeline_stage,
   ownerAssignment:project_owner_assignments(owner_key),
-  workModel:project_work_model_versions!inner(model_version),
-  operationalState:project_operational_states!inner(state),
   ${COMMAND_CENTRE_COMMERCIAL_RELATIONS_SELECT}
 `;
 
-const ACTIVE_PROJECT_PAGE_SIZE = 500;
 const QUEUE_GROUPS = new Set<ProjectWorkQueueGroup>([
   'overdue',
   'today',
@@ -255,30 +254,34 @@ function domainCandidateFromProjectRow(row: Row): ActiveProjectDomainCandidate |
 async function loadActiveProjectDomainCandidates(
   supabase: SupabaseClient,
 ): Promise<ActiveProjectDomainCandidate[]> {
-  const candidates: ActiveProjectDomainCandidate[] = [];
-  for (let from = 0; ; from += ACTIVE_PROJECT_PAGE_SIZE) {
-    const result = await supabase
+  const v2ProjectIds = [...await listProjectWorkModelV2Ids(supabase)].sort();
+  if (!v2ProjectIds.length) return [];
+
+  const activeStateRows = await fetchRowsByIdChunks<Row>(
+    v2ProjectIds,
+    (projectIds) => supabase
+      .from('project_operational_states')
+      .select('project_id,state')
+      .in('project_id', projectIds)
+      .eq('state', 'ACTIVE'),
+  );
+  const activeProjectIds = activeStateRows
+    .map((row) => text(row.project_id))
+    .filter((projectId): projectId is string => projectId !== null);
+  if (!activeProjectIds.length) return [];
+
+  const projectRows = await fetchRowsByIdChunks<Row>(
+    activeProjectIds,
+    (projectIds) => supabase
       .from('projects')
       .select(ACTIVE_V2_COMMERCIAL_PROJECTS_SELECT)
+      .in('id', projectIds)
       .is('archived_at', null)
-      .eq('workModel.model_version', 2)
-      .eq('operationalState.state', 'ACTIVE')
-      .order('id', { ascending: true })
-      .range(from, from + ACTIVE_PROJECT_PAGE_SIZE - 1);
-    if (result.error) {
-      throw Object.assign(
-        new Error(result.error.message ?? 'Failed to load active V2 commercial actions'),
-        result.error,
-      );
-    }
-    const page = rows(result.data);
-    for (const row of page) {
-      const candidate = domainCandidateFromProjectRow(row);
-      if (candidate) candidates.push(candidate);
-    }
-    if (page.length < ACTIVE_PROJECT_PAGE_SIZE) break;
-  }
-  return candidates;
+      .order('id', { ascending: true }),
+  );
+  return projectRows
+    .map(domainCandidateFromProjectRow)
+    .filter((candidate): candidate is ActiveProjectDomainCandidate => candidate !== null);
 }
 
 function entryComparison(left: ProjectWorkQueueEntry, right: ProjectWorkQueueEntry): number {

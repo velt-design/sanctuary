@@ -3,6 +3,7 @@ import {
   buildProjectSnapshotPlaceholder,
   getProjectSnapshotPlaceholderFromCaches,
   invalidateProjectReadCaches,
+  invalidateProjectsIndexCaches,
   patchContactListItem,
   patchProjectListItem,
   removeProjectListItem,
@@ -55,11 +56,30 @@ describe('projectCache helpers', () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.summary('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.snapshot('host', 'proj_123') });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.commandCentre('host', 'proj_123') });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projectWork.queue('host') });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.dashboard.dataPrefix() });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.detail('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.listPrefix('host') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.quotes.versionsByProject('host', 'proj_123') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.estimates.metaByProject('host', 'proj_123') });
+  });
+
+  it('invalidates the queue and dashboard after project index membership changes', async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+
+    await invalidateProjectsIndexCaches(
+      { invalidateQueries } as any,
+      'host',
+    );
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: qk.projectWork.queue('host'),
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: qk.dashboard.dataPrefix(),
+    });
   });
 
   it.each([

@@ -15,10 +15,14 @@ export default function WorkQueueRowControls({
   entry,
   staff,
   commands,
+  mutationsEnabled,
+  reassignmentEnabled,
 }: {
   entry: WorkQueueEntryView;
   staff: ProjectCommandStaffSummary[];
   commands: ReturnType<typeof useWorkQueueItemCommands>;
+  mutationsEnabled: boolean;
+  reassignmentEnabled: boolean;
 }) {
   const [dueAt, setDueAt] = useState(() => toLocalDateTimeValue(entry.dueAt));
   const [rescheduleReason, setRescheduleReason] = useState('');
@@ -32,7 +36,7 @@ export default function WorkQueueRowControls({
     setAssignee(entry.effectiveAssignee.kind === 'staff' ? entry.effectiveAssignee.userId : '');
   }, [entry.effectiveAssignee]);
 
-  const disabled = Boolean(commands.pendingAction);
+  const disabled = Boolean(commands.pendingAction) || !mutationsEnabled;
   const isBlocked = entry.group === 'blocked' || Boolean(entry.blockedReason);
 
   return (
@@ -43,7 +47,7 @@ export default function WorkQueueRowControls({
           <Select
             label="Assigned staff"
             value={assignee}
-            disabled={disabled}
+            disabled={disabled || !reassignmentEnabled}
             onChange={(event) => setAssignee(event.target.value)}
           >
             <option value="">Use project owner</option>
@@ -54,7 +58,7 @@ export default function WorkQueueRowControls({
           <Button
             size="small"
             variant="secondary"
-            disabled={disabled}
+            disabled={disabled || !reassignmentEnabled}
             loading={commands.pendingAction === 'reassign'}
             onClick={() => void commands.reassign(assignee || null)}
           >

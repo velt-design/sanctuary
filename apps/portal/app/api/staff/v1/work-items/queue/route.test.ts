@@ -107,6 +107,36 @@ describe("GET /api/staff/v1/work-items/queue", () => {
     });
   });
 
+  it.each([
+    {
+      code: "PGRST200",
+      message:
+        "Could not find a relationship between 'projects' and 'project_work_model_versions' in the schema cache",
+    },
+    {
+      code: "PGRST205",
+      message:
+        "Could not find the table 'public.project_work_model_versions' in the schema cache",
+    },
+    {
+      code: "PROJECT_WORK_INVENTORY_INCOMPLETE",
+      message: "Project Work V2 inventory exceeded the authoritative read limit",
+    },
+  ])("maps unavailable queue error $code to the stable unavailable contract", async (failure) => {
+    mocks.getProjectWorkQueue.mockRejectedValueOnce(
+      Object.assign(new Error(failure.message), failure),
+    );
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-portal-request-id")).toBe("req-team-queue");
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORK_ITEMS_UNAVAILABLE",
+    });
+  });
+
   it("maps unexpected database failures to the shared command error contract", async () => {
     mocks.getProjectWorkQueue.mockRejectedValueOnce(
       new Error("internal database detail"),

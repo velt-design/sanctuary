@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type {
-  ProjectCommandCentreResponse,
-  ProjectCommandOwnerSummary,
-} from '@/lib/projects/commandCentre/types';
+import type { ProjectCommandOwnerSummary } from '@/lib/projects/commandCentre/types';
 import type { ProjectCommandMutationResponse } from '@/lib/projects/commandCentre/client';
 import {
   runProjectConfirmationCommand,
@@ -26,6 +23,10 @@ import {
 } from '@/lib/projects/workItems/stableCommandAttempt';
 import { parseAucklandDateTimeLocal } from '@/lib/time/aucklandDateTime';
 import { qk } from '@/lib/queries/keys';
+import {
+  invalidateProjectWorkReads,
+  patchProjectWorkProjectionCaches,
+} from '@/lib/queries/projectWorkCache';
 import {
   ActionPanel,
   AlertBanner,
@@ -140,19 +141,14 @@ export default function ProjectWorkCommandCard({
       const response = await operation();
       if (response.projectWork) {
         setProjection(response.projectWork);
-        queryClient.setQueryData<ProjectCommandCentreResponse>(
-          qk.projects.commandCentre(host, projectId),
-          (current) => current?.workModel === 'v2'
-            ? { ...current, projectWork: response.projectWork! }
-            : current,
+        patchProjectWorkProjectionCaches(
+          queryClient,
+          host,
+          projectId,
+          response.projectWork,
         );
       }
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: qk.projects.commandCentre(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
-      ]);
+      await invalidateProjectWorkReads(queryClient, host, projectId);
       if (response.refreshRequired) onRefresh();
       setMessage(response.command.replayed ? 'Already saved on the server.' : 'Saved on the server.');
       return true;
@@ -186,10 +182,7 @@ export default function ProjectWorkCommandCard({
           response.commandCentre,
         );
       }
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: qk.projects.commandCentre(host, projectId) }),
-      ]);
+      await invalidateProjectWorkReads(queryClient, host, projectId);
       if (response.refreshRequired) onRefresh();
       setMessage(response.command.replayed ? 'Already saved on the server.' : 'Saved on the server.');
       return true;
@@ -479,7 +472,7 @@ export default function ProjectWorkCommandCard({
                       label="Why the project is staying Active"
                       value={manualReason}
                       maxLength={500}
-                      disabled={pending}
+                      disabled={pending || stale}
                       onChange={(event) => setManualReason(event.target.value)}
                     />
                   ) : null}
@@ -487,13 +480,13 @@ export default function ProjectWorkCommandCard({
                     label="Work to do"
                     value={manualTitle}
                     maxLength={160}
-                    disabled={pending}
+                    disabled={pending || stale}
                     onChange={(event) => setManualTitle(event.target.value)}
                   />
                   <Select
                     label="Responsibility"
                     value={manualArea}
-                    disabled={pending}
+                    disabled={pending || stale}
                     onChange={(event) => setManualArea(event.target.value as ProjectWorkResponsibilityArea)}
                   >
                     {RESPONSIBILITY_AREAS.map((area) => <option key={area.value} value={area.value}>{area.label}</option>)}
@@ -502,10 +495,10 @@ export default function ProjectWorkCommandCard({
                     label="Due in Auckland"
                     type="datetime-local"
                     value={manualDueAt}
-                    disabled={pending}
+                    disabled={pending || stale}
                     onChange={(event) => setManualDueAt(event.target.value)}
                   />
-                  <Button loading={pending} onClick={() => void createManualItem()}>
+                  <Button disabled={stale} loading={pending} onClick={() => void createManualItem()}>
                     {primaryItem && isDecisionReview(primaryItem)
                       ? 'Replace review with work'
                       : 'Create work'}
@@ -520,7 +513,7 @@ export default function ProjectWorkCommandCard({
                     <Select
                       label="State"
                       value={stateChoice}
-                      disabled={pending}
+                      disabled={pending || stale}
                       onChange={(event) => setStateChoice(event.target.value as ProjectOperationalState)}
                     >
                       <option value="ACTIVE">Active</option>
@@ -532,7 +525,7 @@ export default function ProjectWorkCommandCard({
                         label="Wake-up time in Auckland"
                         type="datetime-local"
                         value={waitingUntil}
-                        disabled={pending}
+                        disabled={pending || stale}
                         onChange={(event) => setWaitingUntil(event.target.value)}
                       />
                     ) : null}
@@ -540,7 +533,7 @@ export default function ProjectWorkCommandCard({
                       <Select
                         label="Outcome"
                         value={closedOutcome}
-                        disabled={pending}
+                        disabled={pending || stale}
                         onChange={(event) => setClosedOutcome(event.target.value as ProjectClosedOutcome)}
                       >
                         {CLOSED_OUTCOMES.map((outcome) => (
@@ -552,7 +545,7 @@ export default function ProjectWorkCommandCard({
                       label={stateChoice === 'ACTIVE' ? 'Reason (optional)' : 'Reason'}
                       value={stateReason}
                       maxLength={500}
-                      disabled={pending}
+                      disabled={pending || stale}
                       onChange={(event) => setStateReason(event.target.value)}
                     />
                     {stateChoice === 'CLOSED' ? (
@@ -560,11 +553,11 @@ export default function ProjectWorkCommandCard({
                         label="Outcome note (optional)"
                         value={closedNote}
                         maxLength={1000}
-                        disabled={pending}
+                        disabled={pending || stale}
                         onChange={(event) => setClosedNote(event.target.value)}
                       />
                     ) : null}
-                    <Button loading={pending} onClick={() => void updateState()}>Save state</Button>
+                    <Button disabled={stale} loading={pending} onClick={() => void updateState()}>Save state</Button>
                   </div>
                 </details>
               ) : null}

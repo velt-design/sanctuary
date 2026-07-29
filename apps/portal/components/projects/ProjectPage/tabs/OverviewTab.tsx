@@ -1,9 +1,10 @@
 'use client';
 
 import { lazy, Suspense, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
 import { projectCommandCentreQueryOptions } from '@/lib/queries/projects';
+import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import { ApiError } from '@/lib/repo/apiClient';
 import ProjectTasksSidebarClient from '../ProjectTasksSidebar.client';
 import ProjectWorkItemsSidebar from '../ProjectWorkItemsSidebar.client';
@@ -36,22 +37,37 @@ export default function OverviewTab({
   host: string;
   onAccessEnding?: (status: number) => void;
 }) {
+  const queryClient = useQueryClient();
   const commandQuery = useQuery(projectCommandCentreQueryOptions(host, snapshot.project.id));
   const accessEndingStatus = commandQuery.error instanceof ApiError
     && [401, 403, 404].includes(commandQuery.error.status)
     ? commandQuery.error.status
     : null;
+  const workModelMismatch = accessEndingStatus === null
+    && Boolean(
+      commandQuery.data
+      && commandQuery.data.workModel !== snapshot.workModel,
+    );
   const commandCentreState = accessEndingStatus !== null
     ? 'unavailable'
-    : commandQuery.data && commandQuery.isError
-      ? 'stale'
-      : commandQuery.data && commandQuery.isFetching
-        ? 'refreshing'
-        : commandQuery.data
-          ? 'ready'
-          : commandQuery.isPending
-            ? 'pending'
-            : 'failed';
+    : workModelMismatch
+      ? 'model-mismatch'
+      : commandQuery.data && commandQuery.isError
+        ? 'stale'
+        : commandQuery.data && commandQuery.isFetching
+          ? 'refreshing'
+          : commandQuery.data
+            ? 'ready'
+            : commandQuery.isPending
+              ? 'pending'
+              : 'failed';
+  const refreshProjectWorkModel = () => {
+    void invalidateProjectWorkReads(
+      queryClient,
+      host,
+      snapshot.project.id,
+    );
+  };
 
   useEffect(() => {
     if (accessEndingStatus !== null) onAccessEnding?.(accessEndingStatus);
@@ -59,7 +75,15 @@ export default function OverviewTab({
 
   return (
     <div className={styles.container} data-project-overview="true">
-      {commandQuery.data && commandQuery.isError ? (
+      {workModelMismatch ? (
+        <AlertBanner
+          tone="warning"
+          title="Project work is updating"
+          action={<Button variant="secondary" onClick={refreshProjectWorkModel}>Retry</Button>}
+        >
+          Project work is paused until the latest server reads agree.
+        </AlertBanner>
+      ) : commandQuery.data && commandQuery.isError ? (
         <AlertBanner
           tone="warning"
           title="Showing saved commercial state"
@@ -82,27 +106,36 @@ export default function OverviewTab({
             <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading commercial summary" /></Card>}>
               <ProjectCurrentDesignCommercialCard data={commandQuery.data.currentDesign} />
             </Suspense>
-            <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project command" /></Card>}>
-              {commandQuery.data.workModel === 'v2' ? (
-                <ProjectWorkCommandCard
-                  projectId={snapshot.project.id}
-                  host={host}
-                  projectWork={commandQuery.data.projectWork}
-                  owner={commandQuery.data.owner}
-                  pipelineStage={snapshot.project.stage}
-                  stale={commandQuery.isError}
-                  onRefresh={() => void commandQuery.refetch()}
-                />
-              ) : (
-                <ProjectPrimaryActionCard
-                  projectId={snapshot.project.id}
-                  host={host}
-                  operations={commandQuery.data.operations}
-                  stale={commandQuery.isError}
-                  onRefresh={() => void commandQuery.refetch()}
-                />
-              )}
-            </Suspense>
+            {workModelMismatch ? (
+              <DataStatePanel
+                state="error"
+                title="Project work is updating"
+                description="No project-work action is available until the latest server reads agree."
+                onRetry={refreshProjectWorkModel}
+              />
+            ) : (
+              <Suspense fallback={<Card padding="compact"><LoadingSkeleton rows={4} columns={2} label="Loading project command" /></Card>}>
+                {commandQuery.data.workModel === 'v2' ? (
+                  <ProjectWorkCommandCard
+                    projectId={snapshot.project.id}
+                    host={host}
+                    projectWork={commandQuery.data.projectWork}
+                    owner={commandQuery.data.owner}
+                    pipelineStage={snapshot.project.stage}
+                    stale={commandCentreState !== 'ready'}
+                    onRefresh={() => void commandQuery.refetch()}
+                  />
+                ) : (
+                  <ProjectPrimaryActionCard
+                    projectId={snapshot.project.id}
+                    host={host}
+                    operations={commandQuery.data.operations}
+                    stale={commandCentreState !== 'ready'}
+                    onRefresh={() => void commandQuery.refetch()}
+                  />
+                )}
+              </Suspense>
+            )}
           </>
         ) : commandQuery.isPending ? (
           <Card padding="compact"><LoadingSkeleton rows={5} columns={3} label="Loading design, commercial state and project command" /></Card>
@@ -124,11 +157,21 @@ export default function OverviewTab({
             <ProjectNotesPanel projectId={snapshot.project.id} initialNotes={snapshot.notes} />
           </Card>
           <Card title="Tasks" eyebrow="Current stage" padding="none" data-overview-column="tasks">
-            {snapshot.workModel === 'v2' && snapshot.projectWork ? (
+            {workModelMismatch ? (
+              <DataStatePanel
+                state="error"
+                title="Tasks are updating"
+                description="Task controls are paused until the latest server reads agree."
+                onRetry={refreshProjectWorkModel}
+              />
+            ) : snapshot.workModel === 'v2' && snapshot.projectWork ? (
               <ProjectWorkItemsSidebar
                 projectId={snapshot.project.id}
-                projectWork={snapshot.projectWork}
+                projectWork={commandQuery.data?.workModel === 'v2'
+                  ? commandQuery.data.projectWork
+                  : snapshot.projectWork}
                 host={host}
+                stale={snapshotState !== 'fresh' || commandCentreState !== 'ready'}
               />
             ) : (
               <ProjectTasksSidebarClient projectId={snapshot.project.id} tasks={snapshot.tasks} />

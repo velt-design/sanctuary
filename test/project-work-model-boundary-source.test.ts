@@ -8,6 +8,7 @@ const consumers = [
   'apps/portal/lib/projects/getProjectPageSnapshot.ts',
   'apps/portal/lib/projects/commandCentre/getProjectCommandCentre.ts',
   'apps/portal/lib/projects/commandCentre/getProjectCommandExceptions.ts',
+  'apps/portal/lib/projects/workItems/teamQueue.ts',
   'apps/portal/lib/scheduling/scheduleV2Server.ts',
   'apps/portal/lib/runningJobs/server.ts',
 ];
@@ -18,6 +19,6 @@ describe('Project Work V2 model boundary', () => {
 
     expect(source).not.toContain('workModel:project_work_model_versions');
     expect(source).not.toContain('operationalState:project_operational_states');
-    expect(source).toMatch(/isProjectWorkModelV2|getProjectWorkModelV2Ids/);
+    expect(source).toMatch(/isProjectWorkModelV2|getProjectWorkModelV2Ids|listProjectWorkModelV2Ids/);
   });
 });

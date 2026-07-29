@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { fetchRowsByIdChunks } from '../../list/listLimits';
+import { fetchAllPages, fetchRowsByIdChunks } from '../../list/listLimits';
 
 type ProjectWorkModelVersionRow = {
   project_id: string;
@@ -44,6 +44,34 @@ function reportPreRolloutCompatibility(error: unknown) {
   );
 }
 
+function v2IdsFromRows(rows: ProjectWorkModelVersionRow[]): Set<string> {
+  return new Set(
+    rows
+      .filter((row) => row.model_version === 2 && typeof row.project_id === 'string')
+      .map((row) => row.project_id),
+  );
+}
+
+export async function listProjectWorkModelV2Ids(
+  client: SupabaseClient,
+): Promise<Set<string>> {
+  const result = await fetchAllPages<ProjectWorkModelVersionRow>(
+    (from, to) => client
+      .from('project_work_model_versions')
+      .select('project_id,model_version')
+      .eq('model_version', 2)
+      .order('project_id', { ascending: true })
+      .range(from, to),
+  );
+  if (result.truncated) {
+    throw Object.assign(
+      new Error('Project Work V2 inventory exceeded the authoritative read limit'),
+      { code: 'PROJECT_WORK_INVENTORY_INCOMPLETE' },
+    );
+  }
+  return v2IdsFromRows(result.rows);
+}
+
 export async function getProjectWorkModelV2Ids(
   client: SupabaseClient,
   projectIds: readonly string[],
@@ -75,11 +103,7 @@ export async function getProjectWorkModelV2Ids(
     reportPreRolloutCompatibility(error);
     return new Set();
   }
-  return new Set(
-    rows
-      .filter((row) => row.model_version === 2 && typeof row.project_id === 'string')
-      .map((row) => row.project_id),
-  );
+  return v2IdsFromRows(rows);
 }
 
 export async function isProjectWorkModelV2(

@@ -9,6 +9,7 @@ export const qk = {
     directory: (host: string) => ['staff', host, 'directory'] as const,
   },
   dashboard: {
+    dataPrefix: () => ['dashboard', 'data'] as const,
     data: (queueMode: QueueMode) => ['dashboard', 'data', queueMode] as const,
   },
   contacts: {

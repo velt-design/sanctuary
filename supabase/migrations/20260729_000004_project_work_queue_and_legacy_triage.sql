@@ -1579,6 +1579,8 @@ grant execute on function public.project_work_migrate_legacy_contacted_v1(
   uuid,uuid,timestamptz,text,text,text,text,text,timestamptz,timestamptz,text
 ) to authenticated;
 
-select pg_notify('pgrst', 'reload schema');
-
 commit;
+
+-- Hosted PostgREST must see committed functions and relationships before it
+-- is asked to reload. Keep the notification outside the DDL transaction.
+notify pgrst, 'reload schema';

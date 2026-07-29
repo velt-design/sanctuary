@@ -632,14 +632,36 @@ Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\
 
 ## Project Work Items V2 Gate
 
+Before authenticated staging QA, run the anonymous read-only readiness
+preflight against an exact, positively declared staging project:
+
+```powershell
+$env:PORTAL_PROJECT_WORK_V2_READINESS_TARGET='staging'
+$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='<exact-20-character-staging-ref>'
+npm run portal:project-work-v2-readiness
+```
+
+The preflight performs no writes and uses no service-role key. It distinguishes
+missing foundation (`000002`), missing project relationships/schema-cache
+repair (`000003`), and missing Work Queue/review RPCs (`000004`), and fails if
+any checked contract unexpectedly permits anonymous access. Production,
+local, ambiguous, or ref/URL-mismatched targets are rejected before a request.
+This proves only deployment/read-boundary readiness; it does not replace the
+authenticated integrity smoke or authorise migration application.
+
 Run the executable migration contract:
 
 ```bash
-npx vitest run test/project-work-items-v2-migration.test.ts
-npx vitest run test/project-work-items-v2-work-queue-migration.test.ts
+npm run test:portal:project-work
 ```
 
-The foundation test applies `20260729_000002_project_work_items_v2.sql` in PGlite, exercises calendar/cadence/state/queue/privilege contracts, and replays the migration. The focused forward test applies `20260729_000004_project_work_queue_and_legacy_triage.sql` after the foundation and covers the richer queue, admin-only append-only confirmation correction, exact-signal/version review resolution, read-only Contacted classification, deterministic related-evidence fingerprints, guarded one-project migration, replay, stale project/evidence rejection before V2 writes, internal-helper grants, and no automatic cadence seed. A local pass is not evidence that staging or production has been migrated.
+This is the named non-network Project Work gate. It covers the V2 domain,
+new-project boundary, staff/admin routes, Work Queue/Overview/Dashboard
+presenters, static source boundaries, all executable migration contracts, and
+the readiness checker's unit tests. It does not execute
+`portal:project-work-v2-readiness` or contact Supabase.
+
+The foundation test applies `20260729_000002_project_work_items_v2.sql` in PGlite, exercises calendar/cadence/state/queue/privilege contracts, and replays the migration. The schema-cache repair test proves canonical named cascade relationships, replacement of conflicting constraints, safe replay, and missing-prerequisite refusal. The focused forward test applies `20260729_000004_project_work_queue_and_legacy_triage.sql` after the foundation and covers the richer queue, admin-only append-only confirmation correction, exact-signal/version review resolution, read-only Contacted classification, deterministic related-evidence fingerprints, guarded one-project migration, replay, stale project/evidence rejection before V2 writes, internal-helper grants, and no automatic cadence seed. A local pass is not evidence that staging or production has been migrated.
 
 Run the focused Schedule, Running Jobs, and quote handoffs:
 

@@ -11,7 +11,7 @@ import {
   projectCommandIntent,
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
-import { qk } from '@/lib/queries/keys';
+import { invalidateProjectWorkReads } from '@/lib/queries/projectWorkCache';
 import type { WorkQueueEntryView } from './workQueuePresentation';
 
 type WorkItemCommand = 'COMPLETE' | 'RESCHEDULE' | 'REASSIGN' | 'BLOCK' | 'UNBLOCK';
@@ -19,9 +19,11 @@ type WorkItemCommand = 'COMPLETE' | 'RESCHEDULE' | 'REASSIGN' | 'BLOCK' | 'UNBLO
 export function useWorkQueueItemCommands({
   entry,
   host,
+  mutationsEnabled,
 }: {
   entry: WorkQueueEntryView;
   host: string;
+  mutationsEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
   const attempts = useRef(new StableCommandAttempt()).current;
@@ -30,13 +32,7 @@ export function useWorkQueueItemCommands({
   const [error, setError] = useState<string | null>(null);
 
   const refreshReads = async () => {
-    await Promise.allSettled([
-      queryClient.invalidateQueries({ queryKey: qk.projectWork.queue(host) }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
-      queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, entry.projectId) }),
-      queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, entry.projectId) }),
-      queryClient.invalidateQueries({ queryKey: qk.projects.commandCentre(host, entry.projectId) }),
-    ]);
+    await invalidateProjectWorkReads(queryClient, host, entry.projectId);
   };
 
   const commit = async (
@@ -45,7 +41,7 @@ export function useWorkQueueItemCommands({
     payload: Record<string, unknown>,
     operation: (commandId: string) => Promise<ProjectWorkMutationResponse>,
   ) => {
-    if (pendingAction) return false;
+    if (pendingAction || !mutationsEnabled) return false;
     const intent = projectCommandIntent(command, payload);
     setPendingAction(label);
     setMessage(null);

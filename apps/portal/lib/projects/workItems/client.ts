@@ -1,4 +1,4 @@
-import { apiJson } from '@/lib/repo/apiClient';
+import { ApiError, apiJson } from '@/lib/repo/apiClient';
 import type { ProjectWorkProjection } from './types';
 
 export type ProjectWorkMutationResponse = {
@@ -11,6 +11,18 @@ export type ProjectWorkMutationResponse = {
   projectWork?: ProjectWorkProjection;
   refreshRequired?: boolean;
 };
+
+export function isProjectWorkUnavailableError(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 503) return false;
+  const body = error.body;
+  return Boolean(
+    body
+    && typeof body === 'object'
+    && !Array.isArray(body)
+    && 'code' in body
+    && (body as { code?: unknown }).code === 'WORK_ITEMS_UNAVAILABLE',
+  );
+}
 
 export function runProjectWorkItemCommand(
   projectId: string,

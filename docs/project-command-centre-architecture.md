@@ -121,6 +121,7 @@ The Overview composes:
 - Header/project identity from the existing project snapshot/summary.
 - Customer/site/reference context from the existing project snapshot/summary.
 - Current design and commercial facts from the dedicated command-centre response.
+- Both V2 work regions from the command-centre response's single Project Work projection when present; the snapshot is not a second V2 work authority.
 - Notes and stage tasks only after the full project snapshot is ready.
 
 Placeholder task/note arrays never produce a false empty state.
@@ -164,12 +165,14 @@ No raw tokens, token hashes, internal true cost, margin, service-role data, or o
 
 The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
 
+Accepted Project Work commands use `projectWorkCache.ts` to patch the matching command-centre, snapshot, and summary projection and invalidate project, Work Queue, and Dashboard reads together. Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree on `legacy` versus `v2`; cached background-refresh, refresh-failed, or model-mismatch facts stay visible without either legacy or V2 mutation controls.
+
 Overview states are explicit:
 
 - Pending without data: updating current design and commercial state.
 - Fresh: current server response.
-- Background refresh: cached facts remain visible with an updating marker.
-- Refresh failure with cached data: last known facts remain visible with Retry.
+- Background refresh: cached facts remain visible with an updating marker and Project Work commands paused.
+- Refresh failure with cached data: last known facts remain visible with Retry and Project Work commands paused.
 - Initial network/server failure: failure state with Retry, never a fake no-design state.
 - `401`/`403`/`404`: no cached commercial or project data is rendered.
 

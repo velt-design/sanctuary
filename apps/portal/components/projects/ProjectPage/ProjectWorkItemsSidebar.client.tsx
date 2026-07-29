@@ -12,7 +12,10 @@ import {
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
 import { projectOwnerOption } from '@/lib/projects/commandCentre/projectOwners';
-import { qk } from '@/lib/queries/keys';
+import {
+  invalidateProjectWorkReads,
+  patchProjectWorkProjectionCaches,
+} from '@/lib/queries/projectWorkCache';
 import {
   AlertBanner,
   Badge,
@@ -58,10 +61,12 @@ export default function ProjectWorkItemsSidebar({
   projectId,
   projectWork,
   host,
+  stale,
 }: {
   projectId: string;
   projectWork: ProjectWorkProjection;
   host: string;
+  stale: boolean;
 }) {
   const queryClient = useQueryClient();
   const commandAttempts = useRef(new StableCommandAttempt()).current;
@@ -76,7 +81,7 @@ export default function ProjectWorkItemsSidebar({
     item: ProjectWorkItem,
     action: 'sent' | 'reply' | 'complete',
   ) => {
-    if (pendingId) return;
+    if (pendingId || stale) return;
     setPendingId(item.id);
     setMessage(null);
     setError(null);
@@ -111,13 +116,16 @@ export default function ProjectWorkItemsSidebar({
             ...payload,
           });
       commandAttempts.committed(intent);
-      if (response.projectWork) setProjection(response.projectWork);
-      await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: qk.projects.commandCentre(host, projectId) }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
-      ]);
+      if (response.projectWork) {
+        setProjection(response.projectWork);
+        patchProjectWorkProjectionCaches(
+          queryClient,
+          host,
+          projectId,
+          response.projectWork,
+        );
+      }
+      await invalidateProjectWorkReads(queryClient, host, projectId);
       setMessage(response.command.replayed ? 'Already saved on the server.' : 'Saved on the server.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The work item could not be saved.');
@@ -141,6 +149,11 @@ export default function ProjectWorkItemsSidebar({
 
       {message ? <AlertBanner tone="info" title="Project work updated">{message}</AlertBanner> : null}
       {error ? <AlertBanner tone="error" title="Project work not saved">{error}</AlertBanner> : null}
+      {stale ? (
+        <AlertBanner tone="warning" title="Work controls paused">
+          Refresh the Overview before changing project work.
+        </AlertBanner>
+      ) : null}
 
       {items.length ? (
         <TaskList ariaLabel="Project work items">
@@ -167,7 +180,7 @@ export default function ProjectWorkItemsSidebar({
                     {!blocked && sendAction ? (
                       <Button
                         size="small"
-                        disabled={Boolean(pendingId)}
+                        disabled={Boolean(pendingId) || stale}
                         loading={pending}
                         onClick={() => void commit(item, 'sent')}
                       >
@@ -178,7 +191,7 @@ export default function ProjectWorkItemsSidebar({
                       <Button
                         size="small"
                         variant="secondary"
-                        disabled={Boolean(pendingId)}
+                        disabled={Boolean(pendingId) || stale}
                         onClick={() => void commit(item, 'reply')}
                       >
                         Customer replied
@@ -187,7 +200,7 @@ export default function ProjectWorkItemsSidebar({
                     {!blocked && item.sourceType === 'MANUAL' ? (
                       <Button
                         size="small"
-                        disabled={Boolean(pendingId)}
+                        disabled={Boolean(pendingId) || stale}
                         loading={pending}
                         onClick={() => void commit(item, 'complete')}
                       >

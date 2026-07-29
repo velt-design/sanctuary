@@ -21,10 +21,11 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-30 | Supabase Migration Versions      | Promoted | Supabase CLI reads only the digits before the first underscore as a migration version. Date-only sibling files collide in the remote ledger, so never blanket-push, migrate-up, or repair the shared version. Positively identify the target, rollback-rehearse and apply exact reviewed files, preserve hashes/evidence, and repair naming/ledger compatibility separately. |
 | 2026-07-29 | Project Work Queue And Triage    | Promoted | Keep one server-composed current row per V2 project in the team Work Queue and only a bounded preview on Dashboard; personal reminders remain separate. Legacy Contacted classification is admin-only, read-only, and excludes linked customer contact fields. Migrate only one reviewed, unchanged project per explicit command, never bulk-seed cadence. Confirmation correction appends history and an explicit review signal. Site Visits stays hidden/manual and outside work items; this does not authorize a Project Overview redesign. |
 | 2026-07-29 | Project Work Review Concurrency  | Promoted | Bind confirmation reconciliation to the exact repair-signal ID and row version. Bind legacy Contacted migration to a database fingerprint of every project and related evidence field used by classification, reject mismatch before V2 writes, and keep the internal fingerprint helper ungranted. |
 | 2026-07-29 | Portal Staging Auth Callback     | Promoted | Exchange controlled local/staging one-time links through `/login/callback` with a hashed magic-link token, a fail-closed session-cookie write, safe same-origin callback normalization, `private, no-store`, and `Referrer-Policy: no-referrer`. Never redirect an access/refresh-token fragment straight to a protected route or treat a successful token exchange without a durable cookie as a successful login. |
-| 2026-07-29 | Project Work V2                  | Promoted | Read the V2 marker through its direct server-owned boundary rather than a PostgREST embedded relationship. The exact missing-marker-table condition is an explicit logged pre-rollout legacy compatibility state; unrelated failures still propagate. After new-table DDL, reload PostgREST outside the DDL transaction and prove both the direct marker read and an authenticated legacy-project snapshot before resuming project writers. A repository migration file is not evidence that the hosted API cache observed its tables or relationships. |
+| 2026-07-29 | Project Work V2                  | Promoted | Read marker inventory and operational state through direct bounded server owners rather than PostgREST embedded relationships. Per-project legacy classification may tolerate only the exact pre-rollout missing-marker condition; authoritative team inventory must fail closed when missing or truncated. Canonicalize the named cascade foreign keys, reload PostgREST after each DDL commit, run read-only readiness, and prove direct marker plus authenticated legacy-project reads before resuming writers. Cached work stays read-only, and a missing V2 contract exposes no actions. |
 | 2026-07-29 | Marketing Enquiry Reachability   | Promoted | Keep one public conversion system across `/contact` and embedded service-page forms. Require project type, name, phone and email through one client/server validator, reuse one browser-generated submission UUID across enhanced retries, assign each no-JavaScript POST a server UUID, and keep any rejected attachment visibly blocking until replaced or removed. Retire the unused `/start` and `/start/explore` flows rather than maintaining a parallel contract. |
 | 2026-07-29 | Schedule Mutation Trust          | Promoted | Preview Schedule V2 commands without force, confirm only when the server identifies other moved jobs, re-preview immediately after approval, and force only when the reviewed impacts are unchanged. Every optimistic mutation owns an exact rollback checkpoint and one in-flight lifecycle; accepted state updates only the compatible active-view cache and invalidates incompatible snapshots. Gantt start-plus-duration adjustment is one atomic RPC-backed command, while ambiguous failures reconcile visibly. Database-revision protection against near-simultaneous staff edits remains follow-up work. |
 | 2026-07-29 | Portal UI Authority              | Promoted | Treat the checked-in and rendered portal UI as canonical. Portal and marketing have separate UI systems; catalogues and historical migration language are regression/history evidence, not authority for a broad restyle. Preserve active specialist and compatibility owners, and require explicit user approval for cross-route visual migrations or shared-token replacement. |
@@ -3935,6 +3936,31 @@ Related docs/tests:
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `npm run test:portal:schedule`
 
+### 2026-07-30 - Supabase Migration Versions - Exact Files Over A Colliding Ledger
+
+Date: 2026-07-30
+Area: Supabase migration promotion and remote history
+Status: Promoted
+Decision or mistake: The repository's `20260729_000001` through `_000004`
+filenames look ordered to a reader, but Supabase CLI treats only `20260729` as
+their shared migration version. Staging also has a sparse historical ledger.
+Why it mattered: `db push`, `migration up`, or `migration repair 20260729`
+could apply unrelated history or falsely associate one shared version with the
+wrong file.
+Current guardrail: Positively identify the linked target and a distinct
+production ref. Hash each exact reviewed file, inspect prerequisites and
+collisions, rehearse its body inside a rollback transaction, apply only that
+file through the linked query boundary, and verify readiness, catalog shape,
+function body, and grants. Preserve deployment evidence separately; do not
+repair the colliding ledger until migration naming/history has a dedicated
+reviewed remediation.
+Promoted to: `docs/environment-auth-supabase.md`;
+`docs/project-work-items-and-follow-up.md`
+Related docs/tests:
+`supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql`;
+`supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql`;
+`scripts/check-project-work-v2-readiness.mjs`
+
 ### 2026-07-29 - Project Work V2 - Prove The Hosted API Cache
 
 Date: 2026-07-29
@@ -3950,25 +3976,38 @@ before it could classify a legacy project.
 Why it mattered: Successful SQL execution did not prove that authenticated API
 reads could observe the new schema. One unavailable optional classification
 relationship took down the complete project-detail route.
-Current guardrail: Read the V2 marker through
-`projects/workItems/modelBoundary.ts`, not a PostgREST embedded relationship.
+Current guardrail: Read marker inventory through
+`projects/workItems/modelBoundary.ts` and operational state through its direct
+bounded owner, not a PostgREST embedded relationship.
 Until the marker table is deployed, that boundary logs the exact
 missing-marker-table condition and preserves legacy reads; it must not swallow
 authentication, permission, network, or unrelated schema failures.
+That compatibility applies only to bounded per-project classification.
+Staff-wide marker inventory fails the complete Work Queue read if the table is
+missing or the 5,000-row safety ceiling is reached; it must never return a
+fresh-looking partial queue.
 For new-table rollout, commit DDL before sending the PostgREST reload
-notification. Before resuming project or enquiry writers, prove a direct marker
-read and an authenticated legacy-project snapshot against the exact target
-environment. If an idempotent `create table if not exists` migration may have
-met a partial table, add a forward relationship repair rather than editing the
-applied migration.
+notification. Canonicalize the expected named `project_id -> projects.id`
+foreign keys with `ON DELETE CASCADE` rather than accepting any relationship
+on `project_id`. Before resuming project or enquiry writers, run
+the production-refusing read-only readiness probe and prove a direct marker read
+plus an authenticated legacy-project snapshot against the exact target
+environment. Cached Work Queue/Overview rows are read-only after refresh
+failure, and a missing V2 contract must render a named not-ready state with no
+actions. If an idempotent `create table if not exists` migration may have met a
+partial table, add a forward relationship repair rather than editing the applied
+migration.
 Promoted to: `docs/project-work-items-technical-plan.md`;
 `docs/project-work-items-and-follow-up.md`;
 `docs/portal-production-readiness.md`
 Related docs/tests:
 `supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql`;
 `apps/portal/lib/projects/workItems/modelBoundary.test.ts`;
+`apps/portal/lib/projects/workItems/teamQueue.test.ts`;
 `apps/portal/lib/projects/getProjectPageSnapshot.test.ts`;
-`test/project-work-items-v2-migration.test.ts`
+`scripts/check-project-work-v2-readiness.mjs`;
+`test/project-work-items-v2-migration.test.ts`;
+`test/project-work-v2-readiness.test.ts`
 
 ### 2026-07-29 - Marketing Enquiry Reachability - One Public Conversion Contract
 

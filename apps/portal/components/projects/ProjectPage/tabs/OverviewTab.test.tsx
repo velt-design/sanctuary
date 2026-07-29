@@ -4,15 +4,35 @@ import { renderIntoDocument } from '../../../../../../test/reactHarness';
 import { ApiError } from '@/lib/repo/apiClient';
 
 const useQueryMock = vi.fn();
+const invalidateQueriesMock = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: (options: unknown) => options,
   useQuery: (...args: unknown[]) => useQueryMock(...args),
+  useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
 }));
 
 vi.mock('../ProjectTasksSidebar.client', () => ({
   default: ({ projectId }: { projectId: string }) => (
     <section data-testid="mock-tasks-panel" data-project-id={projectId}>Tasks</section>
+  ),
+}));
+
+vi.mock('../ProjectWorkItemsSidebar.client', () => ({
+  default: ({
+    projectWork,
+    stale,
+  }: {
+    projectWork: { generatedAt: string };
+    stale: boolean;
+  }) => (
+    <section
+      data-testid="mock-project-work-items"
+      data-generated-at={projectWork.generatedAt}
+      data-stale={String(stale)}
+    >
+      Project work items
+    </section>
   ),
 }));
 
@@ -30,6 +50,24 @@ vi.mock('./overview/ProjectCurrentDesignCommercialCard', () => ({
 
 vi.mock('./overview/ProjectPrimaryActionCard', () => ({
   default: () => <section data-testid="mock-primary-action">Primary action</section>,
+}));
+
+vi.mock('./overview/ProjectWorkCommandCard', () => ({
+  default: ({
+    projectWork,
+    stale,
+  }: {
+    projectWork: { generatedAt: string };
+    stale: boolean;
+  }) => (
+    <section
+      data-testid="mock-project-work-command"
+      data-generated-at={projectWork.generatedAt}
+      data-stale={String(stale)}
+    >
+      Project work command
+    </section>
+  ),
 }));
 
 vi.mock('./overview/ProjectStatusDetailsCard', () => ({
@@ -73,10 +111,12 @@ describe('OverviewTab', () => {
   beforeEach(async () => {
     document.body.innerHTML = '';
     useQueryMock.mockReset();
+    invalidateQueriesMock.mockReset().mockResolvedValue(undefined);
     await Promise.all([
       import('./overview/ProjectCurrentDesignCommercialCard'),
       import('./overview/ProjectPrimaryActionCard'),
       import('./overview/ProjectStatusDetailsCard'),
+      import('./overview/ProjectWorkCommandCard'),
     ]);
   });
 
@@ -145,6 +185,83 @@ describe('OverviewTab', () => {
     await act(async () => { await Promise.resolve(); });
     expect(rendered.container.querySelector('[data-command-centre-state="refreshing"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-current-design"]')).not.toBeNull();
+    rendered.unmount();
+  });
+
+  it('uses one command-centre V2 projection and pauses both work surfaces while refreshing', async () => {
+    const v2Snapshot = {
+      ...snapshot,
+      workModel: 'v2',
+      projectWork: {
+        generatedAt: '2026-07-29T00:00:00.000Z',
+      },
+    };
+    useQueryMock.mockReturnValue(queryState({
+      data: {
+        workModel: 'v2',
+        currentDesign: { source: 'draft_quote' },
+        projectWork: {
+          generatedAt: '2026-07-29T01:00:00.000Z',
+        },
+        owner: {},
+      },
+      isFetching: true,
+    }));
+
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={v2Snapshot as any}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await act(async () => { await Promise.resolve(); });
+
+    const command = rendered.container.querySelector('[data-testid="mock-project-work-command"]');
+    const items = rendered.container.querySelector('[data-testid="mock-project-work-items"]');
+    expect(command?.getAttribute('data-generated-at')).toBe('2026-07-29T01:00:00.000Z');
+    expect(items?.getAttribute('data-generated-at')).toBe('2026-07-29T01:00:00.000Z');
+    expect(command?.getAttribute('data-stale')).toBe('true');
+    expect(items?.getAttribute('data-stale')).toBe('true');
+    rendered.unmount();
+  });
+
+  it('pauses both work surfaces when snapshot and command-centre models disagree', async () => {
+    const legacySnapshot = {
+      ...snapshot,
+      workModel: 'legacy',
+    };
+    useQueryMock.mockReturnValue(queryState({
+      data: {
+        workModel: 'v2',
+        currentDesign: { source: 'draft_quote' },
+        projectWork: {
+          generatedAt: '2026-07-29T01:00:00.000Z',
+        },
+        owner: {},
+      },
+    }));
+
+    const rendered = renderIntoDocument(
+      <OverviewTab
+        snapshot={legacySnapshot as any}
+        snapshotContentReady
+        snapshotState="fresh"
+        host="host"
+      />,
+    );
+    await act(async () => { await Promise.resolve(); });
+
+    expect(
+      rendered.container.querySelector('[data-command-centre-state="model-mismatch"]'),
+    ).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Project work is paused');
+    expect(rendered.container.textContent).toContain('Task controls are paused');
+    expect(rendered.container.querySelector('[data-testid="mock-project-work-command"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-primary-action"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-project-work-items"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-tasks-panel"]')).toBeNull();
     rendered.unmount();
   });
 

@@ -37,7 +37,10 @@ export function workDatabaseError(error: unknown): {
   if (
     databaseCode === '42P01'
     || databaseCode === '42883'
+    || databaseCode === 'PGRST200'
     || databaseCode === 'PGRST202'
+    || databaseCode === 'PGRST205'
+    || databaseCode === 'PROJECT_WORK_INVENTORY_INCOMPLETE'
     || /schema cache|business_calendar_unavailable|calendar coverage/i.test(message)
   ) {
     return { status: 503, code: 'WORK_ITEMS_UNAVAILABLE', message };

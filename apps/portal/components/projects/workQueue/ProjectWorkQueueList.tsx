@@ -11,10 +11,14 @@ export default function ProjectWorkQueueList({
   entries,
   staff,
   host,
+  mutationsEnabled = true,
+  reassignmentEnabled = true,
 }: {
   entries: WorkQueueEntryView[];
   staff: ProjectCommandStaffSummary[];
   host: string;
+  mutationsEnabled?: boolean;
+  reassignmentEnabled?: boolean;
 }) {
   if (!entries.length) {
     return (
@@ -49,6 +53,8 @@ export default function ProjectWorkQueueList({
                   entry={entry}
                   host={host}
                   staff={staff}
+                  mutationsEnabled={mutationsEnabled}
+                  reassignmentEnabled={reassignmentEnabled}
                 />
               ))}
             </ul>

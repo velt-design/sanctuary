@@ -1135,4 +1135,13 @@ describe("Project Work Queue V3 and reviewed legacy triage migration", () => {
     );
     expect(migrateFunction).not.toMatch(/send|email_outbox|resend/i);
   });
+
+  it("reloads the hosted schema cache only after the migration commits", () => {
+    expect(workQueueMigration).toMatch(
+      /commit;\s*[\s\S]*notify pgrst, 'reload schema';\s*$/i,
+    );
+    expect(workQueueMigration).not.toMatch(
+      /(?:select\s+pg_notify|notify\s+pgrst)[\s\S]*commit;\s*$/i,
+    );
+  });
 });

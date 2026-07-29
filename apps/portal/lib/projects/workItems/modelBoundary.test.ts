@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { getProjectWorkModelV2Ids, isProjectWorkModelV2 } from './modelBoundary';
+import {
+  getProjectWorkModelV2Ids,
+  isProjectWorkModelV2,
+  listProjectWorkModelV2Ids,
+} from './modelBoundary';
 
 function createClient(v2Ids: Set<string>) {
   const inFilter = vi.fn((_column: string, ids: string[]) => ({
@@ -24,6 +28,22 @@ function createErrorClient(error: unknown) {
   const select = vi.fn(() => ({ in: inFilter }));
   const from = vi.fn(() => ({ select }));
   return { client: { from } as any, from };
+}
+
+function createInventoryClient(
+  rows: Array<{ project_id: string; model_version: number }>,
+  error: unknown = null,
+) {
+  const range = vi.fn(async (from: number, to: number) => ({
+    data: error ? null : rows.slice(from, to + 1),
+    error,
+    count: error ? null : rows.length,
+  }));
+  const order = vi.fn(() => ({ range }));
+  const eq = vi.fn(() => ({ order }));
+  const select = vi.fn(() => ({ eq }));
+  const from = vi.fn(() => ({ select }));
+  return { client: { from } as any, from, select, eq, order, range };
 }
 
 describe('project work model boundary', () => {
@@ -53,20 +73,55 @@ describe('project work model boundary', () => {
     expect(inFilter.mock.calls.every((call) => call[1].length <= 100)).toBe(true);
   });
 
+  it('lists every V2 marker directly without an embedded project relationship', async () => {
+    const { client, from, select, eq, order, range } = createInventoryClient([
+      { project_id: 'project-v2-a', model_version: 2 },
+      { project_id: 'project-v2-b', model_version: 2 },
+    ]);
+
+    await expect(listProjectWorkModelV2Ids(client)).resolves.toEqual(
+      new Set(['project-v2-a', 'project-v2-b']),
+    );
+
+    expect(from).toHaveBeenCalledWith('project_work_model_versions');
+    expect(select).toHaveBeenCalledWith('project_id,model_version');
+    expect(eq).toHaveBeenCalledWith('model_version', 2);
+    expect(order).toHaveBeenCalledWith('project_id', { ascending: true });
+    expect(range).toHaveBeenCalledWith(0, 999);
+  });
+
+  it('fails closed when the authoritative inventory schema is unavailable', async () => {
+    const failure = {
+      code: 'PGRST205',
+      message: "Could not find the table 'public.project_work_model_versions' in the schema cache",
+    };
+    const { client } = createInventoryClient([], failure);
+
+    await expect(listProjectWorkModelV2Ids(client)).rejects.toEqual(failure);
+  });
+
+  it('fails closed instead of silently truncating the authoritative inventory', async () => {
+    const inventory = Array.from(
+      { length: 5001 },
+      (_, index) => ({
+        project_id: `project-v2-${String(index).padStart(4, '0')}`,
+        model_version: 2,
+      }),
+    );
+    const { client } = createInventoryClient(inventory);
+
+    await expect(listProjectWorkModelV2Ids(client)).rejects.toMatchObject({
+      code: 'PROJECT_WORK_INVENTORY_INCOMPLETE',
+    });
+  });
+
   it('keeps pre-rollout legacy projects readable when only the V2 marker table is absent', async () => {
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { client } = createErrorClient({
       code: 'PGRST205',
       message: "Could not find the table 'public.project_work_model_versions' in the schema cache",
     });
 
     await expect(isProjectWorkModelV2(client, 'project-legacy')).resolves.toBe(false);
-
-    expect(warning).toHaveBeenCalledWith(
-      '[project_work] V2 marker schema is unavailable; using pre-rollout legacy compatibility.',
-      { code: 'PGRST205' },
-    );
-    warning.mockRestore();
   });
 
   it('does not hide unrelated model-boundary failures', async () => {
