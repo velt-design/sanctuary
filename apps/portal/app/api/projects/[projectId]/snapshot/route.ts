@@ -5,14 +5,19 @@ import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
 export const runtime = 'nodejs';
 
+function privateNoStore(response: Response): Response {
+  response.headers.set('cache-control', 'private, no-store');
+  return response;
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
   const diagnostics = createRouteDiagnostics(req, '/api/projects/[projectId]/snapshot');
   const auth = await requireStaffContext(diagnostics);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return privateNoStore(auth.response);
 
   const { projectId } = await ctx.params;
   const id = typeof projectId === 'string' ? projectId.trim() : '';
-  if (!id) return jsonError('Invalid projectId', 400, diagnostics);
+  if (!id) return privateNoStore(jsonError('Invalid projectId', 400, diagnostics));
 
   try {
     const snapshot = await getProjectPageSnapshot(
@@ -21,17 +26,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ projectId: stri
       auth.supabase,
       auth.session.user.id,
     );
-    if (!snapshot) return jsonError('Project not found', 404, diagnostics);
+    if (!snapshot) return privateNoStore(jsonError('Project not found', 404, diagnostics));
 
-    return NextResponse.json({
-      snapshot,
-      generatedAt: new Date().toISOString(),
-    }, {
-      headers: {
-        'x-portal-request-id': diagnostics.requestId,
-        'server-timing': `total;dur=${(performance.now() - diagnostics.startedAt).toFixed(1)}`,
-      },
-    });
+    return privateNoStore(
+      NextResponse.json({
+        snapshot,
+        generatedAt: new Date().toISOString(),
+      }, {
+        headers: {
+          'x-portal-request-id': diagnostics.requestId,
+          'server-timing': `total;dur=${(performance.now() - diagnostics.startedAt).toFixed(1)}`,
+        },
+      }),
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to load project snapshot';
     logPortalServerError(diagnostics, {
@@ -39,6 +46,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ projectId: stri
       message: msg,
       error: err,
     });
-    return jsonError(msg, 500, diagnostics);
+    return privateNoStore(jsonError(msg, 500, diagnostics));
   }
 }
