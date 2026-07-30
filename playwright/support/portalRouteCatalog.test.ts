@@ -20,7 +20,13 @@ const dataRequirements = new Set([
   'scenario_required',
 ]);
 const smokeStatuses = new Set(['agent-access', 'scenario-required', 'admin-only', 'fixture-only', 'catalog-only']);
-const shellMarkers = new Set(['public-auth-shell', 'portal-shell', 'admin-shell', 'fixture-shell']);
+const shellMarkers = new Set([
+  'public-auth-shell',
+  'portal-shell',
+  'admin-shell',
+  'fixture-shell',
+  'authenticated-standalone-shell',
+]);
 const debugExportStatuses = new Set(['exported', 'planned', 'not-applicable']);
 
 function collectPageRoutes(directory: string, routeSegments: string[] = []): string[] {

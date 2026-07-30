@@ -38,7 +38,9 @@ Executable source: `playwright/support/portalRouteCatalog.ts`.
 | `dashboard` | `/dashboard` | core | staff | none | agent-access | not-applicable | `docs/platform-workflow.md` |
 | `ui-foundation` | `/staff/ui-foundation` | core | staff | none | agent-access | not-applicable | `docs/ui-foundation.md` |
 | `email-previews` | `/staff/email-previews` | core | staff | none | catalog-only | not-applicable | `docs/automation-email-audit.md` |
+| `design-booklets` | `/staff/design-booklets` | core | staff | none | catalog-only | not-applicable | `docs/design-booklets.md` |
 | `qa-email-preview-workbench-fixture` | `/qa/email-preview-workbench-fixture` | diagnostic | fixture | fixture_flag | fixture-only | not-applicable | `docs/automation-email-audit.md` |
+| `qa-design-booklet-workbench-fixture` | `/qa/design-booklet-workbench-fixture` | diagnostic | fixture | fixture_flag | fixture-only | not-applicable | `docs/design-booklets.md` |
 | `projects-index` | `/staff/projects` | project | staff | visible_project | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `contacts-index` | `/staff/contacts` | project | staff | none | agent-access | not-applicable | `docs/projects-contacts-estimates-calculator.md` |
 | `schedule` | `/staff/schedule` | schedule | staff | none | agent-access | planned | `docs/schedule.md` |

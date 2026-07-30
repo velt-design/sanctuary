@@ -19,7 +19,12 @@ export type PortalRouteSmokeStatus = 'agent-access' | 'scenario-required' | 'adm
 
 export type PortalRouteDebugExportStatus = 'exported' | 'planned' | 'not-applicable';
 
-type PortalShellMarker = 'public-auth-shell' | 'portal-shell' | 'admin-shell' | 'fixture-shell';
+type PortalShellMarker =
+  | 'public-auth-shell'
+  | 'portal-shell'
+  | 'admin-shell'
+  | 'fixture-shell'
+  | 'authenticated-standalone-shell';
 
 export interface PortalRouteCatalogEntry {
   id: string;
@@ -120,6 +125,19 @@ export const portalRouteCatalog = [
     notes: 'Fixture-only marketing autoresponder review; sending is additionally restricted to enabled Vercel preview deployments and one server-configured recipient.',
   },
   {
+    id: 'design-booklets',
+    category: 'core',
+    routePattern: '/staff/design-booklets',
+    requiredRole: 'staff',
+    ownerDoc: 'docs/design-booklets.md',
+    expectedHeading: 'Build the booklet as a customer journey.',
+    expectedShell: 'authenticated-standalone-shell',
+    dataRequirement: 'none',
+    smokeStatus: 'catalog-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Authenticated standalone customer-document workbench with route-owned visual treatment and no portal navigation entry, persistence, sending, or project integration.',
+  },
+  {
     id: 'qa-email-preview-workbench-fixture',
     category: 'diagnostic',
     routePattern: '/qa/email-preview-workbench-fixture',
@@ -131,6 +149,19 @@ export const portalRouteCatalog = [
     smokeStatus: 'fixture-only',
     debugExportStatus: 'not-applicable',
     notes: 'Data-free visual QA mirror gated by ENABLE_PORTAL_QA_FIXTURES; its server QA endpoint uses the exact governed renderer and synthetic no-provider delivery responses.',
+  },
+  {
+    id: 'qa-design-booklet-workbench-fixture',
+    category: 'diagnostic',
+    routePattern: '/qa/design-booklet-workbench-fixture',
+    requiredRole: 'fixture',
+    ownerDoc: 'docs/design-booklets.md',
+    expectedHeading: 'Build the booklet as a customer journey.',
+    expectedShell: 'fixture-shell',
+    dataRequirement: 'fixture_flag',
+    smokeStatus: 'fixture-only',
+    debugExportStatus: 'not-applicable',
+    notes: 'Credential-free visual QA mirror gated by ENABLE_PORTAL_QA_FIXTURES; it mounts the production workbench and shared PDF renderer with bundled Toni assets.',
   },
   {
     id: 'projects-index',
