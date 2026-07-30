@@ -251,7 +251,7 @@ export default function AcrylicPergolaEnquiryForm({
       const selectedAccessories = formData.getAll('accessories').map(String);
       const selectedRoofPreference = String(formData.get('roofPreference') ?? '');
       const selectedRoofOption = roofPreference.options.find((option) => option.value === selectedRoofPreference);
-      const attribution = getBrowserMarketingAttribution();
+      const attribution = getBrowserMarketingAttribution({ consent, hasStoredChoice });
       const addOns = {
         blinds: selectedAccessories.includes('Outdoor blinds'),
         lighting: selectedAccessories.includes('Lighting'),

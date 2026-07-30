@@ -3,6 +3,10 @@
     {
       "path": "/api/enquiry/attachments/cleanup",
       "schedule": "23 4 * * *"
+    },
+    {
+      "path": "/api/marketing-conversions/deliver",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

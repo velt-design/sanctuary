@@ -252,6 +252,8 @@ The strict selection owner is `apps/portal/lib/projects/commandCentre/resolve.ts
 
 The project header shows one Project Owner and remains the only owner-management entry point. The Overview command grid places the one Project Work region beside the design/commercial region. The owner is required from lead through deposit and is selected from Jordan, JP, Joe, or Bruce by an admin. Project Details treats next action as Overview-managed and excludes it from local-first API payloads. V2 work items replace manual actions and stage checklists for V2 projects; legacy stage rows remain filtered read-only compatibility inside Project Work. Dashboard Project Exceptions is independent of personal reminders.
 
+A committed V2 `CLOSE` command with one of the structured lost outcomes records `marketing.project_lost` after the state transition succeeds. `COMPLETE` is not a lost outcome. The audit event contains only the bounded outcome code for lifecycle analytics; free-text cancellation reasons remain outside marketing delivery. Consent, outbox, GA4 mapping, and retention rules are owned by `docs/security-privacy-quality.md` and `docs/automation-email-audit.md`.
+
 Notes data:
 
 - Stored in `public.project_notes` (`apps/portal/lib/projectNotes/server.ts` is the domain helper). Snapshot of latest 50 non-deleted notes is preloaded in `ProjectPageSnapshot.notes`.

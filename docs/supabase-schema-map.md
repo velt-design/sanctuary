@@ -326,7 +326,8 @@ Owner docs: `docs/automation-email-audit.md`, `docs/project-work-items-and-follo
 
 Tables/RPCs:
 
-- Marketing/enquiries: `enquiry_requests` (`submission_id` is the idempotency key), `marketing_public_rate_limits`, `marketing_enquiry_upload_sessions`
+- Marketing/enquiries: `enquiry_requests` (`submission_id` is the idempotency key), `marketing_public_rate_limits`, `marketing_enquiry_upload_sessions`, `marketing_conversion_deliveries`
+- Marketing conversion delivery RPCs: `marketing_conversion_delivery_claim()` and `marketing_conversion_delivery_complete()`
 - Email and automation: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `design_package_tickets`, `followup_plans`, `followup_tasks`
 - Project command centre: `project_owner_assignments`, `project_manual_actions`, `project_action_controls`, `project_primary_action_selections`, `project_command_audit`, `project_action_versions` (`project_role_assignments` is retained read-only as legacy rollback evidence)
 - Project Work V2: `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, `project_command_receipts`, `project_work_repair_signals`, and `business_calendar_year_coverage`
@@ -339,6 +340,7 @@ Tables/RPCs:
 Primary write path:
 
 - Marketing enquiry APIs under `apps/marketing/app/api/contact` and `apps/marketing/app/api/enquiry`. Contact/project/enquiry intake goes through the service-only `marketing_enquiry_intake` RPC; durable public rate limits and upload session preparation/cleanup use the narrow `marketing_public_rate_limit_take` and `marketing_enquiry_*upload*` RPCs.
+- Eligible downstream marketing `audit_events` inserts enqueue one GA4 outbox row through the database trigger. The scheduled marketing delivery route claims and completes rows only through the leased service-role RPCs; it never writes the outbox table directly.
 - Portal automation runner under `apps/portal/lib/automation`.
 - Project action routes that enqueue or preview email/outbox entries.
 - Dashboard snapshot is read-oriented and should not become a generic write boundary.
@@ -352,6 +354,7 @@ Primary write path:
 Primary read path:
 
 - Marketing lead and enquiry route handlers.
+- The scheduled marketing conversion route reads only the explicit claim projection returned by `marketing_conversion_delivery_claim()`.
 - Portal project snapshot, dashboard task, and automation helpers under `apps/portal/lib/projects`, `apps/portal/lib/dashboard`, and `apps/portal/lib/automation`.
 - Dashboard cached snapshot helper under `apps/portal/lib/dashboard/getDashboardSnapshotCached.ts`.
 - Dashboard data helpers under `apps/portal/lib/dashboard` read recent project-note activity and user-owned dashboard tasks.
@@ -362,6 +365,7 @@ Access rule:
 
 - Marketing public routes can create lead/enquiry records through server code, but must not expose broad staff data.
 - Browser roles have no table or function access to marketing rate-limit/upload-session state. Direct table access is revoked from `service_role`; server routes use only the explicit security-definer RPCs.
+- Browser roles and `service_role` have no direct `marketing_conversion_deliveries` table access. Only `service_role` may execute its leased claim/complete RPCs.
 - `marketing_enquiry_intake` serializes a submission UUID, returns the existing contact/project/enquiry IDs on replay, validates and consumes any short-lived upload binding, and creates all three business rows in one transaction.
 - Email/outbox and audit writes are server-owned side effects.
 - Automation may use service-role access only on the server and only for intentional bypasses documented by the owning workflow.
@@ -376,6 +380,7 @@ Migration source:
 - `supabase/enquiry_requests.sql`, `supabase/automation_phase_a.sql`, `supabase/email_templates_website_autoresponder.sql`, `supabase/dashboard_snapshot_v1.sql`, and security hardening.
 - `20260723_000001_marketing_enquiry_intake_security.sql` adds the enquiry idempotency constraint, atomic intake, durable rate limiting, submission-bound upload sessions, cleanup RPCs, RLS/revokes, and retention schedule. Apply it before deploying the matching marketing routes.
 - `20260724043000_marketing_enquiry_budget_columns.sql` forward-adds the nullable indicative-pricing columns consumed by `marketing_enquiry_intake`; the root `enquiry_requests.sql` baseline does not evolve an already-existing table.
+- `20260730_000001_marketing_conversion_delivery.sql` adds the RLS-protected GA4 outbox, eligible-audit trigger, 72-hour nearby-event backfill, and leased service-role-only delivery RPCs. Apply it before enabling the scheduled sender.
 - Personal dashboard tasks use ordered migrations under `supabase/migrations`.
 - `20260720_000008_project_command_centre_stage2.sql` promotes task/follow-up setup into ordered truth and owns command-centre tables, RLS/grants/indexes/backfills/RPCs, and compatibility projection columns.
 - `20260721_000001_project_command_single_owner.sql` replaces the three-role owner contract with one named project owner, performs the deterministic legacy backfill, and replaces the owner command.

@@ -12,6 +12,15 @@ export const PROJECT_CLOSED_OUTCOMES = [
 ] as const;
 export type ProjectClosedOutcome = (typeof PROJECT_CLOSED_OUTCOMES)[number];
 
+export const PROJECT_LOST_OUTCOMES = [
+  'LOST_NO_RESPONSE',
+  'LOST_BUDGET_PRICE',
+  'LOST_OTHER_SUPPLIER',
+  'LOST_TIMING_DEFERRED',
+  'LOST_NOT_SUITABLE',
+  'CANCELLED',
+] as const satisfies readonly ProjectClosedOutcome[];
+
 const PROJECT_WORK_ITEM_STATUSES = ['OPEN', 'BLOCKED', 'DONE', 'CANCELLED'] as const;
 export type ProjectWorkItemStatus = (typeof PROJECT_WORK_ITEM_STATUSES)[number];
 

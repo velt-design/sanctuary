@@ -77,6 +77,12 @@ describe('marketing attribution conversion helpers', () => {
           clickIds: { gclid: ' g-123 ', gbraid: 'gb-456', email: 'do-not-keep@example.com' },
           landingPage: ' https://example.test/?gclid=g-123 ',
           referrer: ' https://google.test ',
+          analyticsClientId: '1022420085.1772518636',
+          consent: {
+            analytics: true,
+            marketing: false,
+            capturedAt: '2026-07-30T00:00:00.000Z',
+          },
         },
         { utm: { utm_campaign: 'Fallback' }, page: '/contact', source: 'website' },
       ),
@@ -87,6 +93,34 @@ describe('marketing attribution conversion helpers', () => {
       clickIds: { gclid: 'g-123', gbraid: 'gb-456' },
       landingPage: 'https://example.test/?gclid=g-123',
       referrer: 'https://google.test',
+      analyticsClientId: '1022420085.1772518636',
+      consent: {
+        analytics: true,
+        marketing: false,
+        capturedAt: '2026-07-30T00:00:00.000Z',
+      },
+    });
+  });
+
+  it('drops GA identity when analytics consent is absent or denied', async () => {
+    const { normalizeMarketingAttributionInput } = await import('./server');
+
+    expect(
+      normalizeMarketingAttributionInput({
+        analyticsClientId: '1022420085.1772518636',
+        consent: { analytics: false, marketing: true },
+      }),
+    ).toMatchObject({
+      analyticsClientId: null,
+      consent: { analytics: false, marketing: true },
+    });
+    expect(
+      normalizeMarketingAttributionInput({
+        analyticsClientId: '1022420085.1772518636',
+      }),
+    ).toMatchObject({
+      analyticsClientId: null,
+      consent: null,
     });
   });
 
@@ -103,6 +137,12 @@ describe('marketing attribution conversion helpers', () => {
             attribution: {
               clickIds: { gclid: 'g-123' },
               landingPage: 'https://example.test/contact?gclid=g-123',
+              analyticsClientId: '1022420085.1772518636',
+              consent: {
+                analytics: true,
+                marketing: true,
+                capturedAt: '2026-06-01T00:00:00.000Z',
+              },
             },
           },
           created_at: '2026-06-01T00:00:00.000Z',
@@ -134,6 +174,12 @@ describe('marketing attribution conversion helpers', () => {
           page: '/contact',
           utm: { utm_source: 'google' },
           clickIds: { gclid: 'g-123' },
+          analyticsClientId: '1022420085.1772518636',
+          consent: {
+            analytics: true,
+            marketing: true,
+            capturedAt: '2026-06-01T00:00:00.000Z',
+          },
         },
       },
     });

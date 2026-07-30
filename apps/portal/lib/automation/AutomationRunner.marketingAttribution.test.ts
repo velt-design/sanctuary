@@ -24,11 +24,12 @@ describe('AutomationRunner marketing attribution events', () => {
     h.recordMarketingConversionEvent.mockReset();
   });
 
-  it('records a site-visit conversion when handling a booked site visit event', async () => {
+  it('records a site-visit conversion when handling a confirmed site visit event', async () => {
     const { automationRunner } = await import('./AutomationRunner');
     (automationRunner as any).onBookSiteVisit = vi.fn();
 
     await (automationRunner as any).handleEvent('ui.action.book_site_visit', 'proj-1', {
+      status: 'CONFIRMED',
       scheduledStart: '2026-06-24T01:00:00.000Z',
       scheduledEnd: '2026-06-24T02:00:00.000Z',
       notes: 'Do not include this free text in the marketing event',
@@ -38,11 +39,25 @@ describe('AutomationRunner marketing attribution events', () => {
       type: 'marketing.site_visit_booked',
       projectId: 'proj-1',
       payload: {
+        status: 'CONFIRMED',
         scheduledStart: '2026-06-24T01:00:00.000Z',
         scheduledEnd: '2026-06-24T02:00:00.000Z',
       },
     });
     expect(JSON.stringify(h.recordMarketingConversionEvent.mock.calls)).not.toContain('free text');
+  });
+
+  it('does not record a tentative site visit as a marketing conversion', async () => {
+    const { automationRunner } = await import('./AutomationRunner');
+    (automationRunner as any).onBookSiteVisit = vi.fn();
+
+    await (automationRunner as any).handleEvent('ui.action.book_site_visit', 'proj-1', {
+      status: 'TENTATIVE',
+      scheduledStart: '2026-06-24T01:00:00.000Z',
+      notes: 'Awaiting customer confirmation',
+    });
+
+    expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
   it('records a deposit conversion when handling deposit received', async () => {

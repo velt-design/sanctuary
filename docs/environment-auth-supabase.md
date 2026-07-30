@@ -34,8 +34,10 @@ Common optional or feature-specific variables:
 - `NEXT_PUBLIC_MARKETING_SITE_URL`
 - `NEXT_PUBLIC_FB_PIXEL_ID`
 - `NEXT_PUBLIC_GTM_CONTAINER_ID` (optional; falls back to the current checked container ID and loads only after an explicit analytics or marketing choice, with consent mode preserving the denied category)
+- `GA4_MEASUREMENT_ID` (server-only Measurement Protocol stream ID for downstream consented lifecycle events; currently the same web stream used by GTM)
+- `GA4_MEASUREMENT_PROTOCOL_API_SECRET` (server-only GA4 data-stream API secret; never use a browser-prefixed variable or log the request URL)
 - `MARKETING_ABUSE_HASH_SECRET` (preferred production server-only HMAC key for durable public rate-limit identifiers; when absent, marketing derives a domain-separated HMAC subkey from the already-required `SUPABASE_SERVICE_ROLE_KEY`, and still fails closed if neither secret exists)
-- `CRON_SECRET` (server-only bearer secret used by the scheduled abandoned-enquiry-upload cleanup route)
+- `CRON_SECRET` (server-only bearer secret used by the scheduled abandoned-enquiry-upload cleanup and GA4 lifecycle-delivery routes)
 - `META_CONVERSIONS_API_TOKEN`
 - `META_GRAPH_API_VERSION`
 - `META_CAPI_TEST_EVENT_CODE`
@@ -170,6 +172,7 @@ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-owned flows:
 - Imports and migration/maintenance scripts.
 - Public token flows for quote or invoice viewing.
 - Background automation and email flows.
+- Scheduled GA4 lifecycle delivery through the leased `marketing_conversion_delivery_claim` and `marketing_conversion_delivery_complete` RPCs.
 - Durable background-job enqueue, worker lifecycle, safe inspection, provider-webhook reconciliation, and repair RPCs. Direct access to job/PGMQ/private-payload/private-receipt tables is not part of this permission.
 - Server-side operations that intentionally bypass RLS.
 
