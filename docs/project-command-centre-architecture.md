@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Current architecture plus the approved Project Overview V2 implementation handover. The worktree implementation and its owned verification are present; overall completion is withheld only because the aggregate bundle gate still fails on baseline Contacts and Calculator budgets.
+Status: Current architecture plus the completed Project Overview V2 implementation handover. The implementation and its owned verification are present. On 2026-07-30 the user accepted a narrow handoff exception for the unrelated Contacts and Calculator bundle overruns reproduced at baseline `060bea19`; their ceilings remain unchanged and route optimization remains separate work.
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
@@ -718,7 +718,7 @@ The broader acceptance matrix in section 14 remains required where the current b
 - The unchanged Project Detail budget passed at 642.4 KiB raw / 184.9 KiB gzip initial, 978.5 KiB raw / 219.9 KiB gzip lazy total, and 858.6 KiB raw / 186.4 KiB gzip largest lazy entry.
 - A manual authenticated read-only inspection passed at 390x844 on one RLS-visible legacy project: one Project Work surface, the approved mobile order, no duplicate/prohibited regions, no document overflow, no mutation control exercised, and no shared project/customer data changed.
 
-Overall completion remains withheld. The aggregate `npm run portal:bundle-budget` gate fails only for Contacts and Calculator initial budgets; an isolated clean build at approved baseline `060bea19` with the same fail-closed analyser reproduces those overruns, while Project Detail remains within its unchanged allowance. Raising those unrelated ceilings or changing those routes is outside this slice.
+Overview V2 completion is accepted under the narrow user-approved exception. The aggregate `npm run portal:bundle-budget` gate still reports Contacts and Calculator initial-budget overruns; an isolated clean build at approved baseline `060bea19` with the same fail-closed analyser reproduces them, while Project Detail remains within its unchanged allowance. Keep those ceilings unchanged and handle route optimization as separate work.
 
 Stage 1 verification completed on 2026-07-20:
 
@@ -743,7 +743,7 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.
 - Stage 6: final responsive QA, pilot, and rollout. Not started.
-- Current slice: verify the worktree implementation of `## Approved Overview V2 Implementation Handover (READ FIRST)`, section 11.
+- Current slice: the `## Approved Overview V2 Implementation Handover (READ FIRST)` implementation and owned verification are complete under the narrow bundle-baseline exception recorded above.
 - Next-slice boundary: no deposit, Schedule/Running Jobs readiness, normalized meaningful activity, complete exception aggregation, or other lifecycle expansion is approved until this slice passes its required gates and a bounded specialist-owned server projection is separately reviewed.
 
 ## 20. Technical risks
