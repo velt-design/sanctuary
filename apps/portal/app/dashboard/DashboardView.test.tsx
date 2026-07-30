@@ -23,38 +23,10 @@ vi.mock('./_components/DashboardTasksCard.client', () => ({
 const data: DashboardData = {
   updatedAtIso: '2026-04-02T00:00:00.000Z',
   kpis: {
-    actionsDue: 4,
     newLeads: 2,
     quotesToSend: 1,
     installsThisWeek: 3,
   },
-  attention: [
-    {
-      key: 'overdue',
-      label: 'Project actions overdue',
-      count: 4,
-      href: '/staff/projects?nextActionDue=true&due=overdue',
-      tone: 'urgent',
-    },
-    {
-      key: 'projects_in_quoting',
-      label: 'Projects in quoting',
-      count: 1,
-      href: '/staff/projects?status=QUOTING',
-      tone: 'neutral',
-    },
-  ],
-  workQueue: [
-    {
-      projectId: 'proj_123',
-      projectName: 'Beach House',
-      clientName: 'Alex',
-      status: 'NEW',
-      nextActionLabel: null,
-      nextActionDueDate: '2026-04-03',
-      lastActivityAt: '2026-04-02T10:00:00.000Z',
-    },
-  ],
   projectWorkQueue: [
     {
       projectId: 'proj_123',
@@ -136,7 +108,6 @@ describe('DashboardView', () => {
     expect(markup).toContain('Welcome back');
     expect(markup).toContain('Quick actions');
     expect(markup).toContain('Pipeline');
-    expect(markup).toContain('Attention Today');
     expect(markup).toContain('Recent Estimates');
     expect(markup).toContain('Work Queue');
     expect(markup).toContain('Send first enquiry email');
@@ -169,34 +140,35 @@ describe('DashboardView', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     const pipelineIndex = markup.indexOf('Pipeline');
-    const attentionIndex = markup.indexOf('Attention Today');
-    const activityIndex = markup.indexOf('Recent Activity');
     const queueIndex = markup.indexOf('Work Queue');
+    const activityIndex = markup.indexOf('Recent Activity');
     const estimatesIndex = markup.indexOf('Recent Estimates');
     const tasksIndex = markup.indexOf('My Tasks');
 
     expect(pipelineIndex).toBeGreaterThan(-1);
-    expect(attentionIndex).toBeGreaterThan(-1);
     expect(estimatesIndex).toBeGreaterThan(-1);
     expect(queueIndex).toBeGreaterThan(-1);
     expect(activityIndex).toBeGreaterThan(-1);
     expect(tasksIndex).toBeGreaterThan(-1);
-    expect(pipelineIndex).toBeLessThan(attentionIndex);
-    expect(attentionIndex).toBeLessThan(activityIndex);
-    expect(activityIndex).toBeLessThan(queueIndex);
-    expect(queueIndex).toBeLessThan(estimatesIndex);
+    expect(pipelineIndex).toBeLessThan(queueIndex);
+    expect(queueIndex).toBeLessThan(activityIndex);
+    expect(activityIndex).toBeLessThan(estimatesIndex);
     expect(estimatesIndex).toBeLessThan(tasksIndex);
   });
 
-  it('does not render retired exceptions, installs, or misleading quote labels', () => {
+  it('does not render legacy project actions, retired exceptions, installs, or misleading quote labels', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
+    expect(markup).not.toContain('Project actions overdue');
+    expect(markup).not.toContain('Project actions due today');
+    expect(markup).not.toContain('Attention Today');
+    expect(markup).not.toContain('Commercial Attention');
     expect(markup).not.toContain('Project Exceptions');
     expect(markup).not.toContain('Installs this week');
     expect(markup).not.toContain('Upcoming Installs');
     expect(markup).not.toContain('Quotes to send');
     expect(markup).not.toContain('New Leads');
-    expect(markup).toContain('Projects in quoting');
+    expect(markup).not.toContain('Projects in quoting');
   });
 
   it('marks cached data as updating without hiding it', () => {

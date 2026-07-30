@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { DashboardAttentionItem, DashboardData, QueueMode, WorkQueueItem } from './types';
-import { projectsHref, scheduleHref, siteVisitsHref } from './links';
+import type { DashboardData, QueueMode } from './types';
+import { scheduleHref, siteVisitsHref } from './links';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { getDashboardSnapshotCached } from './getDashboardSnapshotCached';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
@@ -10,31 +10,9 @@ import { listDashboardRecentEstimates } from './operationalLists';
 import { getProjectWorkQueue } from '@/lib/projects/workItems/repository';
 
 type SnapshotKpis = {
-  actions_due?: number;
   new_leads?: number;
   quotes_to_send?: number;
   installs_this_week?: number;
-};
-
-type SnapshotAttention = {
-  overdue_actions?: number;
-  due_today?: number;
-  unscheduled_estimates?: number;
-  unscheduled_approved?: number;
-  site_visits_to_book?: number;
-  quotes_to_send?: number;
-  email_failures?: number;
-  oldest_overdue_days?: number | null;
-};
-
-type SnapshotWorkQueueRow = {
-  project_id?: string | null;
-  project_name?: string | null;
-  status?: string | null;
-  next_action_label?: string | null;
-  next_action_date?: string | null;
-  last_activity_at?: string | null;
-  client_name?: string | null;
 };
 
 type SnapshotScheduleStarting = {
@@ -63,9 +41,7 @@ type SnapshotSiteVisit = {
 type SnapshotData = {
   updated_at?: string | null;
   kpis?: SnapshotKpis | null;
-  attention_counts?: SnapshotAttention | null;
   pipeline_counts?: Record<string, number> | null;
-  work_queue?: SnapshotWorkQueueRow[] | null;
   schedule?: {
     starting_soon?: SnapshotScheduleStarting[] | null;
     crew_next_available?: SnapshotCrewAvailability[] | null;
@@ -116,43 +92,6 @@ export async function getDashboardData(opts: {
   ]);
 
   const kpis = snapshot?.kpis ?? {};
-  const attentionCounts = snapshot?.attention_counts ?? {};
-  const oldestOverdueDays = typeof attentionCounts.oldest_overdue_days === 'number' ? attentionCounts.oldest_overdue_days : null;
-
-  const attention: DashboardAttentionItem[] = [
-    {
-      key: 'overdue',
-      label: 'Project actions overdue',
-      count: asNumber(attentionCounts.overdue_actions),
-      tone: 'urgent',
-      helperText: oldestOverdueDays ? `Oldest overdue: ${oldestOverdueDays} days` : undefined,
-      href: projectsHref({ nextActionDue: true, due: 'overdue' }),
-    },
-    {
-      key: 'due_today',
-      label: 'Project actions due today',
-      count: asNumber(attentionCounts.due_today),
-      tone: 'warning',
-      href: projectsHref({ nextActionDue: true, due: 'today' }),
-    },
-    {
-      key: 'projects_in_quoting',
-      label: 'Projects in quoting',
-      count: asNumber(attentionCounts.quotes_to_send),
-      tone: 'neutral',
-      href: projectsHref({ status: 'QUOTING' }),
-    },
-  ];
-
-  const workQueue: WorkQueueItem[] = (snapshot?.work_queue ?? []).map((row) => ({
-    projectId: toProjectId(row.project_id),
-    projectName: asString(row.project_name) || 'Untitled',
-    clientName: row.client_name ?? null,
-    status: asString(row.status) || 'NEW',
-    nextActionLabel: row.next_action_label ?? null,
-    nextActionDueDate: row.next_action_date ?? null,
-    lastActivityAt: row.last_activity_at ?? null,
-  }));
 
   const schedule = {
     startingSoon: (snapshot?.schedule?.starting_soon ?? []).map((item) => ({
@@ -206,13 +145,10 @@ export async function getDashboardData(opts: {
   return {
     updatedAtIso: asString(snapshot?.updated_at) || new Date().toISOString(),
     kpis: {
-      actionsDue: asNumber(kpis.actions_due),
       newLeads: asNumber(kpis.new_leads),
       quotesToSend: asNumber(kpis.quotes_to_send),
       installsThisWeek: asNumber(kpis.installs_this_week),
     },
-    attention,
-    workQueue,
     projectWorkQueue: projectWorkQueue?.entries ?? [],
     projectWorkQueueAvailable: projectWorkQueue !== null,
     schedule,

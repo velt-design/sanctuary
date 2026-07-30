@@ -36,7 +36,7 @@ Production release merge `c9e73651` was deployed before the three exact files we
 
 The mixed-model boundary retains an explicit pre-rollout compatibility state for undeployed or partially rolled environments: when and only when PostgREST reports the V2 marker table itself as absent, it logs that condition and classifies projects as legacy. Authentication, network, permission, and unrelated schema failures still propagate, and V2-only RPCs remain unavailable. Production no longer depends on this bridge, and it does not replace schema-cache proof for any future environment.
 
-The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server Work Queue emits at most one current row per project and groups it as Overdue, Today, Next seven business days, Blocked, or Needs triage. Its composition prefers durable recovery and urgent work, then the canonical specialist candidate, future work, and triage; the Dashboard shows only a compact preview and links to the full queue. Confirmation correction is append-only and always opens an explicit review signal rather than reversing later lifecycle or commercial facts.
+The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server Work Queue emits at most one current row per project and groups it as Overdue, Today, Next seven business days, Blocked, or Needs triage. Its composition prefers durable recovery and urgent work, then the canonical specialist candidate, future work, and triage; the Dashboard shows only a compact preview and links to the full queue. It does not expose legacy `follow_up_date`/`next_action*` action counts or the old snapshot queue payload. Confirmation correction is append-only and always opens an explicit review signal rather than reversing later lifecycle or commercial facts.
 
 ## 1. Product Model
 
@@ -483,7 +483,7 @@ The V2 marker is the one-way boundary: legacy writers are rejected for V2 projec
 4. Backfill only reviewed, open human obligations.
 5. Do not blindly migrate closed history, legacy stage checkboxes, site-visit automation, or mirrored domain tasks.
 6. Move payment, Schedule, Design, Running Jobs, and other domain facts to their owning contracts.
-7. Retarget the temporary `projects.next_action*` and `follow_up_date` projection because existing project-list, dashboard, and Schedule consumers still depend on it.
+7. Retarget the temporary `projects.next_action*` and `follow_up_date` projection because project-list, the legacy Dashboard snapshot RPC, and Schedule consumers still depend on it. The Dashboard browser contract no longer exposes the legacy action aggregates; retiring the RPC dependency requires a separate forward migration.
 8. Switch Command Centre, exception, dashboard, and project readers.
 9. Revoke legacy writes and retain old rows read-only for a verification window.
 10. Retire old code and tables only after focused reconciliation proves the cutover.

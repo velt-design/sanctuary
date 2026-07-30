@@ -41,7 +41,7 @@ describe('getDashboardData', () => {
 
     getDashboardSnapshotCached.mockResolvedValue({
       updated_at: '2026-05-30T00:00:00.000Z',
-      kpis: { actions_due: 1, new_leads: 2, quotes_to_send: 3, installs_this_week: 4 },
+      kpis: { new_leads: 2, quotes_to_send: 3, installs_this_week: 4 },
       attention_counts: {},
       pipeline_counts: { NEW: 2 },
       work_queue: [],
@@ -96,7 +96,11 @@ describe('getDashboardData', () => {
     expect(listRecentProjectNoteActivity).toHaveBeenCalledWith(expect.anything(), 8);
     expect(listDashboardRecentEstimates).toHaveBeenCalledTimes(1);
     expect(listVisibleDashboardTasks).toHaveBeenCalledWith(expect.anything(), 'user_1');
-    expect(data.kpis.actionsDue).toBe(1);
+    expect(data.kpis).toEqual({
+      newLeads: 2,
+      quotesToSend: 3,
+      installsThisWeek: 4,
+    });
     expect(data.pipelineCounts.NEW).toBe(2);
     expect(data.recentActivity).toHaveLength(1);
     expect(data.personalTasks).toHaveLength(1);
@@ -143,13 +147,19 @@ describe('getDashboardData', () => {
     expect(data.pipelineCounts.NEW).toBe(2);
   });
 
-  it('does not expose Site Visits as a Dashboard attention link', async () => {
+  it('does not expose legacy action aggregates or the legacy work queue payload', async () => {
     getDashboardSnapshotCached.mockResolvedValue({
       updated_at: '2026-05-30T00:00:00.000Z',
       kpis: {},
-      attention_counts: { site_visits_to_book: 12 },
-      pipeline_counts: {},
-      work_queue: [],
+      attention_counts: {
+        overdue_actions: 65,
+        due_today: 2,
+        oldest_overdue_days: 174,
+        site_visits_to_book: 12,
+        quotes_to_send: 20,
+      },
+      pipeline_counts: { QUOTING: 20 },
+      work_queue: [{ project_id: 'legacy_project' }],
       schedule: { starting_soon: [], crew_next_available: [] },
       site_visits: { unscheduled_count: 12, today: [], next7: [] },
     });
@@ -157,7 +167,8 @@ describe('getDashboardData', () => {
 
     const data = await getDashboardData({ queueMode: 'today' });
 
-    expect(data.attention.map((item) => item.key)).not.toContain('site_visits_to_book');
-    expect(data.attention.map((item) => item.href)).not.toContain('/staff/schedule?view=site-visits');
+    expect(data).not.toHaveProperty('attention');
+    expect(data).not.toHaveProperty('workQueue');
+    expect(data.pipelineCounts.QUOTING).toBe(20);
   });
 });

@@ -241,9 +241,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(250px, 0.7fr);
   grid-template-areas:
-    'attention activity tasks'
-    'queue estimates tasks';
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+    'queue activity tasks'
+    'estimates activity tasks';
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--ui-space-3);
   min-width: 0;
   min-height: 0;
@@ -260,7 +260,6 @@
   box-shadow: none !important;
 }
 
-.attentionCard { grid-area: attention; }
 .estimatesCard { grid-area: estimates; }
 .queueCard { grid-area: queue; container: dashboard-queue / inline-size; }
 .activityCard { grid-area: activity; container: dashboard-activity / inline-size; }
@@ -353,7 +352,6 @@
 .pipelineCell:hover,
 .pipelineCell:focus-visible { border-bottom-color: var(--ui-action); color: var(--ui-text-strong); }
 .pipelineCell:focus-visible,
-.attentionItem:focus-visible,
 .operationalRow:focus-visible,
 .queueRow:focus-visible,
 .activityItem:focus-visible,
@@ -385,7 +383,6 @@
 }
 .pipelineCountMuted { color: var(--ui-text-subtle); }
 
-.attentionList,
 .operationalList,
 .queueList,
 .activityList {
@@ -396,42 +393,17 @@
   list-style: none;
 }
 
-.attentionList li,
 .operationalList li,
 .queueList li,
 .activityList li { min-width: 0; border-bottom: var(--ui-border-width) solid var(--ui-border); }
-:is(.attentionList, .operationalList, .queueList, .activityList) li:last-child { border-bottom: 0; }
+:is(.operationalList, .queueList, .activityList) li:last-child { border-bottom: 0; }
 
-.attentionItem {
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--ui-space-3);
-  min-height: 66px;
-  border-left: var(--ui-status-edge) solid var(--ui-status-neutral-border);
-  padding: var(--ui-space-2) var(--ui-space-3);
-  color: var(--ui-text);
-  text-decoration: none;
-}
-.attentionItem[data-tone='urgent'] { border-left-color: var(--ui-status-error-border); }
-.attentionItem[data-tone='warning'] { border-left-color: var(--ui-status-warning-border); }
-.attentionItem:hover { background: var(--ui-surface-secondary); }
-.attentionCount {
-  color: var(--ui-text-strong);
-  font-family: var(--ui-font-display);
-  font-size: 32px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  line-height: 1;
-}
-.attentionCopy,
 .rowPrimary,
 .estimateMeta {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
-.attentionCopy strong,
 .rowPrimary strong,
 .estimateMeta strong {
   color: var(--ui-text-strong);
@@ -439,7 +411,6 @@
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
-.attentionCopy small,
 .rowPrimary small,
 .estimateMeta time,
 .operationalRow > time {
@@ -447,10 +418,6 @@
   font-size: var(--ui-font-size-caption);
   line-height: 1.35;
 }
-.rowArrow { color: var(--ui-text-subtle); font-weight: 800; }
-.attentionItem:hover .rowArrow,
-.attentionItem:focus-visible .rowArrow { color: var(--ui-action-text); }
-
 .operationalRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -669,12 +636,6 @@
   .pipelineCard .cardHeader { min-height: 42px; }
   .pipelineCell { min-height: 50px; padding-block: 6px; }
 
-  .attentionCard .attentionList {
-    height: 100%;
-    grid-template-rows: repeat(4, minmax(0, 1fr));
-  }
-  .attentionCard .attentionItem { height: 100%; }
-  .attentionItem { min-height: 55px; }
   .operationalRow { min-height: 49px; }
   .queueRow { min-height: 52px; }
   .activityItem { min-height: 88px; }
@@ -687,13 +648,10 @@
   .workspaceGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      'attention activity'
-      'queue queue'
-      'estimates tasks';
+      'queue activity'
+      'estimates activity'
+      'tasks tasks';
     grid-template-rows: auto;
-  }
-  .queueCard {
-    height: min(400px, 52dvh);
   }
   .activityCard,
   .tasksCard { height: min(380px, 48dvh); }
@@ -705,9 +663,8 @@
   .workspaceGrid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'attention'
-      'activity'
       'queue'
+      'activity'
       'estimates'
       'tasks';
   }

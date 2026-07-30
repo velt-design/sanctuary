@@ -9,6 +9,8 @@ describe('Dashboard loading frame', () => {
     expect(markup).toContain('data-dashboard-state="pending"');
     expect(markup).toContain('Dashboard');
     expect(markup).toContain('Updating dashboard...');
+    expect(markup).toContain('Project Work');
+    expect(markup).not.toContain('project actions');
     expect(markup).not.toContain('data-blueprint-loading');
   });
 });

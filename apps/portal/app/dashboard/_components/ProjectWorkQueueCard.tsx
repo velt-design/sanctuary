@@ -10,7 +10,7 @@ import { normalizePipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import type { ProjectWorkQueueEntry } from '@/lib/projects/workItems/types';
 import dash from '../dashboard.module.css';
 
-export default function ProjectActionQueueCard({
+export default function ProjectWorkQueueCard({
   items,
   available,
 }: {

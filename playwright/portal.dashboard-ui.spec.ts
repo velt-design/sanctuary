@@ -53,21 +53,19 @@ async function expectNoLegacyRoundedSurfaces(root: Locator) {
 }
 
 async function expectRefinedOperationalHierarchy(page: Page, root: Locator, verifyDesktopChrome: boolean) {
-  const attentionHeader = root.getByRole('region', { name: 'Attention Today' }).locator(':scope > div').first();
   const pipelineHeader = root.getByRole('region', { name: 'Pipeline counts' }).locator(':scope > div').first();
+  const queueHeader = root.getByRole('region', { name: 'Work Queue' }).locator(':scope > div').first();
   const tasksHeader = root.getByRole('region', { name: 'My Tasks' }).locator(':scope > div').first();
-  const queueFilters = root.getByRole('region', { name: 'Project Action Queue' }).getByRole('navigation', { name: 'Project action queue range' });
   const quickAction = root.getByRole('region', { name: 'Quick actions' }).getByRole('link').first();
 
-  await expect(attentionHeader).toHaveCSS('background-color', 'rgb(235, 226, 215)');
-  await expect(attentionHeader).toHaveCSS('border-bottom-color', 'rgb(201, 194, 183)');
-  await expect(attentionHeader).toHaveCSS('border-bottom-width', '1px');
-  await expect(attentionHeader.getByRole('heading', { name: 'Attention Today' })).toHaveCSS('color', 'rgb(17, 17, 15)');
   await expect(pipelineHeader).toHaveCSS('background-color', 'rgb(11, 11, 10)');
   await expect(pipelineHeader.getByRole('heading', { name: 'Pipeline' })).toHaveCSS('color', 'rgb(248, 244, 236)');
+  await expect(queueHeader).toHaveCSS('background-color', 'rgb(235, 226, 215)');
+  await expect(queueHeader).toHaveCSS('border-bottom-color', 'rgb(201, 194, 183)');
+  await expect(queueHeader).toHaveCSS('border-bottom-width', '1px');
+  await expect(queueHeader.getByRole('heading', { name: 'Work Queue' })).toHaveCSS('color', 'rgb(17, 17, 15)');
   await expect(tasksHeader).toHaveCSS('background-color', 'rgb(11, 11, 10)');
   await expect(tasksHeader.getByRole('heading', { name: 'My Tasks' })).toHaveCSS('color', 'rgb(248, 244, 236)');
-  await expect(queueFilters.getByRole('link', { name: 'Today' })).toHaveCSS('background-color', 'rgb(240, 90, 0)');
   await expect(quickAction).toHaveCSS('background-color', 'rgb(11, 11, 10)');
 
   const pipelineEdges = await root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link').evaluateAll((links) =>
@@ -86,41 +84,33 @@ async function expectOperationalInteractionFeedback(root: Locator) {
   await firstPipelineStage.hover();
   await expect(firstPipelineStage).toHaveCSS('border-bottom-color', 'rgb(240, 90, 0)');
 
-  const firstAttentionItem = root.getByRole('region', { name: 'Attention Today' }).getByRole('link').first();
-  const attentionArrow = firstAttentionItem.locator('span').last();
-  await expect(attentionArrow).toHaveCSS('color', 'rgb(136, 135, 126)');
-  await firstAttentionItem.hover();
-  await expect(attentionArrow).toHaveCSS('color', 'rgb(139, 60, 0)');
-
   await expect(
-    root.getByRole('region', { name: 'Project Action Queue' }).getByRole('link', { name: 'All due' }),
-  ).toHaveAttribute('href', '/dashboard?queue=alldue');
+    root.getByRole('region', { name: 'Work Queue' }).getByRole('link', { name: 'Open queue' }),
+  ).toHaveAttribute('href', '/staff/projects/work-queue');
 }
 
 async function expectSingleScreenDesktopLayout(page: Page, root: Locator) {
-  const [attentionBox, estimatesBox, queueBox, activityBox, tasksBox] = await Promise.all([
-    root.getByRole('region', { name: 'Attention Today' }).boundingBox(),
+  const [estimatesBox, queueBox, activityBox, tasksBox] = await Promise.all([
     root.getByRole('region', { name: 'Recent Estimates' }).boundingBox(),
-    root.getByRole('region', { name: 'Project Action Queue' }).boundingBox(),
+    root.getByRole('region', { name: 'Work Queue' }).boundingBox(),
     root.getByRole('region', { name: 'Recent Activity' }).boundingBox(),
     root.getByRole('region', { name: 'My Tasks' }).boundingBox(),
   ]);
 
-  expect(attentionBox).not.toBeNull();
   expect(estimatesBox).not.toBeNull();
   expect(queueBox).not.toBeNull();
   expect(activityBox).not.toBeNull();
   expect(tasksBox).not.toBeNull();
-  if (!attentionBox || !estimatesBox || !queueBox || !activityBox || !tasksBox) return;
+  if (!estimatesBox || !queueBox || !activityBox || !tasksBox) return;
 
-  expect(Math.abs(attentionBox.y - activityBox.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(attentionBox.y - tasksBox.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(queueBox.y - estimatesBox.y)).toBeLessThanOrEqual(1);
-  expect(Math.abs(queueBox.width - activityBox.width)).toBeLessThanOrEqual(1);
-  expect(attentionBox.y + attentionBox.height).toBeLessThanOrEqual(queueBox.y + 1);
-  expect(queueBox.x + queueBox.width).toBeLessThanOrEqual(estimatesBox.x + 1);
+  expect(Math.abs(queueBox.y - activityBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(queueBox.y - tasksBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(queueBox.width - estimatesBox.width)).toBeLessThanOrEqual(1);
+  expect(queueBox.y + queueBox.height).toBeLessThanOrEqual(estimatesBox.y + 1);
+  expect(queueBox.x + queueBox.width).toBeLessThanOrEqual(activityBox.x + 1);
   expect(activityBox.x + activityBox.width).toBeLessThanOrEqual(tasksBox.x + 1);
-  expect(Math.abs(queueBox.y + queueBox.height - (tasksBox.y + tasksBox.height))).toBeLessThanOrEqual(1);
+  expect(Math.abs(estimatesBox.y + estimatesBox.height - (activityBox.y + activityBox.height))).toBeLessThanOrEqual(1);
+  expect(Math.abs(activityBox.y + activityBox.height - (tasksBox.y + tasksBox.height))).toBeLessThanOrEqual(1);
 
   const dimensions = await page.evaluate(() => ({
     viewportHeight: window.innerHeight,
@@ -142,7 +132,7 @@ async function openDashboard(page: Page) {
   const root = page.locator('[data-ui-foundation-consumer="dashboard"]:visible');
   await expect(root).toBeVisible({ timeout: 60_000 });
   await expect(root).toHaveAttribute('data-dashboard-state', /fresh|refresh-failed/, { timeout: 60_000 });
-  await expect(root.getByRole('region', { name: 'Project Action Queue' })).toBeVisible({ timeout: 60_000 });
+  await expect(root.getByRole('region', { name: 'Work Queue' })).toBeVisible({ timeout: 60_000 });
   return root;
 }
 
@@ -155,10 +145,9 @@ test('Dashboard concept refinement is responsive and keeps operational links int
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     const root = await openDashboard(page);
     await expect(root.getByRole('region', { name: 'Pipeline counts' })).toBeVisible();
-    await expect(root.getByRole('region', { name: 'Attention Today' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'New Leads' })).toHaveCount(0);
     await expect(root.getByRole('region', { name: 'Recent Estimates' })).toBeVisible();
-    await expect(root.getByRole('region', { name: 'Project Action Queue' })).toBeVisible();
+    await expect(root.getByRole('region', { name: 'Work Queue' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'Recent Activity' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'My Tasks' })).toBeVisible();
     await expect(root.getByRole('region', { name: 'Quick actions' })).toBeVisible();
@@ -166,6 +155,10 @@ test('Dashboard concept refinement is responsive and keeps operational links int
     await expect(root.getByText('Installs this week', { exact: true })).toHaveCount(0);
     await expect(root.getByText('Upcoming Installs', { exact: true })).toHaveCount(0);
     await expect(root.getByText('Quotes to send', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Project actions overdue', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Project actions due today', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Attention Today', { exact: true })).toHaveCount(0);
+    await expect(root.getByText('Commercial Attention', { exact: true })).toHaveCount(0);
     await expect(root.getByRole('region', { name: 'Pipeline counts' }).getByRole('link')).toHaveCount(9);
     await expectNoDocumentOverflow(page);
     await expectNoLegacyRoundedSurfaces(root);
