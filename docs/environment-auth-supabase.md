@@ -108,11 +108,16 @@ Project Work V2 has a read-only staging readiness preflight:
 
 ```powershell
 $env:PORTAL_PROJECT_WORK_V2_READINESS_TARGET='staging'
-$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='<exact-20-character-staging-ref>'
-# Optional extra guard when the production ref is available:
-$env:PORTAL_PRODUCTION_SUPABASE_PROJECT_REF='<exact-20-character-production-ref>'
+$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='tnsiprehuldksnuowubv'
+$env:PORTAL_PRODUCTION_SUPABASE_PROJECT_REF='iytanftukulcnavossmd'
 npm run portal:project-work-v2-readiness
 ```
+
+These public project references identify `SP-Staff-Portal-Staging` and the
+Supabase project currently configured on the Vercel `sanctuary-portal`
+Production environment, respectively. They were reverified on 2026-07-30.
+Recording the production reference strengthens the staging refusal guard; it
+does not authorise a production migration or expose a credential.
 
 The command requires the declared staging ref to exactly match the configured
 `NEXT_PUBLIC_SUPABASE_URL`, rejects production/local/unknown targets before any
