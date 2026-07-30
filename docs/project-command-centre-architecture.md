@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Current architecture plus the completed Project Overview V2 implementation handover. The implementation is present in `20a8adee`; its owned verification passed, and on 2026-07-30 the user accepted a narrow handoff exception for the unrelated Contacts and Calculator bundle overruns that reproduce at baseline `060bea19`. Their limits remain unchanged and their optimization remains separate work.
+Status: Current architecture plus the completed and deployed Project Overview V2 implementation handover. The implementation is present in `20a8adee`; its owned verification passed, production release merge `c9e73651` and the cutover recorded in `c8471e92` passed authenticated read-only verification, and snapshot-cache hotfix merge `809f2c5e` is deployed. The user accepted a narrow handoff exception for unrelated Contacts and Calculator bundle overruns reproduced at baseline `060bea19`; their ceilings were not raised, and later isolated route optimization closed both overruns.
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
@@ -718,7 +718,7 @@ The broader acceptance matrix in section 14 remains required where the current b
 - The unchanged Project Detail budget passed at the implementation checkpoint at 642.4 KiB raw / 184.9 KiB gzip initial, 978.5 KiB raw / 219.9 KiB gzip lazy total, and 858.6 KiB raw / 186.4 KiB gzip largest lazy entry. A fresh isolated build after the later intentional merge still passed at 642.6 KiB raw / 184.9 KiB gzip initial with the same lazy totals.
 - A manual authenticated read-only inspection passed at 390x844 on one RLS-visible legacy project: one Project Work surface, the approved mobile order, no duplicate/prohibited regions, no document overflow, no mutation control exercised, and no shared project/customer data changed.
 
-Overview V2 completion is accepted under a narrow scope exception. The aggregate `npm run portal:bundle-budget` gate still fails only for Contacts and Calculator initial budgets; an isolated clean build at approved baseline `060bea19` with the same fail-closed analyser reproduces those overruns, while Project Detail remains within its unchanged allowance. This exception does not raise either ceiling, mark those routes green, or authorize changes to them from the Overview slice; a separate route-optimization review owns that debt.
+At the handoff, the aggregate `npm run portal:bundle-budget` gate failed only for Contacts and Calculator initial budgets; an isolated clean build at approved baseline `060bea19` reproduced those overruns while Project Detail remained within its unchanged allowance. The narrow exception did not raise either ceiling or authorize unrelated Overview changes. A later isolated `.next-route-optimization` production build brought both routes within their unchanged ceilings and passed the aggregate assertion. Production cutover then returned ready authenticated Work Queue, legacy snapshot, Command Centre, and Overview reads without migrating or backfilling a pre-cutover project; the snapshot-cache hotfix subsequently made every explicit snapshot response `private, no-store`.
 
 Stage 1 verification completed on 2026-07-20:
 
@@ -743,7 +743,7 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.
 - Stage 6: final responsive QA, pilot, and rollout. Not started.
-- Current slice: `## Approved Overview V2 Implementation Handover (READ FIRST)`, section 11, is complete in `20a8adee` with the narrow unrelated-route bundle exception recorded above.
+- Current slice: `## Approved Overview V2 Implementation Handover (READ FIRST)`, section 11, is complete in `20a8adee`, deployed through the production cutover recorded in `c8471e92`, and protected by snapshot-cache hotfix `809f2c5e`. The narrow historical bundle exception is recorded above and later optimization closed it without raising ceilings.
 - Next-slice boundary: no deposit, Schedule/Running Jobs readiness, normalized meaningful activity, complete exception aggregation, or other lifecycle expansion is approved until a bounded specialist-owned server projection is separately reviewed.
 
 ## 20. Technical risks

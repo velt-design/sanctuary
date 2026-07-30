@@ -14,6 +14,19 @@ const consumers = [
 ];
 
 describe('Project Work V2 model boundary', () => {
+  it('keeps the cross-app model boundary free of portal-only import aliases', () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        'apps/portal/lib/projects/workItems/modelBoundary.ts',
+      ),
+      'utf8',
+    );
+
+    expect(source).toContain("from '../../list/listLimits'");
+    expect(source).not.toContain("from '@/");
+  });
+
   it.each(consumers)('%s reads model state without embedded PostgREST relationships', (file) => {
     const source = readFileSync(path.join(process.cwd(), file), 'utf8');
 

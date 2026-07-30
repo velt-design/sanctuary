@@ -74,12 +74,34 @@ test("authenticated Project Overview is one read-only command-centre surface", a
           ),
         ).toHaveCount(0);
 
-        const prohibitedActionName = /\b(?:call|site visits?)\b/i;
+        const prohibitedCallName = /\bcall\b/i;
         await expect(
-          page.getByRole("link", { name: prohibitedActionName }),
+          page.getByRole("link", { name: prohibitedCallName }),
         ).toHaveCount(0);
         await expect(
-          page.getByRole("button", { name: prohibitedActionName }),
+          page.getByRole("button", { name: prohibitedCallName }),
+        ).toHaveCount(0);
+
+        const siteVisitLinks = page.getByRole("link", {
+          name: /\bsite visits?\b/i,
+        });
+        const siteVisitLinkCount = await siteVisitLinks.count();
+        expect(
+          siteVisitLinkCount,
+          "Only the approved stage-gated Site Visit link may be present.",
+        ).toBeLessThanOrEqual(1);
+        if (siteVisitLinkCount === 1) {
+          const projectId = projectUrl.pathname.split("/").at(-1)!;
+          await expect(siteVisitLinks).toHaveAccessibleName(
+            "Book or confirm site visit",
+          );
+          await expect(siteVisitLinks).toHaveAttribute(
+            "href",
+            `/staff/schedule?view=site-visits&project=${encodeURIComponent(projectId)}`,
+          );
+        }
+        await expect(
+          page.getByRole("button", { name: /\bsite visits?\b/i }),
         ).toHaveCount(0);
       },
     );
