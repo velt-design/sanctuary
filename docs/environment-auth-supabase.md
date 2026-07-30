@@ -34,8 +34,10 @@ Common optional or feature-specific variables:
 - `NEXT_PUBLIC_MARKETING_SITE_URL`
 - `NEXT_PUBLIC_FB_PIXEL_ID`
 - `NEXT_PUBLIC_GTM_CONTAINER_ID` (optional; falls back to the current checked container ID and loads only after an explicit analytics or marketing choice, with consent mode preserving the denied category)
+- `GA4_MEASUREMENT_ID` (server-only Measurement Protocol stream ID for downstream consented lifecycle events; currently the same web stream used by GTM)
+- `GA4_MEASUREMENT_PROTOCOL_API_SECRET` (server-only GA4 data-stream API secret; never use a browser-prefixed variable or log the request URL)
 - `MARKETING_ABUSE_HASH_SECRET` (preferred production server-only HMAC key for durable public rate-limit identifiers; when absent, marketing derives a domain-separated HMAC subkey from the already-required `SUPABASE_SERVICE_ROLE_KEY`, and still fails closed if neither secret exists)
-- `CRON_SECRET` (server-only bearer secret used by the scheduled abandoned-enquiry-upload cleanup route)
+- `CRON_SECRET` (server-only bearer secret used by the scheduled abandoned-enquiry-upload cleanup and GA4 lifecycle-delivery routes)
 - `META_CONVERSIONS_API_TOKEN`
 - `META_GRAPH_API_VERSION`
 - `META_CAPI_TEST_EVENT_CODE`
@@ -120,11 +122,16 @@ Project Work V2 has a read-only staging readiness preflight:
 
 ```powershell
 $env:PORTAL_PROJECT_WORK_V2_READINESS_TARGET='staging'
-$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='<exact-20-character-staging-ref>'
-# Optional extra guard when the production ref is available:
-$env:PORTAL_PRODUCTION_SUPABASE_PROJECT_REF='<exact-20-character-production-ref>'
+$env:PORTAL_PROJECT_WORK_V2_STAGING_PROJECT_REF='tnsiprehuldksnuowubv'
+$env:PORTAL_PRODUCTION_SUPABASE_PROJECT_REF='iytanftukulcnavossmd'
 npm run portal:project-work-v2-readiness
 ```
+
+These public project references identify `SP-Staff-Portal-Staging` and the
+Supabase project currently configured on the Vercel `sanctuary-portal`
+Production environment, respectively. They were reverified on 2026-07-30.
+Recording the production reference strengthens the staging refusal guard; it
+does not authorise a production migration or expose a credential.
 
 The command requires the declared staging ref to exactly match the configured
 `NEXT_PUBLIC_SUPABASE_URL`, rejects production/local/unknown targets before any
@@ -133,6 +140,24 @@ rows, and checks that the read-only queue/classifier RPCs deny anonymous
 execution. It reports `000002`, `000003`, or `000004` separately when that
 contract is absent. It does not apply migrations, create records, authenticate
 staff, or exercise any lifecycle/customer side effect.
+
+Project Work V2 entered production on 2026-07-30 through a controlled exact-file
+apply to the positively identified `SP-Staff-Portal-DB` project
+`iytanftukulcnavossmd`, after portal release merge `c9e73651` was deployed and a
+completed physical backup was confirmed. The canonical-LF SHA-256 values were
+`9186b67413de119f472e6d457290d4866d403a742ef3ed09a089c82f10e47274` for
+`20260729_000002`, `c34875fba9d1419586732c7e480bbf945a538cf94403c76a28808dc792f60dfc`
+for `000003`, and
+`c0f023548bcb40313ed7df94d15324a587e9d756bfc29396c359139595e341cf` for
+`000004`. Each reviewed file was applied individually through the linked query
+boundary; `db push`, `migration up`, and migration repair were not used, and the
+colliding `20260729` remote-ledger entry remains untouched. Postflight catalog
+checks found all nine V2 tables with RLS enabled, the authenticated-only queue
+function, the two canonical cascade relationships, and zero model markers,
+operational states, work items, work events, confirmation events, or repair
+signals. No pre-cutover project was migrated or backfilled, and the read-only
+production QA changed no customer, project, quote, invoice, schedule, task, or
+payment row.
 
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
@@ -170,6 +195,7 @@ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-owned flows:
 - Imports and migration/maintenance scripts.
 - Public token flows for quote or invoice viewing.
 - Background automation and email flows.
+- Scheduled GA4 lifecycle delivery through the leased `marketing_conversion_delivery_claim` and `marketing_conversion_delivery_complete` RPCs.
 - Durable background-job enqueue, worker lifecycle, safe inspection, provider-webhook reconciliation, and repair RPCs. Direct access to job/PGMQ/private-payload/private-receipt tables is not part of this permission.
 - Server-side operations that intentionally bypass RLS.
 

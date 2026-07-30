@@ -67,7 +67,7 @@ describe('marketing attribution conversion helpers', () => {
     h.supabaseServiceRole.from.mockReset();
   });
 
-  it('normalizes UTM and Google click identifiers without keeping unknown payload fields', async () => {
+  it('normalizes consented marketing attribution without keeping URL query strings or unknown fields', async () => {
     const { normalizeMarketingAttributionInput } = await import('./server');
 
     expect(
@@ -75,8 +75,14 @@ describe('marketing attribution conversion helpers', () => {
         {
           utm: { UTM_Source: ' Google ', nope: 'ignored' },
           clickIds: { gclid: ' g-123 ', gbraid: 'gb-456', email: 'do-not-keep@example.com' },
-          landingPage: ' https://example.test/?gclid=g-123 ',
-          referrer: ' https://google.test ',
+          landingPage: ' https://example.test/contact?gclid=g-123#form ',
+          referrer: ' https://google.test/search?q=pergolas#results ',
+          analyticsClientId: '1022420085.1772518636',
+          consent: {
+            analytics: true,
+            marketing: true,
+            capturedAt: '2026-07-30T00:00:00.000Z',
+          },
         },
         { utm: { utm_campaign: 'Fallback' }, page: '/contact', source: 'website' },
       ),
@@ -85,8 +91,86 @@ describe('marketing attribution conversion helpers', () => {
       page: '/contact',
       utm: { utm_campaign: 'Fallback', utm_source: 'Google' },
       clickIds: { gclid: 'g-123', gbraid: 'gb-456' },
-      landingPage: 'https://example.test/?gclid=g-123',
-      referrer: 'https://google.test',
+      landingPage: 'https://example.test/contact',
+      referrer: 'https://google.test/search',
+      analyticsClientId: '1022420085.1772518636',
+      consent: {
+        analytics: true,
+        marketing: true,
+        capturedAt: '2026-07-30T00:00:00.000Z',
+      },
+    });
+  });
+
+  it('drops all marketing attribution when marketing consent is absent or denied', async () => {
+    const { normalizeMarketingAttributionInput } = await import('./server');
+
+    expect(
+      normalizeMarketingAttributionInput(
+        {
+          source: 'website',
+          page: '/contact',
+          utm: { utm_source: 'google' },
+          clickIds: { gclid: 'g-123' },
+          landingPage: 'https://example.test/contact?gclid=g-123',
+          referrer: 'https://google.test/search?q=pergolas',
+          analyticsClientId: '1022420085.1772518636',
+          consent: { analytics: true, marketing: false },
+        },
+        { utm: { utm_campaign: 'untrusted-fallback' } },
+      ),
+    ).toEqual({
+      source: 'website',
+      page: '/contact',
+      utm: {},
+      clickIds: {},
+      landingPage: null,
+      referrer: null,
+      analyticsClientId: '1022420085.1772518636',
+      consent: { analytics: true, marketing: false },
+    });
+
+    expect(
+      normalizeMarketingAttributionInput(
+        {
+          source: 'website',
+          page: '/contact',
+          utm: { utm_source: 'google' },
+          clickIds: { gclid: 'g-123' },
+          landingPage: 'https://example.test/contact?gclid=g-123',
+        },
+        { utm: { utm_campaign: 'untrusted-fallback' } },
+      ),
+    ).toMatchObject({
+      source: 'website',
+      page: '/contact',
+      utm: {},
+      clickIds: {},
+      landingPage: null,
+      analyticsClientId: null,
+      consent: null,
+    });
+  });
+
+  it('drops GA identity when analytics consent is absent or denied', async () => {
+    const { normalizeMarketingAttributionInput } = await import('./server');
+
+    expect(
+      normalizeMarketingAttributionInput({
+        analyticsClientId: '1022420085.1772518636',
+        consent: { analytics: false, marketing: true },
+      }),
+    ).toMatchObject({
+      analyticsClientId: null,
+      consent: { analytics: false, marketing: true },
+    });
+    expect(
+      normalizeMarketingAttributionInput({
+        analyticsClientId: '1022420085.1772518636',
+      }),
+    ).toMatchObject({
+      analyticsClientId: null,
+      consent: null,
     });
   });
 
@@ -103,6 +187,12 @@ describe('marketing attribution conversion helpers', () => {
             attribution: {
               clickIds: { gclid: 'g-123' },
               landingPage: 'https://example.test/contact?gclid=g-123',
+              analyticsClientId: '1022420085.1772518636',
+              consent: {
+                analytics: true,
+                marketing: true,
+                capturedAt: '2026-06-01T00:00:00.000Z',
+              },
             },
           },
           created_at: '2026-06-01T00:00:00.000Z',
@@ -115,6 +205,7 @@ describe('marketing attribution conversion helpers', () => {
       type: 'marketing.quote_accepted',
       projectId: 'proj-1',
       primaryId: 'qv-1',
+      occurredAt: '2026-06-02T03:04:05+12:00',
       payload: { quoteVersionId: 'qv-1', valueIncGstCents: 120000 },
       supabase: fake.client as any,
     });
@@ -124,6 +215,7 @@ describe('marketing attribution conversion helpers', () => {
       project_id: 'proj-1',
       type: 'marketing.quote_accepted',
       idempotency_key: 'marketing:marketing.quote_accepted:proj-1:qv-1',
+      created_at: '2026-06-01T15:04:05.000Z',
       payload: {
         projectId: 'proj-1',
         quoteVersionId: 'qv-1',
@@ -134,9 +226,58 @@ describe('marketing attribution conversion helpers', () => {
           page: '/contact',
           utm: { utm_source: 'google' },
           clickIds: { gclid: 'g-123' },
+          landingPage: 'https://example.test/contact',
+          analyticsClientId: '1022420085.1772518636',
+          consent: {
+            analytics: true,
+            marketing: true,
+            capturedAt: '2026-06-01T00:00:00.000Z',
+          },
         },
       },
     });
     expect(JSON.stringify(fake.db.audit_events[0])).not.toContain('do-not-keep@example.com');
+  });
+
+  it('lets the database own created_at when the supplied occurrence timestamp is invalid', async () => {
+    const fake = makeSupabase();
+    const { recordMarketingConversionEvent } = await import('./server');
+
+    await recordMarketingConversionEvent({
+      type: 'marketing.quote_accepted',
+      projectId: 'proj-1',
+      primaryId: 'qv-1',
+      occurredAt: 'not-an-instant',
+      attribution: null,
+      supabase: fake.client as any,
+    });
+
+    expect(fake.db.audit_events).toHaveLength(1);
+    expect(fake.db.audit_events[0]).not.toHaveProperty('created_at');
+  });
+
+  it('shares one bounded replay window with a small database clock-skew allowance', async () => {
+    const { recentMarketingConversionOccurrence } = await import('./server');
+    const now = new Date('2026-07-30T02:00:00.000Z').valueOf();
+
+    expect(
+      recentMarketingConversionOccurrence(
+        '2026-07-30T02:04:00.000Z',
+        now,
+      ),
+    ).toBe('2026-07-30T02:04:00.000Z');
+    expect(
+      recentMarketingConversionOccurrence(
+        '2026-07-27T02:00:00.000Z',
+        now,
+      ),
+    ).toBe('2026-07-27T02:00:00.000Z');
+    expect(
+      recentMarketingConversionOccurrence(
+        '2026-07-27T01:59:59.999Z',
+        now,
+      ),
+    ).toBeNull();
+    expect(recentMarketingConversionOccurrence('not-an-instant', now)).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import {
   pushGraphicsState,
   rectangle,
   rgb,
+  setCharacterSpacing,
   type Color,
   type PDFDocument,
   type PDFImage,
@@ -14,21 +15,28 @@ import {
   type PDFFont,
 } from "pdf-lib";
 import { SANCTUARY_ARTIFACT_BRAND } from "@/lib/customerArtifacts/brand";
+import {
+  DESIGN_BOOKLET_PRESENTATION,
+  normalizeDesignBookletPresentationText,
+} from "./presentation";
 
-export const DESIGN_BOOKLET_PDF_PAGE_SIZE = {
-  width: 841.89,
-  height: 595.28,
-} as const;
+export const DESIGN_BOOKLET_PDF_PAGE_SIZE = DESIGN_BOOKLET_PRESENTATION.page;
 
-export const DESIGN_BOOKLET_PDF_LEFT = 44;
-export const DESIGN_BOOKLET_PDF_RIGHT = 44;
-const DESIGN_BOOKLET_PDF_BOTTOM = 23;
+export const DESIGN_BOOKLET_PDF_LEFT =
+  DESIGN_BOOKLET_PRESENTATION.chrome.insetLeft;
+export const DESIGN_BOOKLET_PDF_RIGHT =
+  DESIGN_BOOKLET_PRESENTATION.chrome.insetRight;
+const DESIGN_BOOKLET_PDF_BOTTOM =
+  DESIGN_BOOKLET_PDF_PAGE_SIZE.height -
+  DESIGN_BOOKLET_PRESENTATION.chrome.footer.labelBaseline;
 const DESIGN_BOOKLET_PDF_CONTENT_WIDTH =
   DESIGN_BOOKLET_PDF_PAGE_SIZE.width -
   DESIGN_BOOKLET_PDF_LEFT -
   DESIGN_BOOKLET_PDF_RIGHT;
 
 export type DesignBookletPdfFonts = {
+  display: PDFFont;
+  brand: PDFFont;
   regular: PDFFont;
   medium: PDFFont;
   semibold: PDFFont;
@@ -59,21 +67,15 @@ export const DESIGN_BOOKLET_PDF_COLORS = {
 };
 
 export function safeDesignBookletPdfText(value: string): string {
-  return value
-    .normalize("NFC")
-    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, "-")
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201c\u201d]/g, '"')
-    .replace(/\u00a0/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeDesignBookletPresentationText(value);
 }
 
-function wrapText(
+export function designBookletPdfTextLines(
   text: string,
   font: PDFFont,
   size: number,
   maxWidth: number,
+  tracking = 0,
 ): string[] {
   const paragraphs = safeDesignBookletPdfText(text).split(/\n+/);
   const lines: string[] = [];
@@ -82,7 +84,7 @@ function wrapText(
     const words = paragraph.split(/\s+/).filter(Boolean);
     let line = "";
     for (const word of words) {
-      if (font.widthOfTextAtSize(word, size) > maxWidth) {
+      if (designBookletPdfTextWidth(word, font, size, tracking) > maxWidth) {
         if (line) {
           lines.push(line);
           line = "";
@@ -90,7 +92,11 @@ function wrapText(
         let chunk = "";
         for (const character of Array.from(word)) {
           const candidate = `${chunk}${character}`;
-          if (chunk && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+          if (
+            chunk &&
+            designBookletPdfTextWidth(candidate, font, size, tracking) >
+              maxWidth
+          ) {
             lines.push(chunk);
             chunk = character;
           } else {
@@ -101,7 +107,10 @@ function wrapText(
         continue;
       }
       const candidate = line ? `${line} ${word}` : word;
-      if (!line || font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      if (
+        !line ||
+        designBookletPdfTextWidth(candidate, font, size, tracking) <= maxWidth
+      ) {
         line = candidate;
       } else {
         lines.push(line);
@@ -112,6 +121,46 @@ function wrapText(
   }
 
   return lines;
+}
+
+export function designBookletPdfTextWidth(
+  text: string,
+  font: PDFFont,
+  size: number,
+  tracking = 0,
+): number {
+  const characterCount = Array.from(text).length;
+  return (
+    font.widthOfTextAtSize(text, size) +
+    Math.max(0, characterCount - 1) * tracking * size
+  );
+}
+
+export function drawDesignBookletTrackedText(
+  page: PDFPage,
+  text: string,
+  options: {
+    x: number;
+    y: number;
+    font: PDFFont;
+    size: number;
+    color?: Color;
+    tracking?: number;
+  },
+) {
+  const tracking = options.tracking ?? 0;
+  page.pushOperators(
+    pushGraphicsState(),
+    setCharacterSpacing(tracking * options.size),
+  );
+  page.drawText(safeDesignBookletPdfText(text), {
+    x: options.x,
+    y: options.y,
+    font: options.font,
+    size: options.size,
+    color: options.color ?? DESIGN_BOOKLET_PDF_COLORS.ink,
+  });
+  page.pushOperators(popGraphicsState());
 }
 
 export function drawDesignBookletWrappedText(
@@ -126,9 +175,16 @@ export function drawDesignBookletWrappedText(
     lineHeight: number;
     color?: Color;
     maxLines?: number;
+    tracking?: number;
   },
 ): number {
-  const lines = wrapText(text, options.font, options.size, options.width);
+  const lines = designBookletPdfTextLines(
+    text,
+    options.font,
+    options.size,
+    options.width,
+    options.tracking,
+  );
   const visible =
     options.maxLines && lines.length > options.maxLines
       ? (() => {
@@ -137,8 +193,12 @@ export function drawDesignBookletWrappedText(
           let finalLine = truncated[lastIndex].trimEnd();
           while (
             finalLine &&
-            options.font.widthOfTextAtSize(`${finalLine}...`, options.size) >
-              options.width
+            designBookletPdfTextWidth(
+              `${finalLine}...`,
+              options.font,
+              options.size,
+              options.tracking,
+            ) > options.width
           ) {
             finalLine = finalLine.slice(0, -1).trimEnd();
           }
@@ -148,12 +208,13 @@ export function drawDesignBookletWrappedText(
       : lines;
   let y = options.y;
   for (const line of visible) {
-    page.drawText(line, {
+    drawDesignBookletTrackedText(page, line, {
       x: options.x,
       y,
       font: options.font,
       size: options.size,
       color: options.color ?? DESIGN_BOOKLET_PDF_COLORS.ink,
+      tracking: options.tracking,
     });
     y -= options.lineHeight;
   }
@@ -167,14 +228,21 @@ export function drawDesignBookletEyebrow(
   y: number,
   fonts: DesignBookletPdfFonts,
   color: Color = DESIGN_BOOKLET_PDF_COLORS.accent,
+  size = DESIGN_BOOKLET_PRESENTATION.typography.eyebrowSize,
+  tracking = 0.15,
 ) {
-  page.drawText(safeDesignBookletPdfText(text).toUpperCase(), {
-    x,
-    y,
-    font: fonts.semibold,
-    size: 7.5,
-    color,
-  });
+  drawDesignBookletTrackedText(
+    page,
+    safeDesignBookletPdfText(text).toUpperCase(),
+    {
+      x,
+      y,
+      font: fonts.semibold,
+      size,
+      color,
+      tracking,
+    },
+  );
 }
 
 export function drawDesignBookletRule(
@@ -202,9 +270,11 @@ function drawPageBase(page: PDFPage) {
   });
   page.drawRectangle({
     x: 0,
-    y: DESIGN_BOOKLET_PDF_PAGE_SIZE.height - 4,
+    y:
+      DESIGN_BOOKLET_PDF_PAGE_SIZE.height -
+      DESIGN_BOOKLET_PRESENTATION.chrome.topRuleHeight,
     width: DESIGN_BOOKLET_PDF_PAGE_SIZE.width,
-    height: 4,
+    height: DESIGN_BOOKLET_PRESENTATION.chrome.topRuleHeight,
     color: DESIGN_BOOKLET_PDF_COLORS.accent,
   });
 }
@@ -215,44 +285,74 @@ export function drawDesignBookletFooter(
   pageCount: number,
   customerName: string,
   fonts: DesignBookletPdfFonts,
-  tone: "dark" | "light" = "dark",
+  tone: "dark" | "light" | "split" = "dark",
 ) {
-  const textColor =
+  const leftTextColor =
+    tone === "light"
+      ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
+      : tone === "split"
+        ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
+        : DESIGN_BOOKLET_PDF_COLORS.muted;
+  const rightTextColor =
     tone === "light"
       ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
       : DESIGN_BOOKLET_PDF_COLORS.muted;
-  const ruleColor =
-    tone === "light"
-      ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
-      : DESIGN_BOOKLET_PDF_COLORS.rule;
-  drawDesignBookletRule(
+  const ruleY =
+    DESIGN_BOOKLET_PDF_PAGE_SIZE.height -
+    DESIGN_BOOKLET_PRESENTATION.chrome.footer.ruleTop;
+  if (tone === "split") {
+    const splitX = DESIGN_BOOKLET_PRESENTATION.review.image.width;
+    drawDesignBookletRule(
+      page,
+      DESIGN_BOOKLET_PDF_LEFT,
+      ruleY,
+      splitX - DESIGN_BOOKLET_PDF_LEFT,
+      DESIGN_BOOKLET_PDF_COLORS.paperStrong,
+    );
+    drawDesignBookletRule(
+      page,
+      splitX,
+      ruleY,
+      DESIGN_BOOKLET_PDF_PAGE_SIZE.width - DESIGN_BOOKLET_PDF_RIGHT - splitX,
+      DESIGN_BOOKLET_PDF_COLORS.rule,
+    );
+  } else {
+    drawDesignBookletRule(
+      page,
+      DESIGN_BOOKLET_PDF_LEFT,
+      ruleY,
+      DESIGN_BOOKLET_PDF_CONTENT_WIDTH,
+      tone === "light"
+        ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
+        : DESIGN_BOOKLET_PDF_COLORS.rule,
+    );
+  }
+  drawDesignBookletTrackedText(
     page,
-    DESIGN_BOOKLET_PDF_LEFT,
-    40,
-    DESIGN_BOOKLET_PDF_CONTENT_WIDTH,
-    ruleColor,
-  );
-  page.drawText(
     `SANCTUARY / DESIGN BOOKLET / ${safeDesignBookletPdfText(customerName).toUpperCase()}`,
     {
       x: DESIGN_BOOKLET_PDF_LEFT,
       y: DESIGN_BOOKLET_PDF_BOTTOM,
-      size: 6.8,
+      size: DESIGN_BOOKLET_PRESENTATION.chrome.footer.labelSize,
       font: fonts.medium,
-      color: textColor,
+      color: leftTextColor,
+      tracking: 0.05,
     },
   );
   const numberWidth = Math.max(2, String(pageCount).length);
   const pageText = `${String(pageNumber).padStart(numberWidth, "0")} / ${String(pageCount).padStart(numberWidth, "0")}`;
-  page.drawText(pageText, {
+  const pageNumberSize =
+    DESIGN_BOOKLET_PRESENTATION.chrome.footer.pageNumberSize;
+  drawDesignBookletTrackedText(page, pageText, {
     x:
       DESIGN_BOOKLET_PDF_PAGE_SIZE.width -
       DESIGN_BOOKLET_PDF_RIGHT -
-      fonts.medium.widthOfTextAtSize(pageText, 7.2),
+      designBookletPdfTextWidth(pageText, fonts.medium, pageNumberSize, 0.05),
     y: DESIGN_BOOKLET_PDF_BOTTOM,
-    size: 7.2,
+    size: pageNumberSize,
     font: fonts.medium,
-    color: textColor,
+    color: rightTextColor,
+    tracking: 0.05,
   });
 }
 

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type {
   DesignBookletContentCatalog,
   DesignBookletDefaultAssetId,
@@ -12,6 +13,12 @@ import {
   designBookletDrawingTitle,
   visibleDesignBookletDrawings,
 } from "@/lib/designBooklets/pageModel";
+import {
+  DESIGN_BOOKLET_PRESENTATION,
+  designBookletCssBaselineOffset,
+  normalizeDesignBookletPresentationText,
+  type DesignBookletPresentationFontRole,
+} from "@/lib/designBooklets/presentation";
 import styles from "./designBookletPages.module.css";
 
 export type DesignBookletPreviewAsset = {
@@ -30,14 +37,81 @@ type Props = {
   assets: Record<string, DesignBookletPreviewAsset>;
 };
 
-function BookletBrand({ light = false }: { light?: boolean }) {
+type BookletPageStyle = CSSProperties & {
+  "--booklet-page-height": string;
+  "--booklet-page-width": string;
+};
+
+const presentation = DESIGN_BOOKLET_PRESENTATION;
+const BOOKLET_PAGE_STYLE: BookletPageStyle = {
+  "--booklet-page-height": String(presentation.page.height),
+  "--booklet-page-width": String(presentation.page.width),
+};
+
+function point(value: number): string {
+  return `calc(var(--booklet-point) * ${value})`;
+}
+
+function baselineTextStyle(
+  baseline: number,
+  size: number,
+  options: {
+    left?: number;
+    right?: number;
+    width?: number;
+    lineHeight?: number;
+    fontRole?: DesignBookletPresentationFontRole;
+  } = {},
+): CSSProperties {
+  const lineHeight = options.lineHeight ?? size;
+  return {
+    top: point(
+      baseline -
+        designBookletCssBaselineOffset(size, lineHeight, options.fontRole),
+    ),
+    left: options.left === undefined ? undefined : point(options.left),
+    right: options.right === undefined ? undefined : point(options.right),
+    width: options.width === undefined ? undefined : point(options.width),
+    fontSize: point(size),
+    lineHeight: point(lineHeight),
+  };
+}
+
+function BookletBrand({
+  light = false,
+  x = presentation.chrome.insetLeft,
+}: {
+  light?: boolean;
+  x?: number;
+}) {
+  const header = presentation.chrome.header;
   return (
     <div
       className={`${styles.pageBrand} ${light ? styles.pageBrandLight : ""}`}
       aria-label="Sanctuary Pergolas"
+      style={{ left: point(x) }}
     >
-      <strong>SANCTUARY</strong>
-      <span>PERGOLAS</span>
+      <strong
+        style={baselineTextStyle(
+          header.brandPrimaryBaseline,
+          header.brandPrimarySize,
+          {
+            lineHeight: header.brandPrimaryLineHeight,
+            fontRole: "display",
+          },
+        )}
+      >
+        SANCTUARY
+      </strong>
+      <span
+        style={baselineTextStyle(
+          header.brandSecondaryBaseline,
+          header.brandSecondarySize,
+          { lineHeight: header.brandSecondaryLineHeight },
+        )}
+      >
+        PERGOLAS
+      </span>
     </div>
   );
 }
@@ -46,21 +120,46 @@ function PageFooter({
   pageNumber,
   pageCount,
   customerName,
-  light = false,
+  tone = "dark",
 }: {
   pageNumber: number;
   pageCount: number;
   customerName: string;
-  light?: boolean;
+  tone?: "dark" | "light" | "split";
 }) {
+  const footer = presentation.chrome.footer;
   return (
     <footer
-      className={`${styles.pageFooter} ${light ? styles.pageFooterLight : ""}`}
+      className={`${styles.pageFooter} ${
+        tone === "light"
+          ? styles.pageFooterLight
+          : tone === "split"
+            ? styles.pageFooterSplit
+            : ""
+      }`}
+      style={{
+        left: point(presentation.chrome.insetLeft),
+        right: point(presentation.chrome.insetRight),
+        top: point(footer.ruleTop),
+      }}
     >
-      <span>
-        SANCTUARY / DESIGN BOOKLET / {customerName.toLocaleUpperCase()}
+      <span
+        style={baselineTextStyle(
+          footer.labelBaseline - footer.ruleTop,
+          footer.labelSize,
+          { lineHeight: footer.labelLineHeight },
+        )}
+      >
+        SANCTUARY / DESIGN BOOKLET /{" "}
+        {normalizeDesignBookletPresentationText(customerName).toUpperCase()}
       </span>
-      <span>
+      <span
+        style={baselineTextStyle(
+          footer.labelBaseline - footer.ruleTop,
+          footer.pageNumberSize,
+          { lineHeight: footer.labelLineHeight },
+        )}
+      >
         {String(pageNumber).padStart(2, "0")} /{" "}
         {String(pageCount).padStart(2, "0")}
       </span>
@@ -72,18 +171,27 @@ function PageHeader({
   pageNumber,
   label,
   light = false,
+  muted = false,
 }: {
   pageNumber: number;
   label: string;
   light?: boolean;
+  muted?: boolean;
 }) {
+  const header = presentation.chrome.header;
   return (
     <header
-      className={`${styles.pageNavigation} ${light ? styles.pageNavigationLight : ""}`}
+      className={`${styles.pageNavigation} ${light ? styles.pageNavigationLight : ""} ${muted ? styles.pageNavigationMuted : ""}`}
     >
       <BookletBrand light={light} />
-      <span>
-        {label.toLocaleUpperCase()} / {String(pageNumber).padStart(2, "0")}
+      <span
+        style={baselineTextStyle(header.labelBaseline, header.labelSize, {
+          right: presentation.chrome.insetRight,
+          lineHeight: header.labelLineHeight,
+        })}
+      >
+        {normalizeDesignBookletPresentationText(label).toUpperCase()} /{" "}
+        {String(pageNumber).padStart(2, "0")}
       </span>
     </header>
   );
@@ -114,6 +222,7 @@ function CoverPage({
       data-page-key="cover"
       data-page-kind="cover"
       aria-label={`Booklet page 1 of ${pageCount}`}
+      style={BOOKLET_PAGE_STYLE}
     >
       <img
         className={styles.fullBleedImage}
@@ -122,18 +231,84 @@ function CoverPage({
         alt={draft.cover.altText}
       />
       <PageHeader pageNumber={1} label="Concept design" light />
-      <main className={styles.coverStory}>
-        <p className={styles.eyebrow}>Outdoor living by Sanctuary</p>
-        <h1>{draft.projectTitle}</h1>
-        <div className={styles.coverDetails}>
+      <main
+        className={styles.coverStory}
+        style={{
+          left: point(presentation.cover.story.x),
+          bottom: point(presentation.cover.story.bottom),
+          width: point(presentation.cover.story.width),
+        }}
+      >
+        <p
+          className={styles.eyebrow}
+          style={{
+            fontSize: point(presentation.cover.eyebrow.size),
+            lineHeight: point(presentation.cover.eyebrow.lineHeight),
+          }}
+        >
+          Outdoor living by Sanctuary
+        </p>
+        <h1
+          style={{
+            width: point(presentation.cover.title.width),
+            marginTop: point(presentation.cover.title.marginTop),
+            fontSize: point(presentation.cover.title.size),
+            lineHeight: point(presentation.cover.title.lineHeight),
+          }}
+        >
+          {normalizeDesignBookletPresentationText(draft.projectTitle)}
+        </h1>
+        <div
+          className={styles.coverDetails}
+          style={{
+            width: point(presentation.cover.details.width),
+            gridTemplateColumns: `${point(
+              presentation.cover.details.prepared.width,
+            )} ${point(presentation.cover.details.direction.width)}`,
+            columnGap: point(presentation.cover.details.gap),
+            marginTop: point(presentation.cover.details.marginTop),
+            paddingTop: point(presentation.cover.details.paddingTop),
+          }}
+        >
           <div>
-            <span>Prepared for</span>
-            <strong>{draft.customerName}</strong>
+            <span
+              style={{
+                fontSize: point(presentation.cover.details.label.size),
+                lineHeight: point(presentation.cover.details.label.lineHeight),
+              }}
+            >
+              Prepared for
+            </span>
+            <strong
+              style={{
+                marginTop: point(presentation.cover.details.value.marginTop),
+                fontSize: point(presentation.cover.details.value.size),
+                lineHeight: point(presentation.cover.details.value.lineHeight),
+              }}
+            >
+              {normalizeDesignBookletPresentationText(draft.customerName)}
+            </strong>
           </div>
           <div>
-            <span>Design direction</span>
-            <strong>
-              {roofForm.name} / {material.label}
+            <span
+              style={{
+                fontSize: point(presentation.cover.details.label.size),
+                lineHeight: point(presentation.cover.details.label.lineHeight),
+              }}
+            >
+              Design direction
+            </span>
+            <strong
+              style={{
+                width: point(presentation.cover.details.direction.width),
+                marginTop: point(presentation.cover.details.value.marginTop),
+                fontSize: point(presentation.cover.details.value.size),
+                lineHeight: point(presentation.cover.details.value.lineHeight),
+              }}
+            >
+              {normalizeDesignBookletPresentationText(
+                `${roofForm.name} / ${material.label}`,
+              )}
             </strong>
           </div>
         </div>
@@ -142,7 +317,7 @@ function CoverPage({
         pageNumber={1}
         pageCount={pageCount}
         customerName={draft.customerName}
-        light
+        tone="light"
       />
     </article>
   );
@@ -167,6 +342,7 @@ function ImagePage({
       data-booklet-page={pageNumber}
       data-page-kind="image"
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
+      style={BOOKLET_PAGE_STYLE}
     >
       <img
         className={styles.fullBleedImage}
@@ -180,7 +356,7 @@ function ImagePage({
         pageNumber={pageNumber}
         pageCount={pageCount}
         customerName={draft.customerName}
-        light
+        tone="light"
       />
     </article>
   );
@@ -211,10 +387,19 @@ function DrawingPage({
       data-page-kind="drawings"
       data-drawing-layout={page.layout}
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
+      style={BOOKLET_PAGE_STYLE}
     >
       <div className={styles.pageTopRule} aria-hidden="true" />
-      <PageHeader pageNumber={pageNumber} label="Drawings" />
-      <main className={styles.drawingCanvas}>
+      <PageHeader pageNumber={pageNumber} label="Drawings" muted />
+      <main
+        className={styles.drawingCanvas}
+        style={{
+          left: point(presentation.drawing.area.x),
+          top: point(presentation.drawing.area.top),
+          width: point(presentation.drawing.area.width),
+          height: point(presentation.drawing.area.height),
+        }}
+      >
         {drawings.map((drawing, index) => {
           const frame = layout.frames[index];
           const asset = assets[drawing.image.assetId];
@@ -230,11 +415,33 @@ function DrawingPage({
                 height: `${frame.height * 100}%`,
               }}
             >
-              <div className={styles.drawingImageFrame}>
+              <div
+                className={styles.drawingImageFrame}
+                style={{
+                  bottom: point(presentation.drawing.caption.reserveHeight),
+                }}
+              >
                 <img src={asset.src} alt={drawing.image.altText} />
               </div>
-              <figcaption>
-                {designBookletDrawingTitle(drawing.title)}
+              <figcaption
+                style={{
+                  top: `calc(100% - var(--booklet-point) * ${
+                    presentation.drawing.caption.baselineFromBottom +
+                    designBookletCssBaselineOffset(
+                      presentation.drawing.caption.size,
+                      presentation.drawing.caption.lineHeight,
+                      "display",
+                    )
+                  })`,
+                  right: point(presentation.drawing.caption.insetX),
+                  left: point(presentation.drawing.caption.insetX),
+                  fontSize: point(presentation.drawing.caption.size),
+                  lineHeight: point(presentation.drawing.caption.lineHeight),
+                }}
+              >
+                {normalizeDesignBookletPresentationText(
+                  designBookletDrawingTitle(drawing.title),
+                )}
               </figcaption>
             </figure>
           );
@@ -267,37 +474,173 @@ function ReviewPage({
       data-page-key="review"
       data-page-kind="review"
       aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
+      style={BOOKLET_PAGE_STYLE}
     >
       <div className={styles.pageTopRule} aria-hidden="true" />
-      <figure className={styles.reviewImage}>
+      <figure
+        className={styles.reviewImage}
+        style={{
+          left: point(presentation.review.image.x),
+          top: point(presentation.review.image.top),
+          width: point(presentation.review.image.width),
+          height: point(presentation.review.image.height),
+        }}
+      >
         <img
           style={focalStyle(draft.reviewPage.image)}
           src={asset.src}
           alt={draft.reviewPage.image.altText}
         />
       </figure>
+      <div
+        className={styles.reviewPaper}
+        aria-hidden="true"
+        style={{
+          left: point(presentation.review.story.x),
+          width: point(presentation.review.story.width),
+        }}
+      />
       <main className={styles.reviewStory}>
-        <BookletBrand />
-        <span className={styles.reviewPageLabel}>
+        <BookletBrand x={presentation.review.copy.x} />
+        <span
+          className={styles.reviewPageLabel}
+          style={baselineTextStyle(
+            presentation.chrome.header.labelBaseline,
+            presentation.chrome.header.labelSize,
+            { right: presentation.chrome.insetRight },
+          )}
+        >
           REVIEW / {String(pageNumber).padStart(2, "0")}
         </span>
         <div className={styles.reviewHeading}>
-          <p className={styles.eyebrow}>{DESIGN_BOOKLET_REVIEW_COPY.eyebrow}</p>
-          <h2>{DESIGN_BOOKLET_REVIEW_COPY.title}</h2>
-          <p>{DESIGN_BOOKLET_REVIEW_COPY.introduction}</p>
+          <p
+            className={styles.eyebrow}
+            style={baselineTextStyle(
+              presentation.review.eyebrow.baseline,
+              presentation.typography.eyebrowSize,
+              {
+                left: presentation.review.copy.x,
+                lineHeight: presentation.typography.eyebrowLineHeight,
+              },
+            )}
+          >
+            {DESIGN_BOOKLET_REVIEW_COPY.eyebrow}
+          </p>
+          <h2
+            style={baselineTextStyle(
+              presentation.review.title.baseline,
+              presentation.review.title.size,
+              {
+                left: presentation.review.copy.x,
+                width: presentation.review.copy.width,
+                lineHeight: presentation.review.title.lineHeight,
+                fontRole: "display",
+              },
+            )}
+          >
+            {DESIGN_BOOKLET_REVIEW_COPY.title}
+          </h2>
+          <p
+            style={baselineTextStyle(
+              presentation.review.introduction.baseline,
+              presentation.review.introduction.size,
+              {
+                left: presentation.review.copy.x,
+                width: presentation.review.copy.width,
+                lineHeight: presentation.review.introduction.lineHeight,
+              },
+            )}
+          >
+            {DESIGN_BOOKLET_REVIEW_COPY.introduction}
+          </p>
         </div>
-        <div className={styles.reviewPrompts}>
+        <div
+          className={styles.reviewPrompts}
+          style={{
+            left: point(presentation.review.copy.x),
+            top: point(presentation.review.prompts[0].ruleTop),
+            width: point(presentation.review.copy.width),
+            height: point(
+              presentation.review.finalPromptRuleTop -
+                presentation.review.prompts[0].ruleTop,
+            ),
+          }}
+        >
           {DESIGN_BOOKLET_REVIEW_COPY.prompts.map((prompt, index) => (
-            <section key={prompt.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
+            <section
+              key={prompt.title}
+              style={{
+                top: point(
+                  presentation.review.prompts[index].ruleTop -
+                    presentation.review.prompts[0].ruleTop,
+                ),
+                height: point(presentation.review.prompts[index].rowHeight),
+                paddingTop: point(
+                  presentation.review.prompts[index].paddingTop,
+                ),
+                gridTemplateColumns: `${point(
+                  presentation.review.prompts[index].numberWidth,
+                )} minmax(0, 1fr)`,
+                columnGap: point(presentation.review.prompts[index].gap),
+              }}
+            >
+              <span
+                style={{
+                  fontSize: point(
+                    presentation.review.prompts[index].numberSize,
+                  ),
+                  lineHeight: point(
+                    presentation.review.prompts[index].numberLineHeight,
+                  ),
+                }}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
               <div>
-                <h3>{prompt.title}</h3>
-                <p>{prompt.copy}</p>
+                <h3
+                  style={{
+                    fontSize: point(
+                      presentation.review.prompts[index].titleSize,
+                    ),
+                    lineHeight: point(
+                      presentation.review.prompts[index].titleLineHeight,
+                    ),
+                  }}
+                >
+                  {prompt.title}
+                </h3>
+                <p
+                  style={{
+                    marginTop: point(
+                      presentation.review.prompts[index].copyMarginTop,
+                    ),
+                    fontSize: point(
+                      presentation.review.prompts[index].copySize,
+                    ),
+                    lineHeight: point(
+                      presentation.review.prompts[index].copyLineHeight,
+                    ),
+                  }}
+                >
+                  {prompt.copy}
+                </p>
               </div>
             </section>
           ))}
         </div>
-        <p className={styles.reviewCallToAction}>
+        <p
+          className={styles.reviewCallToAction}
+          style={baselineTextStyle(
+            presentation.review.callToAction.baseline,
+            presentation.review.callToAction.size,
+            {
+              left: presentation.review.copy.x,
+              width: presentation.review.copy.width,
+              lineHeight: presentation.review.callToAction.lineHeight,
+              fontRole: "display",
+            },
+          )}
+        >
           {DESIGN_BOOKLET_REVIEW_COPY.callToAction}
         </p>
       </main>
@@ -305,7 +648,7 @@ function ReviewPage({
         pageNumber={pageNumber}
         pageCount={pageCount}
         customerName={draft.customerName}
-        light
+        tone="split"
       />
     </article>
   );

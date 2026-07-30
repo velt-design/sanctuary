@@ -214,7 +214,7 @@ export default function ContactEnquiryForm({
 
     try {
       const attachmentUpload = await uploadEnquiryAttachments(files, submissionId);
-      const attribution = getBrowserMarketingAttribution();
+      const attribution = getBrowserMarketingAttribution({ consent, hasStoredChoice });
       const response = await fetch('/api/enquiry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

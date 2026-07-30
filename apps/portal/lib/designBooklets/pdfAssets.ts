@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const DESIGN_BOOKLET_PDF_FONT_FILES = {
+  display: "InstrumentSans-BookletDisplay.ttf",
+  brand: "InstrumentSans-BookletBrand.ttf",
   regular: "Inter-Regular.ttf",
   medium: "Inter-Medium.ttf",
   semibold: "Inter-SemiBold.ttf",
@@ -15,6 +17,16 @@ const imageCache = new Map<string, Uint8Array>();
 
 function fontAssetUrl(filename: string): URL | null {
   switch (filename) {
+    case DESIGN_BOOKLET_PDF_FONT_FILES.display:
+      return new URL(
+        "../../assets/fonts/InstrumentSans-BookletDisplay.ttf",
+        import.meta.url,
+      );
+    case DESIGN_BOOKLET_PDF_FONT_FILES.brand:
+      return new URL(
+        "../../assets/fonts/InstrumentSans-BookletBrand.ttf",
+        import.meta.url,
+      );
     case DESIGN_BOOKLET_PDF_FONT_FILES.regular:
       return new URL("../../assets/fonts/Inter-Regular.ttf", import.meta.url);
     case DESIGN_BOOKLET_PDF_FONT_FILES.medium:

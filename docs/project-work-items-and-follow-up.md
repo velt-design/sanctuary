@@ -1,6 +1,6 @@
 # Project Work Items And Lead Follow-Up
 
-Status: Approved product contract with a staging-verified repository implementation. Foundation migration `20260729_000002` and the exact reviewed `20260729_000003`/`20260729_000004` files are applied only in staging. The production-refusing readiness probe, rollback rehearsals, schema/body verification, anonymous-access checks, authenticated legacy reads, and disposable new-V2-project command smoke passed on 2026-07-30. Production is unchanged.
+Status: Approved product contract with a production-deployed implementation. Foundation migration `20260729_000002` and the exact reviewed `20260729_000003`/`20260729_000004` files are applied in staging and production. The production-refusing staging readiness probe, rollback rehearsals, schema/body/permission verification, authenticated legacy reads, and disposable new-V2-project command smoke passed on 2026-07-30. The controlled production apply and authenticated read-only Work Queue, snapshot, and Command Centre verification also passed without migrating or backfilling a pre-cutover project. Portal release merge `c9e73651`, cutover record `c8471e92`, and snapshot-cache hotfix merge `809f2c5e` are deployed.
 
 Purpose: define the project-work model, email-only lead cadence, pipeline disposition rules, and legacy-task retirement boundary, and record the controlled rollout state.
 
@@ -25,16 +25,16 @@ The current worktree implements the V2 foundation for newly created projects onl
 - cached or background-refresh-failed Project Work is visible but read-only, while an unavailable V2 contract fails closed as a named not-ready state;
 - normal work-item commands are available from the queue, while personal Dashboard reminders remain separate;
 - admins can retract an incorrect confirmation without deleting its history, classify the old Contacted cohort read-only without customer contact fields, and migrate one reviewed project at a time;
-- Site Visits is hidden from normal navigation and its optional completion fact is manual; and
+- Site Visits is hidden from normal navigation and stays outside work items; an active V2 project in the Site Visit stage has one bounded deep link to the retained booking/confirmation workflow, while its optional completion fact remains separate and manual; and
 - Schedule, Running Jobs, quotes, and invoices retain their specialist source-of-truth boundaries.
 
 Migration `20260729_000002_project_work_items_v2.sql` was applied in staging on 2026-07-29. The first rehearsal exposed a hosted PostgREST schema-cache miss for its new marker/state tables, so project-detail reads failed before legacy/V2 classification. All queue classifiers now use direct server-owned marker/state reads. On 2026-07-30 the exact reviewed `20260729_000003_project_work_items_v2_schema_cache.sql` and `20260729_000004_project_work_queue_and_legacy_triage.sql` files were each rehearsed in a rollback transaction and replay-applied to the positively identified staging project. Readiness passed before and after; catalog verification proved the two exact single cascade relationships, V3 queue and guarded classifier/migration bodies, authenticated-only execution, and denied anonymous execution. The authenticated GET-only staging smoke then returned `200` for Work Queue, a disposable synthetic legacy-project snapshot, and its Command Centre; the rendered states were fresh/ready, the legacy boundary was preserved, and every non-read browser request was blocked. The exact synthetic legacy project and contact were removed after that check.
 
 The final command smoke then created one clearly labelled synthetic V2 project through the authenticated staff API. It proved server-confirmed creation, the initial `OPEN` first-email item at row version 1, a real `BLOCK` command at row version 2, and an exact same-command replay that stayed at row version 2 without a duplicate event. Supported V2 archive cleanup removed the project from active work and cancelled the item at row version 3 while preserving append-only audit evidence. Authenticated work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks passed; the Overview reported Archived with zero open or blocked work. The synthetic QA role was restored to `staff`. No confirmation was recorded, and no email/outbox, quote, invoice, legacy task, follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue row was created. The archived synthetic project and contact remain intentionally as staging audit evidence because V2 has no hard-delete command.
 
-Existing projects receive no V2 marker or backfill and continue using the legacy model. No real customer, Contacted project, communication, commercial, operational, or production data was changed.
+Production release merge `c9e73651` was deployed before the three exact files were applied individually to positively identified Supabase project `iytanftukulcnavossmd`; cutover record `c8471e92` records the postflight, and snapshot-cache hotfix merge `809f2c5e` followed after read-only verification found the snapshot header defect. The colliding `20260729` remote-ledger state was left untouched. Postflight found all nine V2 tables with RLS, the authenticated-only queue function, the canonical cascade relationships, and zero model markers, operational states, work items, events, confirmations, receipts, or repair signals. The authenticated Work Queue was therefore ready but empty at the 2026-07-30 check. No pre-cutover project received a V2 marker or backfill; the production QA changed no customer, project, Contacted, communication, commercial, Schedule, task, or payment row.
 
-The mixed-model boundary also has an explicit pre-rollout compatibility state: when and only when PostgREST reports the V2 marker table itself as absent, it logs that condition and classifies projects as legacy so the production project reads continue before the migration is promoted. The Work Queue inventories V2 markers and operational states through their direct table owners rather than embedded `projects` relationships. Before its RPC/schema is available, the queue and legacy-review pages show a specific not-ready state, do not retry automatically, and do not copy legacy tasks into the V2 queue. Authentication, network, permission, and unrelated schema failures still propagate, and all V2 writes remain unavailable. This bridge does not replace the staging schema-cache proof or authorize production migration.
+The mixed-model boundary retains an explicit pre-rollout compatibility state for undeployed or partially rolled environments: when and only when PostgREST reports the V2 marker table itself as absent, it logs that condition and classifies projects as legacy. The Work Queue inventories V2 markers and operational states through their direct table owners rather than embedded `projects` relationships. Before its RPC/schema is available, queue and legacy-review pages show the specific not-ready state, do not retry automatically, and do not copy legacy tasks into the V2 queue. Authentication, network, permission, and unrelated schema failures still propagate, and V2-only RPCs remain unavailable. Production no longer depends on this bridge, and it does not replace schema-cache proof for any future environment.
 
 The business calendar has verified Auckland coverage for 2026 and 2027 only. Coverage must be extended before a V2 deadline can cross into 2028. The server Work Queue emits at most one current row per project and groups it as Overdue, Today, Next seven business days, Blocked, or Needs triage. Its composition prefers durable recovery and urgent work, then the canonical specialist candidate, future work, and triage; the Dashboard shows only a compact preview and links to the full queue. Confirmation correction is append-only and always opens an explicit review signal rather than reversing later lifecycle or commercial facts.
 
@@ -389,10 +389,11 @@ A correction appends a retraction event with a required reason. It does not over
 
 The Site Visits operational page is not currently used.
 
-Until a later approved reactivation:
+Until a broader reactivation:
 
-- hide Site Visits from normal navigation and discovery surfaces;
+- hide Site Visits from global navigation and generic discovery surfaces;
 - do not link project work items to the Site Visits page;
+- allow only the active V2 Site Visit-stage control to deep-link staff to the retained direct booking/confirmation workflow;
 - stop generating `BOOK_SITE_VISIT` and `ATTEND_SITE_VISIT` task candidates;
 - retain existing route/data code as dormant unless a later retirement review proves deletion safe; and
 - if staff need the fact, use one bounded manual `site_visit_completed` confirmation.
@@ -492,13 +493,12 @@ Do not introduce a permanent bidirectional dual-write layer.
 
 ## 17. Remaining Rollout Order
 
-1. Preserve the completed 2026-07-30 authenticated legacy-read and disposable new-V2-project command-smoke evidence.
-2. Preserve the exact `20260729_000003`/`000004` file hashes, rollback rehearsals, catalog/body/permission verification, and production-refusing readiness pass. Do not use blanket migration push/repair while the date-only filename versions collide in the remote ledger.
+1. Preserve the exact-file hashes, staging rollback rehearsals, production apply, catalog/body/permission postflight, authenticated read-only checks, and the untouched colliding migration-ledger evidence.
+2. Observe the first naturally created production V2 project and its server-owned first work item; do not manufacture shared production QA records.
 3. Extend verified Auckland calendar coverage before any deadline can cross beyond 2027.
-4. Verify the read-only Contacted classifier, confirmation correction, full Work Queue, and Dashboard preview without changing shared customer data. Test one-project migration only against a separately approved disposable record.
-5. Promote application and migrations only through a separately approved production window, monitor reconciliation, and keep old projects isolated on the legacy model.
-6. Review and migrate existing projects only one at a time; retire legacy readers/tables only in later explicit slices.
-7. Implement the separately approved Project Overview redesign against the trusted V2 contract and current portal visual system.
+4. Keep the Contacted classifier read-only unless an administrator is reviewing one named project. Exercise confirmation correction or one-project migration only with separately approved disposable or real evidence.
+5. Review and migrate existing projects only one at a time with explicit approval and unchanged evidence; retire legacy readers/tables only in later explicit slices.
+6. Keep the deployed Overview V2 inside the approved handover and current portal visual system; treat further lifecycle or specialist-summary expansion as a separate contract.
 
 ## 18. Deferred Decisions
 

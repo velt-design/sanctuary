@@ -19,6 +19,7 @@ export default defineConfig({
       { find: '@/lib/enquiryContext', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquiryContext.ts') },
       { find: '@/lib/enquirySourceContext.server', replacement: path.resolve(__dirname, 'apps/marketing/lib/enquirySourceContext.server.ts') },
       { find: '@/lib/marketingPublicRequest', replacement: path.resolve(__dirname, 'apps/marketing/lib/marketingPublicRequest.ts') },
+      { find: '@/lib/marketingConversionDelivery', replacement: path.resolve(__dirname, 'apps/marketing/lib/marketingConversionDelivery.ts') },
       { find: '@/lib/sharedEmails', replacement: path.resolve(__dirname, 'apps/marketing/lib/sharedEmails.ts') },
       { find: '@/lib/publicTokenAccess', replacement: path.resolve(__dirname, 'apps/marketing/lib/publicTokenAccess.ts') },
       { find: '@/lib/supabaseService', replacement: path.resolve(__dirname, 'apps/marketing/lib/supabaseService.ts') },

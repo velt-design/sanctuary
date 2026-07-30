@@ -1,8 +1,37 @@
 import { readFile } from "node:fs/promises";
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
+import {
+  DESIGN_BOOKLET_PRESENTATION,
+  designBookletCssBaselineOffset,
+} from "../apps/portal/lib/designBooklets/presentation";
 
 const FIXTURE_PATH = "/qa/design-booklet-workbench-fixture";
+const presentation = DESIGN_BOOKLET_PRESENTATION;
+
+async function expectPointRect(
+  pageLocator: Locator,
+  childLocator: Locator,
+  expected: { x: number; top: number; width: number; height: number },
+) {
+  const pageBounds = await pageLocator.boundingBox();
+  const childBounds = await childLocator.boundingBox();
+  expect(pageBounds).not.toBeNull();
+  expect(childBounds).not.toBeNull();
+  if (!pageBounds || !childBounds) return;
+
+  const pointScale = pageBounds.width / presentation.page.width;
+  expect((childBounds.x - pageBounds.x) / pointScale).toBeCloseTo(
+    expected.x,
+    1,
+  );
+  expect((childBounds.y - pageBounds.y) / pointScale).toBeCloseTo(
+    expected.top,
+    1,
+  );
+  expect(childBounds.width / pointScale).toBeCloseTo(expected.width, 1);
+  expect(childBounds.height / pointScale).toBeCloseTo(expected.height, 1);
+}
 
 test.describe("design booklet workbench fixture", () => {
   test("composes mixed pages and downloads the matching dynamic PDF", async ({
@@ -34,7 +63,7 @@ test.describe("design booklet workbench fixture", () => {
     ).toHaveCount(0);
     await expect(
       page.getByRole("heading", {
-        name: "Shape the customer document.",
+        name: "Build the booklet around the design.",
       }),
     ).toBeVisible();
     await expect(page.getByLabel("Roof form")).toHaveValue("pitched");
@@ -217,5 +246,68 @@ test.describe("design booklet workbench fixture", () => {
       () => document.documentElement.scrollWidth > window.innerWidth + 1,
     );
     expect(hasHorizontalDocumentOverflow).toBe(false);
+  });
+
+  test("uses the shared PDF point geometry and matching font baselines in the browser preview", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.goto(FIXTURE_PATH);
+
+    const pageRail = page.getByRole("navigation", {
+      name: "Booklet pages",
+    });
+    await pageRail
+      .getByRole("button", { name: "04 Drawings 1", exact: true })
+      .click();
+
+    const drawingPage = page.locator('[data-page-kind="drawings"]');
+    await expect(drawingPage).toBeVisible();
+    await expectPointRect(
+      drawingPage,
+      drawingPage.getByRole("main"),
+      presentation.drawing.area,
+    );
+
+    await pageRail
+      .getByRole("button", { name: "05 Review", exact: true })
+      .click();
+    const reviewPage = page.locator('[data-page-kind="review"]');
+    await expect(reviewPage).toBeVisible();
+    await expectPointRect(
+      reviewPage,
+      reviewPage.getByRole("figure"),
+      presentation.review.image,
+    );
+
+    const reviewTitle = reviewPage.getByRole("heading", {
+      name: "Review the concept",
+      level: 2,
+    });
+    const pageBounds = await reviewPage.boundingBox();
+    const titleBounds = await reviewTitle.boundingBox();
+    expect(pageBounds).not.toBeNull();
+    expect(titleBounds).not.toBeNull();
+    if (!pageBounds || !titleBounds) return;
+
+    const pointScale = pageBounds.width / presentation.page.width;
+    expect((titleBounds.x - pageBounds.x) / pointScale).toBeCloseTo(
+      presentation.review.copy.x,
+      1,
+    );
+    expect((titleBounds.y - pageBounds.y) / pointScale).toBeCloseTo(
+      presentation.review.title.baseline -
+        designBookletCssBaselineOffset(
+          presentation.review.title.size,
+          presentation.review.title.lineHeight,
+          "display",
+        ),
+      1,
+    );
+    expect(titleBounds.width / pointScale).toBeCloseTo(
+      presentation.review.copy.width,
+      1,
+    );
+    await expect(reviewPage).toHaveCSS("font-family", /Inter/i);
   });
 });

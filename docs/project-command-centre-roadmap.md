@@ -1,11 +1,11 @@
 # Project Operational Command Centre Roadmap
 
-Status: Active programme tracker  
-Current stage: Overview V2 complete; unrelated route-bundle optimization is separate
-Product definition: Complete  
-Implementation: Historical Stages 1 and 2 plus the staging-verified Project Work V2 foundation are present. Commit `20a8adee` contains the approved Overview composition through five required top-level owners plus extracted V2/legacy command, control, conflict/history, visibility-policy, and shared-cache owners; it renders one mixed-model Project Work surface with filtered read-only legacy rows in the current portal visual system. Focused, fixture, responsive/accessibility, build, static, unchanged Project Detail budget, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30.
-Next action: Review and optimize the baseline Contacts/Calculator bundle overruns in their own approved scope without changing their ceilings. This is separate performance debt and no longer blocks the completed Overview V2 handoff.
-Next implementation stage: Later deposit, Schedule/Running Jobs readiness, normalized activity, and complete exception summaries require separately reviewed bounded server projections; none is authorized by Overview completion.
+Status: Active programme tracker
+Current stage: Overview V2 complete and deployed; its narrow historical bundle-baseline exception is closed by later route optimization
+Product definition: Complete
+Implementation: Historical Stages 1 and 2 plus the production Project Work V2 foundation are present. Commit `20a8adee` contains the approved Overview composition through five required top-level owners plus extracted V2/legacy command, control, conflict/history, visibility-policy, and shared-cache owners; it renders one mixed-model Project Work surface with filtered read-only legacy rows in the current portal visual system. Focused, fixture, responsive/accessibility, build, static, unchanged Project Detail budget, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Portal release merge `c9e73651`, the three exact Project Work production files, and snapshot-cache hotfix merge `809f2c5e` then passed controlled cutover and read-only production verification without migrating pre-cutover projects.
+Next action: Preserve Overview V2 as deployed, keep Contacts and Calculator ceilings unchanged, and retain the earlier handoff exception as historical truth; later isolated route-optimization evidence passes both ceilings.
+Next implementation stage: No automatic next Overview slice. Later deposit, Schedule/Running Jobs readiness, normalized activity, and complete exception summaries require separately reviewed bounded server projections.
 
 ## Index
 
@@ -46,7 +46,7 @@ When documents conflict:
 
 ## Stage sequence
 
-Stages 0-6 below record the historical V1 programme. **Overview V2 is complete in `20a8adee`** and replaces the old instruction to begin Stage 3 by rendering four always-visible lead-to-quote workstream cards. Any future journey/readiness or full-lifecycle summary remains deferred and must use bounded server-owned evidence under a separate reviewed contract.
+Stages 0-6 below record the historical V1 programme. **Overview V2 is complete in `20a8adee` and deployed through the controlled Project Work cutover**; it replaces the old instruction to begin Stage 3 by rendering four always-visible lead-to-quote workstream cards. Its handoff used a narrow historical Contacts/Calculator bundle exception that did not raise ceilings and was closed by later route optimization. Any future journey/readiness or full-lifecycle summary remains deferred and must use bounded server-owned evidence under a separate reviewed contract.
 
 ### Product definition
 
@@ -329,7 +329,7 @@ Not started.
 | Stage 4: Communication and timeline | Not started | - | - |
 | Stage 5: Exceptions and approvals | Not started | - | - |
 | Stage 6: Responsive QA and rollout | Not started | - | - |
-| Overview V2 redesign | Complete with narrow unrelated-route bundle exception | `20a8adee` | Five required top-level owners plus extracted V2/legacy controls, command orchestration, conflict/history, visibility-policy, and shared-cache owners; one mixed-model Project Work surface; filtered read-only legacy rows; focused Project Work and project coverage, 70 browser checks, responsive/accessibility evidence, full build/static gates, unchanged Project Detail budget, manual authenticated inspection, and the automated authenticated read-only staging command passed. The user accepted the pre-existing Contacts/Calculator overruns as a handoff-only exception; their ceilings remain unchanged and optimization is separate. |
+| Overview V2 redesign | Complete and deployed; narrow handoff exception later closed | `20a8adee`, production release `c9e73651` | Five required top-level owners plus extracted V2/legacy controls, command orchestration, conflict/history, visibility-policy, and shared-cache owners; one mixed-model Project Work surface; filtered read-only legacy rows; focused Project Work and project coverage, 70 browser checks, responsive/accessibility evidence, full build/static gates, unchanged Project Detail budget, manual authenticated inspection, and the automated authenticated read-only staging command passed. The pre-existing Contacts/Calculator overruns were accepted only for the handoff; their ceilings remained unchanged, and later isolated route optimization brought both within budget. Production cutover and snapshot-cache verification then passed without migrating pre-cutover projects. |
 
 ## Operating rules
 
@@ -372,7 +372,7 @@ Verification completed: selector/loader/route/component/access tests; 322 projec
 Known limitations: authenticated smoke and production performance could not be rerun locally because PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD were unavailable; the canonical build preflight was correctly blocked by the user's pre-existing port-3001 dev server, so the same production build and budget assertions ran against an isolated Next output directory
 Architecture document updates: Stage 0 repository contract completed and Stage 1 implementation/evidence recorded
 Roadmap updates at the time: Stage 0 and Stage 1 complete; Stage 2 baseline begins at `8770198f`
-Historical next stage at that checkpoint: Stage 3. Current state: the approved Overview V2 redesign is complete in `20a8adee`. No later lifecycle summary is approved merely because its eventual position is shown in the handover.
+Historical next stage at that checkpoint: Stage 3. Current state: the approved Overview V2 redesign is complete in `20a8adee`, deployed through the controlled Project Work cutover, and its narrow historical bundle exception is closed by later optimization without raising ceilings. No later lifecycle summary is approved merely because its eventual position is shown in the handover.
 ```
 
 ## Stage handoff template

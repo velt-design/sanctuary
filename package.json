@@ -119,6 +119,7 @@
     "test:portal:browser:auth": "npm run portal:auth-env && playwright test playwright/portal.auth.setup.ts --project=setup",
     "test:portal:command-centre:auth": "npm run portal:auth-env && playwright test playwright/portal.command-centre-auth.spec.ts --project=portal-chromium",
     "test:portal:command-centre:read-only-auth": "npm run portal:project-work-v2-readiness && npm run portal:auth-env && playwright test playwright/portal.command-centre-readonly-auth.spec.ts --project=portal-chromium",
+    "test:portal:work-queue:read-only-auth": "npm run portal:project-work-v2-readiness && npm run portal:auth-env && playwright test playwright/portal.project-work-queue-readonly-auth.spec.ts --project=portal-chromium",
     "prepare": "husky || true",
     "portal:scenarios:ensure": "tsx scripts/ensure-portal-scenarios.ts",
     "portal:agent-scenarios": "npm run portal:auth-env && npx playwright test playwright/portal.agent-scenarios.spec.ts --project=portal-chromium",

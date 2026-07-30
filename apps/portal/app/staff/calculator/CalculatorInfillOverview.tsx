@@ -1,5 +1,5 @@
 import type { KeyboardEvent, RefObject } from 'react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PortalMenu } from '@/components/ui/PortalFloatingPanel';
 import type { InfillLineItem } from '@/lib/types/calculator';
 import styles from './CalculatorGrid.module.css';
 import type { InfillPresetKey } from './calculatorInputs';
@@ -67,20 +67,19 @@ export function InfillPresetMenu({
   onAddPreset: (preset: InfillPresetKey, openModal: boolean) => void;
 }) {
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}>
-          {label}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={6} className={styles.infillPresetMenu}>
-        {presets.map((preset) => (
-          <DropdownMenuItem key={preset.key} onSelect={() => onAddPreset(preset.key, openModal)}>
-            {preset.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <PortalMenu
+      label={label}
+      trigger={label}
+      triggerClassName={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}
+      align="start"
+      sideOffset={6}
+      contentClassName={styles.infillPresetMenu}
+      items={presets.map((preset) => ({
+        id: preset.key,
+        label: preset.label,
+        onSelect: () => onAddPreset(preset.key, openModal),
+      }))}
+    />
   );
 }
 

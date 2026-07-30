@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { loadCostingConfigV1 } from './config';
 import { calculateInfillsTakeoffV1 } from './infillTakeoff';
 import type { InfillTakeoffInputV1 } from './types';
 
@@ -27,6 +28,22 @@ function makeInfill(overrides: Partial<InfillTakeoffInputV1> = {}): InfillTakeof
 }
 
 describe('calculateInfillsTakeoffV1', () => {
+  it('produces the same takeoff from the narrow default catalogue and an explicit full config', () => {
+    const inputs = [makeInfill({
+      support: {
+        has_top: true,
+        has_bottom: true,
+        has_left: false,
+        has_right: true,
+        internal_support_mode: 'none',
+      },
+    })];
+
+    expect(calculateInfillsTakeoffV1(inputs)).toEqual(
+      calculateInfillsTakeoffV1(inputs, {}, loadCostingConfigV1()),
+    );
+  });
+
   it('physically places a 2.4m x 2.1m vertical sheet infill on two sheets', () => {
     const result = calculateInfillsTakeoffV1([makeInfill()]);
 

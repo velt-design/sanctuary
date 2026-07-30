@@ -1,5 +1,9 @@
 import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
 import { parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
+import {
+  recentMarketingConversionOccurrence,
+  recordMarketingConversionEvent,
+} from '@/lib/marketingAttribution/server';
 import { runProjectOperationalStateCommand } from '@/lib/projects/workItems/commands';
 import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 import {
@@ -8,13 +12,17 @@ import {
   workJsonError,
   workJsonOk,
 } from '@/lib/projects/workItems/routeSupport';
-import { PROJECT_CLOSED_OUTCOMES } from '@/lib/projects/workItems/types';
+import {
+  PROJECT_CLOSED_OUTCOMES,
+  PROJECT_LOST_OUTCOMES,
+} from '@/lib/projects/workItems/types';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 const COMMANDS = new Set(['ACTIVATE', 'WAIT', 'CLOSE', 'REOPEN']);
 const CLOSED_OUTCOMES = new Set<string>(PROJECT_CLOSED_OUTCOMES);
+const LOST_OUTCOMES = new Set<string>(PROJECT_LOST_OUTCOMES);
 
 function boundedText(value: unknown, maximum: number): string | null {
   if (typeof value !== 'string') return null;
@@ -26,6 +34,22 @@ function instant(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const parsed = new Date(value);
   return Number.isFinite(parsed.valueOf()) ? parsed.toISOString() : null;
+}
+
+async function loadStateEventOccurrence(
+  supabase: Parameters<typeof runProjectOperationalStateCommand>[0],
+  projectId: string,
+  commandId: string,
+): Promise<string | null> {
+  const result = await supabase
+    .from('project_state_events')
+    .select('occurred_at')
+    .eq('project_id', projectId)
+    .eq('command_id', commandId)
+    .eq('event_sequence', 0)
+    .maybeSingle();
+  if (result.error || !result.data) return null;
+  return instant(result.data.occurred_at);
 }
 
 export async function POST(
@@ -98,6 +122,28 @@ export async function POST(
       command,
       payload,
     });
+    if (
+      command === 'CLOSE'
+      && typeof payload.outcome === 'string'
+      && LOST_OUTCOMES.has(payload.outcome)
+    ) {
+      const occurredAt = await loadStateEventOccurrence(
+        auth.supabase,
+        projectUuid,
+        commandId,
+      );
+      if (
+        !result.replayed
+        || recentMarketingConversionOccurrence(occurredAt)
+      ) {
+        await recordMarketingConversionEvent({
+          type: 'marketing.project_lost',
+          projectId: projectUuid,
+          occurredAt,
+          payload: { outcome: payload.outcome },
+        });
+      }
+    }
     try {
       const projectWork = await getAuthoritativeProjectWorkProjection(projectId, auth.supabase);
       return workJsonOk({

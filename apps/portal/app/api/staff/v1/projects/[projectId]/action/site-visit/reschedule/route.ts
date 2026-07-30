@@ -90,6 +90,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const salespersonId = typeof body.salespersonId === 'string' ? body.salespersonId.trim() : '';
   if (salespersonId && !SALES_PEOPLE.some((p) => p.id === salespersonId)) return jsonError('Invalid salespersonId', 400);
+  const notes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 2000) : null;
 
   const rawId = typeof body.siteVisitEventId === 'string' ? body.siteVisitEventId.trim() : '';
   if (!rawId) return jsonError('siteVisitEventId is required', 400);
@@ -113,6 +114,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     scheduled_end: end,
     status: prevStatus === 'CONFIRMED' ? 'RESCHEDULED' : prevStatus,
     ...(salespersonId ? { assigned_sales_owner_id: salespersonId, assigned_sales_owner: salespersonId } : null),
+    ...(notes !== null ? { notes: notes || null } : null),
   });
   if (!updateRes.ok) {
     const schemaMsg = salespersonSchemaMismatchMessage(updateRes.error);

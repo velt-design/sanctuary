@@ -9,6 +9,7 @@ import type {
 import {
   Badge,
   Button,
+  ButtonLink,
   Input,
   Select,
   Textarea,
@@ -251,22 +252,33 @@ export default function ProjectWorkControls({
               <div>
                 <strong>Manual site visit confirmation</strong>
                 <p>
-                  This hidden operational fact is recorded manually and has no
-                  scheduling link.
+                  Book or confirm the visit in the direct Site Visits workflow.
+                  Completion remains a separate manual fact.
                 </p>
               </div>
-              {siteVisitCompleted ? (
-                <Badge tone="success">Recorded complete</Badge>
-              ) : (
-                <Button
+              <div className={styles.inlineActions}>
+                <ButtonLink
                   variant="secondary"
-                  loading={controller.pending}
                   disabled={controller.stale}
-                  onClick={() => void controller.recordSiteVisitCompleted()}
+                  size="small"
+                  href={`/staff/schedule?view=site-visits&project=${encodeURIComponent(projectId)}`}
                 >
-                  Record completion
-                </Button>
-              )}
+                  Book or confirm site visit
+                </ButtonLink>
+                {siteVisitCompleted ? (
+                  <Badge tone="success">Recorded complete</Badge>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    loading={controller.pending}
+                    disabled={controller.stale}
+                    onClick={() => void controller.recordSiteVisitCompleted()}
+                  >
+                    Record completion
+                  </Button>
+                )}
+              </div>
             </div>
           ) : null}
         </div>

@@ -45,11 +45,17 @@ export type SiteVisitCalendarItem = {
   contact: SiteVisitContactInfo;
 };
 
+export type SiteVisitProjectFocus = {
+  kind: 'scheduled' | 'create';
+  item: SiteVisitCalendarItem;
+};
+
 type SiteVisitsApiResponse = {
   generatedAt: string;
   unscheduled: SiteVisitCalendarItem[];
   events: SiteVisitCalendarItem[];
   salesPeople: SiteVisitCalendarPerson[];
+  projectFocus: SiteVisitProjectFocus | null;
 };
 
 export type SiteVisitsSnapshotV1 = SiteVisitsApiResponse & {

@@ -364,10 +364,15 @@ export async function POST(req: Request) {
   const addOns = isPlainObject(addOnsRaw) ? addOnsRaw : {};
 
   const utmRaw = maybeParseJson(payload.utm);
-  const utm = isPlainObject(utmRaw) ? utmRaw : {};
+  const untrustedUtm = isPlainObject(utmRaw) ? utmRaw : {};
 
   const attributionRaw = maybeParseJson(payload.attribution);
-  const attribution = normalizeMarketingAttributionInput(attributionRaw, { utm, page, source });
+  const attribution = normalizeMarketingAttributionInput(attributionRaw, {
+    utm: untrustedUtm,
+    page,
+    source,
+  });
+  const utm = attribution.utm;
   const {
     uploadSessionToken: _uploadSessionToken,
     enquiryContext: _untrustedEnquiryContext,
@@ -375,6 +380,7 @@ export async function POST(req: Request) {
   } = payload;
   const rawPayload = safeJsonPayload({
     ...payloadWithoutUploadToken,
+    utm,
     attribution,
     enquiryContext,
   });

@@ -21,8 +21,12 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-07-30 | Overview V2 Bundle Exception     | Promoted | A scope-specific handoff exception may accept unrelated route-budget failures only when the same analyser reproduces them at the approved baseline and the changed route remains within its unchanged allowance. Keep every ceiling and aggregate failure visible; route optimization remains separate debt, not proof that the gate is green. |
-| 2026-07-30 | Project Overview V2 Handover     | Promoted | Redesign Overview inside the current portal visual system, with one server-backed Project Work surface, email-only communication, and Site Visits hidden/manual. Preserve mixed legacy/V2 behavior and strict design/commercial precedence; add full-journey facts only through bounded specialist-owned server projections. |
+| 2026-07-30 | Project Snapshot Cache Policy    | Promoted | The complete authenticated Project Detail snapshot is private staff data. Set `private, no-store` on every response path, including authentication, validation, not-found, and server failures, and verify the deployed header with an authenticated read rather than relying on framework defaults. |
+| 2026-07-30 | Contacts/Calculator Bundle Owners | Promoted | Prefer a small shared portal interaction owner over a heavy primitive package when the complete consumer set needs only bounded menu/popover behavior. A narrow package-owned material loader may serve takeoff defaults while the unchanged full costing config remains authoritative for commercial calculation. Prove route graphs, behavior parity, and every unchanged bundle ceiling together. |
+| 2026-07-30 | Marketing Measurement CSP        | Promoted | Treat live GTM container diagnostics and the deployed CSP header as a tracking release gate. Permit only reported vendor origins in both enforced and report-only directives, retain consent gating, and guard required measurement resources with a source contract test. |
+| 2026-07-30 | Marketing Lifecycle Delivery     | Promoted | Emit conversions from the shared authoritative business owner used by every public/staff path; independently re-enforce consent on the server; claim only immediately dispatchable rows below their attempt ceiling; and describe generic GA4 Measurement Protocol delivery as at-least-once because provider acceptance can precede the local completion checkpoint. |
+| 2026-07-30 | Overview V2 Bundle Exception     | Promoted | A scope-specific handoff exception may accept unrelated route-budget failures only when the same analyser reproduces them at the approved baseline and the changed route remains within its unchanged allowance. Keep every ceiling and the exception evidence visible; later route optimization must independently prove the aggregate gate green. |
+| 2026-07-30 | Project Overview V2 Handover     | Promoted | Redesign Overview inside the current portal visual system, with one server-backed Project Work surface and email-only communication. Site Visits stays outside work items and normal navigation; only the separately approved stage-gated direct workflow remains. Preserve mixed legacy/V2 behavior and strict design/commercial precedence; add full-journey facts only through bounded specialist-owned server projections. |
 | 2026-07-30 | Supabase Migration Versions      | Promoted | Supabase CLI reads only the digits before the first underscore as a migration version. Date-only sibling files collide in the remote ledger, so never blanket-push, migrate-up, or repair the shared version. Positively identify the target, rollback-rehearse and apply exact reviewed files, preserve hashes/evidence, and repair naming/ledger compatibility separately. |
 | 2026-07-30 | Schedule Continuity And Switching | Promoted | Once a Schedule API explicitly accepts a command, never render a known-older checkpoint while reconciliation loads. Gate optimism behind mutation ownership, cancel and start-stamp reads per view, reject pre-settlement or same-view out-of-order snapshots, and retain the confirmed Gantt target preview until an authoritative range replaces it. Keep Board/Gantt switches inside the mounted client, prefetch by intent, synchronize browser history, and derive only the active view model. |
 | 2026-07-29 | Project Work Queue And Triage    | Promoted | Keep one server-composed current row per V2 project in the team Work Queue and only a bounded preview on Dashboard; personal reminders remain separate. Legacy Contacted classification is admin-only, read-only, and excludes linked customer contact fields. Migrate only one reviewed, unchanged project per explicit command, never bulk-seed cadence. Confirmation correction appends history and an explicit review signal. Site Visits stays hidden/manual and outside work items. That slice did not authorize redesign; the later 2026-07-30 handover now does. |
@@ -3199,6 +3203,56 @@ Current guardrail: De-duplicate manifest-declared entry CSS from dynamic-entry t
 Promoted to: `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/performance/portalBundleBudgets.ts`; `apps/portal/lib/performance/portalBundleBudgets.test.ts`; `npm run portal:bundle-budget`
 
+### 2026-07-30 - Marketing Lifecycle Delivery - Shared Owners, Consent, And At-Least-Once Semantics
+
+Date: 2026-07-30
+Area: Marketing lifecycle event ownership, attribution consent, and GA4 delivery
+Status: Promoted
+Decision or mistake: Quote acceptance tracking was attached to the staff wrapper
+instead of the shared acceptance owner used by the public customer path.
+Browser filtering also left landing query parameters available and the server
+accepted campaign/click fields without independently enforcing marketing
+consent. The sender claimed a batch before sequential network calls and could
+reclaim rows whose attempt ceiling had already been reached.
+Why it mattered: The real customer conversion could be absent while an
+internal path appeared covered, denied attribution could persist, and expired
+leases or exhausted rows could create duplicate sends or invalid retry state.
+Even with those defects fixed, GA4 may accept a generic event before the local
+completion checkpoint fails, and Measurement Protocol provides no generic
+non-purchase deduplication contract.
+Current guardrail: Emit a lifecycle event only after its shared authoritative
+business command succeeds and cover every caller of that owner. For a
+state-transition conversion, require an affected-row compare-and-swap and a
+dedicated database-owned occurrence timestamp that mutable `updated_at` values
+cannot refresh. Do not backfill legacy terminal rows from mutable evidence;
+fail closed when the immutable occurrence is absent. Bound idempotent replay
+repair to the downstream delivery window so an old outcome cannot look new.
+Re-apply analytics and marketing consent categories on the server; strip
+landing and referrer query/fragment data. Claim one row immediately before dispatch,
+terminally fail exhausted eligible rows, and never describe the outbox as
+exactly-once. Keep stable delivery identity for reconciliation and document the
+residual at-least-once duplicate window.
+Promoted to: `docs/security-privacy-quality.md`;
+`docs/automation-email-audit.md`; `docs/supabase-schema-map.md`
+Related docs/tests:
+`apps/portal/lib/commercial/acceptQuote.test.ts`;
+`apps/portal/app/api/staff/v1/projects/[projectId]/action/site-visit/confirm/route.test.ts`;
+`apps/marketing/lib/attribution.test.ts`;
+`apps/portal/lib/marketingAttribution/server.test.ts`;
+`apps/marketing/lib/marketingConversionDelivery.test.ts`;
+`apps/marketing/lib/marketingConversionDeliveryMigration.contract.test.ts`
+
+### 2026-07-30 - Marketing Measurement CSP - Treat Container Diagnostics As A Release Gate
+
+Date: 2026-07-30
+Area: Marketing CSP and GTM/GA4 delivery
+Status: Promoted
+Decision or mistake: The Google runtime and restored GTM container were present, but the enforced marketing CSP omitted two resources reported by container diagnostics: `connect-src https://ad.doubleclick.net` and `img-src https://www.googletagmanager.com`.
+Why it mattered: A tag can be correctly configured and published while browser policy silently blocks part of its measurement path, leaving GTM marked urgent and conversions incomplete.
+Current guardrail: Before a tracking release, inspect the live container diagnostics and the deployed CSP header. Add only the reported vendor origins to both enforced and report-only directives, retain consent gating, and keep a source contract test so a later header cleanup cannot remove them unnoticed.
+Promoted to: `docs/security-privacy-quality.md`
+Related docs/tests: `apps/marketing/next.config.ts`; `apps/marketing/components/trackingConsent.test.ts`
+
 ### 2026-07-22 - Dashboard Operational Semantics - Name The Exact Source
 
 Date: 2026-07-22
@@ -4126,7 +4180,7 @@ Area: Confirmation correction reconciliation and legacy Contacted migration
 Status: Promoted
 Decision or mistake: A project-scoped correction review command resolved every open correction signal, so a stale browser could clear a newer signal. Legacy Contacted migration compared only `projects.updated_at` even though classification also depended on quote, invoice, design, schedule, Running Jobs, task, follow-up, and manual-action rows.
 Why it mattered: Both commands could record a durable success for evidence the administrator had not actually reviewed.
-Current guardrail: Queue repair rows carry the exact repair-signal ID and row version; reconciliation locks and resolves only that unchanged row. The Contacted classifier returns an opaque SHA-256 fingerprint from every project/related field used by its recommendation; migration recomputes it after the project lock and rejects mismatch before any V2 write. Keep the internal fingerprint helper ungranted. This remains an optimistic related-evidence boundary: closing the residual post-verification commit window requires shared project locking across every legacy evidence writer, not broad ad hoc table locks.
+Current guardrail: Queue repair rows carry the exact repair-signal ID and row version; reconciliation locks and resolves only that unchanged row. The Contacted classifier returns an opaque SHA-256 fingerprint from every project and related field used by its recommendation; migration recomputes it after the project lock and rejects mismatch before any V2 write. Keep the internal fingerprint helper ungranted. This remains an optimistic related-evidence boundary: closing the residual post-verification commit window requires shared project locking across every legacy evidence writer, not broad ad hoc table locks.
 Promoted to: `docs/project-work-items-and-follow-up.md`; `docs/project-work-items-technical-plan.md`; `docs/staff-api-auth-contracts.md`; `docs/supabase-schema-map.md`; `docs/testing-and-qa.md`
 Related docs/tests: `supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql`; `test/project-work-items-v2-work-queue-migration.test.ts`; `apps/portal/lib/projects/workItems/legacyTriage`
 
@@ -4137,7 +4191,7 @@ Area: Project Overview product direction, information architecture, visual scope
 Status: Promoted
 Decision or mistake: The historical V1 and roadmap documents still directed agents toward calls, Site Visit tasks, four always-visible lead-to-quote workstream cards, legacy action selection, and a lead-to-quote-only page. The current repository now has a staging-verified Project Work V2 foundation, and the user approved a substantial Overview redesign using the current portal visual system.
 Why it mattered: A fresh implementation task could follow the older higher-authority text, rebuild retired task concepts, add unavailable full-journey facts in the browser, or mistake approval to change composition for approval to re-theme the portal.
-Current guardrail: Start with `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`. Keep one Project Work surface, email-only communication, Site Visits hidden/manual, mixed legacy/V2 behavior, and strict design/commercial precedence. Preserve the current portal tokens and components while changing route composition. Add deposit, Schedule/Running Jobs readiness, communication, timeline, or exception facts only through bounded specialist-owned server projections; otherwise omit them truthfully.
+Current guardrail: Start with `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`. Keep one Project Work surface, email-only communication, Site Visits outside work items and normal navigation except for the approved active-V2 `site_visit` stage link, mixed legacy/V2 behavior, and strict design/commercial precedence. Keep completion as a separate manual fact with no automatic stage or Schedule side effect. Preserve the current portal tokens and components while changing route composition. Add deposit, Schedule/Running Jobs readiness, communication, timeline, or exception facts only through bounded specialist-owned server projections; otherwise omit them truthfully.
 Promoted to: `docs/project-command-centre-architecture.md`; `docs/project-command-centre-roadmap.md`; `docs/project-command-centre-v1.md`; `docs/project-work-items-and-follow-up.md`; `docs/project-work-items-technical-plan.md`; `docs/portal-ux-roadmap.md`; `docs/README.md`
 Related docs/tests: `apps/portal/components/projects/ProjectPage/tabs/OverviewTab.tsx`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkCommandCard.tsx`; `apps/portal/lib/projects/workItems/types.ts`; `apps/portal/lib/projects/commandCentre/types.ts`; `playwright/portal.command-centre.spec.ts`
 
@@ -4148,6 +4202,28 @@ Area: Project Overview V2 completion and portal route bundle budgets
 Status: Promoted
 Decision or mistake: The completed Overview V2 slice passed its unchanged Project Detail budget, but the repository aggregate remained red on Contacts and Calculator. The same fail-closed analyser reproduced both overruns at approved baseline `060bea19`, proving that changing those routes or their ceilings was not part of the Overview implementation. The user accepted a narrow handoff exception rather than mixing unrelated optimization into the slice.
 Why it mattered: Treating the aggregate failure as caused by Overview would expand scope and risk unrelated routes; silently raising limits or calling the whole bundle gate green would instead hide real performance debt.
-Current guardrail: A scope-specific exception may unblock only the verified changed surface. Keep the Contacts and Calculator ceilings unchanged, continue reporting their aggregate failures, and optimize them through a separately approved owner scope. Do not reuse this exception for a new regression or another route without fresh baseline and changed-route evidence.
+Current guardrail: A scope-specific exception may unblock only the verified changed surface. Keep the Contacts and Calculator ceilings unchanged and retain the historical failure evidence; the later separately approved optimization must carry its own proof that both routes and the aggregate gate are green. Do not reuse this exception for a new regression or another route without fresh baseline and changed-route evidence.
 Promoted to: `docs/project-command-centre-architecture.md`; `docs/project-command-centre-roadmap.md`; `docs/portal-production-readiness.md`; `docs/testing-and-qa.md`
 Related docs/tests: `apps/portal/lib/performance/portalBundleBudgets.ts`; `apps/portal/lib/performance/portalBundleBudgets.test.ts`; `npm run portal:bundle-budget`
+
+### 2026-07-30 - Contacts/Calculator Bundle Owners - Remove Shared And Domain Eagerness
+
+Date: 2026-07-30
+Area: Portal Contacts/Calculator initial bundles, shared menus/popovers, and costing material configuration
+Status: Promoted
+Decision or mistake: Four bounded menu/popover consumers pulled the complete Radix dropdown package through the shared shell, while Calculator infill takeoff loaded the full costing configuration merely to resolve material stock lengths. The portal now owns one small portalled floating-panel primitive with explicit menu versus interactive-dialog semantics, and `@sp/costing` owns a material-only catalogue loader that the unchanged full config composes.
+Why it mattered: Shared-shell weight reached every monitored staff route, and Calculator paid for manifest, rules, overhead, hardware, install-action, and BOM inputs before they were needed. A route-only lazy split could not remove the shared cost, while copying material data into the app would break the costing source of truth.
+Current guardrail: Inspect every consumer before replacing a shared interaction primitive. Preserve outside/Escape dismissal, focus return, disabled items, arrow/Home/End/typeahead menu navigation, and dialog semantics for interactive form controls. Keep material merging package-owned; narrow takeoff defaults may load materials only, but explicit `CostingConfigV1` callers and full commercial calculations retain the existing contract and behavior. Verify focused behavior/costing parity, an isolated production build, independent route analysis, and every unchanged bundle ceiling.
+Promoted to: `docs/ui-foundation.md`; `docs/costing-and-geometry.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/testing-and-qa.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/components/ui/PortalFloatingPanel.tsx`; `apps/portal/components/ui/PortalFloatingPanel.test.tsx`; `apps/portal/components/navigation/UserMenu.test.tsx`; `packages/costing/src/engine/materialsConfig.test.ts`; `packages/costing/src/engine/infillTakeoff.test.ts`; `npm run portal:bundle-budget`
+
+### 2026-07-30 - Project Snapshot Cache Policy - Protect Every Response Path
+
+Date: 2026-07-30
+Area: Authenticated Project Detail snapshot responses
+Status: Promoted
+Decision or mistake: Authenticated production verification found that the complete Project Detail snapshot returned customer and project data with the framework's cacheable `public, max-age=0, must-revalidate` policy even though adjacent summary, Command Centre, and Work Queue reads were explicitly private.
+Why it mattered: A successful authenticated read could be retained or reused by a browser or intermediary cache, weakening the access-ending and stale-data safeguards at the main Overview data boundary.
+Current guardrail: `GET /api/projects/[projectId]/snapshot` must apply `Cache-Control: private, no-store` to success, authentication, validation, not-found, and server-failure responses. Cover those branches in the route test and verify the deployed header through an authenticated GET before production closure; do not infer safety from development behavior or framework defaults.
+Promoted to: `docs/staff-api-auth-contracts.md`; `docs/portal-production-readiness.md`
+Related docs/tests: `apps/portal/app/api/projects/[projectId]/snapshot/route.ts`; `apps/portal/app/api/projects/[projectId]/snapshot/route.test.ts`

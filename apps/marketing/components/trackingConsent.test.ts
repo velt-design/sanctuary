@@ -58,6 +58,12 @@ describe('optional tracking consent boundaries', () => {
     expect(gtm).not.toContain('googletagmanager.com/gtag/js');
   });
 
+  it('allows the GTM resources reported by container diagnostics through CSP', () => {
+    const nextConfig = read('../next.config.ts');
+    expect(nextConfig.match(/https:\/\/www\.googletagmanager\.com/g)).toHaveLength(6);
+    expect(nextConfig.match(/https:\/\/ad\.doubleclick\.net/g)).toHaveLength(2);
+  });
+
   it('emits non-PII enquiry conversion events only after an explicit relevant choice', () => {
     const contact = read('../app/contact/ContactEnquiryForm.tsx');
     const acrylicForm = read('../app/acrylic-roof-pergolas-auckland/AcrylicPergolaEnquiryForm.tsx');

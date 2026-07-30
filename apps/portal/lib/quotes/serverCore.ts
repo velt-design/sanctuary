@@ -4,7 +4,6 @@ import { randomUUID } from 'crypto';
 import { insertCommercialAuditEvent } from '../commercial/audit';
 import { loadQuoteDeliveryReadiness } from '../commercial/quoteDeliveryReadiness';
 import { supabaseServiceRole } from '@/lib/supabaseClient';
-import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
 import { reconcileQuoteOutcomeCadence } from '@/lib/projects/workItems/quoteCadenceReconciliation';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import type { Estimate } from '@/lib/types/estimate';
@@ -1227,20 +1226,6 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
     quoteVersionUuid,
     actor,
   });
-  const projectUuid = uuidFromAppId(before.projectId, 'proj');
-  const quoteUuid = uuidFromAppId(before.quoteId, 'qt');
-  if (projectUuid && !accepted.alreadyAccepted) {
-    await recordMarketingConversionEvent({
-      type: 'marketing.quote_accepted',
-      projectId: projectUuid,
-      primaryId: quoteVersionUuid,
-      payload: {
-        quoteVersionId: quoteVersionUuid,
-        quoteId: quoteUuid,
-        valueIncGstCents: before.totals.totalIncGstCents,
-      },
-    });
-  }
 
   let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');

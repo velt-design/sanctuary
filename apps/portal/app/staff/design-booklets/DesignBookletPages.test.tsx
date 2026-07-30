@@ -9,6 +9,7 @@ import {
   allDesignBookletAssetSources,
   DESIGN_BOOKLET_REVIEW_COPY,
 } from "@/lib/designBooklets/pageModel";
+import { DESIGN_BOOKLET_PRESENTATION } from "@/lib/designBooklets/presentation";
 import type {
   DesignBookletDraft,
   DesignBookletDrawingLayoutId,
@@ -16,6 +17,12 @@ import type {
 import DesignBookletPages, {
   type DesignBookletPreviewAsset,
 } from "./DesignBookletPages";
+
+const presentation = DESIGN_BOOKLET_PRESENTATION;
+
+function point(value: number): string {
+  return `calc(var(--booklet-point) * ${value})`;
+}
 
 function assetsFor(
   draft: DesignBookletDraft,
@@ -64,6 +71,12 @@ describe("DesignBookletPages", () => {
     expect(cover?.textContent).toContain("Pitched pergola");
     expect(cover?.textContent).toContain("Combination roofing");
     expect(cover?.querySelector('[class*="coverShade"]')).toBeNull();
+    const coverStory = cover?.querySelector("main") as HTMLElement;
+    expect(coverStory.style.left).toBe(point(presentation.cover.story.x));
+    expect(coverStory.style.bottom).toBe(
+      point(presentation.cover.story.bottom),
+    );
+    expect(coverStory.style.top).toBe("");
 
     rendered.unmount();
   });
@@ -141,7 +154,24 @@ describe("DesignBookletPages", () => {
     expect(review?.getAttribute("data-page-key")).toBe("review");
     expect(review?.getAttribute("data-booklet-page")).toBe("5");
     expect(review?.getAttribute("aria-label")).toBe("Booklet page 5 of 5");
+    const reviewImage = review?.querySelector("figure") as HTMLElement;
+    expect(reviewImage.querySelector("img")).not.toBeNull();
+    expect(reviewImage.style.width).toBe(
+      point(presentation.review.image.width),
+    );
+    expect(review?.querySelector("main")).not.toBeNull();
     expect(review?.textContent).toContain(DESIGN_BOOKLET_REVIEW_COPY.title);
+    const promptSections = Array.from(
+      review?.querySelectorAll("main section") ?? [],
+    );
+    expect(promptSections).toHaveLength(
+      DESIGN_BOOKLET_REVIEW_COPY.prompts.length,
+    );
+    expect(
+      promptSections.map(
+        (section) => section.querySelector(":scope > span")?.textContent,
+      ),
+    ).toEqual(["01", "02", "03"]);
     for (const prompt of DESIGN_BOOKLET_REVIEW_COPY.prompts) {
       expect(review?.textContent).toContain(prompt.title);
       expect(review?.textContent).toContain(prompt.copy);

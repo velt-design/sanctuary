@@ -240,6 +240,12 @@ export default function OverviewTab({
       >
         <ProjectCurrentDesignCommercialCard
           data={commandQuery.data.currentDesign}
+          projectId={snapshot.project.id}
+          canRecordDeposit={
+            commandQuery.data.workModel === "v2"
+              && snapshot.project.stage === "sent"
+          }
+          onDepositRecorded={refreshProjectWorkModel}
         />
       </Suspense>
     );

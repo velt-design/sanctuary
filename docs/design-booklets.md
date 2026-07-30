@@ -14,17 +14,13 @@ This surface is deliberately standalone:
 - it is not linked from portal navigation;
 - authenticated rendering omits the normal portal sidebar, rail, mobile header, and drawer;
 - its visual system is route-owned and follows the existing customer-document vocabulary rather than the operational portal UI;
-- it has no project, task, Drafting Queue, Design Workbench, costing, quote, or Project Overview integration.
+- it has no project-data, task, Drafting Queue, Design Workbench, costing, or quote integration.
+
+The Project Overview's `Open booklet workbench` action is navigation only. It
+opens this standalone route without passing a project identifier, pre-filling
+customer data, or mutating the project.
 
 The parent staff layout still mounts the portal's existing ambient `DbGate`, but the booklet route and its API make no database or workflow calls.
-
-## Workbench Layout Contract
-
-At desktop widths the route is a viewport-height, two-pane workbench. A persistent control rail on the left owns booklet details, page composition, and the selected-page editor; only this rail scrolls. The preview workspace on the right owns the remaining width and height. Its stage fits one complete `297 / 210` landscape A4 page inside the available canvas, preserving all four page edges without browser zoom, clipping, or a fixed pixel-width preview.
-
-At widths up to 960px the preview moves above the controls and the document becomes normally scrollable. The preview still preserves the exact landscape A4 ratio, controls remain reachable, and the route must not introduce horizontal document overflow. The compact mobile header keeps the primary PDF action available.
-
-The cover image is presented without a darkening overlay. Its brand remains at the top, while the eyebrow, booklet title, details rule, customer, design direction, and footer form one lower-page story. The browser page typography scales from the A4 page container rather than from the browser viewport so changing workbench size cannot change line wrapping independently of the PDF composition.
 
 ## Page Model
 
@@ -55,9 +51,11 @@ Toni's default booklet contains five pages:
 
 All edits and replacement-image object URLs remain in browser memory. Reloading the route restores the Toni defaults. PDF generation posts the current schema-v2 draft and only its renderable custom files in one authenticated request, returns a private no-store download, and does not save the draft or files.
 
-`buildDesignBookletRenderModel()` is the shared owner of page order, stable page keys, labels, numbering, and count for the browser preview and PDF. The drawing-layout definitions, image focal positions, title resolution, and fixed review copy are also shared. The HTML and `pdf-lib` renderers remain separate presentation implementations over that model.
+`buildDesignBookletRenderModel()` is the shared owner of page order, stable page keys, labels, numbering, and count for the browser preview and PDF. The drawing-layout definitions, image focal positions, title resolution, and fixed review copy are also shared.
 
-Preview and download parity is therefore a maintained visual contract: page order, content, focal positions, captions, numbering, page ratio, and the lower cover composition must agree. Changes to either renderer require rendering the PDF and visually comparing every page with its browser preview; passing text or page-count assertions alone is insufficient.
+`presentation.ts` owns the merged browser/PDF visual contract. It keeps the artifact inside a compact `3.8cqw` frame in the preview, equal to `31.99pt` on the canonical landscape A4 canvas; assigns Instrument Sans to display roles and Inter to body roles; bottom-anchors the cover story so title wrapping grows upward from a stable lower composition; leaves the cover image unshaded; and fixes the review page at a 45% image / 55% story split. The browser scales the shared point model from the booklet container while `pdf-lib` consumes the same geometry and font roles directly, so responsive preview sizing does not change the exported composition.
+
+On desktop, the route chrome presents the existing editors in a compact, independently scrolling control panel beside a wider preview workspace. The preview owns the remaining viewport and fits the complete A4 page without document or preview scrolling at common desktop sizes. At 960px and below, the preview moves above the controls and the page returns to a single-column flow. This shell is route-owned and does not alter the shared page renderer or PDF geometry.
 
 There is no persistence, shared-storage upload, email delivery, audit event, project association, or workflow automation.
 
@@ -89,7 +87,7 @@ Do not turn the `timber` intake key into a customer-facing "timber roof" claim. 
 - `apps/portal/app/qa/design-booklet-workbench-fixture/page.tsx`: credential-free QA mirror when `ENABLE_PORTAL_QA_FIXTURES=1`.
 - `apps/portal/app/api/qa/design-booklet-workbench/pdf/route.ts`: gated QA download using the production parser and renderer.
 
-The PDF is rendered server-side with `pdf-lib`, embedded Inter fonts, and the Sanctuary customer-artifact palette. Instrument Sans is loaded locally for the workbench and browser preview without changing the workspace package manifests.
+The PDF is rendered server-side with `pdf-lib`, the Sanctuary customer-artifact palette, and the same local Instrument Sans display and Inter body assets used by the browser artifact. The workbench loads those fonts without changing the workspace package manifests.
 
 ## Request And PDF Limits
 
@@ -115,7 +113,7 @@ node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.
 node node_modules/@playwright/test/cli.js test playwright/portal.design-booklet-workbench.spec.ts --project=portal-fixture --workers=1
 ```
 
-For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the default five-page Toni booklet and a six-page drawing-layout fixture. Render both with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, a custom drawing title, PDF parity, and the gated fixture at 1920×1080, 1440×900, 1366×768, a narrower tablet width, and mobile width.
+For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the default five-page Toni booklet and a six-page drawing-layout fixture. Render both with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, a custom drawing title, PDF parity, and desktop plus narrow layouts on the gated fixture.
 
 ## Explicit Non-goals
 
