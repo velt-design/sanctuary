@@ -238,7 +238,7 @@ test('keeps a rejected Project Details draft available after terminal rollback',
 
   await expect(fixture.getByText('Rejected Detail Project', { exact: true })).toBeVisible();
   await expect(fixture.getByText('Fixture Detail Project', { exact: true })).toBeVisible();
-  await expect(fixture.getByRole('status')).toContainText('Fixture detail save rejected.');
+  await expect(fixture.getByRole('alert')).toContainText('Fixture detail save rejected.');
   await fixture.getByRole('button', { name: 'Review changes' }).click();
   await expect(fixture.getByLabel('Project name')).toHaveValue('Rejected Detail Project');
 });
@@ -261,7 +261,7 @@ test('keeps a rejected Contact Details draft available after terminal rollback',
 
   await expect(fixture.getByRole('heading', { name: 'Rejected Fixture Contact' })).toBeVisible();
   await expect(fixture.getByRole('heading', { name: 'Fixture Contact' })).toBeVisible();
-  await expect(fixture.getByRole('status')).toContainText('Fixture contact save rejected.');
+  await expect(fixture.getByRole('alert')).toContainText('Fixture contact save rejected.');
   await fixture.getByRole('button', { name: 'Review changes' }).click();
   await expect(fixture.getByLabel('Contact name')).toHaveValue('Rejected Fixture Contact');
 });
