@@ -1,14 +1,38 @@
 # Project Work Items Technical And Cutover Plan
 
-Status: Product decisions approved; implementation remains approval-gated. No application or UI change is authorised by this document.
+Status: The approved new-project V2 and Work Queue/legacy-review slices are staging-verified in the repository. Migration `20260729_000002` was applied in staging on 2026-07-29. The exact reviewed `20260729_000003` and `20260729_000004` files were rollback-rehearsed and replay-applied to positively identified staging on 2026-07-30; readiness, schema/body/permission verification, authenticated legacy reads, and disposable new-V2-project command smoke passed. The real authenticated Work Queue route also reaches its fresh row-or-empty state on staging through a GET-only smoke that blocks every application mutation request. Existing projects remain legacy; only one explicitly reviewed project can ever cross through the guarded command. Production is unchanged: the live portal still serves pre-V2 commit `32a66ec3`, and read-only catalog checks against the positively identified production project confirm the Project Work foundation and queue are absent. The Project Overview redesign is separately approved under `project-command-centre-architecture.md`.
 
 Purpose: replace the competing legacy project-task systems with one small, durable work-item foundation without weakening lifecycle, commercial, local-first, authentication, public-token, or side-effect boundaries.
 
-This plan does not authorise the previously proposed Project Overview redesign. It supplies a trusted contract that the current Overview and future approved designs can consume.
+This plan supplies the trusted Project Work contract consumed by the separately approved Project Overview redesign. It does not own layout or visual direction.
+
+## Current Repository State
+
+`20260729_000002_project_work_items_v2.sql` and the associated server/API adapters implement the coherent foundation for newly created projects. Staff creation reaches `project_create_v2` only through the authenticated staff API; the former browser-direct project insert helper is retired. A newly created `New` project linked by its intake enquiry initializes the same model. A narrow creation-time check prevents an old project from being activated by a later enquiry insert. Existing projects are not marked, backfilled, or classified. The Contacted population is unchanged.
+
+The first staging application completed the DDL but PostgREST continued to report the new marker/state tables and their project relationship as absent from its schema cache (`PGRST205`/`PGRST200`). That made every project-detail snapshot fail at classification. Project and queue classifiers now read model markers and operational state through direct bounded owners rather than embedded relationships; authoritative queue inventory fails closed if unavailable or truncated. Forward migration `20260729_000003_project_work_items_v2_schema_cache.sql` canonicalizes the named `project_id -> projects.id ON DELETE CASCADE` keys and sends the PostgREST reload only after DDL commit; `20260729_000004` follows the same post-commit rule. Both exact files were rollback-rehearsed and replay-applied to staging on 2026-07-30, and the read-only readiness plus direct catalog/body/permission checks passed. The authenticated GET-only Work Queue, legacy snapshot, and Command Centre smoke also passed against a disposable synthetic staging project, with the legacy boundary preserved and the fixture removed afterward.
+
+The final authenticated command smoke created one clearly labelled synthetic V2 project through the staff API and proved the durable transition `OPEN r1 -> BLOCKED r2 -> exact replay r2 -> ARCHIVED/CANCELLED r3`. Work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks agreed; the archived project was omitted from active work and reported zero open/blocked items. The exact replay produced no duplicate work event. The temporary synthetic-QA role elevation required for the supported archive command was restored to `staff`. No confirmation, email/outbox, quote, invoice, legacy task/follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue record was created. The archived synthetic project/contact and append-only events intentionally remain as staging audit evidence; V2 exposes no hard-delete command.
+
+The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, and one-project legacy-review boundaries described below. `projectWorkCache.ts` is the sole cache patch/invalidation module: it owns V2 projection fan-out, complete command-centre response patching through `patchProjectCommandCentreCache`, and the shared Project Work invalidation set. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The Overview V2 presentation consumes one server projection through one mixed-model Project Work region. Its route-owned composition, orientation, section/list/controls, separate V2 and legacy command controllers, conflict/history presenters, and shared visibility policy do not change the durable command contract. V2 actions remain server-owned; legacy stage rows are filtered read-only, Call and Site Visit work is hidden, a prohibited selected legacy action becomes `Legacy work needs review` without browser ranking, and a server-returned blocked primary remains a visible exception with no enabled item command. Work Queue owns the staff-wide operational list and Dashboard owns a compact preview; personal reminders remain separate. The positively identified staging rehearsal, authenticated non-destructive QA, and focused repository gates recorded for the Project Work foundation remain valid historical rollout evidence. Overview V2's focused, fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Overview V2 completion is accepted under the narrow user-approved exception for the unrelated baseline Contacts/Calculator overruns; their ceilings remain unchanged and optimization stays outside this data-cutover plan. Production promotion and monitoring remain separately controlled.
+
+Known boundaries and limitations before broad rollout:
+
+- Auckland calendar coverage is verified only for 2026 and 2027 and fails closed beyond covered years;
+- the specialist primary-action adapter currently covers quote-delivery recovery, draft-quote send, and estimate-to-quote only;
+- project-specific Command Centre, snapshot, work-item, full Work Queue, and Dashboard reads share the same server-owned action composition;
+- Contacted classification is recommendation-only and cannot prove historical outreach when structured evidence is absent; and
+- broad existing-project migration and legacy retirement remain separate reviewed operations.
+
+Staff confirmed on 2026-07-30 that the legacy task surfaces have not been used
+as an operational company workflow; the portal has primarily supported
+quoting. That removes historical task adoption as a launch blocker, but it
+does not authorise an automatic backfill. Existing projects remain legacy by
+default, and any later opt-in stays one explicitly reviewed project at a time.
 
 ## 1. Evidence And Existing Risk
 
-Project work is currently spread across:
+For unmarked legacy projects, work remains spread across:
 
 - code-defined stage checks in `pipelineDefinition.ts` and `project_task_checks`;
 - automation `tasks`;
@@ -51,9 +75,9 @@ There will be one source for each kind of truth:
 
 Specialist domains may expose an action candidate to the Command Centre. They must not copy that candidate into `project_work_items`.
 
-## 3. Proposed Data Contract
+## 3. Implemented Repository Data Contract
 
-All names are implementation proposals. The forward migration must use current repository naming conventions and must not edit an applied migration.
+The names below reflect the current repository migration contract. Later changes must use forward migrations and must not edit applied migration history.
 
 ### `project_operational_states`
 
@@ -253,6 +277,19 @@ Shared idempotency evidence for state, work-item, and confirmation commands:
 
 Reusing a command UUID with the same intent returns the committed result. Reusing it with a different intent is rejected.
 
+### `project_work_repair_signals`
+
+Durable recovery evidence for a quote lifecycle fact that committed before its V2 cadence reconciliation succeeded:
+
+- the original deterministic reconciliation command UUID is unique;
+- project, quote version, and event identity are retained;
+- status is `OPEN` or `RESOLVED`;
+- only bounded staff-safe error code and copy are stored;
+- repeat failures increment attempt and row versions; and
+- a later successful authoritative reconciliation resolves the affected quote-family signals.
+
+Authenticated staff can read these rows but cannot write them. Only the server-side service-role command may open or resolve a signal. An open signal outranks normal project work and enters the SQL queue; raw provider, database, and service details are never persisted in this staff-visible table.
+
 ### Business calendar ownership
 
 Reuse the existing Schedule-owned calendar sources:
@@ -395,15 +432,19 @@ The specialist owner commits its fact first, then calls an idempotent reconcilia
 
 ## 6. Read Models And Routes
 
-Proposed thin staff routes:
+Implemented thin staff/admin routes:
 
 - `GET /api/staff/v1/projects/{projectId}/work-items`
 - `POST /api/staff/v1/projects/{projectId}/work-items/commands`
 - `POST /api/staff/v1/projects/{projectId}/state/commands`
 - `POST /api/staff/v1/projects/{projectId}/confirmations/commands`
 - `GET /api/staff/v1/work-items/queue`
+- `POST /api/admin/project-work/confirmations/correct`
+- `POST /api/admin/project-work/confirmations/reconcile`
+- `GET /api/admin/project-work/legacy-contacted`
+- `POST /api/admin/project-work/legacy-contacted/{projectId}/migrate`
 
-Routes use the current staff-session helper and auth-bound server client. Browser code never writes directly to Supabase.
+Staff routes use the current staff-session helper and auth-bound server client. The classifier, correction, and migration routes require admin context and still use the request's auth-bound client; database functions perform their own `is_portal_admin()` check. Browser code never writes directly to Supabase.
 
 ### Project work projection
 
@@ -433,6 +474,10 @@ The company queue returns at most one current action per project, grouped as:
 Waiting, Closed, and Archived projects are excluded unless their wake condition is now due or the user explicitly requests history.
 
 When a Waiting wake time arrives, the state remains Waiting and the server exposes `Review waiting project` as its state-owned action. Staff deliberately choose Active, a new Waiting date, or Closed; time passing does not silently change project state.
+
+`project_work_queue_v3()` returns durable repair, work-item, blocked, Waiting-review, and triage candidates plus optimistic row versions and effective responsibility. Repair rows include the exact repair-signal ID and row version; confirmation reconciliation must use both and may update only that signal. `teamQueue.ts` composes that batch read with direct marker inventory, direct operational-state reads, and the same canonical quote/estimate specialist selectors used by project-specific reads, without assembling lifecycle or commercial truth in the browser. The full route groups Overdue, Today, Next seven business days, Blocked, and Needs triage; the Dashboard receives only a bounded preview. Far-future-only projects remain out of the operational surface.
+
+Queue work-item rows expose the existing semantic commands: Email sent, Customer replied, Complete, reassign, reschedule, block, and unblock. Commands preserve one stable attempt ID, reject duplicate in-flight submission, show success only after durable confirmation, and invalidate queue, Dashboard, project snapshot, summary, and Command Centre reads after acceptance.
 
 ### Primary-action precedence
 
@@ -478,7 +523,7 @@ Exact compatibility mapping:
 
 An email item is never projected as legacy `call`, and Site Visit is never projected merely to satisfy the old enum.
 
-Specialist mutations must invalidate or refresh the unified project projection through one named cache owner.
+Specialist mutations must invalidate or refresh the unified project projection through `projectWorkCache.ts`; complete command-centre response patches must use its sole `patchProjectCommandCentreCache` owner rather than a caller-local `setQueryData`.
 
 ## 7. Auckland Business Calendar
 
@@ -617,7 +662,7 @@ Therefore:
 - keep the other 566 outside the new queue until evidence or a staff decision gives them a genuine item, Waiting date, Closed outcome, or archive reason; and
 - treat the 36 archived records as a separate administrative population.
 
-The later read-only classification report may output aggregate counts and internal project IDs to an admin-only review surface. It must not export customer details into logs, screenshots, fixtures, or planning artifacts.
+The read-only `project_work_classify_legacy_contacted_v1()` report returns aggregate counts, project identity, follow-up timing, bounded reason codes, boolean domain evidence, and one opaque evidence fingerprint to an admin-only review surface. The fingerprint is produced by the internal-only `project_work_legacy_contacted_evidence_v1()` helper from normalized project stage/follow-up/archive/model state and the sorted identities/status or completion fields actually used from quote versions, deposit invoices, design requests, scheduled jobs, Running Jobs metadata, tasks, follow-ups, and manual actions. Raw Running Jobs notes contribute only through a SHA-256 digest. The helper is revoked from public, anonymous, authenticated, and service-role callers. The report deliberately omits linked customer email, phone, address, attachments, and message content. That data must not be added to logs, screenshots, fixtures, or planning artifacts.
 
 The report must use positive evidence and label recommendations rather than making decisions:
 
@@ -626,14 +671,18 @@ The report must use positive evidence and label recommendations rather than maki
 | Current quote, invoice, Design, Schedule, Running Job, or genuine open obligation | Review as Active and correct a stale pipeline stage separately if needed |
 | Explicit future follow-up date but no current obligation | Waiting candidate; staff must supply the reason and confirm the wake date |
 | Due follow-up, evidence that a personal email was sent, and no response or downstream progress | `Lost - No response` candidate; staff must confirm |
-| Duplicate, test, invalid, or broken import evidence | Archive candidate; admin must confirm |
+| Duplicate, test, invalid, or broken import evidence | Keep outside this migration command for a separate explicit archive review |
 | Missing outreach evidence, conflicting evidence, or insufficient evidence | Needs manual classification |
 
-Review in bounded batches, beginning with the 57 due projects. Each decision uses the normal state, work-item, or archive command and records actor, reason, and command receipt. There is no bulk "accept all recommendations" action.
+Review in bounded batches, beginning with the 57 due projects, but commit only one project at a time. `project_work_migrate_legacy_contacted_v1()` requires optimistic `expected_updated_at` and `expected_evidence_fingerprint` values, a stable command ID, reason, and one explicit disposition: Active with one real work item, Active Needs triage, Waiting with a future wake time, or Closed with a bounded loss/cancellation outcome. After its project advisory and row locks, it recomputes the same fingerprint and rejects any mismatch before establishing model version 2, state, audit, optional work, and compatibility projection. It never archives, starts the new-lead email cadence, accepts all recommendations, or contacts a customer.
+
+This is a deterministic optimistic boundary, not broad serialization of every legacy evidence writer. It observes all related commits visible when the fingerprint verification statement begins. A related writer that does not share the project advisory lock could still commit after verification and before migration commit. Closing that residual window requires every related writer to participate in the same project lock or invasive table/trigger coordination; broad locking is deliberately outside this slice.
 
 ## 11. Cutover Releases
 
 ### A. Hidden foundation
+
+Repository status: the foundation is implemented and `20260729_000002` has entered staging rehearsal. Exact `20260729_000003`/`000004` staging replay, read-only readiness/catalog/permission proof, and authenticated GET-only Work Queue plus legacy-project integrity smoke passed on 2026-07-30. The disposable synthetic legacy contact/project used by the smoke was removed afterward. The Contacted classifier is staging-present but remains read-only until explicitly invoked; applying its definition did not seed or change projects.
 
 - Add tables, checks, indexes, RLS, commands, repositories, read models, and tests.
 - Add the per-project work-model marker and make legacy generators/projections respect it.
@@ -643,6 +692,8 @@ Review in bounded batches, beginning with the 57 due projects. Each decision use
 
 ### B. Cutover-ready integration
 
+Repository status: implemented for new-project V2 activation, including the approved quote adapter. It has not been exercised against an applied environment.
+
 - Wire the approved lead cadence, manual commands, confirmations, current-presentation adapter, and compatibility projection behind a server cutover control.
 - Exercise them with fixtures and local authenticated QA only.
 - Keep production writers unchanged during shadow verification.
@@ -650,12 +701,16 @@ Review in bounded batches, beginning with the 57 due projects. Each decision use
 
 ### C. Shadow comparison
 
-- Compute old and new candidate sets read-only.
-- Report aggregate differences by source and reason.
+Repository status: the bounded classifier and review surface are implemented locally. No Contacted project has been changed by repository implementation and no bulk comparison or decision exists.
+
+- Classify unmarked Contacted projects read-only from positive operational evidence.
+- Report aggregate counts and bounded reasons without linked customer contact fields.
 - Verify that the new system creates no duplicate source keys and no specialist-domain copies.
 - Do not auto-correct projects.
 
 ### D. Controlled writer and reader switch
+
+Repository status: wired for projects initialized as V2 after the migration is applied. No existing project is switched by the current migration.
 
 - Mark each approved project cohort as model version 2 in the same transaction as its initial new state and work.
 - Start the approved lead cadence only for valid post-cutover enquiries.
@@ -666,10 +721,12 @@ Review in bounded batches, beginning with the 57 due projects. Each decision use
 - Switch the current task presentation, Command Centre, Projects, and Dashboard through compatibility adapters.
 - Keep the current Overview presentation visually unchanged.
 - Hide the unused Site Visits navigation entry and prevent project work-item links to it, while leaving the route and data owner dormant.
-- Run the 57-project Contacted review as a separate admin workflow.
+- Run Contacted review as a separate admin workflow, one reviewed project per command.
 - Enable the quote adapter only if its cadence was separately approved.
 
 ### E. Freeze legacy
+
+Repository status: legacy inserts and updates are rejected for V2 projects, while unmarked projects remain on the legacy model. This is cohort isolation, not broad legacy freeze or retirement.
 
 - Revoke legacy browser and route writes.
 - Retain legacy rows read-only for at least one release and a defined reconciliation window.
@@ -678,6 +735,8 @@ Review in bounded batches, beginning with the 57 due projects. Each decision use
 After new-writer cutover, rollback may return readers to the previous display but must not re-enable legacy writers.
 
 ### F. Retire proven legacy
+
+Repository status: not started. Compatibility and legacy owners remain required for existing projects.
 
 - Remove unused task generators, browser CRUD, primary-selection machinery, and compatibility adapters only after consumer searches and reconciliation pass.
 - Drop tables or columns only in a later explicit forward migration.
@@ -711,30 +770,51 @@ Failures are visible diagnostics. Reconciliation must not silently close project
 
 Create a named server domain rather than expanding existing hotspots:
 
+The migration's atomic SQL commands are the sole durable owner of business-calendar calculation and cadence transitions. TypeScript converts Auckland dates for presentation and calls the commands; it must not reimplement a second cadence planner.
+
 ```text
 apps/portal/lib/projects/workItems/
   types.ts
   businessCalendar.ts
   repository.ts
+  teamQueue.ts
+  effectiveAssignee.ts
   commands.ts
-  confirmations.ts
-  cadence.ts
+  client.ts
+  modelBoundary.ts
   primaryAction.ts
   domainActionAdapters.ts
-  reconciliation.ts
+  quoteCadenceReconciliation.ts
+  routeSupport.ts
+  stableCommandAttempt.ts
+  systemCommandId.ts
+  legacyTriage/
+    types.ts
+    validation.ts
+    repository.ts
+    commands.ts
+    client.ts
 ```
 
 Responsibilities:
 
 - `types.ts`: bounded contracts only;
-- `businessCalendar.ts`: Auckland calculations and closure provider;
-- `repository.ts`: auth-bound persistence adapter;
-- `commands.ts`: transactional work-item and operational-state command adapter;
-- `confirmations.ts`: bounded append-only evidence;
-- `cadence.ts`: idempotent lead and approved quote state machines;
+- `businessCalendar.ts`: presentation-only Auckland local-date conversion;
+- `repository.ts`: auth-bound project projection reads;
+- `teamQueue.ts`: batch team-queue composition and the only staff-wide specialist overlay;
+- `effectiveAssignee.ts`: shared Project Owner/work-item assignee fallback;
+- `commands.ts`: typed staff/admin/system RPC adapters for work items, state, confirmations, archive, reconciliation, and specialist facts;
+- `client.ts`: browser transport only;
+- `modelBoundary.ts`: server-side V2 marker check for mixed-mode callers;
 - `primaryAction.ts`: the only cross-domain ranking owner;
-- `domainActionAdapters.ts`: read-only specialist candidates and reconciliation hooks; and
-- `reconciliation.ts`: diagnostics and reviewed migration reports.
+- `domainActionAdapters.ts`: read-only specialist action candidates;
+- `quoteCadenceReconciliation.ts`: server-only quote lifecycle adapter with deterministic command identity and explicit repair status;
+- `routeSupport.ts`: shared staff-route validation and stable error mapping;
+- `stableCommandAttempt.ts`: preserves one browser command UUID for the same ambiguous retry intent and clears it only after confirmed commit or an edited intent; and
+- `systemCommandId.ts`: deterministic server reconciliation command IDs; and
+- `legacyTriage`: admin-only classifier, guarded one-project migration, confirmation correction transport, validation, and stable error mapping.
+
+The SQL command owner stores append-only confirmation evidence and exposes the per-project admin integrity report. `project_confirmation_retraction_command()` appends the correction, stores an idempotent receipt, and opens a `CONFIRMATION_RETRACTION_REVIEW` repair signal. `project_confirmation_retraction_review_command()` requires the exact signal ID, expected signal row version, stable command ID, and a second admin reason. It locks and resolves only that row, rejects stale or already-resolved metadata, and appends an audit event without changing lifecycle or commercial state. Neither command deletes the original assertion, restarts cadence, or automatically rewinds later facts. The Contacted classifier remains a read model, not another browser-side source of truth.
 
 Thin routes validate transport shape, require staff/admin context, call one owner, and map stable errors. They do not derive lifecycle or commercial truth.
 
@@ -754,6 +834,8 @@ Files that should not grow:
 The current duplicated operation and exception derivation should collapse behind `primaryAction.ts` and the unified project projection. `pipelineDefinition.ts` becomes stage metadata only after task cutover. Legacy automation task handling is shrunk and then retired rather than expanded.
 
 Route-owned presentation may adapt the new read model temporarily. Durable types, calendar rules, ranking, cadence, and commands remain reusable server-domain owners. No second client-side project-state source is created.
+
+Overview V2 keeps that boundary through the five required top-level owners (`ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectWorkList`, and `useProjectWorkCommandController`) plus extracted subordinate owners: `ProjectWorkControls` for V2 mutation-control presentation, `useLegacyProjectWorkCommandController` for legacy stable command/cache orchestration, `LegacyProjectWorkConflict` and `LegacyProjectWorkHistory` for legacy conflict/audit presentation, and `projectWorkVisibilityPolicy` for the shared fail-closed Call/Site Visit filter. Cache patching and invalidation stay in `projectWorkCache.ts`, with `patchProjectCommandCentreCache` as the sole complete response patch owner. These presentation owners may arrange or format supplied facts and dispatch existing commands; they may not rank candidates, create replacement legacy work, infer lifecycle/readiness/commercial state, or add a second cache owner.
 
 ## 14. Verification
 
@@ -775,8 +857,11 @@ Route-owned presentation may adapt the new read model temporarily. Durable types
 - staff versus admin permissions;
 - command receipt intent conflicts;
 - append-only event and confirmation history;
+- confirmation correction requires admin, reason, exact original event, one retraction, receipt replay, and a visible repair signal; review resolution requires that exact signal ID/version and cannot clear a newer signal;
 - concurrent completion/reschedule conflicts;
 - source-key uniqueness;
+- classifier reads omit linked customer contact fields and cannot mutate;
+- reviewed migration enforces Contacted/unmarked/current-update and evidence-fingerprint preconditions, one project, valid disposition evidence, and no cadence seed;
 - stable error mapping; and
 - auth-bound client usage with no service-role reachability.
 
@@ -800,12 +885,13 @@ Fixtures should cover:
 - quote sent, delivery failed, expired, accepted, declined, replied, resent, and superseded;
 - missing owner, unavailable specialist data, stale read model, conflict, retry, and replay; and
 - legacy-import preview with zero automatic customer-data changes.
+- one-project Contacted migration dispositions, stale-review rejection, replay, and no automatic first-email work.
 
-Run desktop, tablet, narrow/mobile, keyboard, focus, screen-reader, loading, error, stale, and conflict checks on whichever existing presentation consumes the new contract. This is regression verification, not approval to redesign the Overview.
+Run desktop, tablet, narrow/mobile, keyboard, focus, screen-reader, loading, error, stale, and conflict checks on the full Work Queue, its Dashboard preview, and the admin legacy-review surface. This is regression verification, not approval to redesign the Overview.
 
 ### Repository gates
 
-At implementation handoff, run the focused tests plus:
+At rollout handoff, run the focused tests plus:
 
 - worktree ownership status;
 - docs guard and impact checks;
@@ -841,12 +927,12 @@ The Contacted backlog review remains a separate admin-only migration operation. 
 Add the foundation, cut over all readers, process backlog, retire legacy, and design a new task presentation in one release.
 
 - Benefit: fastest visible end state.
-- Risk: combines data migration, behavioural change, and unapproved UI decisions.
+- Risk at the time: combined data migration, behavioural change, and then-unapproved UI decisions.
 - Maintainability: clean destination but unnecessarily risky now.
 
-## 16. Recommended First Implementation Slice
+## 16. Implemented V2 Slices
 
-Choose Option B, ending before broad legacy deletion:
+The current worktree implements the approved Option B foundation plus the Work Queue and guarded-review slice, ending before broad existing-project migration and legacy deletion:
 
 1. forward schema and RLS;
 2. transactional commands and append-only audit;
@@ -857,52 +943,32 @@ Choose Option B, ending before broad legacy deletion:
 7. Running Jobs ownership for materials- and roofing-ordered facts;
 8. one-way `next_action*` and `follow_up_date` compatibility;
 9. adapters for the current Overview/task presentation without visual redesign;
-10. read-only shadow and reconciliation reports; and
-11. tests and repository gates.
+10. server-only quote send/outcome reconciliation with durable repair signals;
+11. Schedule V2 completion/readiness ownership and Running Jobs-owned materials/roofing facts;
+12. admin-only archive/restore commands; and
+13. full Work Queue plus a compact Dashboard preview, with personal reminders kept separate;
+14. admin-only append-only confirmation correction and explicit recovery review;
+15. no-contact-field Contacted classification and one-project-at-a-time reviewed migration; and
+16. focused static, unit, component, route, and boundary tests.
 
-This is the largest safe first slice because it establishes trustworthy ownership from write to read while leaving irreversible backlog classification, old-table deletion, and visual redesign outside the release.
+The foundation and exact ordered `20260729_000003`/`000004` files are applied only to staging and are not production-deployed. Readiness, rollback rehearsal, schema/body verification, anonymous-access checks, the authenticated GET-only Work Queue plus legacy-project read smoke, and the disposable new-V2-project command smoke pass. The slice establishes the repository write-to-read boundary, cache coherence, stale/read-only behavior, idempotent command replay, supported archive cleanup, and safe review tooling while leaving production promotion, bulk migration, automatic backlog decisions, old-table deletion, calendar expansion, and visual redesign outside rollout.
 
-## 17. Parallel Schedule Boundary
+## 17. Current Schedule And Parallel-Work Boundary
 
-While the current Schedule lane is active, the full Option B slice is not safe to implement in parallel. Use a hidden foundation lane only.
+The Schedule and work-items integration is now present in the same worktree, but it is not deployment evidence. Schedule V2 remains authoritative for install assignment, readiness, actual start, and actual finish. Running Jobs owns materials- and roofing-ordered facts for V2. Site Visits is hidden from normal navigation, remains directly reachable as dormant Schedule-owned code, and is not linked from project work; the optional V2 completion confirmation is manual and has no stage or Schedule side effect.
 
-Safe parallel scope:
+Further work may proceed in parallel only with explicit non-overlapping ownership. A Schedule lane and a work-items lane must not concurrently edit the same Schedule read/write adapters, Running Jobs contracts, project snapshot, command-centre projection, migration, or canonical docs. Safe isolated work includes:
 
-- one reserved forward migration for the replacement tables, RLS, indexes, command receipts, events, and model-version marker;
-- new files under `apps/portal/lib/projects/workItems/**`;
-- protected command contracts gated on model version 2;
-- a read-only Auckland business-hours adapter over the existing Schedule-owned calendar;
-- pure ranking, approved lead and quote cadence state machines, confirmation logic, and reconciliation;
-- focused SQL and domain tests; and
-- no project marked as model version 2.
+- read-only review and test planning;
+- pure work-items unit tests that do not change shared contracts;
+- read-only analysis that does not operate the Contacted migration command; and
+- documentation that does not conflict with an active Schedule owner.
 
-This foundation produces no current UI, writer, queue, compatibility-field, or customer-data change.
+Before enabling V2 in any environment, integrate both lanes, run the cross-domain Schedule/Running Jobs/project regressions, and prove the migration against a disposable or positively identified database. Existing projects and the 623-project Contacted population remain outside this activation.
 
-Defer until the Schedule lane is committed and integrated:
+Migration and application deployment use one short controlled window. Constrain new project/enquiry creation and quote lifecycle mutations until both are live and the integrity smoke passes: deploying the application first makes new staff project creation fail closed, while applying the migration first can activate new marketing projects before the application adapters are available.
 
-- writes to `projects.next_action*` or `follow_up_date`;
-- Schedule filtering for Active, Waiting, Closed, or Archived;
-- Schedule completion/readiness reconciliation and `job_complete` retirement;
-- Site Visits navigation hiding;
-- Running Jobs materials/roofing extraction;
-- current Command Centre, Overview, and task-presentation adapters;
-- lead and quote production lifecycle wiring;
-- legacy writer shutdown; and
-- Contacted backlog migration.
-
-The parallel work-items lane must not edit:
-
-- `apps/portal/app/staff/schedule/**`;
-- `apps/portal/app/api/staff/v1/schedule/**`;
-- `apps/portal/lib/scheduling/**`;
-- `apps/portal/lib/repo/scheduleV2Repo.ts`;
-- `docs/schedule.md`;
-- `docs/testing-and-qa.md`; or
-- `scripts/file-decomposition-registry.json`.
-
-Use a separate branch/worktree where possible, reserve a unique migration filename with the Schedule lane, and declare exact ownership patterns. After Schedule lands, run an explicit integration slice and the cross-lane Schedule/project regression suite before enabling any model-version-2 project.
-
-`CLOSE` with outcome `COMPLETE` remains unavailable with stable `503 OWNER_NOT_INTEGRATED` until the Schedule-owned completion/readiness adapter is present. Lost and Cancelled outcomes do not require that Schedule adapter.
+`CLOSE` with outcome `COMPLETE` now checks Schedule V2 actual-finish evidence and the accepted-quote/deposit commercial blockers. Lost and Cancelled outcomes remain separate. Do not reintroduce generic task mirrors for these specialist facts.
 
 ## 18. Workbench And Costing Boundary
 
@@ -913,11 +979,30 @@ Use a separate branch/worktree where possible, reserve a unique migration filena
 
 No design-workbench, geometry, calculator-input, or costing-source boundary changes are proposed.
 
-## 19. Remaining Approval
+## 19. Remaining Rollout Decisions
 
-Before application implementation, explicitly approve either:
+Application implementation is approved. Production is now positively identified
+as Supabase project `iytanftukulcnavossmd`, but identification is not cutover
+authority. The live portal commit is `32a66ec3`, while the approved Overview and
+Project Work implementation sits within a much broader unpublished commit range.
+Production has completed daily physical backups and WAL-G, but PITR is disabled,
+so a daily restore is disaster recovery rather than a clean feature rollback.
 
-- the hidden parallel foundation in Section 17 while Schedule work continues; or
-- the full coherent slice in Section 16 after Schedule is stable.
+Before production activation, freeze one clean application release SHA, verify
+that exact release against staging, agree one short project/enquiry/quote write
+window and recovery owner, then deploy the V2-capable portal before applying the
+three original exact SQL files. Do not use `db push`, `migration up`, or repair
+the colliding `20260729` ledger version. Production verification is
+authenticated and read-only; resume writers only after Work Queue, Overview,
+legacy quoting, catalog, RLS/grants, and reconciliation checks pass.
 
-The Project Overview visual redesign remains unapproved and out of scope.
+The following still require explicit environment or product approval:
+
+- the exact production application release SHA and controlled write window;
+- applying `20260729_000002`, `20260729_000003`, and `20260729_000004` to production and enabling new-project V2 creation there;
+- every individual reviewed existing-project cutover;
+- calendar coverage beyond 2027;
+- later legacy retirement; and
+- any Project Overview redesign outside the approved implementation handover.
+
+The approved Project Overview redesign is governed by `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)` and remains outside this data-cutover plan.

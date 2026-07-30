@@ -1,7 +1,6 @@
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { nowIso } from '@/lib/utils/time';
-import { newId } from '@/lib/utils/id';
 import { fetchAllPages } from '@/lib/list/listLimits';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -172,69 +171,6 @@ export async function getProject(id: string): Promise<Project | null> {
   } catch {
     return null;
   }
-}
-
-export async function createProject(data: {
-  contactId: string;
-  projectName: string;
-  region?: string;
-  siteAddress?: string;
-  quoteRef?: string;
-  status?: Project['status'];
-}): Promise<Project> {
-  const now = nowIso();
-  if (!data.contactId.trim()) throw new Error('Contact is required.');
-  if (!data.projectName.trim()) throw new Error('Project name is required.');
-
-  const project: Project = {
-    id: newId('proj'),
-    createdAt: now,
-    updatedAt: now,
-    status: (data.status ?? 'NEW') as any,
-    contactId: data.contactId.trim(),
-    projectName: data.projectName.trim(),
-    region: data.region,
-    siteAddress: data.siteAddress,
-    quoteRef: data.quoteRef,
-    nextActionDate: null,
-    followUpDate: null,
-    notes: '',
-    name: data.projectName.trim(),
-    address: data.siteAddress,
-  };
-
-  const uuid = uuidFromAppId(project.id, 'proj');
-  const contactUuid = uuidFromAppId(project.contactId ?? '', 'ct');
-
-  const payload: any = {
-    id: uuid,
-    contact_id: contactUuid || null,
-    name: project.projectName ?? project.name ?? '',
-    quote_ref: project.quoteRef ?? null,
-    region: project.region ?? null,
-    site_address: project.siteAddress ?? project.address ?? null,
-    pipeline_stage: (project.status ?? 'NEW') as any,
-    deposit_amount_cents: typeof project.depositAmountCents === 'number' && Number.isFinite(project.depositAmountCents) ? Math.round(project.depositAmountCents) : null,
-    deposit_paid_date: typeof project.depositPaidDate === 'string' ? project.depositPaidDate : null,
-    final_payment_date: typeof project.finalPaymentDate === 'string' ? project.finalPaymentDate : null,
-    notes: project.notes ?? '',
-    created_at: project.createdAt,
-    updated_at: project.updatedAt ?? project.createdAt,
-  };
-
-  const { data: row, error } = await insertWithUnknownColumnRetry(payload);
-  if (error || !row) {
-    if (process.env.NODE_ENV !== 'production') {
-      (globalThis as any).__SP_PROJECT_INSERT_DEBUG__ = {
-        host: supabaseHostFromUrl(supabaseRuntimeUrl()),
-        payload,
-        error,
-      };
-      console.error('[projects] createProject insert failed', { host: supabaseHostFromUrl(supabaseRuntimeUrl()), payload, error });
-    }
-    throw wrapError('projects', error);
-  }
-  return projectFromRow(row);
 }
 
 export async function upsertProject(project: Project): Promise<Project> {

@@ -63,6 +63,12 @@ function isChildActive(
   switch (parentKey) {
     case 'projects': {
       if (childKey === 'all-projects') return pathname === '/projects' || pathname === '/staff/projects';
+      if (childKey === 'work-queue') {
+        return (
+          pathname === '/staff/projects/work-queue'
+          || pathname.startsWith('/staff/projects/work-queue/')
+        );
+      }
       if (childKey === 'new-project') return pathname === '/projects/new' || pathname === '/staff/projects/new';
       if (childKey === 'design-list') {
         return pathname === '/staff/projects/design-packages' || pathname.startsWith('/staff/projects/design-packages/');
@@ -92,7 +98,6 @@ function isChildActive(
 
       if (childKey === 'schedule-board') return scheduleView === 'board';
       if (childKey === 'schedule-gantt') return scheduleView === 'gantt';
-      if (childKey === 'schedule-site-visits') return scheduleView === 'site-visits';
       return false;
     }
     case 'pricebook': {

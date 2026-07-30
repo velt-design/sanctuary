@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { randomUUID } from 'node:crypto';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { POST as confirmScheduleActionRoute } from '@/app/api/staff/v1/projects/[projectId]/action/confirm_schedule/route';
 import { POST as markCompletedActionRoute } from '@/app/api/staff/v1/projects/[projectId]/action/mark_completed/route';
@@ -26,6 +27,13 @@ class RouteInvocationError extends Error {
     this.name = 'RouteInvocationError';
     this.status = status;
     this.body = body;
+  }
+}
+
+class RunningJobFactConflictError extends Error {
+  constructor(message = 'Running-job facts changed before this save completed.') {
+    super(message);
+    this.name = 'RunningJobFactConflictError';
   }
 }
 
@@ -113,6 +121,36 @@ async function setTaskComplete(projectUuid: string, taskKey: string, completed: 
     const dependentRes = await supabase.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', 'job_complete');
     if (dependentRes.error) throw new Error(dependentRes.error.message ?? 'Failed to clear dependent task.');
   }
+}
+
+function isRunningJobFactConflict(error: unknown): boolean {
+  const raw = error as { code?: unknown; message?: unknown; details?: unknown };
+  const text = [raw?.message, raw?.details]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .toLowerCase();
+  return raw?.code === '40001'
+    || raw?.code === 'P0001' && /conflict|stale|row.?version/.test(text)
+    || /running.job.*(?:conflict|stale)|stale.*running.job|row.?version.*(?:conflict|stale)/.test(text);
+}
+
+async function setRunningJobFact(input: {
+  projectUuid: string;
+  fact: 'materials_ordered' | 'roofing_ordered';
+  value: boolean;
+  expectedRowVersion: number;
+}) {
+  const supabase = await getSupabaseServerAuth();
+  const result = await supabase.rpc('project_running_job_fact_command', {
+    p_project_id: input.projectUuid,
+    p_command_id: randomUUID(),
+    p_fact: input.fact,
+    p_value: input.value,
+    p_expected_row_version: input.expectedRowVersion,
+  });
+  if (!result.error) return;
+  if (isRunningJobFactConflict(result.error)) throw new RunningJobFactConflictError();
+  throw new Error(result.error.message ?? 'Failed to update running-job fact.');
 }
 
 async function updateSiteVisitRep(projectUuid: string, salespersonId: string | null) {
@@ -254,6 +292,7 @@ async function runScheduleMutation(
 export async function applyRunningJobCellMutation(input: {
   projectId: string;
   projectUuid: string;
+  actorUserId: string;
   currentRow: RunningJobRow;
   key: RunningJobEditableCellKey;
   value: NormalizedRunningJobCellValue;
@@ -262,6 +301,8 @@ export async function applyRunningJobCellMutation(input: {
 }): Promise<RunningJobCellMutationResponse> {
   const editability = getRunningJobCellEditability(input.currentRow, input.key);
   if (!editability.editable) throw new Error(editability.reason ?? 'This cell is not editable.');
+  if (!input.actorUserId) throw new Error('A staff actor is required.');
+  const usesV2Facts = input.currentRow.state.workModelVersion === 2;
 
   switch (input.key) {
     case 'client_name':
@@ -284,7 +325,16 @@ export async function applyRunningJobCellMutation(input: {
       await maybeAdvanceToDeposit(input.projectId, input.currentRow, input.value);
       break;
     case 'materials_ordered':
-      await setTaskComplete(input.projectUuid, 'order_materials', Boolean(input.value));
+      if (usesV2Facts) {
+        await setRunningJobFact({
+          projectUuid: input.projectUuid,
+          fact: 'materials_ordered',
+          value: Boolean(input.value),
+          expectedRowVersion: input.currentRow.state.meta.rowVersion,
+        });
+      } else {
+        await setTaskComplete(input.projectUuid, 'order_materials', Boolean(input.value));
+      }
       break;
     case 'final_payment_date':
       await updateProjectField(input.projectUuid, { final_payment_date: input.value });
@@ -294,7 +344,16 @@ export async function applyRunningJobCellMutation(input: {
       await upsertRunningJobMeta(input.projectUuid, { lights_status: input.value });
       break;
     case 'roofing_ordered':
-      await setTaskComplete(input.projectUuid, 'roofing_ordered', Boolean(input.value));
+      if (usesV2Facts) {
+        await setRunningJobFact({
+          projectUuid: input.projectUuid,
+          fact: 'roofing_ordered',
+          value: Boolean(input.value),
+          expectedRowVersion: input.currentRow.state.meta.rowVersion,
+        });
+      } else {
+        await setTaskComplete(input.projectUuid, 'roofing_ordered', Boolean(input.value));
+      }
       break;
     case 'running_notes':
       await upsertRunningJobMeta(input.projectUuid, { notes: input.value });
@@ -323,9 +382,11 @@ export async function applyRunningJobCellMutation(input: {
         const scheduleRes = await runScheduleMutation(input.key, input.projectUuid, Boolean(input.value), input);
         if (scheduleRes?.requires_confirmation || scheduleRes?.requires_finish_early) return scheduleRes;
       }
-      await setTaskComplete(input.projectUuid, 'job_complete', Boolean(input.value));
-      if (input.value) {
-        await maybeAdvanceToCompleted(input.projectId, input.currentRow);
+      if (!usesV2Facts) {
+        await setTaskComplete(input.projectUuid, 'job_complete', Boolean(input.value));
+        if (input.value) {
+          await maybeAdvanceToCompleted(input.projectId, input.currentRow);
+        }
       }
       break;
     default: {
@@ -340,4 +401,4 @@ export async function applyRunningJobCellMutation(input: {
   };
 }
 
-export { RouteInvocationError };
+export { RouteInvocationError, RunningJobFactConflictError };

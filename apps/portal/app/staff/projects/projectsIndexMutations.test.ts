@@ -149,6 +149,8 @@ describe('projectsIndexMutations', () => {
       host: 'host',
       project,
       isArchived: true,
+      reason: 'Duplicate test project',
+      commandId: '22222222-2222-4222-8222-222222222222',
     });
 
     expect(client.getQueryData<ProjectsIndexResponse>(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active'))?.projects.rows)

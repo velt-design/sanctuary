@@ -88,6 +88,82 @@ describe('portal route bundle budgets', () => {
     expect(report.lazy.largestEntry?.rawBytes).toBe(30);
   });
 
+  it('reconciles a stale loadable JavaScript hash with the emitted loader for the same module', () => {
+    const { nextDir, config } = fixture();
+    write(
+      path.join(nextDir, 'static/a.js'),
+      'e.v(t=>Promise.all(["static/chunks/emitted.css","static/chunks/emitted.js"].map(t=>e.l(t))).then(()=>t(42)))',
+    );
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      42: { id: 42, files: ['static/chunks/stale.js', 'static/chunks/emitted.css'] },
+    }));
+    write(path.join(nextDir, 'static/chunks/emitted.css'), Buffer.alloc(12, 3));
+    write(path.join(nextDir, 'static/chunks/emitted.js'), Buffer.alloc(18, 4));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.lazy.entries).toHaveLength(1);
+    expect(report.lazy.entries[0]?.files.map((file) => file.file)).toEqual([
+      'static/chunks/emitted.css',
+      'static/chunks/emitted.js',
+    ]);
+    expect(report.lazy.rawBytes).toBe(30);
+  });
+
+  it('fails closed when a stale loadable hash has no matching emitted module', () => {
+    const { nextDir, config } = fixture();
+    write(
+      path.join(nextDir, 'static/a.js'),
+      'e.v(t=>Promise.all(["static/chunks/emitted.js"].map(t=>e.l(t))).then(()=>t(41)))',
+    );
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      42: { id: 42, files: ['static/chunks/stale.js'] },
+    }));
+    write(path.join(nextDir, 'static/chunks/emitted.js'), Buffer.alloc(18, 4));
+
+    expect(() => analyzePortalBundleRoute({ nextDir, config }))
+      .toThrow(/stale\.js.*fresh portal build.*portal:bundle-budget/i);
+  });
+
+  it('retains module identity when two loaders share an emitted chunk group', () => {
+    const { nextDir, config } = fixture();
+    write(
+      path.join(nextDir, 'static/a.js'),
+      [
+        'e.v(t=>Promise.all(["static/chunks/shared.js"].map(t=>e.l(t))).then(()=>t(41)))',
+        'e.v(t=>Promise.all(["static/chunks/shared.js"].map(t=>e.l(t))).then(()=>t(42)))',
+      ].join(';'),
+    );
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      42: { id: 42, files: ['static/chunks/stale.js'] },
+    }));
+    write(path.join(nextDir, 'static/chunks/shared.js'), Buffer.alloc(18, 4));
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.lazy.files.map((file) => file.file)).toEqual(['static/chunks/shared.js']);
+  });
+
+  it('ignores missing artifacts from unrelated global loader modules', () => {
+    const { nextDir, config } = fixture();
+    write(
+      path.join(nextDir, 'static/a.js'),
+      'e.v(t=>Promise.all(["static/chunks/route.js"].map(t=>e.l(t))).then(()=>t(42)))',
+    );
+    write(path.join(nextDir, config.reactLoadableManifest), JSON.stringify({
+      42: { id: 42, files: ['static/chunks/stale.js'] },
+    }));
+    write(path.join(nextDir, 'static/chunks/route.js'), Buffer.alloc(18, 4));
+    write(
+      path.join(nextDir, 'static/chunks/unrelated-loader.js'),
+      'e.v(t=>Promise.all(["static/chunks/missing-unrelated.js"].map(t=>e.l(t))).then(()=>t(99)))',
+    );
+
+    const report = analyzePortalBundleRoute({ nextDir, config });
+
+    expect(report.lazy.files.map((file) => file.file)).toEqual(['static/chunks/route.js']);
+  });
+
   it('does not charge route entry CSS again when a lazy manifest repeats it', () => {
     const { nextDir, config } = fixture();
     write(path.join(nextDir, config.clientReferenceManifest), `globalThis.__RSC_MANIFEST = {

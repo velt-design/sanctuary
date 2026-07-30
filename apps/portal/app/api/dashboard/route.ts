@@ -19,7 +19,11 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const queue = parseDashboardQueueMode(url.searchParams.get('queue'));
-    const data = await getDashboardData({ queueMode: queue, userId: auth.session.user.id });
+    const data = await getDashboardData({
+      queueMode: queue,
+      userId: auth.session.user.id,
+      supabase: auth.supabase,
+    });
     return NextResponse.json(data, { headers: PRIVATE_NO_STORE_HEADERS });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to load dashboard data.';

@@ -1,0 +1,148 @@
+.card,
+.stack,
+.controlsSection,
+.controlStack,
+.workList {
+  min-width: 0;
+}
+
+.card {
+  container-type: inline-size;
+}
+
+.stack,
+.controlsSection,
+.controlStack,
+.workList {
+  display: grid;
+  gap: var(--ui-space-3);
+}
+
+.reason,
+.subsectionHeading p,
+.manualFact p {
+  margin: 0;
+}
+
+.reason,
+.subsectionHeading p,
+.manualFact p {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.inlineActions,
+.badges,
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+
+.controlsSection,
+.workList {
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  padding-top: var(--ui-space-3);
+}
+
+.controlsSection > button {
+  justify-self: start;
+}
+
+.disclosure {
+  border: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-primary);
+}
+
+.disclosure summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--ui-control-md);
+  padding: 0 var(--ui-space-3);
+  color: var(--ui-text-strong);
+  cursor: pointer;
+  font-size: var(--ui-font-size-small);
+  font-weight: 700;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border-top: var(--ui-border-width) solid var(--ui-border);
+  background: var(--ui-surface-secondary);
+}
+
+.formGrid > button {
+  justify-self: start;
+}
+
+.manualFact,
+.subsectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+
+.manualFact {
+  padding: var(--ui-space-3);
+  border: var(--ui-border-width) solid var(--ui-border);
+}
+
+.manualFact p {
+  margin-top: var(--ui-space-1);
+}
+
+.policyNotice {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ui-text-danger);
+  font-size: var(--ui-font-size-small);
+  font-weight: 650;
+}
+
+.subsectionHeading h3 {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-card-heading);
+  text-transform: uppercase;
+}
+
+.subsectionHeading > div:first-child {
+  display: grid;
+  gap: var(--ui-space-1);
+}
+
+@container (max-width: 620px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .manualFact,
+  .subsectionHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inlineActions,
+  .rowActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inlineActions > *,
+  .rowActions > * {
+    width: 100%;
+  }
+}
+
+@media (pointer: coarse) {
+  .disclosure summary {
+    min-height: 44px;
+  }
+}

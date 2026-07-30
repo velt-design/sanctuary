@@ -1,17 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import type { ProjectNavigationTabKey } from '@/lib/projects/projectTabs';
-import type { ProjectPageSnapshot, ProjectSnapshotLoadState } from '@/lib/projects/types';
-import ProjectHeader from './ProjectHeader';
-import ProjectPageShell from './ProjectPageShell';
-import styles from './ProjectPage.module.css';
+import { useEffect, useRef, useState } from "react";
+import type { ProjectNavigationTabKey } from "@/lib/projects/projectTabs";
+import type {
+  ProjectPageSnapshot,
+  ProjectSnapshotLoadState,
+} from "@/lib/projects/types";
+import ProjectHeader from "./ProjectHeader";
+import ProjectPageShell from "./ProjectPageShell";
+import styles from "./ProjectPage.module.css";
 
 export default function ProjectPageFrame({
   snapshot,
   host,
   snapshotContentReady = true,
-  snapshotState = 'fresh',
+  snapshotState = "fresh",
   tab,
   onProjectAccessEnding,
 }: {
@@ -24,7 +27,8 @@ export default function ProjectPageFrame({
 }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const mastheadRef = useRef<HTMLDivElement | null>(null);
-  const [optimisticTab, setOptimisticTab] = useState<ProjectNavigationTabKey | null>(null);
+  const [optimisticTab, setOptimisticTab] =
+    useState<ProjectNavigationTabKey | null>(null);
 
   useEffect(() => {
     setOptimisticTab(null);
@@ -33,8 +37,12 @@ export default function ProjectPageFrame({
   useEffect(() => {
     const frame = frameRef.current;
     const masthead = mastheadRef.current;
-    if (!frame || !masthead || typeof ResizeObserver === 'undefined') return;
-    const update = () => frame.style.setProperty('--project-page-masthead-height', `${Math.ceil(masthead.getBoundingClientRect().height)}px`);
+    if (!frame || !masthead || typeof ResizeObserver === "undefined") return;
+    const update = () =>
+      frame.style.setProperty(
+        "--project-page-masthead-height",
+        `${Math.ceil(masthead.getBoundingClientRect().height)}px`,
+      );
     update();
     const observer = new ResizeObserver(update);
     observer.observe(masthead);
@@ -56,8 +64,10 @@ export default function ProjectPageFrame({
       >
         <ProjectHeader
           project={snapshot.project}
+          workModel={snapshot.workModel}
           host={host}
           tab={tab}
+          ownerControlsPaused={snapshotState !== "fresh"}
           optimisticTab={optimisticTab}
           onTabSelect={setOptimisticTab}
         />

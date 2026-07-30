@@ -44,7 +44,6 @@ export default function DashboardClient({
   return (
     <DashboardView
       data={dashboard.data}
-      queueMode={queueMode}
       state={visibleState}
       onRetry={() => void dashboard.retry()}
     />

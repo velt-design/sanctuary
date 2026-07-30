@@ -1,4 +1,4 @@
-import type { DashboardData, QueueMode } from '@/lib/dashboard/types';
+import type { DashboardData } from '@/lib/dashboard/types';
 import stateStyles from '@/components/page-state/PageState.module.css';
 import PipelineCountsCard from './_components/PipelineCountsCard';
 import RecentActivityCard from './_components/RecentActivityCard';
@@ -11,12 +11,10 @@ import ProjectActionQueueCard from './_components/ProjectActionQueueCard';
 
 export default function DashboardView({
   data,
-  queueMode,
   state = 'fresh',
   onRetry,
 }: {
   data: DashboardData;
-  queueMode: QueueMode;
   state?: 'cached' | 'fresh' | 'refresh-failed';
   onRetry?: () => void;
 }) {
@@ -48,7 +46,10 @@ export default function DashboardView({
           <div className={dash.workspaceGrid}>
             <AttentionTodayCard items={data.attention} />
             <RecentActivityCard items={data.recentActivity} />
-            <ProjectActionQueueCard items={data.workQueue} queueMode={queueMode} updatedAtIso={data.updatedAtIso} />
+            <ProjectActionQueueCard
+              items={data.projectWorkQueue ?? []}
+              available={data.projectWorkQueueAvailable !== false}
+            />
             <RecentEstimatesCard items={data.recentEstimates} />
             <DashboardTasksCard initialTasks={data.personalTasks} />
           </div>

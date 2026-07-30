@@ -1,3 +1,5 @@
+import type { ProjectWorkProjection } from '../workItems/types';
+
 export type CommandCentreQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
 
 export type CommandCentreSource =
@@ -192,12 +194,28 @@ export type ProjectCommandCentreOperations = {
   };
 };
 
-export type ProjectCommandCentreResponse = {
+type ProjectCommandCentreResponseBase = {
   projectId: string;
   currentDesign: ProjectCommandCentreCurrentDesign;
-  operations: ProjectCommandCentreOperations;
   generatedAt: string;
 };
+
+type LegacyProjectCommandCentreResponse = ProjectCommandCentreResponseBase & {
+  workModel: 'legacy';
+  operations: ProjectCommandCentreOperations;
+  projectWork?: never;
+};
+
+type V2ProjectCommandCentreResponse = ProjectCommandCentreResponseBase & {
+  workModel: 'v2';
+  projectWork: ProjectWorkProjection;
+  owner: ProjectCommandOwnerSummary;
+  operations?: never;
+};
+
+export type ProjectCommandCentreResponse =
+  | LegacyProjectCommandCentreResponse
+  | V2ProjectCommandCentreResponse;
 
 export type ProjectCommandException = {
   projectId: string;

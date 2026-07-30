@@ -21,6 +21,11 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-30 | Project Overview V2 Handover     | Promoted | Redesign Overview inside the current portal visual system, with one server-backed Project Work surface, email-only communication, and Site Visits hidden/manual. Preserve mixed legacy/V2 behavior and strict design/commercial precedence; add full-journey facts only through bounded specialist-owned server projections. |
+| 2026-07-30 | Supabase Migration Versions      | Promoted | Supabase CLI reads only the digits before the first underscore as a migration version. Date-only sibling files collide in the remote ledger, so never blanket-push, migrate-up, or repair the shared version. Positively identify the target, rollback-rehearse and apply exact reviewed files, preserve hashes/evidence, and repair naming/ledger compatibility separately. |
+| 2026-07-29 | Project Work Queue And Triage    | Promoted | Keep one server-composed current row per V2 project in the team Work Queue and only a bounded preview on Dashboard; personal reminders remain separate. Legacy Contacted classification is admin-only, read-only, and excludes linked customer contact fields. Migrate only one reviewed, unchanged project per explicit command, never bulk-seed cadence. Confirmation correction appends history and an explicit review signal. Site Visits stays hidden/manual and outside work items. That slice did not authorize redesign; the later 2026-07-30 handover now does. |
+| 2026-07-29 | Project Work Review Concurrency  | Promoted | Bind confirmation reconciliation to the exact repair-signal ID and row version. Bind legacy Contacted migration to a database fingerprint of every project and related evidence field used by classification, reject mismatch before V2 writes, and keep the internal fingerprint helper ungranted. |
+| 2026-07-29 | Project Work V2                  | Promoted | Read marker inventory and operational state through direct bounded server owners rather than PostgREST embedded relationships. Per-project legacy classification may tolerate only the exact pre-rollout missing-marker condition; authoritative team inventory must fail closed when missing or truncated. Canonicalize the named cascade foreign keys, reload PostgREST after each DDL commit, run read-only readiness, and prove direct marker plus authenticated legacy-project reads before resuming writers. Cached work stays read-only, and a missing V2 contract exposes no actions. |
 | 2026-07-29 | Schedule Mutation Trust          | Promoted | Preview Schedule V2 commands without force, confirm only when the server identifies other moved jobs, re-preview immediately after approval, and force only when the reviewed impacts are unchanged. Every optimistic mutation owns an exact rollback checkpoint and one in-flight lifecycle; accepted state updates only the compatible active-view cache and invalidates incompatible snapshots. Gantt start-plus-duration adjustment is one atomic RPC-backed command, while ambiguous failures reconcile visibly. Database-revision protection against near-simultaneous staff edits remains follow-up work. |
 | 2026-07-29 | Portal UI Authority              | Promoted | Treat the checked-in and rendered portal UI as canonical. Portal and marketing have separate UI systems; catalogues and historical migration language are regression/history evidence, not authority for a broad restyle. Preserve active specialist and compatibility owners, and require explicit user approval for cross-route visual migrations or shared-token replacement. |
 | 2026-07-29 | Portal Operational Lists/Create  | Promoted | Keep ordinary Projects/Contacts discovery bounded and server-paged with response query identity; never present a retained page under a different scope/filter. Project creation is one server-owned stable-ID command: detect strong contact duplicates before writes, separate confirmed records from setup-automation state, preserve saved records when setup needs attention, and mark indeterminate writes or unverifiable cleanup as do-not-retry administrator reconciliation. |
@@ -3926,3 +3931,109 @@ Related docs/tests:
 `apps/portal/app/staff/schedule/ScheduleBoardView.test.tsx`;
 `apps/portal/app/staff/schedule/ScheduleGanttView.test.tsx`;
 `npm run test:portal:schedule`
+
+### 2026-07-30 - Supabase Migration Versions - Exact Files Over A Colliding Ledger
+
+Date: 2026-07-30
+Area: Supabase migration promotion and remote history
+Status: Promoted
+Decision or mistake: The repository's `20260729_000001` through `_000004`
+filenames look ordered to a reader, but Supabase CLI treats only `20260729` as
+their shared migration version. Staging also has a sparse historical ledger.
+Why it mattered: `db push`, `migration up`, or `migration repair 20260729`
+could apply unrelated history or falsely associate one shared version with the
+wrong file.
+Current guardrail: Positively identify the linked target and a distinct
+production ref. Hash each exact reviewed file, inspect prerequisites and
+collisions, rehearse its body inside a rollback transaction, apply only that
+file through the linked query boundary, and verify readiness, catalog shape,
+function body, and grants. Preserve deployment evidence separately; do not
+repair the colliding ledger until migration naming/history has a dedicated
+reviewed remediation.
+Promoted to: `docs/environment-auth-supabase.md`;
+`docs/project-work-items-and-follow-up.md`
+Related docs/tests:
+`supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql`;
+`supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql`;
+`scripts/check-project-work-v2-readiness.mjs`
+
+### 2026-07-29 - Project Work V2 - Prove The Hosted API Cache
+
+Date: 2026-07-29
+Area: Project Work V2 migration, PostgREST schema cache, and project reads
+Status: Promoted
+Decision or mistake: The V2 migration created its tables and sent a schema
+reload notification inside the DDL transaction, while several readers
+classified projects through an embedded
+`projects -> project_work_model_versions` relationship. The first staging
+rehearsal left PostgREST reporting both the relationship and the new tables as
+missing from its schema cache, so every individual project snapshot failed
+before it could classify a legacy project.
+Why it mattered: Successful SQL execution did not prove that authenticated API
+reads could observe the new schema. One unavailable optional classification
+relationship took down the complete project-detail route.
+Current guardrail: Read marker inventory through
+`projects/workItems/modelBoundary.ts` and operational state through its direct
+bounded owner, not a PostgREST embedded relationship.
+Until the marker table is deployed, that boundary logs the exact
+missing-marker-table condition and preserves legacy reads; it must not swallow
+authentication, permission, network, or unrelated schema failures.
+That compatibility applies only to bounded per-project classification.
+Staff-wide marker inventory fails the complete Work Queue read if the table is
+missing or the 5,000-row safety ceiling is reached; it must never return a
+fresh-looking partial queue.
+For new-table rollout, commit DDL before sending the PostgREST reload
+notification. Canonicalize the expected named `project_id -> projects.id`
+foreign keys with `ON DELETE CASCADE` rather than accepting any relationship
+on `project_id`. Before resuming project or enquiry writers, run
+the production-refusing read-only readiness probe and prove a direct marker read
+plus an authenticated legacy-project snapshot against the exact target
+environment. Cached Work Queue/Overview rows are read-only after refresh
+failure, and a missing V2 contract must render a named not-ready state with no
+actions. If an idempotent `create table if not exists` migration may have met a
+partial table, add a forward relationship repair rather than editing the applied
+migration.
+Promoted to: `docs/project-work-items-technical-plan.md`;
+`docs/project-work-items-and-follow-up.md`;
+`docs/portal-production-readiness.md`
+Related docs/tests:
+`supabase/migrations/20260729_000003_project_work_items_v2_schema_cache.sql`;
+`apps/portal/lib/projects/workItems/modelBoundary.test.ts`;
+`apps/portal/lib/projects/workItems/teamQueue.test.ts`;
+`apps/portal/lib/projects/getProjectPageSnapshot.test.ts`;
+`scripts/check-project-work-v2-readiness.mjs`;
+`test/project-work-items-v2-migration.test.ts`;
+`test/project-work-v2-readiness.test.ts`
+
+### 2026-07-29 - Project Work Queue And Triage - One Current Row, Reviewed Migration
+
+Date: 2026-07-29
+Area: V2 Project Work Queue, legacy Contacted review, and confirmation correction
+Status: Promoted
+Decision or mistake: A team work surface must not turn every pipeline record or personal reminder into a task. The approved replacement uses one server-composed current row per V2 project, keeps the Dashboard preview bounded, and keeps old Contacted records out until an admin reviews one project and records an explicit disposition.
+Why it mattered: Bulk task creation or accepting classifier recommendations as truth would flood staff, invent outreach evidence, and make legacy compatibility fields a second authority. Deleting an incorrect confirmation would also hide why later state became inconsistent.
+Current guardrail: Keep queue precedence, specialist selection, and effective responsibility server-owned. The Contacted classifier is read-only and omits linked customer contact fields; migration is optimistic, idempotent, one-project-at-a-time, and never seeds the new-lead cadence. Confirmation correction appends a retraction and visible review signal. Personal reminders remain separate, Site Visits stays hidden/manual and outside work items, and Project Overview visual direction remains governed by its separately approved handover.
+Promoted to: `docs/project-work-items-and-follow-up.md`; `docs/project-work-items-technical-plan.md`; `docs/automation-email-audit.md`; `docs/staff-api-auth-contracts.md`; `docs/supabase-schema-map.md`; `docs/ui-foundation.md`
+Related docs/tests: `supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql`; `apps/portal/lib/projects/workItems/teamQueue.test.ts`; `apps/portal/components/projects/workQueue/workQueuePresentation.test.ts`
+
+### 2026-07-29 - Project Work Review Concurrency - Bind Commands To Reviewed Evidence
+
+Date: 2026-07-29
+Area: Confirmation correction reconciliation and legacy Contacted migration
+Status: Promoted
+Decision or mistake: A project-scoped correction review command resolved every open correction signal, so a stale browser could clear a newer signal. Legacy Contacted migration compared only `projects.updated_at` even though classification also depended on quote, invoice, design, schedule, Running Jobs, task, follow-up, and manual-action rows.
+Why it mattered: Both commands could record a durable success for evidence the administrator had not actually reviewed.
+Current guardrail: Queue repair rows carry the exact repair-signal ID and row version; reconciliation locks and resolves only that unchanged row. The Contacted classifier returns an opaque SHA-256 fingerprint from every project and related field used by its recommendation; migration recomputes it after the project lock and rejects mismatch before any V2 write. Keep the internal fingerprint helper ungranted. This remains an optimistic related-evidence boundary: closing the residual post-verification commit window requires shared project locking across every legacy evidence writer, not broad ad hoc table locks.
+Promoted to: `docs/project-work-items-and-follow-up.md`; `docs/project-work-items-technical-plan.md`; `docs/staff-api-auth-contracts.md`; `docs/supabase-schema-map.md`; `docs/testing-and-qa.md`
+Related docs/tests: `supabase/migrations/20260729_000004_project_work_queue_and_legacy_triage.sql`; `test/project-work-items-v2-work-queue-migration.test.ts`; `apps/portal/lib/projects/workItems/legacyTriage`
+
+### 2026-07-30 - Project Overview V2 Handover - One Trusted Operational Surface
+
+Date: 2026-07-30
+Area: Project Overview product direction, information architecture, visual scope, and implementation ownership
+Status: Promoted
+Decision or mistake: The historical V1 and roadmap documents still directed agents toward calls, Site Visit tasks, four always-visible lead-to-quote workstream cards, legacy action selection, and a lead-to-quote-only page. The current repository now has a staging-verified Project Work V2 foundation, and the user approved a substantial Overview redesign using the current portal visual system.
+Why it mattered: A fresh implementation task could follow the older higher-authority text, rebuild retired task concepts, add unavailable full-journey facts in the browser, or mistake approval to change composition for approval to re-theme the portal.
+Current guardrail: Start with `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`. Keep one Project Work surface, email-only communication, Site Visits hidden/manual, mixed legacy/V2 behavior, and strict design/commercial precedence. Preserve the current portal tokens and components while changing route composition. Add deposit, Schedule/Running Jobs readiness, communication, timeline, or exception facts only through bounded specialist-owned server projections; otherwise omit them truthfully.
+Promoted to: `docs/project-command-centre-architecture.md`; `docs/project-command-centre-roadmap.md`; `docs/project-command-centre-v1.md`; `docs/project-work-items-and-follow-up.md`; `docs/project-work-items-technical-plan.md`; `docs/portal-ux-roadmap.md`; `docs/README.md`
+Related docs/tests: `apps/portal/components/projects/ProjectPage/tabs/OverviewTab.tsx`; `apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkCommandCard.tsx`; `apps/portal/lib/projects/workItems/types.ts`; `apps/portal/lib/projects/commandCentre/types.ts`; `playwright/portal.command-centre.spec.ts`

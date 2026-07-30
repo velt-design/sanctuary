@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { deliverAcceptedDepositInvoiceById } from '../invoices/server';
+import { reconcileQuoteOutcomeCadence } from '../projects/workItems/quoteCadenceReconciliation';
 import { supabaseServiceRole } from '../supabaseClient';
 import { insertCommercialAuditEvent } from './audit';
 
@@ -92,15 +93,26 @@ export async function acceptQuoteAndEnsureDepositInvoice(params: {
     );
   }
 
-  await supabaseServiceRole
-    .from('project_task_checks')
-    .delete()
-    .eq('project_id', String((invoiceLookup.data as any).project_id ?? ''))
-    .eq('task_key', 'invoice_paid');
+  const projectUuid = String(
+    (invoiceLookup.data as any).project_id ?? '',
+  );
+  const reconciliation = await reconcileQuoteOutcomeCadence({
+    serviceClient: supabaseServiceRole,
+    projectId: projectUuid,
+    quoteVersionId: params.quoteVersionUuid,
+    outcome: 'ACCEPTED',
+  });
+  if (reconciliation.workModel === 'legacy') {
+    await supabaseServiceRole
+      .from('project_task_checks')
+      .delete()
+      .eq('project_id', projectUuid)
+      .eq('task_key', 'invoice_paid');
+  }
 
   if (!row?.already_accepted) {
     await insertCommercialAuditEvent({
-      projectId: String((invoiceLookup.data as any).project_id ?? ''),
+      projectId: projectUuid,
       type: 'quote.accepted',
       idempotencyKey: `quote.accepted:${params.quoteVersionUuid}`,
       payload: { quoteVersionId: params.quoteVersionUuid },

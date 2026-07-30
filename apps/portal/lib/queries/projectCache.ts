@@ -15,6 +15,7 @@ import {
   type ProjectsIndexArchiveFilter,
   type ProjectsIndexResponse,
 } from './projectsIndex';
+import { invalidateProjectWorkReads } from './projectWorkCache';
 
 function cloneProject(project: Project): Project {
   return { ...project };
@@ -67,6 +68,7 @@ export function buildProjectSnapshotPlaceholder(
   const normalized = normalizeProjectStatus(project.status ?? 'NEW');
   const stage = normalizePipelineStageKey(normalized.status) ?? 'new';
   const snapshot: ProjectPageSnapshot = {
+    workModel: 'legacy',
     project: {
       id: project.id,
       name: project.projectName ?? project.name ?? 'Project',
@@ -266,6 +268,7 @@ export async function invalidateProjectsIndexCaches(
         ])
       : Promise.resolve(),
     invalidatePortalSearchQueries(queryClient),
+    invalidateProjectWorkReads(queryClient, host),
   ]);
 }
 
@@ -284,8 +287,7 @@ export async function invalidateProjectReadCaches(
   const includeProjectsList = opts?.includeProjectsList ?? true;
 
   await Promise.allSettled([
-    queryClient.invalidateQueries({ queryKey: qk.projects.summary(host, projectId) }),
-    queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
+    invalidateProjectWorkReads(queryClient, host, projectId),
     includeProjectDetail ? queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }) : Promise.resolve(),
     includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.indexPrefix(PROJECTS_INDEX_QUERY_SCOPE) }) : Promise.resolve(),

@@ -19,6 +19,7 @@ import {
   nextPortalBusinessDueAt,
   upsertAutomationTask as upsertTask,
 } from './taskPersistence';
+import { isProjectWorkModelV2 } from '@/lib/projects/workItems/modelBoundary';
 
 type PostgrestErrorLike = {
   code?: string | null;
@@ -568,6 +569,32 @@ class AutomationRunner {
   private async handleEvent(type: string, projectId: string | null, payload: unknown): Promise<void> {
     if (!projectId) return;
 
+    if (await isProjectWorkModelV2(supabaseServiceRole, projectId)) {
+      switch (type) {
+        case 'ui.action.project_created':
+          await this.onProjectCreated(projectId, (payload ?? {}) as ProjectCreatedPayload, false);
+          return;
+        case 'ui.action.book_site_visit':
+          await recordMarketingConversionEvent({
+            type: 'marketing.site_visit_booked',
+            projectId,
+            payload: {
+              scheduledStart: (payload as BookSiteVisitPayload | null)?.scheduledStart ?? null,
+              scheduledEnd: (payload as BookSiteVisitPayload | null)?.scheduledEnd ?? null,
+            },
+          });
+          return;
+        case 'ui.action.mark_deposit_received':
+          await recordMarketingConversionEvent({
+            type: 'marketing.deposit_received',
+            projectId,
+          });
+          return;
+        default:
+          return;
+      }
+    }
+
     switch (type) {
       case 'ui.action.project_created':
         await this.onProjectCreated(projectId, (payload ?? {}) as ProjectCreatedPayload);
@@ -625,7 +652,11 @@ class AutomationRunner {
     }
   }
 
-  private async onProjectCreated(projectId: string, _payload: ProjectCreatedPayload): Promise<void> {
+  private async onProjectCreated(
+    projectId: string,
+    _payload: ProjectCreatedPayload,
+    createLegacyTask = true,
+  ): Promise<void> {
     const project = await loadProject(projectId);
     if (!project) return;
 
@@ -633,16 +664,18 @@ class AutomationRunner {
     const contactName = contact?.name ?? '';
     const projectName = project.name ?? '';
 
-    const due = await nextPortalBusinessDueAt(1, now());
-    await upsertTask({
-      projectId,
-      type: 'REVIEW_NEW_LEAD',
-      title: 'Review new lead',
-      dueAt: due,
-      details: null,
-      meta: { source: 'automation' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'task', 'REVIEW_NEW_LEAD']),
-    });
+    if (createLegacyTask) {
+      const due = await nextPortalBusinessDueAt(1, now());
+      await upsertTask({
+        projectId,
+        type: 'REVIEW_NEW_LEAD',
+        title: 'Review new lead',
+        dueAt: due,
+        details: null,
+        meta: { source: 'automation' },
+        idempotencyKey: makeIdempotencyKey([projectId, 'task', 'REVIEW_NEW_LEAD']),
+      });
+    }
 
     if (contact?.email && contact.email.trim()) {
       const templateId = 'EMAIL_NEW_RANGE_AND_BROCHURES';

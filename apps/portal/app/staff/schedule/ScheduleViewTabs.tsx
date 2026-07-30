@@ -19,9 +19,6 @@ export default function ScheduleViewTabs({
       <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'gantt'} onClick={(event) => onChange('gantt', event.currentTarget)}>
         Gantt
       </button>
-      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'site_visits'} onClick={(event) => onChange('site_visits', event.currentTarget)}>
-        Site visits
-      </button>
     </>
   );
 }

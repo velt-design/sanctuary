@@ -1,7 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { uuidFromAppId } from '@/lib/supabase/mappers';
+import { runProjectArchiveCommand } from '@/lib/projects/workItems/commands';
+import { workDatabaseError } from '@/lib/projects/workItems/routeSupport';
+import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +32,15 @@ function readDateField(obj: AnyRecord, keys: string[]): { has: boolean; value: s
   const parsed = new Date(value);
   if (Number.isNaN(parsed.valueOf())) return { has: true, value: null, valid: false };
   return { has: true, value: parsed.toISOString(), valid: true };
+}
+
+function isMissingWorkModelSchema(error: unknown): boolean {
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate?.code === 'string' ? candidate.code : '';
+  const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  return code === '42P01'
+    || code === 'PGRST205'
+    || /project_work_model_versions|schema cache|relation .* does not exist/i.test(message);
 }
 
 async function updateWithUnknownColumnRetry(
@@ -127,7 +138,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
   const archivedAtRequested = archivedField.has;
   if (archivedField.has) {
     if (!archivedField.valid) return jsonError('Invalid archivedAt (expected ISO date)', 400);
-    projectPatch.archived_at = archivedField.value;
   }
 
   const contactNameField = readStringField(contactBody, ['name', 'contactName', 'contact_name']);
@@ -145,11 +155,88 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
     if (contactPhoneField.has) projectPatch.contact_phone = contactPhoneField.value || null;
   }
 
+  let v2ArchiveHandled = false;
+  let v2ArchivedProject: AnyRecord | null = null;
+  if (archivedAtRequested) {
+    if (auth.session.role !== 'admin') {
+      return jsonError('Only an admin can archive or restore a project', 403);
+    }
+    const modelResult = await supabase
+      .from('project_work_model_versions')
+      .select('model_version')
+      .eq('project_id', projectUuid)
+      .maybeSingle();
+    if (modelResult.error && !isMissingWorkModelSchema(modelResult.error)) {
+      return jsonError(modelResult.error.message ?? 'Failed to load project work model', 500);
+    }
+    const isV2 = !modelResult.error && Number(modelResult.data?.model_version) === 2;
+    if (isV2) {
+      if (Object.keys(projectPatch).length || hasContactFields) {
+        return jsonError('Archive or restore must be saved separately from project detail changes', 400);
+      }
+      const commandId = typeof body.commandId === 'string' ? body.commandId.trim() : '';
+      const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+      if (!isUuid(commandId) || !reason || reason.length > 500) {
+        return jsonError('Archive command ID and a reason of 1–500 characters are required', 400);
+      }
+      const stateResult = await supabase
+        .from('project_operational_states')
+        .select('row_version')
+        .eq('project_id', projectUuid)
+        .maybeSingle();
+      const stateVersion = Number(stateResult.data?.row_version);
+      if (stateResult.error || !Number.isInteger(stateVersion) || stateVersion < 1) {
+        return jsonError(
+          stateResult.error?.message ?? 'Project operational state is unavailable',
+          stateResult.error ? 500 : 503,
+        );
+      }
+      let commandResult: Awaited<ReturnType<typeof runProjectArchiveCommand>>;
+      try {
+        commandResult = await runProjectArchiveCommand(supabase, {
+          projectId: projectUuid,
+          commandId,
+          archived: archivedField.value !== null,
+          expectedStateVersion: stateVersion,
+          reason,
+        });
+      } catch (error) {
+        const mapped = workDatabaseError(error);
+        return jsonError(mapped.message, mapped.status, undefined, { code: mapped.code });
+      }
+      const refreshed = await supabase.from('projects').select('*').eq('id', projectUuid).maybeSingle();
+      if (refreshed.error || !refreshed.data) {
+        return jsonOk({
+          command: {
+            id: commandId,
+            committed: true,
+            replayed: commandResult.replayed,
+            rowVersion: commandResult.rowVersion,
+          },
+          refreshRequired: true,
+        });
+      }
+      v2ArchivedProject = refreshed.data as AnyRecord;
+      v2ArchiveHandled = true;
+    } else {
+      projectPatch.archived_at = archivedField.value;
+    }
+  }
+
   const nowIso = new Date().toISOString();
   if (Object.keys(projectPatch).length) projectPatch.updated_at = nowIso;
 
-  const { data: updatedProject, error: projectError } = await updateWithUnknownColumnRetry(supabase, 'projects', { id: projectUuid }, projectPatch);
-  if (projectError) return jsonError(projectError.message ?? 'Failed to update project details', 500);
+  let updatedProject: AnyRecord | null = v2ArchivedProject;
+  if (!v2ArchiveHandled) {
+    const updated = await updateWithUnknownColumnRetry(
+      supabase,
+      'projects',
+      { id: projectUuid },
+      projectPatch,
+    );
+    if (updated.error) return jsonError(updated.error.message ?? 'Failed to update project details', 500);
+    updatedProject = updated.data;
+  }
 
   // Silent-drop guard: if archive was requested but the row came back
   // without archived_at reflected, the column is missing from this DB.
@@ -159,7 +246,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
   // Comparison parses both sides as instants because Postgres normalises
   // the ISO format on round-trip (`...000Z` -> `...+00:00`), so a naive
   // string equality check would always fail.
-  if (archivedAtRequested) {
+  if (archivedAtRequested && !v2ArchiveHandled) {
     const row = (updatedProject ?? {}) as Record<string, unknown>;
     const hasArchivedAtKey = Object.prototype.hasOwnProperty.call(row, 'archived_at');
     const writtenRaw = hasArchivedAtKey ? row.archived_at : undefined;

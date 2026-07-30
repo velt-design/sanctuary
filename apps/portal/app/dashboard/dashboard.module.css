@@ -359,6 +359,7 @@
 .activityItem:focus-visible,
 .quickAction:focus-visible,
 .queueFilters a:focus-visible,
+.queueOpenLink:focus-visible,
 .cardFooter a:focus-visible {
   position: relative;
   z-index: 1;
@@ -494,6 +495,14 @@
 }
 
 .queueHeader { flex-wrap: wrap; }
+.queueOpenLink {
+  color: var(--ui-action-text);
+  font-size: var(--ui-font-size-caption);
+  font-weight: 800;
+  letter-spacing: var(--ui-letter-spacing-label);
+  text-decoration: none;
+  text-transform: uppercase;
+}
 .queueFilters { display: flex; align-items: center; gap: var(--ui-space-1); }
 .queueFilters a {
   border: var(--ui-border-width) solid var(--ui-border-strong);
@@ -541,6 +550,7 @@
 }
 .queueDue[data-state='overdue'] { color: var(--ui-status-error-text); }
 .queueDue[data-state='today'] { color: var(--ui-action-text); }
+.queueDue[data-state='blocked'] { color: var(--ui-status-error-text); }
 
 .activityList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .activityList li:nth-child(odd) { border-right: var(--ui-border-width) solid var(--ui-border); }

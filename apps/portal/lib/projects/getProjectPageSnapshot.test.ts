@@ -2,9 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 const logPortalServerError = vi.fn();
+const getAuthoritativeProjectWorkProjection = vi.fn();
+const isProjectWorkModelV2 = vi.fn();
 
 vi.mock('@/lib/api/routeDiagnostics', () => ({
   logPortalServerError,
+}));
+
+vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => ({
+  getAuthoritativeProjectWorkProjection,
+}));
+
+vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
+  isProjectWorkModelV2,
 }));
 
 type QueryResult = { data: any; error: any };
@@ -48,6 +58,8 @@ describe('getProjectPageSnapshot', () => {
     logPortalServerError.mockReset();
     fakeAuth.auth.getUser.mockClear();
     fakeAuth.rpc.mockClear();
+    getAuthoritativeProjectWorkProjection.mockReset();
+    isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
   it('returns a snapshot without scheduling invoice retries during read', async () => {
@@ -105,7 +117,8 @@ describe('getProjectPageSnapshot', () => {
       .mockReturnValueOnce(createQuery({
         data: { owner_key: 'jordan' },
         error: null,
-      }));
+      }))
+      .mockReturnValueOnce(createQuery({ data: [], error: null }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -141,10 +154,13 @@ describe('getProjectPageSnapshot', () => {
     expect(snapshot?.emails).toHaveLength(1);
     expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
     expect(snapshot?.activity).toHaveLength(1);
-    expect(fromMock).toHaveBeenCalledTimes(3);
+    expect(fromMock).toHaveBeenCalledTimes(4);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
+    expect(fromMock).toHaveBeenNthCalledWith(4, 'project_task_checks');
+    expect(projectQuery.select).toHaveBeenCalledWith('*,contact:contacts(*)');
+    expect(isProjectWorkModelV2).toHaveBeenCalledWith(expect.any(Object), projectId);
     expect(relatedQuery.eq).toHaveBeenCalledWith('quotes.acceptedVersions.status', 'ACCEPTED');
     expect(relatedQuery.eq).toHaveBeenCalledWith('openInvoices.status', 'OPEN');
     expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
@@ -197,6 +213,7 @@ describe('getProjectPageSnapshot', () => {
     expect(fromMock).toHaveBeenCalledTimes(2);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'project_owner_assignments');
+    expect(isProjectWorkModelV2).toHaveBeenCalledWith(expect.any(Object), projectId);
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
   });
 
@@ -208,6 +225,7 @@ describe('getProjectPageSnapshot', () => {
     fromMock
       .mockReturnValueOnce(createQuery(projectResult.promise))
       .mockReturnValueOnce(createQuery(relatedResult.promise))
+      .mockReturnValueOnce(createQuery({ data: [], error: null }))
       .mockReturnValueOnce(createQuery({ data: [], error: null }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
@@ -294,6 +312,70 @@ describe('getProjectPageSnapshot', () => {
         error: relatedError,
         extra: { query: 'projects+relations' },
       }),
+    );
+  });
+
+  it('does not read legacy task checks for a V2 project', async () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    isProjectWorkModelV2.mockResolvedValueOnce(true);
+    getAuthoritativeProjectWorkProjection.mockResolvedValue({
+      projectId,
+      modelVersion: 2,
+      operationalState: 'ACTIVE',
+      effectiveState: 'ACTIVE',
+      waitingUntil: null,
+      waitingReason: null,
+      closedOutcome: null,
+      stateRowVersion: 1,
+      primaryAction: {
+        kind: 'needsTriage',
+        title: 'Needs triage',
+        reason: 'No current staff work is recorded.',
+      },
+      openItems: [],
+      blockedItems: [],
+      confirmedFacts: [],
+      generatedAt: '2026-07-29T00:00:00.000Z',
+    });
+    fromMock
+      .mockReturnValueOnce(createQuery({
+        data: {
+          id: projectId,
+          name: 'V2 project',
+          pipeline_stage: 'NEW',
+        },
+        error: null,
+      }))
+      .mockReturnValueOnce(createQuery({
+        data: {
+          siteVisits: [],
+          estimates: [],
+          scheduleItems: [],
+          quotes: [],
+          openInvoices: [],
+          emails: [],
+          jobPacks: [],
+          notes: [],
+        },
+        error: null,
+      }))
+      .mockReturnValueOnce(createQuery({ data: [], error: null }));
+
+    const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
+    const snapshot = await getProjectPageSnapshot(
+      `proj_${projectId}`,
+      undefined,
+      { from: fromMock, ...fakeAuth } as any,
+      'auth-user-1',
+    );
+
+    expect(snapshot?.workModel).toBe('v2');
+    expect(snapshot?.tasks.items).toEqual([]);
+    expect(fromMock).toHaveBeenCalledTimes(3);
+    expect(fromMock).not.toHaveBeenCalledWith('project_task_checks');
+    expect(getAuthoritativeProjectWorkProjection).toHaveBeenCalledWith(
+      `proj_${projectId}`,
+      expect.any(Object),
     );
   });
 });

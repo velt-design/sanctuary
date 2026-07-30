@@ -18,6 +18,8 @@ type DbState = Record<TableName, Row[]>;
 const h = vi.hoisted(() => ({
   recordMarketingConversionEvent: vi.fn(),
   acceptQuoteAndEnsureDepositInvoice: vi.fn(),
+  reconcileQuoteOutcomeCadence: vi.fn(),
+  voidOpenDepositInvoiceForQuote: vi.fn(),
   supabaseServiceRole: {
     from: vi.fn(),
     rpc: vi.fn(),
@@ -30,6 +32,10 @@ vi.mock('@/lib/supabaseClient', () => ({
 
 vi.mock('@/lib/marketingAttribution/server', () => ({
   recordMarketingConversionEvent: h.recordMarketingConversionEvent,
+}));
+
+vi.mock('@/lib/projects/workItems/quoteCadenceReconciliation', () => ({
+  reconcileQuoteOutcomeCadence: h.reconcileQuoteOutcomeCadence,
 }));
 
 vi.mock('../commercial/acceptQuote', () => ({
@@ -47,7 +53,7 @@ vi.mock('./pdf', () => ({
 
 vi.mock('../invoices/server', () => ({
   ensureDepositInvoiceForAcceptedQuote: vi.fn(),
-  voidOpenDepositInvoiceForQuote: vi.fn(),
+  voidOpenDepositInvoiceForQuote: h.voidOpenDepositInvoiceForQuote,
 }));
 
 const ids = {
@@ -191,8 +197,14 @@ function resetDb(seed: Partial<DbState> = {}, queuedIds: Partial<Record<TableNam
         return { data: null, error: null };
       },
     );
-    h.recordMarketingConversionEvent.mockReset();
-    h.acceptQuoteAndEnsureDepositInvoice.mockReset();
+  h.recordMarketingConversionEvent.mockReset();
+  h.acceptQuoteAndEnsureDepositInvoice.mockReset();
+  h.voidOpenDepositInvoiceForQuote.mockReset();
+  h.reconcileQuoteOutcomeCadence.mockReset().mockResolvedValue({
+    status: 'reconciled',
+    workModel: 'v2',
+    replayed: false,
+  });
 }
 
 function attachRelations(table: TableName, row: Row, selectArg: string | null): Row {
@@ -648,6 +660,18 @@ describe('quote pricing source preservation in domain helpers', () => {
     expectNoRawCommercialPayload(revision?.pricing_source_metadata);
     expect(db.quote_line_items.find((row) => row.quote_version_id === ids.quoteVersionRevision)?.line_total_inc_gst_cents).toBe(14375);
     expect(ops.some((op) => op.table === 'estimates' && op.select?.includes('pricing_source, pricing_source_metadata'))).toBe(false);
+    expect(h.reconcileQuoteOutcomeCadence).toHaveBeenCalledWith({
+      serviceClient: h.supabaseServiceRole,
+      projectId: ids.project,
+      quoteVersionId: ids.quoteVersionSent,
+      supersedingQuoteVersionId: ids.quoteVersionRevision,
+      outcome: 'SUPERSEDED',
+    });
+    expect(
+      h.supabaseServiceRole.rpc.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      h.reconcileQuoteOutcomeCadence.mock.invocationCallOrder[0],
+    );
   });
 
   it('records a marketing conversion event when a sent quote is accepted', async () => {
@@ -692,6 +716,66 @@ describe('quote pricing source preservation in domain helpers', () => {
       },
     });
     expect(JSON.stringify(h.recordMarketingConversionEvent.mock.calls)).not.toContain('Taylor Client');
+  });
+
+  it('keeps a durable decline successful when cadence reconciliation needs repair', async () => {
+    resetDb({
+      estimates: [
+        makeEstimate({
+          id: ids.estimateWorkbench,
+          source: 'workbench_solved',
+          costExGst: 100,
+          metadata: { selectedSource: 'workbench_solved' },
+        }),
+      ],
+      projects: [makeProject()],
+      quotes: [makeQuote()],
+      quote_versions: [
+        makeQuoteVersion({
+          id: ids.quoteVersionSent,
+          status: 'SENT',
+          total_inc_gst_cents: 14375,
+        }),
+      ],
+      quote_line_items: [makeLine(ids.quoteVersionSent, 14375)],
+    });
+    h.reconcileQuoteOutcomeCadence.mockResolvedValueOnce({
+      status: 'repair_required',
+      workModel: 'v2',
+      message: 'calendar unavailable',
+    });
+
+    const { markQuoteDeclined } = await import('./serverCore');
+    const result = await markQuoteDeclined(
+      appId('qv', ids.quoteVersionSent),
+      'ops@example.com',
+    );
+    const replay = await markQuoteDeclined(
+      appId('qv', ids.quoteVersionSent),
+      'ops@example.com',
+    );
+
+    expect(result.status).toBe('DECLINED');
+    expect(replay.status).toBe('DECLINED');
+    expect(
+      db.quote_versions.find((row) => row.id === ids.quoteVersionSent)?.status,
+    ).toBe('DECLINED');
+    expect(h.reconcileQuoteOutcomeCadence).toHaveBeenCalledTimes(2);
+    expect(h.reconcileQuoteOutcomeCadence).toHaveBeenLastCalledWith({
+      serviceClient: h.supabaseServiceRole,
+      projectId: ids.project,
+      quoteVersionId: ids.quoteVersionSent,
+      outcome: 'DECLINED',
+    });
+    expect(
+      db.audit_events.filter((row) => row.type === 'quote.declined'),
+    ).toHaveLength(1);
+    expect(h.voidOpenDepositInvoiceForQuote).toHaveBeenCalledOnce();
+    expect(h.voidOpenDepositInvoiceForQuote).toHaveBeenCalledWith({
+      quoteUuid: ids.quote,
+      actor: 'ops@example.com',
+      reason: 'quote_declined',
+    });
   });
 
   it.each([

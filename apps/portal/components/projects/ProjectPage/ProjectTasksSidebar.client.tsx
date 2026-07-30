@@ -24,6 +24,7 @@ import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { patchProjectTasksSnapshot } from '@/lib/localFirst/portalEntities';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { fetchProjectCommandCentre, runProjectActionCommand } from '@/lib/projects/commandCentre/client';
 import {
   restoreManualTask,
@@ -70,6 +71,7 @@ export default function ProjectTasksSidebarClient({
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { role } = usePortalSession();
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const [items, setItems] = useState<TaskItem[]>(tasks.items);
   const itemsRef = useRef<TaskItem[]>(tasks.items);
@@ -344,6 +346,9 @@ export default function ProjectTasksSidebarClient({
 
     try {
       const commandCentre = await fetchProjectCommandCentre(projectId);
+      if (commandCentre.workModel !== 'legacy') {
+        throw new Error('This project uses the new work-item controls.');
+      }
       await runProjectActionCommand(projectId, {
         command: 'create_manual',
         commandId: crypto.randomUUID(),
@@ -394,7 +399,9 @@ export default function ProjectTasksSidebarClient({
   const secondaryActions = stageActions.filter(
     (action) => action !== primaryAction && action.kind !== 'archive',
   );
-  const archiveAction = stageActions.find((action) => action.kind === 'archive') ?? null;
+  const archiveAction = role === 'admin'
+    ? stageActions.find((action) => action.kind === 'archive') ?? null
+    : null;
   const hasStageActions = stageActions.length > 0;
   const reminderTitle = pendingAction?.kind === 'call_later' ? 'Call later' : 'Set reminder';
   const reminderDescription = 'Choose a date/time to keep this stage active.';
