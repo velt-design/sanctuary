@@ -2,7 +2,7 @@
 
 Status: Historical V1 product baseline. Non-conflicting design/commercial truth rules remain active.
 Current implementation authority: `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)`
-Programme stage: Approved Overview V2 redesign is next
+Programme stage: Overview V2 is implemented and verified in `20a8adee`; this file remains the historical V1 baseline
 V1 lifecycle scope: Lead received through quote outcome  
 Staff-facing default tab: `Overview`  
 Related documents:

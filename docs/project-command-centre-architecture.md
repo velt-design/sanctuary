@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Current architecture plus the approved Project Overview V2 implementation handover. The worktree implementation and its owned verification are present; overall completion is withheld only because the aggregate bundle gate still fails on baseline Contacts and Calculator budgets.
+Status: Current architecture plus the completed Project Overview V2 implementation handover. The implementation is present in `20a8adee`; its owned verification passed, and on 2026-07-30 the user accepted a narrow handoff exception for the unrelated Contacts and Calculator bundle overruns that reproduce at baseline `060bea19`. Their limits remain unchanged and their optimization remains separate work.
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
@@ -715,10 +715,10 @@ The broader acceptance matrix in section 14 remains required where the current b
 - `npm run test:portal:browser`: 70 checks passed, with the existing Workbench Plan Editor check skipped by design.
 - `npm run test:portal:command-centre:read-only-auth`: the staging-readiness and credential preflights, authenticated setup, and integrated Overview smoke passed against the positively identified CLI-linked staging project. Identifier-free Web Vitals transport was suppressed and every other non-read request remained fail-closed; no business mutation was attempted.
 - Full typecheck, lint, production portal build, docs impact/guard, architecture changed, changed-file, dead-code, and diff checks.
-- The unchanged Project Detail budget passed at 642.4 KiB raw / 184.9 KiB gzip initial, 978.5 KiB raw / 219.9 KiB gzip lazy total, and 858.6 KiB raw / 186.4 KiB gzip largest lazy entry.
+- The unchanged Project Detail budget passed at the implementation checkpoint at 642.4 KiB raw / 184.9 KiB gzip initial, 978.5 KiB raw / 219.9 KiB gzip lazy total, and 858.6 KiB raw / 186.4 KiB gzip largest lazy entry. A fresh isolated build after the later intentional merge still passed at 642.6 KiB raw / 184.9 KiB gzip initial with the same lazy totals.
 - A manual authenticated read-only inspection passed at 390x844 on one RLS-visible legacy project: one Project Work surface, the approved mobile order, no duplicate/prohibited regions, no document overflow, no mutation control exercised, and no shared project/customer data changed.
 
-Overall completion remains withheld. The aggregate `npm run portal:bundle-budget` gate fails only for Contacts and Calculator initial budgets; an isolated clean build at approved baseline `060bea19` with the same fail-closed analyser reproduces those overruns, while Project Detail remains within its unchanged allowance. Raising those unrelated ceilings or changing those routes is outside this slice.
+Overview V2 completion is accepted under a narrow scope exception. The aggregate `npm run portal:bundle-budget` gate still fails only for Contacts and Calculator initial budgets; an isolated clean build at approved baseline `060bea19` with the same fail-closed analyser reproduces those overruns, while Project Detail remains within its unchanged allowance. This exception does not raise either ceiling, mark those routes green, or authorize changes to them from the Overview slice; a separate route-optimization review owns that debt.
 
 Stage 1 verification completed on 2026-07-20:
 
@@ -737,14 +737,14 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 0: repository assessment and architecture record. Complete.
 - Stage 1A: strict selector, normalized read model, staff API, and query. Implemented.
 - Stage 1B: Overview label/module, commercial card, customer context, truthful states, and legacy retirement. Implemented.
-- Stage 1C: deterministic unit/route/component/browser fixtures, docs, bundle/performance verification. Complete in the working tree.
+- Stage 1C: deterministic unit/route/component/browser fixtures, docs, bundle/performance verification. Complete in the current repository.
 - Stage 2A-C: present in the current repository; executable migration smoke plus authenticated real-project quality gates remain before completion.
 - Historical Stage 3: four lead-to-quote workstream cards. Superseded as the next step by the approved Overview V2 handover; do not implement it directly.
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.
 - Stage 6: final responsive QA, pilot, and rollout. Not started.
-- Current slice: verify the worktree implementation of `## Approved Overview V2 Implementation Handover (READ FIRST)`, section 11.
-- Next-slice boundary: no deposit, Schedule/Running Jobs readiness, normalized meaningful activity, complete exception aggregation, or other lifecycle expansion is approved until this slice passes its required gates and a bounded specialist-owned server projection is separately reviewed.
+- Current slice: `## Approved Overview V2 Implementation Handover (READ FIRST)`, section 11, is complete in `20a8adee` with the narrow unrelated-route bundle exception recorded above.
+- Next-slice boundary: no deposit, Schedule/Running Jobs readiness, normalized meaningful activity, complete exception aggregation, or other lifecycle expansion is approved until a bounded specialist-owned server projection is separately reviewed.
 
 ## 20. Technical risks
 

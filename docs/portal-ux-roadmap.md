@@ -43,7 +43,7 @@ The main UX standard:
    - Project shell Slices 1-2 are present in the current repository: the page is full width with project facts and stage in Overview; the authoritative Calculator replaces the legacy Designs/configurator surface; Quotes and Invoices share Commercial; the Emails UI is retired while delivery/audit data and side effects remain unchanged. Staff-facing tabs are Overview, Calculator, Commercial, and conditional Job Packs; compatibility keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
    - The Project Work V2 new-project foundation, Work Queue, Dashboard preview, guarded legacy review, and authenticated staging command smoke are complete in the repository; production remains unchanged.
    - Implemented slice: the approved Overview V2 composition in `project-command-centre-architecture.md`. Five required top-level owners compose orientation, one mixed-model Project Work region, current design/commercial, and bounded recent notes/events; extracted subordinate owners separate V2 controls, V2/legacy command orchestration, legacy conflict/history, shared visibility policy, and cache patching/invalidation. Legacy stage rows are filtered read-only; Call and Site Visit work is hidden; prohibited server-selected legacy work is labelled `Legacy work needs review` without browser replacement selection.
-   - Focused/component, production-owner fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Completion is withheld only because the aggregate Contacts/Calculator bundle budgets already fail at `060bea19`.
+   - Focused/component, production-owner fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. The Overview handoff is complete under a narrow user-accepted exception for aggregate Contacts/Calculator overruns that already fail at `060bea19`; their ceilings remain unchanged and optimization is separate.
 
 3. **Activity System V2**
    - Goal: turn activity into a useful cross-workflow timeline, not just a note list.
@@ -99,14 +99,13 @@ The main UX standard:
 
 1. Project Pages Speed revalidation and measured bottleneck fixes against the current checked-in portal UI.
 2. Current project-tab intent, useful-shell, and bundle-boundary performance.
-3. Restore the baseline Contacts/Calculator aggregate bundle gate in a separately approved owner scope without raising ceilings casually.
-4. Resolve the pre-existing Contacts/Calculator aggregate bundle-budget failures in their separately approved owner scope; do not raise their ceilings from the Overview slice.
-5. Bounded full-journey summary contracts for deposit, Schedule/Running Jobs readiness, and meaningful activity where evidence exists.
-6. Activity category expansion and timeline clarity.
-7. Dashboard/Project Work evolution without merging personal reminders.
-8. Quote/estimate state summary standardisation.
-9. Remaining Schedule priority-view simplification for unassigned work.
-10. Workbench state and diagnostics simplification.
+3. Review and resolve the pre-existing Contacts/Calculator aggregate bundle-budget failures in their separately approved owner scope without raising their ceilings.
+4. Bounded full-journey summary contracts for deposit, Schedule/Running Jobs readiness, and meaningful activity where evidence exists.
+5. Activity category expansion and timeline clarity.
+6. Dashboard/Project Work evolution without merging personal reminders.
+7. Quote/estimate state summary standardisation.
+8. Remaining Schedule priority-view simplification for unassigned work.
+9. Workbench state and diagnostics simplification.
 
 ## Update Notes
 
