@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requireStaffContext: vi.fn(),
@@ -25,6 +25,16 @@ vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => 
 
 vi.mock('@/lib/marketingAttribution/server', () => ({
   recordMarketingConversionEvent: mocks.recordMarketingConversionEvent,
+  recentMarketingConversionOccurrence: (value: unknown) => {
+    if (typeof value !== 'string') return null;
+    const parsed = new Date(value);
+    const age = Date.now() - parsed.valueOf();
+    return Number.isFinite(parsed.valueOf())
+      && age >= -5 * 60 * 1000
+      && age <= 72 * 60 * 60 * 1000
+      ? parsed.toISOString()
+      : null;
+  },
 }));
 
 import { POST } from './route';
@@ -40,6 +50,21 @@ const PROJECT_WORK = {
 };
 const CONTEXT = { params: Promise.resolve({ projectId: PROJECT_ID }) };
 
+function stateEventQuery(occurredAt: string | null) {
+  const result = {
+    data: occurredAt ? { occurred_at: occurredAt } : null,
+    error: null,
+  };
+  const builder: Record<string, any> = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    maybeSingle: vi.fn().mockResolvedValue(result),
+  };
+  builder.select.mockReturnValue(builder);
+  builder.eq.mockReturnValue(builder);
+  return builder;
+}
+
 function request(body: Record<string, unknown>) {
   return new Request(
     `http://localhost/api/staff/v1/projects/${PROJECT_ID}/state/commands`,
@@ -53,7 +78,12 @@ function request(body: Record<string, unknown>) {
 
 describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-30T02:00:00.000Z'));
     vi.clearAllMocks();
+    SUPABASE.from.mockReturnValue(
+      stateEventQuery('2026-07-30T01:00:00.000Z'),
+    );
     mocks.requireStaffContext.mockResolvedValue({
       ok: true,
       session: { user: { id: 'user-1' }, role: 'staff' },
@@ -64,6 +94,10 @@ describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
       rowVersion: 2,
     });
     mocks.getAuthoritativeProjectWorkProjection.mockResolvedValue(PROJECT_WORK);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('preserves auth failure without invoking the state command', async () => {
@@ -186,8 +220,59 @@ describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
     expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith({
       type: 'marketing.project_lost',
       projectId: PROJECT_UUID,
+      occurredAt: '2026-07-30T01:00:00.000Z',
       payload: { outcome: 'LOST_BUDGET_PRICE' },
     });
+  });
+
+  it('repairs a recent lost-command replay at the original occurrence time', async () => {
+    mocks.runProjectOperationalStateCommand.mockResolvedValueOnce({
+      replayed: true,
+      rowVersion: 2,
+    });
+
+    const response = await POST(
+      request({
+        command: 'CLOSE',
+        commandId: COMMAND_ID,
+        expectedRowVersion: 1,
+        outcome: 'LOST_NO_RESPONSE',
+        cancellationReason: 'No response after the agreed follow-up',
+      }),
+      CONTEXT,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith({
+      type: 'marketing.project_lost',
+      projectId: PROJECT_UUID,
+      occurredAt: '2026-07-30T01:00:00.000Z',
+      payload: { outcome: 'LOST_NO_RESPONSE' },
+    });
+  });
+
+  it('does not turn an old lost-command replay into a fresh conversion', async () => {
+    mocks.runProjectOperationalStateCommand.mockResolvedValueOnce({
+      replayed: true,
+      rowVersion: 2,
+    });
+    SUPABASE.from.mockReturnValueOnce(
+      stateEventQuery('2026-07-20T01:00:00.000Z'),
+    );
+
+    const response = await POST(
+      request({
+        command: 'CLOSE',
+        commandId: COMMAND_ID,
+        expectedRowVersion: 1,
+        outcome: 'LOST_NO_RESPONSE',
+        cancellationReason: 'No response after the agreed follow-up',
+      }),
+      CONTEXT,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
   it('does not record completed work as a lost conversion', async () => {

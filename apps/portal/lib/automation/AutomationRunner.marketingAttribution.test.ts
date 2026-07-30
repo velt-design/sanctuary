@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   recordMarketingConversionEvent: vi.fn(),
+  isProjectWorkModelV2: vi.fn(),
 }));
 
 vi.mock('@/lib/marketingAttribution/server', () => ({
@@ -15,16 +16,18 @@ vi.mock('@/lib/emails/transactional', () => ({
 }));
 
 vi.mock('@/lib/projects/workItems/modelBoundary', () => ({
-  isProjectWorkModelV2: vi.fn().mockResolvedValue(false),
+  isProjectWorkModelV2: (...args: unknown[]) =>
+    h.isProjectWorkModelV2(...args),
 }));
 
-describe('AutomationRunner marketing attribution events', () => {
+describe('AutomationRunner lifecycle ownership', () => {
   beforeEach(() => {
     vi.resetModules();
     h.recordMarketingConversionEvent.mockReset();
+    h.isProjectWorkModelV2.mockReset().mockResolvedValue(false);
   });
 
-  it('records a site-visit conversion when handling a confirmed site visit event', async () => {
+  it('runs confirmed site-visit automation without owning its conversion', async () => {
     const { automationRunner } = await import('./AutomationRunner');
     (automationRunner as any).onBookSiteVisit = vi.fn();
 
@@ -35,16 +38,8 @@ describe('AutomationRunner marketing attribution events', () => {
       notes: 'Do not include this free text in the marketing event',
     });
 
-    expect(h.recordMarketingConversionEvent).toHaveBeenCalledWith({
-      type: 'marketing.site_visit_booked',
-      projectId: 'proj-1',
-      payload: {
-        status: 'CONFIRMED',
-        scheduledStart: '2026-06-24T01:00:00.000Z',
-        scheduledEnd: '2026-06-24T02:00:00.000Z',
-      },
-    });
-    expect(JSON.stringify(h.recordMarketingConversionEvent.mock.calls)).not.toContain('free text');
+    expect((automationRunner as any).onBookSiteVisit).toHaveBeenCalledOnce();
+    expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
   it('does not record a tentative site visit as a marketing conversion', async () => {
@@ -60,15 +55,27 @@ describe('AutomationRunner marketing attribution events', () => {
     expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
-  it('records a deposit conversion when handling deposit received', async () => {
+  it('does not use generic V2 automation as a persistence or conversion owner', async () => {
+    h.isProjectWorkModelV2.mockResolvedValue(true);
+    const { automationRunner } = await import('./AutomationRunner');
+    (automationRunner as any).onBookSiteVisit = vi.fn();
+
+    await (automationRunner as any).handleEvent('ui.action.book_site_visit', 'proj-1', {
+      status: 'CONFIRMED',
+      scheduledStart: '2026-06-24T01:00:00.000Z',
+    });
+
+    expect((automationRunner as any).onBookSiteVisit).not.toHaveBeenCalled();
+    expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
+  });
+
+  it('runs legacy deposit automation without owning its conversion', async () => {
     const { automationRunner } = await import('./AutomationRunner');
     (automationRunner as any).onDepositReceived = vi.fn();
 
     await (automationRunner as any).handleEvent('ui.action.mark_deposit_received', 'proj-1', {});
 
-    expect(h.recordMarketingConversionEvent).toHaveBeenCalledWith({
-      type: 'marketing.deposit_received',
-      projectId: 'proj-1',
-    });
+    expect((automationRunner as any).onDepositReceived).toHaveBeenCalledOnce();
+    expect(h.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 });

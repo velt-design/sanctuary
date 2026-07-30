@@ -1,5 +1,6 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
+import { recordPersistedConfirmedSiteVisitConversion } from '@/lib/marketingAttribution/siteVisitConversion';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -54,6 +55,38 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonOk({ ok: true, id: upsertRes.data?.id ?? null });
   }
 
+  const upsertRes = await supabase
+    .from('site_visit_events')
+    .upsert(
+      {
+        project_id: projectUuid,
+        status: 'CONFIRMED',
+        scheduled_start: scheduledStart,
+        scheduled_end: scheduledEnd,
+      } as any,
+      { onConflict: 'project_id' },
+    )
+    .select('id, status, confirmed_at')
+    .single();
+  if (upsertRes.error || !upsertRes.data) {
+    return jsonError('Failed to confirm site visit', 500);
+  }
+
+  const persistedStatus = String(upsertRes.data.status ?? '').toUpperCase();
+  if (persistedStatus !== 'CONFIRMED') {
+    return jsonError('Site visit confirmation could not be verified', 500);
+  }
+
+  await recordPersistedConfirmedSiteVisitConversion({
+    projectId: projectUuid,
+    status: persistedStatus,
+    confirmedAt: upsertRes.data.confirmed_at,
+    scheduledStart,
+    scheduledEnd,
+  });
+
+  // Legacy automation still owns its task/email side effects, but it no longer
+  // owns lifecycle analytics.
   await automationRunner.runEvent({
     type: 'ui.action.book_site_visit',
     projectId: projectUuid,

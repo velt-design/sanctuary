@@ -23,6 +23,13 @@ function cleanValue(value: string | null | undefined): string | null {
   return trimmed.slice(0, MAX_ATTRIBUTION_VALUE_LENGTH);
 }
 
+function cleanAttributionUrl(value: string | null | undefined): string | null {
+  const cleaned = cleanValue(value);
+  if (!cleaned) return null;
+  const privateSuffixIndex = cleaned.search(/[?#]/);
+  return privateSuffixIndex < 0 ? cleaned : cleanValue(cleaned.slice(0, privateSuffixIndex));
+}
+
 export function getMarketingAttributionFromLocation(input: {
   search: string;
   href?: string | null;
@@ -45,8 +52,8 @@ export function getMarketingAttributionFromLocation(input: {
     }
   }
 
-  const landingPage = cleanValue(input.href);
-  const referrer = cleanValue(input.referrer);
+  const landingPage = cleanAttributionUrl(input.href);
+  const referrer = cleanAttributionUrl(input.referrer);
 
   return {
     utm,
@@ -75,9 +82,9 @@ export function getGaClientIdFromCookie(cookieHeader: string): string | null {
   return null;
 }
 
-export function getBrowserMarketingAttribution(input?: {
-  consent?: { analytics: boolean; marketing: boolean };
-  hasStoredChoice?: boolean;
+export function getBrowserMarketingAttribution(input: {
+  consent: { analytics: boolean; marketing: boolean };
+  hasStoredChoice: boolean;
 }): MarketingAttributionPayload {
   if (typeof window === 'undefined') return { utm: {}, clickIds: {} };
   const base = getMarketingAttributionFromLocation({
@@ -85,11 +92,10 @@ export function getBrowserMarketingAttribution(input?: {
     href: window.location.href,
     referrer: typeof document !== 'undefined' ? document.referrer : '',
   });
-  if (!input?.consent) return base;
 
   const consent: MarketingAttributionConsent = {
-    analytics: input.hasStoredChoice === true && input.consent.analytics,
-    marketing: input.hasStoredChoice === true && input.consent.marketing,
+    analytics: input.hasStoredChoice && input.consent.analytics,
+    marketing: input.hasStoredChoice && input.consent.marketing,
     capturedAt: new Date().toISOString(),
   };
   const analyticsClientId =
@@ -98,8 +104,10 @@ export function getBrowserMarketingAttribution(input?: {
       : null;
 
   return {
-    ...base,
+    utm: consent.marketing ? base.utm : {},
     clickIds: consent.marketing ? base.clickIds : {},
+    ...(consent.marketing && base.landingPage ? { landingPage: base.landingPage } : null),
+    ...(consent.marketing && base.referrer ? { referrer: base.referrer } : null),
     ...(analyticsClientId ? { analyticsClientId } : null),
     consent,
   };

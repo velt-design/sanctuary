@@ -134,7 +134,8 @@ export function prepareGa4MarketingEvent(
   }
 
   const params: Record<string, string | number> = {};
-  const utm = isRecord(attribution.utm) ? attribution.utm : {};
+  const marketingGranted = consent.marketing === true;
+  const utm = marketingGranted && isRecord(attribution.utm) ? attribution.utm : {};
   const leadSource = safeDimension(utm.utm_source);
   if (leadSource) params.lead_source = leadSource;
 
@@ -169,7 +170,6 @@ export function prepareGa4MarketingEvent(
       return { kind: 'skip', errorCode: 'EVENT_TYPE_UNSUPPORTED' };
   }
 
-  const marketingGranted = consent.marketing === true;
   return {
     kind: 'send',
     body: {
@@ -263,15 +263,9 @@ export async function processMarketingConversionDeliveries(params: {
   limit?: number;
   now?: Date;
 }): Promise<MarketingConversionDeliverySummary> {
-  const claimResult = await params.supabase.rpc('marketing_conversion_delivery_claim', {
-    p_limit: Math.max(1, Math.min(100, params.limit ?? 20)),
-    p_lease_seconds: 120,
-  });
-  if (claimResult.error) throw new Error('MARKETING_CONVERSION_CLAIM_FAILED');
-
-  const claims = normalizeClaims(claimResult.data);
+  const limit = Math.max(1, Math.min(100, params.limit ?? 20));
   const summary: MarketingConversionDeliverySummary = {
-    claimed: claims.length,
+    claimed: 0,
     sent: 0,
     skipped: 0,
     retrying: 0,
@@ -279,7 +273,19 @@ export async function processMarketingConversionDeliveries(params: {
   };
   const fetchImpl = params.fetchImpl ?? fetch;
 
-  for (const claim of claims) {
+  for (let index = 0; index < limit; index += 1) {
+    // Claim immediately before delivery so a slow earlier provider request cannot
+    // consume the lease of a later row in the same cron invocation.
+    const claimResult = await params.supabase.rpc('marketing_conversion_delivery_claim', {
+      p_limit: 1,
+      p_lease_seconds: 120,
+    });
+    if (claimResult.error) throw new Error('MARKETING_CONVERSION_CLAIM_FAILED');
+
+    const claim = normalizeClaims(claimResult.data)[0];
+    if (!claim) break;
+    summary.claimed += 1;
+
     const prepared = prepareGa4MarketingEvent(claim, params.now);
     let outcome: DeliveryOutcome;
     let errorCode: string | null;
