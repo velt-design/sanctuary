@@ -1,6 +1,6 @@
 # Project Work Items Technical And Cutover Plan
 
-Status: The approved new-project V2 and Work Queue/legacy-review slices are staging-verified in the repository. Migration `20260729_000002` was applied in staging on 2026-07-29. The exact reviewed `20260729_000003` and `20260729_000004` files were rollback-rehearsed and replay-applied to positively identified staging on 2026-07-30; readiness, schema/body/permission verification, authenticated legacy reads, and disposable new-V2-project command smoke passed. The real authenticated Work Queue route also reaches its fresh row-or-empty state on staging through a GET-only smoke that blocks every application mutation request. Existing projects remain legacy; only one explicitly reviewed project can ever cross through the guarded command. Production is unchanged: the live portal still serves pre-V2 commit `32a66ec3`, and read-only catalog checks against the positively identified production project confirm the Project Work foundation and queue are absent. The Project Overview redesign is separately approved under `project-command-centre-architecture.md`.
+Status: The approved new-project V2, Work Queue/legacy-review, and Overview V2 slices are production-deployed. Release merge `c9e73651` entered production before the exact reviewed `20260729_000002`, `000003`, and `000004` files were applied individually to the positively identified production database on 2026-07-30; snapshot-cache hotfix merge `809f2c5e` followed. Postflight catalog, RLS, grant, relationship, and empty-state checks passed; authenticated production Work Queue, legacy snapshot, and Command Centre reads returned `200`, and the complete snapshot now enforces `private, no-store` on every explicit response path. Marker count was zero at the 2026-07-30 cutover check, so the ready Work Queue was correctly empty. No pre-cutover project was migrated or backfilled; only one explicitly reviewed project can ever cross through the guarded command.
 
 Purpose: replace the competing legacy project-task systems with one small, durable work-item foundation without weakening lifecycle, commercial, local-first, authentication, public-token, or side-effect boundaries.
 
@@ -14,7 +14,7 @@ The first staging application completed the DDL but PostgREST continued to repor
 
 The final authenticated command smoke created one clearly labelled synthetic V2 project through the staff API and proved the durable transition `OPEN r1 -> BLOCKED r2 -> exact replay r2 -> ARCHIVED/CANCELLED r3`. Work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks agreed; the archived project was omitted from active work and reported zero open/blocked items. The exact replay produced no duplicate work event. The temporary synthetic-QA role elevation required for the supported archive command was restored to `staff`. No confirmation, email/outbox, quote, invoice, legacy task/follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue record was created. The archived synthetic project/contact and append-only events intentionally remain as staging audit evidence; V2 exposes no hard-delete command.
 
-The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, and one-project legacy-review boundaries described below. `projectWorkCache.ts` is the sole cache patch/invalidation module: it owns V2 projection fan-out, complete command-centre response patching through `patchProjectCommandCentreCache`, and the shared Project Work invalidation set. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The Overview V2 presentation consumes one server projection through one mixed-model Project Work region. Its route-owned composition, orientation, section/list/controls, separate V2 and legacy command controllers, conflict/history presenters, and shared visibility policy do not change the durable command contract. V2 actions remain server-owned; legacy stage rows are filtered read-only, Call and Site Visit work is hidden, a prohibited selected legacy action becomes `Legacy work needs review` without browser ranking, and a server-returned blocked primary remains a visible exception with no enabled item command. Work Queue owns the staff-wide operational list and Dashboard owns a compact preview; personal reminders remain separate. The positively identified staging rehearsal, authenticated non-destructive QA, and focused repository gates recorded for the Project Work foundation remain valid historical rollout evidence. Overview V2's focused, fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Overview V2 completion is accepted under the narrow user-approved exception for the unrelated baseline Contacts/Calculator overruns; their ceilings remain unchanged and optimization stays outside this data-cutover plan. Production promotion and monitoring remain separately controlled.
+The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, and one-project legacy-review boundaries described below. `projectWorkCache.ts` is the sole cache patch/invalidation module: it owns V2 projection fan-out, complete command-centre response patching through `patchProjectCommandCentreCache`, and the shared Project Work invalidation set. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The Overview V2 presentation consumes one server projection through one mixed-model Project Work region. Its route-owned composition, orientation, section/list/controls, separate V2 and legacy command controllers, conflict/history presenters, and shared visibility policy do not change the durable command contract. V2 actions remain server-owned; legacy stage rows are filtered read-only, Call and Site Visit work is hidden, a prohibited selected legacy action becomes `Legacy work needs review` without browser ranking, and a server-returned blocked primary remains a visible exception with no enabled item command. Work Queue owns the staff-wide operational list and Dashboard owns a compact preview; personal reminders remain separate. The positively identified staging rehearsal, authenticated non-destructive QA, and focused repository gates recorded for the Project Work foundation remain valid historical rollout evidence. Overview V2's focused, fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Overview V2 completion is accepted under the narrow user-approved exception for the unrelated baseline Contacts/Calculator overruns; their ceilings remain unchanged and optimization stays outside this data-cutover plan. Production promotion is complete; monitoring remains bounded to naturally created V2 projects and read-only integrity signals.
 
 Known boundaries and limitations before broad rollout:
 
@@ -682,7 +682,7 @@ This is a deterministic optimistic boundary, not broad serialization of every le
 
 ### A. Hidden foundation
 
-Repository status: the foundation is implemented and `20260729_000002` has entered staging rehearsal. Exact `20260729_000003`/`000004` staging replay, read-only readiness/catalog/permission proof, and authenticated GET-only Work Queue plus legacy-project integrity smoke passed on 2026-07-30. The disposable synthetic legacy contact/project used by the smoke was removed afterward. The Contacted classifier is staging-present but remains read-only until explicitly invoked; applying its definition did not seed or change projects.
+Repository status: the foundation is implemented in staging and production. Exact `20260729_000002`/`000003`/`000004` files are present in production following the controlled 2026-07-30 apply; postflight proved the catalog, RLS, grants, relationships, ready empty queue, and zero markers, operational states, work items, work-item/state events, confirmations, command receipts, or repair signals. The Contacted classifier remains read-only until explicitly invoked, and applying its definition did not seed or change projects.
 
 - Add tables, checks, indexes, RLS, commands, repositories, read models, and tests.
 - Add the per-project work-model marker and make legacy generators/projections respect it.
@@ -692,7 +692,7 @@ Repository status: the foundation is implemented and `20260729_000002` has enter
 
 ### B. Cutover-ready integration
 
-Repository status: implemented for new-project V2 activation, including the approved quote adapter. It has not been exercised against an applied environment.
+Repository status: implemented for new-project V2 activation, including the approved quote adapter. The command lifecycle was exercised against a disposable staging project; production verification remains intentionally read-only until ordinary staff creation supplies the first real V2 project.
 
 - Wire the approved lead cadence, manual commands, confirmations, current-presentation adapter, and compatibility projection behind a server cutover control.
 - Exercise them with fixtures and local authenticated QA only.
@@ -719,7 +719,7 @@ Repository status: wired for projects initialized as V2 after the migration is a
 - Enable the one-way compatibility projection.
 - Import only approved open obligations.
 - Switch the current task presentation, Command Centre, Projects, and Dashboard through compatibility adapters.
-- Keep the current Overview presentation visually unchanged.
+- Use the approved mixed-model Overview V2 composition governed by `project-command-centre-architecture.md`.
 - Hide the unused Site Visits navigation entry and prevent project work-item links to it, while leaving the route and data owner dormant.
 - Run Contacted review as a separate admin workflow, one reviewed project per command.
 - Enable the quote adapter only if its cadence was separately approved.
@@ -942,7 +942,7 @@ The current worktree implements the approved Option B foundation plus the Work Q
 6. server-owned ranking and project projection;
 7. Running Jobs ownership for materials- and roofing-ordered facts;
 8. one-way `next_action*` and `follow_up_date` compatibility;
-9. adapters for the current Overview/task presentation without visual redesign;
+9. adapters for the approved Overview V2 composition governed by `project-command-centre-architecture.md`;
 10. server-only quote send/outcome reconciliation with durable repair signals;
 11. Schedule V2 completion/readiness ownership and Running Jobs-owned materials/roofing facts;
 12. admin-only archive/restore commands; and
@@ -951,7 +951,7 @@ The current worktree implements the approved Option B foundation plus the Work Q
 15. no-contact-field Contacted classification and one-project-at-a-time reviewed migration; and
 16. focused static, unit, component, route, and boundary tests.
 
-The foundation and exact ordered `20260729_000003`/`000004` files are applied only to staging and are not production-deployed. Readiness, rollback rehearsal, schema/body verification, anonymous-access checks, the authenticated GET-only Work Queue plus legacy-project read smoke, and the disposable new-V2-project command smoke pass. The slice establishes the repository write-to-read boundary, cache coherence, stale/read-only behavior, idempotent command replay, supported archive cleanup, and safe review tooling while leaving production promotion, bulk migration, automatic backlog decisions, old-table deletion, calendar expansion, and visual redesign outside rollout.
+The foundation and exact reviewed `20260729_000002`/`000003`/`000004` files are applied in staging and production. Readiness, rollback rehearsal, schema/body verification, anonymous-access checks, the authenticated GET-only Work Queue plus legacy-project read smoke, and the disposable staging new-V2-project command smoke pass. Production postflight retained zero V2 markers, states, work, events, confirmations, receipts, or repair signals at the 2026-07-30 cutover check, so no pre-cutover project crossed models and no backlog decision was invented. The slice establishes the repository write-to-read boundary, cache coherence, stale/read-only behavior, idempotent command replay, supported archive cleanup, and safe review tooling while leaving reviewed existing-project migration, automatic backlog decisions, old-table deletion, and calendar expansion outside rollout.
 
 ## 17. Current Schedule And Parallel-Work Boundary
 
@@ -964,7 +964,7 @@ Further work may proceed in parallel only with explicit non-overlapping ownershi
 - read-only analysis that does not operate the Contacted migration command; and
 - documentation that does not conflict with an active Schedule owner.
 
-Before enabling V2 in any environment, integrate both lanes, run the cross-domain Schedule/Running Jobs/project regressions, and prove the migration against a disposable or positively identified database. Existing projects and the 623-project Contacted population remain outside this activation.
+Before enabling V2 in any additional environment, integrate both lanes, run the cross-domain Schedule/Running Jobs/project regressions, and prove the migration against a disposable or positively identified database. Existing projects and the 623-project Contacted population remain outside this activation.
 
 Migration and application deployment use one short controlled window. Constrain new project/enquiry creation and quote lifecycle mutations until both are live and the integrity smoke passes: deploying the application first makes new staff project creation fail closed, while applying the migration first can activate new marketing projects before the application adapters are available.
 
@@ -979,30 +979,35 @@ Migration and application deployment use one short controlled window. Constrain 
 
 No design-workbench, geometry, calculator-input, or costing-source boundary changes are proposed.
 
-## 19. Remaining Rollout Decisions
+## 19. Production State And Remaining Decisions
 
-Application implementation is approved. Production is now positively identified
-as Supabase project `iytanftukulcnavossmd`, but identification is not cutover
-authority. The live portal commit is `32a66ec3`, while the approved Overview and
-Project Work implementation sits within a much broader unpublished commit range.
-Production has completed daily physical backups and WAL-G, but PITR is disabled,
-so a daily restore is disaster recovery rather than a clean feature rollback.
+Production is positively identified as Supabase project
+`iytanftukulcnavossmd`. Portal release merge `c9e73651` was deployed first, then
+the three original exact SQL files were applied individually in one controlled
+2026-07-30 window after a completed physical backup was confirmed. Snapshot-cache
+hotfix merge `809f2c5e` followed. `db push`, `migration up`, and migration repair
+were not used, and the colliding `20260729` ledger state remains untouched.
+Authenticated read-only verification proved a ready empty Work Queue and
+matching legacy snapshot/Command Centre reads. Catalog postflight proved all
+nine V2 tables with RLS, authenticated-only queue execution, anonymous denial,
+and zero markers, operational states, work items, work-item/state events,
+confirmations, command receipts, or repair signals at the cutover check. No
+pre-cutover project was migrated or backfilled, and no customer, commercial,
+Schedule, task, or payment data was changed.
 
-Before production activation, freeze one clean application release SHA, verify
-that exact release against staging, agree one short project/enquiry/quote write
-window and recovery owner, then deploy the V2-capable portal before applying the
-three original exact SQL files. Do not use `db push`, `migration up`, or repair
-the colliding `20260729` ledger version. Production verification is
-authenticated and read-only; resume writers only after Work Queue, Overview,
-legacy quoting, catalog, RLS/grants, and reconciliation checks pass.
+The following remain controlled follow-up rather than launch blockers:
 
-The following still require explicit environment or product approval:
+- observe the first naturally created V2 project and its server-owned first work
+  item without manufacturing production QA data;
+- require explicit approval and unchanged reviewed evidence for every individual
+  existing-project cutover;
+- extend verified Auckland calendar coverage before a deadline can cross beyond
+  2027;
+- retire legacy readers and tables only after a later focused reconciliation
+  window; and
+- keep any Overview expansion beyond the approved handover under a separate
+  product and owner contract.
 
-- the exact production application release SHA and controlled write window;
-- applying `20260729_000002`, `20260729_000003`, and `20260729_000004` to production and enabling new-project V2 creation there;
-- every individual reviewed existing-project cutover;
-- calendar coverage beyond 2027;
-- later legacy retirement; and
-- any Project Overview redesign outside the approved implementation handover.
-
-The approved Project Overview redesign is governed by `project-command-centre-architecture.md` section `Approved Overview V2 Implementation Handover (READ FIRST)` and remains outside this data-cutover plan.
+The approved Project Overview redesign is governed by
+`project-command-centre-architecture.md` section
+`Approved Overview V2 Implementation Handover (READ FIRST)`.

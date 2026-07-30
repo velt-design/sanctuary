@@ -127,6 +127,24 @@ execution. It reports `000002`, `000003`, or `000004` separately when that
 contract is absent. It does not apply migrations, create records, authenticate
 staff, or exercise any lifecycle/customer side effect.
 
+Project Work V2 entered production on 2026-07-30 through a controlled exact-file
+apply to the positively identified `SP-Staff-Portal-DB` project
+`iytanftukulcnavossmd`, after portal release merge `c9e73651` was deployed and a
+completed physical backup was confirmed. The canonical-LF SHA-256 values were
+`9186b67413de119f472e6d457290d4866d403a742ef3ed09a089c82f10e47274` for
+`20260729_000002`, `c34875fba9d1419586732c7e480bbf945a538cf94403c76a28808dc792f60dfc`
+for `000003`, and
+`c0f023548bcb40313ed7df94d15324a587e9d756bfc29396c359139595e341cf` for
+`000004`. Each reviewed file was applied individually through the linked query
+boundary; `db push`, `migration up`, and migration repair were not used, and the
+colliding `20260729` remote-ledger entry remains untouched. Postflight catalog
+checks found all nine V2 tables with RLS enabled, the authenticated-only queue
+function, the two canonical cascade relationships, and zero model markers,
+operational states, work items, work events, confirmation events, or repair
+signals. No pre-cutover project was migrated or backfilled, and the read-only
+production QA changed no customer, project, quote, invoice, schedule, task, or
+payment row.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Schedule V2 currently depends on migrations through the Schedule V2 RPC command migrations and later repair migrations. After deploy, confirm:
