@@ -51,7 +51,9 @@ describe('foundation style guardrails', () => {
     expect(globals).not.toMatch(/max-width:\s*960px[\s\S]*?overflow-x:\s*hidden\s*!important/);
     expect(shell).toContain('--portal-sticky-content-top: 0px');
     expect(shell).toMatch(/--portal-sticky-content-top:\s*calc\(var\(--ui-mobile-bar,[^)]+\) \+ env\(safe-area-inset-top\)\)/);
-    expect(projectPage).toContain('--project-page-sticky-masthead-height: var(--project-page-masthead-height, 0px)');
+    expect(projectPage).toMatch(
+      /--project-page-sticky-masthead-height:\s*var\(\s*--project-page-masthead-height,\s*0px\s*\)/,
+    );
     expect(projectPage).toMatch(/\.pageFrameMastheadSlotSticky\s*\{[\s\S]*?top:\s*var\(--portal-sticky-content-top,\s*0px\)/);
     expect(projectPage).toMatch(/max-width:\s*767px[\s\S]*?--project-page-sticky-masthead-height:\s*0px/);
     expect(calculatorGrid).toContain('--calculator-sticky-top: 0px');
