@@ -190,6 +190,30 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
+  it('renders the design booklet QA fixture without auth redirects or portal chrome', () => {
+    mockPathname = '/qa/design-booklet-workbench-fixture';
+    mockSession = {
+      status: 'unauthenticated',
+      email: null,
+      role: null,
+    } as any;
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Design booklet fixture</div>
+      </PortalShell>,
+    );
+
+    expect(
+      rendered.container.querySelector('[data-testid="child"]')?.textContent,
+    ).toBe('Design booklet fixture');
+    expect(
+      rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]'),
+    ).toBeNull();
+    expect(replaceMock).not.toHaveBeenCalled();
+    rendered.unmount();
+  });
+
   it('renders the project work queue QA fixture without auth redirects or portal chrome', () => {
     mockPathname = '/qa/project-work-queue-fixture';
     mockSession = {
@@ -231,6 +255,33 @@ describe('PortalShell', () => {
         ?.getAttribute('data-portal-content-sidebar-mode'),
     ).toBe('pinned');
 
+    rendered.unmount();
+  });
+
+  it('renders authenticated design booklets without normal portal chrome', () => {
+    mockPathname = '/staff/design-booklets';
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Design booklet workbench</div>
+      </PortalShell>,
+    );
+
+    expect(
+      rendered.container.querySelector('[data-testid="child"]')?.textContent,
+    ).toBe('Design booklet workbench');
+    expect(
+      rendered.container.querySelector('[data-authenticated-standalone-shell]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-sidebar-rail"]'),
+    ).toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]'),
+    ).toBeNull();
+    expect(
+      rendered.container.querySelector('[data-portal-mobile-top-bar]'),
+    ).toBeNull();
     rendered.unmount();
   });
 

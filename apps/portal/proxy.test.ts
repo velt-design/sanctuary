@@ -99,6 +99,7 @@ describe('portal proxy', () => {
   it.each([
     ['/dashboard', 'https://example.com/login?callbackUrl=%2Fdashboard'],
     ['/staff/projects', 'https://example.com/login?callbackUrl=%2Fstaff%2Fprojects'],
+    ['/staff/design-booklets', 'https://example.com/login?callbackUrl=%2Fstaff%2Fdesign-booklets'],
     ['/pricebook', 'https://example.com/login?callbackUrl=%2Fpricebook'],
     ['/admin/imports?tab=csv', 'https://example.com/login?callbackUrl=%2Fadmin%2Fimports%3Ftab%3Dcsv'],
   ])('redirects unauthenticated protected access for %s', async (path, expectedLocation) => {
@@ -216,6 +217,20 @@ describe('portal proxy', () => {
     const response = await proxy(
       new NextRequest(
         'https://example.com/qa/email-preview-workbench-fixture',
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
+  it('allows the design booklet workbench fixture to enforce its own server flag without auth', async () => {
+    process.env.ENABLE_PORTAL_QA_FIXTURES = '1';
+
+    const response = await proxy(
+      new NextRequest(
+        'https://example.com/qa/design-booklet-workbench-fixture',
       ),
     );
 

@@ -45,6 +45,7 @@ function isPortalQaFixtureRoutePath(
     pathname === '/qa/project-page-shell-fixture' ||
     pathname === '/qa/ui-foundation-fixture' ||
     pathname === '/qa/email-preview-workbench-fixture' ||
+    pathname === '/qa/design-booklet-workbench-fixture' ||
     pathname === '/qa/project-work-queue-fixture'
   );
 }
@@ -60,6 +61,14 @@ function isPublicRoutePath(pathname: string | null, searchParams: { get(name: st
 
 function isDesignWorkbenchRoutePath(pathname: string | null): boolean {
   return Boolean(pathname && /^\/staff\/projects\/[^/]+\/design-workbench(?:\/|$)/.test(pathname));
+}
+
+function isAuthenticatedStandaloneRoutePath(pathname: string | null): boolean {
+  return Boolean(
+    pathname &&
+      (pathname === '/staff/design-booklets' ||
+        pathname.startsWith('/staff/design-booklets/')),
+  );
 }
 
 export default function PortalShell({ children }: { children: React.ReactNode }) {
@@ -129,6 +138,10 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   if (status !== 'authenticated' || !role) {
     return <div className={styles.contentStandalone}>{children}</div>;
+  }
+
+  if (isAuthenticatedStandaloneRoutePath(pathname)) {
+    return <div data-authenticated-standalone-shell>{children}</div>;
   }
 
   return (
