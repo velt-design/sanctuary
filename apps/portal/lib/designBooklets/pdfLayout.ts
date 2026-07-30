@@ -22,9 +22,8 @@ export const DESIGN_BOOKLET_PDF_PAGE_SIZE = {
 
 export const DESIGN_BOOKLET_PDF_LEFT = 44;
 export const DESIGN_BOOKLET_PDF_RIGHT = 44;
-const DESIGN_BOOKLET_PDF_TOP = 40;
-export const DESIGN_BOOKLET_PDF_BOTTOM = 23;
-export const DESIGN_BOOKLET_PDF_CONTENT_WIDTH =
+const DESIGN_BOOKLET_PDF_BOTTOM = 23;
+const DESIGN_BOOKLET_PDF_CONTENT_WIDTH =
   DESIGN_BOOKLET_PDF_PAGE_SIZE.width -
   DESIGN_BOOKLET_PDF_LEFT -
   DESIGN_BOOKLET_PDF_RIGHT;
@@ -83,6 +82,24 @@ function wrapText(
     const words = paragraph.split(/\s+/).filter(Boolean);
     let line = "";
     for (const word of words) {
+      if (font.widthOfTextAtSize(word, size) > maxWidth) {
+        if (line) {
+          lines.push(line);
+          line = "";
+        }
+        let chunk = "";
+        for (const character of Array.from(word)) {
+          const candidate = `${chunk}${character}`;
+          if (chunk && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+            lines.push(chunk);
+            chunk = character;
+          } else {
+            chunk = candidate;
+          }
+        }
+        line = chunk;
+        continue;
+      }
       const candidate = line ? `${line} ${word}` : word;
       if (!line || font.widthOfTextAtSize(candidate, size) <= maxWidth) {
         line = candidate;
@@ -114,7 +131,20 @@ export function drawDesignBookletWrappedText(
   const lines = wrapText(text, options.font, options.size, options.width);
   const visible =
     options.maxLines && lines.length > options.maxLines
-      ? lines.slice(0, options.maxLines)
+      ? (() => {
+          const truncated = lines.slice(0, options.maxLines);
+          const lastIndex = truncated.length - 1;
+          let finalLine = truncated[lastIndex].trimEnd();
+          while (
+            finalLine &&
+            options.font.widthOfTextAtSize(`${finalLine}...`, options.size) >
+              options.width
+          ) {
+            finalLine = finalLine.slice(0, -1).trimEnd();
+          }
+          truncated[lastIndex] = `${finalLine}...`;
+          return truncated;
+        })()
       : lines;
   let y = options.y;
   for (const line of visible) {
@@ -185,12 +215,22 @@ export function drawDesignBookletFooter(
   pageCount: number,
   customerName: string,
   fonts: DesignBookletPdfFonts,
+  tone: "dark" | "light" = "dark",
 ) {
+  const textColor =
+    tone === "light"
+      ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
+      : DESIGN_BOOKLET_PDF_COLORS.muted;
+  const ruleColor =
+    tone === "light"
+      ? DESIGN_BOOKLET_PDF_COLORS.paperStrong
+      : DESIGN_BOOKLET_PDF_COLORS.rule;
   drawDesignBookletRule(
     page,
     DESIGN_BOOKLET_PDF_LEFT,
     40,
     DESIGN_BOOKLET_PDF_CONTENT_WIDTH,
+    ruleColor,
   );
   page.drawText(
     `SANCTUARY / DESIGN BOOKLET / ${safeDesignBookletPdfText(customerName).toUpperCase()}`,
@@ -199,10 +239,11 @@ export function drawDesignBookletFooter(
       y: DESIGN_BOOKLET_PDF_BOTTOM,
       size: 6.8,
       font: fonts.medium,
-      color: DESIGN_BOOKLET_PDF_COLORS.muted,
+      color: textColor,
     },
   );
-  const pageText = `${pageNumber} / ${pageCount}`;
+  const numberWidth = Math.max(2, String(pageCount).length);
+  const pageText = `${String(pageNumber).padStart(numberWidth, "0")} / ${String(pageCount).padStart(numberWidth, "0")}`;
   page.drawText(pageText, {
     x:
       DESIGN_BOOKLET_PDF_PAGE_SIZE.width -
@@ -211,7 +252,7 @@ export function drawDesignBookletFooter(
     y: DESIGN_BOOKLET_PDF_BOTTOM,
     size: 7.2,
     font: fonts.medium,
-    color: DESIGN_BOOKLET_PDF_COLORS.muted,
+    color: textColor,
   });
 }
 
@@ -219,6 +260,7 @@ export function drawDesignBookletImageCover(
   page: PDFPage,
   image: PDFImage,
   frame: { x: number; y: number; width: number; height: number },
+  focalPoint: { x: number; y: number } = { x: 50, y: 50 },
 ) {
   const scale = Math.max(
     frame.width / image.width,
@@ -226,8 +268,10 @@ export function drawDesignBookletImageCover(
   );
   const width = image.width * scale;
   const height = image.height * scale;
-  const x = frame.x + (frame.width - width) / 2;
-  const y = frame.y + (frame.height - height) / 2;
+  const focalX = Math.min(100, Math.max(0, focalPoint.x)) / 100;
+  const focalY = Math.min(100, Math.max(0, focalPoint.y)) / 100;
+  const x = frame.x - (width - frame.width) * focalX;
+  const y = frame.y - (height - frame.height) * (1 - focalY);
 
   page.pushOperators(
     pushGraphicsState(),
@@ -263,53 +307,6 @@ export function drawDesignBookletImageContain(
     borderColor: DESIGN_BOOKLET_PDF_COLORS.rule,
     borderWidth: 0.6,
   });
-}
-
-export function drawDesignBookletBulletList(
-  page: PDFPage,
-  items: readonly string[],
-  options: {
-    x: number;
-    y: number;
-    width: number;
-    fonts: DesignBookletPdfFonts;
-    size?: number;
-    lineHeight?: number;
-    itemGap?: number;
-  },
-): number {
-  const size = options.size ?? 8.3;
-  const lineHeight = options.lineHeight ?? 11.2;
-  const itemGap = options.itemGap ?? 7;
-  let y = options.y;
-
-  for (const item of items) {
-    const lines = wrapText(
-      item,
-      options.fonts.regular,
-      size,
-      options.width - 16,
-    );
-    page.drawRectangle({
-      x: options.x,
-      y: y + 3,
-      width: 4,
-      height: 4,
-      color: DESIGN_BOOKLET_PDF_COLORS.accent,
-    });
-    for (const line of lines) {
-      page.drawText(line, {
-        x: options.x + 15,
-        y,
-        font: options.fonts.regular,
-        size,
-        color: DESIGN_BOOKLET_PDF_COLORS.ink,
-      });
-      y -= lineHeight;
-    }
-    y -= itemGap;
-  }
-  return y;
 }
 
 export function addDesignBookletPage(pdf: PDFDocument): PDFPage {

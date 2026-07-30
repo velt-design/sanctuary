@@ -1,27 +1,33 @@
 import type {
   DesignBookletContentCatalog,
+  DesignBookletDefaultAssetId,
   DesignBookletDraft,
-  DesignBookletRenderId,
+  DesignBookletImagePlacement,
 } from "@/lib/designBooklets/types";
 import {
-  DESIGN_BOOKLET_PAGE_COUNT,
-  DESIGN_BOOKLET_REFERENCE_ASSETS,
-} from "@/lib/designBooklets/defaults";
-import styles from "./designBooklets.module.css";
+  buildDesignBookletRenderModel,
+  DESIGN_BOOKLET_DRAWING_LAYOUTS,
+  DESIGN_BOOKLET_FOCAL_POINTS,
+  DESIGN_BOOKLET_REVIEW_COPY,
+  designBookletDrawingTitle,
+  visibleDesignBookletDrawings,
+} from "@/lib/designBooklets/pageModel";
+import styles from "./designBookletPages.module.css";
 
 export type DesignBookletPreviewAsset = {
-  id: DesignBookletRenderId | "plan";
+  id: string;
   src: string;
   alt: string;
   label: string;
+  defaultAssetId: DesignBookletDefaultAssetId;
   file?: File;
 };
 
 type Props = {
-  pageNumber: number;
+  selectedPageKey: string;
   draft: DesignBookletDraft;
   content: DesignBookletContentCatalog;
-  assets: Record<DesignBookletRenderId | "plan", DesignBookletPreviewAsset>;
+  assets: Record<string, DesignBookletPreviewAsset>;
 };
 
 function BookletBrand({ light = false }: { light?: boolean }) {
@@ -38,10 +44,12 @@ function BookletBrand({ light = false }: { light?: boolean }) {
 
 function PageFooter({
   pageNumber,
+  pageCount,
   customerName,
   light = false,
 }: {
   pageNumber: number;
+  pageCount: number;
   customerName: string;
   light?: boolean;
 }) {
@@ -54,246 +62,306 @@ function PageFooter({
       </span>
       <span>
         {String(pageNumber).padStart(2, "0")} /{" "}
-        {String(DESIGN_BOOKLET_PAGE_COUNT).padStart(2, "0")}
+        {String(pageCount).padStart(2, "0")}
       </span>
     </footer>
   );
 }
 
-function StandardPage({
+function PageHeader({
   pageNumber,
-  customerName,
-  className = "",
-  children,
+  label,
+  light = false,
 }: {
   pageNumber: number;
-  customerName: string;
-  className?: string;
-  children: React.ReactNode;
+  label: string;
+  light?: boolean;
 }) {
   return (
-    <article
-      className={`${styles.page} ${styles.standardPage} ${className}`}
-      data-booklet-page={pageNumber}
-      aria-label={`Booklet page ${pageNumber} of ${DESIGN_BOOKLET_PAGE_COUNT}`}
+    <header
+      className={`${styles.pageNavigation} ${light ? styles.pageNavigationLight : ""}`}
     >
-      <div className={styles.pageTopRule} aria-hidden="true" />
-      {children}
-      <PageFooter pageNumber={pageNumber} customerName={customerName} />
+      <BookletBrand light={light} />
+      <span>
+        {label.toLocaleUpperCase()} / {String(pageNumber).padStart(2, "0")}
+      </span>
+    </header>
+  );
+}
+
+function focalStyle(placement: DesignBookletImagePlacement) {
+  const focus = DESIGN_BOOKLET_FOCAL_POINTS[placement.focalPoint];
+  return { objectPosition: `${focus.x}% ${focus.y}%` };
+}
+
+function CoverPage({
+  draft,
+  content,
+  asset,
+  pageCount,
+}: {
+  draft: DesignBookletDraft;
+  content: DesignBookletContentCatalog;
+  asset: DesignBookletPreviewAsset;
+  pageCount: number;
+}) {
+  const roofForm = content.roofForms[draft.roofFormId];
+  const material = content.materials[draft.materialId];
+  return (
+    <article
+      className={`${styles.page} ${styles.coverPage}`}
+      data-booklet-page="1"
+      data-page-key="cover"
+      data-page-kind="cover"
+      aria-label={`Booklet page 1 of ${pageCount}`}
+    >
+      <img
+        className={styles.fullBleedImage}
+        style={focalStyle(draft.cover)}
+        src={asset.src}
+        alt={draft.cover.altText}
+      />
+      <PageHeader pageNumber={1} label="Concept design" light />
+      <main className={styles.coverStory}>
+        <p className={styles.eyebrow}>Outdoor living by Sanctuary</p>
+        <h1>{draft.projectTitle}</h1>
+        <div className={styles.coverDetails}>
+          <div>
+            <span>Prepared for</span>
+            <strong>{draft.customerName}</strong>
+          </div>
+          <div>
+            <span>Design direction</span>
+            <strong>
+              {roofForm.name} / {material.label}
+            </strong>
+          </div>
+        </div>
+      </main>
+      <PageFooter
+        pageNumber={1}
+        pageCount={pageCount}
+        customerName={draft.customerName}
+        light
+      />
     </article>
   );
 }
 
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <p className={styles.eyebrow}>{children}</p>;
+function ImagePage({
+  draft,
+  pageNumber,
+  pageCount,
+  placement,
+  asset,
+}: {
+  draft: DesignBookletDraft;
+  pageNumber: number;
+  pageCount: number;
+  placement: DesignBookletImagePlacement;
+  asset: DesignBookletPreviewAsset;
+}) {
+  return (
+    <article
+      className={`${styles.page} ${styles.imagePage}`}
+      data-booklet-page={pageNumber}
+      data-page-kind="image"
+      aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
+    >
+      <img
+        className={styles.fullBleedImage}
+        style={focalStyle(placement)}
+        src={asset.src}
+        alt={placement.altText}
+      />
+      <div className={styles.imageChromeShade} aria-hidden="true" />
+      <PageHeader pageNumber={pageNumber} label="Concept image" light />
+      <PageFooter
+        pageNumber={pageNumber}
+        pageCount={pageCount}
+        customerName={draft.customerName}
+        light
+      />
+    </article>
+  );
+}
+
+function DrawingPage({
+  draft,
+  pageNumber,
+  pageCount,
+  page,
+  assets,
+}: {
+  draft: DesignBookletDraft;
+  pageNumber: number;
+  pageCount: number;
+  page: Extract<
+    DesignBookletDraft["contentPages"][number],
+    { kind: "drawings" }
+  >;
+  assets: Record<string, DesignBookletPreviewAsset>;
+}) {
+  const layout = DESIGN_BOOKLET_DRAWING_LAYOUTS[page.layout];
+  const drawings = visibleDesignBookletDrawings(page);
+  return (
+    <article
+      className={`${styles.page} ${styles.standardPage} ${styles.drawingPage}`}
+      data-booklet-page={pageNumber}
+      data-page-kind="drawings"
+      data-drawing-layout={page.layout}
+      aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
+    >
+      <div className={styles.pageTopRule} aria-hidden="true" />
+      <PageHeader pageNumber={pageNumber} label="Drawings" />
+      <main className={styles.drawingCanvas}>
+        {drawings.map((drawing, index) => {
+          const frame = layout.frames[index];
+          const asset = assets[drawing.image.assetId];
+          return (
+            <figure
+              className={styles.drawingFigure}
+              data-drawing-slot={index + 1}
+              key={drawing.id}
+              style={{
+                left: `${frame.x * 100}%`,
+                top: `${frame.y * 100}%`,
+                width: `${frame.width * 100}%`,
+                height: `${frame.height * 100}%`,
+              }}
+            >
+              <div className={styles.drawingImageFrame}>
+                <img src={asset.src} alt={drawing.image.altText} />
+              </div>
+              <figcaption>
+                {designBookletDrawingTitle(drawing.title)}
+              </figcaption>
+            </figure>
+          );
+        })}
+      </main>
+      <PageFooter
+        pageNumber={pageNumber}
+        pageCount={pageCount}
+        customerName={draft.customerName}
+      />
+    </article>
+  );
+}
+
+function ReviewPage({
+  draft,
+  pageNumber,
+  pageCount,
+  asset,
+}: {
+  draft: DesignBookletDraft;
+  pageNumber: number;
+  pageCount: number;
+  asset: DesignBookletPreviewAsset;
+}) {
+  return (
+    <article
+      className={`${styles.page} ${styles.standardPage} ${styles.reviewPage}`}
+      data-booklet-page={pageNumber}
+      data-page-key="review"
+      data-page-kind="review"
+      aria-label={`Booklet page ${pageNumber} of ${pageCount}`}
+    >
+      <div className={styles.pageTopRule} aria-hidden="true" />
+      <figure className={styles.reviewImage}>
+        <img
+          style={focalStyle(draft.reviewPage.image)}
+          src={asset.src}
+          alt={draft.reviewPage.image.altText}
+        />
+      </figure>
+      <main className={styles.reviewStory}>
+        <BookletBrand />
+        <span className={styles.reviewPageLabel}>
+          REVIEW / {String(pageNumber).padStart(2, "0")}
+        </span>
+        <div className={styles.reviewHeading}>
+          <p className={styles.eyebrow}>{DESIGN_BOOKLET_REVIEW_COPY.eyebrow}</p>
+          <h2>{DESIGN_BOOKLET_REVIEW_COPY.title}</h2>
+          <p>{DESIGN_BOOKLET_REVIEW_COPY.introduction}</p>
+        </div>
+        <div className={styles.reviewPrompts}>
+          {DESIGN_BOOKLET_REVIEW_COPY.prompts.map((prompt, index) => (
+            <section key={prompt.title}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <h3>{prompt.title}</h3>
+                <p>{prompt.copy}</p>
+              </div>
+            </section>
+          ))}
+        </div>
+        <p className={styles.reviewCallToAction}>
+          {DESIGN_BOOKLET_REVIEW_COPY.callToAction}
+        </p>
+      </main>
+      <PageFooter
+        pageNumber={pageNumber}
+        pageCount={pageCount}
+        customerName={draft.customerName}
+        light
+      />
+    </article>
+  );
 }
 
 export default function DesignBookletPages({
-  pageNumber,
+  selectedPageKey,
   draft,
   content,
   assets,
 }: Props) {
-  const roofForm = content.roofForms[draft.roofFormId];
-  const material = content.materials[draft.materialId];
-  const orderedRenders = draft.renderOrder.map((id) => assets[id]);
-  const roofFormReference =
-    DESIGN_BOOKLET_REFERENCE_ASSETS.roofForms[draft.roofFormId];
-  const roofingSections = material.sections.map((section) => ({
-    ...section,
-    image: DESIGN_BOOKLET_REFERENCE_ASSETS.roofing[section.id],
-  }));
+  const model = buildDesignBookletRenderModel(draft);
+  const resolvedPage =
+    model.find((page) => page.key === selectedPageKey) ?? model[0];
 
-  if (pageNumber === 1) {
+  if (resolvedPage.kind === "cover") {
     return (
-      <article
-        className={`${styles.page} ${styles.coverPage}`}
-        data-booklet-page="1"
-        aria-label={`Booklet page 1 of ${DESIGN_BOOKLET_PAGE_COUNT}`}
-      >
-        <img
-          className={styles.coverImage}
-          src={orderedRenders[0].src}
-          alt={orderedRenders[0].alt}
-        />
-        <header className={styles.coverNavigation}>
-          <BookletBrand light />
-          <span>CONCEPT DESIGN / 01</span>
-        </header>
-        <main className={styles.coverStory}>
-          <Eyebrow>Outdoor living by Sanctuary</Eyebrow>
-          <h1>{draft.projectTitle}</h1>
-          <div className={styles.coverDetails}>
-            <div>
-              <span>Prepared for</span>
-              <strong>{draft.customerName}</strong>
-            </div>
-            <div>
-              <span>Design direction</span>
-              <strong>
-                {roofForm.name} / {material.label}
-              </strong>
-            </div>
-          </div>
-        </main>
-        <PageFooter pageNumber={1} customerName={draft.customerName} light />
-      </article>
+      <CoverPage
+        draft={draft}
+        content={content}
+        asset={assets[draft.cover.assetId]}
+        pageCount={resolvedPage.pageCount}
+      />
     );
   }
 
-  if (pageNumber === 2) {
+  if (resolvedPage.kind === "image") {
     return (
-      <StandardPage
-        pageNumber={2}
-        customerName={draft.customerName}
-        className={styles.overviewPage}
-      >
-        <figure className={styles.overviewVisual}>
-          <img src={orderedRenders[1].src} alt={orderedRenders[1].alt} />
-          <figcaption>RENDER 02 / CURRENT CONCEPT</figcaption>
-        </figure>
-        <main className={styles.overviewStory}>
-          <BookletBrand />
-          <div className={styles.overviewCopy}>
-            <Eyebrow>Your design</Eyebrow>
-            <h2>The design, at a glance.</h2>
-            <section className={styles.overviewFact}>
-              <span>01 / Roof form</span>
-              <h3>{roofForm.name}</h3>
-              <p>{roofForm.proposition}</p>
-            </section>
-            <section className={styles.overviewFact}>
-              <span>02 / Roofing choice</span>
-              <h3>{material.label}</h3>
-              <p>{material.summary}</p>
-            </section>
-          </div>
-        </main>
-      </StandardPage>
+      <ImagePage
+        draft={draft}
+        pageNumber={resolvedPage.pageNumber}
+        pageCount={resolvedPage.pageCount}
+        placement={resolvedPage.page.image}
+        asset={assets[resolvedPage.page.image.assetId]}
+      />
     );
   }
 
-  if (pageNumber === 3) {
+  if (resolvedPage.kind === "drawings") {
     return (
-      <article
-        className={`${styles.page} ${styles.featurePage}`}
-        data-booklet-page="3"
-        aria-label={`Booklet page 3 of ${DESIGN_BOOKLET_PAGE_COUNT}`}
-      >
-        <img
-          className={styles.featureImage}
-          src={orderedRenders[2].src}
-          alt={orderedRenders[2].alt}
-        />
-        <header className={styles.featureNavigation}>
-          <BookletBrand light />
-          <span>DESIGN VIEW / 03</span>
-        </header>
-        <div className={styles.featureStatement}>
-          <Eyebrow>Design view</Eyebrow>
-          <h2>The outdoor room, seen as a whole.</h2>
-          <span>RENDER 03 / CURRENT CONCEPT</span>
-        </div>
-        <PageFooter pageNumber={3} customerName={draft.customerName} light />
-      </article>
-    );
-  }
-
-  if (pageNumber === 4) {
-    return (
-      <StandardPage
-        pageNumber={4}
-        customerName={draft.customerName}
-        className={styles.planPage}
-      >
-        <main className={styles.planStory}>
-          <BookletBrand />
-          <div>
-            <Eyebrow>Concept plan</Eyebrow>
-            <h2>The design from above.</h2>
-            <p>Plan 01 / Current concept</p>
-          </div>
-        </main>
-        <figure className={styles.planVisual}>
-          <img src={assets.plan.src} alt={assets.plan.alt} />
-        </figure>
-      </StandardPage>
-    );
-  }
-
-  if (pageNumber === 5) {
-    return (
-      <StandardPage
-        pageNumber={5}
-        customerName={draft.customerName}
-        className={styles.formPage}
-      >
-        <figure className={styles.formVisual}>
-          <img src={roofFormReference.src} alt={roofFormReference.alt} />
-          <figcaption>
-            BUILT REFERENCE / {roofForm.shortName.toLocaleUpperCase()}
-          </figcaption>
-        </figure>
-        <main className={styles.formStory}>
-          <BookletBrand light />
-          <div>
-            <Eyebrow>Roof form</Eyebrow>
-            <h2>{roofForm.name}</h2>
-            <p className={styles.formOutcome}>{roofForm.outcomeHeading}</p>
-            <p className={styles.formIntroduction}>{roofForm.outcomeCopy}</p>
-          </div>
-          <div className={styles.formFit}>
-            <section>
-              <span>Useful when</span>
-              <p>{roofForm.worksWhen[0]}</p>
-            </section>
-            <section>
-              <span>Confirm</span>
-              <p>{roofForm.resolve[0]}</p>
-            </section>
-          </div>
-        </main>
-      </StandardPage>
+      <DrawingPage
+        draft={draft}
+        pageNumber={resolvedPage.pageNumber}
+        pageCount={resolvedPage.pageCount}
+        page={resolvedPage.page}
+        assets={assets}
+      />
     );
   }
 
   return (
-    <StandardPage
-      pageNumber={6}
-      customerName={draft.customerName}
-      className={styles.materialPage}
-    >
-      <header className={styles.materialIntro}>
-        <BookletBrand light />
-        <div>
-          <Eyebrow>Roofing choice</Eyebrow>
-          <h2>
-            {roofingSections.length === 2
-              ? "Two roofing zones."
-              : material.label}
-          </h2>
-          <p className={styles.bookletClosing}>
-            {draft.projectTitle} / prepared for {draft.customerName}
-          </p>
-        </div>
-      </header>
-      <main
-        className={styles.materialSections}
-        data-section-count={roofingSections.length}
-      >
-        {roofingSections.map((section, index) => (
-          <section key={section.id}>
-            <figure>
-              <img src={section.image.src} alt={section.image.alt} />
-            </figure>
-            <div>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <h3>{section.label}</h3>
-              <p>{section.summary}</p>
-            </div>
-          </section>
-        ))}
-      </main>
-    </StandardPage>
+    <ReviewPage
+      draft={draft}
+      pageNumber={resolvedPage.pageNumber}
+      pageCount={resolvedPage.pageCount}
+      asset={assets[draft.reviewPage.image.assetId]}
+    />
   );
 }

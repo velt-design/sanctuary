@@ -3,26 +3,34 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DESIGN_BOOKLET_MATERIAL_IDS,
-  DESIGN_BOOKLET_RENDER_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
+  type DesignBookletAssetSource,
   type DesignBookletContentCatalog,
+  type DesignBookletContentPage,
   type DesignBookletDraft,
-  type DesignBookletRenderId,
+  type DesignBookletImagePlacement,
 } from "@/lib/designBooklets/types";
 import {
-  DESIGN_BOOKLET_PAGE_COUNT,
   TONI_DESIGN_BOOKLET_ASSETS,
-  TONI_DESIGN_BOOKLET_DRAFT,
+  createToniDesignBookletDraft,
 } from "@/lib/designBooklets/defaults";
+import {
+  allDesignBookletAssetSources,
+  buildDesignBookletRenderModel,
+  createDesignBookletDrawingPage,
+  createDesignBookletImagePage,
+  DESIGN_BOOKLET_MAX_IMAGE_BYTES,
+  DESIGN_BOOKLET_MAX_CONTENT_PAGES,
+  moveDesignBookletContentPage,
+  renderableDesignBookletAssetSources,
+} from "@/lib/designBooklets/pageModel";
+import BookletPageComposer from "./BookletPageComposer";
 import DesignBookletPages, {
   type DesignBookletPreviewAsset,
 } from "./DesignBookletPages";
 import styles from "./designBooklets.module.css";
 
-type AssetMap = Record<
-  DesignBookletRenderId | "plan",
-  DesignBookletPreviewAsset
->;
+type AssetMap = Record<string, DesignBookletPreviewAsset>;
 
 type Props = {
   content: DesignBookletContentCatalog;
@@ -30,37 +38,26 @@ type Props = {
   qaFixture?: boolean;
 };
 
-const PAGE_LABELS = [
-  "Cover",
-  "Overview",
-  "Design view",
-  "Plan",
-  "Roof form",
-  "Roofing",
-] as const;
-
-function initialAssets(): AssetMap {
-  return Object.fromEntries(
-    Object.entries(TONI_DESIGN_BOOKLET_ASSETS).map(([id, asset]) => [
-      id,
-      { id, src: asset.src, alt: asset.alt, label: asset.label },
-    ]),
-  ) as AssetMap;
+function previewAssetFromSource(
+  source: DesignBookletAssetSource,
+): DesignBookletPreviewAsset {
+  const defaultAsset = TONI_DESIGN_BOOKLET_ASSETS[source.defaultAssetId];
+  return {
+    id: source.assetId,
+    src: defaultAsset.src,
+    alt: source.altText,
+    label: defaultAsset.label,
+    defaultAssetId: source.defaultAssetId,
+  };
 }
 
-function moveRender(
-  order: DesignBookletRenderId[],
-  id: DesignBookletRenderId,
-  direction: -1 | 1,
-): DesignBookletRenderId[] {
-  const currentIndex = order.indexOf(id);
-  const nextIndex = currentIndex + direction;
-  if (currentIndex === -1 || nextIndex < 0 || nextIndex >= order.length) {
-    return order;
-  }
-  const next = [...order];
-  [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
-  return next;
+function initialAssets(draft: DesignBookletDraft): AssetMap {
+  return Object.fromEntries(
+    allDesignBookletAssetSources(draft).map((source) => [
+      source.assetId,
+      previewAssetFromSource(source),
+    ]),
+  );
 }
 
 function filenameFromResponse(
@@ -83,14 +80,14 @@ export default function DesignBookletWorkbenchClient({
   pdfEndpoint,
   qaFixture = false,
 }: Props) {
-  const [draft, setDraft] = useState<DesignBookletDraft>({
-    ...TONI_DESIGN_BOOKLET_DRAFT,
-    renderOrder: [...TONI_DESIGN_BOOKLET_DRAFT.renderOrder],
-  });
-  const [assets, setAssets] = useState<AssetMap>(initialAssets);
-  const [pageNumber, setPageNumber] = useState(1);
+  const [draft, setDraft] = useState(createToniDesignBookletDraft);
+  const [assets, setAssets] = useState<AssetMap>(() =>
+    initialAssets(createToniDesignBookletDraft()),
+  );
+  const [selectedPageKey, setSelectedPageKey] = useState("cover");
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const blobUrlsRef = useRef(new Set<string>());
 
   useEffect(
@@ -100,53 +97,201 @@ export default function DesignBookletWorkbenchClient({
     [],
   );
 
+  const pageModel = useMemo(
+    () => buildDesignBookletRenderModel(draft),
+    [draft],
+  );
+  const selectedPageIndex = Math.max(
+    0,
+    pageModel.findIndex((page) => page.key === selectedPageKey),
+  );
+  const selectedPage = pageModel[selectedPageIndex] ?? pageModel[0];
+
   const selectionSummary = useMemo(() => {
     const roofForm = content.roofForms[draft.roofFormId];
     const material = content.materials[draft.materialId];
     return `${roofForm.shortName} / ${material.label}`;
   }, [content, draft.materialId, draft.roofFormId]);
 
-  function updateAsset(
-    assetId: DesignBookletRenderId | "plan",
-    file: File | undefined,
-  ) {
+  function revokeAssetUrl(asset: DesignBookletPreviewAsset | undefined) {
+    if (!asset?.src.startsWith("blob:")) return;
+    URL.revokeObjectURL(asset.src);
+    blobUrlsRef.current.delete(asset.src);
+  }
+
+  function updateAsset(assetId: string, file: File | undefined) {
     if (!file) return;
     if (!["image/png", "image/jpeg"].includes(file.type)) {
       setDownloadError("Choose a PNG or JPEG image.");
       return;
     }
+    if (file.size > DESIGN_BOOKLET_MAX_IMAGE_BYTES) {
+      setDownloadError("Choose an image that is 15 MB or smaller.");
+      return;
+    }
     setDownloadError("");
+    const existing = assets[assetId];
+    if (!existing) return;
+    const src = URL.createObjectURL(file);
+    blobUrlsRef.current.add(src);
+    revokeAssetUrl(existing);
     setAssets((current) => {
-      const existing = current[assetId];
-      if (existing.file && existing.src.startsWith("blob:")) {
-        URL.revokeObjectURL(existing.src);
-        blobUrlsRef.current.delete(existing.src);
-      }
-      const src = URL.createObjectURL(file);
-      blobUrlsRef.current.add(src);
+      const currentAsset = current[assetId];
+      if (!currentAsset) return current;
       return {
         ...current,
-        [assetId]: { ...existing, src, file },
+        [assetId]: {
+          ...currentAsset,
+          src,
+          file,
+          label: file.name,
+        },
       };
     });
   }
 
-  function changeRenderOrder(id: DesignBookletRenderId, direction: -1 | 1) {
+  function addPage(kind: "image" | "drawings") {
+    if (draft.contentPages.length >= DESIGN_BOOKLET_MAX_CONTENT_PAGES) {
+      setDownloadError(
+        `A booklet can contain up to ${DESIGN_BOOKLET_MAX_CONTENT_PAGES} content pages.`,
+      );
+      return;
+    }
+
+    const page =
+      kind === "image"
+        ? createDesignBookletImagePage(
+            draft.contentPages,
+            (() => {
+              const imageCount = draft.contentPages.filter(
+                (candidate) => candidate.kind === "image",
+              ).length;
+              const id = ["render-1", "render-2", "render-3"][
+                imageCount % 3
+              ] as "render-1" | "render-2" | "render-3";
+              return { id, alt: TONI_DESIGN_BOOKLET_ASSETS[id].alt };
+            })(),
+          )
+        : createDesignBookletDrawingPage(draft.contentPages, {
+            id: "plan",
+            alt: TONI_DESIGN_BOOKLET_ASSETS.plan.alt,
+          });
+
+    const pageSources =
+      page.kind === "image"
+        ? [page.image]
+        : page.drawings.map((drawing) => drawing.image);
     setDraft((current) => ({
       ...current,
-      renderOrder: moveRender(current.renderOrder, id, direction),
+      contentPages: [...current.contentPages, page],
+    }));
+    setAssets((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        pageSources.map((source) => [
+          source.assetId,
+          previewAssetFromSource(source),
+        ]),
+      ),
+    }));
+    setSelectedPageKey(page.id);
+    setStatusMessage(`${kind === "image" ? "Image" : "Drawing"} page added.`);
+  }
+
+  function movePage(pageId: string, direction: -1 | 1) {
+    setDraft((current) => ({
+      ...current,
+      contentPages: moveDesignBookletContentPage(
+        current.contentPages,
+        pageId,
+        direction,
+      ),
+    }));
+    setSelectedPageKey(pageId);
+    setStatusMessage("Page order updated.");
+  }
+
+  function removePage(page: DesignBookletContentPage) {
+    const pageIndex = draft.contentPages.findIndex(
+      (candidate) => candidate.id === page.id,
+    );
+    const nextPages = draft.contentPages.filter(
+      (candidate) => candidate.id !== page.id,
+    );
+    const nextSelection =
+      nextPages[pageIndex]?.id ?? nextPages[pageIndex - 1]?.id ?? "review";
+    const removedAssetIds =
+      page.kind === "image"
+        ? [page.image.assetId]
+        : page.drawings.map((drawing) => drawing.image.assetId);
+    for (const assetId of removedAssetIds) {
+      revokeAssetUrl(assets[assetId]);
+    }
+
+    setDraft((current) => ({
+      ...current,
+      contentPages: current.contentPages.filter(
+        (candidate) => candidate.id !== page.id,
+      ),
+    }));
+    setAssets((current) => {
+      const next = { ...current };
+      for (const assetId of removedAssetIds) {
+        delete next[assetId];
+      }
+      return next;
+    });
+    setSelectedPageKey(nextSelection);
+    setStatusMessage("Page removed.");
+  }
+
+  function updatePage(page: DesignBookletContentPage) {
+    setDraft((current) => ({
+      ...current,
+      contentPages: current.contentPages.map((candidate) =>
+        candidate.id === page.id ? page : candidate,
+      ),
     }));
   }
 
-  function makeCover(id: DesignBookletRenderId) {
+  function updateFixedImage(
+    key: "cover" | "review",
+    image: DesignBookletImagePlacement,
+  ) {
+    setDraft((current) =>
+      key === "cover"
+        ? { ...current, cover: image }
+        : { ...current, reviewPage: { image } },
+    );
+  }
+
+  function useAsCover(image: DesignBookletImagePlacement) {
+    const coverAssetId = draft.cover.assetId;
+    const sourceAsset = assets[image.assetId];
+    if (!sourceAsset) return;
+    const coverSrc = sourceAsset.file
+      ? URL.createObjectURL(sourceAsset.file)
+      : sourceAsset.src;
+    if (sourceAsset.file) blobUrlsRef.current.add(coverSrc);
+    revokeAssetUrl(assets[coverAssetId]);
+    setAssets((current) => ({
+      ...current,
+      [coverAssetId]: {
+        ...sourceAsset,
+        id: coverAssetId,
+        src: coverSrc,
+      },
+    }));
     setDraft((current) => ({
       ...current,
-      renderOrder: [
-        id,
-        ...current.renderOrder.filter((candidate) => candidate !== id),
-      ],
+      cover: {
+        ...image,
+        assetId: coverAssetId,
+        altText: image.altText,
+      },
     }));
-    setPageNumber(1);
+    setSelectedPageKey("cover");
+    setStatusMessage("Cover image updated.");
   }
 
   async function downloadPdf() {
@@ -155,8 +300,9 @@ export default function DesignBookletWorkbenchClient({
     try {
       const formData = new FormData();
       formData.set("draft", JSON.stringify(draft));
-      for (const [id, asset] of Object.entries(assets)) {
-        if (asset.file) formData.set(`asset:${id}`, asset.file);
+      for (const source of renderableDesignBookletAssetSources(draft)) {
+        const asset = assets[source.assetId];
+        if (asset?.file) formData.set(`asset:${source.assetId}`, asset.file);
       }
       const response = await fetch(pdfEndpoint, {
         method: "POST",
@@ -200,11 +346,14 @@ export default function DesignBookletWorkbenchClient({
           <strong>SANCTUARY</strong>
           <span>DESIGN BOOKLETS</span>
         </a>
-        <nav aria-label="Workbench sections">
-          <a href="#booklet-preview">Preview</a>
-          <a href="#booklet-details">Details</a>
-          <a href="#booklet-images">Images</a>
-        </nav>
+        <div className={styles.headerStatus}>
+          <span>Customer preview</span>
+          <strong>
+            {selectedPage.label} /{" "}
+            {String(selectedPage.pageNumber).padStart(2, "0")} of{" "}
+            {String(pageModel.length).padStart(2, "0")}
+          </strong>
+        </div>
         <button
           type="button"
           className={styles.primaryButton}
@@ -215,280 +364,184 @@ export default function DesignBookletWorkbenchClient({
         </button>
       </header>
 
-      <section className={styles.intro}>
-        <div>
-          <p className={styles.sectionEyebrow}>Design booklet workbench</p>
-          <h1>Build the booklet as a customer journey.</h1>
-        </div>
-        <div className={styles.introAside}>
-          <p>
-            Shape the sequence, choose the views, and review the landscape
-            booklet exactly as a customer document.
-          </p>
-          <span>{selectionSummary}</span>
-          <span>{DESIGN_BOOKLET_PAGE_COUNT} landscape pages</span>
-        </div>
-      </section>
-
-      <section
-        className={styles.previewSection}
-        id="booklet-preview"
-        aria-label="Landscape A4 booklet preview"
-      >
-        <header className={styles.sectionHeader}>
-          <div className={styles.sectionNumber}>01</div>
-          <div>
-            <p className={styles.sectionEyebrow}>Customer preview</p>
-            <h2>Move through the story.</h2>
+      <div className={styles.workspace}>
+        <aside className={styles.controlRail} aria-label="Booklet controls">
+          <div className={styles.railIntroduction}>
+            <p className={styles.sectionEyebrow}>Design booklet workbench</p>
+            <h1>Shape the customer document.</h1>
+            <div className={styles.railSummary}>
+              <span>{selectionSummary}</span>
+              <span>{pageModel.length} landscape pages</span>
+            </div>
           </div>
-          <div className={styles.previewControls}>
-            <span>
-              {String(pageNumber).padStart(2, "0")} /{" "}
-              {String(DESIGN_BOOKLET_PAGE_COUNT).padStart(2, "0")}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPageNumber((current) => current - 1)}
-              disabled={pageNumber === 1}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setPageNumber((current) => current + 1)}
-              disabled={pageNumber === DESIGN_BOOKLET_PAGE_COUNT}
-            >
-              Next
-            </button>
-          </div>
-        </header>
 
-        <nav className={styles.pageRail} aria-label="Booklet pages">
-          {PAGE_LABELS.map((label, index) => {
-            const number = index + 1;
-            return (
+          <section className={styles.railSection} id="booklet-details">
+            <header className={styles.railSectionHeader}>
+              <span>01</span>
+              <div>
+                <p className={styles.sectionEyebrow}>Booklet details</p>
+                <h2>Cover story</h2>
+              </div>
+            </header>
+
+            <div className={styles.detailsGrid}>
+              <label className={styles.field}>
+                <span>Customer name</span>
+                <input
+                  required
+                  value={draft.customerName}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      customerName: event.target.value,
+                    }))
+                  }
+                  maxLength={80}
+                />
+              </label>
+              <label className={styles.field}>
+                <span>Booklet title</span>
+                <input
+                  required
+                  value={draft.projectTitle}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      projectTitle: event.target.value,
+                    }))
+                  }
+                  maxLength={120}
+                />
+              </label>
+              <label className={styles.field}>
+                <span>Roof form</span>
+                <select
+                  value={draft.roofFormId}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      roofFormId: event.target
+                        .value as DesignBookletDraft["roofFormId"],
+                    }))
+                  }
+                >
+                  {DESIGN_BOOKLET_ROOF_FORM_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {content.roofForms[id].name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>Roofing choice</span>
+                <select
+                  value={draft.materialId}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      materialId: event.target
+                        .value as DesignBookletDraft["materialId"],
+                    }))
+                  }
+                >
+                  {DESIGN_BOOKLET_MATERIAL_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {content.materials[id].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className={styles.sourceNote}>
+              Labels come from governed marketing content. No product claims
+              are added.
+            </p>
+          </section>
+
+          <section className={styles.railSection} id="booklet-pages">
+            <header className={styles.railSectionHeader}>
+              <span>02</span>
+              <div>
+                <p className={styles.sectionEyebrow}>Booklet pages</p>
+                <h2>Pages and content</h2>
+              </div>
+            </header>
+            <p className={styles.railSectionCopy}>
+              Select a page to edit it. Cover and review stay fixed.
+            </p>
+            <BookletPageComposer
+              draft={draft}
+              selectedPageKey={selectedPageKey}
+              assets={assets}
+              onSelectPage={setSelectedPageKey}
+              onAddPage={addPage}
+              onMovePage={movePage}
+              onRemovePage={removePage}
+              onUpdatePage={updatePage}
+              onUpdateFixedImage={updateFixedImage}
+              onReplaceAsset={updateAsset}
+              onUseAsCover={useAsCover}
+            />
+          </section>
+
+          <footer className={styles.railFooter}>
+            <span>Preview and download only</span>
+            <p>Nothing is saved or sent.</p>
+          </footer>
+        </aside>
+
+        <section
+          className={styles.previewWorkspace}
+          id="booklet-preview"
+          aria-label="Landscape A4 booklet preview"
+        >
+          <header className={styles.previewToolbar}>
+            <div>
+              <p className={styles.sectionEyebrow}>Customer preview</p>
+              <h2>{selectedPage.label}</h2>
+            </div>
+            <div className={styles.previewControls}>
+              <span>
+                {String(selectedPage.pageNumber).padStart(2, "0")} /{" "}
+                {String(pageModel.length).padStart(2, "0")}
+              </span>
               <button
                 type="button"
-                key={number}
-                aria-current={pageNumber === number ? "page" : undefined}
-                onClick={() => setPageNumber(number)}
+                onClick={() =>
+                  setSelectedPageKey(pageModel[selectedPageIndex - 1].key)
+                }
+                disabled={selectedPageIndex === 0}
               >
-                <span>{String(number).padStart(2, "0")}</span>
-                {label}
+                Previous
               </button>
-            );
-          })}
-        </nav>
-
-        <div className={styles.pageStage}>
-          <DesignBookletPages
-            pageNumber={pageNumber}
-            draft={draft}
-            content={content}
-            assets={assets}
-          />
-        </div>
-      </section>
-
-      <section
-        className={styles.editorSection}
-        id="booklet-details"
-        aria-label="Booklet controls"
-      >
-        <header className={styles.sectionHeader}>
-          <div className={styles.sectionNumber}>02</div>
-          <div>
-            <p className={styles.sectionEyebrow}>Booklet details</p>
-            <h2>Set the story.</h2>
-          </div>
-          <p>These changes stay in this browser until the PDF is downloaded.</p>
-        </header>
-
-        <div className={styles.detailsGrid}>
-          <label className={styles.field}>
-            <span>Customer name</span>
-            <input
-              value={draft.customerName}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  customerName: event.target.value,
-                }))
-              }
-              maxLength={80}
-            />
-          </label>
-          <label className={styles.field}>
-            <span>Booklet title</span>
-            <input
-              value={draft.projectTitle}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  projectTitle: event.target.value,
-                }))
-              }
-              maxLength={120}
-            />
-          </label>
-          <label className={styles.field}>
-            <span>Roof form</span>
-            <select
-              value={draft.roofFormId}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  roofFormId: event.target
-                    .value as DesignBookletDraft["roofFormId"],
-                }))
-              }
-            >
-              {DESIGN_BOOKLET_ROOF_FORM_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {content.roofForms[id].name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.field}>
-            <span>Roofing choice</span>
-            <select
-              value={draft.materialId}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  materialId: event.target
-                    .value as DesignBookletDraft["materialId"],
-                }))
-              }
-            >
-              {DESIGN_BOOKLET_MATERIAL_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {content.materials[id].label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <p className={styles.sourceNote}>
-          Roof-form and material wording is read directly from the governed
-          marketing content.
-        </p>
-      </section>
-
-      <section className={styles.imagesSection} id="booklet-images">
-        <header className={styles.sectionHeader}>
-          <div className={styles.sectionNumber}>03</div>
-          <div>
-            <p className={styles.sectionEyebrow}>Image sequence</p>
-            <h2>Choose the views.</h2>
-          </div>
-          <p>
-            The first render becomes the cover. Move the others to change the
-            booklet sequence.
-          </p>
-        </header>
-
-        <div className={styles.assetGrid}>
-          {draft.renderOrder.map((id, index) => {
-            const asset = assets[id];
-            return (
-              <article
-                className={styles.assetCard}
-                key={id}
-                data-render-slot={id}
-                data-cover-image={index === 0 ? "true" : undefined}
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedPageKey(pageModel[selectedPageIndex + 1].key)
+                }
+                disabled={selectedPageIndex === pageModel.length - 1}
               >
-                <div className={styles.assetImage}>
-                  <img src={asset.src} alt="" />
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                </div>
-                <div className={styles.assetCardBody}>
-                  <div>
-                    <span>{index === 0 ? "Cover image" : "Design view"}</span>
-                    <strong>{asset.label}</strong>
-                  </div>
-                  <div className={styles.assetActions}>
-                    <label className={styles.fileButton}>
-                      Replace
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        onChange={(event) =>
-                          updateAsset(id, event.target.files?.[0])
-                        }
-                      />
-                    </label>
-                    {index > 0 ? (
-                      <button type="button" onClick={() => makeCover(id)}>
-                        Make cover
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => changeRenderOrder(id, -1)}
-                      disabled={index === 0}
-                      aria-label={`Move ${asset.label} earlier`}
-                    >
-                      Earlier
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => changeRenderOrder(id, 1)}
-                      disabled={index === draft.renderOrder.length - 1}
-                      aria-label={`Move ${asset.label} later`}
-                    >
-                      Later
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-
-          <article className={`${styles.assetCard} ${styles.planAssetCard}`}>
-            <div className={styles.assetImage}>
-              <img src={assets.plan.src} alt="" />
-              <span>04</span>
+                Next
+              </button>
             </div>
-            <div className={styles.assetCardBody}>
-              <div>
-                <span>Plan</span>
-                <strong>{assets.plan.label}</strong>
-              </div>
-              <div className={styles.assetActions}>
-                <label className={styles.fileButton}>
-                  Replace plan
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    onChange={(event) =>
-                      updateAsset("plan", event.target.files?.[0])
-                    }
-                  />
-                </label>
-              </div>
+          </header>
+
+          <div className={styles.previewCanvas}>
+            <div className={styles.pageStage}>
+              <DesignBookletPages
+                selectedPageKey={selectedPageKey}
+                draft={draft}
+                content={content}
+                assets={assets}
+              />
             </div>
-          </article>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
 
-      <section className={styles.downloadSection}>
-        <div>
-          <p className={styles.sectionEyebrow}>Ready to review</p>
-          <h2>Take the landscape booklet with you.</h2>
-          <p>Preview and download only. Nothing is saved or sent.</p>
-        </div>
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={downloadPdf}
-          disabled={isDownloading}
-        >
-          {isDownloading ? "Building PDF..." : "Download landscape PDF"}
-        </button>
-      </section>
-
+      <p className={styles.srStatus} aria-live="polite">
+        {statusMessage}
+      </p>
       {downloadError ? (
         <p className={styles.errorMessage} role="alert">
           {downloadError}

@@ -48,36 +48,6 @@ function imageAssetUrl(filename: string): URL | null {
         "../../public/images/design-booklets/toni/booklet-toni-plan.png",
         import.meta.url,
       );
-    case "roof-form-pitched.jpg":
-      return new URL(
-        "../../public/images/design-booklets/reference/roof-form-pitched.jpg",
-        import.meta.url,
-      );
-    case "roof-form-gable.jpg":
-      return new URL(
-        "../../public/images/design-booklets/reference/roof-form-gable.jpg",
-        import.meta.url,
-      );
-    case "roof-form-hip.jpg":
-      return new URL(
-        "../../public/images/design-booklets/reference/roof-form-hip.jpg",
-        import.meta.url,
-      );
-    case "roof-form-box-perimeter.jpg":
-      return new URL(
-        "../../public/images/design-booklets/reference/roof-form-box-perimeter.jpg",
-        import.meta.url,
-      );
-    case "roofing-acrylic.jpg":
-      return new URL(
-        "../../public/images/design-booklets/reference/roofing-acrylic.jpg",
-        import.meta.url,
-      );
-    case "roofing-solid-timber.jpg":
-      return new URL(
-        "../../public/images/design-booklets/reference/roofing-solid-timber.jpg",
-        import.meta.url,
-      );
     default:
       return null;
   }

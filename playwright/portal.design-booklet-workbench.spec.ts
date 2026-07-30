@@ -5,7 +5,7 @@ import { PDFDocument } from "pdf-lib";
 const FIXTURE_PATH = "/qa/design-booklet-workbench-fixture";
 
 test.describe("design booklet workbench fixture", () => {
-  test("previews every A4 page, reorders renders, and downloads the PDF", async ({
+  test("composes mixed pages and downloads the matching dynamic PDF", async ({
     page,
   }, testInfo) => {
     const unexpectedRequests: string[] = [];
@@ -23,17 +23,68 @@ test.describe("design booklet workbench fixture", () => {
 
     await page.goto(FIXTURE_PATH);
     const workbench = page.locator("[data-design-booklet-workbench]");
+    const pageRail = page.getByRole("navigation", {
+      name: "Booklet pages",
+    });
+    const railButtons = pageRail.locator("[data-booklet-page-select]");
+
     await expect(workbench).toBeVisible();
     await expect(
       page.locator("[data-portal-sidebar-mode], [data-portal-mobile-top-bar]"),
     ).toHaveCount(0);
     await expect(
       page.getByRole("heading", {
-        name: "Build the booklet as a customer journey.",
+        name: "Shape the customer document.",
       }),
     ).toBeVisible();
     await expect(page.getByLabel("Roof form")).toHaveValue("pitched");
     await expect(page.getByLabel("Roofing choice")).toHaveValue("combination");
+    await expect(railButtons).toHaveCount(5);
+    await expect(railButtons.first()).toContainText("Cover");
+    await expect(railButtons.last()).toContainText("Review");
+
+    await page.getByRole("button", { name: "Add image page" }).click();
+    await expect(railButtons).toHaveCount(6);
+    await expect(page.locator('[data-page-kind="image"]')).toBeVisible();
+
+    await page.getByRole("button", { name: "Add drawing page" }).click();
+    await expect(railButtons).toHaveCount(7);
+    await expect(page.locator('[data-page-kind="drawings"]')).toBeVisible();
+
+    await page
+      .getByRole("button", {
+        name: /^One large \+ two small/,
+      })
+      .click();
+    const firstDrawingEditor = page.locator('[data-drawing-editor-slot="1"]');
+    await firstDrawingEditor.getByLabel("Drawing title").selectOption("custom");
+    await firstDrawingEditor
+      .getByRole("textbox", { name: "Custom title" })
+      .fill("Roof section");
+    await expect(
+      page.locator(
+        '[data-page-kind="drawings"] [data-drawing-slot="1"] figcaption',
+      ),
+    ).toHaveText("Roof section");
+    await expect(
+      page.locator('[data-page-kind="drawings"] [data-drawing-slot]'),
+    ).toHaveCount(3);
+
+    const addedDrawingCard = page.locator(
+      '[data-composer-page="drawing-page-2"]',
+    );
+    await addedDrawingCard
+      .getByRole("button", { name: "Move Drawings 2 earlier" })
+      .click();
+    await expect(railButtons.nth(4)).toContainText("Drawings 2");
+
+    await page
+      .locator('[data-composer-page="image-page-2"]')
+      .getByRole("button", { name: /^Remove / })
+      .click();
+    await expect(railButtons).toHaveCount(6);
+    await expect(railButtons.first()).toContainText("Cover");
+    await expect(railButtons.last()).toContainText("Review");
 
     await expect
       .poll(async () =>
@@ -50,13 +101,12 @@ test.describe("design booklet workbench fixture", () => {
       )
       .toBe(true);
 
-    for (let pageNumber = 1; pageNumber <= 6; pageNumber += 1) {
-      await page
-        .getByRole("navigation", { name: "Booklet pages" })
-        .getByRole("button")
-        .nth(pageNumber - 1)
-        .click();
-      const bookletPage = page.locator(`[data-booklet-page="${pageNumber}"]`);
+    const finalPageCount = await railButtons.count();
+    for (let pageIndex = 0; pageIndex < finalPageCount; pageIndex += 1) {
+      await railButtons.nth(pageIndex).click();
+      const bookletPage = page.locator(
+        `[data-booklet-page="${pageIndex + 1}"]`,
+      );
       await expect(bookletPage).toBeVisible();
       const bounds = await bookletPage.boundingBox();
       expect(bounds).not.toBeNull();
@@ -65,22 +115,9 @@ test.describe("design booklet workbench fixture", () => {
         2,
       );
       await bookletPage.screenshot({
-        path: testInfo.outputPath(`booklet-page-${pageNumber}.png`),
+        path: testInfo.outputPath(`booklet-page-${pageIndex + 1}.png`),
       });
     }
-
-    await page
-      .locator('[data-render-slot="render-1"]')
-      .getByRole("button", { name: "Make cover" })
-      .click();
-    await expect(page.locator('[data-render-slot="render-1"]')).toHaveAttribute(
-      "data-cover-image",
-      "true",
-    );
-    await expect(page.locator('[data-booklet-page="1"] img')).toHaveAttribute(
-      "src",
-      /booklet-toni-01\.png/,
-    );
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download PDF" }).click();
@@ -91,7 +128,7 @@ test.describe("design booklet workbench fixture", () => {
     const bytes = await readFile(downloadPath);
     expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
     const pdf = await PDFDocument.load(bytes);
-    expect(pdf.getPageCount()).toBe(6);
+    expect(pdf.getPageCount()).toBe(finalPageCount);
     for (const pdfPage of pdf.getPages()) {
       expect(pdfPage.getWidth()).toBeCloseTo(841.89, 1);
       expect(pdfPage.getHeight()).toBeCloseTo(595.28, 1);
@@ -99,7 +136,60 @@ test.describe("design booklet workbench fixture", () => {
     expect(unexpectedRequests).toEqual([]);
   });
 
-  test("keeps controls and the scaled A4 preview usable on a narrow screen", async ({
+  test("keeps the complete A4 preview inside common desktop viewports", async ({
+    page,
+  }) => {
+    for (const viewport of [
+      { width: 1920, height: 1080 },
+      { width: 1440, height: 900 },
+      { width: 1366, height: 768 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(FIXTURE_PATH);
+
+      const bookletPage = page.locator('[data-page-kind="cover"]');
+      const bounds = await bookletPage.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds?.x ?? -1).toBeGreaterThanOrEqual(0);
+      expect(bounds?.y ?? -1).toBeGreaterThanOrEqual(72);
+      expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(
+        viewport.width,
+      );
+      expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBeLessThanOrEqual(
+        viewport.height,
+      );
+      expect((bounds?.width ?? 0) / (bounds?.height ?? 1)).toBeCloseTo(
+        297 / 210,
+        2,
+      );
+
+      const layout = await page.evaluate(() => {
+        const rail = document.querySelector(
+          'aside[aria-label="Booklet controls"]',
+        );
+        const preview = document.querySelector(
+          'section[aria-label="Landscape A4 booklet preview"]',
+        );
+        return {
+          documentWidth: document.documentElement.scrollWidth,
+          documentHeight: document.documentElement.scrollHeight,
+          railOverflow:
+            rail instanceof HTMLElement &&
+            rail.scrollHeight > rail.clientHeight + 1,
+          previewOverflow:
+            preview instanceof HTMLElement &&
+            (preview.scrollWidth > preview.clientWidth + 1 ||
+              preview.scrollHeight > preview.clientHeight + 1),
+        };
+      });
+      expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width + 1);
+      expect(layout.documentHeight).toBeLessThanOrEqual(viewport.height + 1);
+      expect(layout.railOverflow).toBe(true);
+      expect(layout.previewOverflow).toBe(false);
+    }
+  });
+
+  test("keeps the composer and scaled A4 drawing preview usable on a narrow screen", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -109,9 +199,19 @@ test.describe("design booklet workbench fixture", () => {
     await expect(page.getByLabel("Landscape A4 booklet preview")).toBeVisible();
     await page
       .getByRole("navigation", { name: "Booklet pages" })
-      .getByRole("button", { name: /Plan/ })
+      .locator('[data-booklet-page-select="drawing-page-1"]')
       .click();
-    await expect(page.locator('[data-booklet-page="4"]')).toBeVisible();
+    await expect(page.locator('[data-page-kind="drawings"]')).toBeVisible();
+
+    await page
+      .locator('[data-composer-page="drawing-page-1"]')
+      .getByRole("button")
+      .first()
+      .click();
+    await page.getByRole("button", { name: /^Four-drawing grid/ }).click();
+    await expect(
+      page.locator('[data-page-kind="drawings"] [data-drawing-slot]'),
+    ).toHaveCount(4);
 
     const hasHorizontalDocumentOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 1,
