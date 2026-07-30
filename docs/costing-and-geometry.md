@@ -14,6 +14,8 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 
 All costing logic and base config live in `packages/costing` and are imported through `@sp/costing`.
 
+`loadCostingMaterialsV1()` is the narrow package-owned material-catalogue boundary for consumers such as infill stock-length lookup that do not need install, overhead, rule, hardware, BOM, or manifest data. `loadCostingConfigV1()` composes that exact merged catalogue into the unchanged full configuration contract. Do not make a narrow consumer import the full loader merely to read `materials`, and do not copy the catalogue into an app.
+
 Use package imports such as:
 
 ```ts

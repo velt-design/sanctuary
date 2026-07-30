@@ -1,52 +1,367 @@
-import { describe, expect, it } from 'vitest';
-import { TONI_DESIGN_BOOKLET_DRAFT } from './defaults';
+// @vitest-environment node
+
+import sharp from "sharp";
+import { describe, expect, it } from "vitest";
+import { createToniDesignBookletDraft } from "./defaults";
+import { DESIGN_BOOKLET_MAX_CONTENT_PAGES } from "./pageModel";
 import {
+  DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH,
+  DESIGN_BOOKLET_MAX_IMAGE_BYTES,
   DesignBookletRequestError,
+  loadToniDesignBookletImages,
   parseDesignBookletDraft,
   parseDesignBookletFormData,
-} from './request';
+} from "./request";
+import {
+  DESIGN_BOOKLET_DRAWING_LAYOUT_IDS,
+  DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
+  type DesignBookletDrawingPage,
+  type DesignBookletImagePage,
+} from "./types";
 
-describe('design booklet request parsing', () => {
-  it('accepts the supported template and render ordering fields', () => {
-    expect(
-      parseDesignBookletDraft({
-        customerName: '  Toni  ',
-        projectTitle: ' Pool room ',
-        roofFormId: 'gable',
-        materialId: 'solid-lined',
-        renderOrder: ['render-2', 'render-3', 'render-1'],
-      }),
-    ).toEqual({
-      customerName: 'Toni',
-      projectTitle: 'Pool room',
-      roofFormId: 'gable',
-      materialId: 'solid-lined',
-      renderOrder: ['render-2', 'render-3', 'render-1'],
+const VALID_PNG_BYTES = Uint8Array.from(
+  Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlZ4S8AAAAASUVORK5CYII=",
+    "base64",
+  ),
+);
+
+function drawingPage(draft = createToniDesignBookletDraft()) {
+  const page = draft.contentPages.find(
+    (candidate): candidate is DesignBookletDrawingPage =>
+      candidate.kind === "drawings",
+  );
+  if (!page) throw new Error("The Toni fixture must include a drawing page.");
+  return page;
+}
+
+function imagePage(index: number): DesignBookletImagePage {
+  return {
+    id: `content-${index}`,
+    kind: "image",
+    image: {
+      assetId: `content-${index}-image`,
+      defaultAssetId: "render-1",
+      altText: `Concept image ${index}`,
+      focalPoint: "center",
+    },
+  };
+}
+
+function formDataForDraft(draft = createToniDesignBookletDraft()): FormData {
+  const formData = new FormData();
+  formData.set("draft", JSON.stringify(draft));
+  return formData;
+}
+
+function pngFile(
+  type = "image/png",
+  bytes: Uint8Array = VALID_PNG_BYTES,
+): File {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new File([copy.buffer], "concept.png", { type });
+}
+
+describe("design booklet request parsing", () => {
+  it("strictly parses and normalizes a mixed dynamic draft", () => {
+    const draft = createToniDesignBookletDraft();
+    draft.customerName = "  Toni   Morgan  ";
+    draft.projectTitle = "  Pool   room concept ";
+    draft.contentPages = [
+      draft.contentPages[2]!,
+      draft.contentPages[0]!,
+      draft.contentPages[1]!,
+    ];
+    drawingPage(draft).drawings[0].title = {
+      kind: "custom",
+      value: "  Roof plan  ",
+    };
+
+    const parsed = parseDesignBookletDraft(draft);
+
+    expect(parsed.customerName).toBe("Toni Morgan");
+    expect(parsed.projectTitle).toBe("Pool room concept");
+    expect(parsed.contentPages.map((page) => page.id)).toEqual([
+      "drawing-page-1",
+      "image-page-1",
+      "image-page-2",
+    ]);
+    expect(drawingPage(parsed).drawings[0].title).toEqual({
+      kind: "custom",
+      value: "Roof plan",
     });
   });
 
-  it('falls back safely for unsupported template identifiers and ordering', () => {
-    const parsed = parseDesignBookletDraft({
-      customerName: '',
-      projectTitle: '',
-      roofFormId: 'unsupported',
-      materialId: 'unsupported',
-      renderOrder: ['render-1'],
-    });
+  it("accepts the two-page minimum with no optional content", () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
 
-    expect(parsed).toEqual(TONI_DESIGN_BOOKLET_DRAFT);
+    expect(parseDesignBookletDraft(draft).contentPages).toEqual([]);
   });
 
-  it('rejects an unsupported image type before generating a PDF', async () => {
-    const formData = new FormData();
-    formData.set('draft', JSON.stringify(TONI_DESIGN_BOOKLET_DRAFT));
-    formData.set(
-      'asset:plan',
-      new File(['not-an-image'], 'plan.svg', { type: 'image/svg+xml' }),
+  it("rejects unsupported schemas and page types instead of falling back", () => {
+    const unsupportedVersion = {
+      ...createToniDesignBookletDraft(),
+      schemaVersion: 1,
+    };
+    const unsupportedPage = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    unsupportedPage.contentPages[0]!.kind = "marketing";
+
+    expect(() => parseDesignBookletDraft(unsupportedVersion)).toThrow(
+      /version is unsupported/i,
     );
+    expect(() => parseDesignBookletDraft(unsupportedPage)).toThrow(
+      /invalid page type/i,
+    );
+  });
+
+  it("rejects duplicate identifiers across pages, drawings, and assets", () => {
+    const duplicatePageId = createToniDesignBookletDraft();
+    duplicatePageId.contentPages[0]!.id = duplicatePageId.cover.assetId;
+    const duplicateDrawingId = createToniDesignBookletDraft();
+    drawingPage(duplicateDrawingId).drawings[0].id =
+      duplicateDrawingId.contentPages[0]!.id;
+
+    expect(() => parseDesignBookletDraft(duplicatePageId)).toThrow(
+      /identifier is duplicated/i,
+    );
+    expect(() => parseDesignBookletDraft(duplicateDrawingId)).toThrow(
+      /identifier is duplicated/i,
+    );
+  });
+
+  it("accepts the content-page limit and rejects one page beyond it", () => {
+    const atLimit = createToniDesignBookletDraft();
+    atLimit.contentPages = Array.from(
+      { length: DESIGN_BOOKLET_MAX_CONTENT_PAGES },
+      (_, index) => imagePage(index + 1),
+    );
+    const overLimit = structuredClone(atLimit);
+    overLimit.contentPages.push(
+      imagePage(DESIGN_BOOKLET_MAX_CONTENT_PAGES + 1),
+    );
+
+    expect(parseDesignBookletDraft(atLimit).contentPages).toHaveLength(
+      DESIGN_BOOKLET_MAX_CONTENT_PAGES,
+    );
+    expect(() => parseDesignBookletDraft(overLimit)).toThrow(
+      new RegExp(`up to ${DESIGN_BOOKLET_MAX_CONTENT_PAGES}`, "i"),
+    );
+  });
+
+  it.each(DESIGN_BOOKLET_DRAWING_LAYOUT_IDS)(
+    "accepts the %s drawing layout",
+    (layout) => {
+      const draft = createToniDesignBookletDraft();
+      drawingPage(draft).layout = layout;
+
+      expect(drawingPage(parseDesignBookletDraft(draft)).layout).toBe(layout);
+    },
+  );
+
+  it.each(DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS)(
+    "accepts the %s drawing title preset",
+    (value) => {
+      const draft = createToniDesignBookletDraft();
+      drawingPage(draft).drawings[0].title = { kind: "preset", value };
+
+      expect(
+        drawingPage(parseDesignBookletDraft(draft)).drawings[0].title,
+      ).toEqual({ kind: "preset", value });
+    },
+  );
+
+  it("rejects an invalid drawing layout and the wrong reusable slot count", () => {
+    const invalidLayout = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    const layoutPage = invalidLayout.contentPages[2]!;
+    layoutPage.layout = "freeform";
+
+    const missingSlot = structuredClone(
+      createToniDesignBookletDraft(),
+    ) as unknown as {
+      contentPages: Array<Record<string, unknown>>;
+    };
+    const slotPage = missingSlot.contentPages[2]!;
+    slotPage.drawings = (slotPage.drawings as unknown[]).slice(0, 3);
+
+    expect(() => parseDesignBookletDraft(invalidLayout)).toThrow(
+      /invalid drawing layout/i,
+    );
+    expect(() => parseDesignBookletDraft(missingSlot)).toThrow(
+      /four reusable drawing slots/i,
+    );
+  });
+
+  it.each([
+    ["   ", /custom title is required/i],
+    [
+      "x".repeat(DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH + 1),
+      new RegExp(
+        `${DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH} characters or fewer`,
+        "i",
+      ),
+    ],
+  ] as const)("rejects an invalid custom drawing title", (value, message) => {
+    const draft = createToniDesignBookletDraft();
+    drawingPage(draft).drawings[0].title = { kind: "custom", value };
+
+    expect(() => parseDesignBookletDraft(draft)).toThrow(message);
+  });
+
+  it("loads the default image for every renderable Toni asset", async () => {
+    const draft = createToniDesignBookletDraft();
+    const images = await loadToniDesignBookletImages(draft);
+
+    expect(Object.keys(images).sort()).toEqual([
+      "cover-image",
+      "drawing-page-1-drawing-1",
+      "image-page-1-image",
+      "image-page-2-image",
+      "review-image",
+    ]);
+    for (const image of Object.values(images)) {
+      expect(image.mediaType).toBe("image/png");
+      expect(Array.from(image.bytes.slice(0, 8))).toEqual([
+        137, 80, 78, 71, 13, 10, 26, 10,
+      ]);
+    }
+  });
+
+  it("accepts a valid uploaded PNG and preserves its bytes", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+    const formData = formDataForDraft(draft);
+    formData.set("asset:cover-image", pngFile());
+
+    const parsed = await parseDesignBookletFormData(formData);
+
+    expect(parsed.draft.contentPages).toEqual([]);
+    expect(parsed.images["cover-image"]).toEqual({
+      bytes: VALID_PNG_BYTES,
+      mediaType: "image/png",
+    });
+    expect(parsed.images["review-image"]?.bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  it("normalizes EXIF orientation before an uploaded image reaches the PDF", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+    const orientedJpeg = await sharp({
+      create: {
+        width: 40,
+        height: 20,
+        channels: 3,
+        background: "#b84a32",
+      },
+    })
+      .withMetadata({ orientation: 6 })
+      .jpeg()
+      .toBuffer();
+    expect((await sharp(orientedJpeg).metadata()).orientation).toBe(6);
+
+    const formData = formDataForDraft(draft);
+    formData.set(
+      "asset:cover-image",
+      new File([orientedJpeg], "oriented-concept.jpg", {
+        type: "image/jpeg",
+      }),
+    );
+
+    const parsed = await parseDesignBookletFormData(formData);
+    const normalized = parsed.images["cover-image"];
+    if (!normalized) throw new Error("The normalized cover image is missing.");
+    expect(normalized.mediaType).toBe("image/jpeg");
+    const normalizedMetadata = await sharp(normalized.bytes).metadata();
+    expect(normalizedMetadata).toMatchObject({
+      format: "jpeg",
+      width: 20,
+      height: 40,
+    });
+    expect(normalizedMetadata.orientation).toBeUndefined();
+  });
+
+  it("rejects unsupported MIME types before image decoding", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+    const formData = formDataForDraft(draft);
+    formData.set("asset:cover-image", pngFile("image/svg+xml"));
 
     await expect(parseDesignBookletFormData(formData)).rejects.toBeInstanceOf(
       DesignBookletRequestError,
+    );
+    await expect(parseDesignBookletFormData(formData)).rejects.toThrow(
+      /PNG or JPEG/i,
+    );
+  });
+
+  it("rejects unreadable and mismatched image signatures", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+    const unreadable = formDataForDraft(draft);
+    unreadable.set(
+      "asset:cover-image",
+      new File(["not an image"], "concept.png", { type: "image/png" }),
+    );
+    const mismatched = formDataForDraft(draft);
+    mismatched.set("asset:cover-image", pngFile("image/jpeg"));
+
+    await expect(parseDesignBookletFormData(unreadable)).rejects.toThrow(
+      /not a readable PNG or JPEG/i,
+    );
+    await expect(parseDesignBookletFormData(mismatched)).rejects.toThrow(
+      /does not match its file type/i,
+    );
+  });
+
+  it("rejects a single image above the upload limit with status 413", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+    const formData = formDataForDraft(draft);
+    formData.set(
+      "asset:cover-image",
+      new File(
+        [new Uint8Array(DESIGN_BOOKLET_MAX_IMAGE_BYTES + 1).buffer],
+        "oversized.png",
+        { type: "image/png" },
+      ),
+    );
+
+    await expect(parseDesignBookletFormData(formData)).rejects.toMatchObject({
+      status: 413,
+    });
+  });
+
+  it("rejects duplicate, unused, and string-based asset entries", async () => {
+    const draft = createToniDesignBookletDraft();
+    draft.contentPages = [];
+
+    const duplicate = formDataForDraft(draft);
+    duplicate.append("asset:cover-image", pngFile());
+    duplicate.append("asset:cover-image", pngFile());
+
+    const unused = formDataForDraft(draft);
+    unused.set("asset:unused-image", pngFile());
+
+    const remote = formDataForDraft(draft);
+    remote.set("asset:cover-image", "https://example.com/concept.png");
+
+    await expect(parseDesignBookletFormData(duplicate)).rejects.toThrow(
+      /uploaded more than once/i,
+    );
+    await expect(parseDesignBookletFormData(unused)).rejects.toThrow(
+      /not used by this booklet/i,
+    );
+    await expect(parseDesignBookletFormData(remote)).rejects.toThrow(
+      /uploaded image data is invalid/i,
     );
   });
 });

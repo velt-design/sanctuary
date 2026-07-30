@@ -2,15 +2,15 @@ import bomStrategyJson from '../config/bom/bom_strategy_v1.json';
 import hardwareJson from '../config/hardware/hardware_placeholders_v1.json';
 import installActionsJson from '../config/install_actions_v1.8_2026-07-28.json';
 import manifestJson from '../config/costing_manifest_v1.8_2026-07-28.json';
-import materialsAdditionsJson from '../config/materials/sanctuary_materials_additions_v1_2026-01-08.json';
-import materialsJson from '../config/materials/sanctuary_pricebook_materials_2025-11_exgst_v1.1.json';
 import overheadsJson from '../config/overheads_v1.1_2026-01-08.json';
 import costingRulesJson from '../config/costing_rules_v1.3_2026-01-08.json';
+import { loadCostingMaterialsV1, type MaterialsPricebookV1 } from './materialsConfig';
+
+export { loadCostingMaterialsV1, type MaterialsPricebookV1 } from './materialsConfig';
 
 export const ACTIVE_COSTING_MANIFEST_PATH = 'packages/costing/src/config/costing_manifest_v1.8_2026-07-28.json' as const;
 
 export type CostingManifestV1 = typeof manifestJson;
-export type MaterialsPricebookV1 = typeof materialsJson;
 export type HardwarePlaceholdersV1 = typeof hardwareJson;
 export type BomStrategyV1 = typeof bomStrategyJson;
 export type InstallActionsV1 = typeof installActionsJson;
@@ -57,21 +57,9 @@ export function loadCostingConfigV1(): CostingConfigV1 {
     );
   }
 
-  const mergedMaterials: MaterialsPricebookV1 = {
-    ...materialsJson,
-    items: [...materialsJson.items],
-  };
-  const baseIndex = new Map<string, number>(materialsJson.items.map((item, idx) => [item.id, idx]));
-  const additions = (materialsAdditionsJson as unknown as { items?: Array<MaterialsPricebookV1['items'][number]> }).items ?? [];
-  for (const item of additions) {
-    const idx = baseIndex.get(item.id);
-    if (idx === undefined) mergedMaterials.items.push(item);
-    else mergedMaterials.items[idx] = item;
-  }
-
   return {
     manifest: manifestJson,
-    materials: mergedMaterials,
+    materials: loadCostingMaterialsV1(),
     hardware: hardwareJson,
     bomStrategy: bomStrategyJson,
     installActions: installActionsJson,

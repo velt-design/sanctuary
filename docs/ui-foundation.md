@@ -41,6 +41,7 @@ authoritative.
 - Lightweight information, warning, error/blocking alerts and alert actions: `apps/portal/components/ui/foundation/FoundationAlert.tsx`; richer data-state, calculator, financial, permission, and task/schedule feedback: `apps/portal/components/ui/foundation/FoundationFeedback.tsx`
 - Focus-managed portal drawer: `apps/portal/components/ui/drawer/Drawer.tsx`; focus trap shared with the existing modal through `apps/portal/components/ui/focusTrap.ts`
 - Keyboard-operable overflow menu: `apps/portal/components/ui/foundation/OverflowMenu.tsx`
+- Portalled action-menu and interactive-popover positioning, dismissal, and focus return: `apps/portal/components/ui/PortalFloatingPanel.tsx`. Action lists use menu/menuitem semantics; the interactive User settings surface uses labelled dialog semantics.
 - Detail-page tabs, key-value and metric groups, action panels, timelines, and task rows: `apps/portal/components/ui/foundation/FoundationOperational.tsx`
 - Project stages and commercial statuses: `apps/portal/components/ui/foundation/SanctuaryStatus.tsx`
 - Dashboard, index, and detail header variants: `apps/portal/components/layout/PageHeader.tsx`

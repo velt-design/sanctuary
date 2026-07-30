@@ -1,12 +1,12 @@
 # Design Booklets
 
-Status: Current first-round implementation.
+Status: Current session-only implementation.
 
 Owner surface: authenticated standalone Portal route at `/staff/design-booklets`.
 
 ## Purpose
 
-The Design Booklet Workbench assembles a customer-facing concept booklet from a plan, three renders, one roof-form template, and one roofing-choice template. The first bundled example is Toni's pitched pergola with combination roofing.
+The Design Booklet Workbench assembles a customer-facing landscape concept booklet from a fixed cover and review page plus a user-composed sequence of image and drawing pages. The bundled starting point uses Toni's plan and three renders.
 
 This surface is deliberately standalone:
 
@@ -18,24 +18,46 @@ This surface is deliberately standalone:
 
 The parent staff layout still mounts the portal's existing ambient `DbGate`, but the booklet route and its API make no database or workflow calls.
 
-## Current Booklet
+## Page Model
 
-The preview and PDF contain six A4 landscape pages:
+The cover is always page one and the review page is always last. They cannot be removed or reordered. The middle `contentPages` sequence may contain any mix of image and drawing pages; staff can add, remove, and reorder either type. Page numbers and the total page count are derived from that sequence, so the booklet may contain only the two fixed pages or up to 24 middle pages.
 
-1. cover;
-2. current design overview;
-3. feature render;
-4. concept plan;
-5. selected roof form as an image-led marketing-style feature;
-6. selected roofing choice as one material section or, for combination roofing, separate acrylic and COLORSTEEL/timber-ceiling sections.
+The fixed cover contains the customer name, booklet title, selected roof form, selected roofing choice, and a full-page image. Staff can replace and refocus the image. A middle image page is a full-bleed image with only the small `Concept image` header and customer/page footer overlaid. Its image can be replaced, assigned one of nine focal positions, given a browser-preview screen-reader description, or used as the cover. The generated PDF is not currently a tagged PDF, so that description is not embedded in the download.
 
-The initial render order is Toni render 3, render 1, then render 2. Staff can replace the plan or any render with a local PNG/JPEG, reorder the renders, or assign a new cover. Customer name, booklet title, roof form, and roofing choice are editable.
+Each drawing page keeps four reusable drawing slots and exposes one of four layouts:
 
-All edits remain in browser memory. PDF generation accepts the current draft and files in one authenticated request and returns a download. There is no persistence, shared-storage upload, email delivery, audit event, or workflow automation.
+- one large drawing;
+- two equal drawings;
+- one large drawing plus two smaller drawings;
+- a four-drawing grid.
+
+Changing to a layout with fewer drawings hides rather than discards the other slots. Visible drawings can be reordered. Each image is shown without full-bleed cropping and has a clean caption underneath. Captions use `Plan`, `Section`, `Elevation`, or `Isometric`, or an 80-character custom title.
+
+The final `Review the concept` page has fixed, approved review prompts and call to action. Staff can replace and refocus its closing image, but cannot edit the copy in the workbench.
+
+Toni's default booklet contains five pages:
+
+1. cover using render 3;
+2. image page using render 1;
+3. image page using render 2;
+4. one-large drawing page using the plan;
+5. review page using render 3.
+
+## Session And Render Ownership
+
+All edits and replacement-image object URLs remain in browser memory. Reloading the route restores the Toni defaults. PDF generation posts the current schema-v2 draft and only its renderable custom files in one authenticated request, returns a private no-store download, and does not save the draft or files.
+
+`buildDesignBookletRenderModel()` is the shared owner of page order, stable page keys, labels, numbering, and count for the browser preview and PDF. The drawing-layout definitions, image focal positions, title resolution, and fixed review copy are also shared.
+
+`presentation.ts` owns the merged browser/PDF visual contract. It keeps the artifact inside a compact `3.8cqw` frame in the preview, equal to `31.99pt` on the canonical landscape A4 canvas; assigns Instrument Sans to display roles and Inter to body roles; bottom-anchors the cover story so title wrapping grows upward from a stable lower composition; and fixes the review page at a 45% image / 55% story split. The browser scales the shared point model from the booklet container while `pdf-lib` consumes the same geometry and font roles directly, so responsive preview sizing does not change the exported composition.
+
+On desktop, the route chrome presents the existing editors in a compact, independently scrolling control panel beside a wider, independently scrolling preview workspace. At 1080px and below, the workspace returns to the roomy single-column control-and-preview flow. This shell is route-owned and does not alter the shared page renderer or PDF geometry.
+
+There is no persistence, shared-storage upload, email delivery, audit event, project association, or workflow automation.
 
 ## Content Ownership
 
-`apps/marketing/data/products.ts` remains the canonical owner of generic roof-form and material guidance. `apps/marketing/lib/designBookletContent.ts` selects existing strings without strengthening them; the short roofing-section labels are presentation labels, while their explanatory sentences stay governed by the marketing product owner. The server-only Portal adapter at `apps/portal/lib/designBooklets/marketingContent.ts` exposes only the small serializable model required by the booklet.
+`apps/marketing/data/products.ts` remains the canonical owner of generic roof-form and material wording. `apps/marketing/lib/designBookletContent.ts` selects existing content without strengthening it. The server-only Portal adapter at `apps/portal/lib/designBooklets/marketingContent.ts` exposes only the roof-form names and material labels needed on the cover.
 
 The first material choices use the public labels from `generalRoofPreference`:
 
@@ -43,19 +65,40 @@ The first material choices use the public labels from `generalRoofPreference`:
 - Solid or lined roofing
 - Combination roofing
 
-Do not turn the `timber` intake key into a customer-facing "timber roof" claim. Do not add warranty, waterproofing, all-weather, performance percentage, timing, pricing, consent, span, or similar claims. New generic wording belongs in the governed marketing owner first; the booklet adapter should only select it.
+The review-page wording is fixed in `apps/portal/lib/designBooklets/pageModel.ts` and is the explicitly approved exception to the marketing-owned cover labels. Changes to that customer-facing copy require business approval.
+
+Do not turn the `timber` intake key into a customer-facing "timber roof" claim. Do not add warranty, waterproofing, all-weather, performance percentage, timing, pricing, consent, span, or similar claims. New generic roof-form or material wording belongs in the governed marketing owner first; the booklet adapter should only select it.
 
 ## Runtime Owners
 
-- `apps/portal/app/staff/design-booklets/**`: workbench, A4 HTML preview, and route-owned styling.
-- `apps/portal/lib/designBooklets/**`: draft contract, Toni defaults, request validation, default-asset loading, PDF renderer, and marketing adapter.
+- `apps/portal/app/staff/design-booklets/**`: workbench, page composer, A4 HTML preview, and route-owned styling.
+- `apps/portal/lib/designBooklets/types.ts`: schema-v2 draft and page contracts.
+- `apps/portal/lib/designBooklets/pageModel.ts`: shared page resolution, drawing layouts, focal positions, review copy, and composition helpers.
+- `apps/portal/lib/designBooklets/defaults.ts`: Toni asset catalogue and default draft.
+- `apps/portal/lib/designBooklets/request.ts`: multipart draft and image validation.
+- `apps/portal/lib/designBooklets/pdf.ts`: landscape PDF renderer over the shared page model.
+- `apps/portal/lib/designBooklets/marketingContent.ts`: narrow marketing-content adapter.
 - `apps/portal/app/api/staff/v1/design-booklets/pdf/route.ts`: authenticated PDF download.
-- `apps/portal/public/images/design-booklets/toni/**`: bundled first-round Toni plan and renders.
-- `apps/portal/public/images/design-booklets/reference/**`: stable route-owned copies of matching imagery from the governed marketing asset set.
+- `apps/portal/public/images/design-booklets/toni/**`: bundled Toni plan and renders.
 - `apps/portal/app/qa/design-booklet-workbench-fixture/page.tsx`: credential-free QA mirror when `ENABLE_PORTAL_QA_FIXTURES=1`.
 - `apps/portal/app/api/qa/design-booklet-workbench/pdf/route.ts`: gated QA download using the production parser and renderer.
 
-The PDF is rendered server-side with `pdf-lib`, embedded Inter fonts, the Sanctuary customer-artifact palette, and the same six-page order as the HTML preview. The landscape layouts use the marketing website's image-led hero, split editorial, product-feature and material-story rhythms while remaining route-owned. Roof-form and roofing reference images are copied from the marketing public asset set so browser and server-side PDF rendering use the same stable files. Instrument Sans is loaded locally for the workbench and browser preview without changing workspace package manifests.
+The PDF is rendered server-side with `pdf-lib`, the Sanctuary customer-artifact palette, and the same local Instrument Sans display and Inter body assets used by the browser artifact. The workbench loads those fonts without changing the workspace package manifests.
+
+## Request And PDF Limits
+
+The client and server enforce the same 15 MB per-image limit. The server additionally:
+
+- rejects a declared multipart request above 128 MiB before parsing its body, leaving 8 MiB of headroom over the file-total allowance for the draft and multipart framing;
+- accepts PNG and JPEG only, decodes each upload, and verifies that its bytes match its declared media type;
+- normalizes EXIF orientation before an uploaded image reaches the PDF renderer;
+- limits all custom uploads in one request to 120 MB;
+- limits each custom upload to 12,000 pixels on either side and 50 megapixels;
+- allows at most 24 middle content pages;
+- limits customer name to 80 characters, booklet title to 120, image descriptions to 240, and custom drawing titles to 80;
+- rejects invalid or duplicate identifiers, duplicate file fields, unreferenced uploads, unsupported schema values, and malformed page or drawing-slot data.
+
+Oversize requests return `413`; other invalid requests return `400`. Successful PDFs and error responses are private and no-store.
 
 ## Verification
 
@@ -66,13 +109,13 @@ node node_modules/vitest/vitest.mjs run apps/marketing/lib/designBookletContent.
 node node_modules/@playwright/test/cli.js test playwright/portal.design-booklet-workbench.spec.ts --project=portal-fixture --workers=1
 ```
 
-For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`, render the result with Poppler, and inspect all six pages. Browser visual QA should inspect all page buttons plus desktop and narrow layouts on the gated fixture.
+For deterministic PDF evidence, set `DESIGN_BOOKLET_OUTPUT_DIR=output/pdf` while running `apps/portal/lib/designBooklets/pdf.test.ts`. This writes the default five-page Toni booklet and a six-page drawing-layout fixture. Render both with Poppler and inspect every page. Browser visual QA should inspect every default page, mixed add/remove/reorder behavior, all drawing layouts, image focal positions, a custom drawing title, PDF parity, and desktop plus narrow layouts on the gated fixture.
 
 ## Explicit Non-goals
 
 - project-record association or task creation;
 - Design Workbench or drawing geometry reuse;
-- template persistence or a reusable template administration UI;
+- draft persistence or a reusable template administration UI;
 - database migrations or shared storage;
 - sending, approval links, customer portal access, or automation;
 - quote, pricing, costing, timing, performance, or warranty content.

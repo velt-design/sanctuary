@@ -7,7 +7,14 @@ type MarketingConversionEventType =
   | 'marketing.lead_submitted'
   | 'marketing.site_visit_booked'
   | 'marketing.quote_accepted'
-  | 'marketing.deposit_received';
+  | 'marketing.deposit_received'
+  | 'marketing.project_lost';
+
+type MarketingAttributionConsent = {
+  analytics: boolean;
+  marketing: boolean;
+  capturedAt?: string;
+};
 
 type MarketingAttributionSummary = {
   enquiryRequestId?: string | null;
@@ -21,12 +28,15 @@ type MarketingAttributionSummary = {
   };
   landingPage?: string | null;
   referrer?: string | null;
+  analyticsClientId?: string | null;
+  consent?: MarketingAttributionConsent | null;
 };
 
 type SupabaseLike = Pick<SupabaseClient, 'from'>;
 
 const CLICK_ID_KEYS = ['gclid', 'gbraid', 'wbraid'] as const;
 const MAX_STRING_LENGTH = 600;
+const GA_CLIENT_ID_PATTERN = /^\d{1,20}\.\d{1,20}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -50,6 +60,18 @@ function cleanStringRecord(value: unknown, allowKey: (key: string) => boolean): 
   return out;
 }
 
+function cleanConsent(value: unknown): MarketingAttributionConsent | null {
+  if (!isRecord(value) || typeof value.analytics !== 'boolean' || typeof value.marketing !== 'boolean') {
+    return null;
+  }
+  const capturedAt = cleanString(value.capturedAt);
+  return {
+    analytics: value.analytics,
+    marketing: value.marketing,
+    ...(capturedAt ? { capturedAt } : null),
+  };
+}
+
 export function normalizeMarketingAttributionInput(
   value: unknown,
   fallback?: { utm?: unknown; page?: unknown; source?: unknown },
@@ -67,6 +89,8 @@ export function normalizeMarketingAttributionInput(
     ...cleanStringRecord(fallback?.utm, (key) => key.startsWith('utm_')),
     ...cleanStringRecord(input.utm, (key) => key.startsWith('utm_')),
   };
+  const consent = cleanConsent(input.consent);
+  const analyticsClientId = consent?.analytics ? cleanString(input.analyticsClientId) : null;
 
   return {
     source: cleanString(input.source) ?? cleanString(fallback?.source),
@@ -75,6 +99,11 @@ export function normalizeMarketingAttributionInput(
     clickIds,
     landingPage: cleanString(input.landingPage),
     referrer: cleanString(input.referrer),
+    analyticsClientId:
+      analyticsClientId && GA_CLIENT_ID_PATTERN.test(analyticsClientId)
+        ? analyticsClientId
+        : null,
+    consent,
   };
 }
 

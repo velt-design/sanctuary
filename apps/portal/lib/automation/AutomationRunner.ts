@@ -77,6 +77,22 @@ type BookSiteVisitPayload = {
   notes?: string | null;
 };
 
+async function recordConfirmedSiteVisitConversion(
+  projectId: string,
+  payload: BookSiteVisitPayload | null,
+): Promise<void> {
+  if (payload?.status !== 'CONFIRMED') return;
+  await recordMarketingConversionEvent({
+    type: 'marketing.site_visit_booked',
+    projectId,
+    payload: {
+      status: 'CONFIRMED',
+      scheduledStart: payload.scheduledStart ?? null,
+      scheduledEnd: payload.scheduledEnd ?? null,
+    },
+  });
+}
+
 type GenerateCostPlanPayload = {
   tier?: 'TIER_1' | 'TIER_2' | 'TIER_3' | 'TIER_4';
 };
@@ -575,14 +591,10 @@ class AutomationRunner {
           await this.onProjectCreated(projectId, (payload ?? {}) as ProjectCreatedPayload, false);
           return;
         case 'ui.action.book_site_visit':
-          await recordMarketingConversionEvent({
-            type: 'marketing.site_visit_booked',
+          await recordConfirmedSiteVisitConversion(
             projectId,
-            payload: {
-              scheduledStart: (payload as BookSiteVisitPayload | null)?.scheduledStart ?? null,
-              scheduledEnd: (payload as BookSiteVisitPayload | null)?.scheduledEnd ?? null,
-            },
-          });
+            payload as BookSiteVisitPayload | null,
+          );
           return;
         case 'ui.action.mark_deposit_received':
           await recordMarketingConversionEvent({
@@ -607,14 +619,10 @@ class AutomationRunner {
         return;
       case 'ui.action.book_site_visit':
         await this.onBookSiteVisit(projectId, (payload ?? {}) as BookSiteVisitPayload);
-        await recordMarketingConversionEvent({
-          type: 'marketing.site_visit_booked',
+        await recordConfirmedSiteVisitConversion(
           projectId,
-          payload: {
-            scheduledStart: (payload as BookSiteVisitPayload | null)?.scheduledStart ?? null,
-            scheduledEnd: (payload as BookSiteVisitPayload | null)?.scheduledEnd ?? null,
-          },
-        });
+          payload as BookSiteVisitPayload | null,
+        );
         return;
       case 'ui.action.complete_site_visit':
         await this.onCompleteSiteVisit(projectId);

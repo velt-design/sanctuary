@@ -1,4 +1,5 @@
-import { loadCostingConfigV1, type CostingConfigV1 } from './config';
+import type { CostingConfigV1 } from './config';
+import { loadCostingMaterialsV1, type MaterialsPricebookV1 } from './materialsConfig';
 import type {
   CalculateInfillsTakeoffOptionsV1,
   InfillAcrylicSourceV1,
@@ -396,9 +397,8 @@ function packSheets(
   };
 }
 
-function stockLengthsForProfile(config: CostingConfigV1 | undefined, profile: string, fallback: number[]): number[] {
-  if (!config) return fallback;
-  const values = config.materials.items
+function stockLengthsForProfile(materials: MaterialsPricebookV1, profile: string, fallback: number[]): number[] {
+  const values = materials.items
     .filter((item) => item.category === 'aluminium_extrusion' && item.unit === 'bar')
     .filter((item) => String((item.attributes as Record<string, unknown> | undefined)?.profile ?? '').toLowerCase() === profile.toLowerCase())
     .map((item) => Number((item.attributes as Record<string, unknown> | undefined)?.length_m ?? 0))
@@ -621,7 +621,7 @@ function finalizeTakeoff(
   instanceCount: number,
   scopeId: string,
   options: CalculateInfillsTakeoffOptionsV1,
-  config?: CostingConfigV1,
+  materials: MaterialsPricebookV1,
 ): InfillTakeoffV1 {
   const kerf = Number.isFinite(options.kerf_m) && Number(options.kerf_m) >= 0 ? Number(options.kerf_m) : DEFAULT_KERF_M;
   const sheetLength = positive(options.sheet_stock_length_m) ?? DEFAULT_SHEET_LENGTH_M;
@@ -642,8 +642,8 @@ function finalizeTakeoff(
     ),
   ];
   for (const [profile, material, stockLengths] of [
-    ['Joiners', 'joiner', options.joiner_stock_lengths_m ?? stockLengthsForProfile(config, 'Joiners', DEFAULT_LINEAR_STOCK_LENGTHS_M)],
-    ['50x50', 'support_50x50', options.support_stock_lengths_m ?? stockLengthsForProfile(config, '50x50', [6])],
+    ['Joiners', 'joiner', options.joiner_stock_lengths_m ?? stockLengthsForProfile(materials, 'Joiners', DEFAULT_LINEAR_STOCK_LENGTHS_M)],
+    ['50x50', 'support_50x50', options.support_stock_lengths_m ?? stockLengthsForProfile(materials, '50x50', [6])],
   ] as const) {
     const profileCuts = linearCuts.filter((cut) => cut.profile === profile);
     const colours = Array.from(new Set(profileCuts.map((cut) => cut.colour ?? options.extrusion_colour ?? '')));
@@ -692,14 +692,14 @@ export function calculateInfillsTakeoffV1(
   options: CalculateInfillsTakeoffOptionsV1 = {},
   config?: CostingConfigV1,
 ): InfillTakeoffV1 {
-  const effectiveConfig = config ?? loadCostingConfigV1();
+  const effectiveMaterials = config?.materials ?? loadCostingMaterialsV1();
   const resolvedOptions = {
     ...options,
     kerf_m: Number.isFinite(options.kerf_m) && Number(options.kerf_m) >= 0 ? Number(options.kerf_m) : DEFAULT_KERF_M,
     sheet_stock_length_m: positive(options.sheet_stock_length_m) ?? DEFAULT_SHEET_LENGTH_M,
     sheet_stock_width_m: positive(options.sheet_stock_width_m) ?? DEFAULT_SHEET_WIDTH_M,
-    joiner_stock_lengths_m: options.joiner_stock_lengths_m ?? stockLengthsForProfile(effectiveConfig, 'Joiners', DEFAULT_LINEAR_STOCK_LENGTHS_M),
-    support_stock_lengths_m: options.support_stock_lengths_m ?? stockLengthsForProfile(effectiveConfig, '50x50', [6]),
+    joiner_stock_lengths_m: options.joiner_stock_lengths_m ?? stockLengthsForProfile(effectiveMaterials, 'Joiners', DEFAULT_LINEAR_STOCK_LENGTHS_M),
+    support_stock_lengths_m: options.support_stock_lengths_m ?? stockLengthsForProfile(effectiveMaterials, '50x50', [6]),
   };
   const scopeId = options.scope_id?.trim() || 'module';
   const items: InfillTakeoffItemV1[] = [];
@@ -800,7 +800,7 @@ export function calculateInfillsTakeoffV1(
     inputs.reduce((sum, input) => sum + Math.max(1, Math.round(Number(input.qty ?? 1))), 0),
     scopeId,
     resolvedOptions,
-    effectiveConfig,
+    effectiveMaterials,
   );
 }
 
@@ -809,7 +809,7 @@ export function poolInfillsTakeoffsV1(
   options: CalculateInfillsTakeoffOptionsV1 = {},
   config?: CostingConfigV1,
 ): InfillTakeoffV1 {
-  const effectiveConfig = config ?? loadCostingConfigV1();
+  const effectiveMaterials = config?.materials ?? loadCostingMaterialsV1();
   const valid = takeoffs.filter((takeoff): takeoff is InfillTakeoffV1 => Boolean(takeoff));
   return finalizeTakeoff(
     valid.flatMap((takeoff) => takeoff.items),
@@ -817,6 +817,6 @@ export function poolInfillsTakeoffsV1(
     valid.reduce((sum, takeoff) => sum + takeoff.totals.instance_count, 0),
     options.scope_id?.trim() || 'job',
     { ...options, kerf_m: options.kerf_m ?? valid[0]?.kerf_m ?? DEFAULT_KERF_M },
-    effectiveConfig,
+    effectiveMaterials,
   );
 }

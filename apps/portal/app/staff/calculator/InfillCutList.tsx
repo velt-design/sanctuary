@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PortalMenu } from '@/components/ui/PortalFloatingPanel';
 import styles from './CalculatorGrid.module.css';
 import type { CutListRow, InfillComputeStatus } from './infillCompute';
 import { buildInfillCutListDisplayRows } from './infillCutListPresentation';
@@ -147,14 +147,19 @@ export default function InfillCutList({ status, rows }: InfillCutListProps) {
           >
             Download cutting list
           </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className={styles.infillIconButton}>More</button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={6} className={styles.infillExportMenu}>
-              <DropdownMenuItem onSelect={() => void copyCsv()}>Copy cutting list</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <PortalMenu
+            label="More cutting list actions"
+            trigger="More"
+            triggerClassName={styles.infillIconButton}
+            align="end"
+            sideOffset={6}
+            contentClassName={styles.infillExportMenu}
+            items={[{
+              id: 'copy-cutting-list',
+              label: 'Copy cutting list',
+              onSelect: () => void copyCsv(),
+            }]}
+          />
         </div>
       </div>
 

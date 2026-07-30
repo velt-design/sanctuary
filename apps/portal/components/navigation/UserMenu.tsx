@@ -4,13 +4,11 @@ import { CircleUser, LogOut, Palette, RotateCcw, Save, Trash2 } from 'lucide-rea
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './UserMenu.module.css';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  PortalPanelAction,
+  PortalPanelLabel,
+  PortalPanelSeparator,
+  PortalPopover,
+} from '@/components/ui/PortalFloatingPanel';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { applyPortalThemeToDocument } from '@/lib/theme/client';
@@ -451,23 +449,28 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
   const controlsDisabled = savingTheme || savingPreset || loadingTheme;
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="User menu" className={styles.trigger}>
-          <CircleUser aria-hidden="true" size={20} strokeWidth={2} className={styles.icon} />
-        </button>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent side="right" align="end" className={styles.menuContent}>
-        <DropdownMenuLabel>
+    <PortalPopover
+      open={open}
+      onOpenChange={setOpen}
+      label="User settings"
+      trigger={<CircleUser aria-hidden="true" size={20} strokeWidth={2} className={styles.icon} />}
+      triggerAriaLabel="User menu"
+      triggerClassName={styles.trigger}
+      side="right"
+      align="end"
+      contentClassName={styles.menuContent}
+    >
+      {({ close }) => (
+        <>
+        <PortalPanelLabel>
           <div className={styles.labelContent}>
             <span className={styles.email} title={email ?? ''}>
               {email ?? 'Signed in'}
             </span>
             <span className={styles.role}>{roleLabel ?? 'Admin access'}</span>
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        </PortalPanelLabel>
+        <PortalPanelSeparator />
         <div className={styles.themeSection} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <div className={styles.themeHeader}>
             <Palette aria-hidden="true" size={14} strokeWidth={2} />
@@ -592,17 +595,19 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
                     : 'Custom preset selected.'}
           </div>
         </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
+        <PortalPanelSeparator />
+        <PortalPanelAction
           className={styles.signOutItem}
-          onSelect={() => {
+          onClick={() => {
+            close();
             void signOut('/login');
           }}
         >
           <LogOut aria-hidden="true" className={styles.signOutIcon} size={16} strokeWidth={2} />
           Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </PortalPanelAction>
+        </>
+      )}
+    </PortalPopover>
   );
 }

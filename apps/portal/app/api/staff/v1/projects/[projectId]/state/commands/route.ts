@@ -1,5 +1,6 @@
 import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
 import { parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
+import { recordMarketingConversionEvent } from '@/lib/marketingAttribution/server';
 import { runProjectOperationalStateCommand } from '@/lib/projects/workItems/commands';
 import { getAuthoritativeProjectWorkProjection } from '@/lib/projects/workItems/getAuthoritativeProjectWorkProjection';
 import {
@@ -8,13 +9,17 @@ import {
   workJsonError,
   workJsonOk,
 } from '@/lib/projects/workItems/routeSupport';
-import { PROJECT_CLOSED_OUTCOMES } from '@/lib/projects/workItems/types';
+import {
+  PROJECT_CLOSED_OUTCOMES,
+  PROJECT_LOST_OUTCOMES,
+} from '@/lib/projects/workItems/types';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 const COMMANDS = new Set(['ACTIVATE', 'WAIT', 'CLOSE', 'REOPEN']);
 const CLOSED_OUTCOMES = new Set<string>(PROJECT_CLOSED_OUTCOMES);
+const LOST_OUTCOMES = new Set<string>(PROJECT_LOST_OUTCOMES);
 
 function boundedText(value: unknown, maximum: number): string | null {
   if (typeof value !== 'string') return null;
@@ -98,6 +103,17 @@ export async function POST(
       command,
       payload,
     });
+    if (
+      command === 'CLOSE'
+      && typeof payload.outcome === 'string'
+      && LOST_OUTCOMES.has(payload.outcome)
+    ) {
+      await recordMarketingConversionEvent({
+        type: 'marketing.project_lost',
+        projectId: projectUuid,
+        payload: { outcome: payload.outcome },
+      });
+    }
     try {
       const projectWork = await getAuthoritativeProjectWorkProjection(projectId, auth.supabase);
       return workJsonOk({

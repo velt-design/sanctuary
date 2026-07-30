@@ -1,45 +1,96 @@
 import "server-only";
 
+import sharp, { type Metadata } from "sharp";
 import {
+  DESIGN_BOOKLET_DEFAULT_ASSET_IDS,
+  DESIGN_BOOKLET_DRAWING_LAYOUT_IDS,
+  DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS,
+  DESIGN_BOOKLET_FOCAL_POINT_IDS,
   DESIGN_BOOKLET_MATERIAL_IDS,
-  DESIGN_BOOKLET_RENDER_IDS,
   DESIGN_BOOKLET_ROOF_FORM_IDS,
-  type DesignBookletAssetId,
+  DESIGN_BOOKLET_SCHEMA_VERSION,
+  type DesignBookletAssetSource,
+  type DesignBookletContentPage,
+  type DesignBookletDefaultAssetId,
   type DesignBookletDraft,
+  type DesignBookletDrawingItem,
+  type DesignBookletDrawingLayoutId,
+  type DesignBookletDrawingPage,
+  type DesignBookletDrawingTitle,
+  type DesignBookletFocalPointId,
   type DesignBookletImage,
+  type DesignBookletImagePlacement,
   type DesignBookletImages,
   type DesignBookletMaterialId,
-  type DesignBookletRenderId,
   type DesignBookletRoofFormId,
 } from "./types";
+import { TONI_DESIGN_BOOKLET_ASSETS } from "./defaults";
 import {
-  TONI_DESIGN_BOOKLET_ASSETS,
-  TONI_DESIGN_BOOKLET_DRAFT,
-} from "./defaults";
+  DESIGN_BOOKLET_MAX_IMAGE_BYTES,
+  DESIGN_BOOKLET_MAX_CONTENT_PAGES,
+  renderableDesignBookletAssetSources,
+} from "./pageModel";
 import { readDesignBookletDefaultImage } from "./pdfAssets";
 
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-const ASSET_IDS: DesignBookletAssetId[] = [
-  ...DESIGN_BOOKLET_RENDER_IDS,
-  "plan",
-];
+export { DESIGN_BOOKLET_MAX_IMAGE_BYTES } from "./pageModel";
+const DESIGN_BOOKLET_MAX_TOTAL_UPLOAD_BYTES = 120 * 1024 * 1024;
+export const DESIGN_BOOKLET_MAX_REQUEST_BODY_BYTES =
+  DESIGN_BOOKLET_MAX_TOTAL_UPLOAD_BYTES + 8 * 1024 * 1024;
+const DESIGN_BOOKLET_MAX_IMAGE_DIMENSION = 12_000;
+const DESIGN_BOOKLET_MAX_IMAGE_PIXELS = 50_000_000;
+export const DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH = 80;
+
+const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const supportedMediaTypes = new Set(["image/png", "image/jpeg"]);
 
 export class DesignBookletRequestError extends Error {
-  constructor(message: string) {
+  readonly status: 400 | 413;
+
+  constructor(message: string, status: 400 | 413 = 400) {
     super(message);
     this.name = "DesignBookletRequestError";
+    this.status = status;
   }
 }
 
-function cleanText(
+function valueRecord(value: unknown, context: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new DesignBookletRequestError(`${context} is invalid.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function requiredText(
   value: unknown,
-  fallback: string,
+  context: string,
   maxLength: number,
 ): string {
-  if (typeof value !== "string") return fallback;
+  if (typeof value !== "string") {
+    throw new DesignBookletRequestError(`${context} is required.`);
+  }
   const cleaned = value.replace(/\s+/g, " ").trim();
-  return cleaned ? cleaned.slice(0, maxLength) : fallback;
+  if (!cleaned) {
+    throw new DesignBookletRequestError(`${context} is required.`);
+  }
+  if (cleaned.length > maxLength) {
+    throw new DesignBookletRequestError(
+      `${context} must be ${maxLength} characters or fewer.`,
+    );
+  }
+  return cleaned;
+}
+
+function stableId(value: unknown, context: string, ids: Set<string>): string {
+  if (typeof value !== "string" || !SAFE_ID.test(value)) {
+    throw new DesignBookletRequestError(
+      `${context} has an invalid identifier.`,
+    );
+  }
+  if (ids.has(value)) {
+    throw new DesignBookletRequestError(`${context} identifier is duplicated.`);
+  }
+  ids.add(value);
+  return value;
 }
 
 function isRoofFormId(value: unknown): value is DesignBookletRoofFormId {
@@ -52,122 +103,368 @@ function isMaterialId(value: unknown): value is DesignBookletMaterialId {
   return DESIGN_BOOKLET_MATERIAL_IDS.includes(value as DesignBookletMaterialId);
 }
 
-function isRenderOrder(value: unknown): value is DesignBookletRenderId[] {
-  if (
-    !Array.isArray(value) ||
-    value.length !== DESIGN_BOOKLET_RENDER_IDS.length
-  ) {
-    return false;
-  }
-  return (
-    new Set(value).size === DESIGN_BOOKLET_RENDER_IDS.length &&
-    value.every((item) =>
-      DESIGN_BOOKLET_RENDER_IDS.includes(item as DesignBookletRenderId),
-    )
+function isDefaultAssetId(
+  value: unknown,
+): value is DesignBookletDefaultAssetId {
+  return DESIGN_BOOKLET_DEFAULT_ASSET_IDS.includes(
+    value as DesignBookletDefaultAssetId,
   );
 }
 
-export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
-  if (!raw || typeof raw !== "object") {
-    throw new DesignBookletRequestError("Missing design booklet draft.");
-  }
-  const value = raw as Record<string, unknown>;
+function isFocalPointId(value: unknown): value is DesignBookletFocalPointId {
+  return DESIGN_BOOKLET_FOCAL_POINT_IDS.includes(
+    value as DesignBookletFocalPointId,
+  );
+}
 
+function isDrawingLayoutId(
+  value: unknown,
+): value is DesignBookletDrawingLayoutId {
+  return DESIGN_BOOKLET_DRAWING_LAYOUT_IDS.includes(
+    value as DesignBookletDrawingLayoutId,
+  );
+}
+
+function parseAssetSource(
+  raw: unknown,
+  context: string,
+  ids: Set<string>,
+): DesignBookletAssetSource {
+  const value = valueRecord(raw, context);
+  const defaultAssetId = value.defaultAssetId;
+  if (!isDefaultAssetId(defaultAssetId)) {
+    throw new DesignBookletRequestError(
+      `${context} has an invalid default image.`,
+    );
+  }
   return {
-    customerName: cleanText(
-      value.customerName,
-      TONI_DESIGN_BOOKLET_DRAFT.customerName,
-      80,
+    assetId: stableId(value.assetId, `${context} image`, ids),
+    defaultAssetId,
+    altText: requiredText(value.altText, `${context} image description`, 240),
+  };
+}
+
+function parseImagePlacement(
+  raw: unknown,
+  context: string,
+  ids: Set<string>,
+): DesignBookletImagePlacement {
+  const value = valueRecord(raw, context);
+  if (!isFocalPointId(value.focalPoint)) {
+    throw new DesignBookletRequestError(
+      `${context} has an invalid image focus.`,
+    );
+  }
+  return {
+    ...parseAssetSource(value, context, ids),
+    focalPoint: value.focalPoint,
+  };
+}
+
+function parseDrawingTitle(
+  raw: unknown,
+  context: string,
+): DesignBookletDrawingTitle {
+  const value = valueRecord(raw, context);
+  if (
+    value.kind === "preset" &&
+    DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS.includes(
+      value.value as (typeof DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS)[number],
+    )
+  ) {
+    return {
+      kind: "preset",
+      value:
+        value.value as (typeof DESIGN_BOOKLET_DRAWING_TITLE_PRESET_IDS)[number],
+    };
+  }
+  if (value.kind === "custom") {
+    return {
+      kind: "custom",
+      value: requiredText(
+        value.value,
+        `${context} custom title`,
+        DESIGN_BOOKLET_MAX_CUSTOM_TITLE_LENGTH,
+      ),
+    };
+  }
+  throw new DesignBookletRequestError(`${context} title is invalid.`);
+}
+
+function parseDrawingItem(
+  raw: unknown,
+  context: string,
+  ids: Set<string>,
+): DesignBookletDrawingItem {
+  const value = valueRecord(raw, context);
+  return {
+    id: stableId(value.id, context, ids),
+    image: parseAssetSource(value.image, context, ids),
+    title: parseDrawingTitle(value.title, context),
+  };
+}
+
+function parseContentPage(
+  raw: unknown,
+  index: number,
+  ids: Set<string>,
+): DesignBookletContentPage {
+  const context = `Content page ${index + 1}`;
+  const value = valueRecord(raw, context);
+  const id = stableId(value.id, context, ids);
+
+  if (value.kind === "image") {
+    return {
+      id,
+      kind: "image",
+      image: parseImagePlacement(value.image, context, ids),
+    };
+  }
+
+  if (value.kind === "drawings") {
+    if (!isDrawingLayoutId(value.layout)) {
+      throw new DesignBookletRequestError(
+        `${context} has an invalid drawing layout.`,
+      );
+    }
+    if (!Array.isArray(value.drawings) || value.drawings.length !== 4) {
+      throw new DesignBookletRequestError(
+        `${context} must provide four reusable drawing slots.`,
+      );
+    }
+    return {
+      id,
+      kind: "drawings",
+      layout: value.layout,
+      drawings: value.drawings.map((drawing, drawingIndex) =>
+        parseDrawingItem(
+          drawing,
+          `${context}, drawing ${drawingIndex + 1}`,
+          ids,
+        ),
+      ) as DesignBookletDrawingPage["drawings"],
+    };
+  }
+
+  throw new DesignBookletRequestError(`${context} has an invalid page type.`);
+}
+
+export function parseDesignBookletDraft(raw: unknown): DesignBookletDraft {
+  const value = valueRecord(raw, "Design booklet draft");
+  if (value.schemaVersion !== DESIGN_BOOKLET_SCHEMA_VERSION) {
+    throw new DesignBookletRequestError(
+      "The design booklet draft version is unsupported.",
+    );
+  }
+  if (!isRoofFormId(value.roofFormId)) {
+    throw new DesignBookletRequestError("Roof form is invalid.");
+  }
+  if (!isMaterialId(value.materialId)) {
+    throw new DesignBookletRequestError("Roofing choice is invalid.");
+  }
+  if (!Array.isArray(value.contentPages)) {
+    throw new DesignBookletRequestError("Content pages are invalid.");
+  }
+  if (value.contentPages.length > DESIGN_BOOKLET_MAX_CONTENT_PAGES) {
+    throw new DesignBookletRequestError(
+      `A booklet can contain up to ${DESIGN_BOOKLET_MAX_CONTENT_PAGES} content pages.`,
+    );
+  }
+
+  const ids = new Set<string>();
+  const reviewPage = valueRecord(value.reviewPage, "Review page");
+  return {
+    schemaVersion: DESIGN_BOOKLET_SCHEMA_VERSION,
+    customerName: requiredText(value.customerName, "Customer name", 80),
+    projectTitle: requiredText(value.projectTitle, "Booklet title", 120),
+    roofFormId: value.roofFormId,
+    materialId: value.materialId,
+    cover: parseImagePlacement(value.cover, "Cover", ids),
+    contentPages: value.contentPages.map((page, index) =>
+      parseContentPage(page, index, ids),
     ),
-    projectTitle: cleanText(
-      value.projectTitle,
-      TONI_DESIGN_BOOKLET_DRAFT.projectTitle,
-      120,
-    ),
-    roofFormId: isRoofFormId(value.roofFormId)
-      ? value.roofFormId
-      : TONI_DESIGN_BOOKLET_DRAFT.roofFormId,
-    materialId: isMaterialId(value.materialId)
-      ? value.materialId
-      : TONI_DESIGN_BOOKLET_DRAFT.materialId,
-    renderOrder: isRenderOrder(value.renderOrder)
-      ? [...value.renderOrder]
-      : [...TONI_DESIGN_BOOKLET_DRAFT.renderOrder],
+    reviewPage: {
+      image: parseImagePlacement(reviewPage.image, "Review page", ids),
+    },
   };
 }
 
 async function readDefaultAsset(
-  assetId: DesignBookletAssetId,
+  asset: DesignBookletAssetSource,
 ): Promise<DesignBookletImage> {
+  const definition = TONI_DESIGN_BOOKLET_ASSETS[asset.defaultAssetId];
   return {
-    bytes: await readDesignBookletDefaultImage(
-      TONI_DESIGN_BOOKLET_ASSETS[assetId].filename,
-    ),
-    mediaType: "image/png",
+    bytes: await readDesignBookletDefaultImage(definition.filename),
+    mediaType: definition.mediaType,
+  };
+}
+
+async function readUploadedImage(
+  entry: File,
+  context: string,
+): Promise<DesignBookletImage> {
+  if (entry.size === 0) {
+    throw new DesignBookletRequestError(`${context} is empty.`);
+  }
+  if (entry.size > DESIGN_BOOKLET_MAX_IMAGE_BYTES) {
+    throw new DesignBookletRequestError(
+      `${context} must be 15 MB or smaller.`,
+      413,
+    );
+  }
+  if (!supportedMediaTypes.has(entry.type)) {
+    throw new DesignBookletRequestError(
+      `${context} must be a PNG or JPEG image.`,
+    );
+  }
+  if (typeof entry.arrayBuffer !== "function") {
+    throw new DesignBookletRequestError(`${context} could not be read.`);
+  }
+
+  const bytes = new Uint8Array(await entry.arrayBuffer());
+  let metadata: Metadata;
+  try {
+    metadata = await sharp(bytes, {
+      limitInputPixels: DESIGN_BOOKLET_MAX_IMAGE_PIXELS,
+    }).metadata();
+  } catch {
+    throw new DesignBookletRequestError(
+      `${context} is not a readable PNG or JPEG image.`,
+    );
+  }
+
+  const expectedFormat = entry.type === "image/png" ? "png" : "jpeg";
+  if (metadata.format !== expectedFormat) {
+    throw new DesignBookletRequestError(
+      `${context} content does not match its file type.`,
+    );
+  }
+  if (
+    !metadata.width ||
+    !metadata.height ||
+    metadata.width > DESIGN_BOOKLET_MAX_IMAGE_DIMENSION ||
+    metadata.height > DESIGN_BOOKLET_MAX_IMAGE_DIMENSION ||
+    metadata.width * metadata.height > DESIGN_BOOKLET_MAX_IMAGE_PIXELS
+  ) {
+    throw new DesignBookletRequestError(
+      `${context} dimensions are too large.`,
+      413,
+    );
+  }
+
+  let normalizedBytes = bytes;
+  if (metadata.orientation && metadata.orientation !== 1) {
+    try {
+      const normalized = sharp(bytes, {
+        limitInputPixels: DESIGN_BOOKLET_MAX_IMAGE_PIXELS,
+      }).rotate();
+      normalizedBytes = new Uint8Array(
+        entry.type === "image/png"
+          ? await normalized.png().toBuffer()
+          : await normalized.jpeg({ quality: 92 }).toBuffer(),
+      );
+    } catch {
+      throw new DesignBookletRequestError(
+        `${context} orientation could not be normalized.`,
+      );
+    }
+  }
+
+  return {
+    bytes: normalizedBytes,
+    mediaType: entry.type as DesignBookletImage["mediaType"],
   };
 }
 
 async function readImageEntry(
   formData: FormData,
-  assetId: DesignBookletAssetId,
+  asset: DesignBookletAssetSource,
 ): Promise<DesignBookletImage> {
-  const entry = formData.get(`asset:${assetId}`);
-  if (!entry || typeof entry === "string") return readDefaultAsset(assetId);
-  if (entry.size === 0) return readDefaultAsset(assetId);
-  if (entry.size > MAX_IMAGE_BYTES) {
+  const key = `asset:${asset.assetId}`;
+  const entries = formData.getAll(key);
+  if (entries.length > 1) {
     throw new DesignBookletRequestError(
-      `${TONI_DESIGN_BOOKLET_ASSETS[assetId].label} must be 15 MB or smaller.`,
+      `${asset.altText} was uploaded more than once.`,
     );
   }
-  if (!supportedMediaTypes.has(entry.type)) {
-    throw new DesignBookletRequestError(
-      `${TONI_DESIGN_BOOKLET_ASSETS[assetId].label} must be a PNG or JPEG image.`,
-    );
+  const entry = entries[0];
+  if (entry === undefined) return readDefaultAsset(asset);
+  if (typeof entry === "string") {
+    throw new DesignBookletRequestError(`${asset.altText} is invalid.`);
   }
-  if (typeof entry.arrayBuffer !== "function") {
-    throw new DesignBookletRequestError(
-      `${TONI_DESIGN_BOOKLET_ASSETS[assetId].label} could not be read.`,
-    );
+  return readUploadedImage(entry, asset.altText);
+}
+
+function uploadedAssetEntries(formData: FormData): Array<[string, File]> {
+  const uploads: Array<[string, File]> = [];
+  for (const [key, entry] of formData.entries()) {
+    if (!key.startsWith("asset:")) continue;
+    if (typeof entry === "string") {
+      throw new DesignBookletRequestError("Uploaded image data is invalid.");
+    }
+    uploads.push([key, entry]);
   }
-  return {
-    bytes: new Uint8Array(await entry.arrayBuffer()),
-    mediaType: entry.type as DesignBookletImage["mediaType"],
-  };
+  return uploads;
 }
 
 export async function parseDesignBookletFormData(formData: FormData): Promise<{
   draft: DesignBookletDraft;
   images: DesignBookletImages;
 }> {
-  const draftValue = formData.get("draft");
-  if (typeof draftValue !== "string") {
+  const draftValues = formData.getAll("draft");
+  if (draftValues.length !== 1 || typeof draftValues[0] !== "string") {
     throw new DesignBookletRequestError("Missing design booklet draft.");
   }
 
   let parsedDraft: unknown;
   try {
-    parsedDraft = JSON.parse(draftValue);
+    parsedDraft = JSON.parse(draftValues[0]);
   } catch {
     throw new DesignBookletRequestError("Invalid design booklet draft.");
   }
+  const draft = parseDesignBookletDraft(parsedDraft);
+  const assets = renderableDesignBookletAssetSources(draft);
+  const allowedUploadKeys = new Set(
+    assets.map((asset) => `asset:${asset.assetId}`),
+  );
+  const uploads = uploadedAssetEntries(formData);
+  for (const [key] of uploads) {
+    if (!allowedUploadKeys.has(key)) {
+      throw new DesignBookletRequestError(
+        "The request contains an image that is not used by this booklet.",
+      );
+    }
+  }
+  const totalUploadBytes = uploads.reduce(
+    (total, [, entry]) => total + entry.size,
+    0,
+  );
+  if (totalUploadBytes > DESIGN_BOOKLET_MAX_TOTAL_UPLOAD_BYTES) {
+    throw new DesignBookletRequestError(
+      "The combined image upload must be 120 MB or smaller.",
+      413,
+    );
+  }
 
   const entries = await Promise.all(
-    ASSET_IDS.map(
-      async (assetId) =>
-        [assetId, await readImageEntry(formData, assetId)] as const,
+    assets.map(
+      async (asset) =>
+        [asset.assetId, await readImageEntry(formData, asset)] as const,
     ),
   );
   return {
-    draft: parseDesignBookletDraft(parsedDraft),
-    images: Object.fromEntries(entries) as DesignBookletImages,
+    draft,
+    images: Object.fromEntries(entries),
   };
 }
 
-export async function loadToniDesignBookletImages(): Promise<DesignBookletImages> {
+export async function loadToniDesignBookletImages(
+  draft: DesignBookletDraft,
+): Promise<DesignBookletImages> {
   const entries = await Promise.all(
-    ASSET_IDS.map(
-      async (assetId) => [assetId, await readDefaultAsset(assetId)] as const,
+    renderableDesignBookletAssetSources(draft).map(
+      async (asset) => [asset.assetId, await readDefaultAsset(asset)] as const,
     ),
   );
-  return Object.fromEntries(entries) as DesignBookletImages;
+  return Object.fromEntries(entries);
 }

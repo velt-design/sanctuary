@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requireStaffContext: vi.fn(),
   runProjectOperationalStateCommand: vi.fn(),
   getAuthoritativeProjectWorkProjection: vi.fn(),
+  recordMarketingConversionEvent: vi.fn(),
 }));
 
 vi.mock('@/lib/api/staffApi', async () => {
@@ -20,6 +21,10 @@ vi.mock('@/lib/projects/workItems/commands', () => ({
 
 vi.mock('@/lib/projects/workItems/getAuthoritativeProjectWorkProjection', () => ({
   getAuthoritativeProjectWorkProjection: mocks.getAuthoritativeProjectWorkProjection,
+}));
+
+vi.mock('@/lib/marketingAttribution/server', () => ({
+  recordMarketingConversionEvent: mocks.recordMarketingConversionEvent,
 }));
 
 import { POST } from './route';
@@ -163,6 +168,42 @@ describe('POST /api/staff/v1/projects/[projectId]/state/commands', () => {
       command: { committed: true, replayed: true, rowVersion: 3 },
       projectWork: PROJECT_WORK,
     });
+  });
+
+  it('records a structured lost conversion after a successful close command', async () => {
+    const response = await POST(
+      request({
+        command: 'CLOSE',
+        commandId: COMMAND_ID,
+        expectedRowVersion: 1,
+        outcome: 'LOST_BUDGET_PRICE',
+        cancellationReason: 'Customer declined the proposal',
+      }),
+      CONTEXT,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.recordMarketingConversionEvent).toHaveBeenCalledWith({
+      type: 'marketing.project_lost',
+      projectId: PROJECT_UUID,
+      payload: { outcome: 'LOST_BUDGET_PRICE' },
+    });
+  });
+
+  it('does not record completed work as a lost conversion', async () => {
+    const response = await POST(
+      request({
+        command: 'CLOSE',
+        commandId: COMMAND_ID,
+        expectedRowVersion: 1,
+        outcome: 'COMPLETE',
+        cancellationReason: 'All remaining obligations are complete',
+      }),
+      CONTEXT,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.recordMarketingConversionEvent).not.toHaveBeenCalled();
   });
 
   it('maps stale state versions to 409', async () => {

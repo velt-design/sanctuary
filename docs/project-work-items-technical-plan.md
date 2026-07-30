@@ -1,6 +1,6 @@
 # Project Work Items Technical And Cutover Plan
 
-Status: The approved new-project V2 and Work Queue/legacy-review slices are staging-verified in the repository. Migration `20260729_000002` was applied in staging on 2026-07-29. The exact reviewed `20260729_000003` and `20260729_000004` files were rollback-rehearsed and replay-applied to positively identified staging on 2026-07-30; readiness, schema/body/permission verification, authenticated legacy reads, and a disposable new-V2-project command smoke passed. Existing projects remain legacy; only one explicitly reviewed project can ever cross through the guarded command. Production is unchanged. The Project Overview redesign is separately approved under `project-command-centre-architecture.md`.
+Status: The approved new-project V2 and Work Queue/legacy-review slices are staging-verified in the repository. Migration `20260729_000002` was applied in staging on 2026-07-29. The exact reviewed `20260729_000003` and `20260729_000004` files were rollback-rehearsed and replay-applied to positively identified staging on 2026-07-30; readiness, schema/body/permission verification, authenticated legacy reads, and disposable new-V2-project command smoke passed. The real authenticated Work Queue route also reaches its fresh row-or-empty state on staging through a GET-only smoke that blocks every application mutation request. Existing projects remain legacy; only one explicitly reviewed project can ever cross through the guarded command. Production is unchanged: the live portal still serves pre-V2 commit `32a66ec3`, and read-only catalog checks against the positively identified production project confirm the Project Work foundation and queue are absent. The Project Overview redesign is separately approved under `project-command-centre-architecture.md`.
 
 Purpose: replace the competing legacy project-task systems with one small, durable work-item foundation without weakening lifecycle, commercial, local-first, authentication, public-token, or side-effect boundaries.
 
@@ -23,6 +23,12 @@ Known boundaries and limitations before broad rollout:
 - project-specific Command Centre, snapshot, work-item, full Work Queue, and Dashboard reads share the same server-owned action composition;
 - Contacted classification is recommendation-only and cannot prove historical outreach when structured evidence is absent; and
 - broad existing-project migration and legacy retirement remain separate reviewed operations.
+
+Staff confirmed on 2026-07-30 that the legacy task surfaces have not been used
+as an operational company workflow; the portal has primarily supported
+quoting. That removes historical task adoption as a launch blocker, but it
+does not authorise an automatic backfill. Existing projects remain legacy by
+default, and any later opt-in stays one explicitly reviewed project at a time.
 
 ## 1. Evidence And Existing Risk
 
@@ -975,10 +981,25 @@ No design-workbench, geometry, calculator-input, or costing-source boundary chan
 
 ## 19. Remaining Rollout Decisions
 
-Application implementation is approved. The following still require explicit environment or product approval:
+Application implementation is approved. Production is now positively identified
+as Supabase project `iytanftukulcnavossmd`, but identification is not cutover
+authority. The live portal commit is `32a66ec3`, while the approved Overview and
+Project Work implementation sits within a much broader unpublished commit range.
+Production has completed daily physical backups and WAL-G, but PITR is disabled,
+so a daily restore is disaster recovery rather than a clean feature rollback.
 
-- applying the migration to a positively identified environment and enabling new-project V2 creation there;
-- applying `20260729_000003`/`20260729_000004` to a positively identified environment;
+Before production activation, freeze one clean application release SHA, verify
+that exact release against staging, agree one short project/enquiry/quote write
+window and recovery owner, then deploy the V2-capable portal before applying the
+three original exact SQL files. Do not use `db push`, `migration up`, or repair
+the colliding `20260729` ledger version. Production verification is
+authenticated and read-only; resume writers only after Work Queue, Overview,
+legacy quoting, catalog, RLS/grants, and reconciliation checks pass.
+
+The following still require explicit environment or product approval:
+
+- the exact production application release SHA and controlled write window;
+- applying `20260729_000002`, `20260729_000003`, and `20260729_000004` to production and enabling new-project V2 creation there;
 - every individual reviewed existing-project cutover;
 - calendar coverage beyond 2027;
 - later legacy retirement; and
