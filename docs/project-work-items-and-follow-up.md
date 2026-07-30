@@ -16,10 +16,12 @@ The current worktree implements the V2 foundation for newly created projects onl
 - initialization records `Active` state and one first-email obligation, due after two Auckland open hours with a separate four-hour SLA;
 - a missing contact email blocks that first obligation until the email is supplied;
 - lead and quote cadences advance only from durable domain evidence or an explicit staff confirmation;
-- the current Overview consumes a V2 adapter without a visual redesign;
+- the Overview V2 composition consumes the existing server projection through one mixed-model Project Work region while preserving the current portal visual system;
+- V2 remains actionable through the existing versioned server commands when reads are fresh and matching, while legacy stage rows are filtered read-only compatibility;
+- Call and Site Visit work is absent from Overview; a prohibited server-selected legacy action is presented as `Legacy work needs review` without browser-side replacement selection;
 - the staff-wide Work Queue and Dashboard preview consume one server-composed current row per V2 project;
 - marker inventory, operational state, and project enrichment are direct bounded reads rather than fragile embedded PostgREST relationships; missing or truncated authoritative inventory fails closed;
-- Overview, snapshot, summary, Work Queue, and Dashboard caches are invalidated through one Project Work cache owner after accepted commands;
+- Overview, snapshot, summary, Work Queue, and Dashboard cache changes run through `projectWorkCache.ts`: V2 projection fan-out has one helper, `patchProjectCommandCentreCache` is the sole complete command-centre response patch owner, and one invalidator refreshes every Project Work consumer after accepted commands;
 - cached or background-refresh-failed Project Work is visible but read-only, while an unavailable V2 contract fails closed as a named not-ready state;
 - normal work-item commands are available from the queue, while personal Dashboard reminders remain separate;
 - admins can retract an incorrect confirmation without deleting its history, classify the old Contacted cohort read-only without customer contact fields, and migrate one reviewed project at a time;

@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ProjectCommandCentreFixturePage from './page';
@@ -11,7 +11,15 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('./ProjectCommandCentreFixtureClient', () => ({
-  default: () => <section>Primary next action</section>,
+  default: ({
+    currentDesign,
+  }: {
+    currentDesign: { warnings: string[] };
+  }) => <section>{JSON.stringify(currentDesign.warnings)}</section>,
+}));
+
+vi.mock('../projects-index-mutation-fixture/FixtureLocalFirstBoundary', () => ({
+  default: ({ children }: { children: ReactNode }) => children,
 }));
 
 describe('ProjectCommandCentreFixturePage', () => {
@@ -42,11 +50,11 @@ describe('ProjectCommandCentreFixturePage', () => {
     const sourceMarkup = renderToStaticMarkup(sourceUi);
     expect(sourceMarkup).toContain('data-portal-qa-fixture="project-command-centre"');
     expect(sourceMarkup).toContain('data-fixture-scenario="missing-source"');
-    expect(sourceMarkup).toContain('Source design unavailable');
+    expect(sourceMarkup).toContain('source_design_unavailable');
 
     const priceUi = await ProjectCommandCentreFixturePage({
       searchParams: Promise.resolve({ scenario: 'missing-price' }),
     }) as ReactElement;
-    expect(renderToStaticMarkup(priceUi)).toContain('Price unavailable');
+    expect(renderToStaticMarkup(priceUi)).toContain('quote_price_unavailable');
   });
 });

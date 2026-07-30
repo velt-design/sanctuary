@@ -1,19 +1,23 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/components/ui/toast/ToastProvider';
-import { PipelineModal } from '@/components/ui/PipelineModal';
-import { AlertBanner, Button, Input, Select } from '@/components/ui/foundation';
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/toast/ToastProvider";
+import { PipelineModal } from "@/components/ui/PipelineModal";
+import { AlertBanner, Button, Input, Select } from "@/components/ui/foundation";
 import {
   PIPELINE_STAGES,
   PIPELINE_STAGE_LABELS,
   stageKeyToStatus,
-} from '@/lib/projects/pipelineDefinition';
-import type { ProjectStage } from '@/lib/projects/types';
-import { correctProjectStage } from '@/lib/repo/projectsRepo';
-import { invalidateProjectReadCaches, patchProjectListItem, patchProjectSnapshot } from '@/lib/queries/projectCache';
-import styles from './ProjectStatusDetailsCard.module.css';
+} from "@/lib/projects/pipelineDefinition";
+import type { ProjectStage } from "@/lib/projects/types";
+import { correctProjectStage } from "@/lib/repo/projectsRepo";
+import {
+  invalidateProjectReadCaches,
+  patchProjectListItem,
+  patchProjectSnapshot,
+} from "@/lib/queries/projectCache";
+import styles from "./ProjectStatusDetailsCard.module.css";
 
 const STAGE_ORDER = PIPELINE_STAGES.map((stage) => stage.key);
 
@@ -21,21 +25,24 @@ export default function ProjectStageControl({
   projectId,
   host,
   stage,
+  presentation = "status",
 }: {
   projectId: string;
   host: string;
   stage: ProjectStage;
+  presentation?: "status" | "action-only";
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [targetStage, setTargetStage] = useState<ProjectStage>(stage);
-  const [confirmText, setConfirmText] = useState('');
-  const [reason, setReason] = useState('');
+  const [confirmText, setConfirmText] = useState("");
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const currentIndex = STAGE_ORDER.indexOf(stage);
   const targetIndex = STAGE_ORDER.indexOf(targetStage);
-  const rollback = currentIndex >= 0 && targetIndex >= 0 && targetIndex < currentIndex;
+  const rollback =
+    currentIndex >= 0 && targetIndex >= 0 && targetIndex < currentIndex;
   const stageLabel = PIPELINE_STAGE_LABELS[stage] ?? stage;
   const targetLabel = PIPELINE_STAGE_LABELS[targetStage] ?? targetStage;
 
@@ -43,17 +50,21 @@ export default function ProjectStageControl({
     if (busy) return;
     setOpen(false);
     setTargetStage(stage);
-    setConfirmText('');
-    setReason('');
+    setConfirmText("");
+    setReason("");
   };
 
   const apply = async () => {
     if (busy || targetStage === stage) return;
     setBusy(true);
     try {
-      const result = await correctProjectStage(projectId, stageKeyToStatus(targetStage), {
-        reason: reason.trim() || null,
-      });
+      const result = await correctProjectStage(
+        projectId,
+        stageKeyToStatus(targetStage),
+        {
+          reason: reason.trim() || null,
+        },
+      );
       patchProjectSnapshot(queryClient, host, projectId, (current) => {
         if (!current) return current;
         return {
@@ -72,14 +83,18 @@ export default function ProjectStageControl({
         status: stageKeyToStatus(targetStage),
       }));
       void invalidateProjectReadCaches(queryClient, host, projectId);
-      toast.success(result.rollback
-        ? `Stage corrected to ${targetLabel}. Reset ${result.resetManualTaskCount} manual checkmark(s).`
-        : `Stage corrected to ${targetLabel}.`);
+      toast.success(
+        result.rollback
+          ? `Stage corrected to ${targetLabel}. Reset ${result.resetManualTaskCount} manual checkmark(s).`
+          : `Stage corrected to ${targetLabel}.`,
+      );
       setOpen(false);
-      setConfirmText('');
-      setReason('');
+      setConfirmText("");
+      setReason("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to correct stage');
+      toast.error(
+        error instanceof Error ? error.message : "Failed to correct stage",
+      );
     } finally {
       setBusy(false);
     }
@@ -87,11 +102,20 @@ export default function ProjectStageControl({
 
   return (
     <>
-      <div className={styles.stageControl}>
-        <div>
-          <span>Pipeline stage</span>
-          <strong data-project-stage={stage}>{stageLabel}</strong>
-        </div>
+      <div
+        className={
+          presentation === "action-only"
+            ? styles.stageActionOnly
+            : styles.stageControl
+        }
+        data-stage-control-presentation={presentation}
+      >
+        {presentation === "status" ? (
+          <div>
+            <span>Pipeline stage</span>
+            <strong data-project-stage={stage}>{stageLabel}</strong>
+          </div>
+        ) : null}
         <Button
           type="button"
           variant="secondary"
@@ -118,7 +142,11 @@ export default function ProjectStageControl({
               <Button
                 type="button"
                 fullWidth
-                disabled={busy || targetStage === stage || (rollback && confirmText.trim().toUpperCase() !== 'RESET')}
+                disabled={
+                  busy ||
+                  targetStage === stage ||
+                  (rollback && confirmText.trim().toUpperCase() !== "RESET")
+                }
                 loading={busy}
                 onClick={() => void apply()}
               >
@@ -143,16 +171,19 @@ export default function ProjectStageControl({
             disabled={busy}
             onChange={(event) => {
               setTargetStage(event.target.value as ProjectStage);
-              setConfirmText('');
+              setConfirmText("");
             }}
           >
             {PIPELINE_STAGES.map((option) => (
-              <option key={option.key} value={option.key}>{option.label}</option>
+              <option key={option.key} value={option.key}>
+                {option.label}
+              </option>
             ))}
           </Select>
 
           <AlertBanner tone="info" title="Silent correction">
-            Silent correction only: this does not trigger automations or customer communications.
+            Silent correction only: this does not trigger automations or
+            customer communications.
           </AlertBanner>
 
           {rollback ? (

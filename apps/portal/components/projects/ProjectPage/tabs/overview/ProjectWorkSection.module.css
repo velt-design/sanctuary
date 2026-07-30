@@ -1,35 +1,47 @@
 .card,
 .stack,
-.ownerSection,
 .controlsSection,
-.controlStack {
+.controlStack,
+.workList {
   min-width: 0;
 }
 
+.card {
+  container-type: inline-size;
+}
+
 .stack,
-.ownerSection,
 .controlsSection,
-.controlStack {
+.controlStack,
+.workList {
   display: grid;
   gap: var(--ui-space-3);
 }
 
-.ownerSection {
-  border: var(--ui-border-width) solid var(--ui-border);
-  padding-bottom: var(--ui-space-3);
-}
-
-.reason {
+.reason,
+.subsectionHeading p,
+.manualFact p {
   margin: 0;
 }
 
-.inlineActions {
+.reason,
+.subsectionHeading p,
+.manualFact p {
+  color: var(--ui-text-muted);
+  font-size: var(--ui-font-size-small);
+}
+
+.inlineActions,
+.badges,
+.rowActions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--ui-space-2);
 }
 
-.controlsSection {
+.controlsSection,
+.workList {
   border-top: var(--ui-border-width) solid var(--ui-border);
   padding-top: var(--ui-space-3);
 }
@@ -68,19 +80,42 @@
   justify-self: start;
 }
 
-.manualFact {
+.manualFact,
+.subsectionHeading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--ui-space-3);
+}
+
+.manualFact {
   padding: var(--ui-space-3);
   border: var(--ui-border-width) solid var(--ui-border);
 }
 
 .manualFact p {
-  margin: var(--ui-space-1) 0 0;
-  color: var(--ui-text-muted);
+  margin-top: var(--ui-space-1);
+}
+
+.policyNotice {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ui-text-danger);
   font-size: var(--ui-font-size-small);
+  font-weight: 650;
+}
+
+.subsectionHeading h3 {
+  margin: 0;
+  color: var(--ui-text-strong);
+  font-family: var(--ui-font-display);
+  font-size: var(--ui-font-size-card-heading);
+  text-transform: uppercase;
+}
+
+.subsectionHeading > div:first-child {
+  display: grid;
+  gap: var(--ui-space-1);
 }
 
 @container (max-width: 620px) {
@@ -88,19 +123,26 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .manualFact {
+  .manualFact,
+  .subsectionHeading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .inlineActions,
+  .rowActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inlineActions > *,
+  .rowActions > * {
+    width: 100%;
   }
 }
 
-@media (max-width: 767px) {
-  .inlineActions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .inlineActions > * {
-    width: 100%;
+@media (pointer: coarse) {
+  .disclosure summary {
+    min-height: 44px;
   }
 }

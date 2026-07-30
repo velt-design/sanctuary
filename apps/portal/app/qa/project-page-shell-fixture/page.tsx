@@ -9,7 +9,7 @@ function arePortalQaFixturesEnabled(): boolean {
   return process.env.ENABLE_PORTAL_QA_FIXTURES?.trim() === '1';
 }
 
-const snapshot: ProjectPageSnapshot = {
+const legacySnapshot: ProjectPageSnapshot = {
   workModel: 'legacy',
   project: {
     id: 'proj_fixture_shell',
@@ -32,17 +32,33 @@ const snapshot: ProjectPageSnapshot = {
   notes: [],
 };
 
+const v2Snapshot: ProjectPageSnapshot = {
+  ...legacySnapshot,
+  workModel: 'v2',
+  project: {
+    ...legacySnapshot.project,
+    stage: 'new',
+  },
+  pipeline: { stage: 'new' },
+  tasks: { stage: 'new', items: [] },
+};
+
 export default async function ProjectPageShellFixture({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; model?: string }>;
 }) {
   if (!arePortalQaFixturesEnabled()) notFound();
   const params = await searchParams;
+  const snapshot = params.model === 'v2' ? v2Snapshot : legacySnapshot;
   const tab = coerceProjectTab(params.tab, snapshot.project.hasJobPacks ?? false);
 
   return (
-    <main className={styles.page} data-portal-qa-fixture="project-page-shell">
+    <main
+      className={styles.page}
+      data-portal-qa-fixture="project-page-shell"
+      data-project-work-fixture-model={snapshot.workModel}
+    >
       <FixtureLocalFirstBoundary>
         <ProjectPageFrame snapshot={snapshot} host="fixture" snapshotContentReady snapshotState="fresh" tab={tab} />
       </FixtureLocalFirstBoundary>

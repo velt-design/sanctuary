@@ -1,0 +1,707 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  ProjectCommandActionSummary,
+  ProjectCommandCentreOperations,
+  ProjectCommandStaffSummary,
+} from "@/lib/projects/commandCentre/types";
+import type { ProjectPageSnapshot } from "@/lib/projects/types";
+import type {
+  ProjectWorkItem,
+  ProjectWorkProjection,
+} from "@/lib/projects/workItems/types";
+import { renderIntoDocument } from "../../../../../../../test/reactHarness";
+import ProjectWorkSection, {
+  type ProjectWorkSectionProps,
+} from "./ProjectWorkSection";
+
+const mocks = vi.hoisted(() => ({
+  fetchProjectStaffDirectory: vi.fn(),
+  runProjectActionCommand: vi.fn(),
+}));
+
+vi.mock("@/lib/projects/commandCentre/client", () => ({
+  fetchProjectStaffDirectory: (...args: unknown[]) =>
+    mocks.fetchProjectStaffDirectory(...args),
+  runProjectActionCommand: (...args: unknown[]) =>
+    mocks.runProjectActionCommand(...args),
+}));
+
+vi.mock(
+  "@/components/projects/workQueue/ConfirmationCorrectionControls.client",
+  () => ({
+    default: () => <div data-confirmation-correction-controls="true" />,
+  }),
+);
+
+const PROJECT_ID = "proj_22222222-2222-4222-8222-222222222222";
+const WORK_PROJECT_ID = "22222222-2222-4222-8222-222222222222";
+const mounted: Array<() => void> = [];
+
+const staff: ProjectCommandStaffSummary[] = [
+  {
+    userId: "00000000-0000-4000-8000-000000000001",
+    displayName: "Sam Sales",
+    email: "sam@example.test",
+    accessRole: "staff",
+  },
+];
+
+function workItem(overrides: Partial<ProjectWorkItem> = {}): ProjectWorkItem {
+  return {
+    id: "11111111-1111-4111-8111-111111111111",
+    projectId: WORK_PROJECT_ID,
+    title: "Prepare revised concept",
+    responsibilityArea: "DESIGN",
+    status: "OPEN",
+    dueAt: "2026-07-30T05:00:00.000Z",
+    slaBreachAt: null,
+    deadlinePolicy: null,
+    calendarRevision: null,
+    assigneeUserId: null,
+    effectiveAssignee: { kind: "projectOwner", ownerKey: "jordan" },
+    priority: "NORMAL",
+    priorityReason: null,
+    blockedReason: null,
+    origin: "MANUAL",
+    sourceType: "MANUAL",
+    sourceKey: null,
+    seriesKey: null,
+    subjectKind: null,
+    subjectId: null,
+    rowVersion: 1,
+    createdAt: "2026-07-29T00:00:00.000Z",
+    updatedAt: "2026-07-29T00:00:00.000Z",
+    completedAt: null,
+    cancelledAt: null,
+    outcome: null,
+    cancellationReason: null,
+    ...overrides,
+  };
+}
+
+function projection(
+  overrides: Partial<ProjectWorkProjection> = {},
+): ProjectWorkProjection {
+  const primary = workItem();
+  return {
+    projectId: WORK_PROJECT_ID,
+    modelVersion: 2,
+    operationalState: "ACTIVE",
+    effectiveState: "ACTIVE",
+    waitingUntil: null,
+    waitingReason: null,
+    closedOutcome: null,
+    stateRowVersion: 1,
+    primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+    openItems: [primary],
+    blockedItems: [],
+    confirmedFacts: [],
+    generatedAt: "2026-07-29T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function action(
+  overrides: Partial<ProjectCommandActionSummary> = {},
+): ProjectCommandActionSummary {
+  return {
+    sourceKind: "automation_task",
+    sourceId: "00000000-0000-4000-8000-000000000010",
+    title: "Finalise and send quote",
+    category: "Quote",
+    sourceLabel: "Automation task",
+    sourceType: "FINALIZE_SEND_QUOTE",
+    owner: { userId: staff[0].userId, displayName: staff[0].displayName },
+    ownerSource: "source_assignee",
+    dueAt: "2026-07-30T05:00:00.000Z",
+    dueState: "today",
+    dueLabel: "Due today",
+    isCustomerFacing: true,
+    isCritical: false,
+    criticalReason: null,
+    rescheduleCount: 0,
+    createdAt: "2026-07-29T00:00:00.000Z",
+    updatedAt: "2026-07-29T00:00:00.000Z",
+    requiresDueDate: false,
+    isExplicitlySelected: true,
+    selectionBaselineHash: "fixture-primary",
+    ...overrides,
+  };
+}
+
+function operations(
+  overrides: Partial<ProjectCommandCentreOperations> = {},
+): ProjectCommandCentreOperations {
+  const current = action();
+  return {
+    owner: {
+      owner: { key: "jordan", displayName: "Jordan" },
+      required: true,
+      missing: false,
+      version: "2026-07-29T00:00:00.000Z",
+      permissions: { canManage: false },
+    },
+    primaryAction: current,
+    candidates: [current],
+    candidateCount: 1,
+    candidateRevision: "fixture-revision",
+    manualSelectionBaselineHash: "fixture-manual",
+    selectionConflict: null,
+    permissions: {
+      canCreate: true,
+      canSelect: true,
+      canComplete: true,
+      canReschedule: false,
+      canReassign: false,
+      canSetCritical: false,
+      canResolveConflict: false,
+    },
+    audit: [],
+    exceptions: {
+      missingOwner: false,
+      noPrimaryAction: false,
+      selectionConflict: false,
+    },
+    ...overrides,
+  };
+}
+
+function legacyTasks(
+  items: ProjectPageSnapshot["tasks"]["items"] = [],
+): ProjectPageSnapshot["tasks"] {
+  return { stage: "quoting", items };
+}
+
+function renderSection(props: ProjectWorkSectionProps) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const rendered = renderIntoDocument(
+    <QueryClientProvider client={queryClient}>
+      <ProjectWorkSection {...props} />
+    </QueryClientProvider>,
+  );
+  mounted.push(rendered.unmount);
+  return rendered;
+}
+
+function renderV2(projectWork: ProjectWorkProjection, stale = false) {
+  return renderSection({
+    workModel: "v2",
+    projectId: PROJECT_ID,
+    host: "fixture",
+    projectWork,
+    pipelineStage: "quoting",
+    stale,
+    onRefresh: vi.fn(),
+    initialStaff: staff,
+  });
+}
+
+function valueFor(panel: Element, label: string): string | null {
+  const term = Array.from(panel.querySelectorAll("dt")).find(
+    (candidate) => candidate.textContent === label,
+  );
+  return term?.nextElementSibling?.textContent ?? null;
+}
+
+describe("ProjectWorkSection", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    mocks.fetchProjectStaffDirectory.mockReset().mockResolvedValue(staff);
+    mocks.runProjectActionCommand.mockReset().mockResolvedValue({
+      command: { id: "command", committed: true, replayed: false },
+    });
+  });
+
+  afterEach(() => {
+    while (mounted.length) mounted.pop()?.();
+    document.body.innerHTML = "";
+  });
+
+  it("renders one V2 primary action with owner and due truth above open and blocked work", () => {
+    const primary = workItem();
+    const other = workItem({
+      id: "22222222-2222-4222-8222-222222222223",
+      title: "Email the revised concept",
+      responsibilityArea: "CUSTOMER",
+      origin: "AUTOMATION",
+      sourceType: "LEAD_CADENCE",
+      sourceKey: "lead:follow-up:request-1:1",
+      effectiveAssignee: { kind: "staff", userId: staff[0].userId },
+    });
+    const blocked = workItem({
+      id: "33333333-3333-4333-8333-333333333333",
+      title: "Confirm engineering input",
+      status: "BLOCKED",
+      blockedReason: "Waiting for structural drawings.",
+      responsibilityArea: "OPERATIONS",
+      priority: "CRITICAL",
+      priorityReason: "Engineering is required before pricing.",
+    });
+    const projectWork = projection({
+      primaryAction: { kind: "workItem", item: primary, dueState: "today" },
+      openItems: [primary, other],
+      blockedItems: [blocked],
+    });
+    const rendered = renderV2(projectWork);
+
+    expect(
+      rendered.container.querySelectorAll(
+        '[data-project-work-section="true"][data-project-work-model="v2"]',
+      ),
+    ).toHaveLength(1);
+    const primaryPanel = rendered.container.querySelector(
+      'section[data-tone="inverse"]',
+    )!;
+    expect(primaryPanel.textContent).toContain(primary.title);
+    expect(valueFor(primaryPanel, "Owner")).toBe("Jordan");
+    expect(valueFor(primaryPanel, "Due")).toContain("30 Jul 2026");
+    expect(
+      (
+        rendered.container.textContent?.match(new RegExp(primary.title, "g")) ??
+        []
+      ).length,
+    ).toBe(1);
+
+    const list = rendered.container.querySelector(
+      '[data-project-work-list="v2"]',
+    )!;
+    expect(list.textContent).toContain(other.title);
+    expect(list.textContent).toContain("Sam Sales");
+    expect(list.textContent).toContain(blocked.title);
+    expect(list.textContent).not.toContain(primary.title);
+    expect(rendered.container.textContent).toContain(
+      "1 blocked project-work item",
+    );
+    expect(rendered.container.textContent).toContain(
+      "Waiting for structural drawings.",
+    );
+  });
+
+  it("renders a server-selected blocked item as an exception without an enabled primary action", () => {
+    const blocked = workItem({
+      status: "BLOCKED",
+      blockedReason: "Waiting for structural drawings.",
+      origin: "MANUAL",
+      sourceType: "MANUAL",
+    });
+    const rendered = renderV2(
+      projection({
+        primaryAction: { kind: "workItem", item: blocked, dueState: "critical" },
+        openItems: [],
+        blockedItems: [blocked],
+      }),
+    );
+
+    expect(rendered.container.textContent).toContain(
+      "Blocked project work needs review",
+    );
+    expect(rendered.container.textContent).toContain(blocked.title);
+    expect(rendered.container.textContent).toContain(
+      "Waiting for structural drawings.",
+    );
+    expect(
+      rendered.container.querySelector('section[data-tone="inverse"]'),
+    ).toBeNull();
+    expect(
+      Array.from(rendered.container.querySelectorAll("button")).some((button) =>
+        /^(?:Complete|Email sent|Customer replied)$/.test(
+          button.textContent ?? "",
+        ),
+      ),
+    ).toBe(false);
+    expect(mocks.runProjectActionCommand).not.toHaveBeenCalled();
+  });
+
+  it("renders the server-owned specialist owner, expected result and permitted destination", () => {
+    const rendered = renderV2(
+      projection({
+        primaryAction: {
+          kind: "specialist",
+          key: "design-review",
+          title: "Review the current design",
+          reason: "A design specialist needs to confirm the current concept.",
+          owner: "Design specialist",
+          expectedResult: "Concept approved for estimating",
+          href: `/staff/projects/${PROJECT_ID}/design`,
+        },
+      }),
+    );
+    const primaryPanel = rendered.container.querySelector(
+      'section[data-tone="inverse"]',
+    )!;
+
+    expect(valueFor(primaryPanel, "Owner")).toBe("Design specialist");
+    expect(valueFor(primaryPanel, "Expected result")).toBe(
+      "Concept approved for estimating",
+    );
+    expect(
+      primaryPanel.querySelector<HTMLAnchorElement>("a")?.getAttribute("href"),
+    ).toBe(`/staff/projects/${PROJECT_ID}/design`);
+  });
+
+  it("fails closed when V2 server work identifies a prohibited Call or Site Visit action", () => {
+    const prohibitedPrimary = workItem({
+      title: "Call the customer",
+      sourceType: "MANUAL",
+      sourceKey: null,
+    });
+    const prohibitedSecondary = workItem({
+      id: "22222222-2222-4222-8222-222222222223",
+      title: "Book Site Visit",
+      sourceType: "MANUAL",
+      sourceKey: null,
+    });
+    const allowedSecondary = workItem({
+      id: "33333333-3333-4333-8333-333333333333",
+      title: "Review design details",
+      sourceType: "MANUAL",
+      sourceKey: null,
+    });
+    const rendered = renderV2(
+      projection({
+        primaryAction: {
+          kind: "workItem",
+          item: prohibitedPrimary,
+          dueState: "today",
+        },
+        openItems: [prohibitedPrimary, prohibitedSecondary, allowedSecondary],
+      }),
+    );
+
+    expect(rendered.container.textContent).toContain(
+      "Project work needs review",
+    );
+    expect(rendered.container.textContent).toContain(
+      "no browser replacement is chosen",
+    );
+    expect(rendered.container.textContent).not.toContain(
+      prohibitedPrimary.title,
+    );
+    expect(rendered.container.textContent).not.toContain(
+      prohibitedSecondary.title,
+    );
+    expect(rendered.container.textContent).toContain(allowedSecondary.title);
+    expect(
+      rendered.container.querySelector(
+        'section[data-tone="inverse"], section[data-tone="critical"]',
+      ),
+    ).toBeNull();
+    expect(
+      Array.from(rendered.container.querySelectorAll("button")).every(
+        (button) => button.disabled,
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    {
+      state: "Waiting",
+      projectWork: projection({
+        operationalState: "WAITING",
+        effectiveState: "WAITING",
+        waitingUntil: "2026-08-05T05:00:00.000Z",
+        waitingReason: "Customer requested more time.",
+        primaryAction: {
+          kind: "stateReview",
+          key: "waiting-review",
+          title: "Review waiting project",
+          reason: "The waiting period has ended.",
+          dueAt: "2026-08-05T05:00:00.000Z",
+        },
+        openItems: [
+          workItem({
+            id: "44444444-4444-4444-8444-444444444444",
+            title: "Hidden ordinary work",
+          }),
+        ],
+        blockedItems: [
+          workItem({
+            id: "55555555-5555-4555-8555-555555555555",
+            title: "Hidden blocked work",
+            status: "BLOCKED",
+            blockedReason: "Hidden blocker",
+          }),
+        ],
+      }),
+      detailLabel: "Waiting until",
+      detailValue: "5 Aug 2026",
+      waitingReason: "Customer requested more time.",
+      notice: "Ordinary project work is paused",
+      canChangeState: true,
+    },
+    {
+      state: "Closed",
+      projectWork: projection({
+        operationalState: "CLOSED",
+        effectiveState: "CLOSED",
+        closedOutcome: "LOST_NO_RESPONSE",
+        primaryAction: {
+          kind: "none",
+          title: "Project closed",
+          reason: "Closed projects have no active work.",
+        },
+        openItems: [
+          workItem({
+            id: "44444444-4444-4444-8444-444444444444",
+            title: "Hidden ordinary work",
+          }),
+        ],
+        blockedItems: [
+          workItem({
+            id: "55555555-5555-4555-8555-555555555555",
+            title: "Hidden blocked work",
+            status: "BLOCKED",
+            blockedReason: "Hidden blocker",
+          }),
+        ],
+      }),
+      detailLabel: "Outcome",
+      detailValue: "lost no response",
+      waitingReason: null,
+      notice: "Closed project work is paused",
+      canChangeState: true,
+    },
+    {
+      state: "Archived",
+      projectWork: projection({
+        operationalState: "CLOSED",
+        effectiveState: "ARCHIVED",
+        closedOutcome: "COMPLETE",
+        primaryAction: {
+          kind: "none",
+          title: "Project archived",
+          reason: "Archived projects remain read-only.",
+        },
+        openItems: [
+          workItem({
+            id: "44444444-4444-4444-8444-444444444444",
+            title: "Hidden ordinary work",
+          }),
+        ],
+        blockedItems: [
+          workItem({
+            id: "55555555-5555-4555-8555-555555555555",
+            title: "Hidden blocked work",
+            status: "BLOCKED",
+            blockedReason: "Hidden blocker",
+          }),
+        ],
+      }),
+      detailLabel: "Operational state",
+      detailValue: "Archived",
+      waitingReason: null,
+      notice: "Archived project work is read-only",
+      canChangeState: false,
+    },
+  ])(
+    "renders $state from the server projection without deriving a replacement state",
+    ({
+      projectWork,
+      detailLabel,
+      detailValue,
+      waitingReason,
+      notice,
+      canChangeState,
+    }) => {
+      const rendered = renderV2(projectWork);
+      const stateGrid = rendered.container.querySelector(
+        'dl[aria-label="Project work state"]',
+      )!;
+
+      expect(valueFor(stateGrid, detailLabel)).toContain(detailValue);
+      if (waitingReason) {
+        expect(valueFor(stateGrid, "Waiting reason")).toBe(waitingReason);
+      }
+      expect(valueFor(stateGrid, "Current work")).toBeNull();
+      expect(rendered.container.textContent).toContain(notice);
+      expect(rendered.container.textContent).not.toContain(
+        "Hidden ordinary work",
+      );
+      expect(rendered.container.textContent).not.toContain(
+        "Hidden blocked work",
+      );
+      expect(
+        rendered.container.querySelector('[data-project-work-list="v2"]'),
+      ).toBeNull();
+      expect(
+        rendered.container.querySelector(
+          '[data-confirmation-correction-controls="true"]',
+        ),
+      ).toBeNull();
+
+      const manage = Array.from(
+        rendered.container.querySelectorAll("button"),
+      ).find((button) => button.textContent === "Manage project work");
+      if (canChangeState) {
+        expect(manage).not.toBeUndefined();
+        act(() => manage?.click());
+        expect(rendered.container.textContent).toContain(
+          "Change operational state",
+        );
+        expect(rendered.container.textContent).not.toContain(
+          "Create manual work",
+        );
+      } else {
+        expect(manage).toBeUndefined();
+        expect(rendered.container.querySelectorAll("button")).toHaveLength(0);
+      }
+    },
+  );
+
+  it("removes prohibited legacy candidates and Call/Site Visit categories from controls", async () => {
+    const current = action();
+    const allowedCandidate = action({
+      sourceId: "00000000-0000-4000-8000-000000000011",
+      title: "Review design details",
+      category: "Design",
+      sourceType: "REVIEW_DESIGN",
+      isExplicitlySelected: false,
+    });
+    const callCandidate = action({
+      sourceId: "00000000-0000-4000-8000-000000000012",
+      title: "Call customer",
+      category: "Call",
+      sourceType: "FOLLOWUP_CALL",
+      isExplicitlySelected: false,
+    });
+    const siteVisitCandidate = action({
+      sourceId: "00000000-0000-4000-8000-000000000013",
+      title: "Book Site Visit",
+      category: "Site visit",
+      sourceType: "BOOK_SITE_VISIT",
+      isExplicitlySelected: false,
+    });
+    const rendered = renderSection({
+      workModel: "legacy",
+      projectId: PROJECT_ID,
+      host: "fixture",
+      operations: operations({
+        primaryAction: current,
+        candidates: [
+          current,
+          allowedCandidate,
+          callCandidate,
+          siteVisitCandidate,
+        ],
+        candidateCount: 4,
+      }),
+      tasks: legacyTasks([
+        {
+          key: "create_quote",
+          label: "Create quote",
+          kind: "manual",
+          isDone: false,
+        },
+        {
+          key: "call_enquiry",
+          label: "Call enquiry",
+          kind: "manual",
+          isDone: false,
+        },
+        {
+          key: "book_site_visit",
+          label: "Book site visit",
+          kind: "action",
+          isDone: false,
+        },
+      ]),
+      pipelineStage: "quoting",
+      stale: false,
+      onRefresh: vi.fn(),
+      initialStaff: staff,
+    });
+
+    const manage = Array.from(
+      rendered.container.querySelectorAll("button"),
+    ).find((button) => button.textContent === "Manage next action")!;
+    await act(async () => {
+      manage.click();
+      await import("./ProjectPrimaryActionControls");
+    });
+
+    const controls = rendered.container.querySelector(
+      '[data-primary-action-controls="true"]',
+    )!;
+    expect(controls).not.toBeNull();
+    expect(controls.textContent).toContain(allowedCandidate.title);
+    expect(controls.textContent).not.toContain(callCandidate.title);
+    expect(controls.textContent).not.toContain(siteVisitCandidate.title);
+
+    const categorySelect = Array.from(controls.querySelectorAll("select")).find(
+      (select) => select.parentElement?.textContent?.startsWith("Category"),
+    )!;
+    const categories = Array.from(categorySelect.options).map(
+      (option) => option.textContent,
+    );
+    expect(categories).toEqual([
+      "Design",
+      "Estimate",
+      "Quote",
+      "Follow-up",
+      "Other",
+    ]);
+    expect(rendered.container.textContent).not.toMatch(/\bcall\b/i);
+    expect(rendered.container.textContent).not.toMatch(/\bsite visit\b/i);
+    expect(
+      rendered.container.querySelectorAll(
+        '[data-legacy-stage-row-readonly="true"]',
+      ),
+    ).toHaveLength(1);
+    expect(mocks.runProjectActionCommand).not.toHaveBeenCalled();
+  });
+
+  it("shows the exact review state and issues no command or replacement for a prohibited server-selected action", () => {
+    const prohibitedCurrent = action({
+      title: "Call customer about the quote",
+      category: "Call",
+      sourceType: "FOLLOWUP_CALL",
+    });
+    const allowedCandidate = action({
+      sourceId: "00000000-0000-4000-8000-000000000011",
+      title: "Review quote details",
+      category: "Quote",
+      isExplicitlySelected: false,
+    });
+    const rendered = renderSection({
+      workModel: "legacy",
+      projectId: PROJECT_ID,
+      host: "fixture",
+      operations: operations({
+        primaryAction: prohibitedCurrent,
+        candidates: [prohibitedCurrent, allowedCandidate],
+        candidateCount: 2,
+      }),
+      tasks: legacyTasks(),
+      pipelineStage: "quoting",
+      stale: false,
+      onRefresh: vi.fn(),
+      initialStaff: staff,
+    });
+
+    const review = rendered.container.querySelector(
+      '[data-legacy-work-review="true"]',
+    )!;
+    expect(review.querySelector("strong")?.textContent).toBe(
+      "Legacy work needs review",
+    );
+    expect(review.textContent).toContain("no browser replacement is chosen");
+    expect(rendered.container.textContent).not.toContain(
+      prohibitedCurrent.title,
+    );
+    expect(rendered.container.textContent).not.toContain(
+      allowedCandidate.title,
+    );
+    expect(
+      rendered.container.querySelector("[data-primary-action-source]"),
+    ).toBeNull();
+    expect(
+      rendered.container.querySelector('[data-primary-action-controls="true"]'),
+    ).toBeNull();
+    expect(rendered.container.querySelectorAll("button")).toHaveLength(0);
+    expect(mocks.runProjectActionCommand).not.toHaveBeenCalled();
+  });
+});
