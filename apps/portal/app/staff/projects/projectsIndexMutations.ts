@@ -176,7 +176,6 @@ function patchStage(
       ...response.snapshot,
       project: { ...response.snapshot.project, stage },
       pipeline: { ...response.snapshot.pipeline, stage },
-      tasks: { ...response.snapshot.tasks, stage },
     },
   }));
 }

@@ -19,6 +19,13 @@ const schemaCacheRepair = readFileSync(
   ),
   'utf8',
 );
+const legacyTaskRetirement = readFileSync(
+  path.join(
+    process.cwd(),
+    'supabase/migrations/20260730_000001_legacy_project_task_retirement.sql',
+  ),
+  'utf8',
+);
 
 const bootstrap = String.raw`
 create role anon;
@@ -145,7 +152,7 @@ create table public.deposit_invoices (
   status text not null
 );
 create table public.project_running_job_meta (
-  project_id uuid primary key references public.projects(id),
+  project_id uuid primary key references public.projects(id) on delete cascade,
   lights_status text,
   notes text,
   created_at timestamptz not null default clock_timestamp(),
@@ -155,7 +162,7 @@ create trigger project_running_job_meta_set_updated_at
 before update on public.project_running_job_meta
 for each row execute function public.set_updated_at();
 create table public.project_task_checks (
-  project_id uuid not null references public.projects(id),
+  project_id uuid not null references public.projects(id) on delete cascade,
   task_key text not null,
   completed_at timestamptz not null default clock_timestamp(),
   completed_by uuid,
@@ -205,7 +212,7 @@ create table public.project_action_versions (
 );
 create table public.project_command_audit (
   id uuid primary key default gen_random_uuid(),
-  project_id uuid not null references public.projects(id),
+  project_id uuid not null references public.projects(id) on delete cascade,
   command_id uuid not null,
   event_sequence smallint not null default 0,
   event_type text not null,
@@ -1341,6 +1348,145 @@ describe('Project Work Items V2 migration', () => {
       from public.projects project where project.id='${projectId}'
     `);
     expect(project.rows[0]).toEqual({ archived: true, active_items: 0 });
+  });
+
+  it('retires legacy task writes after preserving Running Jobs facts', async () => {
+    const legacyProjectId = '91919191-9191-4191-8191-919191919191';
+    const guardedV2ProjectId = '93939393-9393-4393-8393-939393939393';
+    const reassignmentTargetProjectId =
+      '94949494-9494-4494-8494-949494949494';
+    await database.exec(`
+      insert into public.projects(id,name)
+      values
+        ('${legacyProjectId}','Retirement fixture'),
+        ('${guardedV2ProjectId}','Guarded V2 retirement fixture'),
+        ('${reassignmentTargetProjectId}','Fact reassignment target');
+      insert into public.project_task_checks(
+        project_id,task_key,completed_at,completed_by
+      )
+      values
+        (
+          '${legacyProjectId}',
+          'order_materials',
+          '2026-07-30T00:00:00Z',
+          '${actorId}'
+        ),
+        (
+          '${guardedV2ProjectId}',
+          'roofing_ordered',
+          '2026-07-30T01:00:00Z',
+          '${actorId}'
+        );
+      do $$
+      begin
+        perform set_config('sanctuary.project_work_command','allowed',true);
+        insert into public.project_work_model_versions(
+          project_id,model_version,cutover_by,reason
+        )
+        values (
+          '${guardedV2ProjectId}',2,'${actorId}','ADMIN_REPAIR'
+        );
+        perform set_config('sanctuary.project_work_command','',true);
+      end;
+      $$;
+      create or replace function public.project_command_action(
+        uuid,uuid,text,jsonb
+      )
+      returns jsonb
+      language sql
+      as $$ select '{"committed":true}'::jsonb $$;
+      grant execute on function public.project_command_action(
+        uuid,uuid,text,jsonb
+      ) to authenticated;
+    `);
+
+    await database.exec(legacyTaskRetirement);
+
+    const backfilled = await database.query<{
+      materials_ordered: boolean;
+      row_version: number;
+    }>(`
+      select
+        materials_ordered_at is not null as materials_ordered,
+        row_version
+      from public.project_running_job_meta
+      where project_id='${legacyProjectId}'
+    `);
+    expect(backfilled.rows[0]).toEqual({
+      materials_ordered: true,
+      row_version: 1,
+    });
+    const guardedV2Backfill = await database.query<{
+      roofing_ordered: boolean;
+    }>(`
+      select roofing_ordered_at is not null as roofing_ordered
+      from public.project_running_job_meta
+      where project_id='${guardedV2ProjectId}'
+    `);
+    expect(guardedV2Backfill.rows[0]?.roofing_ordered).toBe(true);
+
+    const command = await database.query<{
+      result: { value: boolean; row_version: number };
+    }>(`
+      select public.project_running_job_fact_command(
+        '${legacyProjectId}',
+        '92929292-9292-4292-8292-929292929292',
+        'materials_ordered',
+        false,
+        1
+      ) as result
+    `);
+    expect(command.rows[0]?.result).toEqual(
+      expect.objectContaining({ value: false, row_version: 2 }),
+    );
+
+    await expect(database.exec(`
+      update public.project_running_job_meta
+      set materials_ordered_at=clock_timestamp()
+      where project_id='${legacyProjectId}'
+    `)).rejects.toThrow(/running-job facts require their command/i);
+
+    await expect(database.exec(`
+      update public.project_running_job_meta
+      set project_id='${reassignmentTargetProjectId}'
+      where project_id='${legacyProjectId}'
+    `)).rejects.toThrow(/running-job facts require their command/i);
+
+    await expect(database.exec(`
+      delete from public.project_running_job_meta
+      where project_id='${legacyProjectId}'
+    `)).rejects.toThrow(/cannot be deleted directly/i);
+
+    const privileges = await database.query<{
+      action_execute: boolean;
+      design_execute: boolean;
+    }>(`
+      select
+        has_function_privilege(
+          'authenticated',
+          'public.project_command_action(uuid,uuid,text,jsonb)',
+          'execute'
+        ) as action_execute,
+        has_function_privilege(
+          'authenticated',
+          'public.project_command_sync_design_task(uuid,text,text,text,text,timestamptz,text,jsonb)',
+          'execute'
+        ) as design_execute
+    `);
+    expect(privileges.rows[0]).toEqual({
+      action_execute: false,
+      design_execute: false,
+    });
+
+    await database.exec(`
+      delete from public.projects where id='${legacyProjectId}'
+    `);
+    const cascade = await database.query<{ meta_count: number }>(`
+      select count(*)::integer as meta_count
+      from public.project_running_job_meta
+      where project_id='${legacyProjectId}'
+    `);
+    expect(cascade.rows[0]?.meta_count).toBe(0);
   });
 });
 

@@ -25,8 +25,6 @@ export function useProjectsIndexData(params: ProjectsIndexParams) {
       && query.data.archive === params.archive
       && query.data.query.search === params.search.trim()
       && query.data.query.status === params.status
-      && query.data.query.due === params.due
-      && query.data.query.today === params.today
       && query.data.query.sort === params.sort
       && query.data.projects.page === params.page
       && query.data.projects.pageSize === params.pageSize,

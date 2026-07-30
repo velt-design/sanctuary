@@ -30,7 +30,6 @@ test.afterEach(async ({ page }, testInfo) => {
     });
   }
 });
-
 async function expectNoDocumentOverflow(page: Page) {
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
@@ -155,38 +154,6 @@ test('Schedule foundation presentation is responsive and non-mutating', async ({
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const motion = await page.locator('[data-ui-foundation-consumer="schedule"]').evaluate((element) => getComputedStyle(element).transitionDuration);
   expect(motion.split(',').every((duration) => duration.trim() === '0s')).toBe(true);
-
-  expect(evidence.consoleMessages).toEqual([]);
-  expect(evidence.failedRequests.filter((request) => request.failureText !== 'net::ERR_ABORTED')).toEqual([]);
-  expect(evidence.responseFailures).toEqual([]);
-  expect(evidence.pageErrors).toEqual([]);
-});
-
-test('Project tasks use canonical local-first feedback without changing task state', async ({ page }) => {
-  await page.route('**/api/staff/v1/performance/web-vitals', (request) => request.fulfill({ status: 204, body: '' }));
-  const evidence = installPortalBrowserEvidence(page);
-  evidenceByPage.set(page, evidence);
-
-  await page.goto('/staff/projects');
-  const projects = page.getByRole('region', { name: 'Projects list' });
-  await expect(projects).toBeVisible({ timeout: 60_000 });
-  await expect(projects.getByRole('status')).toHaveCount(0, { timeout: 60_000 });
-  const firstProjectHref = await projects.getByRole('link', { name: 'Open' }).first().getAttribute('href');
-  expect(firstProjectHref, 'The authenticated browser account needs at least one active project.').toBeTruthy();
-
-  for (const viewport of [viewports[0], viewports[4]]) {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto(firstProjectHref as string);
-    const tasks = page.locator('[data-ui-foundation-consumer="project-tasks"]:visible');
-    await expect(tasks).toBeVisible({ timeout: 60_000 });
-    await expect(tasks).toHaveAttribute('data-ui-foundation-consumer', 'project-tasks');
-    await expectNoDocumentOverflow(page);
-    await expectNoLegacyRoundedSurfaces(tasks);
-    await capturePortalEvidenceScreenshot(page, {
-      path: path.join(evidenceDir, `project-tasks-${viewport.name}.png`),
-      fullPage: true,
-    });
-  }
 
   expect(evidence.consoleMessages).toEqual([]);
   expect(evidence.failedRequests.filter((request) => request.failureText !== 'net::ERR_ABORTED')).toEqual([]);

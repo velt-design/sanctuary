@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { mapContactRecord } from '@/lib/contacts/contactRecord';
+import { portalTodayYmd } from '@/lib/format/portalDateTime';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { mapProjectRecord } from './projectRecord';
 import type {
@@ -66,8 +67,8 @@ export async function loadProjectsIndexData(
     p_archive: params.archive,
     p_search: params.search,
     p_status: params.status,
-    p_due: params.due,
-    p_today: params.today,
+    p_due: 'all',
+    p_today: portalTodayYmd(),
     p_page: params.page,
     p_page_size: params.pageSize,
     p_sort: params.sort,

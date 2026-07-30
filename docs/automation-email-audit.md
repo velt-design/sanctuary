@@ -13,7 +13,8 @@ This doc owns current-state guidance for portal automation events, project tasks
 ## Ownership
 
 - V2 project-work owner: `apps/portal/lib/projects/workItems`; transactional state, work-item, confirmation, calendar, receipt, event, compatibility, and reconciliation commands are defined by `20260729_000002_project_work_items_v2.sql`. Authoritative team-queue composition and guarded legacy triage live in `teamQueue.ts`, `legacyTriage/`, and forward migration `20260729_000004_project_work_queue_and_legacy_triage.sql`.
-- Legacy-project automation runner: `apps/portal/lib/automation/AutomationRunner.ts`; legacy task/follow-up persistence lives in `taskPersistence.ts`.
+- Automation event runner: `apps/portal/lib/automation/AutomationRunner.ts`; it owns the idempotent audit event plus the remaining email, site-visit, marketing-attribution, and existing-cadence cancellation effects. The legacy `taskPersistence.ts` creation adapter is retired.
+- Design Package request state: `apps/portal/lib/designPackages/server.ts` and `design_package_requests`; Design Package changes no longer create or synchronize a companion legacy task.
 - Automation cache keys: `qk.automation` in `apps/portal/lib/queries/keys.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
 - Quote/invoice commercial email intents and audit adapter: `apps/portal/lib/commercial/emailIntent.ts` and `apps/portal/lib/commercial/audit.ts`.
@@ -31,7 +32,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 - `audit_events`: idempotent automation event log.
 - `project_work_model_versions`, `project_operational_states`, `project_state_events`, `project_work_items`, `project_work_item_events`, `project_confirmation_events`, `project_command_receipts`, and `project_work_repair_signals`: V2 project-work truth, append-only evidence, idempotency, and explicit recovery.
 - `business_calendar_year_coverage`, `nz_holidays`, and `company_closures`: verified Auckland deadline inputs.
-- `tasks`, `followup_plans`, and `followup_tasks`: legacy-project task and quote-follow-up records.
+- `tasks`, `followup_plans`, and `followup_tasks`: retained legacy task and quote-follow-up evidence. No application owner creates new rows; already-open follow-up cadence may still be cancelled when a later stage makes it irrelevant.
 - `email_templates`: DB-backed template metadata and fallback HTML.
 - `email_outbox`: queued, sent, failed, or cancelled project email records.
 - `site_visit_events`: site visit state that automation may create or update.
@@ -58,15 +59,14 @@ For unmarked legacy projects, staff action routes call `automationRunner.runEven
 
 Event handlers can:
 
-- create project tasks
 - enqueue or record email outbox rows
 - create or update site visit events
-- create quote follow-up plans and tasks
-- cancel open follow-ups when pipeline stage changes make them irrelevant
+- record the existing bounded marketing-attribution events
+- cancel already-open legacy follow-ups when pipeline stage changes make them irrelevant
 
-For legacy projects, `REVIEW_NEW_LEAD` is persisted with a 5:00pm Auckland next-business-day due timestamp using weekend, national/Auckland holiday, and company-closure data. Marking a project contacted persists the existing two-business-day cadence as `FOLLOWUP_CALL`; AutomationRunner no longer writes project next-action columns. These rows remain legacy command-centre candidates and must not be copied into V2 without a reviewed migration decision.
+AutomationRunner no longer creates legacy `tasks`, `followup_plans`, or `followup_tasks` for any project. Project-created and contacted events retain their email/outbox behavior; site-visit events retain their site-visit and marketing-attribution behavior; deposit, schedule, completion, and payment events retain their non-task email and marketing effects. Reaching `SENT` no longer starts a task-backed quote cadence. Existing rows are retained as read-only compatibility evidence and must not be copied into V2 or treated as current work without a reviewed migration decision. Stage changes to Deposit, Scheduled, Completed, or Paid still cancel an already-open legacy cadence so stale records do not remain actionable.
 
-Canonical task/follow-up tables are select-only to authenticated portal users. Automation persistence stays in the server-only service-role adapter, while Design Package task creation/status/due changes use the bounded `project_command_sync_design_task` RPC instead of direct authenticated table writes.
+Legacy task/follow-up tables remain select-only to authenticated portal users. `AutomationRunner` keeps service-role access for its audit, outbox, site-visit, marketing, and existing-cadence cancellation effects, but there is no task/follow-up creation adapter. Design Package request creation, status, and due-date changes remain authoritative in `design_package_requests` and no longer invoke `project_command_sync_design_task`.
 
 Marketing enquiry routes can create public lead/enquiry records and send or log autoresponder email behavior. `marketing_enquiry_intake` owns contact, project, and enquiry creation as one database transaction. A browser-generated `submission_id`, unique constraint, and transaction advisory lock make retries and concurrent duplicates return the original IDs. The RPC persists the same nullable indicative-pricing fields used by the autoresponder, so production schema readiness includes `20260724043000_marketing_enquiry_budget_columns.sql`; a root baseline `CREATE TABLE IF NOT EXISTS` is not evidence that an existing table has those columns. Keep public marketing writes narrow and server-owned; public responses expose stable validation/service messages, never raw Supabase errors.
 
@@ -130,7 +130,7 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 
 ## Access Boundaries
 
-- For legacy projects, `AutomationRunner` and its server-only `taskPersistence.ts` adapter intentionally use service-role access. For V2, only the named work-items system adapter may invoke reconciliation; staff routes use auth-bound commands. These paths remain exact-match allowlisted so a new service-role consumer still fails the security test.
+- `AutomationRunner` intentionally keeps service-role access for audit, outbox, site-visit, marketing-attribution, and existing-cadence cancellation effects. It must not recreate a generic legacy task/follow-up persistence adapter. For V2, only the named work-items system adapter may invoke reconciliation; staff routes use auth-bound commands. These paths remain exact-match allowlisted so a new service-role consumer still fails the security test.
 - Staff project action and preview routes must use staff auth helpers.
 - Public marketing enquiry/contact routes may write lead and email/audit records from server code, but must not expose staff workflow data.
 - Marketing enquiry autoresponder budgets and auto-created estimate drafts share one canonical costing snapshot. Saved calculator inputs must describe that snapshot (including the two-post standard assumption); do not recalculate separately for email and persistence.
@@ -139,13 +139,13 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 - Work Queue and Dashboard must consume `teamQueue.ts`; do not derive lifecycle, assignee fallback, quote/estimate precedence, or commercial readiness in browser components.
 - The Contacted classifier and migration routes are admin-only and auth-bound. Never add customer contact fields to the review payload or a bulk recommendation-accept command.
 - Site Visits remains hidden/manual and is not a task source or project-work destination. The optional completion confirmation has no stage, Schedule, email, or automation side effect.
-- Manual project-task checkboxes may show optimistic local feedback, but the owning staff API remains authoritative for `project_task_checks`, pipeline transitions, and automation events. Concurrent saves must roll back only the rejected task, expose explicit retry, and never claim an auto-advance side effect before the response confirms it.
+- Retained legacy task, follow-up, and stage-check rows are compatibility evidence, not a browser mutation surface or current-work source. Do not infer a lifecycle outcome or recreate an action from them.
 - Service-role keys, raw email provider responses, and private customer data must not reach client props, logs, generated documents, or public routes.
 - Preview-only Resend credentials and the fixed preview recipient stay server-owned. Preview-send requests accept only a repository fixture variant and never a browser-supplied address.
 
 ## Guardrails
 
-- Side effects must be idempotent. Use stable idempotency keys for automation events, emails, tasks, and follow-ups.
+- Side effects must be idempotent. Use stable idempotency keys for automation events and emails. Do not reintroduce legacy task or follow-up creation; new human obligations belong to the server-owned V2 Project Work commands.
 - Commercial audit inserts must inspect returned database errors, not only thrown exceptions. Duplicate idempotency keys may be treated as already recorded; schema/access failures must remain visible in safe structured server logs.
 - Quote/invoice delivery states must describe evidence: provider-confirmed, retryable with the same frozen request, or staff attention. Do not translate a retryable state into a promise of an automatic retry.
 - For durable provider uncertainty, reuse only the frozen provider key and exact request while the 20-hour retry window and attempt budget remain live. Expired or unresolved work needs staff attention; changing delivery inputs creates a new workflow intent, not a mutation beneath the old key.
@@ -168,7 +168,7 @@ The legacy JSON-only `/api/contact` compatibility send also uses the durable dat
 
 1. Add or reuse a stable event type.
 2. Build an idempotency key from project, event type, stage or primary ID.
-3. Add handler behavior in `AutomationRunner`.
+3. Add only the bounded non-task handler behavior in `AutomationRunner`; route a human obligation through the V2 Project Work owner instead of creating a legacy task or follow-up.
 4. Update tables/RLS only through ordered migrations.
 5. Verify duplicate event handling does not repeat side effects.
 
@@ -203,6 +203,7 @@ npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/app/api/contacts/route.test.ts "apps/portal/app/api/contacts/[contactId]/route.test.ts"
 npm run test:marketing -- apps/marketing/emails/utils/callWindow.test.ts
 npm run test:portal -- apps/portal/lib/projects/workItems apps/portal/app/api/staff/v1/work-items apps/portal/app/api/admin/project-work
+npx vitest run apps/portal/lib/automation/AutomationRunner.marketingAttribution.test.ts apps/portal/lib/designPackages/server.legacyTaskRetirement.test.ts apps/portal/lib/supabaseClient.boundaries.test.ts
 ```
 
 These tests inject or mock provider transport and webhook signatures. Do not use production/shared database credentials or send a real email as part of repository verification. JOB-03 local provider, integration, worker, contract, typecheck, lint, and production-build gates pass. Background Jobs [run 29723041212](https://github.com/velt-design/sanctuary/actions/runs/29723041212) passes all seven migrations on upstream PostgreSQL 18/PGMQ 1.10.0 and Supabase PostgreSQL 17/PGMQ 1.5.1, plus the contracts/integrations and worker artifact/container gates.
@@ -210,7 +211,7 @@ These tests inject or mock provider transport and webhook signatures. Do not use
 Manual checks should cover:
 
 - Project action emits one audit event and does not repeat side effects on duplicate trigger.
-- Expected task, follow-up, site visit, or outbox row appears on the project page.
+- Expected site-visit or outbox evidence appears, and no new legacy task, follow-up plan, follow-up task, or Design Package companion task is created.
 - Email preview renders repo templates and DB fallback templates.
 - Email provider failure is visible as an outbox failure where staff need to act.
 - Marketing enquiry success/failure does not expose staff-only data.

@@ -58,7 +58,7 @@ function changeControl(control: HTMLInputElement | HTMLSelectElement, value: str
 describe('ProjectStageControl', () => {
   beforeEach(() => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
-    mocks.correctProjectStage.mockResolvedValue({ rollback: false, resetManualTaskCount: 0 });
+    mocks.correctProjectStage.mockResolvedValue({ rollback: false });
   });
 
   afterEach(() => {

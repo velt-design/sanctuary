@@ -121,8 +121,6 @@ function matchingIndexData(options: { queryKey: readonly unknown[] }) {
   const params = options.queryKey[4] as {
     search: string;
     status: Project['status'] | 'all';
-    due: 'all' | 'due' | 'overdue' | 'today';
-    today: string;
     page: number;
     pageSize: 25 | 50 | 100;
     sort: 'newest';
@@ -141,8 +139,6 @@ function matchingIndexData(options: { queryKey: readonly unknown[] }) {
     query: {
       search: params.search,
       status: params.status,
-      due: params.due,
-      today: params.today,
       sort: params.sort,
     },
     generatedAt: '2026-04-03T01:00:00.000Z',
@@ -184,8 +180,7 @@ describe('ProjectsIndexClient', () => {
   it('renders fresh index data through the combined authenticated query', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: 'deck', statusFilter: 'SENT', dueFilter: 'today', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: 'deck', statusFilter: 'SENT', archiveFilter: 'active' }}
       />,
     );
 
@@ -194,8 +189,6 @@ describe('ProjectsIndexClient', () => {
         queryKey: qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', {
           search: 'deck',
           status: 'SENT',
-          due: 'today',
-          today: '2026-04-03',
           page: 1,
           pageSize: 50,
           sort: 'newest',
@@ -217,8 +210,7 @@ describe('ProjectsIndexClient', () => {
   it('exposes an Active/Archived/All archive filter', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
 
@@ -226,6 +218,11 @@ describe('ProjectsIndexClient', () => {
     expect(select).not.toBeNull();
     const options = Array.from(select?.querySelectorAll('option') ?? []).map((opt) => opt.value);
     expect(options).toEqual(['active', 'archived', 'all']);
+    expect(rendered.container.querySelector('#projectDueFilter')).toBeNull();
+    const sortOptions = Array.from(
+      rendered.container.querySelectorAll<HTMLSelectElement>('#projectSort option'),
+    ).map((option) => option.value);
+    expect(sortOptions).toEqual(['newest', 'oldest', 'name_asc', 'name_desc']);
 
     rendered.unmount();
   });
@@ -251,8 +248,7 @@ describe('ProjectsIndexClient', () => {
     });
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
     const archive = rendered.container.querySelector('#projectArchiveFilter') as HTMLSelectElement;
@@ -277,8 +273,7 @@ describe('ProjectsIndexClient', () => {
     });
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
 
@@ -299,8 +294,7 @@ describe('ProjectsIndexClient', () => {
     }));
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
 
@@ -321,8 +315,7 @@ describe('ProjectsIndexClient', () => {
     }));
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
 
@@ -340,8 +333,7 @@ describe('ProjectsIndexClient', () => {
   ])('preloads the project route and snapshot on %s intent', (_label, eventName, selector) => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
     const target = selector === 'tr'
@@ -367,8 +359,7 @@ describe('ProjectsIndexClient', () => {
   ])('navigates from %s after preparing the project', (_label, eventFactory) => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
     const row = rendered.container.querySelector('tbody tr');
@@ -386,8 +377,7 @@ describe('ProjectsIndexClient', () => {
   it('prepares the project before the Open link handles navigation', () => {
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
     const link = rendered.container.querySelector('a[href="/staff/projects/proj_1"]');
@@ -412,8 +402,7 @@ describe('ProjectsIndexClient', () => {
     }));
     const rendered = renderIntoDocument(
       <ProjectsIndexClient
-        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
-        initialTodayYmd="2026-04-03"
+        initialFilters={{ query: '', statusFilter: 'all', archiveFilter: 'active' }}
       />,
     );
     const nameButton = Array.from(rendered.container.querySelectorAll('tbody button')).find(

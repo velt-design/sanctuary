@@ -90,7 +90,7 @@ describe('WorkQueueClient', () => {
     ).not.toBeNull();
     expect(rendered.container.textContent).toContain('Work Queue not ready');
     expect(rendered.container.textContent).toContain(
-      'Existing projects and legacy tasks are unchanged.',
+      'Existing project records are unchanged.',
     );
     expect(rendered.container.textContent).not.toContain('Review old Contacted projects');
     expect(rendered.container.querySelector('[data-testid="queue-list"]')).toBeNull();

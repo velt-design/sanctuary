@@ -6,7 +6,6 @@ import {
 } from '@/lib/projects/serverProjectsIndex';
 import {
   isProjectsIndexArchiveFilter,
-  isProjectsIndexDueFilter,
   isProjectsIndexSort,
   parseProjectsIndexPageSize,
 } from '@/lib/projects/projectsIndexContract';
@@ -27,14 +26,10 @@ export async function GET(req: Request) {
   const search = searchParams.get('q')?.trim() ?? '';
   const rawStatus = searchParams.get('status')?.trim() ?? 'all';
   const status = rawStatus.toLowerCase() === 'all' ? 'all' : normalizeProjectStatus(rawStatus).status;
-  const due = searchParams.get('due')?.trim().toLowerCase() || 'all';
-  const today = searchParams.get('today')?.trim() || new Date().toISOString().slice(0, 10);
   const page = Number(searchParams.get('page') ?? 1);
   const pageSize = parseProjectsIndexPageSize(searchParams.get('pageSize')) ?? 50;
   const sort = searchParams.get('sort')?.trim() || 'newest';
   if (search.length > 80) return jsonError('q must be 80 characters or fewer', 400, diagnostics);
-  if (!isProjectsIndexDueFilter(due)) return jsonError('Invalid next-action filter', 400, diagnostics);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return jsonError('today must be YYYY-MM-DD', 400, diagnostics);
   if (!Number.isInteger(page) || page < 1) return jsonError('page must be a positive integer', 400, diagnostics);
   if (!isProjectsIndexSort(sort)) return jsonError('Invalid projects sort', 400, diagnostics);
 
@@ -43,8 +38,6 @@ export async function GET(req: Request) {
       archive: rawArchive,
       search,
       status,
-      due,
-      today,
       page,
       pageSize,
       sort,
@@ -55,7 +48,7 @@ export async function GET(req: Request) {
         archive: rawArchive,
         projects,
         contacts,
-        query: { search, status, due, today, sort },
+        query: { search, status, sort },
         generatedAt: new Date().toISOString(),
       },
       200,

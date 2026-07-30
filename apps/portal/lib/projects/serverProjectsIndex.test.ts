@@ -1,18 +1,25 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadProjectsIndexData, ProjectsIndexSchemaError } from './serverProjectsIndex';
 
 const params = {
   archive: 'active',
   search: 'deck',
   status: 'NEW',
-  due: 'all',
-  today: '2026-07-29',
   page: 1,
   pageSize: 50,
   sort: 'newest',
 } as const;
 
 describe('loadProjectsIndexData', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-05T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('maps one bounded project page and only its linked contacts', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: {
@@ -60,7 +67,7 @@ describe('loadProjectsIndexData', () => {
       p_search: 'deck',
       p_status: 'NEW',
       p_due: 'all',
-      p_today: '2026-07-29',
+      p_today: '2026-04-06',
       p_page: 1,
       p_page_size: 50,
       p_sort: 'newest',

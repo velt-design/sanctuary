@@ -1,41 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { legacyRunningJobTaskProjectIds, resolveRunningJobFactState } from './facts';
+import { resolveRunningJobFactState } from './facts';
 
 describe('resolveRunningJobFactState', () => {
-  it('keeps legacy project checks authoritative for unmarked projects', () => {
+  it('uses Running Jobs metadata and Schedule completion for every live project', () => {
     expect(resolveRunningJobFactState({
-      modelVersion: null,
-      legacyTaskKeys: new Set(['order_materials', 'job_complete']),
-      materialsOrderedAt: null,
-      roofingOrderedAt: '2026-07-29T01:00:00.000Z',
-      scheduleCompleted: false,
-    })).toEqual({
-      materialsOrdered: true,
-      roofingOrdered: false,
-      jobComplete: true,
-    });
-  });
-
-  it('uses Running Jobs metadata and Schedule completion for V2 projects', () => {
-    expect(resolveRunningJobFactState({
-      modelVersion: 2,
-      legacyTaskKeys: new Set(['roofing_ordered', 'job_complete']),
       materialsOrderedAt: '2026-07-29T01:00:00.000Z',
-      roofingOrderedAt: null,
+      roofingOrderedAt: '2026-07-29T01:00:00.000Z',
       scheduleCompleted: true,
     })).toEqual({
       materialsOrdered: true,
-      roofingOrdered: false,
+      roofingOrdered: true,
       jobComplete: true,
     });
   });
-});
 
-describe('legacyRunningJobTaskProjectIds', () => {
-  it('prevents V2 projects from being read through the legacy task-check owner', () => {
-    expect(legacyRunningJobTaskProjectIds([
-      { id: 'legacy-project', modelVersion: null },
-      { id: 'v2-project', modelVersion: 2 },
-    ])).toEqual(['legacy-project']);
+  it('does not infer specialist facts when their authoritative rows are empty', () => {
+    expect(resolveRunningJobFactState({
+      materialsOrderedAt: null,
+      roofingOrderedAt: null,
+      scheduleCompleted: false,
+    })).toEqual({
+      materialsOrdered: false,
+      roofingOrdered: false,
+      jobComplete: false,
+    });
   });
 });

@@ -2,12 +2,10 @@ import type { Contact } from '@/lib/types/contact';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 
 const PROJECTS_INDEX_ARCHIVE_FILTERS = ['active', 'archived', 'all'] as const;
-const PROJECTS_INDEX_DUE_FILTERS = ['all', 'due', 'overdue', 'today'] as const;
-const PROJECTS_INDEX_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc', 'next_action_asc', 'next_action_desc'] as const;
+const PROJECTS_INDEX_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc'] as const;
 const PROJECTS_INDEX_PAGE_SIZES = [25, 50, 100] as const;
 
 export type ProjectsIndexArchiveFilter = (typeof PROJECTS_INDEX_ARCHIVE_FILTERS)[number];
-type ProjectsIndexDueFilter = (typeof PROJECTS_INDEX_DUE_FILTERS)[number];
 export type ProjectsIndexSort = (typeof PROJECTS_INDEX_SORTS)[number];
 export type ProjectsIndexPageSize = (typeof PROJECTS_INDEX_PAGE_SIZES)[number];
 
@@ -15,8 +13,6 @@ export type ProjectsIndexParams = {
   archive: ProjectsIndexArchiveFilter;
   search: string;
   status: ProjectStatus | 'all';
-  due: ProjectsIndexDueFilter;
-  today: string;
   page: number;
   pageSize: ProjectsIndexPageSize;
   sort: ProjectsIndexSort;
@@ -45,10 +41,6 @@ export type ProjectsIndexResponse = {
 
 export function isProjectsIndexArchiveFilter(value: string): value is ProjectsIndexArchiveFilter {
   return PROJECTS_INDEX_ARCHIVE_FILTERS.includes(value as ProjectsIndexArchiveFilter);
-}
-
-export function isProjectsIndexDueFilter(value: string): value is ProjectsIndexDueFilter {
-  return PROJECTS_INDEX_DUE_FILTERS.includes(value as ProjectsIndexDueFilter);
 }
 
 export function isProjectsIndexSort(value: string): value is ProjectsIndexSort {

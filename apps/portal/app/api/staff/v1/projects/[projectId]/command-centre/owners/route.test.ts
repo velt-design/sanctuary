@@ -27,7 +27,12 @@ describe('PATCH command-centre owners', () => {
     requireStaffContext.mockReset().mockResolvedValue({
       ok: true, session: { user: { id: actorId }, role: 'admin' }, supabase: { rpc },
     });
-    getProjectCommandCentre.mockReset().mockResolvedValue({ projectId, operations: {} });
+    getProjectCommandCentre.mockReset().mockResolvedValue({
+      projectId,
+      workModel: 'legacy',
+      legacyWork: { status: 'retired', reviewHref: '/staff/projects/work-queue/legacy-review' },
+      owner: {},
+    });
   });
 
   it('passes an optimistic idempotent owner command and returns no-store', async () => {

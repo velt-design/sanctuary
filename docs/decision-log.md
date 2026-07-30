@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 | Date       | Area                             | Status   | Guardrail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------- | -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-30 | Legacy Project Tasks             | Promoted | Retire the unused pre-V2 task/action runtime without classifying projects or deleting historical evidence. Keep V2 Project Work and private My Tasks, transfer specialist facts before freezing legacy writes, and let staff mark `Closed — Lost` only after one-project review. |
 | 2026-07-30 | Dashboard Project Work Truth     | Promoted | Dashboard project work comes only from the bounded V2 Work Queue preview. Legacy `follow_up_date`/`next_action*` ages are compatibility data, not proof of a current obligation or a lost opportunity; never use them to drive a home-page workload or bulk closure. Keep personal reminders separate and retain compatibility history until each remaining server consumer is deliberately retired. |
 | 2026-07-30 | Project Snapshot Cache Policy    | Promoted | The complete authenticated Project Detail snapshot is private staff data. Set `private, no-store` on every response path, including authentication, validation, not-found, and server failures, and verify the deployed header with an authenticated read rather than relying on framework defaults. |
 | 2026-07-30 | Project Overview V2 Handover     | Promoted | Redesign Overview inside the current portal visual system, with one server-backed Project Work surface, email-only communication, and Site Visits hidden/manual. Preserve mixed legacy/V2 behavior and strict design/commercial precedence; add full-journey facts only through bounded specialist-owned server projections. |
@@ -4061,3 +4062,36 @@ Why it mattered: Staff could interpret stale compatibility dates as operational 
 Current guardrail: The bounded authoritative V2 Work Queue preview is the only Dashboard project-work surface. Keep personal reminders separate. Do not expose legacy action aggregates or the old snapshot queue payload to the browser, and never classify or close projects from follow-up age alone. Genuine losses use the guarded one-project review and V2 Closed disposition with explicit evidence and reason; archive is only for reviewed duplicate, test, invalid, or bad-import records. Preserve compatibility fields and applied snapshot SQL until remaining Projects, snapshot, and Schedule consumers are retired through separately reviewed work.
 Promoted to: `docs/ui-foundation.md`; `docs/project-work-items-and-follow-up.md`; `docs/project-work-items-technical-plan.md`; `docs/projects-contacts-estimates-calculator.md`; `docs/project-command-centre-architecture.md`; `docs/portal-production-readiness.md`
 Related docs/tests: `apps/portal/lib/dashboard/getDashboardData.ts`; `apps/portal/app/dashboard/DashboardView.tsx`; `apps/portal/app/dashboard/_components/ProjectWorkQueueCard.tsx`; `playwright/portal.dashboard-ui.spec.ts`
+
+### 2026-07-30 - Legacy Project Tasks - Retire Runtime, Preserve Evidence
+
+Date: 2026-07-30
+Area: Pre-V2 project tasks, Project Overview, automation, and specialist facts
+Status: Promoted
+Decision or mistake: Staff confirmed the legacy project-task system had never
+been adopted operationally. Keeping its rows, next-action selection, writers,
+and completion controls in the live portal would create false work while the
+team reviews old project outcomes. The approved retirement removes those runtime
+surfaces and writers but does not bulk-delete evidence or change a project.
+Why it mattered: Task age or presence cannot prove that a project is lost, and a
+bulk cleanup could silently close valid quotes, jobs, or history. Running Jobs
+materials/roofing facts also needed a specialist home before their old task
+checks could be frozen.
+Current guardrail: Pre-V2 Overview renders one read-only retirement card and no
+legacy task/action rows, selector, history, controller, sidebar, or command
+route. Automation, Drafting Queue, commercial, invoice, Projects index, and
+Running Jobs must not recreate or depend on legacy task checks. Preserve
+historical rows for review, transfer missing Running Jobs facts forward, and
+freeze authenticated writes through the exact retirement migration. V2 Project
+Work and private Dashboard My Tasks remain unchanged. Staff classifies and marks
+`Closed — Lost` one project at a time; physical row/table removal needs a later
+retention-backed reconciliation and must never be inferred from age.
+Promoted to: `docs/project-command-centre-architecture.md`;
+`docs/project-work-items-and-follow-up.md`;
+`docs/project-work-items-technical-plan.md`; `docs/supabase-schema-map.md`;
+`docs/ui-foundation.md`; `docs/portal-production-readiness.md`
+Related docs/tests:
+`supabase/migrations/20260730_000001_legacy_project_task_retirement.sql`;
+`test/legacy-project-task-retirement-migration.test.ts`;
+`apps/portal/components/projects/ProjectPage/tabs/overview/ProjectWorkSection.test.tsx`;
+`playwright/portal.command-centre.spec.ts`

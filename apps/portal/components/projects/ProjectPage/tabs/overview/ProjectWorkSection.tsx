@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchProjectStaffDirectory } from "@/lib/projects/commandCentre/client";
 import type {
-  ProjectCommandCentreOperations,
   ProjectCommandStaffSummary,
 } from "@/lib/projects/commandCentre/types";
 import type { ProjectPageSnapshot } from "@/lib/projects/types";
@@ -18,7 +17,7 @@ import {
   Card,
   KeyValueGrid,
 } from "@/components/ui/foundation";
-import ProjectPrimaryActionCard from "./ProjectPrimaryActionCard";
+import LegacyProjectWorkRetiredCard from "./LegacyProjectWorkRetiredCard";
 import ProjectWorkControls from "./ProjectWorkControls";
 import ProjectWorkList from "./ProjectWorkList";
 import {
@@ -51,10 +50,9 @@ type V2Props = SharedProps & {
   projectWork: ProjectWorkProjection;
 };
 
-type LegacyProps = SharedProps & {
+type LegacyProps = {
   workModel: "legacy";
-  operations: ProjectCommandCentreOperations;
-  tasks: ProjectPageSnapshot["tasks"];
+  reviewHref: string | null;
 };
 
 export type ProjectWorkSectionProps = V2Props | LegacyProps;
@@ -400,7 +398,7 @@ function V2ProjectWorkSection({
         )}
 
         {active ? (
-          <ProjectWorkList model="v2" controller={controller} staff={staff} />
+          <ProjectWorkList controller={controller} staff={staff} />
         ) : nonActiveNotice ? (
           <AlertBanner tone="info" title={nonActiveNotice.title}>
             {nonActiveNotice.detail}
@@ -440,16 +438,5 @@ export default function ProjectWorkSection(props: ProjectWorkSectionProps) {
     return <V2ProjectWorkSection {...props} />;
   }
 
-  return (
-    <ProjectPrimaryActionCard
-      projectId={props.projectId}
-      host={props.host}
-      operations={props.operations}
-      stale={props.stale}
-      onRefresh={props.onRefresh}
-      initialStaff={props.initialStaff}
-    >
-      <ProjectWorkList model="legacy" tasks={props.tasks} />
-    </ProjectPrimaryActionCard>
-  );
+  return <LegacyProjectWorkRetiredCard reviewHref={props.reviewHref} />;
 }

@@ -38,7 +38,7 @@ describe('GET /api/staff/v1/projects/index', () => {
 
   it.each(['active', 'archived', 'all'] as const)('loads the %s scope through the auth-bound client', async (archive) => {
     const mod = await import('./route');
-    const res = await mod.GET(new Request(`http://localhost/api/staff/v1/projects/index?archive=${archive}&today=2026-04-03`, {
+    const res = await mod.GET(new Request(`http://localhost/api/staff/v1/projects/index?archive=${archive}`, {
       headers: { 'x-request-id': `req_${archive}` },
     }));
 
@@ -50,8 +50,6 @@ describe('GET /api/staff/v1/projects/index', () => {
         archive,
         search: '',
         status: 'all',
-        due: 'all',
-        today: '2026-04-03',
         page: 1,
         pageSize: 50,
         sort: 'newest',
@@ -72,8 +70,6 @@ describe('GET /api/staff/v1/projects/index', () => {
       query: {
         search: '',
         status: 'all',
-        due: 'all',
-        today: '2026-04-03',
         sort: 'newest',
       },
       generatedAt: expect.any(String),
@@ -82,7 +78,7 @@ describe('GET /api/staff/v1/projects/index', () => {
 
   it('defaults a missing archive scope to active', async () => {
     const mod = await import('./route');
-    const res = await mod.GET(new Request('http://localhost/api/staff/v1/projects/index?today=2026-04-03'));
+    const res = await mod.GET(new Request('http://localhost/api/staff/v1/projects/index'));
     expect(res.status).toBe(200);
     expect(loadProjectsIndexData).toHaveBeenCalledWith(
       expect.objectContaining({ archive: 'active' }),
@@ -95,6 +91,33 @@ describe('GET /api/staff/v1/projects/index', () => {
     const res = await mod.GET(new Request('http://localhost/api/staff/v1/projects/index?archive=private'));
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({ error: 'archive must be active, archived, or all' });
+    expect(loadProjectsIndexData).not.toHaveBeenCalled();
+  });
+
+  it('ignores retired due parameters instead of exposing them to the loader', async () => {
+    const mod = await import('./route');
+    const res = await mod.GET(new Request(
+      'http://localhost/api/staff/v1/projects/index?due=today&today=not-a-date&nextActionDue=1',
+    ));
+
+    expect(res.status).toBe(200);
+    expect(loadProjectsIndexData).toHaveBeenCalledWith(
+      expect.not.objectContaining({ due: expect.anything(), today: expect.anything() }),
+      expect.anything(),
+    );
+    await expect(res.json()).resolves.toEqual(expect.objectContaining({
+      query: { search: '', status: 'all', sort: 'newest' },
+    }));
+  });
+
+  it('rejects retired next-action sorts', async () => {
+    const mod = await import('./route');
+    const res = await mod.GET(new Request(
+      'http://localhost/api/staff/v1/projects/index?sort=next_action_asc',
+    ));
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: 'Invalid projects sort' });
     expect(loadProjectsIndexData).not.toHaveBeenCalled();
   });
 

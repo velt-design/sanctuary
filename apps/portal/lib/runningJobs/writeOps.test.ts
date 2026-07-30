@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   loadRunningJobRow: vi.fn(),
   markScheduleDone: vi.fn(),
   markScheduleInProgress: vi.fn(),
-  markCompleted: vi.fn(),
+  markProjectCompleted: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -31,10 +31,6 @@ vi.mock('@/app/api/staff/v1/schedule/job/mark-in-progress/route', () => ({
   POST: (...args: unknown[]) => mocks.markScheduleInProgress(...args),
 }));
 
-vi.mock('@/app/api/staff/v1/projects/[projectId]/action/mark_completed/route', () => ({
-  POST: (...args: unknown[]) => mocks.markCompleted(...args),
-}));
-
 vi.mock('@/app/api/staff/v1/projects/[projectId]/action/confirm_schedule/route', () => ({
   POST: vi.fn(),
 }));
@@ -45,6 +41,10 @@ vi.mock('@/app/api/staff/v1/projects/[projectId]/action/mark_deposit_received/ro
 
 vi.mock('@/app/api/staff/v1/projects/[projectId]/action/mark_paid/route', () => ({
   POST: vi.fn(),
+}));
+
+vi.mock('@/app/api/staff/v1/projects/[projectId]/action/mark_completed/route', () => ({
+  POST: (...args: unknown[]) => mocks.markProjectCompleted(...args),
 }));
 
 vi.mock('@/app/api/staff/v1/schedule/job/assign/route', () => ({ POST: vi.fn() }));
@@ -145,12 +145,12 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     mocks.loadRunningJobRow.mockReset();
     mocks.markScheduleDone.mockReset();
     mocks.markScheduleInProgress.mockReset();
-    mocks.markCompleted.mockReset();
+    mocks.markProjectCompleted.mockReset();
     mocks.loadRunningJobRow.mockImplementation(async () => makeRow(2));
     mocks.rpc.mockResolvedValue({ data: { row_version: 5 }, error: null });
     mocks.markScheduleDone.mockResolvedValue(Response.json({ ok: true }));
     mocks.markScheduleInProgress.mockResolvedValue(Response.json({ ok: true }));
-    mocks.markCompleted.mockResolvedValue(Response.json({ ok: true }));
+    mocks.markProjectCompleted.mockResolvedValue(Response.json({ ok: true }));
   });
 
   it('writes V2 material state through the Running Jobs fact RPC', async () => {
@@ -176,12 +176,7 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 
-  it('keeps legacy material state on project_task_checks', async () => {
-    const upsert = vi.fn().mockResolvedValue({ error: null });
-    mocks.from.mockImplementation((table: string) => {
-      if (table === 'project_task_checks') return { upsert };
-      throw new Error(`Unexpected table ${table}`);
-    });
+  it('writes unmarked-project material state through the same fact RPC', async () => {
     mocks.loadRunningJobRow.mockImplementation(async () => makeRow(null));
     const { applyRunningJobCellMutation } = await import('./writeOps');
     const row = makeRow(null);
@@ -195,11 +190,14 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
       value: true,
     });
 
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
-      project_id: '11111111-1111-4111-8111-111111111111',
-      task_key: 'order_materials',
-    }), { onConflict: 'project_id,task_key' });
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('project_running_job_fact_command', expect.objectContaining({
+      p_project_id: '11111111-1111-4111-8111-111111111111',
+      p_fact: 'materials_ordered',
+      p_value: true,
+      p_expected_row_version: 0,
+      p_command_id: expect.any(String),
+    }));
+    expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 
   it('uses Schedule alone when a V2 job is completed', async () => {
@@ -216,7 +214,25 @@ describe('applyRunningJobCellMutation work-model ownership', () => {
     });
 
     expect(mocks.markScheduleDone).toHaveBeenCalledTimes(1);
+    expect(mocks.markProjectCompleted).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
-    expect(mocks.markCompleted).not.toHaveBeenCalled();
+  });
+
+  it('preserves the server-owned legacy completion lifecycle without task checks', async () => {
+    const { applyRunningJobCellMutation } = await import('./writeOps');
+    const row = makeRow(null);
+
+    await applyRunningJobCellMutation({
+      projectId: row.projectId,
+      projectUuid: '11111111-1111-4111-8111-111111111111',
+      actorUserId: '22222222-2222-4222-8222-222222222222',
+      currentRow: row,
+      key: 'job_completed',
+      value: true,
+    });
+
+    expect(mocks.markScheduleDone).toHaveBeenCalledTimes(1);
+    expect(mocks.markProjectCompleted).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalledWith('project_task_checks');
   });
 });

@@ -38,7 +38,8 @@ describe('authoritative project-work projection', () => {
   it('does not expose legacy or missing projects as V2 work', async () => {
     mocks.getProjectCommandCentre.mockResolvedValueOnce({
       workModel: 'legacy',
-      operations: {},
+      legacyWork: { status: 'retired', reviewHref: null },
+      owner: {},
     });
     await expect(
       getAuthoritativeProjectWorkProjection(PROJECT_ID, SUPABASE),

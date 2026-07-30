@@ -40,7 +40,6 @@ describe('projectCache helpers', () => {
     expect(placeholder.snapshot.project.name).toBe('Beach House');
     expect(placeholder.snapshot.project.contactId).toBe('ct_1');
     expect(placeholder.snapshot.pipeline.stage).toBe('quoting');
-    expect(placeholder.snapshot.tasks.items).toEqual([]);
     expect(placeholder.generatedAt).toBe('2026-03-02T00:00:00.000Z');
   });
 
@@ -140,7 +139,7 @@ describe('projectCache helpers', () => {
       archive,
       projects: { rows: [project], totalCount: 1, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
       contacts: { rows: [contact], totalCount: 1, truncated: false },
-      query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
+      query: { search: '', status: 'all', sort: 'newest' },
       generatedAt: '2026-07-19T00:00:00.000Z',
     });
     client.setQueryData(qk.projects.list('host', 'active'), [project]);
@@ -183,7 +182,7 @@ describe('projectCache helpers', () => {
       archive,
       projects: { rows, totalCount, truncated: false, page: 1, pageSize: 50, totalPages: Math.max(1, Math.ceil(totalCount / 50)) },
       contacts: { rows: [], totalCount: 0, truncated: false },
-      query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
+      query: { search: '', status: 'all', sort: 'newest' },
       generatedAt: '2026-07-19T00:00:00.000Z',
     });
 

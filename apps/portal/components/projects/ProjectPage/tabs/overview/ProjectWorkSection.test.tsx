@@ -1,12 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  ProjectCommandActionSummary,
-  ProjectCommandCentreOperations,
-  ProjectCommandStaffSummary,
-} from "@/lib/projects/commandCentre/types";
-import type { ProjectPageSnapshot } from "@/lib/projects/types";
+import type { ProjectCommandStaffSummary } from "@/lib/projects/commandCentre/types";
 import type {
   ProjectWorkItem,
   ProjectWorkProjection,
@@ -18,14 +13,11 @@ import ProjectWorkSection, {
 
 const mocks = vi.hoisted(() => ({
   fetchProjectStaffDirectory: vi.fn(),
-  runProjectActionCommand: vi.fn(),
 }));
 
 vi.mock("@/lib/projects/commandCentre/client", () => ({
   fetchProjectStaffDirectory: (...args: unknown[]) =>
     mocks.fetchProjectStaffDirectory(...args),
-  runProjectActionCommand: (...args: unknown[]) =>
-    mocks.runProjectActionCommand(...args),
 }));
 
 vi.mock(
@@ -103,77 +95,6 @@ function projection(
   };
 }
 
-function action(
-  overrides: Partial<ProjectCommandActionSummary> = {},
-): ProjectCommandActionSummary {
-  return {
-    sourceKind: "automation_task",
-    sourceId: "00000000-0000-4000-8000-000000000010",
-    title: "Finalise and send quote",
-    category: "Quote",
-    sourceLabel: "Automation task",
-    sourceType: "FINALIZE_SEND_QUOTE",
-    owner: { userId: staff[0].userId, displayName: staff[0].displayName },
-    ownerSource: "source_assignee",
-    dueAt: "2026-07-30T05:00:00.000Z",
-    dueState: "today",
-    dueLabel: "Due today",
-    isCustomerFacing: true,
-    isCritical: false,
-    criticalReason: null,
-    rescheduleCount: 0,
-    createdAt: "2026-07-29T00:00:00.000Z",
-    updatedAt: "2026-07-29T00:00:00.000Z",
-    requiresDueDate: false,
-    isExplicitlySelected: true,
-    selectionBaselineHash: "fixture-primary",
-    ...overrides,
-  };
-}
-
-function operations(
-  overrides: Partial<ProjectCommandCentreOperations> = {},
-): ProjectCommandCentreOperations {
-  const current = action();
-  return {
-    owner: {
-      owner: { key: "jordan", displayName: "Jordan" },
-      required: true,
-      missing: false,
-      version: "2026-07-29T00:00:00.000Z",
-      permissions: { canManage: false },
-    },
-    primaryAction: current,
-    candidates: [current],
-    candidateCount: 1,
-    candidateRevision: "fixture-revision",
-    manualSelectionBaselineHash: "fixture-manual",
-    selectionConflict: null,
-    permissions: {
-      canCreate: true,
-      canSelect: true,
-      canComplete: true,
-      canReschedule: false,
-      canReassign: false,
-      canSetCritical: false,
-      canResolveConflict: false,
-    },
-    audit: [],
-    exceptions: {
-      missingOwner: false,
-      noPrimaryAction: false,
-      selectionConflict: false,
-    },
-    ...overrides,
-  };
-}
-
-function legacyTasks(
-  items: ProjectPageSnapshot["tasks"]["items"] = [],
-): ProjectPageSnapshot["tasks"] {
-  return { stage: "quoting", items };
-}
-
 function renderSection(props: ProjectWorkSectionProps) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -211,9 +132,6 @@ describe("ProjectWorkSection", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     mocks.fetchProjectStaffDirectory.mockReset().mockResolvedValue(staff);
-    mocks.runProjectActionCommand.mockReset().mockResolvedValue({
-      command: { id: "command", committed: true, replayed: false },
-    });
   });
 
   afterEach(() => {
@@ -313,7 +231,6 @@ describe("ProjectWorkSection", () => {
         ),
       ),
     ).toBe(false);
-    expect(mocks.runProjectActionCommand).not.toHaveBeenCalled();
   });
 
   it("renders the server-owned specialist owner, expected result and permitted destination", () => {
@@ -552,156 +469,45 @@ describe("ProjectWorkSection", () => {
     },
   );
 
-  it("removes prohibited legacy candidates and Call/Site Visit categories from controls", async () => {
-    const current = action();
-    const allowedCandidate = action({
-      sourceId: "00000000-0000-4000-8000-000000000011",
-      title: "Review design details",
-      category: "Design",
-      sourceType: "REVIEW_DESIGN",
-      isExplicitlySelected: false,
-    });
-    const callCandidate = action({
-      sourceId: "00000000-0000-4000-8000-000000000012",
-      title: "Call customer",
-      category: "Call",
-      sourceType: "FOLLOWUP_CALL",
-      isExplicitlySelected: false,
-    });
-    const siteVisitCandidate = action({
-      sourceId: "00000000-0000-4000-8000-000000000013",
-      title: "Book Site Visit",
-      category: "Site visit",
-      sourceType: "BOOK_SITE_VISIT",
-      isExplicitlySelected: false,
-    });
+  it("replaces every legacy task surface with one retirement notice", () => {
     const rendered = renderSection({
       workModel: "legacy",
-      projectId: PROJECT_ID,
-      host: "fixture",
-      operations: operations({
-        primaryAction: current,
-        candidates: [
-          current,
-          allowedCandidate,
-          callCandidate,
-          siteVisitCandidate,
-        ],
-        candidateCount: 4,
-      }),
-      tasks: legacyTasks([
-        {
-          key: "create_quote",
-          label: "Create quote",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "call_enquiry",
-          label: "Call enquiry",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "book_site_visit",
-          label: "Book site visit",
-          kind: "action",
-          isDone: false,
-        },
-      ]),
-      pipelineStage: "quoting",
-      stale: false,
-      onRefresh: vi.fn(),
-      initialStaff: staff,
+      reviewHref: "/staff/projects/work-queue/legacy-review",
     });
 
-    const manage = Array.from(
-      rendered.container.querySelectorAll("button"),
-    ).find((button) => button.textContent === "Manage next action")!;
-    await act(async () => {
-      manage.click();
-      await import("./ProjectPrimaryActionControls");
-    });
-
-    const controls = rendered.container.querySelector(
-      '[data-primary-action-controls="true"]',
-    )!;
-    expect(controls).not.toBeNull();
-    expect(controls.textContent).toContain(allowedCandidate.title);
-    expect(controls.textContent).not.toContain(callCandidate.title);
-    expect(controls.textContent).not.toContain(siteVisitCandidate.title);
-
-    const categorySelect = Array.from(controls.querySelectorAll("select")).find(
-      (select) => select.parentElement?.textContent?.startsWith("Category"),
-    )!;
-    const categories = Array.from(categorySelect.options).map(
-      (option) => option.textContent,
-    );
-    expect(categories).toEqual([
-      "Design",
-      "Estimate",
-      "Quote",
-      "Follow-up",
-      "Other",
-    ]);
-    expect(rendered.container.textContent).not.toMatch(/\bcall\b/i);
-    expect(rendered.container.textContent).not.toMatch(/\bsite visit\b/i);
     expect(
       rendered.container.querySelectorAll(
-        '[data-legacy-stage-row-readonly="true"]',
+        '[data-legacy-project-work-retired="true"]',
       ),
     ).toHaveLength(1);
-    expect(mocks.runProjectActionCommand).not.toHaveBeenCalled();
+    expect(rendered.container.textContent).toContain(
+      "Legacy project tasks have been retired",
+    );
+    expect(rendered.container.textContent).toContain(
+      "no task or next-action controls",
+    );
+    expect(
+      rendered.container.querySelectorAll(
+        '[data-project-work-list="legacy"], [data-primary-action-controls="true"]',
+      ),
+    ).toHaveLength(0);
+    expect(rendered.container.querySelectorAll("button")).toHaveLength(0);
+    expect(
+      rendered.container
+        .querySelector<HTMLAnchorElement>("a")
+        ?.getAttribute("href"),
+    ).toBe("/staff/projects/work-queue/legacy-review");
   });
 
-  it("shows the exact review state and issues no command or replacement for a prohibited server-selected action", () => {
-    const prohibitedCurrent = action({
-      title: "Call customer about the quote",
-      category: "Call",
-      sourceType: "FOLLOWUP_CALL",
-    });
-    const allowedCandidate = action({
-      sourceId: "00000000-0000-4000-8000-000000000011",
-      title: "Review quote details",
-      category: "Quote",
-      isExplicitlySelected: false,
-    });
+  it("does not expose the admin review destination to a staff viewer", () => {
     const rendered = renderSection({
       workModel: "legacy",
-      projectId: PROJECT_ID,
-      host: "fixture",
-      operations: operations({
-        primaryAction: prohibitedCurrent,
-        candidates: [prohibitedCurrent, allowedCandidate],
-        candidateCount: 2,
-      }),
-      tasks: legacyTasks(),
-      pipelineStage: "quoting",
-      stale: false,
-      onRefresh: vi.fn(),
-      initialStaff: staff,
+      reviewHref: null,
     });
 
-    const review = rendered.container.querySelector(
-      '[data-legacy-work-review="true"]',
-    )!;
-    expect(review.querySelector("strong")?.textContent).toBe(
-      "Legacy work needs review",
+    expect(rendered.container.textContent).toContain(
+      "Legacy project tasks have been retired",
     );
-    expect(review.textContent).toContain("no browser replacement is chosen");
-    expect(rendered.container.textContent).not.toContain(
-      prohibitedCurrent.title,
-    );
-    expect(rendered.container.textContent).not.toContain(
-      allowedCandidate.title,
-    );
-    expect(
-      rendered.container.querySelector("[data-primary-action-source]"),
-    ).toBeNull();
-    expect(
-      rendered.container.querySelector('[data-primary-action-controls="true"]'),
-    ).toBeNull();
-    expect(rendered.container.querySelectorAll("button")).toHaveLength(0);
-    expect(mocks.runProjectActionCommand).not.toHaveBeenCalled();
+    expect(rendered.container.querySelectorAll("a, button, input, select")).toHaveLength(0);
   });
 });

@@ -21,8 +21,6 @@ describe('projects index query', () => {
     expect(options.queryKey).toEqual(qk.projects.index(PROJECTS_INDEX_QUERY_SCOPE, 'active', {
       search: 'deck',
       status: 'QUOTING',
-      due: 'all',
-      today: base.today,
       page: 2,
       pageSize: 25,
       sort: 'name_asc',

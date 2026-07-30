@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { buildContactsById, filterProjectsForIndex, normalizePhone, parseProjectsIndexFilters, todayYmd } from './projectIndexFilters';
+import { buildContactsById, filterProjectsForIndex, normalizePhone, parseProjectsIndexFilters } from './projectIndexFilters';
 
 const contacts: Contact[] = [
   {
@@ -38,18 +38,16 @@ const projects: Project[] = [
 ];
 
 describe('projectIndexFilters', () => {
-  it('parses q, status, due, and nextActionDue search params', () => {
+  it('parses the supported search params and ignores retired due filters', () => {
     expect(parseProjectsIndexFilters(new URLSearchParams('q=deck&status=sent&due=today'))).toEqual({
       query: 'deck',
       statusFilter: 'SENT',
-      dueFilter: 'today',
       archiveFilter: 'active',
     });
 
     expect(parseProjectsIndexFilters(new URLSearchParams('nextActionDue=1'))).toEqual({
       query: '',
       statusFilter: 'all',
-      dueFilter: 'due',
       archiveFilter: 'active',
     });
   });
@@ -71,10 +69,8 @@ describe('projectIndexFilters', () => {
         {
           query: 'alex',
           statusFilter: 'SENT',
-          dueFilter: 'today',
           archiveFilter: 'active',
         },
-        '2026-04-03',
       ).map((project) => project.id),
     ).toEqual(['proj_1']);
   });
@@ -102,8 +98,7 @@ describe('projectIndexFilters', () => {
       filterProjectsForIndex(
         [phoneProject],
         contactsById,
-        { query: '0211234567', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' },
-        '2026-04-03',
+        { query: '0211234567', statusFilter: 'all', archiveFilter: 'active' },
       ),
     ).toHaveLength(1);
 
@@ -111,8 +106,7 @@ describe('projectIndexFilters', () => {
       filterProjectsForIndex(
         [phoneProject],
         contactsById,
-        { query: '021 123', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' },
-        '2026-04-03',
+        { query: '021 123', statusFilter: 'all', archiveFilter: 'active' },
       ),
     ).toHaveLength(1);
   });
@@ -140,8 +134,7 @@ describe('projectIndexFilters', () => {
       filterProjectsForIndex(
         [archived, active],
         contactsById,
-        { query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' },
-        '2026-04-03',
+        { query: '', statusFilter: 'all', archiveFilter: 'active' },
       ).map((p) => p.id),
     ).toEqual(['proj_active']);
 
@@ -149,8 +142,7 @@ describe('projectIndexFilters', () => {
       filterProjectsForIndex(
         [archived, active],
         contactsById,
-        { query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'archived' },
-        '2026-04-03',
+        { query: '', statusFilter: 'all', archiveFilter: 'archived' },
       ).map((p) => p.id),
     ).toEqual(['proj_archived']);
 
@@ -158,8 +150,7 @@ describe('projectIndexFilters', () => {
       filterProjectsForIndex(
         [archived, active],
         contactsById,
-        { query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'all' },
-        '2026-04-03',
+        { query: '', statusFilter: 'all', archiveFilter: 'all' },
       )
         .map((p) => p.id)
         .sort(),
@@ -169,10 +160,5 @@ describe('projectIndexFilters', () => {
   it('normalizes phones to digits-only', () => {
     expect(normalizePhone('(021) 123 4567')).toBe('0211234567');
     expect(normalizePhone(undefined)).toBe('');
-  });
-
-  it('computes today in the portal timezone instead of the server machine timezone', () => {
-    expect(todayYmd('2026-04-05T11:59:59.000Z')).toBe('2026-04-05');
-    expect(todayYmd('2026-04-05T12:00:00.000Z')).toBe('2026-04-06');
   });
 });

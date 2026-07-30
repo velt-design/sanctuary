@@ -279,13 +279,7 @@ export default function OverviewTab({
           ) : (
             <ProjectWorkSection
               workModel="legacy"
-              projectId={snapshot.project.id}
-              host={host}
-              operations={commandQuery.data.operations}
-              tasks={snapshot.tasks}
-              pipelineStage={snapshot.project.stage}
-              stale={projectWorkControlsStale}
-              onRefresh={() => void commandQuery.refetch()}
+              reviewHref={commandQuery.data.legacyWork.reviewHref}
             />
           )}
         </Suspense>

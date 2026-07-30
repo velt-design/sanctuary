@@ -73,7 +73,6 @@ vi.mock("@/components/debug/PortalDebugExportButton", () => ({
 const fullSnapshot = {
   project: { id: "proj_1", name: "Fresh Project", stage: "lead" },
   pipeline: { stage: "lead" },
-  tasks: { stage: "lead", items: [] },
   activity: [],
   emails: [],
   notes: [],

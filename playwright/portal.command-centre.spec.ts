@@ -3,7 +3,6 @@ import {
   COMMAND_CENTRE_FIXTURE_SCENARIOS,
   COMMAND_CENTRE_VIEW_STATES,
   COMMAND_CENTRE_WORK_SCENARIOS,
-  commandCentreActionFixtures,
   commandCentreFixtureStaff,
   commandCentreFixtures,
   commandCentreWorkFixtures,
@@ -222,16 +221,21 @@ const WORK_SCENARIO_EXPECTATIONS = {
     model: "v2",
     text: ["Needs triage", "No ranked current work is available"],
   },
-  legacy: {
-    model: "legacy",
-    text: ["Finalise and send quote", "Legacy stage work", "Read-only"],
-  },
-  "legacy-prohibited": {
+  "legacy-admin": {
     model: "legacy",
     text: [
-      "Legacy work needs review",
-      "no browser replacement is chosen",
-      "No visible legacy stage work",
+      "Legacy project tasks have been retired",
+      "no task or next-action controls",
+      "Review legacy projects",
+      "Read-only",
+    ],
+  },
+  "legacy-no-review": {
+    model: "legacy",
+    text: [
+      "Legacy project tasks have been retired",
+      "no task or next-action controls",
+      "Read-only",
     ],
   },
 } as const satisfies Record<
@@ -265,49 +269,51 @@ for (const work of COMMAND_CENTRE_WORK_SCENARIOS) {
   });
 }
 
-test("keeps legacy stage rows read-only and suppresses prohibited work without a browser replacement", async ({
+test("retires legacy rows and actions while keeping the admin review route explicit", async ({
   page,
 }) => {
-  await page.goto(fixtureUrl({ work: "legacy" }));
+  await page.goto(fixtureUrl({ work: "legacy-admin" }));
   const work = page.locator('[data-project-work-section="true"]');
-  await expect(work.getByText("Create quote", { exact: true })).toBeVisible();
+  await expect(work).toHaveAttribute(
+    "data-legacy-project-work-retired",
+    "true",
+  );
   await expect(
     work.locator('[data-legacy-stage-row-readonly="true"]'),
-  ).toHaveCount(1);
+  ).toHaveCount(0);
   await expect(work.locator('input[type="checkbox"]')).toHaveCount(0);
-  await expect(work).not.toContainText("Call again later");
-
-  await page.goto(fixtureUrl({ work: "legacy-prohibited" }));
-  const prohibited = page.locator('[data-project-work-section="true"]');
   await expect(
-    prohibited.getByText("Legacy work needs review", { exact: true }),
+    work.getByText("Legacy project tasks have been retired", { exact: true }),
   ).toBeVisible();
-  await expect(prohibited).not.toContainText("Book site visit");
-  await expect(prohibited).not.toContainText("Upload photos");
   await expect(
-    prohibited.getByRole("button", { name: "Complete" }),
+    work.getByRole("link", { name: "Review legacy projects" }),
+  ).toHaveAttribute("href", "/staff/projects/work-queue/legacy-review");
+  await expect(
+    work.getByRole("button", { name: "Manage next action" }),
   ).toHaveCount(0);
   await expect(
-    prohibited.getByRole("button", { name: "Use selected action" }),
+    work.getByRole("button", { name: "Complete" }),
   ).toHaveCount(0);
-  await expect(prohibited.locator('a[href*="site-visits"]')).toHaveCount(0);
+  await expect(
+    work.getByRole("button", { name: "Use selected action" }),
+  ).toHaveCount(0);
+  await expect(work.getByLabel("Category")).toHaveCount(0);
+  await expect(work.locator('a[href*="site-visits"]')).toHaveCount(0);
+  await expect(work).not.toContainText("Call");
+  await expect(work).not.toContainText("Site Visit");
 });
 
-test("offers no legacy Call or Site Visit manual categories", async ({
+test("does not expose the legacy review route when the server omits it", async ({
   page,
 }) => {
-  await page.goto(fixtureUrl({ work: "legacy" }));
-  await page.getByRole("button", { name: "Manage next action" }).click();
-  await page.getByText("Create manual action", { exact: true }).click();
-  const category = page.getByLabel("Category");
-  await expect(category).toBeVisible();
-  await expect(category.locator("option")).toHaveText([
-    "Design",
-    "Estimate",
-    "Quote",
-    "Follow-up",
-    "Other",
-  ]);
+  await page.goto(fixtureUrl({ work: "legacy-no-review" }));
+  const work = page.locator('[data-project-work-section="true"]');
+  await expect(
+    work.getByText("Legacy project tasks have been retired", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    work.getByRole("link", { name: "Review legacy projects" }),
+  ).toHaveCount(0);
 });
 
 const READ_STATE_EXPECTATIONS = {
@@ -781,6 +787,14 @@ const PROJECT_SHELL_VIEWPORTS = [
   [390, 844],
 ] as const;
 
+const COMMAND_CENTRE_OWNER = {
+  owner: { key: "jordan", displayName: "Jordan" },
+  required: true,
+  missing: false,
+  version: "owner-v1",
+  permissions: { canManage: true },
+} as const;
+
 for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
   test(`renders the two-row project shell and one Overview work surface at ${width}px`, async ({
     page,
@@ -795,7 +809,11 @@ for (const [width, height] of PROJECT_SHELL_VIEWPORTS) {
             projectId: "proj_fixture_shell",
             workModel: "legacy",
             currentDesign: commandCentreFixtures["standard-estimate"],
-            operations: commandCentreActionFixtures.primary,
+            legacyWork: {
+              status: "retired",
+              reviewHref: "/staff/projects/work-queue/legacy-review",
+            },
+            owner: COMMAND_CENTRE_OWNER,
             generatedAt: new Date().toISOString(),
           }),
         });
@@ -891,7 +909,11 @@ function legacyCommandCentreBody(
     projectId: "proj_fixture_shell",
     workModel: "legacy",
     currentDesign,
-    operations: commandCentreActionFixtures.empty,
+    legacyWork: {
+      status: "retired",
+      reviewHref: "/staff/projects/work-queue/legacy-review",
+    },
+    owner: COMMAND_CENTRE_OWNER,
     generatedAt: new Date().toISOString(),
   });
 }
@@ -927,6 +949,7 @@ function v2CommandCentreBody() {
     workModel: "v2",
     currentDesign: commandCentreFixtures["standard-estimate"],
     projectWork,
+    owner: COMMAND_CENTRE_OWNER,
     generatedAt: new Date().toISOString(),
   });
 }

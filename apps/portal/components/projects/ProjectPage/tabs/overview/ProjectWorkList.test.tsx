@@ -1,6 +1,5 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ProjectPageSnapshot } from "@/lib/projects/types";
 import type {
   ProjectWorkItem,
   ProjectWorkProjection,
@@ -141,7 +140,7 @@ describe("ProjectWorkList", () => {
     const runItemAction = vi.fn().mockResolvedValue(true);
     const workController = controllerFor(projectWork, { runItemAction });
     const rendered = renderIntoDocument(
-      <ProjectWorkList model="v2" controller={workController} />,
+      <ProjectWorkList controller={workController} />,
     );
 
     expect(
@@ -209,7 +208,6 @@ describe("ProjectWorkList", () => {
     const runItemAction = vi.fn();
     const rendered = renderIntoDocument(
       <ProjectWorkList
-        model="v2"
         controller={controllerFor(projectWork, { stale: true, runItemAction })}
       />,
     );
@@ -225,94 +223,4 @@ describe("ProjectWorkList", () => {
     rendered.unmount();
   });
 
-  it("renders permitted legacy stage rows as read-only and removes Call and Site Visit work", () => {
-    const tasks: ProjectPageSnapshot["tasks"] = {
-      stage: "quoting",
-      items: [
-        {
-          key: "create_quote",
-          label: "Create quote",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "call_enquiry",
-          label: "Call enquiry",
-          kind: "manual",
-          isDone: false,
-        },
-        {
-          key: "book_site_visit",
-          label: "Book site visit",
-          kind: "action",
-          isDone: false,
-          cta: {
-            label: "Book",
-            href: "/staff/schedule?view=site-visits",
-          },
-        },
-        {
-          key: "upload_photos_site_visit",
-          label: "Upload site visit photos",
-          kind: "manual",
-          isDone: false,
-        },
-      ],
-    };
-    const rendered = renderIntoDocument(
-      <ProjectWorkList model="legacy" tasks={tasks} />,
-    );
-
-    expect(rendered.container.textContent).toContain("Create quote");
-    expect(rendered.container.textContent).toContain(
-      "Compatibility rows are read-only",
-    );
-    expect(
-      rendered.container.querySelectorAll(
-        '[data-legacy-stage-row-readonly="true"]',
-      ),
-    ).toHaveLength(1);
-    expect(rendered.container.textContent).not.toMatch(/\bcall\b/i);
-    expect(rendered.container.textContent).not.toMatch(/\bsite visit\b/i);
-    expect(
-      rendered.container.querySelectorAll("input, button, a"),
-    ).toHaveLength(0);
-    rendered.unmount();
-  });
-
-  it("hides the entire legacy Site Visit stage without inventing replacement work", () => {
-    const tasks: ProjectPageSnapshot["tasks"] = {
-      stage: "site_visit",
-      items: [
-        {
-          key: "generate_costing",
-          label: "Generate costing",
-          kind: "action",
-          isDone: false,
-        },
-        {
-          key: "reminder",
-          label: "Reminder",
-          kind: "manual",
-          isDone: false,
-        },
-      ],
-    };
-    const rendered = renderIntoDocument(
-      <ProjectWorkList model="legacy" tasks={tasks} />,
-    );
-
-    expect(rendered.container.textContent).toContain(
-      "No visible legacy stage work",
-    );
-    expect(rendered.container.textContent).toContain(
-      "no replacement is selected in the browser",
-    );
-    expect(
-      rendered.container.querySelectorAll(
-        '[data-legacy-stage-row-readonly="true"]',
-      ),
-    ).toHaveLength(0);
-    rendered.unmount();
-  });
 });

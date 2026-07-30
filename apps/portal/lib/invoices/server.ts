@@ -16,7 +16,6 @@ import {
 } from '../commercial/emailIntent';
 import { insertCommercialAuditEvent } from '../commercial/audit';
 import { paymentDetailsLines, paymentDetailsText } from '../payments/paymentDetails';
-import { isProjectWorkModelV2 } from '../projects/workItems/modelBoundary';
 import { supabaseServiceRole } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
 import type { DepositInvoiceSummary } from './types';
@@ -1114,20 +1113,6 @@ async function deliverInvoiceEmail(
   return deliverInvoiceEmailDurably(invoice, recipients, actor);
 }
 
-export async function clearInvoicePaidManualCheck(projectUuid: string) {
-  if (await isProjectWorkModelV2(supabaseServiceRole, projectUuid)) return;
-
-  const deleteRes = await supabaseServiceRole
-    .from('project_task_checks')
-    .delete()
-    .eq('project_id', projectUuid)
-    .eq('task_key', 'invoice_paid');
-
-  if (deleteRes.error && !missingTableError(deleteRes.error)) {
-    throw new Error(errorMessage(deleteRes.error, 'Failed to reset invoice paid task'));
-  }
-}
-
 async function moveProjectToSent(projectUuid: string, quoteVersionUuid: string | null, reason: string) {
   const prevRes = await supabaseServiceRole.from('projects').select('pipeline_stage').eq('id', projectUuid).single();
   if (prevRes.error) throw new Error(errorMessage(prevRes.error, 'Failed to load project stage'));
@@ -1153,7 +1138,6 @@ export async function ensureDepositInvoiceForAcceptedQuote(params: {
   if (context.status !== 'ACCEPTED') throw new Error('Quote must be accepted to create a deposit invoice');
 
   const { invoice } = await createOpenInvoice(context, params.actor);
-  await clearInvoicePaidManualCheck(context.projectUuid);
 
   const recipients = await loadRecipients(context.quoteVersionUuid, context.contactEmail);
   const delivery = await deliverInvoiceEmail(invoice, recipients, params.actor);
@@ -1294,10 +1278,6 @@ export async function createDepositInvoiceFromQuote(params: {
     reference: params.reference,
   });
 
-  if (context.status === 'ACCEPTED') {
-    await clearInvoicePaidManualCheck(context.projectUuid);
-  }
-
   let sent = false;
   let alreadySent = false;
   let sendError: string | null = null;
@@ -1372,7 +1352,6 @@ export async function voidOpenDepositInvoiceForQuote(params: {
   }
 
   const first = invoices[0]!;
-  await clearInvoicePaidManualCheck(first.project_id);
   await moveProjectToSent(
     first.project_id,
     first.quote_version_id,

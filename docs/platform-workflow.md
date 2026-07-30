@@ -20,8 +20,8 @@ Portal staff manage contacts and projects in `apps/portal`.
 - Contacts routes: `/staff/contacts`, `/staff/contacts/new`, `/staff/contacts/[contactId]`.
 - Project routes: `/staff/projects`, `/staff/projects/new`, `/staff/projects/[projectId]`.
 - Project pipeline stages are defined in `apps/portal/lib/projects/pipelineDefinition.ts`.
-- Newly created V2 projects use one operational state plus accountable work items; existing unmarked projects retain legacy stage tasks. Pipeline stage remains journey position, not a task list.
-- The project page's staff-facing default is Overview, while the compatibility route key remains `activity`. Overview hosts status/details, current design and commercial truth, the Project Owner, one primary next action, project notes/activity, and the model-appropriate work/task surface.
+- Newly created V2 projects use one operational state plus accountable work items. Existing unmarked projects show one read-only legacy-work retirement notice and retain their stage, details, notes, design, and commercial records for manual outcome review. Pipeline stage remains journey position, not a task list.
+- The project page's staff-facing default is Overview, while the compatibility route key remains `activity`. Overview hosts status/details, current design and commercial truth, the Project Owner, project notes/activity, and one Project Work surface: authoritative work for V2 or a pre-V2 retirement notice.
 - Staff-facing project tabs are Overview, Calculator, Commercial, and conditional Job Packs. Their compatibility route keys remain `activity`, `estimates`, `quotes`, `invoices`, and `job-packs`.
 - Canonical doc: `projects-contacts-estimates-calculator.md`.
 
@@ -77,7 +77,7 @@ Running Jobs replaces the operational active-install spreadsheet.
 - API routes: `apps/portal/app/api/staff/v1/running-jobs`.
 - Canonical doc: `running-jobs.md`.
 - Manual fields, schedule-owned fields, and estimate-derived fields are intentionally separated.
-- For V2 projects, materials- and roofing-ordered facts live in versioned Running Jobs metadata. Install completion remains Schedule V2 actual-finish truth; neither fact is copied into a generic work item.
+- For every live project, materials- and roofing-ordered facts live in versioned Running Jobs metadata. Install completion remains Schedule V2 actual-finish truth; none of those facts is copied into a generic work item or legacy task check.
 
 ## Job Packs And Outputs
 
@@ -98,12 +98,12 @@ Admin-only surfaces include access management, imports, crews, costs, and priceb
 
 ## Automation, Email, And Audit
 
-Automation supports project actions, follow-ups, project tasks, email outbox records, and audit events.
+Automation supports V2 Project Work, email outbox records, audit events, Site Visit effects, and marketing attribution. It no longer creates legacy project tasks or follow-up task plans.
 
 - V2 project-work owner: `apps/portal/lib/projects/workItems` and the `project_work_*` command/read contracts.
 - Legacy-project automation runner: `apps/portal/lib/automation/AutomationRunner.ts`.
 - V2 uses accountable work items and manual email confirmations. It creates no call tasks and never sends or closes automatically.
-- Existing projects remain on legacy `tasks`, `followup_plans`, and `followup_tasks` until reviewed migration; no Contacted backlog records are changed.
+- Existing `tasks`, `followup_plans`, and `followup_tasks` rows are retained only as review evidence. They have no Overview runtime or creation writer; existing cadence cancellation may still close an obsolete follow-up plan when a later stage makes it inapplicable. No Contacted backlog record or project outcome is changed automatically.
 - Canonical doc: `automation-email-audit.md`.
 - Quote/invoice email side effects remain owned by `quotes-invoices-job-packs.md`.
 

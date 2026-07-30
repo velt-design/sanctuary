@@ -12,7 +12,7 @@ import {
   StableCommandAttempt,
 } from '@/lib/projects/workItems/stableCommandAttempt';
 import { Select } from '@/components/ui/foundation';
-import styles from './ProjectPrimaryActionCard.module.css';
+import styles from './ProjectOwnerControls.module.css';
 
 export default function ProjectOwnerControls({
   projectId,

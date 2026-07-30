@@ -57,7 +57,6 @@ function canOptimisticallyEnterFirstProjectPage(current: ProjectsIndexResponse):
   return current.projects.page === 1
     && current.query.search === ''
     && current.query.status === 'all'
-    && current.query.due === 'all'
     && current.query.sort === 'newest';
 }
 
@@ -88,10 +87,6 @@ export function buildProjectSnapshotPlaceholder(
     },
     pipeline: {
       stage,
-    },
-    tasks: {
-      stage,
-      items: [],
     },
     activity: [],
     emails: [],

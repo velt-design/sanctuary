@@ -1,15 +1,12 @@
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { portalTodayYmd } from '@/lib/format/portalDateTime';
 import { normalizeProjectStatus } from '@/lib/types/project';
 
-type DueFilter = 'all' | 'due' | 'overdue' | 'today';
 export type ArchiveFilter = 'active' | 'archived' | 'all';
 
 export type ProjectsIndexFilters = {
   query: string;
   statusFilter: Project['status'] | 'all';
-  dueFilter: DueFilter;
   archiveFilter: ArchiveFilter;
 };
 
@@ -25,17 +22,6 @@ function readParam(source: SearchParamSource, key: string): string {
   return readFirst((source as Record<string, string | string[] | undefined>)[key]);
 }
 
-function toYmd(value: string | null | undefined): string | null {
-  const raw = (value ?? '').trim();
-  if (!raw) return null;
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : null;
-}
-
-export function todayYmd(now: Date | string | number = new Date()): string {
-  return portalTodayYmd(now);
-}
-
 export function normalizePhone(value: string | null | undefined): string {
   return (value ?? '').replace(/\D+/g, '');
 }
@@ -43,8 +29,6 @@ export function normalizePhone(value: string | null | undefined): string {
 export function parseProjectsIndexFilters(searchParams: SearchParamSource): ProjectsIndexFilters {
   const statusParam = readParam(searchParams, 'status').trim();
   const query = readParam(searchParams, 'q').trim();
-  const dueParam = readParam(searchParams, 'due').trim().toLowerCase();
-  const dueFlag = readParam(searchParams, 'nextActionDue').trim().toLowerCase();
   const archiveParam = readParam(searchParams, 'archive').trim().toLowerCase();
 
   const statusFilter =
@@ -52,20 +36,12 @@ export function parseProjectsIndexFilters(searchParams: SearchParamSource): Proj
       ? 'all'
       : (normalizeProjectStatus(statusParam).status ?? 'all');
 
-  let dueFilter: DueFilter = 'all';
-  if (dueParam === 'overdue' || dueParam === 'today') {
-    dueFilter = dueParam;
-  } else if (['1', 'true', 'yes', 'y'].includes(dueFlag) || dueParam === 'due') {
-    dueFilter = 'due';
-  }
-
   const archiveFilter: ArchiveFilter =
     archiveParam === 'archived' || archiveParam === 'all' ? archiveParam : 'active';
 
   return {
     query,
     statusFilter,
-    dueFilter,
     archiveFilter,
   };
 }
@@ -80,7 +56,6 @@ export function filterProjectsForIndex(
   projects: Project[],
   contactsById: Map<string, Contact>,
   filters: ProjectsIndexFilters,
-  nowYmd: string,
 ): Project[] {
   const rawNeedle = filters.query.trim();
   const needle = rawNeedle.toLowerCase();
@@ -92,14 +67,6 @@ export function filterProjectsForIndex(
     if (filters.archiveFilter === 'archived' && !isArchived) return false;
 
     if (filters.statusFilter !== 'all' && (project.status ?? 'NEW') !== filters.statusFilter) return false;
-
-    const nextAction = toYmd(project.nextActionDate ?? project.followUpDate);
-    if (filters.dueFilter !== 'all') {
-      if (!nextAction) return false;
-      if (filters.dueFilter === 'due' && nextAction > nowYmd) return false;
-      if (filters.dueFilter === 'overdue' && nextAction >= nowYmd) return false;
-      if (filters.dueFilter === 'today' && nextAction !== nowYmd) return false;
-    }
 
     if (!needle) return true;
 

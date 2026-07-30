@@ -113,7 +113,7 @@ export default function WorkQueueClient() {
         <DataStatePanel
           state="unavailable"
           title="Work Queue not ready"
-          description="Project Work V2 is not available in this environment. Existing projects and legacy tasks are unchanged."
+          description="Project Work V2 is not available in this environment. Existing project records are unchanged."
           onRetry={() => void queue.refetch()}
         />
       ) : state === 'error' || state === 'unavailable' ? (

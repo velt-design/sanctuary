@@ -46,14 +46,18 @@ vi.mock("./overview/ProjectWorkSection", () => ({
   default: (props: {
     workModel: string;
     projectWork?: { generatedAt: string };
-    stale: boolean;
+    stale?: boolean;
+    reviewHref?: string | null;
   }) => (
     <section
       data-testid="mock-project-work"
       data-project-work-section="true"
       data-project-work-model={props.workModel}
       data-generated-at={props.projectWork?.generatedAt}
-      data-stale={String(props.stale)}
+      data-stale={
+        props.stale === undefined ? "not-applicable" : String(props.stale)
+      }
+      data-review-href={props.reviewHref ?? ""}
     >
       Project Work
     </section>
@@ -74,35 +78,12 @@ vi.mock("./overview/ProjectRecentNotesEvents", () => ({
 
 import OverviewTab from "./OverviewTab";
 
-const legacyOperations = {
-  owner: {
+const legacyOwner = {
     owner: null,
     required: false,
     missing: false,
     version: null,
     permissions: { canManage: false },
-  },
-  primaryAction: null,
-  candidates: [],
-  candidateCount: 0,
-  candidateRevision: "revision",
-  manualSelectionBaselineHash: "baseline",
-  selectionConflict: null,
-  permissions: {
-    canCreate: false,
-    canSelect: false,
-    canComplete: false,
-    canReschedule: false,
-    canReassign: false,
-    canSetCritical: false,
-    canResolveConflict: false,
-  },
-  audit: [],
-  exceptions: {
-    missingOwner: false,
-    noPrimaryAction: true,
-    selectionConflict: false,
-  },
 };
 
 const snapshot = {
@@ -117,7 +98,6 @@ const snapshot = {
     quoteRef: "Q-0100",
   },
   pipeline: { stage: "new" },
-  tasks: { stage: "new", items: [] },
   activity: [],
   emails: [],
   notes: [],
@@ -184,7 +164,11 @@ describe("OverviewTab", () => {
         data: {
           workModel: "legacy",
           currentDesign: { source: "estimate" },
-          operations: legacyOperations,
+          legacyWork: {
+            status: "retired",
+            reviewHref: "/staff/projects/work-queue/legacy-review",
+          },
+          owner: legacyOwner,
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
       }),
@@ -220,6 +204,11 @@ describe("OverviewTab", () => {
         .querySelector('[data-testid="mock-project-work"]')
         ?.getAttribute("data-project-work-model"),
     ).toBe("legacy");
+    expect(
+      rendered.container
+        .querySelector('[data-testid="mock-project-work"]')
+        ?.getAttribute("data-review-href"),
+    ).toBe("/staff/projects/work-queue/legacy-review");
     expect(
       rendered.container.querySelector('[data-testid="mock-recent"]'),
     ).not.toBeNull();
@@ -315,7 +304,8 @@ describe("OverviewTab", () => {
         data: {
           workModel: "legacy",
           currentDesign: { source: "sent_quote" },
-          operations: legacyOperations,
+          legacyWork: { status: "retired", reviewHref: null },
+          owner: legacyOwner,
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
         error: new Error("offline"),
@@ -343,7 +333,7 @@ describe("OverviewTab", () => {
       rendered.container
         .querySelector('[data-testid="mock-project-work"]')
         ?.getAttribute("data-stale"),
-    ).toBe("true");
+    ).toBe("not-applicable");
     expect(
       rendered.container
         .querySelector('[data-testid="mock-orientation"]')
@@ -487,7 +477,8 @@ describe("OverviewTab", () => {
         data: {
           workModel: "legacy",
           currentDesign: { source: "accepted_quote" },
-          operations: legacyOperations,
+          legacyWork: { status: "retired", reviewHref: null },
+          owner: legacyOwner,
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
         error: new ApiError("Forbidden", { status: 403, body: null }),
@@ -526,7 +517,8 @@ describe("OverviewTab", () => {
         data: {
           workModel: "legacy",
           currentDesign: { source: "estimate" },
-          operations: legacyOperations,
+          legacyWork: { status: "retired", reviewHref: null },
+          owner: legacyOwner,
           generatedAt: "2026-07-30T00:00:00.000Z",
         },
       }),
@@ -545,7 +537,7 @@ describe("OverviewTab", () => {
       rendered.container
         .querySelector('[data-testid="mock-project-work"]')
         ?.getAttribute("data-stale"),
-    ).toBe("true");
+    ).toBe("not-applicable");
     expect(rendered.container.textContent).toContain("Updating recent history");
     expect(rendered.container.textContent).not.toContain(
       "Project Work controls and recent history remain paused",

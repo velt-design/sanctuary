@@ -1,6 +1,6 @@
 # Project Operational Command Centre Architecture
 
-Status: Current architecture plus the completed Project Overview V2 implementation handover. The implementation and its owned verification are present. On 2026-07-30 the user accepted a narrow handoff exception for the unrelated Contacts and Calculator bundle overruns reproduced at baseline `060bea19`; their ceilings remain unchanged and route optimization remains separate work.
+Status: Current architecture plus the completed Project Overview V2 implementation handover and the approved 2026-07-30 pre-V2 legacy-task retirement recorded below. The implementation and its owned verification are present. On 2026-07-30 the user accepted a narrow handoff exception for the unrelated Contacts and Calculator bundle overruns reproduced at baseline `060bea19`; their ceilings remain unchanged and route optimization remains separate work.
 
 Approved handover baseline: `060bea19` on 2026-07-30.
 
@@ -14,9 +14,22 @@ Approved on 2026-07-30. The handover commit itself changed no application code.
 
 This section is the single implementation contract for the current Project Overview slice. Any implementation or follow-up task must inspect the current rendered portal and current source owners before editing, but it must not reopen or silently reinterpret the locked decisions below.
 
+> **Superseding decision — pre-V2 legacy-task retirement (2026-07-30).**
+> After the approved handover, the user approved complete retirement of the
+> pre-V2 Overview task/action surface. This supersedes only the handover detail
+> that allowed filtered read-only legacy stage rows and a prohibited-action
+> fallback. A pre-V2 Overview now renders one `LegacyProjectWorkRetiredCard`
+> with no task rows or task-check reads, action ranking/history, create/complete
+> controls, or legacy command route. Both work models retain the shared
+> orientation, Current Design & Commercial, and Recent notes and events
+> composition; the current Project Owner and authoritative project stage remain.
+> V2 Project Work is unchanged and remains fully actionable through its existing
+> server-owned commands. No pre-V2 project is automatically closed, marked Lost,
+> archived, or migrated by this presentation retirement.
+
 ### 1. Outcome
 
-The Overview is the operational command centre for one project. Within seconds, a staff member should be able to identify the project and customer, understand the server-confirmed stage and operational state, see who owns the project, know the one Sanctuary action that should happen next and why, notice anything blocking progress, trust the exact current design and commercial source, and open the specialist workflow that owns deeper work.
+The Overview is the operational command centre for one project. Within seconds, a staff member should be able to identify the project and customer, understand the server-confirmed stage and operational state, see who owns the project, trust the exact current design and commercial source, and open the specialist workflow that owns deeper work. For V2, that includes the one Sanctuary action that should happen next and why plus anything blocking it; for pre-V2, it includes the truthful retirement notice instead of invented legacy work.
 
 The page summarises and routes. It does not become another project database, task manager, CRM, calculator, commercial editor, Schedule, Running Jobs sheet, or Design Workbench.
 
@@ -28,8 +41,8 @@ When an older command-centre document conflicts with this section, use this sect
 | --- | --- |
 | Call actions, call tasks, or calling as a fallback | Sanctuary lead and quote communication is email-only. Do not render or create a Call action. |
 | Site Visit tasks, workstream actions, or normal navigation | Site Visits remains hidden and manual. It is not a project-work source, destination, or stage side effect. |
-| Separate command card, task list, follow-up list, and manual-action surface | Every project has exactly one Project Work region. V2 uses one `ProjectWorkProjection`; legacy compatibility content may survive only as internal children of that same region. |
-| Legacy `tasks`, `followup_tasks`, and `project_manual_actions` as the long-term selector | They are legacy-only compatibility sources. Do not expand them or copy them into V2. |
+| Separate command card, task list, follow-up list, and manual-action surface | Every project has exactly one Project Work region. V2 uses one `ProjectWorkProjection`; pre-V2 projects show one read-only retirement notice. |
+| Legacy `tasks`, `followup_tasks`, and `project_manual_actions` as the long-term selector | They have no Overview selector, rows, controls, history, or command route. Do not expand them or copy them into V2. |
 | Four always-visible lead-to-quote workstream cards | Use one compact journey/readiness region only when bounded server-owned evidence exists. Do not create another editable status system. |
 | Overview ending at quote outcome | The composition must remain useful through deposit, scheduling, installation, invoicing, completion, and settlement, while omitting facts that do not yet have a trustworthy summary contract. |
 | A new visual language, marketing tokens, olive accent, or a portal-wide restyle | Use the current staff portal visual system. The page composition may change substantially; the portal system may not. |
@@ -52,7 +65,7 @@ At approved commit `060bea19`, the rendered Overview had:
 - one fixed two-row project header with project name, stage, global search, owner, actions, and tabs;
 - three equal top cards for Status & Details, Current Design & Commercial, and Project Command;
 - a lower Activity card and a separate Tasks card;
-- for V2 projects, the same `ProjectWorkProjection` rendered once in `ProjectWorkCommandCard` and again in `ProjectWorkItemsSidebar`;
+- for V2 projects, the same `ProjectWorkProjection` rendered once in a command card and again in a task sidebar;
 - a dormant empty Stage 3 workstreams slot;
 - trustworthy current-design and price precedence; and
 - truthful command-centre pending, refreshing, stale, mismatch, failure, and access-ending states.
@@ -69,8 +82,8 @@ The current server payload does not yet provide complete, bounded summaries for 
 - V2 shows one primary action derived on the server. It includes the server-provided reason or ranking basis, effective owner, and due state when relevant. Specialist and recovery candidates also show their provided prerequisite/context, expected result, and owning destination. Work-item presentation must not invent fields that its server contract does not supply.
 - Blocked work is an exception, not an enabled primary action.
 - Other open V2 work may appear inside the same Project Work region. It must not become a second Tasks card.
-- Legacy stage-task rows are read-only compatibility evidence inside the same Project Work region. Filter Call and Site Visit rows, actions, categories, and links from that presentation.
-- If the server-selected legacy action is a prohibited Call or Site Visit action, show `Legacy work needs review`. Browser presentation must not rank or select a replacement.
+- Pre-V2 projects show only the read-only Project Work retirement notice. Overview does not load or display their old stage-task rows, rank an action, show action history, or expose create/complete controls.
+- The pre-V2 branch has no server-selected Overview action and no browser fallback selection. V2 continues to fail closed if prohibited Call or Site Visit identity appears in server-owned Project Work.
 - Personal Dashboard reminders remain separate and private.
 - Archive is administrative housekeeping, not a synonym for Lost. Waiting, Closed, and Archived remain explicit operational states.
 - Completing work never independently sends an email, changes stage, accepts a quote, records payment, mutates Design, confirms Schedule, or completes Running Jobs.
@@ -86,10 +99,10 @@ The page uses stable regions in this order:
 | 1 | Project header | Always | Existing project name, stage badge, global search, Project Owner summary, project actions, and tabs. Do not add a third header row. |
 | 2 | Orientation band | Always | Customer name and email, site address, region, reference, operational state, server freshness, and one Edit details entry point. Do not repeat the project title or owner controls. |
 | 3 | Critical exception strip | Conditional | Render only from a bounded server-owned exception summary that names the problem, owner, and safe recovery. Until that contract exists, keep blocked work and commercial warnings inside their owning above-the-fold regions. Do not claim a global all-clear until all required sources are complete. |
-| 4 | Command grid | Always | One Project Work region for either V2 or clearly labelled legacy compatibility, plus one Current Design & Commercial region. These are the desktop above-the-fold working surfaces. |
+| 4 | Command grid | Always | One Project Work region for either actionable V2 work or the clearly labelled pre-V2 retirement notice, plus one Current Design & Commercial region. These are the desktop above-the-fold working surfaces. |
 | 5 | Journey and readiness | Conditional by evidence and lifecycle | Compact journey position plus bounded milestone/readiness facts. Pipeline stage is position only, never a readiness score or percentage. |
 | 6 | Recent notes and events | Always when the complete snapshot is ready | User-authored notes and the bounded current activity preview. Call it `Recent notes and events`, not a complete timeline. |
-| 7 | History and administration | Progressive disclosure | Project Work command history, resolved issues, confirmation correction, legacy migration context, and other admin-only controls. |
+| 7 | History and administration | Progressive disclosure | V2 Project Work command history, resolved issues, confirmation correction, the pre-V2 review link where permitted, and other admin-only controls. |
 
 #### Above The Fold
 
@@ -99,7 +112,7 @@ Wide and compact desktop must show without scrolling where normal viewport heigh
 - customer/site orientation;
 - operational state and freshness;
 - any critical blocker;
-- one primary Project Work action with owner, reason, and due state;
+- one primary V2 Project Work action with owner, reason, and due state, or the pre-V2 retirement notice;
 - exact current design/commercial source, GST-inclusive value or explicit unavailable state, and quote status; and
 - direct links to the owning specialist workflow.
 
@@ -139,7 +152,7 @@ A conditional region is omitted when it is irrelevant. When it is relevant but t
 
 #### Remove From The Overview Composition
 
-- Any separate Tasks card. Legacy stage-task presentation may survive only as an internal child of the one Project Work region.
+- Any separate Tasks card or pre-V2 stage-task row.
 - The empty Stage 3 workstreams slot.
 - Duplicate Project Owner management.
 - Repeated project title or stage content that adds no new meaning.
@@ -164,9 +177,9 @@ Desktop:
 | CRITICAL EXCEPTION - only when active                                         |
 +------------------------------------------+-----------------------------------+
 | PROJECT WORK                             | CURRENT DESIGN & COMMERCIAL       |
-| One next action, why, owner, due         | Exact source/version/status      |
-| Blocker/recovery or server-confirmed CTA | GST-inclusive value/unavailable  |
-| Other open work in the same surface      | Links to owning workflow         |
+| V2: next action, why, owner, due         | Exact source/version/status      |
+| or pre-V2: retired read-only notice      | GST-inclusive value/unavailable  |
+| V2 other open work in the same surface   | Links to owning workflow         |
 +------------------------------------------+-----------------------------------+
 | JOURNEY / READINESS - only supported, relevant canonical facts               |
 +------------------------------------------------------+-----------------------+
@@ -187,7 +200,7 @@ Recent notes and events
 History/admin disclosure
 ```
 
-At 390px, project identity, stage, blocker, primary action, owner, due state, current commercial source, value/unavailable state, and quote status must remain visible without an accordion. Secondary history and administration may use disclosure.
+At 390px, project identity, stage, owner, current commercial source, value/unavailable state, and quote status must remain visible without an accordion. V2 also keeps its blocker, primary action, and due state visible; pre-V2 keeps its retirement notice visible. Secondary V2 history and administration may use disclosure.
 
 ### 7. Interaction And Trust Contract
 
@@ -227,7 +240,7 @@ Status must never rely on colour alone. Disabled controls require nearby explana
 | Project identity/contact/site/reference/stage | `ProjectPageSnapshot` and project detail mutation owner | Recompose; do not add a second browser store. |
 | Project type | No current Project Overview contract | Omit until an owning source and bounded projection are explicitly approved; do not infer it from a name, estimate, enquiry, or stage. |
 | Project operational state and V2 work | `ProjectWorkProjection` from the server command-centre/work-item owners | One Project Work surface only. |
-| Legacy project work | Existing legacy command/task owners | Compatibility presentation only, composed inside the same single Project Work region; do not expand. |
+| Pre-V2 project work | Command-centre `legacyWork` retirement metadata | Render one `LegacyProjectWorkRetiredCard`; no legacy action/task owner is active in Overview. |
 | Project Owner | Existing project-owner contract | Summarise in header; one management entry point only. |
 | Current design, estimate, quote, price, warnings | `ProjectCommandCentreCurrentDesign` and strict server resolver | Preserve exact precedence and source identity. |
 | Notes | Existing note route/snapshot owner | Keep authoring and permissions unchanged. |
@@ -264,15 +277,13 @@ Keep:
 - `ProjectStatusDetailsCard.tsx`: compatibility wrapper around `ProjectOrientationBand` for the existing detail-mutation fixture and focused local-first tests; it is not an Overview V2 composition owner.
 - `ProjectHeader.tsx` plus `ProjectHeaderOwnerControl.tsx`: the single header Project Owner summary and management entry point.
 - `ProjectCurrentDesignCommercialCard.tsx`: strict read-only design/commercial presentation.
+- `LegacyProjectWorkRetiredCard.tsx`: the sole pre-V2 Project Work presentation, with an optional admin review link and no mutation owner.
 - `lib/projects/commandCentre/**`: command-centre selection/read contract.
 - `lib/projects/workItems/**`: V2 state, work, ranking, commands, confirmation, queue, and mixed-model boundaries.
 - `projectWorkCache.ts`: the only Project Work cache patch/invalidation module. `patchProjectCommandCentreCache` is the sole complete command-centre response patch owner; `patchProjectWorkProjectionCaches` owns V2 projection fan-out to command-centre, snapshot, and summary caches; `invalidateProjectWorkReads` owns project, Work Queue, and Dashboard invalidation.
 
 Do not grow:
 
-- `ProjectWorkCommandCard.tsx` (610 lines at baseline);
-- `ProjectPrimaryActionCard.tsx`;
-- `ProjectTasksSidebar.client.tsx`;
 - `pipelineDefinition.ts`;
 - command-centre route handlers; or
 - specialist Commercial, Schedule, Running Jobs, Workbench, or Calculator hotspots.
@@ -283,12 +294,13 @@ Before adding redesigned Project Work behavior, extract:
 tabs/overview/
   ProjectOverviewLayout.tsx          route-owned composition
   ProjectOrientationBand.tsx         identity/context presentation
-  ProjectWorkSection.tsx             one mixed-model Project Work surface
-  ProjectWorkList.tsx                secondary open/blocked rows inside that surface
+  ProjectWorkSection.tsx             V2 work or one pre-V2 retirement notice
+  ProjectWorkList.tsx                secondary V2 open/blocked rows
+  LegacyProjectWorkRetiredCard.tsx   pre-V2 read-only retirement notice
   useProjectWorkCommandController.ts browser command, retry, and feedback orchestration
 ```
 
-Names may vary if current code suggests a clearer boundary, but responsibilities may not be recombined in `OverviewTab.tsx` or the 610-line command card. The V2 sidebar presentation should be retired after consumer proof. Unmarked legacy stage rows may remain only as filtered, read-only children of `ProjectWorkSection`; they must not retain a second outer Tasks card or expose Call or Site Visit work.
+Names may vary if current code suggests a clearer boundary, but responsibilities may not be recombined in `OverviewTab.tsx`. Unmarked pre-V2 projects render only the retirement card inside `ProjectWorkSection`; there is no legacy row/action/history/controller branch and no second outer Tasks card.
 
 Presentation adapters may format and arrange server facts. They may not rank work, derive commercial truth, infer readiness, issue lifecycle transitions, call Supabase directly, or become a second project-state source.
 
@@ -299,13 +311,26 @@ Implement one coherent, visibly complete Overview composition using the current 
 1. Extract the V2 Project Work controller and presentation owners.
 2. Replace the V2 Project Command plus Tasks duplication with one Project Work region.
 3. Recompose the current project details, Project Work, and design/commercial facts into the approved orientation/command layout.
-4. Compose the clearly labelled legacy command/stage-task compatibility path inside the same single Project Work region without expanding legacy logic. Stage rows are read-only, Call and Site Visit work is hidden, and a prohibited server-selected action becomes `Legacy work needs review` without browser replacement selection.
+4. Compose the clearly labelled pre-V2 retirement notice inside the same single Project Work region without loading legacy task/action state. Keep the V2 command path unchanged.
 5. Remove the empty workstreams slot and obsolete V2 presentation after zero-consumer proof.
 6. Make pending, summary, refreshing, stale, mismatch, failure, Waiting, Closed, and Archived states fit the new hierarchy.
 7. Update the command-centre fixture and authenticated read-only smoke for the new composition.
 8. Update current-state owner docs after behavior changes.
 
-This slice does not require a database migration and must not add one merely for presentation. A bounded additive server read-model extension is allowed only when it is necessary for an approved visible fact, uses the specialist owner, has contract tests, and does not introduce a new write or side effect. Deposit, Schedule/Running Jobs readiness, normalized timeline, and complete exception aggregation should remain separate follow-on contracts unless they meet that standard inside the reviewed scope.
+The Overview composition slice itself does not require a database migration and
+must not add one merely for presentation. The separately approved legacy-task
+retirement uses
+`20260730_000001_legacy_project_task_retirement.sql` only to preserve old
+materials/roofing evidence in Running Jobs, make that specialist fact command
+valid for every existing project, freeze authenticated task-check writes, and
+revoke authenticated legacy action/design-task commands. It deletes no row and
+does not classify, close, mark Lost, archive, or migrate a project. A bounded
+additive server read-model extension is allowed only when it is necessary for an
+approved visible fact, uses the specialist owner, has contract tests, and does
+not introduce a new write or side effect. Deposit, Schedule/Running Jobs
+readiness, normalized timeline, and complete exception aggregation should remain
+separate follow-on contracts unless they meet that standard inside the reviewed
+scope.
 
 ### 12. Explicit Non-Goals
 
@@ -334,13 +359,13 @@ This slice does not require a database migration and must not add one merely for
 
 Product acceptance:
 
-1. An unfamiliar project can be oriented within seconds: project/customer/site, stage, operational state/freshness, owner, one next action and reason, blocker, exact current design/commercial source, and specialist destination.
-2. Every project has exactly one Project Work region and no separate Tasks card. V2 has no duplicate action controls; legacy compatibility children remain within that one region.
-3. No Call or Site Visit action, task, category, or normal navigation link appears. A prohibited server-selected legacy action shows `Legacy work needs review`, and browser code does not choose a replacement.
+1. An unfamiliar project can be oriented within seconds: project/customer/site, stage, operational state/freshness, owner, exact current design/commercial source, and specialist destination. V2 also shows its one server-owned next action and reason; pre-V2 shows the retirement notice.
+2. Every project has exactly one Project Work region and no separate Tasks card. V2 has no duplicate action controls; pre-V2 has no task rows, action/history surface, or mutation controls.
+3. No Call or Site Visit action, task, category, or normal navigation link appears. Pre-V2 browser code performs no action selection; V2 prohibited identities remain fail-closed.
 4. Pipeline stage is not presented as readiness, percentage complete, or proof of a downstream artifact.
 5. Missing evidence never appears ready, sent, paid, scheduled, or complete.
 6. Design and commercial precedence remains byte-for-byte equivalent at the owning resolver boundary.
-7. Legacy and V2 projects remain visibly and behaviorally truthful.
+7. Pre-V2 and V2 projects remain visibly and behaviorally truthful.
 8. Every controlled success reflects a committed server result and duplicate-submit/replay safety remains.
 
 Required fixture states:
@@ -349,8 +374,8 @@ Required fixture states:
 - follow-up due and close review;
 - normal, critical, overdue, today, future, and blocked work;
 - no owner, no action, Waiting, Closed, Archived, and correction review;
-- legacy and V2 models;
-- filtered read-only legacy stage rows plus a prohibited server-selected legacy action;
+- actionable V2 and pre-V2 retirement models;
+- a pre-V2 retirement notice with and without the permission-gated review link;
 - estimate-only, sent, accepted, declined, newer unrelated estimate, missing source, and unavailable price;
 - pending, summary, refreshing, stale cached data, model mismatch, initial error, retry, `401`, `403`, and `404`;
 - deposit, Schedule, Running Jobs, communication, or full exception states only if their new bounded server projections are implemented.
@@ -379,9 +404,11 @@ product and implementation contract. Read its linked owner docs, inspect the
 current rendered authenticated Overview and current source consumers before
 editing, and preserve the current portal visual system.
 
-Implement the largest safe first slice defined in the handover: one Project
-Work surface, approved orientation/command composition, truthful mixed-model
-and loading/recovery states, and the required ownership extractions. Do not
+Implement the largest safe first slice defined in the handover and its
+2026-07-30 superseding retirement decision: one Project Work surface,
+actionable V2 work or the pre-V2 retirement notice, approved
+orientation/command composition, truthful model/loading/recovery states, and
+the required ownership extractions. Do not
 introduce calls, Site Visit work, browser-derived lifecycle/commercial truth,
 specialist side effects, workbench/costing changes, or production data writes.
 Preserve unrelated worktree changes and verify the full responsive,
@@ -437,7 +464,7 @@ The route `apps/portal/app/staff/projects/[projectId]/page.tsx` keeps the intern
 
 `ProjectSnapshotPageClient.tsx` owns the project summary/full-snapshot transition and page-level unavailable state. `ProjectPageFrame.tsx` owns the two-row project header and full-width body; the header is sticky above the mobile breakpoint and returns to normal flow on mobile. `ProjectTabNavigation.tsx` owns the shared tab registry, grouped active state, URL normalization, and intent preloading; `ProjectMainTabs.tsx` owns active workflow rendering. `CommercialTab.tsx` owns Quotes/Invoices composition and quote Edit/Preview URL state without taking over either subview's side effects. The retired rail, panel-slot, drag, resize, collapsible-header, and narrow-layout Details-tab systems have no runtime compatibility path.
 
-The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and tasks remain explicitly updating until the full snapshot is ready.
+The Overview implementation is a lazy module at `tabs/OverviewTab.tsx`. It is allowed to render during the snapshot `summary` state because its commercial read is independent; snapshot-owned notes and events remain explicitly updating until the full snapshot is ready.
 
 The current staff-facing lazy navigation owners are:
 
@@ -494,7 +521,7 @@ No costing engine or costing input layer is imported.
 
 ## 6. Existing project snapshot
 
-`ProjectPageSnapshot` remains the complete project-detail read model for identity, pipeline, tasks, notes, activity, and emails. Stage 1 does not extend it.
+`ProjectPageSnapshot` is the complete project-detail read model for identity, pipeline, the authoritative V2 Project Work projection when applicable, notes, activity, and emails. It does not read legacy task definitions or task checks.
 
 The snapshot remains shared with project routes and workbench route context, so putting commercial version arrays or estimate inputs into it would enlarge unrelated reads and weaken its ownership. The command-centre endpoint is therefore a separate read model and query key.
 
@@ -504,9 +531,10 @@ The Overview composes:
 - Customer/site/reference context from the existing project snapshot/summary.
 - Current design and commercial facts from the dedicated command-centre response.
 - The single V2 Project Work region from the command-centre response's Project Work projection when present; the snapshot is not a second V2 work authority.
-- Notes and stage tasks only after the full project snapshot is ready.
+- The single `LegacyProjectWorkRetiredCard` when the command-centre response identifies a pre-V2 model.
+- Notes and recent events only after the full project snapshot is ready.
 
-Placeholder task/note arrays never produce a false empty state.
+Placeholder note/event arrays never produce a false empty state.
 
 ## 7. Canonical ownership
 
@@ -514,30 +542,39 @@ Stage 2 owns one project assignment in `project_owner_assignments`, keyed by pro
 
 The forward migration prefers an existing active Sales assignment, then Design and Estimating, only when the legacy assignee name maps to the approved roster. Unknown identities remain unassigned. The legacy three-role table is retained read-only as rollback evidence and has no current writer or read-model consumer.
 
-## 8. Existing next-action and task systems
+## 8. Retired pre-V2 next-action and task systems
 
-The project snapshot still resolves stage tasks from `pipelineDefinition.ts` and `project_task_checks`. Overview filters prohibited Call and Site Visit rows and presents the remaining legacy rows read-only through `ProjectWorkList`. The older task-mutation component remains only for its direct compatibility fixture and focused tests; it is not mounted by Overview V2.
+Historical pre-V2 task, follow-up, manual-action, selection, control, version,
+and command-audit rows may remain in the database and migration history, but
+they have no current Overview read or mutation owner. `ProjectPageSnapshot`
+does not query task definitions or task checks. The command-centre response for
+a pre-V2 project contains only `legacyWork.status: "retired"` plus an optional
+permission-gated review link, and `ProjectWorkSection` renders that through one
+`LegacyProjectWorkRetiredCard`.
 
-Stage 2 candidates are open `tasks`, open `followup_tasks`, and `project_manual_actions`. The pure `actionResolver.ts` owns precedence, owner fallback, Auckland due state, explicit selection, conflict detection, and the 25-option bounded response. Stage checks, personal reminders, generic statuses, undated automatic candidates, approvals, and blockers are excluded.
-
-`project_primary_action_selections` records explicit focus and the confirmed outranking hash. `project_action_controls` records critical state and lifetime reschedule count. `project_command_audit` is append-only command history. `project_action_versions` is trigger-maintained optimistic concurrency support for the complete candidate set. Source tasks remain canonical records rather than copied action rows.
+There is no pre-V2 Overview action resolver, command history, task list,
+create/complete control, or legacy primary-action command route. Stage
+correction remains authoritative project-stage behavior and does not reset
+retired task checks. Personal Dashboard reminders remain independently owned.
+V2 Project Work ranking, work items, state, confirmations, retry/idempotency,
+and server-owned commands are unchanged.
 
 ## 9. Existing communication and activity sources
 
-Stage 1 retains project notes and existing snapshot activity capability. It does not merge quote events, outbox events, calls, messages, site visits, audits, or tasks into a new timeline.
+Stage 1 retains project notes and existing snapshot activity capability. It does not merge quote events, outbox events, calls, messages, site visits, audits, or retired task history into a new timeline.
 
 Current sources remain independently owned:
 
 - Project notes by the project-note domain and note routes.
 - Email summaries/outbox activity by the project snapshot and email domains.
 - Quote send history by `quote_send_logs` and quote domain helpers.
-- Site visits, audit events, automation, and task history by their existing domains.
+- Site visits, audit events, and automation by their existing domains. Retired pre-V2 task history is not an Overview source.
 
 Stage 4 owns the future normalized communication/timeline read model.
 
 ## 10. Existing auth and permissions
 
-Command-centre reads and owner/action commands use `requireStaffContext()` and the returned auth-bound Supabase client. RLS plus security-definer command checks remain authoritative. The compatibility projection is refreshed inside the transactional action command; no browser or service-role caller has execute permission on its helper, and the retired Details writer or current task routes cannot write the legacy project columns.
+Command-centre reads, Project Owner commands, and V2 Project Work commands use `requireStaffContext()` and the returned auth-bound Supabase client. RLS plus command checks remain authoritative. Pre-V2 Overview has no action command route or browser/service-role mutation path.
 
 The response is `private, no-store`, carries standard request diagnostics, returns `401`/`403` from the auth helper, returns `404` only when the authenticated project read is absent, and returns a stable `500` when a bounded subordinate read fails.
 
@@ -547,7 +584,7 @@ No raw tokens, token hashes, internal true cost, margin, service-role data, or o
 
 The query key is `qk.projects.commandCentre(host, projectId)`. It uses the authenticated user's existing QueryClient and a one-day garbage-collection window. It is stale immediately and refetches whenever Overview remounts, so a return from Calculator or Commercial refreshes current commercial state without adding cache logic to those critical workflows.
 
-Accepted V2 commands use `patchProjectWorkProjectionCaches` to fan the returned projection into matching command-centre, snapshot, and summary caches. Legacy action and header-owner commands use `patchProjectCommandCentreCache` as the sole complete command-centre response patch owner. All three paths then use `invalidateProjectWorkReads` to refresh project, Work Queue, and Dashboard consumers. No Overview component calls `setQueryData` for those caches directly. Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree on `legacy` versus `v2`; cached background-refresh, refresh-failed, or model-mismatch facts stay visible without either legacy or V2 mutation controls.
+Accepted V2 commands use `patchProjectWorkProjectionCaches` to fan the returned projection into matching command-centre, snapshot, and summary caches. Header-owner commands use `patchProjectCommandCentreCache` as the sole complete command-centre response patch owner. Both paths then use `invalidateProjectWorkReads` to refresh project, Work Queue, and Dashboard consumers. No Overview component calls `setQueryData` for those caches directly. V2 Project Work controls are enabled only while their owning reads are fresh and the snapshot and command-centre agree on `v2`; cached background-refresh, refresh-failed, or model-mismatch facts stay visible without mutation controls. Pre-V2 renders the retirement notice and has no control state.
 
 Overview states are explicit:
 
@@ -587,13 +624,11 @@ The existing authenticated Project Detail journey already measures the active ta
 | Design labels | Selected estimate `inputs.modules` | Largest module plus additional count |
 | Costing freshness | Selected estimate `outputs.pricing_sync_state` | Stored status only |
 | Quote delivery | Selected quote status and send logs | Accepted/sent/failed/draft only |
-| Notes and tasks | Existing project snapshot | Render only when full snapshot is ready |
+| Notes and recent events | Existing project snapshot | Render only when full snapshot is ready |
 | Specialist links | Existing tab routes | Read-only navigation |
 | Project owner | `project_owner_assignments` | One approved owner, required/missing state, and admin edit permission |
-| Primary action sources | Open `tasks`, `followup_tasks`, `project_manual_actions` | Referenced and selected, never copied |
-| Selection/conflict | `project_primary_action_selections` plus selector hashes | Explicit selection with later outranking conflict |
-| Critical/reschedule state | `project_action_controls` | Explicit red reason and lifetime count |
-| Command history | `project_command_audit` | Latest 20 in project read model |
+| V2 Project Work | `ProjectWorkProjection` | Fully actionable through existing server-owned commands |
+| Pre-V2 Project Work | `legacyWork` retirement metadata | One read-only retirement notice; no task/action/history payload |
 
 Later-stage workstreams, communications, normalized timeline, blockers, and approvals remain intentionally absent.
 
@@ -614,11 +649,10 @@ The payload contains:
 - Optional declined historical outcome when no quote is current.
 - Explicit integrity/source/price warnings.
 - Existing specialist-tab links.
-- Three normalized owner summaries and permissions.
-- Current primary action or explicit no-action state.
-- Up to 25 sorted candidate options plus total/revision.
-- Explicit-selection conflict and allowed operations.
-- Latest 20 command-audit events and project exception flags.
+- One current Project Owner summary and permissions.
+- A `workModel` discriminator.
+- For V2, the authoritative `ProjectWorkProjection`, including its server-ranked primary candidate, other open/blocked work, operational state, permissions, and versions.
+- For pre-V2, only `legacyWork.status: "retired"` and the optional permission-gated review link.
 
 The server performs one auth-bound `projects` relation read for estimate metadata, quote versions, and send logs, followed by one exact selected-estimate detail read for `inputs`, `outputs`, and costing trace fields. Only the bounded normalized response reaches the browser.
 
@@ -631,7 +665,7 @@ Stage 1 required no migration. Stage 2 is owned by two ordered forward migration
 
 Both migrations must pass the executable environment smoke before Stage 2 can move from Yellow to complete.
 
-Legacy `projects.next_action*` and `follow_up_date` are a read-only Schedule compatibility projection. The transactional action command alone refreshes them through an internal helper. Project Details, dashboard controls, stage-task completion, and AutomationRunner no longer own those fields.
+Legacy `projects.next_action*` and `follow_up_date` remain database compatibility fields, not a pre-V2 Overview task/action contract. V2 server-owned projection commands may maintain compatibility values for bounded non-Overview consumers. Project Details, Dashboard controls, and AutomationRunner do not own those fields; retired pre-V2 rows cannot refresh them through Overview, and there is no legacy Overview command route.
 
 ## 16. Required API boundaries
 
@@ -649,16 +683,15 @@ Contract:
 - No side effects.
 - No direct browser Supabase reads.
 
-Existing summary and complete snapshot routes remain unchanged and independent.
+Existing summary and complete snapshot routes remain independent. The complete snapshot may carry the authoritative V2 projection, but it carries no pre-V2 task/check payload.
 
-Stage 2 extends that GET response with `operations` and adds:
+The current supporting routes include:
 
 - `GET /api/staff/v1/staff-directory`.
 - `PATCH /api/staff/v1/projects/[projectId]/command-centre/owners`.
-- `POST /api/staff/v1/projects/[projectId]/command-centre/primary-action/commands`.
 - `GET /api/staff/v1/dashboard/project-exceptions`.
 
-Every response, including errors, is `private, no-store`. Mutations require UUID command IDs and optimistic versions, are transactional/idempotent, and return committed success with `refreshRequired` rather than inviting a retry after a post-commit refresh failure.
+V2 work-item, operational-state, and confirmation mutations remain on their dedicated Project Work command routes. The deleted legacy primary-action route has no replacement. Every response, including errors, is `private, no-store`. V2 mutations require UUID command IDs and optimistic versions, are transactional/idempotent, and return committed success with `refreshRequired` rather than inviting a retry after a post-commit refresh failure.
 
 ## 17. Component reuse plan
 
@@ -668,20 +701,15 @@ Overview V2 component boundaries:
 - `overview/ProjectOverviewLayout.tsx`: route-owned responsive composition for orientation, Project Work, current design/commercial, and bounded recent notes/events.
 - `overview/ProjectOrientationBand.tsx`: active Overview owner for customer, site, region, reference, operational state, freshness, local-first details editing/retry, and stage correction without repeating the project title, stage value, or owner management.
 - `overview/ProjectStatusDetailsCard.tsx`: compatibility adapter that renders `ProjectOrientationBand` in compatibility mode for `ProjectDetailsMutationFixtureClient` and focused local-first tests. `OverviewTab` does not mount it.
-- `overview/ProjectWorkSection.tsx`: the single Project Work region and high-level mixed-model/state presentation. It renders the V2 primary/state view directly and nests the legacy command shell plus read-only stage rows for legacy projects.
-- `overview/ProjectWorkList.tsx`: secondary V2 open/blocked rows and filtered read-only legacy stage rows inside that region.
+- `overview/ProjectWorkSection.tsx`: the single Project Work region and high-level model/state presentation. It renders the V2 primary/state view directly or delegates the pre-V2 branch to `LegacyProjectWorkRetiredCard`.
+- `overview/ProjectWorkList.tsx`: secondary V2 open/blocked rows inside that region; it has no pre-V2 task-row contract.
 - `overview/ProjectWorkControls.tsx`: V2 mutation-control presentation for manual work, operational-state changes, confirmation correction, and the existing manual hidden Site Visit completion fact. It exposes no Site Visit task, normal navigation, or Schedule integration and renders no controls for Archived projects.
 - `overview/useProjectWorkCommandController.ts`: V2 browser command, stable retry identity, duplicate suppression, committed/unknown feedback, input state, V2 projection cache patching, and shared invalidation orchestration.
-- `overview/useLegacyProjectWorkCommandController.ts`: legacy stable command identity, duplicate suppression, committed-response validation, feedback, permitted-candidate/conflict state, complete command-centre cache patching, and shared invalidation orchestration.
-- `overview/LegacyProjectWorkConflict.tsx`: legacy conflict and exact `Legacy work needs review` presentation. It delegates commands to the legacy controller and never selects a replacement for prohibited work.
-- `overview/LegacyProjectWorkHistory.tsx`: bounded legacy audit preview and lazy full-history modal.
-- `overview/projectWorkVisibilityPolicy.ts`: the shared fail-closed Call/Site Visit identity filter for V2 primary candidates/items/manual titles, legacy actions/tasks, and bounded recent events. Contextual state-review reasons are not treated as action identity.
+- `overview/LegacyProjectWorkRetiredCard.tsx`: the only pre-V2 Project Work presentation. It shows a read-only retirement notice and optional admin review link, with no command controller.
+- `overview/projectWorkVisibilityPolicy.ts`: the shared fail-closed Call/Site Visit identity filter for V2 primary candidates/items/manual titles and bounded recent events. Contextual state-review reasons are not treated as action identity.
 - `overview/ProjectCurrentDesignCommercialCard.tsx`: read-only selected design/commercial presentation.
 - `overview/ProjectRecentNotesEvents.tsx`: bounded recent-notes/events composition, including suppression of legacy Call and Site Visit event content. It delegates note authoring to `ProjectNotesPanel.client.tsx`.
-- Legacy stage-task compatibility is read-only and internal to `ProjectWorkSection`; there is no separate Tasks card.
-- `overview/ProjectPrimaryActionCard.tsx`: legacy presentation shell nested only by the legacy branch of `ProjectWorkSection`. It delegates command/cache state to `useLegacyProjectWorkCommandController`, conflict fallback/resolution to `LegacyProjectWorkConflict`, history to `LegacyProjectWorkHistory`, and legacy forms to `ProjectPrimaryActionControls`; it is not a V2 owner.
-- `ProjectTasksSidebar.client.tsx`: retained only for the direct legacy task-mutation fixture and focused tests; it is not an Overview V2 surface.
-- `ProjectWorkCommandCard.tsx` and `ProjectWorkItemsSidebar.client.tsx`: retired after zero-consumer proof.
+- Pre-V2 task rows, ranking/conflict/history presentation, create/complete controls, controller, and command route are retired; there is no separate Tasks card.
 - `ProjectHeader.tsx` plus `ProjectHeaderOwnerControl.tsx`: project identity, the single Project Owner summary/management modal, project actions, and horizontally scrollable tab navigation. Accepted owner commands patch through `patchProjectCommandCentreCache`, never a header-local cache writer.
 - `lib/queries/projectWorkCache.ts`: sole cache patch/invalidation module. `patchProjectCommandCentreCache` owns complete server-returned command-centre patches, `patchProjectWorkProjectionCaches` owns V2 projection fan-out, and `invalidateProjectWorkReads` owns the complete refresh set.
 - Dashboard Work Queue: the only Dashboard project-work surface is a read-only bounded preview of the authoritative one-row-per-V2-project queue, with a link to the full team list. Personal reminders remain independent. Legacy `follow_up_date`/`next_action*` aggregates, the old snapshot `work_queue` payload, and the legacy project-exceptions endpoint do not enter the Dashboard browser contract; the diagnostic endpoint remains available outside the home page.
@@ -698,16 +726,16 @@ Implemented focused coverage for the Overview V2 slice includes:
 - Query preloading and preserved activity-key tab tests.
 - Overview pending/fresh/stale/failure/access-ending tests.
 - Page-level protected cache clearing tests.
-- Current design/commercial, orientation, layout, recent notes/events, Project Work section/list/controls, V2 and legacy command-controller, legacy conflict/history, visibility-policy, and shared-cache tests.
+- Current design/commercial, orientation, layout, recent notes/events, V2 Project Work section/list/controls/controller, pre-V2 retirement-card, visibility-policy, and shared-cache tests.
 - Environment-gated, customer-data-free fixture route that composes the production `ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectCurrentDesignCommercialCard`, and `ProjectRecentNotesEvents` owners with synthetic data. It does not mount `OverviewTab` or perform authenticated data reads.
-- Fixture data for the full approved work/read-state catalogue, including V2/legacy, prohibited legacy selection, Waiting/Closed/Archived, stale/mismatch/access-ending, and strict commercial-source cases.
-- Current fixture Playwright assertions for all ten strict commercial scenarios, all seventeen Project Work scenarios, all eleven read states, filtered read-only legacy rows, prohibited legacy fallback, one semantic email command request, and the project shell. A deterministic V2 shell variant routes the fixture response through the production command-centre query and `OverviewTab` before asserting the single V2 surface.
+- Fixture data for the approved work/read-state catalogue, including actionable V2, the pre-V2 retirement notice, Waiting/Closed/Archived, stale/mismatch/access-ending, and strict commercial-source cases.
+- Current fixture Playwright assertions cover strict commercial scenarios, V2 Project Work and read states, the pre-V2 retirement notice, one semantic V2 email command request, and the project shell. A deterministic V2 shell variant routes the fixture response through the production command-centre query and `OverviewTab` before asserting the single V2 surface.
 - Responsive assertions and attached rendered evidence at 1440x1000, 1280x800, 1024x900, 768x1024, and 390x844 for one representative blocked-work composition; a 640 CSS-pixel 200%-zoom simulation; no document horizontal overflow, nested vertical scroll owner, or cropped control; semantic headings/regions; actual mobile Tab order; visible focus; reduced motion across descendants; prohibited lifecycle-control absence; and 44px coarse-pointer controls.
 - `npm run test:portal:command-centre:read-only-auth` as the authenticated read-only smoke. It runs the staging-readiness and credential preflights, rejects production-like or ambiguous hosts, discovers one RLS-visible project, opens the integrated Overview, checks the extracted regions and absence of duplicate/prohibited controls, suppresses only the identifier-free Web Vitals transport before navigation, and aborts plus reports every other non-`GET`/`HEAD`/`OPTIONS` request. It does not currently assert response cache headers, responsive layouts, or recovery interactions; the historical mutation-capable command-centre gate remains separate.
 
 Fixture route: `/qa/project-command-centre-fixture?scenario=...&work=...&state=...`, enabled only by `ENABLE_PORTAL_QA_FIXTURES=1`.
 
-The broader acceptance matrix in section 14 remains required where the current browser specs do not yet assert a catalogued state or accessibility property. On 2026-07-30, the owned Overview V2 evidence passed:
+The broader acceptance matrix in section 14 remains required where the current browser specs do not yet assert a catalogued state or accessibility property. The evidence figures below record the original handover pass before the later pre-V2 retirement decision; they remain historical evidence and do not replace focused retirement-card coverage or a current authenticated read-only smoke. On 2026-07-30, that original Overview V2 evidence passed:
 
 - `npm run test:portal:project-work`: 54 files and 297 tests.
 - `npm run test:portal:projects`: 98 files and 516 tests.
@@ -716,7 +744,7 @@ The broader acceptance matrix in section 14 remains required where the current b
 - `npm run test:portal:command-centre:read-only-auth`: the staging-readiness and credential preflights, authenticated setup, and integrated Overview smoke passed against the positively identified CLI-linked staging project. Identifier-free Web Vitals transport was suppressed and every other non-read request remained fail-closed; no business mutation was attempted.
 - Full typecheck, lint, production portal build, docs impact/guard, architecture changed, changed-file, dead-code, and diff checks.
 - The unchanged Project Detail budget passed at 642.4 KiB raw / 184.9 KiB gzip initial, 978.5 KiB raw / 219.9 KiB gzip lazy total, and 858.6 KiB raw / 186.4 KiB gzip largest lazy entry.
-- A manual authenticated read-only inspection passed at 390x844 on one RLS-visible legacy project: one Project Work surface, the approved mobile order, no duplicate/prohibited regions, no document overflow, no mutation control exercised, and no shared project/customer data changed.
+- A manual authenticated read-only inspection passed at 390x844 on one RLS-visible pre-V2 project under the original compatibility presentation: one Project Work surface, the approved mobile order, no duplicate/prohibited regions, no document overflow, no mutation control exercised, and no shared project/customer data changed.
 
 Overview V2 completion is accepted under the narrow user-approved exception. The aggregate `npm run portal:bundle-budget` gate still reports Contacts and Calculator initial-budget overruns; an isolated clean build at approved baseline `060bea19` with the same fail-closed analyser reproduces them, while Project Detail remains within its unchanged allowance. Keep those ceilings unchanged and handle route optimization as separate work.
 
@@ -743,7 +771,7 @@ Stage 1 verification completed on 2026-07-20:
 - Stage 4: communications and timeline. Not started.
 - Stage 5: exceptions and approvals. Not started.
 - Stage 6: final responsive QA, pilot, and rollout. Not started.
-- Current slice: the `## Approved Overview V2 Implementation Handover (READ FIRST)` implementation and owned verification are complete under the narrow bundle-baseline exception recorded above.
+- Current slice: the `## Approved Overview V2 Implementation Handover (READ FIRST)` implementation plus the superseding pre-V2 retirement decision are the current accepted composition under the narrow bundle-baseline exception recorded above.
 - Next-slice boundary: no deposit, Schedule/Running Jobs readiness, normalized meaningful activity, complete exception aggregation, or other lifecycle expansion is approved until this slice passes its required gates and a bounded specialist-owned server projection is separately reviewed.
 
 ## 20. Technical risks
@@ -758,22 +786,23 @@ Stage 1 verification completed on 2026-07-20:
 ## 21. Confirmed implementation decisions
 
 - Keep `activity` as the internal/default tab key and label it `Overview`.
-- Keep `ProjectPageSnapshot` unchanged.
+- Keep `ProjectPageSnapshot` bounded to project/pipeline, V2 Project Work when applicable, notes, activity, and emails; do not restore legacy task/check reads.
 - Use a separate server-owned command-centre read model and query key.
 - Use auth-bound staff access only.
 - Apply accepted > sent > draft and exact source only.
 - Never select declined quotes.
 - Never fall back from quote source or quote price to an estimate.
 - Read stored estimate summary and freshness; do not run costing.
-- Keep existing project identity, notes, tasks, lazy boundaries, and compatible URL keys while consolidating details and stage correction into Overview.
+- Keep existing project identity, notes/events, lazy boundaries, and compatible URL keys while consolidating details and stage correction into Overview.
 - Clear protected user-owned caches on command-centre access-ending responses.
 - Remove the legacy fallback resolver/summarizer/bar after zero-consumer proof.
 - Make no Stage 1 migration or specialist mutation change.
-- Keep task/follow-up rows canonical; manual rows represent only genuinely manual actions.
-- Keep stage checks and personal dashboard reminders outside selection.
+- Keep pre-V2 task/follow-up/manual rows outside the Overview read and write contracts; V2 Project Work remains canonical for V2 projects.
+- Keep retired stage checks out of Overview and personal Dashboard reminders independent.
 - Store staff dates at 5:00pm Auckland and preserve source timestamps.
 - Keep overdue amber; critical is explicit and reasoned.
-- Keep the compatibility projection service-owned and non-authoritative.
+- Keep any bounded compatibility projection server-owned and non-authoritative; it does not authorize a pre-V2 Overview action surface.
+- Keep the current Project Owner for both models and the shared Current Design & Commercial and Recent notes and events composition.
 - The command-centre Stage 2 kept specialist workflows, workbench/drawings, geometry, and costing inputs unchanged. The later project-shell Slice 2 replaced only the obsolete project Estimates/Configurator composition with the authoritative Calculator; it did not change costing inputs or the separate Workbench route.
 
 ## 22. Unresolved technical questions

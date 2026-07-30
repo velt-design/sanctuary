@@ -42,7 +42,7 @@ function response(archive: ProjectsIndexResponse['archive'], rows: Project[]): P
     archive,
     projects: { rows, totalCount: rows.length, truncated: false, page: 1, pageSize: 50, totalPages: 1 },
     contacts: { rows: [contact], totalCount: 1, truncated: false },
-    query: { search: '', status: 'all', due: 'all', today: '2026-07-29', sort: 'newest' },
+    query: { search: '', status: 'all', sort: 'newest' },
     generatedAt: '2026-07-19T00:00:00.000Z',
   };
 }

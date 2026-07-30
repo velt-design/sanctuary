@@ -160,7 +160,7 @@ export default function ProjectCommandCentreFixtureClient({
   const project = {
     ...commandCentreOverviewFixtureProject,
     ...work.project,
-    stage: work.tasks.stage,
+    stage: work.stage,
   };
   const exception =
     viewState === "refreshing" ? (
@@ -227,14 +227,7 @@ export default function ProjectCommandCentreFixtureClient({
   ) : (
     <ProjectWorkSection
       workModel="legacy"
-      projectId={project.id}
-      host="fixture"
-      operations={work.operations}
-      tasks={work.tasks}
-      pipelineStage={project.stage}
-      stale={stale}
-      onRefresh={() => undefined}
-      initialStaff={commandCentreFixtureStaff}
+      reviewHref={work.reviewHref}
     />
   );
 

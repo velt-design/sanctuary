@@ -83,12 +83,6 @@ describe('getProjectPageSnapshot', () => {
     });
     const relatedQuery = createQuery({
       data: {
-        siteVisits: [],
-        estimates: [],
-        scheduleItems: [],
-        quotes: [{ acceptedVersions: [{ id: 'quote_version_1', status: 'ACCEPTED' }] }],
-        openInvoices: [{ id: 'inv_1', status: 'OPEN' }],
-        manualChecks: [],
         emails: [{
           id: 'email_1',
           subject: 'Estimate ready',
@@ -117,8 +111,7 @@ describe('getProjectPageSnapshot', () => {
       .mockReturnValueOnce(createQuery({
         data: { owner_key: 'jordan' },
         error: null,
-      }))
-      .mockReturnValueOnce(createQuery({ data: [], error: null }));
+      }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
     const snapshot = await getProjectPageSnapshot(
@@ -150,21 +143,21 @@ describe('getProjectPageSnapshot', () => {
         stage: 'new',
       },
     });
-    expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
     expect(snapshot?.emails).toHaveLength(1);
     expect(snapshot?.notes).toMatchObject([{ id: 'note_1', isOwn: true }]);
     expect(snapshot?.activity).toHaveLength(1);
-    expect(fromMock).toHaveBeenCalledTimes(4);
+    expect(fromMock).toHaveBeenCalledTimes(3);
     expect(fromMock).toHaveBeenNthCalledWith(1, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(2, 'projects');
     expect(fromMock).toHaveBeenNthCalledWith(3, 'project_owner_assignments');
-    expect(fromMock).toHaveBeenNthCalledWith(4, 'project_task_checks');
     expect(projectQuery.select).toHaveBeenCalledWith('*,contact:contacts(*)');
     expect(isProjectWorkModelV2).toHaveBeenCalledWith(expect.any(Object), projectId);
-    expect(relatedQuery.eq).toHaveBeenCalledWith('quotes.acceptedVersions.status', 'ACCEPTED');
-    expect(relatedQuery.eq).toHaveBeenCalledWith('openInvoices.status', 'OPEN');
     expect(relatedQuery.is).toHaveBeenCalledWith('notes.deleted_at', null);
     expect(relatedQuery.limit).toHaveBeenCalledWith(50, { referencedTable: 'notes' });
+    expect(String(relatedQuery.select.mock.calls[0]?.[0] ?? '')).not.toMatch(
+      /site_visit_events|estimates|schedule_items|quote_versions|deposit_invoices/,
+    );
+    expect(fromMock).not.toHaveBeenCalledWith('project_task_checks');
     expect(fakeAuth.auth.getUser).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
@@ -205,7 +198,6 @@ describe('getProjectPageSnapshot', () => {
         siteAddress: '5 Direct Road',
       },
       pipeline: { stage: 'quoting' },
-      tasks: { stage: 'quoting', items: [] },
       activity: [],
       emails: [],
       notes: [],
@@ -225,7 +217,6 @@ describe('getProjectPageSnapshot', () => {
     fromMock
       .mockReturnValueOnce(createQuery(projectResult.promise))
       .mockReturnValueOnce(createQuery(relatedResult.promise))
-      .mockReturnValueOnce(createQuery({ data: [], error: null }))
       .mockReturnValueOnce(createQuery({ data: [], error: null }));
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
@@ -252,12 +243,6 @@ describe('getProjectPageSnapshot', () => {
     });
     relatedResult.resolve({
       data: {
-        siteVisits: [],
-        estimates: [],
-        scheduleItems: [],
-        quotes: [],
-        openInvoices: [],
-        manualChecks: [],
         emails: [],
         jobPacks: [],
         notes: [],
@@ -315,7 +300,7 @@ describe('getProjectPageSnapshot', () => {
     );
   });
 
-  it('does not read legacy task checks for a V2 project', async () => {
+  it('loads authoritative work for a V2 project without legacy task-check reads', async () => {
     const projectId = '11111111-1111-4111-8111-111111111111';
     isProjectWorkModelV2.mockResolvedValueOnce(true);
     getAuthoritativeProjectWorkProjection.mockResolvedValue({
@@ -348,11 +333,6 @@ describe('getProjectPageSnapshot', () => {
       }))
       .mockReturnValueOnce(createQuery({
         data: {
-          siteVisits: [],
-          estimates: [],
-          scheduleItems: [],
-          quotes: [],
-          openInvoices: [],
           emails: [],
           jobPacks: [],
           notes: [],
@@ -370,7 +350,6 @@ describe('getProjectPageSnapshot', () => {
     );
 
     expect(snapshot?.workModel).toBe('v2');
-    expect(snapshot?.tasks.items).toEqual([]);
     expect(fromMock).toHaveBeenCalledTimes(3);
     expect(fromMock).not.toHaveBeenCalledWith('project_task_checks');
     expect(getAuthoritativeProjectWorkProjection).toHaveBeenCalledWith(

@@ -1,6 +1,8 @@
 # Project Work Items Technical And Cutover Plan
 
-Status: The approved new-project V2, Work Queue/legacy-review, and Overview V2 slices are production-deployed. Release merge `c9e73651` entered production before the exact reviewed `20260729_000002`, `000003`, and `000004` files were applied individually to the positively identified production database on 2026-07-30; snapshot-cache hotfix merge `809f2c5e` followed. Postflight catalog, RLS, grant, relationship, and empty-state checks passed; authenticated production Work Queue, legacy snapshot, and Command Centre reads returned `200`, and the complete snapshot now enforces `private, no-store` on every explicit response path. Marker count was zero at the 2026-07-30 cutover check, so the ready Work Queue was correctly empty. No pre-cutover project was migrated or backfilled; only one explicitly reviewed project can ever cross through the guarded command.
+Status: The approved new-project V2, Work Queue/legacy-review, and Overview V2 slices are production-deployed. Release merge `c9e73651` entered production before the exact reviewed `20260729_000002`, `000003`, and `000004` files were applied individually to the positively identified production database on 2026-07-30; snapshot-cache hotfix merge `809f2c5e` followed. Postflight catalog, RLS, grant, relationship, and empty-state checks passed; authenticated production Work Queue, legacy snapshot, and Command Centre reads returned `200`, and the complete snapshot now enforces `private, no-store` on every explicit response path. Marker count was zero at the 2026-07-30 cutover check, so the ready Work Queue was correctly empty. No pre-cutover project was migrated into V2; only one explicitly reviewed project at a time can cross through the guarded command.
+
+The current repository adds forward migration `20260730_000001_legacy_project_task_retirement.sql` and the matching runtime retirement. The migration backfills materials- and roofing-ordered evidence from `project_task_checks` into Running Jobs metadata, makes the versioned Running Jobs fact RPC available to every existing project rather than V2 projects only, freezes authenticated inserts/updates/deletes on `project_task_checks`, and revokes authenticated execution of the legacy action and design-task sync RPCs. It does not delete a task row, table, project, or customer record; classify or close a project; or migrate an existing project into V2. Applying that forward migration is a separate deployment event from the preserved 2026-07-30 V2 rollout evidence below. V2 Project Work and private Dashboard My Tasks are unchanged.
 
 Purpose: replace the competing legacy project-task systems with one small, durable work-item foundation without weakening lifecycle, commercial, local-first, authentication, public-token, or side-effect boundaries.
 
@@ -14,45 +16,55 @@ The first staging application completed the DDL but PostgREST continued to repor
 
 The final authenticated command smoke created one clearly labelled synthetic V2 project through the staff API and proved the durable transition `OPEN r1 -> BLOCKED r2 -> exact replay r2 -> ARCHIVED/CANCELLED r3`. Work-item, Work Queue, Command Centre, snapshot, integrity, and rendered Overview checks agreed; the archived project was omitted from active work and reported zero open/blocked items. The exact replay produced no duplicate work event. The temporary synthetic-QA role elevation required for the supported archive command was restored to `staff`. No confirmation, email/outbox, quote, invoice, legacy task/follow-up, Site Visit, Schedule, Running Jobs, repair, or legacy-residue record was created. The archived synthetic project/contact and append-only events intentionally remain as staging audit evidence; V2 exposes no hard-delete command.
 
-The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, and one-project legacy-review boundaries described below. `projectWorkCache.ts` is the sole cache patch/invalidation module: it owns V2 projection fan-out, complete command-centre response patching through `patchProjectCommandCentreCache`, and the shared Project Work invalidation set. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The Overview V2 presentation consumes one server projection through one mixed-model Project Work region. Its route-owned composition, orientation, section/list/controls, separate V2 and legacy command controllers, conflict/history presenters, and shared visibility policy do not change the durable command contract. V2 actions remain server-owned; legacy stage rows are filtered read-only, Call and Site Visit work is hidden, a prohibited selected legacy action becomes `Legacy work needs review` without browser ranking, and a server-returned blocked primary remains a visible exception with no enabled item command. Work Queue owns the staff-wide operational list and Dashboard owns its compact preview as the only home-page project-work surface; legacy action aggregates and the old snapshot queue payload are not exposed to the browser, while personal reminders remain separate. The positively identified staging rehearsal, authenticated non-destructive QA, and focused repository gates recorded for the Project Work foundation remain valid historical rollout evidence. Overview V2's focused, fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Overview V2 completion is accepted under the narrow user-approved exception for the unrelated baseline Contacts/Calculator overruns; their ceilings remain unchanged and optimization stays outside this data-cutover plan. Production promotion is complete; monitoring remains bounded to naturally created V2 projects and read-only integrity signals.
+The repository implementation includes the V2 state, work-item, confirmation, receipt, event, calendar, authoritative team queue, compatibility, archive, Schedule, Running Jobs, lead-cadence, quote-reconciliation, confirmation-correction, one-project legacy-review, and legacy task-runtime retirement boundaries described below. `projectWorkCache.ts` is the sole cache patch/invalidation module: it owns V2 projection fan-out, complete command-centre response patching through `patchProjectCommandCentreCache`, and the shared Project Work invalidation set. Cached or refresh-failed data remains visible but read-only; an absent V2 contract renders a named not-ready state with no retry loop or mutation controls. The Overview consumes one server response through one Project Work region. V2 uses `useProjectWorkCommandController` and remains fully actionable through server-owned commands. An unmarked project now receives one read-only legacy-retirement card with no stage rows, action selection, conflict/history controls, task toggles, Call actions, or Site Visit actions; admins may receive only the bounded legacy-review link. A server-returned blocked V2 primary remains a visible exception with no enabled item command. Work Queue owns the staff-wide operational list and Dashboard owns its compact preview as the only home-page project-work surface; legacy action aggregates and the old snapshot queue payload are not exposed to the browser, while private My Tasks remain separate. The positively identified staging rehearsal, authenticated non-destructive QA, and focused repository gates recorded for the Project Work foundation remain valid historical rollout evidence. Overview V2's focused, fixture, responsive/accessibility, unchanged Project Detail budget, build/static, manual authenticated inspection, and automated authenticated read-only staging evidence passed on 2026-07-30. Overview V2 completion is accepted under the narrow user-approved exception for the unrelated baseline Contacts/Calculator overruns; their ceilings remain unchanged and optimization stays outside this data-cutover plan. Production promotion of the recorded V2 foundation is complete; monitoring remains bounded to naturally created V2 projects and read-only integrity signals.
 
 Known boundaries and limitations before broad rollout:
 
 - Auckland calendar coverage is verified only for 2026 and 2027 and fails closed beyond covered years;
 - the specialist primary-action adapter currently covers quote-delivery recovery, draft-quote send, and estimate-to-quote only;
-- project-specific Command Centre, snapshot, work-item, full Work Queue, and Dashboard reads share the same server-owned action composition;
+- V2 project-specific Command Centre, snapshot, work-item, full Work Queue, and Dashboard reads share the same server-owned action composition;
 - Contacted classification is recommendation-only and cannot prove historical outreach when structured evidence is absent; and
-- broad existing-project migration and legacy retirement remain separate reviewed operations.
+- broad existing-project migration remains a one-project-at-a-time reviewed operation; runtime legacy task retirement is implemented in the repository, while physical row/table purge remains a later explicit operation.
 
 Staff confirmed on 2026-07-30 that the legacy task surfaces have not been used
 as an operational company workflow; the portal has primarily supported
 quoting. That removes historical task adoption as a launch blocker, but it
-does not authorise an automatic backfill. Existing projects remain legacy by
-default, and any later opt-in stays one explicitly reviewed project at a time.
+does not authorise automatic V2 classification or closure. Existing unmarked
+projects receive the retired legacy Project Work state by default, and any
+later V2 opt-in stays one explicitly reviewed project at a time.
 
 ## 1. Evidence And Existing Risk
 
-For unmarked legacy projects, work remains spread across:
+Before runtime retirement, legacy work truth was spread across browser/server
+stage definitions and several database owners. Retained historical evidence can
+still exist in:
 
-- code-defined stage checks in `pipelineDefinition.ts` and `project_task_checks`;
+- `project_task_checks`;
 - automation `tasks`;
 - `followup_plans` and `followup_tasks`;
 - `project_manual_actions`;
-- action controls, manual primary selection, audit, and version tables; and
+- legacy action selection, audit, and version tables; and
 - compatibility fields on `projects`: `next_action*` and `follow_up_date`.
 
-The resulting problems are structural:
+Those records are review evidence, not a current task queue. `pipelineDefinition.ts`
+now owns stage metadata only, the project snapshot contains no legacy task
+collection, and Overview exposes no legacy rows or task/action controls.
+
+The problems that motivated retirement were structural:
 
 - the same next-action truth is derived in browser code, server code, and SQL;
 - automation items can outrank more urgent manual work;
 - Critical does not consistently control ranking;
 - generic completion paths can mutate stages, invoices, or Schedule;
-- Design and Running Jobs facts are copied into task records;
+- Design and Running Jobs facts were copied into task records;
 - the durable quote-send path does not reliably start the old follow-up plan;
 - an automation event can be recorded before its handler succeeds, making a failed retry unsafe; and
-- specialist mutations do not consistently invalidate Command Centre data.
+- specialist mutations did not consistently invalidate Command Centre data.
 
-`portal_dashboard_tasks` is a separate personal-reminder system and is not part of this replacement.
+The current runtime does not create legacy task/follow-up rows, mirror Design
+Package requests into tasks, or use `project_task_checks` for Running Jobs or
+project snapshots. `portal_dashboard_tasks` remains the unchanged private My
+Tasks/personal-reminder system and is not part of this replacement.
 
 ## 2. Target Ownership Rules
 
@@ -128,13 +140,16 @@ One row marks that a project has crossed the writer boundary:
 | `cutover_by` | Nullable portal-user actor |
 | `reason` | `NEW_PROJECT`, `REVIEWED_MIGRATION`, or `ADMIN_REPAIR` |
 
-No row means legacy writers remain authoritative and the replacement model is shadow-only. A version-2 row means:
+No row means the project has not crossed into V2. It remains
+`LEGACY_UNCLASSIFIED`, stays outside the operational Work Queue, and receives
+the read-only legacy-retirement presentation plus the bounded admin review
+path. It does not regain the retired legacy task writers. A version-2 row
+means:
 
-- legacy task and follow-up generators must reject or skip the project;
-- code-defined legacy stage-task candidates must not be shown;
-- legacy projection triggers must not update its `projects.next_action*` fields;
-- new commands and the new compatibility projection are authoritative; and
-- the project cannot return to legacy writers.
+- V2 state, work-item, confirmation, and specialist command owners are authoritative;
+- no retained legacy task/action row is imported automatically;
+- the new compatibility projection is authoritative; and
+- the project cannot return to the unmarked state.
 
 For a reviewed existing project, the operational-state row, approved imported work, version marker, and initial compatibility projection commit in one transaction. A new post-cutover project receives `ACTIVE`, model version 2, and its first applicable work item atomically.
 
@@ -511,7 +526,11 @@ During migration:
 - no bidirectional dual-write is introduced; and
 - the columns remain until all consumers are migrated and a separate retirement check is approved.
 
-For a model-version-2 project, every legacy generator, trigger, route, and code-defined candidate path must skip or reject the project. For an unmarked project, the new model remains shadow-only. There is no project for which both writer sets are authoritative.
+Legacy task generators, browser/route task mutation, primary-selection
+commands, and code-defined stage-task candidates are retired for every
+project. An unmarked project remains outside V2 rather than falling back to
+those writers. There is no project for which both V2 and a legacy task writer
+are authoritative.
 
 Exact compatibility mapping:
 
@@ -618,25 +637,41 @@ The quote cadence was approved on 2026-07-29.
 | `CREATE_DESIGN_PACKAGE` | Design-domain action, not a work item |
 | `invoice_paid` | Invoice/payment truth |
 | `schedule_install`, `confirm_schedule`, Schedule variants | Schedule V2 truth |
-| `order_materials`, `roofing_ordered` | Move to audited Running Jobs-owned fields; never import as work items |
+| `order_materials`, `roofing_ordered` | Backfilled into audited Running Jobs-owned fields by `20260730_000001`; never import as work items |
 | `job_complete` | Schedule V2 actual-finish truth |
 | `RESEND_EMAIL` | Delivery-recovery exception owned by the sending domain |
 | completion-photo variants | At most one reviewed Operations work item |
-| open Stage-2 manual actions | Import only if due-dated, active, and confirmed as a genuine human obligation |
+| open Stage-2 manual actions | Retain as review evidence; create a new V2 item only through the one-project review when the obligation is still genuine |
 | completed legacy checks | Retain as read-only history; do not create completed new items |
 | action controls, selections, and action versions | Do not migrate; retain Critical reason only when its item is deliberately imported |
 
-### Running Jobs prerequisite
+### Running Jobs retirement boundary
 
-`materials_ordered` and `roofing_ordered` are editable Running Jobs facts currently persisted through `project_task_checks`. Before a model-version-2 project can stop using that table:
+The repository has completed this prerequisite. Running Jobs-owned
+`materials_ordered_at/by` and `roofing_ordered_at/by` fields plus `row_version`
+live on `project_running_job_meta`, and Running Jobs/project snapshot runtime
+code no longer reads or writes `project_task_checks`.
 
-- add Running Jobs-owned `materials_ordered_at/by` and `roofing_ordered_at/by` fields plus a row version to `project_running_job_meta`;
-- backfill the two facts from the corresponding legacy checks, preserving available actor and occurrence time;
-- route set/clear commands through the Running Jobs API with audit and optimistic concurrency;
-- switch Running Jobs, project snapshot, and task-presentation consumers to the specialist fields; and
-- suppress the matching code-defined stage checks for model-version-2 projects.
+Forward migration `20260730_000001_legacy_project_task_retirement.sql`:
 
-`job_complete` moves to Schedule V2 actual-finish truth, not Running Jobs metadata. This prerequisite changes no costing, geometry, or workbench boundary.
+- backfills the two specialist facts from retained `order_materials`,
+  `materials_ordered`, and `roofing_ordered` checks while preserving the latest
+  available completion time and actor and never overwriting an already-present
+  Running Jobs fact;
+- defines the audited, optimistic-concurrency
+  `project_running_job_fact_command` for any existing project, with no V2 marker
+  assertion, so marked and unmarked live-project edits share one specialist
+  owner;
+- revokes authenticated insert, update, and delete on
+  `project_task_checks` and leaves authenticated access select-only;
+- revokes authenticated execute on `project_command_action` and
+  `project_command_sync_design_task`; and
+- retains all legacy task-check rows and projects. It performs no physical
+  purge, project deletion, archive, operational-state change, or Lost decision.
+
+`job_complete` is Schedule V2 actual-finish truth, not Running Jobs metadata.
+This retirement changes no V2 Project Work, private My Tasks, costing,
+geometry, or workbench boundary.
 
 ## 10. Contacted Backlog Plan
 
@@ -662,6 +697,15 @@ Therefore:
 - keep the other 566 outside the new queue until evidence or a staff decision gives them a genuine item, Waiting date, Closed outcome, or archive reason; and
 - treat the 36 archived records as a separate administrative population.
 
+Runtime task retirement is not a backlog disposition. Retained task,
+follow-up, action, and task-check rows remain evidence for the bounded review.
+A staff-confirmed `Closed — Lost` outcome is recorded only through the guarded
+one-project migration/state command with explicit evidence and reason; it does
+not delete the project or its historical rows. A later physical purge may
+remove proven-unused legacy tables or rows only after the manual review and
+reconciliation window, with its own forward migration and backup. Purge must
+never be used to infer a Lost outcome.
+
 The read-only `project_work_classify_legacy_contacted_v1()` report returns aggregate counts, project identity, follow-up timing, bounded reason codes, boolean domain evidence, and one opaque evidence fingerprint to an admin-only review surface. The fingerprint is produced by the internal-only `project_work_legacy_contacted_evidence_v1()` helper from normalized project stage/follow-up/archive/model state and the sorted identities/status or completion fields actually used from quote versions, deposit invoices, design requests, scheduled jobs, Running Jobs metadata, tasks, follow-ups, and manual actions. Raw Running Jobs notes contribute only through a SHA-256 digest. The helper is revoked from public, anonymous, authenticated, and service-role callers. The report deliberately omits linked customer email, phone, address, attachments, and message content. That data must not be added to logs, screenshots, fixtures, or planning artifacts.
 
 The report must use positive evidence and label recommendations rather than making decisions:
@@ -685,7 +729,7 @@ This is a deterministic optimistic boundary, not broad serialization of every le
 Repository status: the foundation is implemented in staging and production. Exact `20260729_000002`/`000003`/`000004` files are present in production following the controlled 2026-07-30 apply; postflight proved the catalog, RLS, grants, relationships, ready empty queue, and zero markers, operational states, work items, work-item/state events, confirmations, command receipts, or repair signals. The Contacted classifier remains read-only until explicitly invoked, and applying its definition did not seed or change projects.
 
 - Add tables, checks, indexes, RLS, commands, repositories, read models, and tests.
-- Add the per-project work-model marker and make legacy generators/projections respect it.
+- Add the per-project work-model marker and make mixed-model reads respect it.
 - Produce a read-only operational-state seed preview; do not mark existing projects yet.
 - Keep all existing readers and writers active.
 - Do not expose new UI.
@@ -710,7 +754,9 @@ Repository status: the bounded classifier and review surface are implemented loc
 
 ### D. Controlled writer and reader switch
 
-Repository status: wired for projects initialized as V2 after the migration is applied. No existing project is switched by the current migration.
+Repository status: wired for projects initialized as V2 after the foundation
+migration is applied. Neither the foundation nor the task-retirement migration
+switches an existing project into V2.
 
 - Mark each approved project cohort as model version 2 in the same transaction as its initial new state and work.
 - Start the approved lead cadence only for valid post-cutover enquiries.
@@ -718,7 +764,7 @@ Repository status: wired for projects initialized as V2 after the migration is a
 - Stop creating call and Site Visit items.
 - Enable the one-way compatibility projection.
 - Import only approved open obligations.
-- Switch the current task presentation, Command Centre, Projects, and Dashboard through compatibility adapters.
+- Switch Project Work, Command Centre, Projects, and Dashboard through the approved server-owned adapters.
 - Use the approved mixed-model Overview V2 composition governed by `project-command-centre-architecture.md`.
 - Hide the unused Site Visits navigation entry and prevent project work-item links to it, while leaving the route and data owner dormant.
 - Run Contacted review as a separate admin workflow, one reviewed project per command.
@@ -726,21 +772,38 @@ Repository status: wired for projects initialized as V2 after the migration is a
 
 ### E. Freeze legacy
 
-Repository status: legacy inserts and updates are rejected for V2 projects, while unmarked projects remain on the legacy model. This is cohort isolation, not broad legacy freeze or retirement.
+Repository status: implemented in the current runtime and forward migration,
+not limited to the V2 cohort. The project-task API/sidebar/mutation owner and
+primary-action command route are removed; automation and Design Package flows
+no longer generate or sync task rows. `20260730_000001` freezes authenticated
+`project_task_checks` writes and revokes authenticated execution of the two
+legacy task command entrypoints. Unmarked projects remain eligible for manual
+review but do not regain a legacy task surface.
 
-- Revoke legacy browser and route writes.
-- Retain legacy rows read-only for at least one release and a defined reconciliation window.
-- Repair only through the new command owner.
+- Keep legacy browser and route writes absent.
+- Retain legacy rows as read-only evidence through the defined reconciliation
+  window.
+- Repair V2 work only through the V2 command owner; record unmarked-project
+  outcomes only through the guarded review command.
 
-After new-writer cutover, rollback may return readers to the previous display but must not re-enable legacy writers.
+Rollback must not re-enable legacy writers.
 
 ### F. Retire proven legacy
 
-Repository status: not started. Compatibility and legacy owners remain required for existing projects.
+Repository status: runtime retirement is implemented. The Overview legacy
+branch is one read-only retirement card; task generation, task mutation,
+stage-task presentation, legacy action selection/conflict/history UI, and
+Running Jobs task-check persistence are absent. Retained tables and rows still
+support evidence review and applied-SQL compatibility.
 
-- Remove unused task generators, browser CRUD, primary-selection machinery, and compatibility adapters only after consumer searches and reconciliation pass.
-- Drop tables or columns only in a later explicit forward migration.
-- Run strict dead-code and architecture checks for the retirement change.
+- Keep the retired task generators, browser CRUD, primary-selection machinery,
+  and sidebar absent.
+- Complete manual Active/Waiting/`Closed — Lost` decisions independently from
+  data retention.
+- Drop proven-unused tables, rows, functions, or compatibility columns only in
+  a later explicit forward migration after reconciliation and backup; never
+  delete projects as part of that purge.
+- Run strict dead-code and architecture checks for each physical-purge change.
 
 There is no permanent dual-write phase.
 
@@ -820,22 +883,30 @@ Thin routes validate transport shape, require staff/admin context, call one owne
 
 Staff routes use auth-bound adapters. System reconciliation uses a separate server-only adapter and is not reachable from browser, authenticated RPC grants, or public-token routes.
 
-Files that should not grow:
-
-- `ProjectTasksSidebar.client.tsx`;
-- `pipelineDefinition.ts`;
-- `AutomationRunner.ts`;
-- `taskPersistence.ts`;
-- the Stage-2 command route and SQL RPC;
-- `actionResolver.ts`;
-- `getProjectCommandOperations.ts`; and
-- `getProjectCommandExceptions.ts`.
-
-The current duplicated operation and exception derivation should collapse behind `primaryAction.ts` and the unified project projection. `pipelineDefinition.ts` becomes stage metadata only after task cutover. Legacy automation task handling is shrunk and then retired rather than expanded.
+The former legacy sidebar/mutation owner, task-persistence adapter, primary
+action resolver/operations owner, Stage-2 action command route, legacy
+controller, and conflict/history presenters are removed and must remain
+absent. `pipelineDefinition.ts` now contains stage metadata and normalization,
+not task definitions. `AutomationRunner.ts` retains audit, outbox, Site Visit,
+marketing-attribution, and stale-cadence cancellation effects but creates no
+task or follow-up rows. Do not reintroduce those responsibilities through
+`getProjectCommandExceptions.ts` or another compatibility owner.
 
 Route-owned presentation may adapt the new read model temporarily. Durable types, calendar rules, ranking, cadence, and commands remain reusable server-domain owners. No second client-side project-state source is created.
 
-Overview V2 keeps that boundary through the five required top-level owners (`ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`, `ProjectWorkList`, and `useProjectWorkCommandController`) plus extracted subordinate owners: `ProjectWorkControls` for V2 mutation-control presentation, `useLegacyProjectWorkCommandController` for legacy stable command/cache orchestration, `LegacyProjectWorkConflict` and `LegacyProjectWorkHistory` for legacy conflict/audit presentation, and `projectWorkVisibilityPolicy` for the shared fail-closed Call/Site Visit filter. Cache patching and invalidation stay in `projectWorkCache.ts`, with `patchProjectCommandCentreCache` as the sole complete response patch owner. These presentation owners may arrange or format supplied facts and dispatch existing commands; they may not rank candidates, create replacement legacy work, infer lifecycle/readiness/commercial state, or add a second cache owner.
+Overview keeps that boundary through the five required top-level owners
+(`ProjectOverviewLayout`, `ProjectOrientationBand`, `ProjectWorkSection`,
+`ProjectWorkList`, and `useProjectWorkCommandController`) plus
+`ProjectWorkControls` for V2 mutation presentation and
+`LegacyProjectWorkRetiredCard` for the unmarked-project notice/review link.
+There is no legacy command controller, conflict/history presenter, or
+stage-task list. `projectWorkVisibilityPolicy` remains a fail-closed V2 guard
+against prohibited Call/Site Visit work. Cache patching and invalidation stay
+in `projectWorkCache.ts`, with `patchProjectCommandCentreCache` as the sole
+complete response patch owner. Presentation owners may arrange or format
+supplied facts and dispatch existing V2 commands; they may not rank candidates,
+create replacement legacy work, infer lifecycle/readiness/commercial state, or
+add a second cache owner.
 
 ## 14. Verification
 
@@ -849,7 +920,7 @@ Overview V2 keeps that boundary through the five required top-level owners (`Pro
 - stale-version rejection and idempotent replay;
 - blocked, Waiting, Closed, and Archived exclusion;
 - compatibility projection; and
-- current task presentation adapter states.
+- V2 Project Work states plus the read-only legacy-retirement presentation.
 
 ### Database and route contracts
 
@@ -862,6 +933,10 @@ Overview V2 keeps that boundary through the five required top-level owners (`Pro
 - source-key uniqueness;
 - classifier reads omit linked customer contact fields and cannot mutate;
 - reviewed migration enforces Contacted/unmarked/current-update and evidence-fingerprint preconditions, one project, valid disposition evidence, and no cadence seed;
+- retirement migration backfills Running Jobs facts, permits its specialist
+  command for marked and unmarked projects, freezes authenticated task-check
+  writes, revokes both authenticated legacy task RPCs, and deletes no retained
+  row or project;
 - stable error mapping; and
 - auth-bound client usage with no service-role reachability.
 
@@ -883,11 +958,16 @@ Fixtures should cover:
 - active, Waiting, Closed, and Archived;
 - Critical, overdue, today, future, blocked, and Needs triage;
 - quote sent, delivery failed, expired, accepted, declined, replied, resent, and superseded;
-- missing owner, unavailable specialist data, stale read model, conflict, retry, and replay; and
-- legacy-import preview with zero automatic customer-data changes.
+- missing owner, unavailable specialist data, stale read model, model mismatch, retry, and replay;
+- the retired legacy Overview with and without the admin review link and no
+  legacy rows/actions;
+- legacy-import preview with zero automatic customer-data changes; and
 - one-project Contacted migration dispositions, stale-review rejection, replay, and no automatic first-email work.
 
-Run desktop, tablet, narrow/mobile, keyboard, focus, screen-reader, loading, error, stale, and conflict checks on the full Work Queue, its Dashboard preview, and the admin legacy-review surface. This is regression verification, not approval to redesign the Overview.
+Run desktop, tablet, narrow/mobile, keyboard, focus, screen-reader, loading,
+error, stale, and model-mismatch checks on the full Work Queue, its Dashboard
+preview, the retired legacy Overview card, and the admin legacy-review surface.
+This is regression verification, not approval to redesign the Overview.
 
 ### Repository gates
 
@@ -930,9 +1010,11 @@ Add the foundation, cut over all readers, process backlog, retire legacy, and de
 - Risk at the time: combined data migration, behavioural change, and then-unapproved UI decisions.
 - Maintainability: clean destination but unnecessarily risky now.
 
-## 16. Implemented V2 Slices
+## 16. Implemented V2 And Retirement Slices
 
-The current worktree implements the approved Option B foundation plus the Work Queue and guarded-review slice, ending before broad existing-project migration and legacy deletion:
+The current worktree implements the approved Option B foundation, Work Queue,
+guarded-review, and runtime legacy-task retirement slices, ending before broad
+existing-project V2 migration and physical legacy-data purge:
 
 1. forward schema and RLS;
 2. transactional commands and append-only audit;
@@ -945,17 +1027,37 @@ The current worktree implements the approved Option B foundation plus the Work Q
 9. adapters for the approved Overview V2 composition governed by `project-command-centre-architecture.md`;
 10. server-only quote send/outcome reconciliation with durable repair signals;
 11. Schedule V2 completion/readiness ownership and Running Jobs-owned materials/roofing facts;
-12. admin-only archive/restore commands; and
+12. admin-only archive/restore commands;
 13. full Work Queue plus a compact Dashboard preview, with personal reminders kept separate;
 14. admin-only append-only confirmation correction and explicit recovery review;
-15. no-contact-field Contacted classification and one-project-at-a-time reviewed migration; and
-16. focused static, unit, component, route, and boundary tests.
+15. no-contact-field Contacted classification and one-project-at-a-time reviewed migration;
+16. one retired legacy Overview state with no task/action surface;
+17. removal of task generators, project-task mutation UI/API, legacy action
+    presentation, Design task sync, and Running Jobs task-check persistence;
+18. forward `20260730_000001` evidence backfill, all-project Running Jobs fact
+    command, authenticated task-check write freeze, and legacy RPC execute
+    revocation without row/project deletion; and
+19. focused static, unit, component, route, migration, and boundary tests.
 
-The foundation and exact reviewed `20260729_000002`/`000003`/`000004` files are applied in staging and production. Readiness, rollback rehearsal, schema/body verification, anonymous-access checks, the authenticated GET-only Work Queue plus legacy-project read smoke, and the disposable staging new-V2-project command smoke pass. Production postflight retained zero V2 markers, states, work, events, confirmations, receipts, or repair signals at the 2026-07-30 cutover check, so no pre-cutover project crossed models and no backlog decision was invented. The slice establishes the repository write-to-read boundary, cache coherence, stale/read-only behavior, idempotent command replay, supported archive cleanup, and safe review tooling while leaving reviewed existing-project migration, automatic backlog decisions, old-table deletion, and calendar expansion outside rollout.
+The foundation and exact reviewed `20260729_000002`/`000003`/`000004` files are
+applied in staging and production. Readiness, rollback rehearsal, schema/body
+verification, anonymous-access checks, the authenticated GET-only Work Queue
+plus legacy-project read smoke, and the disposable staging new-V2-project
+command smoke pass. Production postflight retained zero V2 markers, states,
+work, events, confirmations, receipts, or repair signals at the 2026-07-30
+cutover check, so no pre-cutover project crossed models and no backlog decision
+was invented. That evidence remains the historical V2 rollout record; it does
+not by itself prove that the later `20260730_000001` retirement migration has
+been applied. The combined repository state establishes the write-to-read
+boundary, cache coherence, stale/read-only behavior, idempotent command replay,
+supported archive cleanup, safe review tooling, and runtime task retirement
+while leaving reviewed existing-project migration, automatic backlog
+decisions, physical old-table/row purge, and calendar expansion outside
+rollout.
 
 ## 17. Current Schedule And Parallel-Work Boundary
 
-The Schedule and work-items integration is now present in the same worktree, but it is not deployment evidence. Schedule V2 remains authoritative for install assignment, readiness, actual start, and actual finish. Running Jobs owns materials- and roofing-ordered facts for V2. Site Visits is hidden from normal navigation, remains directly reachable as dormant Schedule-owned code, and is not linked from project work; the optional V2 completion confirmation is manual and has no stage or Schedule side effect.
+The Schedule and work-items integration is now present in the same worktree, but it is not deployment evidence. Schedule V2 remains authoritative for install assignment, readiness, actual start, and actual finish. Running Jobs owns materials- and roofing-ordered facts for every live project through the same specialist command. Site Visits is hidden from normal navigation, remains directly reachable as dormant Schedule-owned code, and is not linked from project work; the optional V2 completion confirmation is manual and has no stage or Schedule side effect.
 
 Further work may proceed in parallel only with explicit non-overlapping ownership. A Schedule lane and a work-items lane must not concurrently edit the same Schedule read/write adapters, Running Jobs contracts, project snapshot, command-centre projection, migration, or canonical docs. Safe isolated work includes:
 
@@ -992,8 +1094,16 @@ matching legacy snapshot/Command Centre reads. Catalog postflight proved all
 nine V2 tables with RLS, authenticated-only queue execution, anonymous denial,
 and zero markers, operational states, work items, work-item/state events,
 confirmations, command receipts, or repair signals at the cutover check. No
-pre-cutover project was migrated or backfilled, and no customer, commercial,
-Schedule, task, or payment data was changed.
+pre-cutover project was migrated into V2 or backfilled at that postflight, and
+no customer, commercial, Schedule, task, or payment data was changed.
+
+Those statements intentionally preserve the original production evidence.
+`20260730_000001` is the later forward retirement migration in the repository;
+until a separate apply/postflight is recorded, it must not be inferred from the
+earlier rollout. When applied, its backfill moves only retained
+materials/roofing facts into their Running Jobs owner. It does not create V2
+work, alter My Tasks, close or mark a project Lost, or delete any project or
+legacy evidence row.
 
 The following remain controlled follow-up rather than launch blockers:
 
@@ -1003,8 +1113,12 @@ The following remain controlled follow-up rather than launch blockers:
   existing-project cutover;
 - extend verified Auckland calendar coverage before a deadline can cross beyond
   2027;
-- retire legacy readers and tables only after a later focused reconciliation
-  window; and
+- apply and verify the forward runtime-retirement migration through its own
+  controlled database window if that deployment has not yet been recorded;
+- complete manual backlog outcomes independently from retention, using the
+  guarded one-project `Closed — Lost` path only when evidence supports it;
+- physically purge proven-unused legacy tables/rows only after that review and
+  a later focused reconciliation/backup window; and
 - keep any Overview expansion beyond the approved handover under a separate
   product and owner contract.
 

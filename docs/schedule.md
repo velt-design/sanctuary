@@ -100,15 +100,18 @@ If readiness fails, check migrations and RPC availability before debugging UI st
 
 ## Project Work Integration
 
-The repository-local project-work slice is new-project-only and not deployed. Schedule retains all install truth:
+Project Work V2 is deployed for newly created projects, and Schedule retains all install truth:
 
 - the Deposit ready pool includes unmarked legacy projects and only Active V2 projects;
 - Waiting/Closed/archived V2 projects are excluded from readiness, while already scheduled rows remain visible;
 - no Schedule state is copied into a generic V2 work item;
 - `CLOSE COMPLETE` requires a Schedule V2 `done` job with an actual finish, plus the separate commercial checks; and
-- Running Jobs derives V2 job completion from Schedule rather than `project_task_checks`.
+- Running Jobs derives job completion from Schedule for every live project rather than `project_task_checks`. After Schedule confirms completion, the existing pre-V2 `SCHEDULED` lifecycle action may still advance that project's pipeline and run its completion automation; it does not create a task-check row.
 
-Apply the project-work migration before its app changes. App-first rollout breaks Schedule's new model/state relation reads.
+Apply any later project-work schema dependency before its app changes. The
+legacy-task retirement must promote its exact migration with the matching portal
+release so Running Jobs does not call the all-project fact command before that
+contract exists.
 
 ## Legacy Fallback
 

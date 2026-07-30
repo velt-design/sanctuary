@@ -145,6 +145,20 @@ signals. No pre-cutover project was migrated or backfilled, and the read-only
 production QA changed no customer, project, quote, invoice, schedule, task, or
 payment row.
 
+The later repository migration
+`20260730_000001_legacy_project_task_retirement.sql` is a separate controlled
+release requirement and is not implied to be applied by the V2 evidence above.
+Before applying it to a shared environment, positively identify the target,
+confirm the V2 command/receipt prerequisites, review the historical
+materials/roofing task-check collision count, and rehearse the exact file in a
+rollback transaction. Apply only that reviewed file with the matching portal
+release: it transfers missing specialist facts into Running Jobs metadata,
+freezes authenticated legacy task-check writes, and revokes authenticated legacy
+action/design-task command execution. It deletes no row or table and does not
+close, mark Lost, archive, or migrate a project. Verify the function bodies,
+grants, RLS policy, fact backfill, and authenticated read-only Overview after
+promotion; do not use a blanket migration push or ledger repair.
+
 Marketing enquiry intake requires both `20260723_000001_marketing_enquiry_intake_security.sql` and the forward compatibility migration `20260724043000_marketing_enquiry_budget_columns.sql`. The latter adds nullable pricing snapshot columns to installations whose existing `enquiry_requests` table predates those fields.
 
 Schedule V2 currently depends on migrations through the Schedule V2 RPC command migrations and later repair migrations. After deploy, confirm:

@@ -6,7 +6,7 @@ import type { EstimateDetail, EstimateMeta, EstimateSummary } from '../estimates
 import { qk } from '../queries/keys';
 import { upsertContactAcrossIndexCaches } from '../queries/contactsIndex';
 import { patchProjectSnapshot } from '../queries/projectCache';
-import type { ProjectNote, ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
+import type { ProjectNote, ProjectPageSnapshotResponse } from '../projects/types';
 import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS, applyDepositPercentToTerms } from '../quotes/defaults';
 import {
   buildQuoteHandoffPreviewFromEstimate,
@@ -645,28 +645,6 @@ export function removeProjectNoteFromSnapshot(
       snapshot: {
         ...currentSnapshot.snapshot,
         notes: existing.filter((entry) => entry.id !== noteId),
-      },
-    };
-  });
-}
-
-export function patchProjectTasksSnapshot(
-  queryClient: QueryClient,
-  hostKey: string,
-  projectId: string,
-  items: ProjectTaskItem[],
-) {
-  patchProjectSnapshot(queryClient, hostKey, projectId, (currentSnapshot) => {
-    if (!currentSnapshot) return currentSnapshot;
-    return {
-      ...currentSnapshot,
-      generatedAt: new Date().toISOString(),
-      snapshot: {
-        ...currentSnapshot.snapshot,
-        tasks: {
-          ...currentSnapshot.snapshot.tasks,
-          items,
-        },
       },
     };
   });

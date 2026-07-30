@@ -6,9 +6,6 @@ const mocks = vi.hoisted(() => ({
   insertCommercialAuditEvent: vi.fn(),
   rpc: vi.fn(),
   invoiceSingle: vi.fn(),
-  taskDelete: vi.fn(),
-  taskProjectEq: vi.fn(),
-  taskKeyEq: vi.fn(),
   supabaseServiceRole: {
     from: vi.fn(),
     rpc: vi.fn(),
@@ -63,9 +60,6 @@ describe('accepted quote project-work reconciliation', () => {
       },
       error: null,
     });
-    mocks.taskKeyEq.mockResolvedValue({ data: null, error: null });
-    mocks.taskProjectEq.mockReturnValue({ eq: mocks.taskKeyEq });
-    mocks.taskDelete.mockReturnValue({ eq: mocks.taskProjectEq });
     mocks.supabaseServiceRole.from.mockImplementation((table: string) => {
       if (table === 'deposit_invoices') {
         return {
@@ -73,9 +67,6 @@ describe('accepted quote project-work reconciliation', () => {
             eq: vi.fn(() => ({ single: mocks.invoiceSingle })),
           })),
         };
-      }
-      if (table === 'project_task_checks') {
-        return { delete: mocks.taskDelete };
       }
       throw new Error(`Unexpected table ${table}`);
     });
@@ -92,7 +83,7 @@ describe('accepted quote project-work reconciliation', () => {
     });
   });
 
-  it('reconciles an authoritative acceptance and skips legacy task cleanup for V2', async () => {
+  it('reconciles an authoritative acceptance without a legacy task mirror', async () => {
     const result = await acceptQuoteAndEnsureDepositInvoice({
       quoteVersionUuid: QUOTE_VERSION_UUID,
       actor: 'staff@example.test',
@@ -108,27 +99,6 @@ describe('accepted quote project-work reconciliation', () => {
     expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.reconcileQuoteOutcomeCadence.mock.invocationCallOrder[0],
     );
-    expect(mocks.taskDelete).not.toHaveBeenCalled();
-  });
-
-  it('preserves legacy invoice-paid cleanup for an unmarked project', async () => {
-    mocks.reconcileQuoteOutcomeCadence.mockResolvedValueOnce({
-      status: 'not_applicable',
-      workModel: 'legacy',
-      commandId: 'command-id',
-    });
-
-    await acceptQuoteAndEnsureDepositInvoice({
-      quoteVersionUuid: QUOTE_VERSION_UUID,
-      actor: 'staff@example.test',
-    });
-
-    expect(mocks.taskDelete).toHaveBeenCalledOnce();
-    expect(mocks.taskProjectEq).toHaveBeenCalledWith(
-      'project_id',
-      PROJECT_UUID,
-    );
-    expect(mocks.taskKeyEq).toHaveBeenCalledWith('task_key', 'invoice_paid');
   });
 
   it('returns the accepted result when reconciliation needs repair', async () => {
@@ -148,7 +118,6 @@ describe('accepted quote project-work reconciliation', () => {
       quoteVersionUuid: QUOTE_VERSION_UUID,
       invoice: { id: INVOICE_UUID, sent: true },
     });
-    expect(mocks.taskDelete).not.toHaveBeenCalled();
   });
 
   it('retries reconciliation on an authoritative acceptance replay', async () => {

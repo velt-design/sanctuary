@@ -26,7 +26,6 @@ const legacySnapshot: ProjectPageSnapshot = {
     owner: { key: 'jordan', displayName: 'Jordan' },
   },
   pipeline: { stage: 'sent' },
-  tasks: { stage: 'sent', items: [] },
   activity: [],
   emails: [],
   notes: [],
@@ -40,7 +39,6 @@ const v2Snapshot: ProjectPageSnapshot = {
     stage: 'new',
   },
   pipeline: { stage: 'new' },
-  tasks: { stage: 'new', items: [] },
 };
 
 export default async function ProjectPageShellFixture({

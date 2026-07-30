@@ -9,7 +9,10 @@ The Drafting Queue is the portal replacement for the old operational design spre
 - Server/domain helpers: `apps/portal/lib/designPackages`.
 - Staff APIs: `apps/portal/app/api/staff/v1/design-packages`.
 - Schema migration: `supabase/migrations/20260317_000001_design_package_requests.sql`.
-- Companion task command: `project_command_sync_design_task` from `20260720_000008_project_command_centre_stage2.sql`.
+- The former companion task command,
+  `project_command_sync_design_task`, is retired. Drafting Queue writes only its
+  canonical `design_package_requests` record and does not create or synchronize
+  a legacy project task.
 - Schema ownership map: `docs/supabase-schema-map.md`.
 
 The route and internal module names still use `design-packages`, but the user-facing page name is Drafting Queue.

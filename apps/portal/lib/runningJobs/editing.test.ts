@@ -133,12 +133,14 @@ describe('applyOptimisticRunningJobCellValue', () => {
     expect(groups[0]?.rows[0]?.sortDate).toBe('2027-01-10');
   });
 
-  it('does not clear Schedule completion when a V2 materials fact is cleared', () => {
+  it.each([null, 2] as const)(
+    'does not clear Schedule completion when model version %s materials are cleared',
+    (workModelVersion) => {
     const initial = makeRow();
     const base = makeRow({
       state: {
         ...initial.state,
-        workModelVersion: 2,
+        workModelVersion,
         tasks: {
           materialsOrdered: true,
           roofingOrdered: false,
@@ -154,5 +156,6 @@ describe('applyOptimisticRunningJobCellValue', () => {
       roofingOrdered: false,
       jobComplete: true,
     });
-  });
+    },
+  );
 });

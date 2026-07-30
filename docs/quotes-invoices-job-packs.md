@@ -120,7 +120,7 @@ Before enabling or rolling back `workbench_solved`, run downstream immutability 
 - Staff quote acceptance and the public accepted page distinguish provider-confirmed delivery, prepared/retryable delivery, and staff-attention outcomes. Staff recovery happens from the Invoices tab.
 - Public invoice pages require a valid invoice ID plus token and treat invalid, expired, or void invoices as unavailable.
 - Public invoice PDF and source quote PDF downloads are token-scoped and served with private/no-store cache headers.
-- V2 invoice/payment state remains invoice-owned. Invoice helpers do not reset or mirror `invoice_paid` into legacy `project_task_checks`; legacy projects retain that compatibility behavior until reviewed migration.
+- Invoice/payment state remains invoice-owned for every project. Invoice helpers do not reset or mirror `invoice_paid` into the retired `project_task_checks` store.
 
 Do not expose service-role access or raw token values to client components. Token comparisons must stay hash-based.
 
